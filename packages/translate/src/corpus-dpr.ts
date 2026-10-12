@@ -615,6 +615,30 @@ export function engineOverflowCases(): string[] {
   return out;
 }
 
+// ---------------------------------------------------------------- text-latin (TXT1a-2)
+
+/** The shaped vectors (packages/layout/vectors/text-latin/dpr-<d>/, written by layout:vectors and layout:dpr-vectors), in DPR then file order. */
+export const TEXT_LATIN_DPRS: readonly number[] = [1, ...DPR_SETS];
+
+/**
+ * Each shaped vector as an engine line with its shape transcript (R3): the harness replays HarfBuzz from it, and a call the
+ * transcript lacks is a harness error. The vector's recorded output must be the replayed layout.
+ */
+export function textLatinVectorCases(): DprVectorCase[] {
+  const out: DprVectorCase[] = [];
+  for (const dpr of TEXT_LATIN_DPRS) {
+    const dir = join(VECTORS_DIR, 'text-latin', `dpr-${dpr}`);
+    if (!existsSync(dir)) continue;
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
+      const v = JSON.parse(readFileSync(join(dir, f), 'utf8')) as { platform: string; measurer: string; language: string; faces: unknown; calls: unknown; input: unknown; output: unknown };
+      if (!validateLayoutInput(v.input).ok) throw new Error(`text-latin vector dpr-${dpr}/${f} fails the validator`);
+      const line = JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls } });
+      out.push({ file: `text-latin/dpr-${dpr}/${f}`, line, output: v.output, measurer: v.measurer, dpr });
+    }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- the extended corpus
 
 export type ExtendedCorpus = Corpus & {
@@ -638,6 +662,7 @@ export function buildExtendedCorpus(): ExtendedCorpus {
   const unitsCalc = unitsCalcCases();
   const engineInline = engineInlineCases();
   const engineOverflow = engineOverflowCases();
+  const textLatin = textLatinVectorCases().map((v) => v.line);
   const suites: Suite[] = [
     { name: 'vectors-m2', mode: 'engine', lines: m2Lines, expected: m2Lines.map(runEngineCase) },
     { name: 'vectors-dpr', mode: 'engine', lines: dprLines, expected: dprLines.map(runEngineCase) },
@@ -653,6 +678,8 @@ export function buildExtendedCorpus(): ExtendedCorpus {
     { name: 'engine-inline', mode: 'engine', lines: engineInline, expected: engineInline.map(runEngineCase) },
     // OVFL: a new suite only, after the V1 ones.
     { name: 'engine-overflow', mode: 'engine', lines: engineOverflow, expected: engineOverflow.map(runEngineCase) },
+    // TXT1a-2: a new suite only, after the OVFL one.
+    { name: 'text-latin', mode: 'engine', lines: textLatin, expected: textLatin.map(runEngineCase) },
   ];
   const d = digestsOf(suites);
   const engineSplit: Split = split(suites[2]?.expected ?? []);

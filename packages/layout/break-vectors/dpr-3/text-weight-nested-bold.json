@@ -1,0 +1,11 @@
+{
+  "case": "text-weight-nested-bold",
+  "dpr": 3,
+  "texts": [
+    {"id":"s:text0","lines":[[0,14]]},
+    {"id":"bb:text0","lines":[[0,14]]},
+    {"id":"lb:text0","lines":[[0,17]]},
+    {"id":"mb:text0","lines":[[0,16]]},
+    {"id":"h1b:text0","lines":[[0,15]]}
+  ]
+}

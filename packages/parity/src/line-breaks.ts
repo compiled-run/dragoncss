@@ -164,7 +164,11 @@ export function readChromeBreaks(caseId: string, dpr: number): ChromeBreaks | nu
   return existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')) as ChromeBreaks) : null;
 }
 
-/** Reads the open page: the text nodes named as capture.ts names them, and each code unit's line (single-code-unit Ranges). */
+/**
+ * Reads the open page: the text nodes named as capture.ts names them, and each code unit's line (single-code-unit Ranges). A text
+ * node's lines are its client rects joined per line (a soft hyphen break's generated hyphen rect shares its line's top), and a unit
+ * after U+00AD takes the line of its last rect, since Chrome lists the previous line's hyphen first in that unit's Range.
+ */
 export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> {
   // PNT2: text in a transformed box is read on the transform twin, so each line keeps its untransformed rect.
   await applyTransformTwin(page, []);
@@ -180,7 +184,12 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
         const t = child as Text;
         const whole = document.createRange();
         whole.selectNodeContents(t);
-        const lines = Array.from(whole.getClientRects());
+        const lines: DOMRect[] = [];
+        for (const r of Array.from(whole.getClientRects())) {
+          const last = lines[lines.length - 1];
+          if (last !== undefined && Math.abs(last.y - r.y) < 0.001 && Math.abs(last.height - r.height) < 0.001) continue;
+          lines.push(r);
+        }
         const blankNode = isBlank(t.data);
         const textId = blankNode ? `${id}:space${spaces++}` : `${id}:text${k++}`;
         if (blankNode && lines.length === 0) continue;
@@ -190,19 +199,20 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
           const r = document.createRange();
           r.setStart(t, i);
           r.setEnd(t, i + 1);
-          const first = r.getClientRects()[0];
-          if (first === undefined || lines.length === 0) {
+          const rects = Array.from(r.getClientRects());
+          const pick = i > 0 && t.data.charCodeAt(i - 1) === 0xad && rects.length > 1 ? rects[rects.length - 1] : rects[0];
+          if (pick === undefined || lines.length === 0) {
             units.push(-1);
             continue;
           }
-          const cy = first.y + first.height / 2;
+          const cy = pick.y + pick.height / 2;
           let best = 0;
           lines.forEach((l, j) => {
             const b = lines[best] as DOMRect;
             if (Math.abs(l.y + l.height / 2 - cy) < Math.abs(b.y + b.height / 2 - cy)) best = j;
           });
           units.push(best);
-          if (first.width === 0) blank.push(i);
+          if (pick.width === 0) blank.push(i);
         }
         out.push({ id: textId, data: t.data, lines: lines.length, units, blank });
       }
@@ -346,8 +356,11 @@ export function leafTexts(root: LayoutBox): Map<string, string> {
 
 // ---------------------------------------------------------------- the device-side breaks on the host (Swift and Kotlin)
 
-/** One input line of the host break program: a key, a tab, and the engine input as JSON (the harness decoder reads it). */
-export const hostBreakLine = (key: string, input: LayoutInput): string => `${key}\t${JSON.stringify(input)}`;
+/**
+ * One input line of the host break program: a key, the engine input as JSON (the harness decoder reads it), and the shape
+ * transcript of the input (text-latin-run.ts shapingOf), tab separated: the host replays HarfBuzz, as the translate harness does (R3).
+ */
+export const hostBreakLine = (key: string, input: LayoutInput, shaping: unknown): string => `${key}\t${JSON.stringify(input)}\t${JSON.stringify(shaping)}`;
 
 // The device-side text loop of DragonTree.apply (emit/native-support.ts), over the committed generated engine and the generated
 // harness's JSON decoder: the same zoomed boxes, content widths, placeLines pieces, and UTF-16 offsets.
@@ -424,13 +437,16 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
 }
 
 let text = String(decoding: FileManager.default.contents(atPath: CommandLine.arguments[1])!, as: UTF8.self)
-guard let m = try platform_measurerFor(JsString(CommandLine.arguments[3])) as? MeasurerChoice_ok else { fatalError("no measurer") }
+guard (try platform_measurerFor(JsString(CommandLine.arguments[3]))) is MeasurerChoice_ok else { fatalError("no measurer") }
 var out = ""
 for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
-  let tab = line.firstIndex(of: "\t")!
-  let key = String(line[..<tab])
-  let input = try harness_decodeInput(harness_parseJson(JsString(String(line[line.index(after: tab)...]))))
-  out += "#\t" + key + "\n" + (try dragonBreaks(input, m.measurer)) + "\n"
+  let fields = line.split(separator: "\t", omittingEmptySubsequences: false)
+  if fields.count != 3 { fatalError("a break line needs a key, an input and a shape transcript") }
+  let key = String(fields[0])
+  let input = try harness_decodeInput(harness_parseJson(JsString(String(fields[1]))))
+  // The shaped measurer over a replayed HarfBuzz (R3); a call the transcript lacks is a harness error.
+  let measurer = try harness_replayMeasurer(try harness_decodeShaping(harness_parseJson(JsString(String(fields[2]))), JsString("$.shaping")), block_NO_ENGINE_FAULTS)
+  out += "#\t" + key + "\n" + (try dragonBreaks(input, measurer)) + "\n"
 }
 FileManager.default.createFile(atPath: CommandLine.arguments[2], contents: out.data(using: .utf8))
 `;
@@ -518,13 +534,16 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
 }
 
 fun main(args: Array<String>) {
-  val m = platform_measurerFor(args[2]) as? MeasurerChoice_ok ?: throw IllegalStateException("no measurer")
+  if (platform_measurerFor(args[2]) !is MeasurerChoice_ok) throw IllegalStateException("no measurer")
   val sb = StringBuilder()
   for (line in File(args[0]).readText(Charsets.UTF_8).split('\n')) {
     if (line.isEmpty()) continue
-    val tab = line.indexOf('\t')
-    val input = harness_decodeInput(harness_parseJson(line.substring(tab + 1)))
-    sb.append("#\t").append(line.substring(0, tab)).append('\n').append(dragonBreaks(input, m.measurer)).append('\n')
+    val fields = line.split('\t')
+    if (fields.size != 3) throw IllegalStateException("a break line needs a key, an input and a shape transcript")
+    val input = harness_decodeInput(harness_parseJson(fields[1]))
+    // The shaped measurer over a replayed HarfBuzz (R3); a call the transcript lacks is a harness error.
+    val measurer = harness_replayMeasurer(harness_decodeShaping(harness_parseJson(fields[2]), "\$.shaping"), block_NO_ENGINE_FAULTS)
+    sb.append("#\t").append(fields[0]).append('\n').append(dragonBreaks(input, measurer)).append('\n')
   }
   File(args[1]).writeText(sb.toString(), Charsets.UTF_8)
 }

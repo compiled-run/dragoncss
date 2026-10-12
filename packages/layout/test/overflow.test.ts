@@ -113,7 +113,7 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
   it('a grid container is refused, whether it scrolls or sits in a scroll container or the viewport, never measured as a block', () => {
     const g = (style: Partial<LayoutStyle>): LayoutBox => {
       const item = box('a', { height: px(150), gridItem: { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' } });
-      const grid = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], autoRows: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
+      const grid = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], autoRows: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], explicitColumnCount: 0, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
       return box('g', { display: 'grid', grid, ...style }, [item]);
     };
     for (const i of [input([g(sc('auto'))]), input([box('s', sc('auto'), [g({})])]), input([g({})])]) {

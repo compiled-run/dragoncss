@@ -520,11 +520,11 @@ fun paintAa_clampToZero(radii: JsArray<Radius>): ClampedRadii {
   var allSquare: Boolean = true
   // ts: packages/layout/src/paint-aa.ts:406
   run {
-    val _a122 = radii
-    var _i122 = 0
-    while (_i122 < _a122.size) {
-      val r: Radius = _a122[_i122]
-      _i122++
+    val _a125 = radii
+    var _i125 = 0
+    while (_i125 < _a125.size) {
+      val r: Radius = _a125[_i125]
+      _i125++
       // ts: packages/layout/src/paint-aa.ts:407
       if (((r.x <= 0.0) || (r.y <= 0.0))) {
         jsPush(out, Radius(0.0, 0.0))
@@ -769,11 +769,11 @@ fun paintAa_boundsOf(pts: JsArray<Pt>): PaintAa_FRect {
   var b: Double = t
   // ts: packages/layout/src/paint-aa.ts:628
   run {
-    val _a123 = pts
-    var _i123 = 0
-    while (_i123 < _a123.size) {
-      val p: Pt = _a123[_i123]
-      _i123++
+    val _a126 = pts
+    var _i126 = 0
+    while (_i126 < _a126.size) {
+      val p: Pt = _a126[_i126]
+      _i126++
       l = paintAa_minNum(l, p.x)
       t = paintAa_minNum(t, p.y)
       r = paintAa_maxNum(r, p.x)
@@ -802,39 +802,39 @@ fun paintAa_drrectPath(outer: SkRRect, inner: SkRRect): AaPath {
   val weights: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/paint-aa.ts:654
   run {
-    val _a124 = jsArrayOf<SkRRect>(outer, inner)
-    var _i124 = 0
-    while (_i124 < _a124.size) {
-      val rr: SkRRect = _a124[_i124]
-      _i124++
+    val _a127 = jsArrayOf<SkRRect>(outer, inner)
+    var _i127 = 0
+    while (_i127 < _a127.size) {
+      val rr: SkRRect = _a127[_i127]
+      _i127++
       val s: Shape = (if ((jsStrEq(rr.type, "rect") || jsStrEq(rr.type, "empty"))) paintAa_rectPoints(rr.rect, 3.0) else (if (jsStrEq(rr.type, "oval")) paintAa_ovalPoints(rr.rect, 3.0) else paintAa_rrectPoints(rr, 6.0)))
       // ts: packages/layout/src/paint-aa.ts:656
       run {
-        val _a125 = s.pts
-        var _i125 = 0
-        while (_i125 < _a125.size) {
-          val p: Pt = _a125[_i125]
-          _i125++
+        val _a128 = s.pts
+        var _i128 = 0
+        while (_i128 < _a128.size) {
+          val p: Pt = _a128[_i128]
+          _i128++
           jsPush(pts, p)
         }
       }
       // ts: packages/layout/src/paint-aa.ts:657
       run {
-        val _a126 = s.verbs
-        var _i126 = 0
-        while (_i126 < _a126.size) {
-          val v: Double = _a126[_i126]
-          _i126++
+        val _a129 = s.verbs
+        var _i129 = 0
+        while (_i129 < _a129.size) {
+          val v: Double = _a129[_i129]
+          _i129++
           jsPush(verbs, v)
         }
       }
       // ts: packages/layout/src/paint-aa.ts:658
       run {
-        val _a127 = s.weights
-        var _i127 = 0
-        while (_i127 < _a127.size) {
-          val w: Double = _a127[_i127]
-          _i127++
+        val _a130 = s.weights
+        var _i130 = 0
+        while (_i130 < _a130.size) {
+          val w: Double = _a130[_i130]
+          _i130++
           jsPush(weights, w)
         }
       }
@@ -848,11 +848,11 @@ fun paintAa_translatePath(path: AaPath, dx: Double, dy: Double): AaPath {
   val pts: JsArray<Pt> = jsArrayOf<Pt>()
   // ts: packages/layout/src/paint-aa.ts:666
   run {
-    val _a128 = path.pts
-    var _i128 = 0
-    while (_i128 < _a128.size) {
-      val p: Pt = _a128[_i128]
-      _i128++
+    val _a131 = path.pts
+    var _i131 = 0
+    while (_i131 < _a131.size) {
+      val p: Pt = _a131[_i131]
+      _i131++
       jsPush(pts, paintAa_pt(paintAa_f32((p.x + dx)), paintAa_f32((p.y + dy))))
     }
   }
@@ -1698,11 +1698,11 @@ fun paintAa_addSegment(list: EdgeList, seg: JsArray<Pt>, clip: PaintAa_IRect?, c
   paintAa_clipQuad(seg, jsUnwrap(clip), canCullToTheRight, out)
   // ts: packages/layout/src/paint-aa.ts:1371
   run {
-    val _a129 = out
-    var _i129 = 0
-    while (_i129 < _a129.size) {
-      val piece: JsArray<Pt> = _a129[_i129]
-      _i129++
+    val _a132 = out
+    var _i132 = 0
+    while (_i132 < _a132.size) {
+      val piece: JsArray<Pt> = _a132[_i132]
+      _i132++
       // ts: packages/layout/src/paint-aa.ts:1372
       if ((jsLength(piece) == 2.0)) {
         paintAa_addLine(list, jsUnwrap(jsAt(piece, 0.0)), jsUnwrap(jsAt(piece, 1.0)))
@@ -1724,11 +1724,11 @@ fun paintAa_buildEdges(path: AaPath, faults: AaFaults, clip: PaintAa_IRect?): Js
   var needsClose: Boolean = false
   // ts: packages/layout/src/paint-aa.ts:1389
   run {
-    val _a130 = path.verbs
-    var _i130 = 0
-    while (_i130 < _a130.size) {
-      val v: Double = _a130[_i130]
-      _i130++
+    val _a133 = path.verbs
+    var _i133 = 0
+    while (_i133 < _a133.size) {
+      val v: Double = _a133[_i133]
+      _i133++
       // ts: packages/layout/src/paint-aa.ts:1390
       if ((v == paintAa_VERB_MOVE)) {
         // ts: packages/layout/src/paint-aa.ts:1391
@@ -1988,11 +1988,11 @@ fun paintAa_sortEdges(edges: JsArray<Edge>): JsArray<Edge> {
   val xs: JsArray<EdgeCell> = jsArrayOf<EdgeCell>()
   // ts: packages/layout/src/paint-aa.ts:1560
   run {
-    val _a131 = edges
-    var _i131 = 0
-    while (_i131 < _a131.size) {
-      val e: Edge = _a131[_i131]
-      _i131++
+    val _a134 = edges
+    var _i134 = 0
+    while (_i134 < _a134.size) {
+      val e: Edge = _a134[_i134]
+      _i134++
       jsPush(xs, EdgeCell(e))
     }
   }
@@ -2004,11 +2004,11 @@ fun paintAa_sortEdges(edges: JsArray<Edge>): JsArray<Edge> {
   val out: JsArray<Edge> = jsArrayOf<Edge>()
   // ts: packages/layout/src/paint-aa.ts:1564
   run {
-    val _a132 = xs
-    var _i132 = 0
-    while (_i132 < _a132.size) {
-      val c: EdgeCell = _a132[_i132]
-      _i132++
+    val _a135 = xs
+    var _i135 = 0
+    while (_i135 < _a135.size) {
+      val c: EdgeCell = _a135[_i135]
+      _i135++
       jsPush(out, c.e)
     }
   }
@@ -2077,11 +2077,11 @@ fun paintAa_accFlush(acc: Acc): Unit {
     var any: Boolean = false
     // ts: packages/layout/src/paint-aa.ts:1634
     run {
-      val _a133 = acc.row
-      var _i133 = 0
-      while (_i133 < _a133.size) {
-        val c: PaintAa_Cell = _a133[_i133]
-        _i133++
+      val _a136 = acc.row
+      var _i136 = 0
+      while (_i136 < _a136.size) {
+        val c: PaintAa_Cell = _a136[_i136]
+        _i136++
         c.v = paintAa_snapAlpha(c.v)
         // ts: packages/layout/src/paint-aa.ts:1636
         if ((c.v != 0.0)) {
@@ -2101,11 +2101,11 @@ fun paintAa_accFlush(acc: Acc): Unit {
       }
       // ts: packages/layout/src/paint-aa.ts:1640
       run {
-        val _a134 = acc.row
-        var _i134 = 0
-        while (_i134 < _a134.size) {
-          val c: PaintAa_Cell = _a134[_i134]
-          _i134++
+        val _a137 = acc.row
+        var _i137 = 0
+        while (_i137 < _a137.size) {
+          val c: PaintAa_Cell = _a137[_i137]
+          _i137++
           c.v = 0.0
         }
       }
@@ -3162,11 +3162,11 @@ fun paintAa_antiFillPath(dev: Device, path: AaPath, tileClip: PaintAa_IRect, fau
     var curves: Boolean = false
     // ts: packages/layout/src/paint-aa.ts:2375
     run {
-      val _a135 = path.verbs
-      var _i135 = 0
-      while (_i135 < _a135.size) {
-        val v: Double = _a135[_i135]
-        _i135++
+      val _a138 = path.verbs
+      var _i138 = 0
+      while (_i138 < _a138.size) {
+        val v: Double = _a138[_i138]
+        _i138++
         // ts: packages/layout/src/paint-aa.ts:2375
         if (((v == paintAa_VERB_CONIC) || (v == paintAa_VERB_QUAD))) {
           curves = true
@@ -3221,11 +3221,11 @@ fun paintAa_flatten(path: AaPath): JsArray<JsArray<Pt>> {
   var wi: Double = 0.0
   // ts: packages/layout/src/paint-aa.ts:2404
   run {
-    val _a136 = path.verbs
-    var _i136 = 0
-    while (_i136 < _a136.size) {
-      val v: Double = _a136[_i136]
-      _i136++
+    val _a139 = path.verbs
+    var _i139 = 0
+    while (_i139 < _a139.size) {
+      val v: Double = _a139[_i139]
+      _i139++
       // ts: packages/layout/src/paint-aa.ts:2405
       if ((v == paintAa_VERB_MOVE)) {
         // ts: packages/layout/src/paint-aa.ts:2406
@@ -3293,11 +3293,11 @@ fun paintAa_supersampleFill(dev: Device, path: AaPath, ir: PaintAa_IRect, faults
                   var wind: Double = 0.0
                   // ts: packages/layout/src/paint-aa.ts:2441
                   run {
-                    val _a137 = contours
-                    var _i137 = 0
-                    while (_i137 < _a137.size) {
-                      val c: JsArray<Pt> = _a137[_i137]
-                      _i137++
+                    val _a140 = contours
+                    var _i140 = 0
+                    while (_i140 < _a140.size) {
+                      val c: JsArray<Pt> = _a140[_i140]
+                      _i140++
                       // ts: packages/layout/src/paint-aa.ts:2442
                       run {
                         var i: Double = 0.0
@@ -3359,11 +3359,11 @@ fun paintAa_normalizeLimbs(xs: JsArray<Double>): JsArray<Double> {
   var carry: Double = 0.0
   // ts: packages/layout/src/paint-aa.ts:2479
   run {
-    val _a138 = xs
-    var _i138 = 0
-    while (_i138 < _a138.size) {
-      val x: Double = _a138[_i138]
-      _i138++
+    val _a141 = xs
+    var _i141 = 0
+    while (_i141 < _a141.size) {
+      val x: Double = _a141[_i141]
+      _i141++
       val v: Double = (x + carry)
       carry = rtEasing_floorOf((v / paintAa_LIMB))
       jsPush(out, (v - (carry * paintAa_LIMB)))
@@ -3532,11 +3532,11 @@ fun paintAa_devicePixels(dev: Device): JsArray<Double> {
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/paint-aa.ts:3405
   run {
-    val _a139 = dev.px
-    var _i139 = 0
-    while (_i139 < _a139.size) {
-      val c: PaintAa_Cell = _a139[_i139]
-      _i139++
+    val _a142 = dev.px
+    var _i142 = 0
+    while (_i142 < _a142.size) {
+      val c: PaintAa_Cell = _a142[_i142]
+      _i142++
       jsPush(out, c.v)
     }
   }

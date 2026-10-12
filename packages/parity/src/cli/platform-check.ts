@@ -16,7 +16,7 @@ import { compareLayout } from '../compare.ts';
 import { compareDual } from '../dual.ts';
 import { FIXTURES } from '../fixtures.ts';
 import { repoPath } from '../paths.ts';
-import { compileFixture, forcedCases } from '../pipeline.ts';
+import { authoredPrepareOf, compileFixture, forcedCases } from '../pipeline.ts';
 import { prepareOf } from '../forced-pseudo.ts';
 import { checkPlatformCaptures, readCaptures } from '../platform-check.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
@@ -62,7 +62,7 @@ else {
           problems.push(`${c.id}: the reference compile gives no web output`);
           continue;
         }
-        const authored = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, prepareOf(c));
+        const authored = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c));
         const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(css.text, classOf), c.environment, c.computedExtra, prepareOf(c));
         const d = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
         dual.push({ case: c.id, pass: d.pass, problems: d.problems });

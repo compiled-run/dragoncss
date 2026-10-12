@@ -1,0 +1,26 @@
+{
+  "case": "text-weight-numeric",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"w1:text0","data":"Weight one","lines":1,"units":[0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w100:text0","data":"Weight hundred","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w250:text0","data":"Weight calc","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w300:text0","data":"Weight light","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w350:text0","data":"Weight between","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w400:text0","data":"Weight regular","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w450:text0","data":"Weight quarter","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w500:text0","data":"Weight medium","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w550:text0","data":"Weight above medium","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w599:text0","data":"Weight below threshold","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w600:text0","data":"Weight semibold","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w800:text0","data":"Weight extra bold","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"w1000:text0","data":"Weight thousand","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"kni:text0","data":"Keyword normal","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"kin:text0","data":"Keyword initial","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"kb:text0","data":"Keyword bold","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"l100:text0","data":"Lato hundred","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"l599:text0","data":"Lato below threshold","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"l1000:text0","data":"Lato thousand","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

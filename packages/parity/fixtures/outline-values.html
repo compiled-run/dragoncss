@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; color: rgb(10, 20, 30); font-size: 20px; }
+.row { display: flex; column-gap: 8px; padding: 8px; background-color: rgb(240, 240, 240); }
+.c { width: 30px; height: 30px; background-color: rgb(100, 140, 200); }
+.none { outline: none; }
+.zero { outline: 0 solid red; }
+.thick { outline-width: thick; }
+.styled { outline-style: none; outline-width: 4px; outline-color: rgb(0, 128, 0); outline-offset: 3px; }
+.em { outline: 0 dashed; outline-offset: 0.5em; }
+.cur { outline: 0 double currentcolor; color: rgb(200, 0, 0); }
+.hex { outline: #abc 0 dotted; }
+.rgba { outline-color: rgba(1, 2, 3, 0.5); outline-width: 0; outline-style: groove; }
+.neg { outline: 0 ridge; outline-offset: -2px; }
+.inherit-parent { outline: 0 inset rgb(5, 5, 250); }
+.inherit { width: 10px; height: 10px; outline: inherit; }
+.outset { outline: medium outset; outline-width: 0; }
+.var { --w: 0px; outline: var(--w) solid transparent; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="o-none" class="c none"></div>
+<div data-dragon-id="o-zero" class="c zero"></div>
+<div data-dragon-id="o-thick" class="c thick"></div>
+<div data-dragon-id="o-styled" class="c styled"></div>
+<div data-dragon-id="o-em" class="c em"></div>
+<div data-dragon-id="o-cur" class="c cur"></div>
+<div data-dragon-id="o-hex" class="c hex"></div>
+<div data-dragon-id="o-rgba" class="c rgba"></div>
+<div data-dragon-id="o-neg" class="c neg"></div>
+<div data-dragon-id="o-parent" class="c inherit-parent"><div data-dragon-id="o-inherit" class="inherit"></div></div>
+<div data-dragon-id="o-outset" class="c outset"></div>
+<div data-dragon-id="o-var" class="c var"></div>
+</div>
+</body>
+</html>

@@ -16,12 +16,14 @@ import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
 import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
+import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 const targets = nativeTargets();
 const sources = laneSources();
@@ -51,8 +53,11 @@ describe('native targets', () => {
     for (const t of targets) {
       for (const l of ['layout-vectors-host', 'layout-vectors-device']) {
         const v = lane(t, l);
-        expect(v?.sets.map((s) => [s.dpr, s.role, s.extra, s.ids.length])).toEqual([[1, 'top-level', null, ids.length], ...DPRS.map((d) => [d, SHARED_DPRS.includes(d) ? 'shared' : 'extra', EXTRA_DPRS.find((e) => e.dpr === d)?.name ?? null, ids.length])]);
-        expect(v?.sets.reduce((n, s) => n + s.ids.length, 0)).toBe(declaredLayoutCaseCount() * (1 + DPRS.length));
+        // TXT1a-2: a shaped case's vectors are the text-latin suite's (with their transcripts), so the vector sets hold the rest.
+        const plain = vectorCaseIds();
+        expect(plain).toEqual(ids.filter((id) => !shapedCaseIds().has(id)));
+        expect(v?.sets.map((s) => [s.dpr, s.role, s.extra, s.ids.length])).toEqual([[1, 'top-level', null, plain.length], ...DPRS.map((d) => [d, SHARED_DPRS.includes(d) ? 'shared' : 'extra', EXTRA_DPRS.find((e) => e.dpr === d)?.name ?? null, plain.length])]);
+        expect((v?.sets.reduce((n, s) => n + s.ids.length, 0) ?? 0) + shapedCaseIds().size * (1 + DPRS.length)).toBe(declaredLayoutCaseCount() * (1 + DPRS.length));
         expect(v?.corpora).toEqual(corpusSuites());
       }
     }
@@ -76,7 +81,8 @@ describe('native targets', () => {
     for (const l of ['device-frames', 'device-applied', 'device-lines', 'device-pixels']) {
       const a = lane(ios, l);
       const b = lane(android, l);
-      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, ids.length]));
+      // TXT1a-2: the device cases are every layout case but the shaped ones, which the device runtime draws only from phase R on.
+      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, vectorCaseIds().length]));
       expect(b?.sets.filter((s) => s.role === 'shared')).toEqual(a?.sets);
       expect(b?.sets.filter((s) => s.role === 'extra').map((s) => [s.dpr, s.extra])).toEqual(EXTRA_DPRS.map((e) => [e.dpr, e.name]));
     }
@@ -100,13 +106,17 @@ describe('native targets', () => {
     expect(android.projection).toBe(nativeLayoutProjection);
     expect(ios.projection).toBe(android.projection);
   });
-  // One test per fixture, so the corpus's compiles are spread over tests rather than held to one test's timeout.
-  describe('iosLayoutProjection output deep-equals nativeLayoutProjection output for every case, at DPR 1 and every DPR', () => {
-    it('the fixture tests below cover every case at DPR 1 and every DPR', () => {
-      expect(layoutCases().reduce((n, f) => n + f.cases.length * (1 + DPRS.length), 0)).toBe(ids.length * (1 + DPRS.length));
+  // One test per fixture, so the corpus's compiles are spread over tests rather than held to one test's timeout. TXT1a-2: a shaped
+  // case is no device case (targets.ts vectorCaseIds), and a real-face one has no native projection, so only device cases compare.
+  describe('iosLayoutProjection output deep-equals nativeLayoutProjection output for every device case, at DPR 1 and every DPR', () => {
+    const device = new Set(vectorCaseIds());
+    it('the fixture tests below cover every device case at DPR 1 and every DPR', () => {
+      expect(layoutCases().reduce((n, f) => n + f.cases.filter((c) => device.has(c.id)).length * (1 + DPRS.length), 0)).toBe(vectorCaseIds().length * (1 + DPRS.length));
+      expect(vectorCaseIds().length + shapedCaseIds().size).toBe(ids.length);
     });
     it.each(layoutCases().map((f) => [f.spec.id, f] as const))('%s', (_id, f) => {
       for (const c of f.cases) {
+        if (!device.has(c.id)) continue;
         const comp = enforcedCompile(f.spec, c.environment.direction);
         for (const dpr of [1, ...DPRS]) {
           const env = atDpr(c.environment, dpr);
@@ -232,25 +242,29 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases and the GRID cases', () => {
+  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases, the GRID cases and the visibility cases (T150a)', () => {
     const refusals = hitRefusedCases();
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
-    // Exactly the union: every INL1a inline, PNT1 stacking, radius and GRID case is refused with its reason, and every other refusal is a
+    // Exactly the union: every INL1a inline, PNT1 stacking, radius, GRID and visibility case is refused with its reason, and every other refusal is a
     // transform- case (PNT2) or PNT1's stacking-transform with the transform reason.
     expect(refused.filter((id) => RADIUS_OUT.includes(id)).sort()).toEqual([...RADIUS_OUT].sort());
     expect(refused.filter((id) => INLINE_OUT.includes(id)).sort()).toEqual([...INLINE_OUT].sort());
     expect(refused.filter((id) => STACKING_OUT.includes(id)).sort()).toEqual([...STACKING_OUT].sort());
     expect(refused.filter((id) => GRID_OUT.includes(id)).sort()).toEqual([...GRID_OUT].sort());
+    expect(refused.filter((id) => VISIBILITY_OUT.includes(id)).sort()).toEqual([...VISIBILITY_OUT].sort());
     for (const r of refusals) {
       if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
+      else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
     }
-    expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
-    expect(hitCaseCount()).toBe(ids.length - refused.length);
+    // TXT1a-2: over the device cases (targets.ts vectorCaseIds), every layout case but the shaped ones the runtime draws from phase R.
+    const device = vectorCaseIds();
+    expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...device].sort());
+    expect(hitCaseCount()).toBe(device.length - refused.length);
     // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.
     expect(hitCaseIds()).toEqual(hitCases().map((n) => n.case.id));
     for (const t of nativeTargets()) {

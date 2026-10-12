@@ -43,7 +43,7 @@ const input = (children: LayoutBox[]): LayoutInput => ({
 });
 const sc = (o: Overflow, extra: Partial<LayoutStyle> = {}): Partial<LayoutStyle> => ({ overflowX: o, overflowY: o, width: px(100), height: px(60), ...extra });
 
-const GRID = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth', breadth: { kind: 'auto' } }], autoRows: [{ kind: 'breadth', breadth: { kind: 'auto' } }], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row', dense: false, justifyItems: 'normal' } as const;
+const GRID = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth', breadth: { kind: 'auto' } }], autoRows: [{ kind: 'breadth', breadth: { kind: 'auto' } }], explicitColumnCount: 0, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row', dense: false, justifyItems: 'normal' } as const;
 
 type Kid = (id: string) => Child;
 /** Child shapes covering each engine refusal and its near misses. */

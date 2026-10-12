@@ -156,6 +156,25 @@ export function divInt(a: LU, n: number): LU {
   return saturate(Math.trunc(a / n));
 }
 
+/** Blink operator/(LayoutUnit, LayoutUnit): 64 * a.raw / b.raw in int64, truncating toward zero, clamped to the raw range. */
+export function divLu(a: LU, b: LU): LU {
+  if (b === 0) throw new Error('LayoutUnit division by zero');
+  return saturate(Math.trunc((a * LU_PER_PX) / b));
+}
+
+/** Blink FloorToInt(LayoutUnit): the raw value shifted right by 6, or kIntMin within one px of the raw minimum. */
+export function floorToInt(a: LU): number {
+  if (a <= INT_MIN + LU_PER_PX - 1) return Math.trunc(INT_MIN / LU_PER_PX);
+  return Math.floor(a / LU_PER_PX);
+}
+
+/** Blink CeilToInt(LayoutUnit): up to whole px when non-negative, toward zero when negative, kIntMax within one px of the raw maximum. */
+export function ceilToInt(a: LU): number {
+  if (a >= INT_MAX - LU_PER_PX + 1) return Math.trunc(INT_MAX / LU_PER_PX);
+  if (a >= 0) return Math.trunc((a + LU_PER_PX - 1) / LU_PER_PX);
+  return Math.trunc(a / LU_PER_PX);
+}
+
 /** Blink LayoutUnit::Floor(): the largest whole px not above the value, as LU. */
 export function floorToWholePx(a: LU): LU {
   return saturate(Math.floor(a / LU_PER_PX) * LU_PER_PX);

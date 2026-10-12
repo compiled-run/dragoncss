@@ -63,4 +63,7 @@ describe('dotNames', () => {
     }
     expect(hits).toBeGreaterThan(200);
   });
+  it('names the class of a compound selector, after a word character or a dot too', () => {
+    expect([...dotNames('div.box li.item .a.b')].sort()).toEqual(['a', 'b', 'box', 'item']);
+  });
 });

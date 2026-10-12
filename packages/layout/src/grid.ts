@@ -5,7 +5,10 @@
 // terms for horizontal-tb: columns are the inline axis and rows the block axis; rtl mirrors the inline offsets at the end.
 import type {
   Direction,
+  GridAutoRepeat,
   GridContainerStyle,
+  GridLine,
+  GridLineName,
   GridSelfAlign,
   GridSpan,
   LayoutBox,
@@ -19,8 +22,10 @@ import type {
 import type { LU } from './units.ts';
 import {
   add,
+  ceilToInt,
   clampNegativeToZero,
   divInt,
+  divLu,
   doubleLeftover,
   doubleQuotient,
   doubleShare,
@@ -30,6 +35,7 @@ import {
   flexSumSub,
   clampedFloatMul,
   floatNearlyEqual,
+  floorToInt,
   frLeftover,
   frShareToLu,
   fromCssPx,
@@ -78,7 +84,7 @@ const NO_LINE = 9007199254740991;
 const LU_MAX: LU = 2147483647 as LU;
 
 /**
- * Seeded grid engine errors, each a planted fault of docs/research/grid-spike/blink-notes.md in G1a's scope, so the G-P
+ * Seeded grid engine errors, each a planted fault of docs/research/grid-spike/blink-notes.md in G1a's or G2's scope, so the G-P
  * differential test (packages/parity/test/grid-corpus.test.ts) proves it catches them. The product runs with NO_GRID_FAULTS.
  */
 export type GridFaults = {
@@ -122,6 +128,12 @@ export type GridFaults = {
   readonly centerFloors: boolean;
   /** Spec reading of Chrome deviation grid-maximize-no-max-redo (css-grid-2 §12.6): redo maximize against max-height. */
   readonly maximizeRedoSpec: boolean;
+  /** autoFillCountCeil: a definite or maximum size fits as many repetitions as its size rounded up, not down. */
+  readonly autoFillCountCeil: boolean;
+  /** autoFitNotCollapsed: repeat(auto-fit) keeps its empty tracks, as repeat(auto-fill) does. */
+  readonly autoFitNotCollapsed: boolean;
+  /** repeatEndNameMissed: a name after the automatic repeater's last size names its final line only, not each repetition's end. */
+  readonly repeatEndNameMissed: boolean;
 };
 
 export const NO_GRID_FAULTS: GridFaults = {
@@ -145,6 +157,9 @@ export const NO_GRID_FAULTS: GridFaults = {
   distributionRounded: false,
   centerFloors: false,
   maximizeRedoSpec: false,
+  autoFillCountCeil: false,
+  autoFitNotCollapsed: false,
+  repeatEndNameMissed: false,
 };
 
 export type GridArgs = {
@@ -203,6 +218,7 @@ type GridRange = {
   readonly repeaterIndex: number;
   readonly repeaterOffset: number;
   readonly implicit: boolean;
+  readonly collapsed: boolean;
   props: GridProps;
 };
 
@@ -211,6 +227,7 @@ type GridSetGeometry = { readonly offset: LU; readonly trackCount: number };
 /** A GridSizingTrackCollection: ranges, the sets they hold, the gutter and the cached set geometry. */
 type GridCollection = {
   readonly axis: GridAxis;
+  readonly explicit: readonly GridRepeater[];
   readonly ranges: readonly GridRange[];
   sets: GridSet[];
   gutter: LU;
@@ -349,6 +366,260 @@ function flexOf(t: GridTrack): number {
 
 function setFlex(s: GridSet): number {
   return setFlexFactor(flexOf(s.track), s.trackCount);
+}
+
+// ---- Automatic repetitions and the explicit track list (Blink CalculateAutomaticRepetitions, GridTrackList) ---------------
+
+/** A repeater of the explicit track list with its repetitions known (Blink GridTrackRepeater with RepeatCount resolved). */
+type GridRepeater = { readonly count: number; readonly sizes: readonly TrackSize[]; readonly autoFit: boolean };
+
+/** One axis's explicit grid: its repeaters, its explicit track count, and the automatic repeater's lines for line resolution. */
+type GridAxisTracks = {
+  readonly repeaters: readonly GridRepeater[];
+  readonly explicitCount: number;
+  readonly auto: GridAutoRepeat | null;
+  readonly insertion: number;
+  readonly autoTotal: number;
+};
+
+/** GridTrackSize::HasFixedMinTrackBreadth: the minimum breadth when it is a length or percentage. */
+function fixedMinOf(t: TrackSize): Px | Percent | null {
+  if (t.kind === 'breadth') return t.breadth.kind === 'px' || t.breadth.kind === 'percent' ? t.breadth : null;
+  if (t.kind === 'minmax') return t.min.kind === 'px' || t.min.kind === 'percent' ? t.min : null;
+  return null;
+}
+
+/** GridTrackSize::HasFixedMaxTrackBreadth: the maximum breadth when it is a length or percentage. */
+function fixedMaxOf(t: TrackSize): Px | Percent | null {
+  if (t.kind === 'breadth') return t.breadth.kind === 'px' || t.breadth.kind === 'percent' ? t.breadth : null;
+  if (t.kind === 'minmax') return t.max.kind === 'px' || t.max.kind === 'percent' ? t.max : null;
+  return null;
+}
+
+/** GridTrackSize::IsTrackDefinitionIntrinsic: a single auto, min-content or max-content breadth, or fit-content(). */
+function definitionIntrinsic(t: TrackSize): boolean {
+  if (t.kind === 'fit-content') return true;
+  return t.kind === 'breadth' && (isAuto(t.breadth) || isContent(t.breadth));
+}
+
+/** One repetition of a repeater's sizes, each with a gutter; an automatic repeater floors each size at 1px. */
+function repeaterSize(sizes: readonly TrackSize[], isAutoRepeater: boolean, gutter: LU, available: LU): LU {
+  let size = ZERO;
+  for (const t of sizes) {
+    if (definitionIntrinsic(t)) throw new Error('an automatic repetition beside an intrinsic track size; validateLayoutInput rejects this input');
+    const min = fixedMinOf(t);
+    const max = fixedMaxOf(t);
+    let contribution = ZERO;
+    if (max !== null && min !== null) contribution = maxLu(breadthValue(max, available), breadthValue(min, available));
+    else if (max !== null) contribution = breadthValue(max, available);
+    else if (min !== null) contribution = breadthValue(min, available);
+    if (isAutoRepeater) contribution = maxLu(fromCssPx(1), contribution);
+    size = add(size, add(contribution, gutter));
+  }
+  return size;
+}
+
+/**
+ * Blink CalculateAutomaticRepetitions (grid_layout_utils.cc): with a definite size, or else a maximum, the most repetitions that
+ * fit (floor); with only a minimum, the fewest that fill it (ceil); never fewer than one (css-grid-2 §7.2.3.2).
+ */
+function autoRepetitions(template: readonly TrackRepeater[], auto: GridAutoRepeat, gutter: LU, available: LU, minAvailable: LU, maxAvailable: LU, faults: GridFaults): number {
+  let size = available;
+  let max = maxAvailable;
+  if (size === INDEFINITE) size = minAvailable;
+  else max = size;
+  let nonAuto = ZERO;
+  for (const r of template) nonAuto = add(nonAuto, mulInt(repeaterSize(r.sizes, false, gutter, size), r.count));
+  const autoSize = repeaterSize(auto.sizes, true, gutter, size);
+  nonAuto = sub(nonAuto, gutter);
+  if (max !== LU_MAX) {
+    const fit = divLu(sub(max, nonAuto), autoSize);
+    const count = faults.autoFillCountCeil ? ceilToInt(fit) : floorToInt(fit);
+    return count <= 0 ? 1 : count;
+  }
+  const count = ceilToInt(divLu(sub(size, nonAuto), autoSize));
+  return count <= 0 ? 1 : count;
+}
+
+/** Blink GridLineResolver::ExplicitGridTrackCount, and the GridTrackList with the automatic repeater in place. */
+function axisTracks(box: LayoutBox, g: GridContainerStyle, axis: GridAxis, available: GridAvailable, faults: GridFaults, engineFaults: EngineFaults): GridAxisTracks {
+  const template = templateOf(g, axis);
+  const auto = axis === 'columns' ? g.autoRepeatColumns : g.autoRepeatRows;
+  const specified = axis === 'columns' ? g.explicitColumnCount : g.explicitRowCount;
+  const repeaters: GridRepeater[] = [];
+  let nonAuto = 0;
+  let insertion = 0;
+  for (let i = 0; i < template.length; i++) {
+    const r = template[i] as TrackRepeater;
+    if (auto !== null && i === auto.index) insertion = nonAuto;
+    nonAuto += r.count * r.sizes.length;
+  }
+  if (auto === null) {
+    for (const r of template) repeaters.push({ count: r.count, sizes: r.sizes, autoFit: false });
+    return { repeaters, explicitCount: specified, auto: null, insertion: 0, autoTotal: 0 };
+  }
+  if (auto.index === template.length) insertion = nonAuto;
+  const columns = axis === 'columns';
+  const size = columns ? available.inline : available.block;
+  const gutter = gutterSize(box, axis, size, engineFaults);
+  const repetitions = autoRepetitions(template, auto, gutter, size, columns ? available.minInline : available.minBlock, columns ? available.maxInline : available.maxBlock, faults);
+  for (let i = 0; i <= template.length; i++) {
+    if (i === auto.index) repeaters.push({ count: repetitions, sizes: auto.sizes, autoFit: auto.type === 'auto-fit' });
+    if (i < template.length) {
+      const r = template[i] as TrackRepeater;
+      repeaters.push({ count: r.count, sizes: r.sizes, autoFit: false });
+    }
+  }
+  const autoTotal = repetitions * auto.sizes.length;
+  return { repeaters, explicitCount: minN(maxN(nonAuto + autoTotal, specified), GRID_MAX_TRACKS), auto, insertion, autoTotal };
+}
+
+// ---- Line resolution with an automatic repeater (Blink GridLineResolver, GridNamedLineCollection) --------------------------
+
+/** One name's lines (Blink GridNamedLineCollection) in a standalone axis, whose automatic repeater repeats at least once. */
+type GridNamedLines = { readonly name: GridLineName; readonly lastLine: number; readonly insertion: number; readonly total: number; readonly length: number; readonly endNameMissed: boolean };
+
+function namedLinesOf(a: GridAxisTracks, id: number, faults: GridFaults): GridNamedLines {
+  const auto = a.auto;
+  if (auto === null) throw new Error('a grid line to resolve in an axis with no automatic repeater; validateLayoutInput rejects this input');
+  return { name: auto.lineNames[id] as GridLineName, lastLine: a.explicitCount, insertion: a.insertion, total: a.autoTotal, length: auto.sizes.length, endNameMissed: faults.repeatEndNameMissed };
+}
+
+/** Whether an ascending list holds a line. */
+function hasLine(lines: readonly number[], line: number): boolean {
+  let lower = 0;
+  let upper = lines.length;
+  while (lower < upper) {
+    const center = intDiv(lower + upper, 2);
+    const v = lines[center] as number;
+    if (v === line) return true;
+    if (v < line) lower = center + 1;
+    else upper = center;
+  }
+  return false;
+}
+
+function hasNamedLines(c: GridNamedLines): boolean {
+  return c.name.explicit.length > 0 || c.name.repeat.length > 0 || c.name.implicit.length > 0;
+}
+
+/** GridNamedLineCollection::Contains: the template numbers its names after the repeater as if it were one track. */
+function namedContains(c: GridNamedLines, line: number): boolean {
+  if (line > c.lastLine) return false;
+  if (hasLine(c.name.implicit, line)) return true;
+  if (c.length === 0 || line < c.insertion) return hasLine(c.name.explicit, line);
+  if (line > c.insertion + c.total) return hasLine(c.name.explicit, line - (c.total - 1));
+  if (line === c.insertion) return hasLine(c.name.explicit, line) || hasLine(c.name.repeat, 0);
+  if (line === c.insertion + c.total) return hasLine(c.name.repeat, c.length) || hasLine(c.name.explicit, c.insertion + 1);
+  const offset = intMod(line - c.insertion, c.length);
+  if (offset === 0 && !c.endNameMissed && hasLine(c.name.repeat, c.length)) return true;
+  return hasLine(c.name.repeat, offset);
+}
+
+/** GridNamedLineCollection::FirstExplicitPosition. */
+function firstExplicitPosition(c: GridNamedLines): number {
+  const explicit = c.name.explicit;
+  if (explicit.length > 0 && (c.length === 0 || (explicit[0] as number) <= c.insertion)) return explicit[0] as number;
+  if (c.name.repeat.length > 0) return (c.name.repeat[0] as number) + c.insertion;
+  return (explicit[0] as number) + (c.total > 0 ? c.total - 1 : 0);
+}
+
+/** GridNamedLineCollection::FirstPosition. */
+function firstPosition(c: GridNamedLines): number {
+  if (c.name.implicit.length === 0) return firstExplicitPosition(c);
+  const implicit = c.name.implicit[0] as number;
+  if (c.name.explicit.length === 0 && c.name.repeat.length === 0) return implicit;
+  return minN(firstExplicitPosition(c), implicit);
+}
+
+/** GridLineResolver::LookAheadForNamedGridLine. */
+function lookAheadNamed(start: number, count: number, lastLine: number, c: GridNamedLines): number {
+  let end = maxN(start, 0);
+  if (!hasNamedLines(c)) {
+    end = maxN(end, lastLine + 1);
+    return end + count - 1;
+  }
+  let left = count;
+  for (; left > 0; end++) if (end > lastLine || namedContains(c, end)) left--;
+  return end - 1;
+}
+
+/** GridLineResolver::LookBackForNamedGridLine. */
+function lookBackNamed(end: number, count: number, lastLine: number, c: GridNamedLines): number {
+  let start = minN(end, lastLine);
+  if (!hasNamedLines(c)) {
+    start = minN(start, -1);
+    return start - count + 1;
+  }
+  let left = count;
+  for (; left > 0; start--) if (start < 0 || namedContains(c, start)) left--;
+  return start + 1;
+}
+
+/** GridLineResolver::ResolveGridPosition for an explicit or area position. */
+function resolveLinePosition(a: GridAxisTracks, pos: GridLine, faults: GridFaults): number {
+  const last = a.explicitCount;
+  if (pos.kind === 'line') return pos.n > 0 ? pos.n - 1 : last - (-pos.n - 1);
+  if (pos.kind === 'named-line') {
+    const c = namedLinesOf(a, pos.name, faults);
+    return pos.n > 0 ? lookAheadNamed(0, pos.n, last, c) : lookBackNamed(last, -pos.n, last, c);
+  }
+  if (pos.kind === 'area') {
+    const implicit = namedLinesOf(a, pos.implicitName, faults);
+    if (hasNamedLines(implicit)) return firstPosition(implicit);
+    const explicit = namedLinesOf(a, pos.name, faults);
+    if (hasNamedLines(explicit)) return firstPosition(explicit);
+    return last + 1;
+  }
+  throw new Error(`a ${pos.kind} position resolves against the opposite position`);
+}
+
+function isSpanLine(p: GridLine): boolean {
+  return p.kind === 'span' || p.kind === 'named-span';
+}
+
+function againstOppositeLine(p: GridLine): boolean {
+  return p.kind === 'auto' || isSpanLine(p);
+}
+
+/** GridLineResolver::ResolveGridPositionAgainstOppositePosition, as lines before clamping. */
+function resolveAgainstOpposite(a: GridAxisTracks, opposite: number, pos: GridLine, start: boolean, faults: GridFaults): GridSpan {
+  if (pos.kind === 'auto') return start ? { kind: 'definite', start: opposite - 1, end: opposite } : { kind: 'definite', start: opposite, end: opposite + 1 };
+  if (pos.kind === 'named-span') {
+    const c = namedLinesOf(a, pos.name, faults);
+    if (start) return { kind: 'definite', start: lookBackNamed(opposite - 1, pos.n, a.explicitCount, c), end: opposite };
+    return { kind: 'definite', start: opposite, end: lookAheadNamed(opposite + 1, pos.n, a.explicitCount, c) };
+  }
+  if (pos.kind === 'span') return start ? { kind: 'definite', start: opposite - pos.n, end: opposite } : { kind: 'definite', start: opposite, end: opposite + pos.n };
+  throw new Error('only auto and span positions resolve against the opposite position');
+}
+
+/** GridLineResolver::ResolveGridPositionsFromStyle, with InitialAndFinalPositionsFromStyle's placement error handling. */
+function resolveLines(a: GridAxisTracks, startLine: GridLine, endLine: GridLine, faults: GridFaults): GridSpan {
+  let initial = startLine;
+  let final = endLine;
+  if (isSpanLine(initial) && isSpanLine(final)) final = { kind: 'auto' };
+  if (initial.kind === 'auto' && final.kind === 'named-span') final = { kind: 'span', n: 1 };
+  if (final.kind === 'auto' && initial.kind === 'named-span') initial = { kind: 'span', n: 1 };
+  const initialOpposite = againstOppositeLine(initial);
+  const finalOpposite = againstOppositeLine(final);
+  if (initialOpposite && finalOpposite) {
+    if (initial.kind === 'span' || initial.kind === 'named-span') return { kind: 'auto', span: initial.n };
+    if (final.kind === 'span' || final.kind === 'named-span') return { kind: 'auto', span: final.n };
+    return { kind: 'auto', span: 1 };
+  }
+  if (initialOpposite) return resolveAgainstOpposite(a, resolveLinePosition(a, final, faults), initial, true, faults);
+  if (finalOpposite) return resolveAgainstOpposite(a, resolveLinePosition(a, initial, faults), final, false, faults);
+  const start = resolveLinePosition(a, initial, faults);
+  const end = resolveLinePosition(a, final, faults);
+  if (end < start) return { kind: 'definite', start: end, end: start };
+  if (end === start) return { kind: 'definite', start, end: start + 1 };
+  return { kind: 'definite', start, end };
+}
+
+/** An item's span in one axis, its lines resolved when the engine sizes the axis's explicit grid. */
+function itemSpan(a: GridAxisTracks, s: GridSpan, faults: GridFaults): GridSpan {
+  return s.kind === 'lines' ? resolveLines(a, s.start, s.end, faults) : s;
 }
 
 // ---- Placement (Blink GridPlacement, css-grid-2 §8.5) -----------------------------------------------------------------------
@@ -497,6 +768,7 @@ function newCursor(list: GridPlacedList): GridCursor {
 }
 
 function clampSpan(s: GridSpan): GridAxisPosition {
+  if (s.kind === 'lines') throw new Error('grid lines are resolved before placement');
   if (s.kind === 'auto') {
     const span = s.span < 1 ? 1 : s.span > GRID_MAX_TRACKS ? GRID_MAX_TRACKS : s.span;
     return { definite: false, start: 0, end: 0, span };
@@ -509,7 +781,7 @@ function clampSpan(s: GridSpan): GridAxisPosition {
 type GridPlacementResult = { readonly columns: GridLines[]; readonly rows: GridLines[]; readonly columnStartOffset: number; readonly rowStartOffset: number };
 
 /** Blink GridPlacement::RunAutoPlacementAlgorithm: the translated (non-negative) lines of every item in both axes. */
-function runPlacement(g: GridContainerStyle, boxes: readonly LayoutBox[], ctx: Ctx): GridPlacementResult {
+function runPlacement(g: GridContainerStyle, boxes: readonly LayoutBox[], ctx: Ctx, columnTracks: GridAxisTracks, rowTracks: GridAxisTracks): GridPlacementResult {
   const columnMajor = g.autoFlow === 'column';
   const sparse = !g.dense;
   const cols: GridAxisPosition[] = [];
@@ -519,8 +791,8 @@ function runPlacement(g: GridContainerStyle, boxes: readonly LayoutBox[], ctx: C
   for (const b of boxes) {
     const gi = b.style.gridItem;
     if (gi === null) throw new Error(`${b.id} is an in-flow grid item with no gridItem; validateLayoutInput rejects this input`);
-    const c = clampSpan(gi.column);
-    const r = clampSpan(gi.row);
+    const c = clampSpan(itemSpan(columnTracks, gi.column, ctx.gridFaults));
+    const r = clampSpan(itemSpan(rowTracks, gi.row, ctx.gridFaults));
     if (c.definite) columnStartOffset = maxN(columnStartOffset, -c.start);
     if (r.definite) rowStartOffset = maxN(rowStartOffset, -r.start);
     cols.push(c);
@@ -532,7 +804,7 @@ function runPlacement(g: GridContainerStyle, boxes: readonly LayoutBox[], ctx: C
   const majors = columnMajor ? tcols : trows;
   const minors = columnMajor ? trows : tcols;
   const minorStartOffset = columnMajor ? rowStartOffset : columnStartOffset;
-  const minorExplicit = columnMajor ? g.explicitRowCount : g.explicitColumnCount;
+  const minorExplicit = columnMajor ? rowTracks.explicitCount : columnTracks.explicitCount;
   let minorMaxEnd = minorStartOffset + minorExplicit;
 
   const list: GridPlacedList = { items: [], head: -1, tail: -1 };
@@ -621,12 +893,15 @@ function byLine(a: number, b: number): number {
   return a - b;
 }
 
-function repeaterTrackCount(r: TrackRepeater): number {
+function repeaterTrackCount(r: GridRepeater): number {
   return r.count * r.sizes.length;
 }
 
-/** Blink GridRangeBuilder::FinalizeRanges: ranges cut at every repeater edge and every item line. */
-function buildRanges(explicit: readonly TrackRepeater[], implicitSize: number, startOffset: number, explicitCount: number, spans: readonly GridLines[], implicitForward: boolean): GridRange[] {
+/**
+ * Blink GridRangeBuilder::FinalizeRanges: ranges cut at every repeater edge and every item line. A range of a repeat(auto-fit)
+ * that no item spans collapses: it holds no sets, so its tracks and their gutters take no space (css-grid-2 §7.2.3.2).
+ */
+function buildRanges(explicit: readonly GridRepeater[], implicitSize: number, startOffset: number, explicitCount: number, spans: readonly GridLines[], faults: GridFaults): GridRange[] {
   const starts: number[] = [];
   const ends: number[] = [];
   let cur = startOffset;
@@ -657,9 +932,17 @@ function buildRanges(explicit: readonly TrackRepeater[], implicitSize: number, s
   let nextRepeaterStart = explicit.length > 0 ? startOffset : NOT_FOUND;
   let si = 0;
   let ei = 0;
+  let open = 0;
+  let inAutoFit = false;
   for (;;) {
-    while (si < count && rangeStart >= (starts[si] as number)) si++;
-    while (ei < count && rangeStart >= (ends[ei] as number)) ei++;
+    while (si < count && rangeStart >= (starts[si] as number)) {
+      si++;
+      open++;
+    }
+    while (ei < count && rangeStart >= (ends[ei] as number)) {
+      ei++;
+      open--;
+    }
     if (ei >= count) break;
     const nextStart = si < count ? (starts[si] as number) : NO_LINE;
     const nextEnd = ends[ei] as number;
@@ -668,9 +951,12 @@ function buildRanges(explicit: readonly TrackRepeater[], implicitSize: number, s
       repeaterIndex++;
       if (repeaterIndex === explicit.length) {
         repeaterIndex = NOT_FOUND;
+        inAutoFit = false;
         break;
       }
-      nextRepeaterStart += repeaterTrackCount(explicit[repeaterIndex] as TrackRepeater);
+      const r = explicit[repeaterIndex] as GridRepeater;
+      inAutoFit = r.autoFit;
+      nextRepeaterStart += repeaterTrackCount(r);
     }
     const trackCount = minN(nextStart, nextEnd) - rangeStart;
     let size = 1;
@@ -678,26 +964,27 @@ function buildRanges(explicit: readonly TrackRepeater[], implicitSize: number, s
     let offset = 0;
     let implicit = false;
     if (repeaterIndex !== NOT_FOUND) {
-      size = (explicit[repeaterIndex] as TrackRepeater).sizes.length;
+      size = (explicit[repeaterIndex] as GridRepeater).sizes.length;
       rangeRepeater = repeaterIndex;
       offset = intMod(rangeStart - currentExplicitGridLine, size);
     } else {
       implicit = true;
       size = implicitSize;
-      offset = implicitForward ? intMod(rangeStart, size) : intMod(rangeStart + size - intMod(currentExplicitGridLine, size), size);
+      offset = faults.implicitForward ? intMod(rangeStart, size) : intMod(rangeStart + size - intMod(currentExplicitGridLine, size), size);
     }
-    const setCount = minN(size, trackCount);
-    ranges.push({ startLine: rangeStart, trackCount, beginSetIndex: setIndex, setCount, repeaterIndex: rangeRepeater, repeaterOffset: offset, implicit, props: NO_PROPS() });
+    const collapsed = inAutoFit && open === 1 && !faults.autoFitNotCollapsed;
+    const setCount = collapsed ? 0 : minN(size, trackCount);
+    ranges.push({ startLine: rangeStart, trackCount, beginSetIndex: setIndex, setCount, repeaterIndex: rangeRepeater, repeaterOffset: offset, implicit, collapsed, props: NO_PROPS() });
     rangeStart += trackCount;
     setIndex += setCount;
   }
   return ranges;
 }
 
-function newCollection(axis: GridAxis, ranges: GridRange[]): GridCollection {
+function newCollection(axis: GridAxis, explicit: readonly GridRepeater[], ranges: GridRange[]): GridCollection {
   let tracks = 0;
-  for (const r of ranges) tracks += r.trackCount;
-  return { axis, ranges, sets: [], gutter: ZERO, geometry: [], lastIndefinite: [], props: NO_PROPS(), nonCollapsedTrackCount: tracks };
+  for (const r of ranges) if (!r.collapsed) tracks += r.trackCount;
+  return { axis, explicit, ranges, sets: [], gutter: ZERO, geometry: [], lastIndefinite: [], props: NO_PROPS(), nonCollapsedTrackCount: tracks };
 }
 
 function rangeIndexFromLine(c: GridCollection, line: number): number {
@@ -751,13 +1038,16 @@ function autoTracksOf(g: GridContainerStyle, axis: GridAxis): readonly TrackSize
 function buildSets(grid: GridState, c: GridCollection, available: LU): void {
   c.gutter = gutterSize(grid.box, c.axis, available, grid.engineFaults);
   const indefinite = available === INDEFINITE;
-  const explicit = templateOf(grid.grid, c.axis);
   const implicitSizes = autoTracksOf(grid.grid, c.axis);
   c.sets = [];
   let all = NO_PROPS();
   for (const range of c.ranges) {
     let props = NO_PROPS();
-    const sizes = range.implicit ? implicitSizes : (explicit[range.repeaterIndex] as TrackRepeater).sizes;
+    if (range.collapsed) {
+      range.props = props;
+      continue;
+    }
+    const sizes = range.implicit ? implicitSizes : (c.explicit[range.repeaterIndex] as GridRepeater).sizes;
     const size = sizes.length;
     const floorCount = intDiv(range.trackCount, size);
     const remaining = intMod(range.trackCount, size);
@@ -1527,7 +1817,9 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
   }
   // css-grid-2 §8.5 with css-flexbox-1 §5.4: order-modified document order, stable.
   const ordered = inFlow.map((b, i): GridIndexedBox => ({ b, i })).sort((x, y) => (x.b.style.order !== y.b.style.order && !ctx.faults.ignoreOrder ? x.b.style.order - y.b.style.order : x.i - y.i)).map((e) => e.b);
-  const placement = runPlacement(g, ordered, ctx);
+  const columnTracks = axisTracks(box, g, 'columns', available, ctx.gridFaults, ctx.faults);
+  const rowTracks = axisTracks(box, g, 'rows', available, ctx.gridFaults, ctx.faults);
+  const placement = runPlacement(g, ordered, ctx, columnTracks, rowTracks);
   const rtl = directionOf(ctx, box) === 'rtl';
   const items: GridItemData[] = ordered.map((b, i): GridItemData => {
     const columnAlign = axisEdge(ctx, box, b, 'columns', selfAlignOf(g, b, 'columns', s));
@@ -1550,9 +1842,11 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
       sizingDependsOnBlockSize: false,
     };
   });
-  const columnsRanges = buildRanges(g.templateColumns, g.autoColumns.length, placement.columnStartOffset, g.explicitColumnCount, items.map((i) => i.column), ctx.gridFaults.implicitForward);
-  const rowsRanges = buildRanges(g.templateRows, g.autoRows.length, placement.rowStartOffset, g.explicitRowCount, items.map((i) => i.row), ctx.gridFaults.implicitForward);
-  return { box, style: s, grid: g, rtl, bsp: logicalBsp(pad, bor, rtl), items, columns: newCollection('columns', columnsRanges), rows: newCollection('rows', rowsRanges), available, faults: ctx.gridFaults, engineFaults: ctx.faults };
+  const columnsRanges = buildRanges(columnTracks.repeaters, g.autoColumns.length, placement.columnStartOffset, columnTracks.explicitCount, items.map((i) => i.column), ctx.gridFaults);
+  const rowsRanges = buildRanges(rowTracks.repeaters, g.autoRows.length, placement.rowStartOffset, rowTracks.explicitCount, items.map((i) => i.row), ctx.gridFaults);
+  const columns = newCollection('columns', columnTracks.repeaters, columnsRanges);
+  const rows = newCollection('rows', rowTracks.repeaters, rowsRanges);
+  return { box, style: s, grid: g, rtl, bsp: logicalBsp(pad, bor, rtl), items, columns, rows, available, faults: ctx.gridFaults, engineFaults: ctx.faults };
 }
 
 function availableFrom(inline: LU | null, block: LU | null, blockMinMax: MinMax, inlineMinMax: MinMax): GridAvailable {
