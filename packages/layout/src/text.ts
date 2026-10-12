@@ -162,7 +162,7 @@ function spacedPosition(sum: number, atEnd: boolean): LU {
 
 function codePointCount(text: string): number {
   let n = 0;
-  for (const ch of text) if (ch.length > 0) n++;
+  for (const ch of text) if ((ch.codePointAt(0) as number) >= 0) n++;
   return n;
 }
 

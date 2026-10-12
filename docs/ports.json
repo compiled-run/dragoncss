@@ -2008,7 +2008,7 @@
         { "lines": "119-152", "symbol": "ShapeResultSpacing::ComputeSpacing", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/shaping.ts", "symbol": "applySpacing", "use": "port" }
+        { "file": "packages/layout/src/shaping.ts", "symbol": "spacingAfterGlyph", "use": "port" }
       ]
     },
     {
@@ -2046,7 +2046,7 @@
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
         { "file": "packages/text-shaper/src/blink.ts", "symbol": null, "use": "port" },
         { "file": "packages/text-shaper/src/blink.ts", "symbol": "sumAdvances", "use": "port" },
-        { "file": "packages/layout/src/shaping.ts", "symbol": "applySpacing", "use": "port" }
+        { "file": "packages/layout/src/shaping.ts", "symbol": "spacingAfterGlyph", "use": "port" }
       ]
     },
     {

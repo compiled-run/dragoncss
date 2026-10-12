@@ -542,22 +542,17 @@ function wholePixel(raw: number): number {
  * of every HarfBuzz cluster gains the spacing, the last cluster of the item included, unless the cluster starts with a zero-width
  * space. The run width is then the unclamped sum. Word spacing is not modelled; the compiler accepts only its initial value.
  */
-function applySpacing(item: ShapeItem, g: readonly number[], glyphs: ShapingGlyph[], advances: number[], runEnd: number): void {
-  const n = glyphs.length;
-  for (let i = 0; i < n; i++) {
-    const cluster = g[i * GLYPH_STRIDE + 1] as number;
-    const last = i + 1 >= n || (g[(i + 1) * GLYPH_STRIDE + 1] as number) !== cluster;
-    if (!last) continue;
-    if (item.faults.trailingSpacingDropped && i + 1 >= n && runEnd >= item.units.length) continue;
-    let add = letterSpacingAfter(item.units[cluster] as number, item.letterSpacing16);
-    if (item.faults.spacingPerCodePoint) {
-      const next = i + 1 < n ? (g[(i + 1) * GLYPH_STRIDE + 1] as number) : runEnd;
-      for (let c = cluster + 1; c < next; c++) if ((item.units[c] as number) >= 0) add = add + letterSpacingAfter(item.units[c] as number, item.letterSpacing16);
-    }
-    const old = glyphs[i] as ShapingGlyph;
-    glyphs[i] = { glyph: old.glyph, ci: old.ci, advance: old.advance + add, safe: old.safe };
-    advances[i] = old.advance + add;
+function spacingAfterGlyph(item: ShapeItem, g: readonly number[], o: number, runEnd: number): number {
+  const cluster = g[o + 1] as number;
+  const lastGlyph = o + GLYPH_STRIDE >= g.length;
+  if (!lastGlyph && (g[o + GLYPH_STRIDE + 1] as number) === cluster) return 0;
+  if (item.faults.trailingSpacingDropped && lastGlyph && runEnd >= item.units.length) return 0;
+  let add = letterSpacingAfter(item.units[cluster] as number, item.letterSpacing16);
+  if (item.faults.spacingPerCodePoint) {
+    const next = lastGlyph ? runEnd : (g[o + GLYPH_STRIDE + 1] as number);
+    for (let c = cluster + 1; c < next; c++) if ((item.units[c] as number) >= 0) add = add + letterSpacingAfter(item.units[c] as number, item.letterSpacing16);
   }
+  return add;
 }
 
 /** HarfBuzzShaper::Shape over [start, end) with the item as context. */
@@ -585,11 +580,11 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
       const flags = g[o + 6] as number;
       const safe = o === 0 ? true : cluster === (g[o + 1 - GLYPH_STRIDE] as number) ? false : Number.isInteger(flags / 2);
       const raw = g[o + 2] as number;
-      const advance = item.faults.wholePixelPositions && !Number.isInteger(raw / 65536) ? wholePixel(raw) : raw;
+      const shaped = item.faults.wholePixelPositions && !Number.isInteger(raw / 65536) ? wholePixel(raw) : raw;
+      const advance = item.letterSpacing16 === 0 ? shaped : shaped + spacingAfterGlyph(item, g, o, e);
       glyphs.push({ glyph: gid, ci: cluster - s, advance, safe });
       advances.push(advance);
     }
-    if (item.letterSpacing16 !== 0) applySpacing(item, g, glyphs, advances, e);
     const run: ShapingRun = { start: s, numChars: e - s, glyphs, width: sumAdvances(advances, item.faults, item.letterSpacing16 === 0) };
     runs.push(run);
     width = accumulate(width, run.width, item.faults);
