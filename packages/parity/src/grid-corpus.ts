@@ -225,7 +225,6 @@ function compareCase(c: CorpusCase, ids: ReadonlyMap<string, string>, abs: Reado
 export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner: string; readonly pattern: RegExp }[] = [
   { id: 'inline-grid', owner: 'G-INL (after INL2): inline-level grid containers', pattern: /display: inline-grid|inline-level grid baseline/ },
   { id: 'baseline-alignment', owner: 'G3: baseline self-alignment', pattern: /grid-baseline|justify-(self|items): (last )?baseline|align-(self|items): last baseline/ },
-  { id: 'abspos-item', owner: 'G4: absolutely positioned grid items', pattern: /grid-abspos/ },
   { id: 'subgrid', owner: 'G5: subgrid', pattern: /subgrid/ },
   { id: 'writing-mode', owner: 'G-WM: vertical writing modes', pattern: /writing-mode/ },
   { id: 'sizing-keyword', owner: 'SIZE: min-content, max-content and fit-content as width', pattern: /width: (min-content|max-content|fit-content)/ },
@@ -247,9 +246,9 @@ export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner:
 export const KNOWN_MISMATCHES: ReadonlyMap<string, string> = new Map<string, string>([]);
 
 /**
- * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's and G2's scope, and G2's repeatEndNameMissed, with a corpus
- * case that must catch it in item or container boxes. fr-restart shows frRestartMissing only in getComputedStyle track sizes,
- * which this test does not compare.
+ * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's, G2's and G4's scope, and G2's repeatEndNameMissed, with a
+ * corpus case that must catch it in item or container boxes. fr-restart shows frRestartMissing only in getComputedStyle track
+ * sizes, which this test does not compare.
  */
 export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | 'ignoreOrder'; readonly kase: string }[] = [
   { fault: 'denseAsSparse', kase: 'p-dense' },
@@ -278,6 +277,11 @@ export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | 'ignoreO
   { fault: 'autoFillCountCeil', kase: 'r-fill-minmax' },
   { fault: 'autoFitNotCollapsed', kase: 'r-fit-center' },
   { fault: 'repeatEndNameMissed', kase: 'r-fill-named' },
+  { fault: 'absposMidSetEven', kase: 'ab-mid-range' },
+  { fault: 'absposEndGutterKept', kase: 'ab-gap' },
+  { fault: 'absposBeyondGridClamped', kase: 'ab-beyond-grid' },
+  { fault: 'absposAutoLineContentEdge', kase: 'ab-auto-lines' },
+  { fault: 'absposStaticAlignIgnored', kase: 'ab-align' },
 ];
 
 /**

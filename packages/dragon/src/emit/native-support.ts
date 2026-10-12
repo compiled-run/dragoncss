@@ -2102,6 +2102,8 @@ function gridLineValue(s: import('@dragon/layout').GridLine, str: (s: string) =>
 function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string): string {
   if (s.kind === 'definite') return `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})`;
   if (s.kind === 'auto') return `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
+  if (s.kind === 'start-line') return `GridSpan_startLine(${str('start-line')}, ${doubleLit(s.line)})`;
+  if (s.kind === 'end-line') return `GridSpan_endLine(${str('end-line')}, ${doubleLit(s.line)})`;
   return `GridSpan_lines(${str('lines')}, ${gridLineValue(s.start, str)}, ${gridLineValue(s.end, str)})`;
 }
 

@@ -143,7 +143,10 @@ function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Conta
   const parentOf = parents(input.root);
   for (let i = 0; i < out.pending.length; i++) {
     const p = out.pending[i] as Pending;
-    const cb = containingBlock(ctx, p.oof.box, parentOf, out, icb);
+    const area = p.oof.area;
+    const own = containingBlock(ctx, p.oof.box, parentOf, out, icb);
+    // css-grid-2 §9.1: a positioned grid parent is the containing block, and the child's grid area its rectangle.
+    const cb: ContainingBlock = area === null ? own : { x: add(p.originX, area.x), y: add(p.originY, area.y), width: area.width, height: area.height, direction: own.direction };
     const staticX: StaticAxis = { offset: add(p.originX, p.oof.x.offset), edge: p.oof.x.edge };
     const staticY: StaticAxis = { offset: add(p.originY, p.oof.y.offset), edge: p.oof.y.edge };
     const r = layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY);
