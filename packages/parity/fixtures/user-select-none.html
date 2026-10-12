@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --u: none; }
+.b { width: 120px; height: 20px; background-color: rgb(40, 90, 200); user-select: none; }
+.kid { width: 60px; height: 10px; background-color: rgb(200, 60, 40); }
+.inh { width: 60px; height: 10px; user-select: inherit; }
+.w { -webkit-user-select: none; width: 80px; height: 10px; }
+.up { USER-SELECT: NONE; width: 80px; height: 10px; }
+.v { user-select: var(--u); width: 80px; height: 10px; }
+.f { display: flex; width: 200px; height: 20px; }
+.fi { width: 60px; height: 20px; user-select: none; background-color: rgb(20, 160, 80); }
+.rel { position: relative; width: 60px; height: 20px; user-select: none; }
+.abs { position: absolute; left: 4px; top: 2px; width: 20px; height: 10px; user-select: none; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b" class="b">XX<div data-dragon-id="kid" class="kid">X X</div><div data-dragon-id="inh" class="inh">XX</div></div>
+<div data-dragon-id="w" class="w">XXXX</div>
+<div data-dragon-id="up" class="up">XXX</div>
+<div data-dragon-id="v" class="v">XX</div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXX</div><div data-dragon-id="f2" class="fi">X</div></div>
+<div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs">X</div></div>
+</body>
+</html>

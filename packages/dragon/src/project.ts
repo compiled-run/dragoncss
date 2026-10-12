@@ -18,6 +18,7 @@ import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
 import { checkTranslucent } from './analysis/paint-values/effects.ts';
+import { checkSelectable } from './analysis/selection.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
@@ -815,6 +816,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    // T154: outside the parity lanes, native refuses an author user-select but none (P6c); the lanes run it to prove its web rows.
+    if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
@@ -1222,9 +1225,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
-      // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native, but a user's compile refuses them
-      // there until PNT1-opacity-b and a clip-chain view, so a document that uses one is lane-only on native and proves no native
-      // row (pipeline.ts).
+      // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
+      // but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and P6c, so a document that uses one is
+      // lane-only on native and proves no native row (pipeline.ts).
       if (options.interactionLanes) {
         const pending: Diagnostic[] = [];
         const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
@@ -1232,6 +1235,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) {
             if (r === null) continue;
             checkTranslucent(r, native, pending, new Set());
+            checkSelectable(r, native, pending, new Set());
             checkStackingClips(r, propagatedFrom(r), native, pending, new Set());
           }
         }
