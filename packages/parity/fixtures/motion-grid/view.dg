@@ -1,0 +1,7 @@
+<div g60
+{on === true ? 'on' : ''}
+<div g120
+on: [false, true] = false
+component App
+<html>
+<body>

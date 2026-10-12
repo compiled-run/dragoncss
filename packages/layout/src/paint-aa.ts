@@ -38,7 +38,8 @@ export type BorderWidths = { readonly top: number; readonly right: number; reado
 type Cell = { v: number };
 
 /** A gray device crop (R = G = B), one cell per pixel, row-major; pixels outside it are not recorded. */
-export type Device = { readonly bounds: IRect; readonly px: readonly Cell[] };
+/** A device crop: gray over white under SkARGB32_Black_Blitter, or an A8 coverage mask under SkA8_Blitter's srcover (a8). */
+export type Device = { readonly bounds: IRect; readonly px: readonly Cell[]; readonly a8: boolean };
 
 type Pt = { readonly x: number; readonly y: number };
 
@@ -659,6 +660,14 @@ export function drrectPath(outer: SkRRect, inner: SkRRect): AaPath {
   return { pts, verbs, weights, evenOdd: true, convex: false, bounds: boundsOf(pts) };
 }
 
+/** A path moved into a mask's own coordinates, as SkDraw draw_into_mask maps it: SkMatrix::Translate(dx, dy).mapPoints, in float. */
+export function translatePath(path: AaPath, dx: number, dy: number): AaPath {
+  const pts: Pt[] = [];
+  for (const p of path.pts) pts.push(pt(f32(p.x + dx), f32(p.y + dy)));
+  const b = path.bounds;
+  return { pts, verbs: path.verbs, weights: path.weights, evenOdd: path.evenOdd, convex: path.convex, bounds: { left: f32(b.left + dx), top: f32(b.top + dy), right: f32(b.right + dx), bottom: f32(b.bottom + dy) } };
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // SkGeometry: conics to quads (SK_SUPPORT_LEGACY_CONIC_CHOP) and SkChopQuadAtYExtrema.
 
@@ -783,6 +792,223 @@ function chopQuadAtYExtrema(q: readonly Pt[]): Pt[] {
     b = abs32(f32(a - b)) < abs32(f32(b - c)) ? a : c;
   }
   return [pt(p0.x, a), pt(p1.x, b), pt(p2.x, c)];
+}
+
+/** SkChopQuadAt: the two halves of a quad at t as 5 points. */
+function chopQuadAt(q: readonly Pt[], t: number): Pt[] {
+  const p0 = q[0] as Pt;
+  const p1 = q[1] as Pt;
+  const p2 = q[2] as Pt;
+  const p01 = pt(interp(p0.x, p1.x, t), interp(p0.y, p1.y, t));
+  const p12 = pt(interp(p1.x, p2.x, t), interp(p1.y, p2.y, t));
+  return [p0, p01, pt(interp(p01.x, p12.x, t), interp(p01.y, p12.y, t)), p12, p2];
+}
+
+/** SkChopQuadAtXExtrema: one or two x-monotonic quads as 3 or 5 points. */
+function chopQuadAtXExtrema(q: readonly Pt[]): Pt[] {
+  const p0 = q[0] as Pt;
+  const p1 = q[1] as Pt;
+  const p2 = q[2] as Pt;
+  const a = p0.x;
+  let b = p1.x;
+  const c = p2.x;
+  if (isNotMonotonic(a, b, c)) {
+    const t = validUnitDivide(f32(a - b), f32(f32(f32(a - b) - b) + c));
+    if (t > 0) {
+      const d = chopQuadAt(q, t);
+      const mid = d[2] as Pt;
+      return [p0, pt(mid.x, (d[1] as Pt).y), mid, pt(mid.x, (d[3] as Pt).y), p2];
+    }
+    b = abs32(f32(a - b)) < abs32(f32(b - c)) ? a : c;
+  }
+  return [pt(a, p0.y), pt(b, p1.y), pt(c, p2.y)];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// SkEdgeClipper and SkLineClipper: a path crossing its clip (SkEdgeBuilder::build with a clip).
+
+/** One clipped segment: a line (2 points) or a quad (3 points), in path order. */
+type Seg = readonly Pt[];
+
+/** pin_unsorted: value clamped between two limits in either order. */
+function pinUnsorted(value: number, limit0: number, limit1: number): number {
+  const lo = limit1 < limit0 ? limit1 : limit0;
+  const hi = limit1 < limit0 ? limit0 : limit1;
+  return value < lo ? lo : value > hi ? hi : value;
+}
+
+/** sk_float_midpoint: (float)(((double)a + b) * 0.5). */
+function floatMidpoint(a: number, b: number): number {
+  return f32((a + b) * 0.5);
+}
+
+/** SkLineClipper sect_with_horizontal: the x where the line meets y, in double, pinned to the line. */
+function sectWithHorizontal(a: Pt, b: Pt, y: number): number {
+  if (abs32(f32(b.y - a.y)) <= NEARLY_ZERO) return floatMidpoint(a.x, b.x);
+  return f32(pinUnsorted(a.x + ((y - a.y) * (b.x - a.x)) / (b.y - a.y), a.x, b.x));
+}
+
+/** SkLineClipper sect_clamp_with_vertical: the y where the line meets x, in double, then pinned to the line. */
+function sectClampWithVertical(a: Pt, b: Pt, x: number): number {
+  const y = abs32(f32(b.x - a.x)) <= NEARLY_ZERO ? floatMidpoint(a.y, b.y) : f32(a.y + ((x - a.x) * (b.y - a.y)) / (b.x - a.x));
+  return pinUnsorted(y, a.y, b.y);
+}
+
+/** SkLineClipper::ClipLine: the clipped polyline (1 to 3 segments, as their points), empty when clipped out. */
+function clipLine(p0: Pt, p1: Pt, clip: IRect, canCullToTheRight: boolean): Pt[] {
+  const src = [p0, p1];
+  let i0 = p0.y < p1.y ? 0 : 1;
+  let i1 = 1 - i0;
+  if ((src[i1] as Pt).y <= clip.top || (src[i0] as Pt).y >= clip.bottom) return [];
+  // The y-sorted ends chopped to the clip's top and bottom, back in path order.
+  let lo = src[i0] as Pt;
+  let hi = src[i1] as Pt;
+  if (lo.y < clip.top) lo = pt(sectWithHorizontal(p0, p1, clip.top), clip.top);
+  if (hi.y > clip.bottom) hi = pt(sectWithHorizontal(p0, p1, clip.bottom), clip.bottom);
+  const tmp: Pt[] = i0 === 0 ? [lo, hi] : [hi, lo];
+  let reverse = !(p0.x < p1.x);
+  i0 = reverse ? 1 : 0;
+  i1 = 1 - i0;
+  const t0 = tmp[0] as Pt;
+  const t1 = tmp[1] as Pt;
+  let result: Pt[] = [];
+  if ((tmp[i1] as Pt).x <= clip.left) {
+    result = [pt(clip.left, t0.y), pt(clip.left, t1.y)];
+    reverse = false;
+  } else if ((tmp[i0] as Pt).x >= clip.right) {
+    if (canCullToTheRight) return [];
+    result = [pt(clip.right, t0.y), pt(clip.right, t1.y)];
+    reverse = false;
+  } else {
+    const a = tmp[i0] as Pt;
+    const b = tmp[i1] as Pt;
+    if (a.x < clip.left) {
+      result.push(pt(clip.left, a.y));
+      result.push(pt(clip.left, sectClampWithVertical(t0, t1, clip.left)));
+    } else {
+      result.push(a);
+    }
+    if (b.x > clip.right) {
+      result.push(pt(clip.right, sectClampWithVertical(t0, t1, clip.right)));
+      result.push(pt(clip.right, b.y));
+    } else {
+      result.push(b);
+    }
+  }
+  if (!reverse) return result;
+  const out: Pt[] = [];
+  for (let k = result.length - 1; k >= 0; k--) out.push(result[k] as Pt);
+  return out;
+}
+
+/** SkEdgeClipper chopMonoQuadAt: the t where a monotonic quad coordinate reaches target, or -1. */
+function chopMonoQuadAt(c0: number, c1: number, c2: number, target: number): number {
+  const A = f32(f32(f32(c0 - c1) - c1) + c2);
+  const B = f32(2 * f32(c1 - c0));
+  const C = f32(c0 - target);
+  const roots = findUnitQuadRoots(A, B, C);
+  return roots.length > 0 ? at(roots, 0) : -1;
+}
+
+function vLine(x: number, y0: number, y1: number, reverse: boolean): Seg {
+  return reverse ? [pt(x, y1), pt(x, y0)] : [pt(x, y0), pt(x, y1)];
+}
+
+function quadSeg(q: readonly Pt[], reverse: boolean): Seg {
+  return reverse ? [q[2] as Pt, q[1] as Pt, q[0] as Pt] : [q[0] as Pt, q[1] as Pt, q[2] as Pt];
+}
+
+function atLeastY(p: Pt, lo: number): Pt {
+  return p.y < lo ? pt(p.x, lo) : p;
+}
+
+function atMostY(p: Pt, hi: number): Pt {
+  return p.y > hi ? pt(p.x, hi) : p;
+}
+
+/** SkEdgeClipper chop_quad_in_Y: a y-sorted monotonic quad clipped to the clip's top and bottom. */
+function chopQuadInY(pts0: readonly Pt[], clip: IRect): Pt[] {
+  let q: Pt[] = [pts0[0] as Pt, pts0[1] as Pt, pts0[2] as Pt];
+  if ((q[0] as Pt).y < clip.top) {
+    const t = chopMonoQuadAt((q[0] as Pt).y, (q[1] as Pt).y, (q[2] as Pt).y, clip.top);
+    if (t >= 0) {
+      const d = chopQuadAt(q, t);
+      const d3 = d[3] as Pt;
+      q = [pt((d[2] as Pt).x, clip.top), pt(d3.x, d3.y < clip.top ? clip.top : d3.y), q[2] as Pt];
+    } else {
+      q = [atLeastY(q[0] as Pt, clip.top), atLeastY(q[1] as Pt, clip.top), atLeastY(q[2] as Pt, clip.top)];
+    }
+  }
+  if ((q[2] as Pt).y > clip.bottom) {
+    const t = chopMonoQuadAt((q[0] as Pt).y, (q[1] as Pt).y, (q[2] as Pt).y, clip.bottom);
+    if (t >= 0) {
+      const d = chopQuadAt(q, t);
+      const d1 = d[1] as Pt;
+      q = [q[0] as Pt, pt(d1.x, d1.y > clip.bottom ? clip.bottom : d1.y), pt((d[2] as Pt).x, clip.bottom)];
+    } else {
+      q = [atMostY(q[0] as Pt, clip.bottom), atMostY(q[1] as Pt, clip.bottom), atMostY(q[2] as Pt, clip.bottom)];
+    }
+  }
+  return q;
+}
+
+/** SkEdgeClipper::clipMonoQuad: a quad monotonic in x and y, clipped, its pieces appended to out. */
+function clipMonoQuad(src: readonly Pt[], clip: IRect, canCullToTheRight: boolean, out: Seg[]): void {
+  let reverse = (src[0] as Pt).y > (src[2] as Pt).y;
+  let q: Pt[] = reverse ? [src[2] as Pt, src[1] as Pt, src[0] as Pt] : [src[0] as Pt, src[1] as Pt, src[2] as Pt];
+  if ((q[2] as Pt).y <= clip.top || (q[0] as Pt).y >= clip.bottom) return;
+  q = chopQuadInY(q, clip);
+  if ((q[0] as Pt).x > (q[2] as Pt).x) {
+    q = [q[2] as Pt, q[1] as Pt, q[0] as Pt];
+    reverse = !reverse;
+  }
+  const q0 = q[0] as Pt;
+  const q2 = q[2] as Pt;
+  if (q2.x <= clip.left) {
+    out.push(vLine(clip.left, q0.y, q2.y, reverse));
+    return;
+  }
+  if (q0.x >= clip.right) {
+    if (!canCullToTheRight) out.push(vLine(clip.right, q0.y, q2.y, reverse));
+    return;
+  }
+  if (q0.x < clip.left) {
+    const t = chopMonoQuadAt(q0.x, (q[1] as Pt).x, q2.x, clip.left);
+    if (t < 0) {
+      out.push(vLine(clip.left, q0.y, q2.y, reverse));
+      return;
+    }
+    const d = chopQuadAt(q, t);
+    out.push(vLine(clip.left, (d[0] as Pt).y, (d[2] as Pt).y, reverse));
+    const d3 = d[3] as Pt;
+    q = [pt(clip.left, (d[2] as Pt).y), pt(d3.x < clip.left ? clip.left : d3.x, d3.y), q[2] as Pt];
+  }
+  if ((q[2] as Pt).x > clip.right) {
+    const t = chopMonoQuadAt((q[0] as Pt).x, (q[1] as Pt).x, (q[2] as Pt).x, clip.right);
+    if (t >= 0) {
+      const d = chopQuadAt(q, t);
+      const d1 = d[1] as Pt;
+      out.push(quadSeg([d[0] as Pt, pt(d1.x > clip.right ? clip.right : d1.x, d1.y), pt(clip.right, (d[2] as Pt).y)], reverse));
+      out.push(vLine(clip.right, (d[2] as Pt).y, (d[4] as Pt).y, reverse));
+    } else {
+      const q1 = q[1] as Pt;
+      const e2 = q[2] as Pt;
+      out.push(quadSeg([q[0] as Pt, pt(minNum(q1.x, clip.right), q1.y), pt(minNum(e2.x, clip.right), e2.y)], reverse));
+    }
+  } else {
+    out.push(quadSeg(q, reverse));
+  }
+}
+
+/** SkEdgeClipper::clipQuad: a quad chopped at its y then x extrema, each piece clipped. */
+function clipQuad(src: readonly Pt[], clip: IRect, canCullToTheRight: boolean, out: Seg[]): void {
+  const b = boundsOf(src);
+  if (b.top >= clip.bottom || b.bottom <= clip.top) return;
+  const monoY = chopQuadAtYExtrema(src);
+  for (let y = 0; y + 2 < monoY.length; y += 2) {
+    const monoX = chopQuadAtXExtrema([monoY[y] as Pt, monoY[y + 1] as Pt, monoY[y + 2] as Pt]);
+    for (let x = 0; x + 2 < monoX.length; x += 2) clipMonoQuad([monoX[x] as Pt, monoX[x + 1] as Pt, monoX[x + 2] as Pt], clip, canCullToTheRight, out);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1119,15 +1345,42 @@ function addLine(list: EdgeList, p0: Pt, p1: Pt): void {
 
 function addQuad(list: EdgeList, q: readonly Pt[]): void {
   const mono = chopQuadAtYExtrema(q);
-  for (let i = 0; i + 2 < mono.length; i += 2) {
-    const e = newEdge();
-    if (setQuadratic(e, [mono[i] as Pt, mono[i + 1] as Pt, mono[i + 2] as Pt], list.faults)) pushEdge(list, e);
+  for (let i = 0; i + 2 < mono.length; i += 2) addQuadEdge(list, [mono[i] as Pt, mono[i + 1] as Pt, mono[i + 2] as Pt]);
+}
+
+/** SkAnalyticEdgeBuilder::addQuad: one y-monotonic quad as an edge. */
+function addQuadEdge(list: EdgeList, q: readonly Pt[]): void {
+  const e = newEdge();
+  if (setQuadratic(e, q, list.faults)) pushEdge(list, e);
+}
+
+/** One path segment into the edge list: added as is, or through SkEdgeClipper when the path crosses the clip. */
+function addSegment(list: EdgeList, seg: readonly Pt[], clip: IRect | null, canCullToTheRight: boolean): void {
+  if (clip === null) {
+    if (seg.length === 2) addLine(list, seg[0] as Pt, seg[1] as Pt);
+    else addQuad(list, seg);
+    return;
+  }
+  if (seg.length === 2) {
+    const line = clipLine(seg[0] as Pt, seg[1] as Pt, clip, canCullToTheRight);
+    for (let k = 0; k + 1 < line.length; k++) addLine(list, line[k] as Pt, line[k + 1] as Pt);
+    return;
+  }
+  const out: Seg[] = [];
+  clipQuad(seg, clip, canCullToTheRight, out);
+  for (const piece of out) {
+    if (piece.length === 2) addLine(list, piece[0] as Pt, piece[1] as Pt);
+    else addQuadEdge(list, piece);
   }
 }
 
-/** SkEdgeBuilder::build over SkPathEdgeIter (auto-closing each contour). */
-function buildEdges(path: AaPath, faults: AaFaults): Edge[] {
+/**
+ * SkEdgeBuilder::build over SkPathEdgeIter (auto-closing each contour); with a clip (the path crossing it), every segment goes
+ * through SkEdgeClipper::ClipPath, which culls to the right unless the path is convex.
+ */
+function buildEdges(path: AaPath, faults: AaFaults, clip: IRect | null): Edge[] {
   const list: EdgeList = { cells: [], n: 0, faults };
+  const cull = !path.convex;
   let p = 0;
   let wi = 0;
   let moveTo: Pt = pt(0, 0);
@@ -1135,21 +1388,21 @@ function buildEdges(path: AaPath, faults: AaFaults): Edge[] {
   let needsClose = false;
   for (const v of path.verbs) {
     if (v === VERB_MOVE) {
-      if (needsClose) addLine(list, last, moveTo);
+      if (needsClose) addSegment(list, [last, moveTo], clip, cull);
       needsClose = false;
       moveTo = path.pts[p] as Pt;
       last = moveTo;
       p++;
     } else if (v === VERB_LINE) {
       const q = path.pts[p] as Pt;
-      addLine(list, last, q);
+      addSegment(list, [last, q], clip, cull);
       last = q;
       p++;
       needsClose = true;
     } else if (v === VERB_QUAD) {
       const c = path.pts[p] as Pt;
       const q = path.pts[p + 1] as Pt;
-      addQuad(list, [last, c, q]);
+      addSegment(list, [last, c, q], clip, cull);
       last = q;
       p += 2;
       needsClose = true;
@@ -1157,21 +1410,21 @@ function buildEdges(path: AaPath, faults: AaFaults): Edge[] {
       const c = path.pts[p] as Pt;
       const q = path.pts[p + 1] as Pt;
       const w = at(path.weights, wi);
-      if (faults.conicNotQuadded) addQuad(list, [last, c, q]);
+      if (faults.conicNotQuadded) addSegment(list, [last, c, q], clip, cull);
       else {
         const quads = conicToQuads({ p0: last, p1: c, p2: q, w });
-        for (let i = 0; i + 2 < quads.length; i += 2) addQuad(list, [quads[i] as Pt, quads[i + 1] as Pt, quads[i + 2] as Pt]);
+        for (let i = 0; i + 2 < quads.length; i += 2) addSegment(list, [quads[i] as Pt, quads[i + 1] as Pt, quads[i + 2] as Pt], clip, cull);
       }
       last = q;
       p += 2;
       wi++;
       needsClose = true;
     } else if (v === VERB_CLOSE) {
-      if (needsClose) addLine(list, last, moveTo);
+      if (needsClose) addSegment(list, [last, moveTo], clip, cull);
       needsClose = false;
     }
   }
-  if (needsClose) addLine(list, last, moveTo);
+  if (needsClose) addSegment(list, [last, moveTo], clip, cull);
   const out: Edge[] = [];
   for (let i = 0; i < list.n; i++) out.push(edgeAt(list.cells, i).e);
   return out;
@@ -1325,7 +1578,10 @@ function devCell(d: Device, x: number, y: number): Cell | null {
 function blend(d: Device, x: number, y: number, a: number): void {
   if (a === 0) return;
   const c = devCell(d, x, y);
-  if (c !== null) c.v = floorOf((c.v * (256 - a)) / 256);
+  if (c === null) return;
+  // SkA8_Blitter srcover with the coverage folded in (SkBlitter_A8.cpp srcover_p, A8_row_aa): a + div255((255 - a) * dst).
+  if (d.a8) c.v = a + floorOf((((255 - a) * c.v + 128) * 257) / 65536);
+  else c.v = floorOf((c.v * (256 - a)) / 256);
 }
 
 const KIND_MASK = 0;
@@ -2057,8 +2313,10 @@ function makeAcc(kind: number, dev: Device, ir: IRect, clip: IRect, faults: AaFa
   };
 }
 
-function aaaFillPath(path: AaPath, clip: IRect, acc: Acc, startY: number, stopY: number, useMask: boolean): void {
-  const built = buildEdges(path, acc.faults);
+function aaaFillPath(path: AaPath, clip: IRect, acc: Acc, startY0: number, stopY0: number, useMask: boolean, contained: boolean): void {
+  const built = buildEdges(path, acc.faults, contained ? null : clip);
+  const startY = !contained && startY0 < clip.top ? clip.top : startY0;
+  const stopY = !contained && stopY0 > clip.bottom ? clip.bottom : stopY0;
   if (built.length === 0) return;
   const list = sortEdges(built);
   for (let i = 1; i < list.length; i++) {
@@ -2098,11 +2356,15 @@ function aaaFillPath(path: AaPath, clip: IRect, acc: Acc, startY: number, stopY:
   else walkEdges(head, tail, path.evenOdd, acc, startY, stopY, leftBound, rightBound, useMask, path.pts.length > (stopY - startY) * 2);
 }
 
-/** SkScan::AntiFillPath with a cc tile's rect clip, then SkScan::AAAFillPath, then the blitter's final flush or mask blit. */
+/**
+ * SkScan::AntiFillPath with a rect clip (a cc tile, or a mask), then SkScan::AAAFillPath, then the blitter's final flush or mask
+ * blit. A path crossing the clip has its edges clipped (SkEdgeClipper) and its rows limited to the clip.
+ */
 export function antiFillPath(dev: Device, path: AaPath, tileClip: IRect, faults: AaFaults): void {
   const ir = roundOut(path.bounds);
   if (!(ir.left < ir.right && ir.top < ir.bottom)) return;
-  if (!containsIRect(tileClip, ir)) throw new Error('SKIA-AA: a path crossing its cc tile clip is not modelled');
+  if (ir.right <= tileClip.left || ir.left >= tileClip.right || ir.bottom <= tileClip.top || ir.top >= tileClip.bottom) return;
+  const contained = containsIRect(tileClip, ir);
   if (faults.supersampleInsteadOfAAA) {
     supersampleFill(dev, path, ir, faults);
     return;
@@ -2113,13 +2375,13 @@ export function antiFillPath(dev: Device, path: AaPath, tileClip: IRect, faults:
     for (const v of path.verbs) if (v === VERB_CONIC || v === VERB_QUAD) curves = true;
     if (!curves) throw new Error('SKIA-AA: try_blit_fat_anti_rect on a line-only path is not modelled');
     const acc = makeAcc(KIND_MASK, dev, ir, tileClip, faults);
-    aaaFillPath(path, tileClip, acc, ir.top, ir.bottom, true);
+    aaaFillPath(path, tileClip, acc, ir.top, ir.bottom, true, contained);
     const c = acc.clip;
     for (let y = c.top; y < c.bottom; y++) for (let x = c.left; x < c.right; x++) blend(dev, x, y, maskCell(acc, x, y).v);
     return;
   }
   const acc = makeAcc(path.convex ? KIND_RLE : KIND_SAFE, dev, ir, tileClip, faults);
-  aaaFillPath(path, tileClip, acc, ir.top, ir.bottom, false);
+  aaaFillPath(path, tileClip, acc, ir.top, ir.bottom, false, contained);
   accFlush(acc);
 }
 
@@ -3129,7 +3391,12 @@ export function borderRoute(spec: RoundedBoxSpec, widths: BorderWidths): string 
 
 /** A white device crop. */
 export function whiteDevice(bounds: IRect): Device {
-  return { bounds, px: cells((bounds.right - bounds.left) * (bounds.bottom - bounds.top), 255) };
+  return { bounds, px: cells((bounds.right - bounds.left) * (bounds.bottom - bounds.top), 255), a8: false };
+}
+
+/** A clear A8 mask crop, as SkDraw draw_into_mask fills it (SkChooseA8Blitter: SkA8_Blitter, srcover, opaque paint). */
+export function a8Device(bounds: IRect): Device {
+  return { bounds, px: cells((bounds.right - bounds.left) * (bounds.bottom - bounds.top), 0), a8: true };
 }
 
 /** The device crop's gray values, row-major. */

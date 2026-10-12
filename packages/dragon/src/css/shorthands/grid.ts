@@ -2,6 +2,8 @@
 // grid-values.ts before these handlers are reached, so expand is the same expansion. grid-gap, grid-row-gap and grid-column-gap
 // are Chrome's legacy aliases of gap, row-gap and column-gap (css-align-3 §8.5).
 import { GRID_SHORTHAND_LONGHANDS, gridLonghands } from '../grid-values.ts';
+import type { PlaceShorthand } from '../place.ts';
+import { PLACE_SHORTHANDS } from '../place.ts';
 import type { CssValue } from '../values.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { explicit, twoAxes } from './shared.ts';
@@ -15,6 +17,14 @@ const gridShorthand = (name: keyof typeof GRID_SHORTHAND_LONGHANDS): ShorthandHa
   },
 });
 
+// css-align-3 place-*: the parse driver parses each part as its longhand (stylesheet.ts parsePlaceValue), so expand is never reached.
+const placeShorthand = (name: PlaceShorthand): ShorthandHandler => ({
+  longhands: PLACE_SHORTHANDS[name],
+  expand: () => {
+    throw new Error(`${name}: the parse driver expands it`);
+  },
+});
+
 export const GRID_SHORTHANDS = {
   grid: gridShorthand('grid'),
   'grid-template': gridShorthand('grid-template'),
@@ -24,4 +34,7 @@ export const GRID_SHORTHANDS = {
   'grid-gap': twoAxes(['row-gap', 'column-gap']),
   'grid-row-gap': { longhands: ['row-gap'], expand: (values) => [explicit('row-gap', values[0] as CssValue)] },
   'grid-column-gap': { longhands: ['column-gap'], expand: (values) => [explicit('column-gap', values[0] as CssValue)] },
+  'place-content': placeShorthand('place-content'),
+  'place-items': placeShorthand('place-items'),
+  'place-self': placeShorthand('place-self'),
 } as const satisfies { readonly [s: string]: ShorthandHandler };

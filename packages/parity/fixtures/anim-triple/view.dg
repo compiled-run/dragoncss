@@ -1,0 +1,7 @@
+<div box
+{mode === "b" ? 'b' : ''}
+{mode === "c" ? 'c' : ''}
+mode: ["a", "b", "c"] = "a"
+component App
+<html>
+<body>

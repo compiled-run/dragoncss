@@ -8,7 +8,7 @@ import type { Ctx, EngineFaults } from './block.ts';
 import type { Frag, HeightBasis, LengthPercent, MinMax } from './box.ts';
 import { borderBoxFromSpecified, constrain, hasPercent, resolveBorder, resolveLength, resolvePaddingWith, sumEdges } from './box.ts';
 import type { LayoutRatio, LU } from './units.ts';
-import { add, fromCssPx, max, min, mulDiv, snapEdge, sub, ZERO } from './units.ts';
+import { add, fromCssPx, max, min, mulDiv, snapEdge, snapSize, sub, ZERO } from './units.ts';
 import { unsupported } from './unsupported.ts';
 
 /** css-images-3 §5.5 object-fit. */
@@ -414,13 +414,6 @@ export function objectFitRect(content: ObjectRect, natural: NaturalSizing, fit: 
 
 /** A rect in whole device px. */
 export type PixelRect = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
-
-/** Blink SnapSizeToPixel: the distance between the snapped edges (whole px of the location cancel), at least one px for a size above 4/64 px. */
-function snapSize(size: LU, location: LU): number {
-  const result = snapEdge(add(location, size)) - snapEdge(location);
-  if (result === 0 && (size > 4 || size < -4)) return size > 0 ? 1 : -1;
-  return result;
-}
 
 /** Blink ToPixelSnappedRect of an absolute rect: rounded origin, snapped size. */
 export function pixelSnappedRect(r: ObjectRect): PixelRect {

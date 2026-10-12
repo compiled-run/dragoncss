@@ -1,0 +1,26 @@
+{
+ "schema": "dragon-frame-pixels/1",
+ "case": "anim-steps@400x300",
+ "chrome": "145.0.7632.6",
+ "capture": "CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor",
+ "rasterRule": "ceil(viewport css px x DPR) in each dimension; 400x300 at 2.625 is 1050x788",
+ "dpr": 3,
+ "flags": ["--force-device-scale-factor=3","--force-color-profile=srgb","--font-render-hinting=none","--disable-lcd-text","--hide-scrollbars"],
+ "raster": {"rasterization":"disabled_software","gpu_compositing":"disabled_software"},
+ "samples": [
+  {"k":0,"at":0,"width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+  {"k":1,"at":0,"width":1200,"height":900,"sha256":"e35f75fcd2a701833d8a0cc2ce8824b8dc640ad5dbd23869097bacd085fb525b"},
+  {"k":2,"at":1,"width":1200,"height":900,"sha256":"e35f75fcd2a701833d8a0cc2ce8824b8dc640ad5dbd23869097bacd085fb525b"},
+  {"k":4,"at":250,"width":1200,"height":900,"sha256":"70ffa45ea144fd6cd1d59d68e513e938d93461704944b013b1748871e87549eb"},
+  {"k":7,"at":500,"width":1200,"height":900,"sha256":"d130ac1e7fe932a377b575a4ddb0f3ed28657761fb411e878f73ffb2152caefa"},
+  {"k":11,"at":751,"width":1200,"height":900,"sha256":"4fc9d79b7ddb8a12e1498ae9476ee63d4bd536288d2b3871983218e331356a12"},
+  {"k":14,"at":1001,"width":1200,"height":900,"sha256":"3cd0eb1425134af2d17718504b3bf9db87802ffe49b0c38789444206417b2104"},
+  {"k":16,"at":1100,"width":1200,"height":900,"sha256":"1595695829e7a7563fb75d5a490a3d8c19e1b0e11ac72f927f4cebfa2e4a12e2"},
+  {"k":17,"at":1101,"width":1200,"height":900,"sha256":"1595695829e7a7563fb75d5a490a3d8c19e1b0e11ac72f927f4cebfa2e4a12e2"},
+  {"k":19,"at":1350,"width":1200,"height":900,"sha256":"4bb1d9a8be8486b134106e291f1970a556e140006504000243864e2261e9a7a6"},
+  {"k":22,"at":1600,"width":1200,"height":900,"sha256":"93b633fc8dd94805d9009ff102e3d264ea15ffef41b38f7a7b0654e19534db32"},
+  {"k":26,"at":1851,"width":1200,"height":900,"sha256":"e5fb941e0f85b5f04e095dfd6bc42da9c802bb29c119a133949ed72ef6967536"},
+  {"k":29,"at":2101,"width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+  {"k":31,"at":2201,"width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"}
+ ]
+}

@@ -1,0 +1,14 @@
+{
+  "case": "grid-fr-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"f1:text0","lines":[[0,8]]},
+    {"id":"f2:text0","lines":[[0,2]]},
+    {"id":"h2:text0","lines":[[0,3]]},
+    {"id":"i1:text0","lines":[[0,2]]},
+    {"id":"i2:text0","lines":[[0,5]]},
+    {"id":"j2:text0","lines":[[0,1]]},
+    {"id":"k1:text0","lines":[[0,2]]},
+    {"id":"k3:text0","lines":[[0,3]]}
+  ]
+}

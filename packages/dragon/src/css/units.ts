@@ -113,8 +113,8 @@ export function lengthToPx(value: number, unit: string, fonts: FontBases): numbe
 }
 
 /**
- * css-values-4 §10 and §2.6 (env()): the functions V1 of the value model refuses. calc(), min(), max() and clamp() are parsed by
- * css/math.ts, which refuses what they may not contain.
+ * css-values-4 §10: the functions V1 of the value model refuses. calc(), min(), max() and clamp() are parsed by css/math.ts,
+ * which refuses what they may not contain; env() is checked by css/env.ts.
  */
 const REFUSED_FUNCTIONS: ReadonlyMap<string, string> = new Map([
   ['round', 'round() is a css-values-4 stepped-value function, which V1 of the value model does not support'],
@@ -122,7 +122,6 @@ const REFUSED_FUNCTIONS: ReadonlyMap<string, string> = new Map([
   ['rem', 'rem() is a css-values-4 stepped-value function, which V1 of the value model does not support'],
   ['abs', 'abs() is a css-values-4 sign-related function, which V1 of the value model does not support'],
   ['sign', 'sign() is a css-values-4 sign-related function, which V1 of the value model does not support'],
-  ['env', 'env() reads the safe-area insets, which the engine takes as an environment input only from the value-model package V2 (notes/T012-v2-spec.md)'],
 ]);
 
 export function mathFunctionRefusal(name: string): { readonly reason: string; readonly fix: string } | null {

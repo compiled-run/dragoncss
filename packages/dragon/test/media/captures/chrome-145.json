@@ -2455,5 +2455,1900 @@
     }
    ]
   }
- ]
+ ],
+ "fractional": {
+  "frames": [
+   [
+    "iframe",
+    640,
+    300,
+    1
+   ],
+   [
+    "iframe",
+    400,
+    400,
+    1
+   ],
+   [
+    "iframe",
+    0,
+    300,
+    1
+   ],
+   [
+    "iframe",
+    400,
+    0,
+    1
+   ],
+   [
+    "iframe",
+    0,
+    0,
+    1
+   ],
+   [
+    "iframe",
+    1281,
+    600,
+    2
+   ],
+   [
+    "iframe",
+    1280,
+    601,
+    2
+   ],
+   [
+    "iframe",
+    801,
+    800,
+    2
+   ],
+   [
+    "iframe",
+    800,
+    801,
+    2
+   ],
+   [
+    "iframe",
+    1921,
+    961,
+    3
+   ],
+   [
+    "iframe",
+    1202,
+    1201,
+    3
+   ],
+   [
+    "iframe",
+    1203,
+    1201,
+    3
+   ],
+   [
+    "iframe",
+    1201,
+    1203,
+    3
+   ],
+   [
+    "iframe",
+    1080,
+    2208,
+    2.625
+   ],
+   [
+    "iframe",
+    1681,
+    788,
+    2.625
+   ],
+   [
+    "iframe",
+    1680,
+    787,
+    2.625
+   ],
+   [
+    "iframe",
+    1050,
+    1050,
+    2.625
+   ],
+   [
+    "iframe",
+    1681,
+    1680,
+    2.625
+   ],
+   [
+    "iframe",
+    1921,
+    897,
+    3
+   ],
+   [
+    "iframe",
+    1281,
+    598,
+    2
+   ],
+   [
+    "iframe",
+    400,
+    301,
+    1
+   ],
+   [
+    "iframe",
+    641,
+    0,
+    1
+   ],
+   [
+    "iframe",
+    641,
+    300,
+    1
+   ],
+   [
+    "main",
+    402,
+    300,
+    2.625
+   ],
+   [
+    "main",
+    412,
+    300,
+    2.625
+   ],
+   [
+    "main",
+    393,
+    300,
+    2.625
+   ],
+   [
+    "main",
+    400,
+    300,
+    2.625
+   ],
+   [
+    "main",
+    410,
+    302,
+    2.625
+   ],
+   [
+    "main",
+    400,
+    300,
+    2
+   ],
+   [
+    "main",
+    400,
+    300,
+    3
+   ],
+   [
+    "main",
+    402,
+    874,
+    3
+   ],
+   [
+    "main",
+    400,
+    300,
+    1
+   ]
+  ],
+  "queries": [
+   {
+    "query": "(max-width: 639.99px)",
+    "mediaText": "(max-width: 639.99px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(max-width: 639.984375px)",
+    "mediaText": "(max-width: 639.984px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(max-width: 639.98px)",
+    "mediaText": "(max-width: 639.98px)",
+    "matches": "01111001101111001000100111111111"
+   },
+   {
+    "query": "(min-width: 640.01px)",
+    "mediaText": "(min-width: 640.01px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(min-width: 640.015625px)",
+    "mediaText": "(min-width: 640.016px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(min-width: 640.02px)",
+    "mediaText": "(min-width: 640.02px)",
+    "matches": "00000100010000100111011000000000"
+   },
+   {
+    "query": "(width: 640.01px)",
+    "mediaText": "(width: 640.01px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(width: 639.99px)",
+    "mediaText": "(width: 639.99px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(width <= 639.99px)",
+    "mediaText": "(width <= 639.99px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(639.99px >= width)",
+    "mediaText": "(639.99px >= width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width > 639.99px)",
+    "mediaText": "(width > 639.99px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width < 640.01px)",
+    "mediaText": "(width < 640.01px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width > 411.428572px)",
+    "mediaText": "(width > 411.429px)",
+    "matches": "10000110010001110111011010000000"
+   },
+   {
+    "query": "(width > 411.4285888px)",
+    "mediaText": "(width > 411.429px)",
+    "matches": "10000110010001110111011010000000"
+   },
+   {
+    "query": "(width < 411.4285889px)",
+    "mediaText": "(width < 411.429px)",
+    "matches": "01111001101111001000100101111111"
+   },
+   {
+    "query": "(width > 411.428571px)",
+    "mediaText": "(width > 411.429px)",
+    "matches": "10000110010001110111011010000000"
+   },
+   {
+    "query": "(height > 841.1428833px)",
+    "mediaText": "(height > 841.143px)",
+    "matches": "00000000000001000000000000000010"
+   },
+   {
+    "query": "(height > 841.142857px)",
+    "mediaText": "(height > 841.143px)",
+    "matches": "00000000000001000000000000000010"
+   },
+   {
+    "query": "(height < 841.14289px)",
+    "mediaText": "(height < 841.143px)",
+    "matches": "11111111111111111111111111111101"
+   },
+   {
+    "query": "(width > 402px)",
+    "mediaText": "(width > 402px)",
+    "matches": "10000110010001110111011110010000"
+   },
+   {
+    "query": "(width > 412px)",
+    "mediaText": "(width > 412px)",
+    "matches": "10000110010000110111011010000000"
+   },
+   {
+    "query": "(width > 393px)",
+    "mediaText": "(width > 393px)",
+    "matches": "11010111111111111111111111111111"
+   },
+   {
+    "query": "(width > 410px)",
+    "mediaText": "(width > 410px)",
+    "matches": "10000110010001110111011010010000"
+   },
+   {
+    "query": "(width > 400px)",
+    "mediaText": "(width > 400px)",
+    "matches": "10000111011111110111011110010010"
+   },
+   {
+    "query": "(width < 400px)",
+    "mediaText": "(width < 400px)",
+    "matches": "00101000000000000000000001000000"
+   },
+   {
+    "query": "(height > 300px)",
+    "mediaText": "(height > 300px)",
+    "matches": "01000011111111101100100111110010"
+   },
+   {
+    "query": "(height < 300px)",
+    "mediaText": "(height < 300px)",
+    "matches": "00011000000000010011010000000000"
+   },
+   {
+    "query": "(height > 302px)",
+    "mediaText": "(height > 302px)",
+    "matches": "01000001111111001100000000010010"
+   },
+   {
+    "query": "(height > 874px)",
+    "mediaText": "(height > 874px)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(max-width: 640.015625px)",
+    "mediaText": "(max-width: 640.016px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width: 640.015625px)",
+    "mediaText": "(width: 640.016px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(width < 640.015625px)",
+    "mediaText": "(width < 640.016px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width <= 640.015625px)",
+    "mediaText": "(width <= 640.016px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width > 640.015625px)",
+    "mediaText": "(width > 640.016px)",
+    "matches": "00000100010000100111011000000000"
+   },
+   {
+    "query": "(width >= 640.015625px)",
+    "mediaText": "(width >= 640.016px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width = 640.015625px)",
+    "mediaText": "(width = 640.016px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(640.015625px < width)",
+    "mediaText": "(640.016px < width)",
+    "matches": "00000100010000100111011000000000"
+   },
+   {
+    "query": "(640.015625px <= width)",
+    "mediaText": "(640.016px <= width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(640.015625px > width)",
+    "mediaText": "(640.016px > width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(640.015625px >= width)",
+    "mediaText": "(640.016px >= width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(640.015625px = width)",
+    "mediaText": "(640.016px = width)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(min-width: 639.984375px)",
+    "mediaText": "(min-width: 639.984px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width: 639.984375px)",
+    "mediaText": "(width: 639.984px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(width < 639.984375px)",
+    "mediaText": "(width < 639.984px)",
+    "matches": "01111001101111001000100111111111"
+   },
+   {
+    "query": "(width <= 639.984375px)",
+    "mediaText": "(width <= 639.984px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width > 639.984375px)",
+    "mediaText": "(width > 639.984px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width >= 639.984375px)",
+    "mediaText": "(width >= 639.984px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width = 639.984375px)",
+    "mediaText": "(width = 639.984px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(639.984375px < width)",
+    "mediaText": "(639.984px < width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(639.984375px <= width)",
+    "mediaText": "(639.984px <= width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(639.984375px > width)",
+    "mediaText": "(639.984px > width)",
+    "matches": "01111001101111001000100111111111"
+   },
+   {
+    "query": "(639.984375px >= width)",
+    "mediaText": "(639.984px >= width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(639.984375px = width)",
+    "mediaText": "(639.984px = width)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(min-width: 640.0078125px)",
+    "mediaText": "(min-width: 640.008px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(max-width: 640.0078125px)",
+    "mediaText": "(max-width: 640.008px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width: 640.0078125px)",
+    "mediaText": "(width: 640.008px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(width < 640.0078125px)",
+    "mediaText": "(width < 640.008px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width <= 640.0078125px)",
+    "mediaText": "(width <= 640.008px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width > 640.0078125px)",
+    "mediaText": "(width > 640.008px)",
+    "matches": "00000100010000100111011000000000"
+   },
+   {
+    "query": "(width >= 640.0078125px)",
+    "mediaText": "(width >= 640.008px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width = 640.0078125px)",
+    "mediaText": "(width = 640.008px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(640.0078125px < width)",
+    "mediaText": "(640.008px < width)",
+    "matches": "00000100010000100111011000000000"
+   },
+   {
+    "query": "(640.0078125px <= width)",
+    "mediaText": "(640.008px <= width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(640.0078125px > width)",
+    "mediaText": "(640.008px > width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(640.0078125px >= width)",
+    "mediaText": "(640.008px >= width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(640.0078125px = width)",
+    "mediaText": "(640.008px = width)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(min-width: 639.9921875px)",
+    "mediaText": "(min-width: 639.992px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(max-width: 639.9921875px)",
+    "mediaText": "(max-width: 639.992px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width: 639.9921875px)",
+    "mediaText": "(width: 639.992px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(width < 639.9921875px)",
+    "mediaText": "(width < 639.992px)",
+    "matches": "01111001101111001000100111111111"
+   },
+   {
+    "query": "(width <= 639.9921875px)",
+    "mediaText": "(width <= 639.992px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width > 639.9921875px)",
+    "mediaText": "(width > 639.992px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width >= 639.9921875px)",
+    "mediaText": "(width >= 639.992px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width = 639.9921875px)",
+    "mediaText": "(width = 639.992px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(639.9921875px < width)",
+    "mediaText": "(639.992px < width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(639.9921875px <= width)",
+    "mediaText": "(639.992px <= width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(639.9921875px > width)",
+    "mediaText": "(639.992px > width)",
+    "matches": "01111001101111001000100111111111"
+   },
+   {
+    "query": "(639.9921875px >= width)",
+    "mediaText": "(639.992px >= width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(639.9921875px = width)",
+    "mediaText": "(639.992px = width)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(max-width: 640.01px)",
+    "mediaText": "(max-width: 640.01px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width <= 640.01px)",
+    "mediaText": "(width <= 640.01px)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(width > 640.01px)",
+    "mediaText": "(width > 640.01px)",
+    "matches": "00000100010000100111011000000000"
+   },
+   {
+    "query": "(width >= 640.01px)",
+    "mediaText": "(width >= 640.01px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width = 640.01px)",
+    "mediaText": "(width = 640.01px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(640.01px < width)",
+    "mediaText": "(640.01px < width)",
+    "matches": "00000100010000100111011000000000"
+   },
+   {
+    "query": "(640.01px <= width)",
+    "mediaText": "(640.01px <= width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(640.01px > width)",
+    "mediaText": "(640.01px > width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(640.01px >= width)",
+    "mediaText": "(640.01px >= width)",
+    "matches": "11111011101111011000100111111111"
+   },
+   {
+    "query": "(640.01px = width)",
+    "mediaText": "(640.01px = width)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(min-width: 639.99px)",
+    "mediaText": "(min-width: 639.99px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width < 639.99px)",
+    "mediaText": "(width < 639.99px)",
+    "matches": "01111001101111001000100111111111"
+   },
+   {
+    "query": "(width >= 639.99px)",
+    "mediaText": "(width >= 639.99px)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(width = 639.99px)",
+    "mediaText": "(width = 639.99px)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(639.99px < width)",
+    "mediaText": "(639.99px < width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(639.99px <= width)",
+    "mediaText": "(639.99px <= width)",
+    "matches": "10000110010000110111011000000000"
+   },
+   {
+    "query": "(639.99px > width)",
+    "mediaText": "(639.99px > width)",
+    "matches": "01111001101111001000100111111111"
+   },
+   {
+    "query": "(639.99px = width)",
+    "mediaText": "(639.99px = width)",
+    "matches": "10000010000000010000000000000000"
+   },
+   {
+    "query": "(min-width: 640.515625px)",
+    "mediaText": "(min-width: 640.516px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(max-width: 640.515625px)",
+    "mediaText": "(max-width: 640.516px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width: 640.515625px)",
+    "mediaText": "(width: 640.516px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(width < 640.515625px)",
+    "mediaText": "(width < 640.516px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width <= 640.515625px)",
+    "mediaText": "(width <= 640.516px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width > 640.515625px)",
+    "mediaText": "(width > 640.516px)",
+    "matches": "00000000000000000000011000000000"
+   },
+   {
+    "query": "(width >= 640.515625px)",
+    "mediaText": "(width >= 640.516px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width = 640.515625px)",
+    "mediaText": "(width = 640.516px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(640.515625px < width)",
+    "mediaText": "(640.516px < width)",
+    "matches": "00000000000000000000011000000000"
+   },
+   {
+    "query": "(640.515625px <= width)",
+    "mediaText": "(640.516px <= width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.515625px > width)",
+    "mediaText": "(640.516px > width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.515625px >= width)",
+    "mediaText": "(640.516px >= width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.515625px = width)",
+    "mediaText": "(640.516px = width)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(min-width: 640.484375px)",
+    "mediaText": "(min-width: 640.484px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(max-width: 640.484375px)",
+    "mediaText": "(max-width: 640.484px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width: 640.484375px)",
+    "mediaText": "(width: 640.484px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(width < 640.484375px)",
+    "mediaText": "(width < 640.484px)",
+    "matches": "11111011111111111110100111111111"
+   },
+   {
+    "query": "(width <= 640.484375px)",
+    "mediaText": "(width <= 640.484px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width > 640.484375px)",
+    "mediaText": "(width > 640.484px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width >= 640.484375px)",
+    "mediaText": "(width >= 640.484px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width = 640.484375px)",
+    "mediaText": "(width = 640.484px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(640.484375px < width)",
+    "mediaText": "(640.484px < width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.484375px <= width)",
+    "mediaText": "(640.484px <= width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.484375px > width)",
+    "mediaText": "(640.484px > width)",
+    "matches": "11111011111111111110100111111111"
+   },
+   {
+    "query": "(640.484375px >= width)",
+    "mediaText": "(640.484px >= width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.484375px = width)",
+    "mediaText": "(640.484px = width)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(min-width: 640.5078125px)",
+    "mediaText": "(min-width: 640.508px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(max-width: 640.5078125px)",
+    "mediaText": "(max-width: 640.508px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width: 640.5078125px)",
+    "mediaText": "(width: 640.508px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(width < 640.5078125px)",
+    "mediaText": "(width < 640.508px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width <= 640.5078125px)",
+    "mediaText": "(width <= 640.508px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width > 640.5078125px)",
+    "mediaText": "(width > 640.508px)",
+    "matches": "00000000000000000000011000000000"
+   },
+   {
+    "query": "(width >= 640.5078125px)",
+    "mediaText": "(width >= 640.508px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width = 640.5078125px)",
+    "mediaText": "(width = 640.508px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(640.5078125px < width)",
+    "mediaText": "(640.508px < width)",
+    "matches": "00000000000000000000011000000000"
+   },
+   {
+    "query": "(640.5078125px <= width)",
+    "mediaText": "(640.508px <= width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.5078125px > width)",
+    "mediaText": "(640.508px > width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.5078125px >= width)",
+    "mediaText": "(640.508px >= width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.5078125px = width)",
+    "mediaText": "(640.508px = width)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(min-width: 640.4921875px)",
+    "mediaText": "(min-width: 640.492px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(max-width: 640.4921875px)",
+    "mediaText": "(max-width: 640.492px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width: 640.4921875px)",
+    "mediaText": "(width: 640.492px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(width < 640.4921875px)",
+    "mediaText": "(width < 640.492px)",
+    "matches": "11111011111111111110100111111111"
+   },
+   {
+    "query": "(width <= 640.4921875px)",
+    "mediaText": "(width <= 640.492px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width > 640.4921875px)",
+    "mediaText": "(width > 640.492px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width >= 640.4921875px)",
+    "mediaText": "(width >= 640.492px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width = 640.4921875px)",
+    "mediaText": "(width = 640.492px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(640.4921875px < width)",
+    "mediaText": "(640.492px < width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.4921875px <= width)",
+    "mediaText": "(640.492px <= width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.4921875px > width)",
+    "mediaText": "(640.492px > width)",
+    "matches": "11111011111111111110100111111111"
+   },
+   {
+    "query": "(640.4921875px >= width)",
+    "mediaText": "(640.492px >= width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.4921875px = width)",
+    "mediaText": "(640.492px = width)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(min-width: 640.51px)",
+    "mediaText": "(min-width: 640.51px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(max-width: 640.51px)",
+    "mediaText": "(max-width: 640.51px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width: 640.51px)",
+    "mediaText": "(width: 640.51px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(width < 640.51px)",
+    "mediaText": "(width < 640.51px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width <= 640.51px)",
+    "mediaText": "(width <= 640.51px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width > 640.51px)",
+    "mediaText": "(width > 640.51px)",
+    "matches": "00000000000000000000011000000000"
+   },
+   {
+    "query": "(width >= 640.51px)",
+    "mediaText": "(width >= 640.51px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width = 640.51px)",
+    "mediaText": "(width = 640.51px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(640.51px < width)",
+    "mediaText": "(640.51px < width)",
+    "matches": "00000000000000000000011000000000"
+   },
+   {
+    "query": "(640.51px <= width)",
+    "mediaText": "(640.51px <= width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.51px > width)",
+    "mediaText": "(640.51px > width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.51px >= width)",
+    "mediaText": "(640.51px >= width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.51px = width)",
+    "mediaText": "(640.51px = width)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(min-width: 640.49px)",
+    "mediaText": "(min-width: 640.49px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(max-width: 640.49px)",
+    "mediaText": "(max-width: 640.49px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width: 640.49px)",
+    "mediaText": "(width: 640.49px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(width < 640.49px)",
+    "mediaText": "(width < 640.49px)",
+    "matches": "11111011111111111110100111111111"
+   },
+   {
+    "query": "(width <= 640.49px)",
+    "mediaText": "(width <= 640.49px)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(width > 640.49px)",
+    "mediaText": "(width > 640.49px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width >= 640.49px)",
+    "mediaText": "(width >= 640.49px)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(width = 640.49px)",
+    "mediaText": "(width = 640.49px)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(640.49px < width)",
+    "mediaText": "(640.49px < width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.49px <= width)",
+    "mediaText": "(640.49px <= width)",
+    "matches": "00000100000000000001011000000000"
+   },
+   {
+    "query": "(640.49px > width)",
+    "mediaText": "(640.49px > width)",
+    "matches": "11111011111111111110100111111111"
+   },
+   {
+    "query": "(640.49px >= width)",
+    "mediaText": "(640.49px >= width)",
+    "matches": "11111111111111111111100111111111"
+   },
+   {
+    "query": "(640.49px = width)",
+    "mediaText": "(640.49px = width)",
+    "matches": "00000100000000000001000000000000"
+   },
+   {
+    "query": "(min-height: 300.015625px)",
+    "mediaText": "(min-height: 300.016px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(max-height: 300.015625px)",
+    "mediaText": "(max-height: 300.016px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height: 300.015625px)",
+    "mediaText": "(height: 300.016px)",
+    "matches": "10100100000000000000001000001101"
+   },
+   {
+    "query": "(height < 300.015625px)",
+    "mediaText": "(height < 300.016px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height > 300.015625px)",
+    "mediaText": "(height > 300.016px)",
+    "matches": "01000011111111101100100111110010"
+   },
+   {
+    "query": "(300.015625px >= height)",
+    "mediaText": "(300.016px >= height)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(min-height: 299.984375px)",
+    "mediaText": "(min-height: 299.984px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(max-height: 299.984375px)",
+    "mediaText": "(max-height: 299.984px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height: 299.984375px)",
+    "mediaText": "(height: 299.984px)",
+    "matches": "10100100000000000000001000001101"
+   },
+   {
+    "query": "(height < 299.984375px)",
+    "mediaText": "(height < 299.984px)",
+    "matches": "00011000000000010011010000000000"
+   },
+   {
+    "query": "(height > 299.984375px)",
+    "mediaText": "(height > 299.984px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(299.984375px >= height)",
+    "mediaText": "(299.984px >= height)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(min-height: 300.0078125px)",
+    "mediaText": "(min-height: 300.008px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(max-height: 300.0078125px)",
+    "mediaText": "(max-height: 300.008px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height: 300.0078125px)",
+    "mediaText": "(height: 300.008px)",
+    "matches": "10100100000000000000001000001101"
+   },
+   {
+    "query": "(height < 300.0078125px)",
+    "mediaText": "(height < 300.008px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height > 300.0078125px)",
+    "mediaText": "(height > 300.008px)",
+    "matches": "01000011111111101100100111110010"
+   },
+   {
+    "query": "(300.0078125px >= height)",
+    "mediaText": "(300.008px >= height)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(min-height: 299.9921875px)",
+    "mediaText": "(min-height: 299.992px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(max-height: 299.9921875px)",
+    "mediaText": "(max-height: 299.992px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height: 299.9921875px)",
+    "mediaText": "(height: 299.992px)",
+    "matches": "10100100000000000000001000001101"
+   },
+   {
+    "query": "(height < 299.9921875px)",
+    "mediaText": "(height < 299.992px)",
+    "matches": "00011000000000010011010000000000"
+   },
+   {
+    "query": "(height > 299.9921875px)",
+    "mediaText": "(height > 299.992px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(299.9921875px >= height)",
+    "mediaText": "(299.992px >= height)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(min-height: 300.01px)",
+    "mediaText": "(min-height: 300.01px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(max-height: 300.01px)",
+    "mediaText": "(max-height: 300.01px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height: 300.01px)",
+    "mediaText": "(height: 300.01px)",
+    "matches": "10100100000000000000001000001101"
+   },
+   {
+    "query": "(height < 300.01px)",
+    "mediaText": "(height < 300.01px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height > 300.01px)",
+    "mediaText": "(height > 300.01px)",
+    "matches": "01000011111111101100100111110010"
+   },
+   {
+    "query": "(300.01px >= height)",
+    "mediaText": "(300.01px >= height)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(min-height: 299.99px)",
+    "mediaText": "(min-height: 299.99px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(max-height: 299.99px)",
+    "mediaText": "(max-height: 299.99px)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(height: 299.99px)",
+    "mediaText": "(height: 299.99px)",
+    "matches": "10100100000000000000001000001101"
+   },
+   {
+    "query": "(height < 299.99px)",
+    "mediaText": "(height < 299.99px)",
+    "matches": "00011000000000010011010000000000"
+   },
+   {
+    "query": "(height > 299.99px)",
+    "mediaText": "(height > 299.99px)",
+    "matches": "11100111111111101100101111111111"
+   },
+   {
+    "query": "(299.99px >= height)",
+    "mediaText": "(299.99px >= height)",
+    "matches": "10111100000000010011011000001101"
+   },
+   {
+    "query": "(min-height: 300.515625px)",
+    "mediaText": "(min-height: 300.516px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(max-height: 300.515625px)",
+    "mediaText": "(max-height: 300.516px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height: 300.515625px)",
+    "mediaText": "(height: 300.516px)",
+    "matches": "00000010000000000000000000000000"
+   },
+   {
+    "query": "(height < 300.515625px)",
+    "mediaText": "(height < 300.516px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height > 300.515625px)",
+    "mediaText": "(height > 300.516px)",
+    "matches": "01000001111111001100100000010010"
+   },
+   {
+    "query": "(300.515625px >= height)",
+    "mediaText": "(300.516px >= height)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(min-height: 300.484375px)",
+    "mediaText": "(min-height: 300.484px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(max-height: 300.484375px)",
+    "mediaText": "(max-height: 300.484px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height: 300.484375px)",
+    "mediaText": "(height: 300.484px)",
+    "matches": "00000010000000000000000000000000"
+   },
+   {
+    "query": "(height < 300.484375px)",
+    "mediaText": "(height < 300.484px)",
+    "matches": "10111100000000110011011111101101"
+   },
+   {
+    "query": "(height > 300.484375px)",
+    "mediaText": "(height > 300.484px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(300.484375px >= height)",
+    "mediaText": "(300.484px >= height)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(min-height: 300.5078125px)",
+    "mediaText": "(min-height: 300.508px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(max-height: 300.5078125px)",
+    "mediaText": "(max-height: 300.508px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height: 300.5078125px)",
+    "mediaText": "(height: 300.508px)",
+    "matches": "00000010000000000000000000000000"
+   },
+   {
+    "query": "(height < 300.5078125px)",
+    "mediaText": "(height < 300.508px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height > 300.5078125px)",
+    "mediaText": "(height > 300.508px)",
+    "matches": "01000001111111001100100000010010"
+   },
+   {
+    "query": "(300.5078125px >= height)",
+    "mediaText": "(300.508px >= height)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(min-height: 300.4921875px)",
+    "mediaText": "(min-height: 300.492px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(max-height: 300.4921875px)",
+    "mediaText": "(max-height: 300.492px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height: 300.4921875px)",
+    "mediaText": "(height: 300.492px)",
+    "matches": "00000010000000000000000000000000"
+   },
+   {
+    "query": "(height < 300.4921875px)",
+    "mediaText": "(height < 300.492px)",
+    "matches": "10111100000000110011011111101101"
+   },
+   {
+    "query": "(height > 300.4921875px)",
+    "mediaText": "(height > 300.492px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(300.4921875px >= height)",
+    "mediaText": "(300.492px >= height)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(min-height: 300.51px)",
+    "mediaText": "(min-height: 300.51px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(max-height: 300.51px)",
+    "mediaText": "(max-height: 300.51px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height: 300.51px)",
+    "mediaText": "(height: 300.51px)",
+    "matches": "00000010000000000000000000000000"
+   },
+   {
+    "query": "(height < 300.51px)",
+    "mediaText": "(height < 300.51px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height > 300.51px)",
+    "mediaText": "(height > 300.51px)",
+    "matches": "01000001111111001100100000010010"
+   },
+   {
+    "query": "(300.51px >= height)",
+    "mediaText": "(300.51px >= height)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(min-height: 300.49px)",
+    "mediaText": "(min-height: 300.49px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(max-height: 300.49px)",
+    "mediaText": "(max-height: 300.49px)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(height: 300.49px)",
+    "mediaText": "(height: 300.49px)",
+    "matches": "00000010000000000000000000000000"
+   },
+   {
+    "query": "(height < 300.49px)",
+    "mediaText": "(height < 300.49px)",
+    "matches": "10111100000000110011011111101101"
+   },
+   {
+    "query": "(height > 300.49px)",
+    "mediaText": "(height > 300.49px)",
+    "matches": "01000011111111001100100000010010"
+   },
+   {
+    "query": "(300.49px >= height)",
+    "mediaText": "(300.49px >= height)",
+    "matches": "10111110000000110011011111101101"
+   },
+   {
+    "query": "(orientation: portrait)",
+    "mediaText": "(orientation: portrait)",
+    "matches": "01101001101011001100000000000010"
+   },
+   {
+    "query": "(orientation: landscape)",
+    "mediaText": "(orientation: landscape)",
+    "matches": "10010110010100110011111111111101"
+   },
+   {
+    "query": "(orientation)",
+    "mediaText": "(orientation)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(aspect-ratio)",
+    "mediaText": "(aspect-ratio)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(aspect-ratio: 1/1)",
+    "mediaText": "(aspect-ratio: 1 / 1)",
+    "matches": "01001001101000001100000000000000"
+   },
+   {
+    "query": "(aspect-ratio: 1)",
+    "mediaText": "(aspect-ratio: 1 / 1)",
+    "matches": "01001001101000001100000000000000"
+   },
+   {
+    "query": "(min-aspect-ratio: 1/1)",
+    "mediaText": "(min-aspect-ratio: 1 / 1)",
+    "matches": "11011111111100111111111111111101"
+   },
+   {
+    "query": "(max-aspect-ratio: 1/1)",
+    "mediaText": "(max-aspect-ratio: 1 / 1)",
+    "matches": "01101001101011001100000000000010"
+   },
+   {
+    "query": "(aspect-ratio: 2/1)",
+    "mediaText": "(aspect-ratio: 2 / 1)",
+    "matches": "00001000010000000000000000000000"
+   },
+   {
+    "query": "(min-aspect-ratio: 2/1)",
+    "mediaText": "(min-aspect-ratio: 2 / 1)",
+    "matches": "10011110010000110011011000000000"
+   },
+   {
+    "query": "(max-aspect-ratio: 2/1)",
+    "mediaText": "(max-aspect-ratio: 2 / 1)",
+    "matches": "01101001111111001100100111111111"
+   },
+   {
+    "query": "(aspect-ratio > 1)",
+    "mediaText": "(aspect-ratio > 1 / 1)",
+    "matches": "10010110010100110011111111111101"
+   },
+   {
+    "query": "(aspect-ratio < 1)",
+    "mediaText": "(aspect-ratio < 1 / 1)",
+    "matches": "00100000000011000000000000000010"
+   },
+   {
+    "query": "(aspect-ratio >= 2)",
+    "mediaText": "(aspect-ratio >= 2 / 1)",
+    "matches": "10011110010000110011011000000000"
+   },
+   {
+    "query": "(1 < aspect-ratio)",
+    "mediaText": "(1 / 1 < aspect-ratio)",
+    "matches": "10010110010100110011111111111101"
+   },
+   {
+    "query": "(2 >= aspect-ratio)",
+    "mediaText": "(2 / 1 >= aspect-ratio)",
+    "matches": "01101001111111001100100111111111"
+   },
+   {
+    "query": "(1 < aspect-ratio < 2)",
+    "mediaText": "(1 / 1 < aspect-ratio < 2 / 1)",
+    "matches": "00000000000100000000100111111101"
+   },
+   {
+    "query": "(aspect-ratio: 1281/600)",
+    "mediaText": "(aspect-ratio: 1281 / 600)",
+    "matches": "00001000000000000000000000000000"
+   },
+   {
+    "query": "(aspect-ratio: 640/300)",
+    "mediaText": "(aspect-ratio: 640 / 300)",
+    "matches": "10001110000000100000000000000000"
+   },
+   {
+    "query": "(aspect-ratio: 401/400)",
+    "mediaText": "(aspect-ratio: 401 / 400)",
+    "matches": "00001000000100000000000000000000"
+   },
+   {
+    "query": "(min-aspect-ratio: 401/400)",
+    "mediaText": "(min-aspect-ratio: 401 / 400)",
+    "matches": "10011110010100110011111111111101"
+   },
+   {
+    "query": "(aspect-ratio: 400/401)",
+    "mediaText": "(aspect-ratio: 400 / 401)",
+    "matches": "00001000000010000000000000000000"
+   },
+   {
+    "query": "(max-aspect-ratio: 400/401)",
+    "mediaText": "(max-aspect-ratio: 400 / 401)",
+    "matches": "00101000000011000000000000000010"
+   },
+   {
+    "query": "(aspect-ratio: 1.00002)",
+    "mediaText": "(aspect-ratio: 1.00002 / 1)",
+    "matches": "01001001101000001100000000000000"
+   },
+   {
+    "query": "(aspect-ratio: 1.00005)",
+    "mediaText": "(aspect-ratio: 1.00005 / 1)",
+    "matches": "00001000000000000000000000000000"
+   },
+   {
+    "query": "(aspect-ratio: 0.99998)",
+    "mediaText": "(aspect-ratio: 0.99998 / 1)",
+    "matches": "01001001101000001100000000000000"
+   },
+   {
+    "query": "(min-aspect-ratio: 1.00002)",
+    "mediaText": "(min-aspect-ratio: 1.00002 / 1)",
+    "matches": "11011111111100111111111111111101"
+   },
+   {
+    "query": "(max-aspect-ratio: 0.99998)",
+    "mediaText": "(max-aspect-ratio: 0.99998 / 1)",
+    "matches": "01101001101011001100000000000010"
+   },
+   {
+    "query": "(aspect-ratio > 0.99998)",
+    "mediaText": "(aspect-ratio > 0.99998 / 1)",
+    "matches": "11010111111100111111111111111101"
+   },
+   {
+    "query": "(aspect-ratio < 1.00002)",
+    "mediaText": "(aspect-ratio < 1.00002 / 1)",
+    "matches": "01100001101011001100000000000010"
+   },
+   {
+    "query": "(aspect-ratio: 2.00004/1)",
+    "mediaText": "(aspect-ratio: 2.00004 / 1)",
+    "matches": "00001000010000000000000000000000"
+   },
+   {
+    "query": "(min-aspect-ratio: 2.00004)",
+    "mediaText": "(min-aspect-ratio: 2.00004 / 1)",
+    "matches": "10011110010000110011011000000000"
+   },
+   {
+    "query": "(max-aspect-ratio: 1.99996)",
+    "mediaText": "(max-aspect-ratio: 1.99996 / 1)",
+    "matches": "01101001111111001100100111111111"
+   },
+   {
+    "query": "(aspect-ratio > 1.99996)",
+    "mediaText": "(aspect-ratio > 1.99996 / 1)",
+    "matches": "10010110010000110011011000000000"
+   },
+   {
+    "query": "(aspect-ratio < 2.00004)",
+    "mediaText": "(aspect-ratio < 2.00004 / 1)",
+    "matches": "01100001111111001100100111111111"
+   },
+   {
+    "query": "(aspect-ratio = 2.00004)",
+    "mediaText": "(aspect-ratio = 2.00004 / 1)",
+    "matches": "00001000010000000000000000000000"
+   },
+   {
+    "query": "(2.00004 >= aspect-ratio)",
+    "mediaText": "(2.00004 / 1 >= aspect-ratio)",
+    "matches": "01101001111111001100100111111111"
+   },
+   {
+    "query": "(aspect-ratio: 32/15)",
+    "mediaText": "(aspect-ratio: 32 / 15)",
+    "matches": "10001110000000100000000000000000"
+   },
+   {
+    "query": "(aspect-ratio: 0/1)",
+    "mediaText": "(aspect-ratio: 0 / 1)",
+    "matches": "00101000000000000000000000000000"
+   },
+   {
+    "query": "(aspect-ratio: 1/0)",
+    "mediaText": "(aspect-ratio: 1 / 0)",
+    "matches": "00011000000000000000010000000000"
+   },
+   {
+    "query": "(max-width: -0.01px)",
+    "mediaText": "(max-width: -0.01px)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(width: -0.01px)",
+    "mediaText": "(width: -0.01px)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(min-width: -0.01px)",
+    "mediaText": "(min-width: -0.01px)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(width < -0.01px)",
+    "mediaText": "(width < -0.01px)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(width <= -0.01px)",
+    "mediaText": "(width <= -0.01px)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(width >= -0.01px)",
+    "mediaText": "(width >= -0.01px)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(width > -0.01px)",
+    "mediaText": "(width > -0.01px)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(width = -0.01px)",
+    "mediaText": "(width = -0.01px)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(-0.01px < width)",
+    "mediaText": "(-0.01px < width)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(-0.01px >= width)",
+    "mediaText": "(-0.01px >= width)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(max-width: calc(-0.01px))",
+    "mediaText": "(max-width: calc(-0.01px))",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(width <= calc(1px - 1.01px))",
+    "mediaText": "(width <= calc(-0.01px))",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(max-height: -0.01px)",
+    "mediaText": "(max-height: -0.01px)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(height: -0.01px)",
+    "mediaText": "(height: -0.01px)",
+    "matches": "00000000000000000000000000000000"
+   },
+   {
+    "query": "(min-height: -0.01px)",
+    "mediaText": "(min-height: -0.01px)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(height > -0.01px)",
+    "mediaText": "(height > -0.01px)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(max-width: 0.01px)",
+    "mediaText": "(max-width: 0.01px)",
+    "matches": "00101000000000000000000000000000"
+   },
+   {
+    "query": "(width: 0.01px)",
+    "mediaText": "(width: 0.01px)",
+    "matches": "00101000000000000000000000000000"
+   },
+   {
+    "query": "(min-width: 0.01px)",
+    "mediaText": "(min-width: 0.01px)",
+    "matches": "11111111111111111111111111111111"
+   },
+   {
+    "query": "(min-width: 0.02px)",
+    "mediaText": "(min-width: 0.02px)",
+    "matches": "11010111111111111111111111111111"
+   },
+   {
+    "query": "(width > 0px)",
+    "mediaText": "(width > 0px)",
+    "matches": "11010111111111111111111111111111"
+   },
+   {
+    "query": "(width <= 0px)",
+    "mediaText": "(width <= 0px)",
+    "matches": "00101000000000000000000000000000"
+   },
+   {
+    "query": "(width)",
+    "mediaText": "(width)",
+    "matches": "11010111111111111111111111111111"
+   },
+   {
+    "query": "(height)",
+    "mediaText": "(height)",
+    "matches": "11100111111111111111101111111111"
+   },
+   {
+    "query": "(max-width: 0px)",
+    "mediaText": "(max-width: 0px)",
+    "matches": "00101000000000000000000000000000"
+   },
+   {
+    "query": "(min-height: 0.01px)",
+    "mediaText": "(min-height: 0.01px)",
+    "matches": "11111111111111111111111111111111"
+   }
+  ],
+  "bands": [
+   {
+    "sheet": "orientation",
+    "conditions": [
+     {
+      "text": "(orientation: portrait)",
+      "mediaText": "(orientation: portrait)",
+      "matches": "01101001101011001100000000000010"
+     },
+     {
+      "text": "(not (orientation: portrait))",
+      "mediaText": "(not (orientation: portrait))",
+      "matches": "10010110010100110011111111111101"
+     }
+    ]
+   },
+   {
+    "sheet": "orientation-width",
+    "conditions": [
+     {
+      "text": "(orientation: landscape) and (max-width: 400px) and (not (min-height: 300.5px))",
+      "mediaText": "(orientation: landscape) and (max-width: 400px) and (not (min-height: 300.5px))",
+      "matches": "00010000000000000000000001101101"
+     },
+     {
+      "text": "(not (orientation: landscape)) and (max-width: 400px) and (not (min-height: 300.5px))",
+      "mediaText": "(not (orientation: landscape)) and (max-width: 400px) and (not (min-height: 300.5px))",
+      "matches": "00101000000000000000000000000000"
+     },
+     {
+      "text": "(orientation: landscape) and (max-width: 400px) and (min-height: 300.5px)",
+      "mediaText": "(orientation: landscape) and (max-width: 400px) and (min-height: 300.5px)",
+      "matches": "00000000000000000000100000000000"
+     },
+     {
+      "text": "(not (orientation: landscape)) and (max-width: 400px) and (min-height: 300.5px)",
+      "mediaText": "(not (orientation: landscape)) and (max-width: 400px) and (min-height: 300.5px)",
+      "matches": "01000000100000001000000000000000"
+     },
+     {
+      "text": "(orientation: landscape) and (not (max-width: 400px)) and (not (min-height: 300.5px))",
+      "mediaText": "(orientation: landscape) and (not (max-width: 400px)) and (not (min-height: 300.5px))",
+      "matches": "10000100000000110011011110000000"
+     },
+     {
+      "text": "(orientation: landscape) and (not (max-width: 400px)) and (min-height: 300.5px)",
+      "mediaText": "(orientation: landscape) and (not (max-width: 400px)) and (min-height: 300.5px)",
+      "matches": "00000010010100000000000000010000"
+     },
+     {
+      "text": "(not (orientation: landscape)) and (not (max-width: 400px)) and (min-height: 300.5px)",
+      "mediaText": "(not (orientation: landscape)) and (not (max-width: 400px)) and (min-height: 300.5px)",
+      "matches": "00000001001011000100000000000010"
+     }
+    ]
+   },
+   {
+    "sheet": "aspect-ratio",
+    "conditions": [
+     {
+      "text": "(min-aspect-ratio: 4 / 3) and (max-aspect-ratio: 1 / 1) and (aspect-ratio: 2 / 1)",
+      "mediaText": "(min-aspect-ratio: 4 / 3) and (max-aspect-ratio: 1 / 1) and (aspect-ratio: 2 / 1)",
+      "matches": "00001000000000000000000000000000"
+     },
+     {
+      "text": "(min-aspect-ratio: 4 / 3) and (not (max-aspect-ratio: 1 / 1)) and (aspect-ratio: 2 / 1)",
+      "mediaText": "(min-aspect-ratio: 4 / 3) and (not (max-aspect-ratio: 1 / 1)) and (aspect-ratio: 2 / 1)",
+      "matches": "00000000010000000000000000000000"
+     },
+     {
+      "text": "(min-aspect-ratio: 4 / 3) and (not (max-aspect-ratio: 1 / 1)) and (not (aspect-ratio: 2 / 1))",
+      "mediaText": "(min-aspect-ratio: 4 / 3) and (not (max-aspect-ratio: 1 / 1)) and (not (aspect-ratio: 2 / 1))",
+      "matches": "10010110000000110011011110111101"
+     },
+     {
+      "text": "(not (min-aspect-ratio: 4 / 3)) and (max-aspect-ratio: 1 / 1) and (not (aspect-ratio: 2 / 1))",
+      "mediaText": "(not (min-aspect-ratio: 4 / 3)) and (max-aspect-ratio: 1 / 1) and (not (aspect-ratio: 2 / 1))",
+      "matches": "01100001101011001100000000000010"
+     },
+     {
+      "text": "(not (min-aspect-ratio: 4 / 3)) and (not (max-aspect-ratio: 1 / 1)) and (not (aspect-ratio: 2 / 1))",
+      "mediaText": "(not (min-aspect-ratio: 4 / 3)) and (not (max-aspect-ratio: 1 / 1)) and (not (aspect-ratio: 2 / 1))",
+      "matches": "00000000000100000000100001000000"
+     }
+    ]
+   },
+   {
+    "sheet": "epsilon",
+    "conditions": [
+     {
+      "text": "(max-width: 639.99px) and (width < 640.4px) and (not (min-height: 300.01px)) and (not (width: 640.5px))",
+      "mediaText": "(max-width: 639.99px) and (width < 640.4px) and (not (min-height: 300.01px)) and (not (width: 640.5px))",
+      "matches": "00011000000000010000000000000000"
+     },
+     {
+      "text": "(max-width: 639.99px) and (width < 640.4px) and (min-height: 300.01px) and (not (width: 640.5px))",
+      "mediaText": "(max-width: 639.99px) and (width < 640.4px) and (min-height: 300.01px) and (not (width: 640.5px))",
+      "matches": "11100011101111001000100111111111"
+     },
+     {
+      "text": "(not (max-width: 639.99px)) and (width < 640.4px) and (not (min-height: 300.01px)) and (not (width: 640.5px))",
+      "mediaText": "(not (max-width: 639.99px)) and (width < 640.4px) and (not (min-height: 300.01px)) and (not (width: 640.5px))",
+      "matches": "00000000000000000010000000000000"
+     },
+     {
+      "text": "(not (max-width: 639.99px)) and (width < 640.4px) and (min-height: 300.01px) and (not (width: 640.5px))",
+      "mediaText": "(not (max-width: 639.99px)) and (width < 640.4px) and (min-height: 300.01px) and (not (width: 640.5px))",
+      "matches": "00000000010000100100000000000000"
+     },
+     {
+      "text": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (not (min-height: 300.01px)) and (not (width: 640.5px))",
+      "mediaText": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (not (min-height: 300.01px)) and (not (width: 640.5px))",
+      "matches": "00000000000000000000010000000000"
+     },
+     {
+      "text": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (min-height: 300.01px) and (not (width: 640.5px))",
+      "mediaText": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (min-height: 300.01px) and (not (width: 640.5px))",
+      "matches": "00000000000000000000001000000000"
+     },
+     {
+      "text": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (not (min-height: 300.01px)) and (width: 640.5px)",
+      "mediaText": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (not (min-height: 300.01px)) and (width: 640.5px)",
+      "matches": "00000000000000000001000000000000"
+     },
+     {
+      "text": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (min-height: 300.01px) and (width: 640.5px)",
+      "mediaText": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (min-height: 300.01px) and (width: 640.5px)",
+      "matches": "00000100000000000000000000000000"
+     }
+    ]
+   }
+  ]
+ }
 }

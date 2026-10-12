@@ -7,7 +7,7 @@ import type { Fault } from './faults.ts';
 import type { Files, Lowered } from './generate.ts';
 import { KOTLIN_DIR, kotlinFiles, listTree, ROOT, SWIFT_DIR, swiftFiles } from './generate.ts';
 import type { KotlinLookup, RunResult } from './native.ts';
-import { allPass, buildKotlin, buildSwift, defaultKotlinLookup, kotlinExec, kotlinTool, runSuites, swiftExec, swiftTool } from './native.ts';
+import { allPass, blockedRun, buildKotlin, buildSwift, defaultKotlinLookup, kotlinExec, kotlinTool, requireNative, runSuites, swiftExec, swiftTool } from './native.ts';
 
 export const LOCK = join(ROOT, 'packages/translate/corpus.json');
 
@@ -60,18 +60,19 @@ export function lockedDigest(): string | null {
 /**
  * Builds and runs one target on the corpus. With a fault, the translation is planted in memory; without, the committed tree runs.
  * kotlinLookup is where the Kotlin tools are looked for; a test passes one that finds nothing to prove the blocked path.
+ * require (DRAGON_REQUIRE_NATIVE=1 by default) throws on a missing toolchain instead of returning blocked (owner tooling).
  */
-export function runTarget(target: Target, c: Corpus, files: Files, tag: string, untilFailure = false, kotlinLookup: KotlinLookup = defaultKotlinLookup()): RunResult {
+export function runTarget(target: Target, c: Corpus, files: Files, tag: string, untilFailure = false, kotlinLookup: KotlinLookup = defaultKotlinLookup(), require: boolean = requireNative()): RunResult {
   if (target === 'swift') {
     const tool = swiftTool();
-    if (tool === null) return { target, status: 'blocked (owner tooling)', toolchain: 'swiftc not found', reason: 'no swiftc on PATH', suites: [], buildSeconds: 0, runSeconds: 0 };
+    if (tool === null) return blockedRun(target, 'swiftc not found', 'no swiftc on PATH', require);
     const b = buildSwift(tool, files);
     const t1 = Date.now();
     const suites = runSuites(c, swiftExec(b.binary), tag, untilFailure);
     return { target, status: allPass(suites) ? 'pass' : 'fail', toolchain: tool.version, reason: null, suites, buildSeconds: b.seconds, runSeconds: (Date.now() - t1) / 1000 };
   }
   const tool = kotlinTool(kotlinLookup);
-  if (tool === null) return { target, status: 'blocked (owner tooling)', toolchain: 'no JDK 17+ or kotlinc', reason: 'install JDK 17 and kotlinc (docs/decisions.md, Native lanes, milestone 2)', suites: [], buildSeconds: 0, runSeconds: 0 };
+  if (tool === null) return blockedRun(target, 'no JDK 17+ or kotlinc', 'install JDK 17 and kotlinc (docs/decisions.md, Native lanes, milestone 2)', require);
   const b = buildKotlin(tool, files);
   const t1 = Date.now();
   const suites = runSuites(c, kotlinExec(tool, b.jar), tag, untilFailure);

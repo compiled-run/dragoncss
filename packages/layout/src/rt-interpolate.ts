@@ -317,7 +317,8 @@ export function sinCosDegrees(degrees: number, trig: Trig): SinCos {
   return { sin: trig.sin(rad), cos: trig.cos(rad) };
 }
 
-function translateMatrix(m: Matrix2D, x: number, y: number): Matrix2D {
+/** gfx::Transform::Translate (ui/gfx/geometry/transform.cc:223-229): a float translation in the axis-aligned form, a double one once the matrix is full. */
+export function translateMatrix(m: Matrix2D, x: number, y: number): Matrix2D {
   if (!m.full) return { full: false, a: m.a, b: 0, c: 0, d: m.d, e: froundOf(m.e + froundOf(x * m.a)), f: froundOf(m.f + froundOf(y * m.d)) };
   return { full: true, a: m.a, b: m.b, c: m.c, d: m.d, e: m.a * x + m.c * y + m.e, f: m.b * x + m.d * y + m.f };
 }
@@ -343,7 +344,12 @@ function rotateMatrix(m: Matrix2D, degrees: number, trig: Trig): Matrix2D {
 
 /** ComputedStyle::ApplyTransform over the functions (transform-origin excluded), against a float border-box size. */
 export function transformMatrix(ops: readonly TransformOp[], boxWidth: number, boxHeight: number, trig: Trig): Matrix2D {
-  let m = IDENTITY_MATRIX;
+  return applyTransformOps(IDENTITY_MATRIX, ops, boxWidth, boxHeight, trig);
+}
+
+/** TransformOperation::Apply of each function in order onto m, against a float border-box size. */
+export function applyTransformOps(start: Matrix2D, ops: readonly TransformOp[], boxWidth: number, boxHeight: number, trig: Trig): Matrix2D {
+  let m = start;
   for (const op of ops) {
     const fam = family(op.fn);
     if (fam === 'translate') m = translateMatrix(m, resolveLength(op.x, froundOf(boxWidth)), resolveLength(op.y, froundOf(boxHeight)));
@@ -586,6 +592,19 @@ function channel(v: number): string {
   return intToString(roundOf(c));
 }
 
+/** A colour as a device draws it: 8-bit channels and alpha. */
+export type Rgba8Value = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
+
+function channelValue(v: number): number {
+  return roundOf(v < 0 ? 0 : v > 255 ? 255 : v);
+}
+
+/** T065 R16: the colour as the device draws it, the channels and 8-bit alpha serializeColor shows (Chrome's computed colour). */
+export function colorRgba8(c: LegacyColor): Rgba8Value {
+  const scaled = roundHalfAway(froundOf(c.alpha + froundOf(1e-7)) * 255.0);
+  return { r: channelValue(c.r), g: channelValue(c.g), b: channelValue(c.b), alpha: scaled < 0 ? 0 : scaled > 255 ? 255 : scaled };
+}
+
 /** Color::SerializeLegacyColorAsCSSColor. */
 export function serializeColor(c: LegacyColor): string {
   const opaque = c.alpha >= 1;
@@ -647,4 +666,28 @@ export function serializeValue(v: AnimatedValue, boxWidth: number, boxHeight: nu
   if (v.kind === 'angle') return serializeAngle(v.number);
   if (v.kind === 'color') return serializeColor(v.color);
   return serializeTransform(v.ops, boxWidth, boxHeight, trig);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Value ranges (T065 R13; Chrome measurement M26): InterpolableLength::CreateLength clamps a px or % result of a
+// non-negative property (padding, width, height, min/max sizes, gaps) at 0. Margins and insets take every value.
+
+export type ValueRange = 'all' | 'non-negative';
+
+/** A length-percentage property at progress, clamped to its value range; a mixed calc() keeps its range for use time. */
+export function interpolateLengthInRange(from: LengthValue, to: LengthValue, progress: number, range: ValueRange, faults: RtFaults): LengthValue {
+  const clamp = range === 'non-negative' && !faults.nonNegativeUnclamped;
+  const hasPercentage = from.kind !== 'px' || to.kind !== 'px';
+  const pixels = blendDouble(from.px, to.px, progress);
+  const percentage = blendDouble(from.percent, to.percent, progress);
+  if (pixels !== 0 && hasPercentage) return { kind: 'calc', px: froundOf(pixels), percent: froundOf(percentage) };
+  if (hasPercentage) return { kind: 'percent', px: 0, percent: froundOf(clamp && percentage < 0 ? 0 : percentage) };
+  return { kind: 'px', px: froundOf(clamp && pixels < 0 ? 0 : pixels), percent: 0 };
+}
+
+/** interpolateValue with the property's value range applied to lengths (opacity and colour channels always clamp). */
+export function interpolateValueInRange(from: AnimatedValue, to: AnimatedValue, progress: number, range: ValueRange, faults: RtFaults): InterpolatedValue {
+  if (from.kind !== 'length' || to.kind !== 'length') return interpolateValue(from, to, progress, faults);
+  const length = interpolateLengthInRange(from.length, to.length, progress, range, faults);
+  return { refused: false, value: { kind: 'length', number: 0, length, color: TRANSPARENT, ops: [] } };
 }

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.f { width: 60px; height: 20px; background-color: #ccc; }
+.f:focus { width: 80px; background-color: #00c; }
+.g { width: 60px; height: 20px; background-color: #ddd; }
+.g:focus-visible { background-color: #c00; }
+.wrap { padding: 2px; background-color: #eee; }
+.wrap:hover .f { height: 30px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="f" class="f">XX</div></div>
+<div data-dragon-id="g" class="g"></div>
+</body>
+</html>

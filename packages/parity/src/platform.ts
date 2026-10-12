@@ -1,7 +1,9 @@
 // Capture platforms (docs/decisions.md, Linux lane scope): committed Chrome references are keyed by the platform they were
 // captured on. Milestone 1's reference is darwin-arm64; the Linux lane is written but unavailable (not run).
-import { REFERENCE_PLATFORM as ENGINE_REFERENCE } from '@dragon/layout';
-import { REFERENCE_PLATFORM as COMPILER_REFERENCE } from 'dragon';
+// The modules that define them, not the package entries: a script that needs only the platform (ua:capture) keeps the whole
+// compiler and engine out of its regen inputs.
+import { REFERENCE_PLATFORM as ENGINE_REFERENCE } from '../../layout/src/platform.ts';
+import { REFERENCE_PLATFORM as COMPILER_REFERENCE } from '../../dragon/src/ua/datasets.ts';
 
 /** The platform the committed Chrome references, the UA dataset and the platform rules were captured on. */
 export const REFERENCE_PLATFORM = 'darwin-arm64';

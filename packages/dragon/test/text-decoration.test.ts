@@ -104,6 +104,17 @@ describe('a:any-link (html.css:1501-1505)', () => {
   });
 });
 
+describe('text-underline-offset inherits as a computed length', () => {
+  it('a calculation\'s em and rem compute at the declaring element, so a smaller-font child inherits 11px, not its own 0.5em + 1px', () => {
+    const root = resolve('html { font-size: 16px; } .p { font-size: 20px; text-underline-offset: calc(0.5em + 1px); } .q { font-size: 10px; } .r { text-underline-offset: calc(-0.5rem - .25em); }', (r) => [
+      el(r, 'p', 'div', ['p'], [el(r, 'q', 'a', ['q'], [text(r, 't', 'XX')], { href: '#' })]),
+      el(r, 'r', 'div', ['r', 'q']),
+    ]);
+    const offset = (id: string): string => valueToString((find(root, id).props.get('text-underline-offset') as ResolvedValue).value);
+    expect([offset('p'), offset('q'), offset('r')]).toEqual(['calc(10px + 1px)', 'calc(10px + 1px)', 'calc(-8px - 2.5px)']);
+  });
+});
+
 describe('propagation (css-text-decor-3 §2.1)', () => {
   const css = 'body { font-family: Ahem; } .u { text-decoration: underline red; } .o { text-decoration: overline; } .f { display: flex; } .ab { position: absolute; } .if { display: inline-flex; } .ib { display: inline-block; }';
   const tree = (r: SourceRef) => [el(r, 'u', 'div', ['u'], [

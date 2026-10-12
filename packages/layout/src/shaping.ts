@@ -6,11 +6,12 @@
 import type { TextFont } from './input.ts';
 import { isEastAsian } from './linebreak.ts';
 import {
-  bracketIndex, BRACKET_OPEN, BRACKET_PAIRS, isClosePunctuation, isExtendedPictographic, isMark, isOpenPunctuation, SCRIPT_TAGS, scriptCode, scriptExtensions,
+  bracketIndex, BRACKET_OPEN, BRACKET_PAIRS, isClosePunctuation, isExtendedPictographic, isLatinText, isMark, isOpenPunctuation, SCRIPT_TAGS, scriptCode, scriptExtensions,
   USCRIPT_BOPOMOFO, USCRIPT_COMMON, USCRIPT_HAN, USCRIPT_HIRAGANA, USCRIPT_INHERITED, USCRIPT_KATAKANA, USCRIPT_LATIN,
 } from './script-data.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from './text.ts';
 import { fontMetricLengths } from './text.ts';
+import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import {
   add, floatAdd, floorToWholePx, fontMetricPx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, neg, platformFontSize, roundCoreTextMetricToWholePx,
@@ -1494,7 +1495,7 @@ function lineOffsetOf(items: readonly BreakItem[], index: number, offset: number
 // The measurer
 
 /** An item shaped once per text, face and size, cached per ShapedText (per layout). */
-export type ShapedItem = { readonly ok: true; readonly item: ShapeItem; readonly result: ShapeResult } | { readonly ok: false; readonly reason: string };
+export type ShapedItem = { readonly ok: true; readonly item: ShapeItem; readonly result: ShapeResult } | { readonly ok: false; readonly code: TextRefusalCode; readonly reason: string };
 
 export type ShapedText = {
   /** R2's TextMeasurer, over the face TextFont.family names (the face id: Ahem, or a bundled face's sha256). */
@@ -1512,13 +1513,13 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     if (hit !== undefined) return hit;
     const f = faces.get(face);
     let out: ShapedItem;
-    if (f === undefined) out = { ok: false, reason: `no bundled face ${face}` };
+    if (f === undefined) out = { ok: false, code: 'text-glyph', reason: `no bundled face ${face}` };
     else {
       const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, faults });
-      if (!made.ok) out = { ok: false, reason: made.reason };
+      if (!made.ok) out = { ok: false, code: 'text-glyph', reason: made.reason };
       else {
         const result = shapeItem(made.item);
-        out = result.missing >= 0 ? { ok: false, reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` } : { ok: true, item: made.item, result };
+        out = result.missing >= 0 ? { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` } : { ok: true, item: made.item, result };
       }
     }
     cache.set(key, out);
@@ -1529,16 +1530,6 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     return lineWidth(shaped.item, shaped.result, start, breakOffset, available, isBreakable);
   };
   const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size));
-  /** A code point index as the UTF-16 offset of the item. */
-  const offsetOf = (units: readonly number[], codePoint: number): number => {
-    let k = 0;
-    for (let i = 0; i < units.length; i++) {
-      if ((units[i] as number) < 0) continue;
-      if (k === codePoint) return i;
-      k++;
-    }
-    return units.length;
-  };
   const measurer: TextMeasurer = {
     // R5: SimpleFontData's rounded ascent and descent of the platform-size font; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {
@@ -1552,15 +1543,15 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     // ShapeResult::SnappedWidth of the whole item: FromFloatCeil of its float width.
     measure(text: string, font: TextFont): MeasureResult {
       const s = itemFor(text, font);
-      if (!s.ok) return { ok: false, reason: s.reason };
+      if (!s.ok) return { ok: false, code: s.code, reason: s.reason };
       return { ok: true, measure: { width: snapWidth(s.result.width, faults) } };
     },
     // ShapeResult::CachedWidth: the difference of the item's cached positions at code points start and end.
     measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
       const s = itemFor(text, font);
-      if (!s.ok) return { ok: false, reason: s.reason };
-      const a = cachedPositionForOffset(s.result, offsetOf(s.item.units, start));
-      const b = cachedPositionForOffset(s.result, offsetOf(s.item.units, end));
+      if (!s.ok) return { ok: false, code: s.code, reason: s.reason };
+      const a = cachedPositionForOffset(s.result, offsetOfCodePoint(s.item.units, start));
+      const b = cachedPositionForOffset(s.result, offsetOfCodePoint(s.item.units, end));
       return { ok: true, measure: { width: sub(fromRaw(b), fromRaw(a)) } };
     },
     // The float metrics of the face at the platform size (V2 of the value model); a face that is not bundled has none.
@@ -1572,11 +1563,104 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     shaped(text: string, font: TextFont): ShapedItem {
       return itemFor(text, font);
     },
+    hasFace(family: string): boolean {
+      return faces.has(family);
+    },
   };
   return { measurer, item, line };
+}
+
+/** A code point index as the UTF-16 offset of an item's units (utf16Units). */
+function offsetOfCodePoint(units: readonly number[], codePoint: number): number {
+  let k = 0;
+  for (let i = 0; i < units.length; i++) {
+    if ((units[i] as number) < 0) continue;
+    if (k === codePoint) return i;
+    k++;
+  }
+  return units.length;
+}
+
+/**
+ * A line piece as a device draws it: the glyph ids of the shaped item whose clusters fall in the piece, left to right, and each
+ * glyph's pen x in px from the piece's left, its HarfBuzz 16.16 advances summed exactly as the cached positions sum them.
+ */
+export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[] } | { readonly ok: false; readonly reason: string };
+
+/**
+ * The glyphs of code points [start, end) of text as the measurer shapes it (TextMeasurer.shaped): the whole item's shaping, not
+ * ShapeLine's reshaping at line edges, and no glyph x or y offsets. Both are exact for Ahem; the real-face slice adds them.
+ */
+export function pieceGlyphs(measurer: TextMeasurer, text: string, font: TextFont, start: number, end: number): PieceGlyphs {
+  const s = measurer.shaped(text, font);
+  if (!s.ok) return { ok: false, reason: s.reason };
+  const from = offsetOfCodePoint(s.item.units, start);
+  const to = offsetOfCodePoint(s.item.units, end);
+  const glyphs: number[] = [];
+  const xs: number[] = [];
+  let pen = 0;
+  for (const run of s.result.runs) {
+    for (const g of run.glyphs) {
+      const at = run.start + g.ci;
+      if (at < from || at >= to) continue;
+      glyphs.push(g.glyph);
+      xs.push(pen / 65536);
+      pen = pen + g.advance;
+    }
+  }
+  return { ok: true, glyphs, xs };
 }
 
 /** R2: the measurer over bundled faces and the host's HarfBuzz. */
 export function shapedMeasurer(faces: ReadonlyMap<string, ShapedFace>, shaper: GlyphShaper, faults: ShapingFaults, language: string): TextMeasurer {
   return shapedText(faces, shaper, faults, language).measurer;
+}
+
+/**
+ * R4 (notes/T056-txt1a-spec.md): the engine's measurer accepts only text whose code points are all Latin, Common or Inherited,
+ * and refuses anything else with text-script; TXT1c and TXT2 own other scripts. The shaping core itself stays script-agnostic,
+ * since the TXT1-S gate shapes every script. latinCheckSkipped plants the missing check.
+ */
+export function latinScopedMeasurer(measurer: TextMeasurer, latinCheckSkipped: boolean): TextMeasurer {
+  if (latinCheckSkipped) return measurer;
+  return {
+    metrics(font: TextFont): FontMetrics {
+      return measurer.metrics(font);
+    },
+    measure(text: string, font: TextFont): MeasureResult {
+      const outside = firstOutsideLatin(text);
+      if (outside >= 0) return outsideLatinRefusal(outside);
+      return measurer.measure(text, font);
+    },
+    measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
+      const outside = firstOutsideLatin(text);
+      if (outside >= 0) return outsideLatinRefusal(outside);
+      return measurer.measureRange(text, start, end, font);
+    },
+    lengths(font: TextFont): FontLengths {
+      return measurer.lengths(font);
+    },
+    shaped(text: string, font: TextFont): ShapedItem {
+      const outside = firstOutsideLatin(text);
+      if (outside >= 0) return { ok: false, code: 'text-script', reason: outsideLatinReason(outside) };
+      return measurer.shaped(text, font);
+    },
+    hasFace(family: string): boolean {
+      return measurer.hasFace(family);
+    },
+  };
+}
+
+/** The first code point of text outside Latin, Common and Inherited, or -1. */
+function firstOutsideLatin(text: string): number {
+  for (const ch of text) if (!isLatinText(ch)) return ch.codePointAt(0) as number;
+  return -1;
+}
+
+function outsideLatinReason(cp: number): string {
+  return `U+${cp.toString(16).toUpperCase()} is outside Latin, Common and Inherited (R4)`;
+}
+
+function outsideLatinRefusal(cp: number): MeasureResult {
+  return { ok: false, code: 'text-script', reason: outsideLatinReason(cp) };
 }

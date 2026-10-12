@@ -2,8 +2,14 @@
 // member referenced through an app subclass resolves to the android class that declares it; anything above minSdk is named.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { checkFloor, parseApiVersions, parseDexdump } from '../src/api-floor.ts';
+import { repoPath } from '../src/paths.ts';
+
+// packages/parity does not depend on packages/translate, so its missing-toolchain handler is loaded at run time from its source.
+type TranslateNative = { readonly missingToolchain: (subject: string, missing: string) => string };
+const translateNative = async (): Promise<TranslateNative> => (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as TranslateNative;
 
 const API = `<?xml version="1.0" encoding="utf-8"?>
 <api version="3">
@@ -86,11 +92,11 @@ describe('the Android API floor check', () => {
     const r = checkFloor(api, parseDexdump(`${DEX}000230: 6e10 0600 0100   |0015: invoke-virtual {v2}, Landroid/view/View;.hiddenThing:()V // method@0006\n`), 29);
     expect(r.violations.map((v) => [v.ref, v.reason])).toEqual([['android.view.View#hiddenThing()V', 'member not in api-versions.xml']]);
   });
-  it('reads the installed android-36 api-versions.xml when the SDK is present', () => {
+  it('reads the installed android-36 api-versions.xml when the SDK is present', async () => {
     const home = process.env['ANDROID_HOME'];
     const file = home === undefined ? null : join(home, 'platforms', 'android-36', 'data', 'api-versions.xml');
     if (file === null || !existsSync(file)) {
-      console.log('api-versions.xml: blocked (owner tooling): no ANDROID_HOME with platforms/android-36');
+      console.log((await translateNative()).missingToolchain('api-versions.xml', 'no ANDROID_HOME with platforms/android-36'));
       return;
     }
     const api = parseApiVersions(readFileSync(file, 'utf8'));

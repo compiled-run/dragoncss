@@ -227,6 +227,8 @@ export const CHANNEL_DELTA_BY_KIND: { readonly [K in SampleRule]: number } = {
   glyph: GATE_CHANNEL_DELTA,
   shadow: SHADOW_CHANNEL_DELTA,
   gradient: GRADIENT_CHANNEL_DELTA,
+  // REPL-a (R8): flat image content is compared strictly, with no allowance.
+  'image-flat': GATE_CHANNEL_DELTA,
 };
 
 /**

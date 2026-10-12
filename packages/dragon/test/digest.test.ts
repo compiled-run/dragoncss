@@ -1,8 +1,9 @@
 // The core's own SHA-256 and UTF-8 (digest.ts) against node:crypto, and the pre-serialized profile text (CanonicalText) against a
-// fresh canonicalJson. The digest bytes must never change: compiled digests are carried in device evidence.
+// fresh canonicalJson, and bytes entering a digest as their SHA-256. Compiled digests are carried in device evidence, so a change to
+// what they cover is a deliberate one, regenerated in one commit.
 import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes, utf8 } from '../src/digest.ts';
+import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes, sha256HexCore, utf8 } from '../src/digest.ts';
 import { COMMITTED_PROFILES, createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import type { SupportProfiles } from '../src/internal.ts';
 import { div, inputFor } from './helpers.ts';
@@ -27,9 +28,24 @@ describe('digest.ts', () => {
     for (let n = 0; n <= 200; n++) {
       const b = new Uint8Array(randomBytes(n));
       expect(sha256HexBytes(b), `${n} bytes`).toBe(nodeSha(b));
+      expect(sha256HexCore(b), `${n} bytes, the core's own hash`).toBe(nodeSha(b));
     }
     const big = new Uint8Array(randomBytes(1 << 20));
     expect(sha256HexBytes(big)).toBe(nodeSha(big));
+    expect(sha256HexCore(big)).toBe(nodeSha(big));
+  });
+
+  it('sha256Hex gives the core hash of utf8 on every string, through Node\'s hash or, for a lone surrogate, the core\'s', () => {
+    const strings = ['', 'abc', 'é', '€', '日本語', '😀', 'a😀b', '\ud800', '\udc00', '\ud800\ud800', '\udc00\ud800', 'x\ud83d', '\ud83dx', 'a'.repeat(1000)];
+    for (let k = 0; k < 20; k++) {
+      let s = '';
+      // Half of them well formed (no surrogate units), half with any UTF-16 unit, lone surrogates included.
+      for (let i = 0; i < 300; i++) s += String.fromCharCode(Math.floor(Math.random() * (k % 2 === 0 ? 0xd800 : 0x10000)));
+      strings.push(s);
+    }
+    for (const s of strings) expect(sha256Hex(s), JSON.stringify(s.slice(0, 40))).toBe(sha256HexCore(utf8(s)));
+    const profile = canonicalJson(COMMITTED_PROFILES.android);
+    expect(sha256Hex(profile)).toBe(sha256HexCore(utf8(profile)));
   });
 
   it('utf8 encodes each code point, surrogate pairs as four bytes and lone surrogates as three, like iterating by code point', () => {
@@ -48,6 +64,16 @@ describe('digest.ts', () => {
     const viaText = canonicalJson({ ...value, a: new CanonicalText(canonicalJson(COMMITTED_PROFILES.android)) });
     expect(viaText).toBe(direct);
     expect(sha256Hex(viaText)).toBe(sha256Hex(direct));
+  });
+
+  it('bytes enter canonical JSON as their SHA-256, so every byte still counts and a font costs one hash', () => {
+    const bytes = randomBytes(4096);
+    expect(canonicalJson(bytes)).toBe(JSON.stringify(`sha256:${nodeSha(bytes)}`));
+    expect(canonicalJson({ asset: bytes })).toBe(`{"asset":${JSON.stringify(`sha256:${nodeSha(bytes)}`)}}`);
+    const edited = Uint8Array.from(bytes);
+    edited[4095] = (edited[4095] as number) ^ 1;
+    expect(canonicalJson(edited)).not.toBe(canonicalJson(bytes));
+    expect(canonicalJson(new Uint8Array(0))).toBe(JSON.stringify(`sha256:${nodeSha(new Uint8Array(0))}`));
   });
 
   it('a project reads one deep-frozen copy of its profiles, so editing the caller profile changes neither its checks nor its digest', () => {

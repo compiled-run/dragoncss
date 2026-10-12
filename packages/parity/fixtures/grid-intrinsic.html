@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; margin-bottom: 4px; width: 300px; justify-content: start; }
+.a { grid-template-columns: auto auto; }
+.b { grid-template-columns: auto max-content min-content; }
+.c { grid-template-columns: fit-content(30px) fit-content(100px) minmax(20px, max-content); }
+.d { grid-template-columns: minmax(auto, 30px) 40px; }
+.e { grid-template-columns: auto auto; column-gap: 10px; }
+.f { grid-template-columns: repeat(3, auto); }
+.h { grid-template-columns: minmax(10px, 20px) minmax(10px, 100px); width: 100px; }
+.i { grid-template-columns: auto auto auto; width: 100.7px; justify-content: normal; }
+.j { grid-template-columns: minmax(min-content, auto) auto; grid-template-rows: auto minmax(5px, auto); }
+.w80 { width: 80px; height: 4px; }
+.w50 { width: 50px; height: 4px; }
+.w120 { width: 120px; height: 4px; }
+.s2 { grid-column: 1 / 3; }
+.s3 { grid-column: 1 / 4; }
+.pad { padding: 2px 3px; border: 1px solid; margin: 1px 2px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="g a"><div data-dragon-id="a1">XX XX</div><div data-dragon-id="a2">XXX</div><div data-dragon-id="a3" class="s2">XXXXXXXXX</div></div>
+<div data-dragon-id="b" class="g b"><div data-dragon-id="b1">X XXX</div><div data-dragon-id="b2">XX XX</div><div data-dragon-id="b3">XXX X</div></div>
+<div data-dragon-id="c" class="g c"><div data-dragon-id="c1">XXXXX X</div><div data-dragon-id="c2">XX XX XX</div><div data-dragon-id="c3">X</div></div>
+<div data-dragon-id="d" class="g d"><div data-dragon-id="d1" class="w80"></div><div data-dragon-id="d2" class="pad">XX</div></div>
+<div data-dragon-id="e" class="g e"><div data-dragon-id="e1" class="w50 s2"></div><div data-dragon-id="e2" class="w120 s2"></div></div>
+<div data-dragon-id="f" class="g f"><div data-dragon-id="f1" class="s3">XXXX XXXX</div><div data-dragon-id="f2">X</div></div>
+<div data-dragon-id="h" class="g h"><div data-dragon-id="h1">X</div><div data-dragon-id="h2">XX</div></div>
+<div data-dragon-id="i" class="g i"><div data-dragon-id="i1">X</div><div data-dragon-id="i2">XX</div><div data-dragon-id="i3">X</div></div>
+<div data-dragon-id="j" class="g j"><div data-dragon-id="j1" class="pad">XXX XX</div><div data-dragon-id="j2">X</div><div data-dragon-id="j3">XX</div></div>
+</body>
+</html>

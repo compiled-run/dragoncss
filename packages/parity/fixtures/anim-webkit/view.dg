@@ -1,0 +1,13 @@
+<div w0
+{on === true ? 'on' : ''}
+<div w1
+<div w2
+<div w3
+<div a0
+<div a1
+<div a2
+<div a3
+on: [false, true] = false
+component App
+<html>
+<body>

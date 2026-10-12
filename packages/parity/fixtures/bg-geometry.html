@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; flex-wrap: wrap; width: 400px; column-gap: 6px; row-gap: 6px; }
+.b { width: 70px; height: 40px; border: 3px solid #123; padding: 4px 6px 2px 8px; background-color: #eee; background-repeat: no-repeat; }
+.ob { background-image: linear-gradient(#fa0, #05a); background-origin: border-box; background-size: 50% 50%; background-position: 100% 100%; }
+.op { background-image: linear-gradient(#fa0, #05a); background-origin: padding-box; background-size: 30px 20px; background-position: center; }
+.oc { background-image: linear-gradient(#fa0, #05a); background-origin: content-box; background-size: 50% auto; background-position: 0 0; }
+.cp { background-image: linear-gradient(#fa0, #05a); background-clip: padding-box; background-origin: border-box; background-size: cover; background-repeat: repeat; }
+.cc { background-image: radial-gradient(circle, #fa0, #05a); background-clip: content-box; background-origin: content-box; background-repeat: repeat; background-color: transparent; }
+.contain { background-image: linear-gradient(90deg, #fa0, #05a); background-size: contain; background-position: 0 0; background-repeat: repeat; }
+.px { background-image: linear-gradient(90deg, #fa0, #05a); background-size: 24px 12px; background-position: 10px 5px; }
+.pct { background-image: radial-gradient(#fa0, #05a); background-size: 40% 60%; background-position: 25% 75%; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="ob" class="b ob"></div>
+<div data-dragon-id="op" class="b op"></div>
+<div data-dragon-id="oc" class="b oc"></div>
+<div data-dragon-id="cp" class="b cp"></div>
+<div data-dragon-id="cc" class="b cc"></div>
+<div data-dragon-id="contain" class="b contain"></div>
+<div data-dragon-id="px" class="b px"></div>
+<div data-dragon-id="pct" class="b pct"></div>
+</div>
+</body>
+</html>

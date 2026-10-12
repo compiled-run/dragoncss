@@ -1,0 +1,41 @@
+// S3a: the element tree, components, states, aliases and choices.
+import { diagnosticFeature, error, manual } from '../entry.ts';
+
+export const S3A = diagnosticFeature(
+  [
+    'DRAGON_TREE_NODE_KIND',
+    'DRAGON_TREE_RAW_HTML',
+    'DRAGON_TREE_DUPLICATE_ID',
+    'DRAGON_TREE_REFERENCE',
+    'DRAGON_CALL_CYCLE',
+    'DRAGON_STATE_UNKNOWN',
+    'DRAGON_STATE_DOMAIN_INVALID',
+    'DRAGON_STATE_VALUE_DOMAIN',
+    'DRAGON_ALIAS_CYCLE',
+    'DRAGON_ALIAS_DOMAIN',
+    'DRAGON_INITIAL_CONFLICT',
+    'DRAGON_CHOICE_OVERLAP',
+    'DRAGON_CHOICE_MISSING',
+    'DRAGON_STATE_SPACE_LIMIT',
+    'DRAGON_CLASS_OWNER',
+    'DRAGON_UNPROVEN_CONTEXT',
+  ],
+  {
+    DRAGON_TREE_NODE_KIND: error('Unknown tree node kind.', 'Unknown node kinds are errors for resolved native output (docs/api.md §3.1).', manual('Use a tree@0 node kind', 'Use element, text, call, projection or branch nodes.')),
+    DRAGON_TREE_RAW_HTML: error('Raw HTML is not allowed in the tree.', 'Raw HTML hides structure the compiler must resolve for every target (docs/api.md §3.1).', manual('Describe the markup as nodes', 'Replace the raw HTML with element and text nodes.')),
+    DRAGON_TREE_DUPLICATE_ID: error('Duplicate id.', 'Node, component, state and style ids address resolved results; a duplicate would merge two of them.', manual('Make the id unique', 'Give each node, component, state, parameter, slot and style use its own id in its scope.')),
+    DRAGON_TREE_REFERENCE: error('Unknown or invalid reference in the tree.', 'Every component, module, slot, parameter, style use and document element must resolve.', manual('Fix the reference', 'Reference an id declared in the tree.')),
+    DRAGON_CALL_CYCLE: error('Component calls form a cycle.', 'A recursive call has no finite logical element tree.', manual('Break the cycle', 'Remove the recursive component call.')),
+    DRAGON_STATE_UNKNOWN: error('Unknown state reference.', 'A condition or alias that reads an undeclared state has no domain, so its style cases cannot be enumerated.', manual('Declare the state', 'Reference a state or parameter declared by the instance.')),
+    DRAGON_STATE_DOMAIN_INVALID: error('Invalid state domain.', 'Domains are nonempty lists of distinct finite JSON scalars; NaN, Infinity and -0 have no stable identity.', manual('Fix the domain', 'Use distinct strings, finite numbers other than -0, booleans or null.')),
+    DRAGON_STATE_VALUE_DOMAIN: error('Value outside its domain.', 'Initial values, arguments and compared values must be members of the declared domain, by type and value.', manual('Use a domain value', 'Use one of the declared domain values; true, "true" and 1 differ.')),
+    DRAGON_ALIAS_CYCLE: error('State aliases form a cycle.', 'A cyclic alias has no state that owns the value.', manual('Break the alias cycle', 'Make one instance own the state and alias the others to it.')),
+    DRAGON_ALIAS_DOMAIN: error('Alias domains are incompatible.', 'Every value the caller state can take must be valid for the controlled local state.', manual('Align the domains', 'Make the caller domain a subset of the local domain.')),
+    DRAGON_INITIAL_CONFLICT: error('Conflicting initial values.', 'Two explicit initial assignments reach the same state through aliases with different values.', manual('Assign the state once', 'Remove one of the conflicting initial assignments.')),
+    DRAGON_CHOICE_OVERLAP: error('Choice arms overlap.', 'Exactly one arm must hold for every reachable assignment (docs/api.md §3.2).', manual('Make the arms exclusive', 'Tighten the conditions so no assignment satisfies two arms.')),
+    DRAGON_CHOICE_MISSING: error('No choice arm holds for a reachable assignment.', 'Exactly one arm must hold for every reachable assignment (docs/api.md §3.2).', manual('Cover every assignment', 'Add an arm for the uncovered assignment, for example the complement.')),
+    DRAGON_STATE_SPACE_LIMIT: error('Too many reachable state assignments.', 'Every reachable assignment is resolved and tested; the compiler never truncates the state space.', manual('Reduce the state space', 'Split the component or reduce its independent states.')),
+    DRAGON_CLASS_OWNER: error('Class symbol from another owner.', 'An element may carry only its own component\'s or its document\'s class symbols (docs/api.md §3.1).', manual('Use an own class', 'Declare the class in a style use owned by the element\'s component or the document.')),
+    DRAGON_UNPROVEN_CONTEXT: error('This value is not proven in this formatting context.', 'Profile rows are proven per formatting context; another context may behave differently (docs/api.md §6.3).', manual('Use a proven context', 'Use the value only in a proven context, or add a passing fixture for this one.')),
+  },
+);

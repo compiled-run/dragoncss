@@ -1,5 +1,5 @@
 // Runs the Dragon half of the sweep over worker threads: each compile hashes the three support profiles into its digest, so the
-// corpus is split across the cores. Rows come back in corpus order.
+// corpus is split across every core (the main thread only waits). Rows come back in corpus order.
 import { availableParallelism } from 'node:os';
 import { Worker } from 'node:worker_threads';
 import type { DragonResult } from './dragon.ts';
@@ -20,7 +20,7 @@ export type DragonRow = {
   readonly crashes: readonly string[];
 };
 
-export async function compileAll(items: readonly Item[], threads: number = Math.max(1, availableParallelism() - 2)): Promise<DragonRow[]> {
+export async function compileAll(items: readonly Item[], threads: number = availableParallelism()): Promise<DragonRow[]> {
   // Interleaved chunks, so each worker gets a like share of the costly utilities that sit together in the class list.
   if (new Set(items.map((it) => it.key)).size !== items.length) throw new Error('two items share a key');
   const n = Math.max(1, Math.min(threads, items.length));

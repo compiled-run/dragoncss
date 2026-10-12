@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -6,6 +6,7 @@ import type { ComponentDefinition, Diagnostic, DiagnosticCode, DraftTree, Elemen
 import { createProject, formatDiagnostic } from '../src/index.ts';
 import { applyFix, CATALOGUE, compiledCases, DIAGNOSTIC_CODES, iosLayoutProjection, MAX_STATE_ASSIGNMENTS } from '../src/internal.ts';
 import { sha256Hex } from '../src/digest.ts';
+import { DIAGNOSTIC_FEATURE_ORDER, DIAGNOSTIC_FEATURES, LEGACY_FEATURES } from '../src/diagnostics/codes.ts';
 import { always, and, eq, expectCatalogued, not, Sources, spanTextOf } from './helpers.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
@@ -32,11 +33,17 @@ describe('the diagnostic catalogue (docs/api.md §6.1)', () => {
     }
   });
 
-  it('the committed code list only grows: S2 codes and the committed list are prefixes, in order, of the live list', () => {
-    const committed = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'diagnostic-codes.json'), 'utf8')) as string[];
+  it('the committed code lists only grow: S2 codes and the legacy list are in-order prefixes of the live list, and every later feature equals its own committed list', () => {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const read = (p: string): string[] => JSON.parse(readFileSync(join(dir, p), 'utf8')) as string[];
+    const committed = read('diagnostic-codes.json');
     expect(DIAGNOSTIC_CODES.slice(0, S2_CODES.length)).toEqual(S2_CODES);
     expect(DIAGNOSTIC_CODES.slice(0, committed.length)).toEqual(committed);
-    expect([...DIAGNOSTIC_CODES]).toEqual(committed);
+    expect(LEGACY_FEATURES.flatMap((id) => DIAGNOSTIC_FEATURES[id].codes)).toEqual(committed);
+    // diagnostic-codes/<feature>.json pins each feature added after the split; a feature is never removed, so neither is its pin.
+    const added = DIAGNOSTIC_FEATURE_ORDER.filter((id) => !LEGACY_FEATURES.includes(id));
+    expect(readdirSync(join(dir, 'diagnostic-codes')).sort()).toEqual(added.map((id) => `${id}.json`).sort());
+    expect([...DIAGNOSTIC_CODES]).toEqual([...committed, ...added.flatMap((id) => read(`diagnostic-codes/${id}.json`))]);
   });
 });
 

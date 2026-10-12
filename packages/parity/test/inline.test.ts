@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutRect } from '@dragon/layout';
-import { absoluteRects, inlineLeaves, layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, placeLines, zoomInput } from '@dragon/layout';
+import { absoluteRects, inlineLeaves, layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, zoomInput } from '@dragon/layout';
 import type { CompilerFaults } from 'dragon';
 import { collapseInlineContext, collapseInlineRun, NO_FAULTS, programInput } from 'dragon';
 import { CHROME_VERSION, launchChrome } from '../src/chrome.ts';
@@ -172,6 +172,27 @@ describe('the reference dump of an inline fixture (T058 Amendment 1)', () => {
   });
 });
 
+describe('the program of an inline box or <br> view', () => {
+  it('gives every box view, inline boxes and <br>s included, the background and border writes its view reads back (device-applied)', () => {
+    // A DragonBoxView reports its background and borders whatever the program wrote, so a box view without those writes fails (b).
+    const missing: string[] = [];
+    const checked = new Set<string>();
+    for (const n of nativeCases()) {
+      for (const [backend, p] of Object.entries(n.programs)) {
+        for (const x of p.nodes) {
+          if (!x.native.endsWith('DragonBoxView')) continue;
+          checked.add(`${n.case.id} ${backend} ${x.id}`);
+          const kinds = new Set<string>(x.writes.map((w) => w.kind));
+          for (const k of ['background-color', 'border-widths', 'border-styles', 'border-colors']) if (!kinds.has(k)) missing.push(`${n.case.id} ${backend} ${x.id} ${k}`);
+        }
+      }
+    }
+    // The span m1s and the <br> m1b of inline-mixed-sizes, whose views failed device-applied without these writes, are box views checked here.
+    for (const backend of ['uikit', 'android-views']) for (const id of ['m1s', 'm1b']) expect(checked.has(`inline-mixed-sizes ${backend} ${id}`), `${backend} ${id}`).toBe(true);
+    expect(missing).toEqual([]);
+  });
+});
+
 describe('the capture of inline boxes (T058 Amendment 1, capture.ts)', () => {
   it('records one "<id>:line<j>" per line an inline box is on, and none for a <br>', async () => {
     const f = layoutCases().find((x) => x.spec.id === 'inline-br');
@@ -225,7 +246,7 @@ describe('the host side of the single-run-baseline plant (T058J3 F)', () => {
       const box = find(zoomed.root);
       const out = layout(input, m.measurer);
       if (box === null || out.kind !== 'ok') throw new Error(`b1 is not laid out at ${dpr}`);
-      const ctx = { measurer: m.measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS };
+      const ctx = { measurer: m.measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
       const leaf = inlineLeaves(box).findIndex((t) => t.id === 'b1:text1');
       const lines = placeLines(ctx, box, (absoluteRects(out.boxes).get('b1') as LayoutRect).width).filter((l) => l.pieces.some((p) => p.leaf === leaf));
       expect(lines.length, `${dpr}`).toBe(2);

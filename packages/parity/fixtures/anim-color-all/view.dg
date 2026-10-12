@@ -1,0 +1,8 @@
+<div btn
+{hover === true ? 'h' : ''}
+<div label
+X
+hover: [false, true] = false
+component App
+<html>
+<body>

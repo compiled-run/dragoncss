@@ -21,6 +21,16 @@ describe('the font shorthand', () => {
     expect(longhands('font: oblique 20deg 600 12px/1.5 "a b", serif').set).toEqual(['font-style=oblique 20deg', 'font-weight=600', 'font-size=12px', 'line-height=1.5', 'font-family="a b" , serif']);
     expect(longhands('font: normal bold normal 2em x').set).toEqual(['font-style=normal (reset)', 'font-weight=bold', 'font-size=2em', 'line-height=normal (reset)', 'font-family=x']);
   });
+  it('takes a math function by the type it resolves to: a number is the weight, an angle after oblique the oblique angle', () => {
+    expect(longhands('font: calc(600) 10px x')).toEqual({ set: ['font-style=normal (reset)', 'font-weight=600', 'font-size=10px', 'line-height=normal (reset)', 'font-family=x'], codes: [] });
+    expect(longhands('font: italic calc(600) 12px/1 x').set).toEqual(['font-style=italic', 'font-weight=600', 'font-size=12px', 'line-height=1', 'font-family=x']);
+    // As font-style: oblique calc(20deg) is: the angle is the style's, refused as a calculation, never taken as the size.
+    expect(longhands('font: oblique calc(20deg) 12px x').codes).toEqual(longhands('font-style: oblique calc(20deg)').codes);
+    expect(longhands('font: oblique calc(20deg) 12px x').codes).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(longhands('font: calc(10px + 2px) x').set[1]).toBe('font-weight=normal (reset)');
+    // A number calculation is never the size, so a value with nothing after the size has no family.
+    expect(longhands('font: calc(600) x').codes).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+  });
   it('a CSS-wide keyword sets each modelled longhand', () => {
     for (const k of ['inherit', 'initial', 'unset']) expect(longhands(`font: ${k}`).set, k).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family'].map((p) => `${p}=${k}`));
   });

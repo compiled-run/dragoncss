@@ -1,9 +1,11 @@
 // TXT-W1 (T147 part 1, notes/T147J-txt-weight.md) against the pinned Chrome: the font-weight and font-style grammar table and
 // bolder/lighter chains compute as Chrome computes them, the synthesis predicate says synthesized exactly where Chrome's pixels
 // change under font-synthesis, native refuses synthesized text, and each of the six plants is caught by one of these tests. The
-// pins check that BASE's outputs are unchanged but for the two computed keys.
-import { execFileSync } from 'node:child_process';
+// pins check that BASE's outputs are unchanged but for the computed keys added since.
+import { createHash } from 'node:crypto';
+import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Compiled, FrontEndResult } from 'dragon';
 import * as dragon from 'dragon';
@@ -25,8 +27,9 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** The commit this branch was cut from (inl1a-tags-v2, T133 on INL1a part C2); its outputs are BASE. */
-const BASE = '398c8bc16';
+/** The outputs of BASE (batch #262 at 5b4cce0238), as digests the BASE pins recompute. */
+const BASE_OUTPUTS = { files: 12196, digest: '4c1a48fa2bf16876fafb835e58052616aba5e09e03847cf72c57fe85ad60f0ef' };
+const BASE_CAPTURES = { files: 3114, digest: '5144ddabbaca0c722d9a9da39eee0526d0246f685c27518f75386aaa68f5a43b' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -195,43 +198,48 @@ describe('the native refusals', () => {
 });
 
 describe('BASE pins', () => {
-  const git = (...args: string[]): string => execFileSync('git', args, { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 1 << 28 });
-  it('the text-weight group follows BASE\'s groups and adds exactly its own layout cases', () => {
-    // TXT-W2 appends font-shorthand after it (font-shorthand.test.ts).
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-3)).toEqual(['text-weight', 'font-shorthand', 'text-decoration']);
+  // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
+  // no git history): each is the sha256 of "<path>\t<sha256 of its content>" lines in path order, over every file but TXT-W1's own
+  // (its text-weight cases and the fonts-weight-synthetic font fixture) and TXT-W2's (its font-shorthand cases). Each digest was taken at BASE with git and equals this
+  // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-)/.test(p);
+  const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
+    .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
+  const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
+    createHash('sha256').update(paths.map((p) => `${p}\t${createHash('sha256').update(content(p)).digest('hex')}\n`).join('')).digest('hex');
+  it('the text-weight group adds exactly its own layout cases and keeps every BASE case in order', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    expect(ids.slice(533, 533 + added.length)).toEqual(added);
+    // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
+    expect(ids.filter((id) => added.includes(id))).toEqual(added);
+    const base = ids.filter((id) => !added.includes(id));
+    // BASE is batch #262 (master f88834ce3d plus #257, #238, #254, #260 and #104-#105, which land with this change), whose FIXTURES hold 766 layout cases.
+    expect(base.length).toBe(766);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('9ed8160c7db04452c284f56fea08be80f8b3900d806881535604eccb9764b25e');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
-    const changed = git('diff', '--name-status', BASE, '--', 'packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels')
-      .split('\n').filter((l) => l !== '' && !l.startsWith('A\t') && !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(l));
-    expect(changed).toEqual([]);
+    const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
+    const paths = files(dirs, (p) => !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(p));
+    expect({ files: paths.length, digest: digest(paths, (p) => readFileSync(repoPath(p))) }).toEqual(BASE_OUTPUTS);
   });
   /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands. */
   const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
-    const paths = git('ls-tree', '-r', '--name-only', BASE, '--', ...dirs).split('\n').filter((p) => p.endsWith('.json'));
+    const paths = files(dirs, (p) => p.endsWith('.json'));
     expect(paths.length).toBeGreaterThan(1500);
-    const strip = (json: unknown): unknown => {
-      const c = json as { nodes?: { computed: Record<string, string> | null }[] };
-      for (const n of c.nodes ?? []) if (n.computed !== null) for (const k of ADDED_KEYS) delete n.computed[k];
-      return c;
+    const lacking: string[] = [];
+    const stripped = (p: string): string => {
+      const c = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
+      for (const n of c.nodes ?? []) {
+        if (n.computed === null) continue;
+        if (ADDED_KEYS.some((k) => n.computed?.[k] === undefined)) lacking.push(p);
+        for (const k of ADDED_KEYS) delete n.computed[k];
+      }
+      return JSON.stringify(c);
     };
-    const blobs = execFileSync('git', ['cat-file', '--batch'], { cwd: repoPath('.'), input: paths.map((p) => `${BASE}:${p}`).join('\n'), maxBuffer: 1 << 30 });
-    let at = 0;
-    const differ: string[] = [];
-    for (const p of paths) {
-      const nl = blobs.indexOf(10, at);
-      const size = Number(blobs.subarray(at, nl).toString('utf8').split(' ')[2]);
-      const before = JSON.parse(blobs.subarray(nl + 1, nl + 1 + size).toString('utf8')) as unknown;
-      at = nl + 1 + size + 1;
-      const now = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
-      for (const n of now.nodes ?? []) if (n.computed !== null && ADDED_KEYS.some((k) => n.computed?.[k] === undefined)) differ.push(`${p}: a node lacks an added key`);
-      if (JSON.stringify(strip(now)) !== JSON.stringify(strip(before))) differ.push(p);
-    }
-    expect(differ).toEqual([]);
+    expect({ files: paths.length, digest: digest(paths, stripped) }).toEqual(BASE_CAPTURES);
+    expect([...new Set(lacking)]).toEqual([]);
     expect(readdirSync(repoPath('packages/parity/expected/darwin-arm64')).some((f) => f.startsWith('text-weight-numeric'))).toBe(true);
   });
 });

@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 8400
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 8400
+  },
+  {
+   "id": "app",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 53760,
+   "height": 8400
+  },
+  {
+   "id": "record",
+   "parent": "app",
+   "x": 2016,
+   "y": 0,
+   "width": 20160,
+   "height": 3360
+  },
+  {
+   "id": "title",
+   "parent": "app",
+   "x": 2016,
+   "y": 3360,
+   "width": 26880,
+   "height": 2016
+  },
+  {
+   "id": "title:text0",
+   "parent": "title",
+   "x": 0,
+   "y": 128,
+   "width": 15120,
+   "height": 1664
+  },
+  {
+   "id": "title:text0:line0",
+   "parent": "title:text0",
+   "x": 0,
+   "y": 0,
+   "width": 15120,
+   "height": 1664
+  },
+  {
+   "id": "play",
+   "parent": "app",
+   "x": 2016,
+   "y": 5376,
+   "width": 37632,
+   "height": 2016
+  },
+  {
+   "id": "btn",
+   "parent": "play",
+   "x": 0,
+   "y": 0,
+   "width": 3360,
+   "height": 1344
+  },
+  {
+   "id": "time",
+   "parent": "app",
+   "x": 2016,
+   "y": 7392,
+   "width": 33600,
+   "height": 1008
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 131,
+   "width": 1050,
+   "height": 131
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 131,
+   "width": 1050,
+   "height": 131
+  },
+  {
+   "id": "app",
+   "left": 0,
+   "top": 0,
+   "right": 840,
+   "bottom": 131,
+   "width": 840,
+   "height": 131
+  },
+  {
+   "id": "record",
+   "left": 32,
+   "top": 0,
+   "right": 347,
+   "bottom": 53,
+   "width": 315,
+   "height": 53
+  },
+  {
+   "id": "title",
+   "left": 32,
+   "top": 53,
+   "right": 452,
+   "bottom": 84,
+   "width": 420,
+   "height": 31
+  },
+  {
+   "id": "title:text0",
+   "left": 32,
+   "top": 55,
+   "right": 268,
+   "bottom": 81,
+   "width": 236,
+   "height": 26
+  },
+  {
+   "id": "title:text0:line0",
+   "left": 32,
+   "top": 55,
+   "right": 268,
+   "bottom": 81,
+   "width": 236,
+   "height": 26
+  },
+  {
+   "id": "play",
+   "left": 32,
+   "top": 84,
+   "right": 620,
+   "bottom": 116,
+   "width": 588,
+   "height": 32
+  },
+  {
+   "id": "btn",
+   "left": 32,
+   "top": 84,
+   "right": 84,
+   "bottom": 105,
+   "width": 52,
+   "height": 21
+  },
+  {
+   "id": "time",
+   "left": 32,
+   "top": 116,
+   "right": 557,
+   "bottom": 131,
+   "width": 525,
+   "height": 15
+  }
+ ]
+}

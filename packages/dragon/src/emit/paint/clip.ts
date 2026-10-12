@@ -3,7 +3,8 @@
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 
-const SWIFT_MEMBERS = String.raw`  public private(set) var dragonClipView: DragonClipView? = nil
+const SWIFT_MEMBERS = String.raw`  /// The view the children are hosted in over the padding box: a DragonClipView, or the scroll module's DragonScrollView.
+  public private(set) var dragonClipView: UIView? = nil
   /// Overflow hidden: the children are hosted by a clip view over the padding box.
   public func dragonEnableClip() {
     let c = dragonMakeContainer()
@@ -31,7 +32,8 @@ public func dragonAppliedClip(_ v: DragonBoxView) -> DumpJsonObject {
 }
 `;
 
-const KOTLIN_MEMBERS = String.raw`  var dragonClipView: DragonClipView? = null
+const KOTLIN_MEMBERS = String.raw`  /** The view the children are hosted in over the padding box: a DragonClipView, or the scroll module's DragonScrollView. */
+  var dragonClipView: DragonClipView? = null
     private set
   /** Overflow hidden: the children are hosted by a clip view over the padding box. */
   fun dragonEnableClip() {

@@ -1,0 +1,9 @@
+@keyframes slide { from { width: 10px; } to { width: 110px; } }
+.bar { height: 4px; background-color: rgb(0, 0, 0); }
+.d0 { animation: slide 0.5s linear 2 alternate; }
+.d1 { animation: slide 0.5s linear reverse; }
+.d2 { animation: slide 0.5s ease-in 0.3s backwards; }
+.d3 { animation: slide 0.4s linear 0.2s 2 reverse backwards; }
+.d4 { animation: slide 0.4s ease-out 0.2s 3 alternate backwards; }
+.d5 { animation-name: slide; animation-duration: 0.5s; animation-timing-function: linear; animation-delay: 0.25s; animation-iteration-count: 3; animation-direction: alternate; animation-fill-mode: backwards; }
+.d6 { animation: slide 0.5s linear 0.2s 2 reverse; }

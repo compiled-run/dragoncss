@@ -7,6 +7,6 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "customConditions": ["dragon-internal"]
   },
-  "include": ["src", "test", "../../scripts"],
+  "include": ["src", "test", "../../scripts", "../translate/src/build-cache.ts"],
   "references": [{ "path": "../layout" }, { "path": "../dragon" }]
 }

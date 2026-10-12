@@ -115,8 +115,8 @@ describe('br in the element table (INL1a)', () => {
 });
 
 describe('b, strong, em and i in the element table (T133, R7)', () => {
-  it('are supported, appended after br, and read dragon-unstyled\'s UA row', () => {
-    expect([...SUPPORTED_TAGS].slice(-5)).toEqual(['br', 'b', 'strong', 'em', 'i']);
+  it('are supported, appended last (after br and the replaced tags), and read dragon-unstyled\'s UA row', () => {
+    expect([...SUPPORTED_TAGS].slice(-4)).toEqual(['b', 'strong', 'em', 'i']);
     for (const t of ['b', 'strong', 'em', 'i']) expect(uaTagOf(t), t).toBe('dragon-unstyled');
   });
   for (const [scheme, ds, choice] of [['light', light, uaDatasetFor('darwin-arm64')], ['dark', dark, darkDatasetFor('darwin-arm64')]] as const) {

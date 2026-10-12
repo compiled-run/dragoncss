@@ -1,0 +1,11 @@
+{
+  "case": "content-on-elements",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"none:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"normal:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"str:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"empty:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

@@ -1,0 +1,471 @@
+{
+ "schema": "dragon-frames-capture/1",
+ "case": "anim-play-state@400x300",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2.625,
+ "direction": "ltr",
+ "viewport": {
+  "width": 400,
+  "height": 300
+ },
+ "steps": 23,
+ "samples": [
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1001,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 6000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(63, 31, 6)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 6000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(63, 31, 6)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 7000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(63, 31, 6)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 7000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(63, 31, 6)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 8000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(75, 38, 8)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 8000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(75, 38, 8)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 8500,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(75, 38, 8)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 8501,
+   "settle": true,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(75, 38, 8)"
+     }
+    }
+   ]
+  }
+ ]
+}

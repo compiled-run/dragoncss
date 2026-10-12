@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; --r: 12px; --pair: 20px 6px; }
+.row { display: flex; column-gap: 8px; padding: 6px; background-color: #444444; }
+.a { width: 50px; height: 50px; background-color: #ff7f50; border-radius: 16px; }
+.over { border-top-left-radius: 2px; }
+.after { border-top-left-radius: 2px; border-radius: 4px 8px; }
+.var { border-radius: var(--r); }
+.varpair { border-bottom-right-radius: var(--pair); }
+.parent { border-radius: 9px 3px; background-color: #9acd32; padding: 5px; }
+.inherit { width: 20px; height: 20px; border-radius: inherit; background-color: #4169e1; }
+.initial { border-radius: initial; }
+.unset { border-top-right-radius: unset; }
+.zero { border-radius: 0; }
+.zero-one { border-radius: 0 20px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="base" class="a"></div>
+<div data-dragon-id="over" class="a over"></div>
+<div data-dragon-id="after" class="a after"></div>
+<div data-dragon-id="var" class="a var"></div>
+<div data-dragon-id="varpair" class="a varpair"></div>
+<div data-dragon-id="parent" class="parent"><div data-dragon-id="inherit" class="inherit"></div></div>
+<div data-dragon-id="initial" class="a initial"></div>
+<div data-dragon-id="unset" class="a unset"></div>
+<div data-dragon-id="zero" class="a zero"></div>
+<div data-dragon-id="zero-one" class="a zero-one"></div>
+</div>
+</body>
+</html>

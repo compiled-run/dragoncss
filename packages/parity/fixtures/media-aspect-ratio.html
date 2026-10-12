@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.t { width: 10px; height: 4px; margin-bottom: 1px; background-color: #ccc; }
+@media (min-aspect-ratio: 4/3) { .a { width: 20px; background-color: #c00; } }
+@media (aspect-ratio: 4/3) { .b { width: 30px; } }
+@media (max-aspect-ratio: 16/9) { .c { width: 40px; } }
+@media (aspect-ratio > 2) { .d { width: 50px; } }
+@media (1/1 <= aspect-ratio <= 16/9) { .e { width: 60px; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="t a"></div>
+<div data-dragon-id="b" class="t b"></div>
+<div data-dragon-id="c" class="t c"></div>
+<div data-dragon-id="d" class="t d"></div>
+<div data-dragon-id="e" class="t e"></div>
+</body>
+</html>

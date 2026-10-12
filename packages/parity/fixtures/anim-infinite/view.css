@@ -1,0 +1,2 @@
+@keyframes pulse { from { background-color: rgb(0, 0, 0); width: 10px; } to { background-color: rgb(200, 100, 50); width: 110px; } }
+.loop { height: 6px; animation: pulse 1s linear infinite; }

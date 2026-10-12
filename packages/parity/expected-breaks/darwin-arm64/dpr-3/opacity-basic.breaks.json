@@ -1,0 +1,9 @@
+{
+  "case": "opacity-basic",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"op-text:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"op-textonly:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

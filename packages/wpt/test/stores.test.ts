@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import { expectationsPath, readExpectations } from '../src/expectations.ts';
 import { buildManifest } from '../src/manifest.ts';
 import { lockedCommit, pinnedWptDir, REPO_ROOT } from '../src/paths.ts';
@@ -52,6 +52,7 @@ describe('the committed snapshot store (packages/wpt/snapshots)', () => {
     expect(expectedReason?.status).toBe('not-runnable');
     const check = (dir: string) => spawnSync(process.execPath, ['--conditions=dragon-internal', join(REPO_ROOT, 'packages/wpt/src/cli/check.ts'), '--target', 'web', '--filter', path, '--snapshots', dir], { encoding: 'utf8', env: process.env });
     const dir = mkdtempSync(join(tmpdir(), 'dragon-wpt-snapshots-'));
+    onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
     cpSync(SNAPSHOT_DIR, dir, { recursive: true });
     expect(check(dir).status).toBe(0);
     const file = snapshotFile(dir, path);

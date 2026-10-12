@@ -1,0 +1,8 @@
+{
+  "case": "grid-sizing",
+  "dpr": 2,
+  "texts": [
+    {"id":"c1:text0","lines":[[0,2]]},
+    {"id":"f4:text0","lines":[[0,10]]}
+  ]
+}

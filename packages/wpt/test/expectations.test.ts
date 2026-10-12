@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import type { Entry, Expectations } from '../src/expectations.ts';
 import { compareExpectations, DEVIATION_IDS, expectationsPath, failEntryProblems, mergeExpectations, readExpectations, readRunForUpdate, serializeExpectations, TODO } from '../src/expectations.ts';
 import { labelsByPath, loadInteropLabels } from '../src/interop.ts';
@@ -120,6 +120,7 @@ describe('the check and the update merge', () => {
   });
   it('update reports a missing, unreadable, filtered, Chrome-less, other-target or stale run file as a problem instead of throwing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'dragon-wpt-update-'));
+    onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
     const write = (name: string, body: unknown) => {
       const file = join(dir, name);
       writeFileSync(file, typeof body === 'string' ? body : JSON.stringify(body));
@@ -158,6 +159,7 @@ describe('planted faults', () => {
 
   it('pnpm wpt:check exits non-zero when an expected value in the expectations file is altered', () => {
     const dir = mkdtempSync(join(tmpdir(), 'dragon-wpt-planted-'));
+    onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
     const check = (tests: Record<string, Entry>) => {
       const file = join(dir, `${Object.keys(tests).length}-${JSON.stringify(tests).length}.json`);
       writeFileSync(file, serializeExpectations({ ...committed, tests: { ...committed.tests, ...tests } }));

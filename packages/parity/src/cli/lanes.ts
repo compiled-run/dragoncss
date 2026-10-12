@@ -1,16 +1,18 @@
 // pnpm run parity:lanes [-- --run-host] [-- --run-device] [-- --target ios|android] [-- --device-jobs N] [-- --require-all] [-- --plant <fault>]
 // (docs/research/native-strategy.md 3.6; notes/T015-p4-review-p5-plan.md section 4 item 7). Without a run flag it checks parity and
 // reads the committed out/lanes.json. --run-host runs the host engine lanes of both targets at once through native:swift and
-// native:kotlin, and the reference proof; --run-device (only under the device lease, /tmp/device-lease.sh) builds each target's app
-// in its own process meanwhile, then runs the device lanes of both targets at once on their simulators or emulators, up to
+// native:kotlin, and the reference proof; --run-device (only under the device lease, /tmp/device-lease.sh) boots the devices and
+// builds each target's app in its own process meanwhile, then runs the device lanes of both targets at once on their simulators or
+// emulators while the host lanes finish (only the vectors verdict waits for its host run), up to
 // --device-jobs devices of a target at once (device-lanes.ts), every boot admitted by this process's memory budget (device-run.ts);
 // every failure is printed and written to out/device-failures-<target>.json. Either rewrites out/lanes.json, keeping the committed
 // records of lanes not run now when they still describe the configuration. --target limits --run-device to one target. pnpm run
 // parity:devices is parity:lanes -- --run-host --run-device. Internal: --prebuild <target> builds the app with reuse.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { deviceJobs, lanesArgs, prebuildApps } from '../device-jobs.ts';
+import { deviceJobs, EarlyBoots, earlySpecs, lanesArgs, prebuildApps } from '../device-jobs.ts';
+import type { HostSource } from '../device-lanes.ts';
 import { allRunFailures, failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
-import { requireDeviceLease } from '../device-run.ts';
+import { requireDeviceLease, stopStartedNow } from '../device-run.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
 import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleCovers, staleEvidence, staleLanes, writeLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos } from '../native-host.ts';
@@ -67,28 +69,57 @@ let exit = 0;
 if (runHost || runDevice) {
   const committed = readLanesFile();
   const host = new Map<NativeTarget, HostRun>();
-  let reference: ReturnType<typeof referenceProof> | null = null;
   const mine = targets.filter((t) => only === null || t.target === only);
-  // The apps build in their own processes while the host lanes run; a target whose build failed runs no devices and fails the run.
-  const builds = runDevice ? prebuildApps(mine.map((t) => t.target), (l) => console.log(l)) : Promise.resolve([]);
-  if (runHost) {
-    const runs = await Promise.all(targets.map(async (t) => [t.target, await runHostLane(t)] as const));
-    for (const [t, r] of runs) host.set(t, r);
-    reference = referenceProof(targets);
-    for (const r of reference) for (const row of r.rows) for (const f of row.failures.slice(0, 20)) console.log(`REFERENCE FAIL ${r.target} ${f}`);
-    if (reference.some((r) => r.rows.some((row) => row.failures.length > 0))) exit = 1;
-  }
-  const failedBuilds = await builds;
-  if (failedBuilds.length > 0) exit = 1;
-  const device = new Map<NativeTarget, DeviceRun>();
+  const logOf = (t: NativeTarget) => (l: string): void => console.log(`parity:lanes --run-device ${t}: ${l}`);
+  const jobsOf = new Map(runDevice ? mine.map((t) => [t.target, deviceJobs(t.target, jobs, logOf(t.target))] as const) : []);
+  // The devices boot now, while the apps build and the host lanes run; each target's run takes its boots, and every boot not
+  // taken (a failed build, a thrown run) is stopped below.
+  const early = runDevice ? new EarlyBoots(mine.flatMap((t) => earlySpecs(t.target, jobsOf.get(t.target) ?? 1))) : null;
+  const stopEarly = async (which?: (target: NativeTarget) => boolean): Promise<void> => {
+    if (early === null) return;
+    for (const p of await early.releaseRest((l) => console.log(`parity:lanes --run-device: ${l}`), which === undefined ? undefined : (s) => which(s.target))) console.log(`parity:lanes --run-device: an early boot not taken: ${p}`);
+  };
+  // A SIGTERM or SIGINT (the landing driver's stop) skips every finally below, and a detached emulator is outside the process
+  // group the signal reaches, so every device this process started is stopped here before it exits.
   if (runDevice) {
+    for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]] as const) {
+      process.once(sig, () => {
+        for (const d of stopStartedNow()) console.log(`parity:lanes --run-device: ${sig}: stopped ${d}`);
+        process.exit(code);
+      });
+    }
+  }
+  let reference: ReturnType<typeof referenceProof> | null = null;
+  const device = new Map<NativeTarget, DeviceRun>();
+  try {
+    // The apps build in their own processes while the host lanes run; a target whose build failed runs no devices and fails the run.
+    const builds = runDevice ? prebuildApps(mine.map((t) => t.target), (l) => console.log(l)) : Promise.resolve([]);
+    const h0 = Date.now();
+    const hostRuns = runHost ? Promise.all(targets.map(async (t) => host.set(t.target, await runHostLane(t)))).then(() => console.log(`parity:lanes --run-host: host lanes done in ${((Date.now() - h0) / 1000).toFixed(0)} s`)) : null;
+    // Judged below, after the devices are stopped; a host run a device waits on is handed its failure.
+    hostRuns?.catch(() => undefined);
+    const hostPhase = (async () => {
+      if (hostRuns === null) return;
+      await hostRuns;
+      const r0 = Date.now();
+      reference = referenceProof(targets);
+      console.log(`parity:lanes --run-host: reference proof done in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
+      for (const r of reference) for (const row of r.rows) for (const f of row.failures.slice(0, 20)) console.log(`REFERENCE FAIL ${r.target} ${f}`);
+      if (reference.some((r) => r.rows.some((row) => row.failures.length > 0))) exit = 1;
+    })();
+    hostPhase.catch(() => undefined);
+    const failedBuilds = await builds;
+    if (failedBuilds.length > 0) exit = 1;
+    await stopEarly((t) => failedBuilds.includes(t));
     // Settled, not raced: a target that throws still lets the other finish and stop its devices before the run fails.
     const settled = await Promise.allSettled(
-      mine.filter((t) => !failedBuilds.includes(t.target)).map(async (t) => {
-        // A committed host run judges the device vectors only while it still describes the configuration.
-        const hostRun = host.get(t.target) ?? (committed !== null && staleLanes(committed, targets).some((p) => staleCovers(p, t.target, 'layout-vectors-host')) ? null : hostOf(committed, t.target));
-        const log = (l: string): void => console.log(`parity:lanes --run-device ${t.target}: ${l}`);
-        const d = await runTargetOnDevices(t, hostRun, log, { jobs: deviceJobs(t.target, jobs, log) });
+      (runDevice ? mine : []).filter((t) => !failedBuilds.includes(t.target)).map(async (t) => {
+        // The host run of this process, once the host lanes finish; else the committed one, while it still describes the configuration.
+        const hostRun: HostSource = hostRuns !== null ? hostRuns.then(() => host.get(t.target) ?? null) : committed !== null && staleLanes(committed, targets).some((p) => staleCovers(p, t.target, 'layout-vectors-host')) ? null : hostOf(committed, t.target);
+        if (hostRun instanceof Promise) hostRun.catch(() => undefined);
+        const log = logOf(t.target);
+        // A boot of this target its run did not take (the run threw first) is stopped as soon as the run ends.
+        const d = await runTargetOnDevices(t, hostRun, log, { jobs: jobsOf.get(t.target) ?? 1, early }).finally(() => stopEarly((x) => x === t.target));
         device.set(t.target, d);
         const all = allRunFailures(d);
         mkdirSync(repoPath('packages/parity/out'), { recursive: true });
@@ -99,7 +130,16 @@ if (runHost || runDevice) {
         for (const tr of d.trust) for (const row of tr.rows) for (const m of row.mismatches) console.log(`  CAPTURE TRUST FAIL ${tr.device} ${row.case}: ${m}`);
       }),
     );
+    // The host phase's own failure is the cause a device waiting on it reports, so it is thrown first; every device failure is
+    // printed before it, so one that is not about the host run (a device left running) is never hidden.
+    const hostFailed = await hostPhase.then(() => null, (e: unknown) => ({ error: e }));
+    if (hostFailed !== null) {
+      for (const r of settled) if (r.status === 'rejected') console.log(`parity:lanes --run-device: a device run also failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+      throw hostFailed.error;
+    }
     for (const r of settled) if (r.status === 'rejected') throw r.reason;
+  } finally {
+    await stopEarly();
   }
   file = lanesFile(targets, problems, host, reference, device, committed);
   writeLanesFile(file);

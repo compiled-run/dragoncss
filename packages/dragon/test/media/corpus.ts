@@ -5,8 +5,11 @@ export type BandSheet = {
   readonly name: string;
   readonly queries: readonly string[];
   /** Set when band() must refuse the sheet; a refused sheet is not captured. */
-  readonly refused?: 'too-many-bands' | 'non-axis-feature' | 'refused-value';
+  readonly refused?: 'too-many-bands' | 'refused-value';
 };
+
+/** A fractional frame: an iframe of whole device px or an emulated main frame of CSS px, at a DPR. */
+export type FrameKind = 'iframe' | 'main';
 
 type Viewport = { readonly width: number; readonly height: number };
 
@@ -17,7 +20,17 @@ export type Corpus = {
   readonly queries: readonly string[];
   readonly refusedQueries: readonly string[];
   readonly bandSheets: readonly BandSheet[];
+  /** MQ-R0: rows captured at fractional media sizes (scripts/capture-media-data.ts). */
+  readonly fractional: {
+    readonly viewport: Viewport;
+    readonly iframes: readonly (readonly [number, number, number])[];
+    readonly mainFrames: readonly (readonly [number, number, number])[];
+    readonly queries: readonly string[];
+    readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[] }[];
+  };
 };
+
+type Row = { readonly mediaText: string; readonly matches: string };
 
 export type Capture = {
   readonly chrome: string;
@@ -28,6 +41,12 @@ export type Capture = {
     readonly sheet: string;
     readonly conditions: readonly { readonly text: string; readonly mediaText: string; readonly matches: Readonly<Record<string, string>> }[];
   }[];
+  /** One bit per frame in each row's matches, in frame order. */
+  readonly fractional: {
+    readonly frames: readonly (readonly [FrameKind, number, number, number])[];
+    readonly queries: readonly ({ readonly query: string } & Row)[];
+    readonly bands: readonly { readonly sheet: string; readonly conditions: readonly ({ readonly text: string } & Row)[] }[];
+  };
 };
 
 export const CORPUS = JSON.parse(readFileSync(new URL('./corpus.json', import.meta.url), 'utf8')) as Corpus;
