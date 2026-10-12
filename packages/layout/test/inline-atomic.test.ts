@@ -330,4 +330,11 @@ describe('INL2a refusals and validation', () => {
     expect(at({ maxHeight: { kind: 'percent', value: 50 } })).toBe('percent-height-flex');
     expect(at({ height: px(20) })).toBe('ok');
   });
+  it('refuses vertical-align other than baseline on an atomic inline (INL2), and a keyword width on one (intrinsic-size-keyword)', () => {
+    const at = (style: Partial<LayoutStyle>): string => codeOf(box('root', {}, [box('c', {}, [text('t', 'a'), ib('a', style)])]));
+    expect(at({ verticalAlign: { kind: 'keyword', value: 'middle' } })).toBe('vertical-align');
+    expect(at({ verticalAlign: { kind: 'px', value: 2 } })).toBe('vertical-align');
+    expect(at({ width: { kind: 'fit-content' } })).toBe('intrinsic-size-keyword');
+    expect(at({ verticalAlign: { kind: 'keyword', value: 'baseline' } })).toBe('ok');
+  });
 });

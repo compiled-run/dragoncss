@@ -265,7 +265,8 @@ const VERTICAL_ALIGN_KEYWORDS: readonly VerticalAlignKeyword[] = ['baseline', 's
 
 // CSS2 §10.8.1: only inline-level boxes read vertical-align, so every other box takes baseline, whatever it computes to.
 function verticalAlign(id: string, get: Get, l: Lowering): VerticalAlignValue {
-  if (keywordOf(get('display')) !== 'inline') return { kind: 'keyword', value: 'baseline' };
+  const display = keywordOf(get('display'));
+  if (display !== 'inline' && display !== 'inline-block' && display !== 'inline-flex') return { kind: 'keyword', value: 'baseline' };
   const v = get('vertical-align');
   if (v.kind === 'keyword') return { kind: 'keyword', value: keyword(id, get, 'vertical-align', VERTICAL_ALIGN_KEYWORDS) };
   const lp = lengthPercentage(id, get, 'vertical-align', 'all', l);

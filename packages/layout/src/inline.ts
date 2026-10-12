@@ -311,10 +311,12 @@ type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly
 
 // INL2a scope: an atomic inline's line is laid out without its block container's height (the native runtime places lines the same
 // way), so a percentage block size, which would resolve against a definite one (CSS2 §10.5), is refused; and so is a relatively
-// positioned atomic inline, as INL1a refuses a relatively positioned inline box.
+// positioned atomic inline, as INL1a refuses a relatively positioned inline box, and vertical-align other than baseline (INL2).
 function checkAtomic(a: LayoutBox): void {
   const s = a.style;
   if (s.position !== 'static') unsupported('inline-box-position', a.id, 'CSS2 §9.4.3', `a ${s.position} atomic inline ${a.id}`);
+  const va = s.verticalAlign;
+  if (va.kind !== 'keyword' || va.value !== 'baseline') unsupported('vertical-align', a.id, 'CSS2 §10.8.1', `vertical-align other than baseline on atomic inline ${a.id} (INL2)`);
   const percent = (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
   if (percent) unsupported('percent-height-flex', a.id, 'CSS2 §10.5', `a percentage block size on atomic inline ${a.id}, whose line boxes do not read their block container's height`);
 }
