@@ -291,7 +291,13 @@
       "sizing-keywords-block": [18,28],
       "sizing-keywords-block-rtl": [17,28],
       "transform-nested": [0,1],
-      "transform-text": [0,3]
+      "transform-text": [0,3],
+      "visibility-flex": [2,2],
+      "visibility-flex-rtl": [2,2],
+      "visibility-text": [7,8],
+      "visibility-text-rtl": [7,8],
+      "visibility-root": [2,2],
+      "visibility-root-rtl": [2,2]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -584,7 +590,13 @@
       "sizing-keywords-block": [21,28],
       "sizing-keywords-block-rtl": [21,28],
       "transform-nested": [0,1],
-      "transform-text": [0,3]
+      "transform-text": [0,3],
+      "visibility-flex": [2,2],
+      "visibility-flex-rtl": [2,2],
+      "visibility-text": [7,8],
+      "visibility-text-rtl": [7,8],
+      "visibility-root": [2,2],
+      "visibility-root-rtl": [2,2]
     }
   },
   "android": {
@@ -879,7 +891,13 @@
       "sizing-keywords-block": [18,28],
       "sizing-keywords-block-rtl": [17,28],
       "transform-nested": [0,1],
-      "transform-text": [0,3]
+      "transform-text": [0,3],
+      "visibility-flex": [2,2],
+      "visibility-flex-rtl": [2,2],
+      "visibility-text": [7,8],
+      "visibility-text-rtl": [7,8],
+      "visibility-root": [2,2],
+      "visibility-root-rtl": [2,2]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -1172,7 +1190,13 @@
       "sizing-keywords-block": [21,28],
       "sizing-keywords-block-rtl": [21,28],
       "transform-nested": [0,1],
-      "transform-text": [0,3]
+      "transform-text": [0,3],
+      "visibility-flex": [2,2],
+      "visibility-flex-rtl": [2,2],
+      "visibility-text": [7,8],
+      "visibility-text-rtl": [7,8],
+      "visibility-root": [2,2],
+      "visibility-root-rtl": [2,2]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -1465,7 +1489,13 @@
       "sizing-keywords-block": [19,28],
       "sizing-keywords-block-rtl": [18,28],
       "transform-nested": [0,1],
-      "transform-text": [0,3]
+      "transform-text": [0,3],
+      "visibility-flex": [2,2],
+      "visibility-flex-rtl": [2,2],
+      "visibility-text": [7,8],
+      "visibility-text-rtl": [7,8],
+      "visibility-root": [2,2],
+      "visibility-root-rtl": [2,2]
     }
   }
 }

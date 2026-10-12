@@ -364,7 +364,7 @@ public func block_blockLevelInlineSize(_ ctx: Ctx, _ box: LayoutBox, _ cbInline:
     }
     // ts: packages/layout/src/block.ts:387
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s478, jsConcat(k, S.s89))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s484, jsConcat(k, S.s90))
     }
     let minC: Double = try units_add(intrinsic_intrinsicContentInlineSize(ctx, box, S.s_min), hbp)
     // ts: packages/layout/src/block.ts:389
@@ -462,7 +462,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   if try jsSome(kids, { (k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s127))
+    throw JsError(message: jsConcat(box.id, S.s128))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Placed> = JsArray<Placed>([])
