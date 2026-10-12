@@ -26,9 +26,9 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** The outputs of BASE (inl1a-tags-v2 at 186dba301c, #105 caught up with master ef96e1c079), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 12196, digest: '4c1a48fa2bf16876fafb835e58052616aba5e09e03847cf72c57fe85ad60f0ef' };
-const BASE_CAPTURES = { files: 3114, digest: '5144ddabbaca0c722d9a9da39eee0526d0246f685c27518f75386aaa68f5a43b' };
+/** The outputs of BASE as digests the BASE pins recompute: batch #262 plus TXT2-b (#272), whose vectors carry letterSpacing, regenerated on CI. */
+const BASE_OUTPUTS = { files: 12248, digest: 'd026436570cf6a3048de69d7f242f1a2e11ae6875202ab01e7e614eb9978d965' };
+const BASE_CAPTURES = { files: 3130, digest: 'ed0357d48c35eeaea0d491262d75ab117f7b0d6583c5311873ebd65dc93b18e2' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
