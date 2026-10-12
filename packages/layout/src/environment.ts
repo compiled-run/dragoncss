@@ -31,7 +31,9 @@ import type {
   LineHeightValue,
   LineStrut,
   MarginValue,
+  MaxInlineSizeValue,
   MaxSizeValue,
+  InlineSizeValue,
   MinSizeValue,
   PaddingValue,
   Percent,
@@ -268,11 +270,11 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     right: resolveInset(s.right, env),
     bottom: resolveInset(s.bottom, env),
     left: resolveInset(s.left, env),
-    width: resolveSize(s.width, env),
+    width: resolveInlineSize(s.width, env),
     height: resolveSize(s.height, env),
-    minWidth: resolveSize(s.minWidth, env),
+    minWidth: resolveInlineSize(s.minWidth, env),
     minHeight: resolveSize(s.minHeight, env),
-    maxWidth: resolveMax(s.maxWidth, env),
+    maxWidth: resolveMaxInline(s.maxWidth, env),
     maxHeight: resolveMax(s.maxHeight, env),
     marginTop: envMargin(s.marginTop, env),
     marginRight: envMargin(s.marginRight, env),
@@ -378,6 +380,19 @@ function resolveSize(v: SizeValue, env: Env): SizeValue {
 }
 
 function resolveMax(v: MaxSizeValue, env: Env): MaxSizeValue {
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
+  if (v.kind === 'calc') return resolveLengthCalc(v, env);
+  return v;
+}
+
+/** An inline size: lengths as resolveSize; the intrinsic size keywords are resolved in layout. */
+function resolveInlineSize(v: InlineSizeValue, env: Env): InlineSizeValue {
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
+  if (v.kind === 'calc') return resolveLengthCalc(v, env);
+  return v;
+}
+
+function resolveMaxInline(v: MaxInlineSizeValue, env: Env): MaxInlineSizeValue {
   if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;

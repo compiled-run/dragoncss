@@ -13,6 +13,7 @@ import type {
   FontSpec,
   GapValue,
   InlineChild,
+  InlineSizeValue,
   InsetValue,
   JustifyContent,
   LayoutBox,
@@ -25,6 +26,7 @@ import type {
   LineStrut,
   MarginValue,
   Overflow,
+  MaxInlineSizeValue,
   MaxSizeValue,
   PaddingValue,
   Position,
@@ -113,6 +115,22 @@ function maxSize(id: string, get: Get, p: Longhand, l: Lowering): MaxSizeValue {
   if (v.kind === 'keyword' && v.value === 'none') return { kind: 'none' };
   const lp = lengthPercentage(id, get, p, 'non-negative', l);
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | none') : lp;
+}
+
+// css-sizing-3 §3.2: width, min-width and max-width also take min-content, max-content and fit-content; the engine reads them on a
+// block-level box in block flow and refuses them elsewhere.
+const INTRINSIC_SIZE_KEYWORDS = ['min-content', 'max-content', 'fit-content'] as const;
+
+function inlineSize(id: string, get: Get, p: Longhand, l: Lowering): InlineSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && (INTRINSIC_SIZE_KEYWORDS as readonly string[]).includes(v.value)) return { kind: v.value as (typeof INTRINSIC_SIZE_KEYWORDS)[number] };
+  return size(id, get, p, l);
+}
+
+function maxInlineSize(id: string, get: Get, p: Longhand, l: Lowering): MaxInlineSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && (INTRINSIC_SIZE_KEYWORDS as readonly string[]).includes(v.value)) return { kind: v.value as (typeof INTRINSIC_SIZE_KEYWORDS)[number] };
+  return maxSize(id, get, p, l);
 }
 
 function padding(id: string, get: Get, p: Longhand, l: Lowering): PaddingValue {
@@ -276,11 +294,11 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     overflowY: keyword<Overflow>(id, get, 'overflow-y', OVERFLOW_VALUES),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
-    width: size(id, get, 'width', l),
+    width: inlineSize(id, get, 'width', l),
     height: size(id, get, 'height', l),
-    minWidth: size(id, get, 'min-width', l),
+    minWidth: inlineSize(id, get, 'min-width', l),
     minHeight: size(id, get, 'min-height', l),
-    maxWidth: maxSize(id, get, 'max-width', l),
+    maxWidth: maxInlineSize(id, get, 'max-width', l),
     maxHeight: maxSize(id, get, 'max-height', l),
     marginTop: margin(id, get, 'margin-top', l),
     marginRight: margin(id, get, 'margin-right', l),

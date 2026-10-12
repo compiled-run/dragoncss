@@ -80,7 +80,7 @@ function sizeMisses(spaceFor: (cbBlock: LU | null) => ReturnType<typeof blockFlo
       const bor = (v: LayoutStyle['borderTopWidth']): number => (v.kind === 'px' ? v.value : 0);
       const bp = { inline: lu(pad(s.paddingLeft) + pad(s.paddingRight) + bor(s.borderLeftWidth) + bor(s.borderRightWidth)), block: lu(pad(s.paddingTop) + pad(s.paddingBottom) + bor(s.borderTopWidth) + bor(s.borderBottomWidth)) };
       const space = spaceFor(height === 'auto' ? null : lu(120));
-      const r = replacedSize(s, NATURAL[kind] as NaturalSizing, DEFAULT_OBJECT, bp, space, 'normal', NO_ENGINE_FAULTS);
+      const r = replacedSize('r', s, NATURAL[kind] as NaturalSizing, DEFAULT_OBJECT, bp, space, 'normal', NO_ENGINE_FAULTS);
       const want = sizes[i] as readonly [number, number];
       compared++;
       if (r.inline !== lu(want[0]) || r.block !== lu(want[1])) off.push(`${key} ${css || '(none)'}: ${r.inline / 64}x${r.block / 64}, Chrome ${want[0]}x${want[1]}`);

@@ -37,6 +37,7 @@ import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHADOW } from './fixture-groups/shadow.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
+import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
@@ -133,6 +134,7 @@ export const GROUPS = {
   selectors: SELECTORS,
   shadow: SHADOW,
   showcase: SHOWCASE,
+  'sizing-keywords': SIZING_KEYWORDS,
   'sizing-ratio': SIZING,
   states: STATES,
   'text-latin': TEXT_LATIN,

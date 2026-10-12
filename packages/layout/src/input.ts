@@ -89,6 +89,12 @@ export type LengthCalc = { readonly kind: 'calc'; readonly expr: CalcExpr; reado
 export type SizeValue = Px | Percent | Auto | LengthCalc;
 export type MinSizeValue = Px | Percent | Auto | LengthCalc;
 export type MaxSizeValue = Px | Percent | NoneValue | LengthCalc;
+/** css-sizing-3 §3.2 fit-content: min(max-content, max(min-content, the stretch size)). */
+export type FitContent = { readonly kind: 'fit-content' };
+/** css-sizing-3 §3.2: the intrinsic size keywords of an inline size, read only on a block-level box in block flow. */
+export type IntrinsicSizeKeyword = MinContent | MaxContent | FitContent;
+export type InlineSizeValue = SizeValue | IntrinsicSizeKeyword;
+export type MaxInlineSizeValue = MaxSizeValue | IntrinsicSizeKeyword;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -251,11 +257,11 @@ export type LayoutStyle = {
   readonly overflowY: Overflow;
   readonly direction: Direction;
   readonly boxSizing: BoxSizing;
-  readonly width: SizeValue;
+  readonly width: InlineSizeValue;
   readonly height: SizeValue;
-  readonly minWidth: MinSizeValue;
+  readonly minWidth: InlineSizeValue;
   readonly minHeight: MinSizeValue;
-  readonly maxWidth: MaxSizeValue;
+  readonly maxWidth: MaxInlineSizeValue;
   readonly maxHeight: MaxSizeValue;
   readonly marginTop: MarginValue;
   readonly marginRight: MarginValue;

@@ -74,6 +74,9 @@ const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as 
 
 const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
 const maxSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc });
+const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {} } as const;
+const inlineSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
+const maxInlineSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, ...intrinsic });
 const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto, ...calc });
 const inset = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto, ...calc });
 const padding = tagged({ ...px(0), ...percent(0), ...calc });
@@ -122,11 +125,11 @@ export const styleSchema = obj({
   overflowY: lit('visible', 'hidden', 'clip', 'auto', 'scroll'),
   direction: lit('ltr', 'rtl'),
   boxSizing: lit('content-box', 'border-box'),
-  width: size,
+  width: inlineSize,
   height: size,
-  minWidth: size,
+  minWidth: inlineSize,
   minHeight: size,
-  maxWidth: maxSize,
+  maxWidth: maxInlineSize,
   maxHeight: maxSize,
   marginTop: margin,
   marginRight: margin,
