@@ -111,7 +111,7 @@ export type LineEllipsis = {
 };
 
 /** A rectangle in LU from the content-box top-left. */
-type Rect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
+export type Rect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
 /**
  * One line box: its top and height and its baseline, all from the content-box top, the leaf pieces on it in order (their leaf
@@ -1225,6 +1225,39 @@ function unionOf(rects: readonly Rect[]): Rect {
 type Fragments = { readonly placed: Map<string, Placed> };
 
 /** Adds each leaf's, box's and <br>'s fragment of the lines to out, keyed by id. */
+/** The innermost inline box of a leaf (its first character's), or -1 for the root. */
+function leafBox(ifc: Ifc, li: number): number {
+  for (const it of ifc.items) if (it.kind === 'char' && it.leaf === li) return it.box;
+  return -1;
+}
+
+/**
+ * Inline box b's fragments on a line ("<box>:line<j>"): its line rect, or none when it is not on the line. TXT2-f: on a truncated
+ * line a box holding a truncated text or the text the ellipsis follows reports what a culled inline does
+ * (LayoutInline::CollectLineBoxRects): one rect per text item it holds in line order, each text's whole run, its truncated part
+ * and the ellipsis after it. The compiler refuses on native the inline boxes Chrome gives a box fragment of their own there.
+ */
+export function boxLineRects(ctx: Ctx, ifc: Ifc, line: PlacedLine, b: number): Rect[] {
+  const out: Rect[] = [];
+  let own: Rect | null = null;
+  for (let j = 0; j < line.boxes.length; j++) if ((line.boxes[j] as number) === b) own = line.boxRects[j] as Rect;
+  if (own === null) return out;
+  const e = line.ellipsis;
+  let cut = false;
+  for (const p of line.pieces) if (within(ifc.boxParent, leafBox(ifc, p.leaf), b) && (p.truncated || (e !== null && e.leaf === p.leaf))) cut = true;
+  if (!cut) {
+    out.push(own);
+    return out;
+  }
+  for (const p of line.pieces) {
+    if (!within(ifc.boxParent, leafBox(ifc, p.leaf), b)) continue;
+    if (!(p.truncated && ctx.faults.truncateChangesBlockSize)) out.push({ x: p.x, y: p.top, width: p.width, height: add(p.ascent, p.descent) });
+    if (p.truncated) out.push({ x: p.x, y: p.top, width: p.truncatedWidth, height: add(p.ascent, p.descent) });
+    if (e !== null && e.leaf === p.leaf) out.push({ x: e.x, y: e.top, width: e.width, height: add(e.ascent, e.descent) });
+  }
+  return out;
+}
+
 function collectFragments(ctx: Ctx, ifc: Ifc, lines: readonly PlacedLine[], origin: Point, startX: LU, out: Fragments): void {
   ifc.leaves.forEach((t, li) => {
     const rects: Rect[] = [];
@@ -1241,7 +1274,7 @@ function collectFragments(ctx: Ctx, ifc: Ifc, lines: readonly PlacedLine[], orig
   });
   ifc.boxes.forEach((b, bi) => {
     const rects: Rect[] = [];
-    for (const line of lines) for (let j = 0; j < line.boxes.length; j++) if ((line.boxes[j] as number) === bi) rects.push(line.boxRects[j] as Rect);
+    for (const line of lines) for (const r of boxLineRects(ctx, ifc, line, bi)) rects.push(r);
     if (rects.length === 0 && lines.length > 0) throw new Error(`${b.id} is on no line`);
     if (rects.length === 0) rects.push({ x: startX, y: ZERO, width: ZERO, height: ZERO });
     out.placed.set(b.id, fragmentOf(b.id, rects, origin, boundingOf(rects)));

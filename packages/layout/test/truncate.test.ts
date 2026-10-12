@@ -70,6 +70,11 @@ describe('TXT2-f: line truncation (line_truncator.cc TruncateLine)', () => {
     expect(planted?.ellipsis?.width).toBe(G / 2);
   });
 
+  it('reports an inline box on a truncated line as Chrome reports a culled one: the whole run of its text, its truncated part, the ellipsis', () => {
+    const r = run(box('root', {}, [box('a', TRUNCATE, [span('s', [nowrap('t', 'XXXXXXXXXXXXXXXXXXXX', 5)], { font: ahemFont(5) })], { font: ahemFont(10), lineHeight: { kind: 'normal' } })]));
+    expect(frags(r, 's')).toEqual([[0, 10 * G], [0, 9 * G / 2], [9 * G / 2, G]]);
+  });
+
   it('keeps the first character of a line even when the ellipsis does not fit after it', () => {
     const b = box('a', { ...TRUNCATE, width: px(15) }, [nowrap('t', 'XXXX')]);
     const [line] = placeLines(ctx(), b, fromCssPx(15));

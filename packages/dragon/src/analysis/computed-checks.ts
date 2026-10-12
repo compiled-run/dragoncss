@@ -30,6 +30,8 @@ import { checkTransformContexts, elementWillChange } from './paint-values/transf
 import { opacityOf } from '../css/properties/effects.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
+/** A computed length or percentage of zero, as it serializes. */
+const isZeroLength = (v: ResolvedValue['value']): boolean => ['0', '0px', '0%'].includes(valueToString(v));
 
 /** UAX #9: in an rtl paragraph only these keep logical order (strong L letters, space, U+200B not at the end). */
 const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
@@ -320,7 +322,14 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
   const native = targets.filter((t) => t === 'ios' || t === 'android');
   for (const run of runs) {
     for (const it of run) {
-      if (it.kind !== 'open' || styleOf(it.el) === own) continue;
+      if (it.kind !== 'open') continue;
+      // The engine reports an inline box on a truncated line as Chrome reports a culled one (inline.ts boxLineRects); padding or an
+      // inline margin gives the box a fragment of its own, whose rects that model does not cover.
+      const edges = (['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'margin-left', 'margin-right'] as const).filter((p) => !isZeroLength((it.el.props.get(p) as ResolvedValue).value));
+      if (edges.length > 0) {
+        refuse(native, 'box-fragment', `${at}: the inline box <${it.el.element.tag}> ${it.el.element.address} has ${edges.join(', ')}, so Chrome gives it a box fragment of its own on a truncated line, which Dragon does not lay out`, `Remove ${edges.join(', ')} from <${it.el.element.tag}> ${it.el.element.address}.`);
+      }
+      if (styleOf(it.el) === own) continue;
       refuse(native, 'paint', `${at}: the inline box <${it.el.element.tag}> ${it.el.element.address} has a colour, visibility or font face other than the block's, and the native runtime draws the ellipsis with the text it follows, not in the block's style`, `Give <${it.el.element.tag}> ${it.el.element.address} the colour, visibility and font face of ${el.element.address}.`);
     }
   }

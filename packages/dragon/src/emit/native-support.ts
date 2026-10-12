@@ -855,7 +855,7 @@ public final class DragonTree {
       var offsets: [Double] = []
       let placedLines = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
       for line in placedLines {
-        for (k, x) in line.boxes.items.enumerated() where Int(x) == b { offsets.append(line.baseline - line.boxRects.items[k].y) }
+        for r in try inline_boxLineRects(ctx, ifc, line, Double(b)).items { offsets.append(line.baseline - r.y) }
       }
       // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
       // on no line, so its baseline is its own top.
@@ -1444,6 +1444,7 @@ import dev.dragon.layout.box_resolvePadding
 import dev.dragon.layout.InlineBox
 import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
+import dev.dragon.layout.inline_boxLineRects
 import dev.dragon.layout.inline_buildIfc
 import dev.dragon.layout.inline_fontOf
 import dev.dragon.layout.inline_placeIfcLines
@@ -1806,7 +1807,7 @@ class DragonTree(val context: Context) {
       val offsets = ArrayList<Double>()
       val placedLines = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
       for (line in placedLines) {
-        for (k in line.boxes.indices) if (line.boxes[k].toInt() == b) offsets.add(line.baseline - line.boxRects[k].y)
+        for (r in inline_boxLineRects(ctx, ifc, line, b.toDouble())) offsets.add(line.baseline - r.y)
       }
       // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
       // on no line, so its baseline is its own top.
