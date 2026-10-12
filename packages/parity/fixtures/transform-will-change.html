@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.row { display: flex; }
+.cell { width: 80px; height: 90px; }
+.box { margin: 25px; width: 40px; height: 30px; background-color: #1f6feb; }
+.w1 { will-change: transform; background-color: #cf222e; }
+.w2 { will-change: opacity; background-color: #1a7f37; }
+.w3 { transform: none; background-color: #8250df; }
+.w4 { will-change: transform, opacity; transform: rotate(10deg); background-color: #bf8700; }
+.w5 { --spin: rotate(-25deg) translateX(10%); transform: var(--spin); background-color: #0a3069; }
+.w6 { will-change: auto; transform-origin: 0 0; transform: none; background-color: #953800; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row0" class="row"><div data-dragon-id="a0c" class="cell"><div data-dragon-id="a0" class="box w1"></div></div><div data-dragon-id="a1c" class="cell"><div data-dragon-id="a1" class="box w2"></div></div><div data-dragon-id="a2c" class="cell"><div data-dragon-id="a2" class="box w3"></div></div><div data-dragon-id="a3c" class="cell"><div data-dragon-id="a3" class="box w4"></div></div><div data-dragon-id="a4c" class="cell"><div data-dragon-id="a4" class="box w5"></div></div></div>
+<div data-dragon-id="row1" class="row"><div data-dragon-id="b0c" class="cell"><div data-dragon-id="b0" class="box w6"></div></div></div>
+</body>
+</html>

@@ -1,0 +1,6 @@
+<div rec
+{run === true ? 'run' : ''}
+run: [false, true] = false
+component App
+<html>
+<body>

@@ -100,9 +100,22 @@ function crispSide(ops: readonly BorderOp[], x: number, y: number): number | nul
 const writeOf = <K extends ProgramWrite['kind']>(p: NativeProgram, id: string, kind: K): (ProgramWrite & { kind: K }) | undefined =>
   p.nodes.find((n) => n.id === id)?.writes.find((w) => w.kind === kind) as (ProgramWrite & { kind: K }) | undefined;
 
+/** Whether the node or one of its ancestors has an opacity write (an opacity below 1). */
+function inOpacityGroup(p: NativeProgram, id: string): boolean {
+  for (let at: string | null = id; at !== null; at = p.nodes.find((n) => n.id === at)?.parent ?? null) if (writeOf(p, at, 'opacity') !== undefined) return true;
+  return false;
+}
+
+/** T150a: whether a box paints no decorations of its own (a visibility write); the canvas background of html and body still paints. */
+function hiddenOwn(p: NativeProgram, id: string, background = false): boolean {
+  const v = writeOf(p, id, 'visibility');
+  return v !== undefined && !(background && v.canvas);
+}
+
 /** The opaque background under a box's border: its own background colour or the nearest ancestor's, else the white canvas. */
 function backgroundOf(p: NativeProgram, id: string): number[] {
   for (let at: string | null = id; at !== null; at = p.nodes.find((n) => n.id === at)?.parent ?? null) {
+    if (hiddenOwn(p, at, true)) continue;
     const w = writeOf(p, at, 'background-color');
     if (w !== undefined && w.color.alpha === 255) return [w.color.r, w.color.g, w.color.b];
     if (w !== undefined && w.color.alpha !== 0) throw new Error(`${id}: a translucent background is not modelled here`);
@@ -226,7 +239,7 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
   /** Where box m paints over others: its border box when its background is not transparent, else its visible border bands; clipped. */
   const paintedBy = (m: string): Box[] => {
     const o = boxOf.get(m);
-    if (o === undefined) return [];
+    if (o === undefined || hiddenOwn(p, m, true)) return [];
     const clip = clipOf(m, false);
     const bg = writeOf(p, m, 'background-color');
     if (bg !== undefined && bg.color.alpha > 0) return [intersect(o, clip)].filter((x): x is Box => x !== null);
@@ -248,6 +261,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     const owner = ownerOf.get(text);
     if (owner === undefined || owner === null) throw new Error(`${nc.case.id}: no owning box for the text line ${l.id}`);
     if ((writeOf(p, text, 'text-color')?.color.alpha ?? 255) === 0) return [];
+    // A run whose element is hidden (through an anonymous box) paints nothing (T150a).
+    const element = p.nodes.find((m) => m.id === owner)?.kind === 'anonymous' ? (p.nodes.find((m) => m.id === owner)?.parent ?? owner) : owner;
+    if (hiddenOwn(p, element)) return [];
     const clip = clipOf(owner, true);
     return l.glyphs.flatMap((g) => {
       const box = intersect({ left: Math.floor(g.left) - 1, top: Math.floor(g.top) - 1, right: Math.ceil(g.right) + 1, bottom: Math.ceil(g.bottom) + 1 }, clip);
@@ -268,6 +284,14 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     const w = [...(borders.get(n.id) ?? [0, 0, 0, 0])];
     const colors = co.colors.flatMap((c) => [c.r, c.g, c.b, c.alpha]);
     if (!borderNeedsSidePainter(w, st.styles, colors)) continue;
+    // A border inside an opacity group (an opacity write on the box or an ancestor) is composited with the group's alpha, which this
+    // reference does not model; pnt1-effects.test compares those pixels against Chrome.
+    if (inOpacityGroup(p, n.id)) continue;
+    // A rounded box is drawn by PNT1's rounded border painter, never by the side painter this file judges (paint-dash.ts models no
+    // radii); the radius oracle compares those borders.
+    if (writeOf(p, n.id, 'border-radius') !== undefined) continue;
+    // A hidden box paints no border (T150a); pnt1-visibility.test compares its pixels against Chrome.
+    if (hiddenOwn(p, n.id)) continue;
     if (mode.preT116 && !st.styles.some((s, k) => (s === 'dashed' || s === 'dotted') && (w[k] as number) > 0 && co.colors[k]?.alpha !== 0)) continue;
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);
@@ -311,9 +335,12 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
 
 const withStyle = (ok: (s: string) => boolean): NativeCase[] =>
   nativeCases().filter((nc) => nc.programs.uikit.nodes.some((n) => (n.writes.find((w) => w.kind === 'border-styles') as { styles?: readonly string[] } | undefined)?.styles?.some(ok)));
-const dashed = withStyle((s) => s === 'dashed' || s === 'dotted');
+// PNT2: the reference draws untransformed boxes, so a case with a transform write is left to the transform lanes (pnt2-quads and
+// pnt2-samples on the host, device-pixels on the devices); the test below pins exactly which cases that leaves out.
+const transformed = (nc: NativeCase): boolean => nc.programs.uikit.nodes.some((n) => n.writes.some((w) => w.kind === 'transform'));
+const dashed = withStyle((s) => s === 'dashed' || s === 'dotted').filter((nc) => !transformed(nc));
 // T116: boxes whose visible sides are all solid are drawn by the same reference; every case with a solid side is compared.
-const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc));
+const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc) && !transformed(nc));
 
 describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
   it('puts positioned boxes and their descendants over in-flow ones, orders each phase by tree order, and puts in-flow text over every in-flow border', () => {
@@ -378,6 +405,11 @@ describe('planted dash faults fail the Chrome comparison', () => {
 });
 
 describe('the solid border reference against Chrome 145 (T116: same-colour sides join with no miter)', () => {
+  it('leaves out only cases of the transforms group, each with a transform write', () => {
+    const out = withStyle((x) => x === 'solid' || x === 'dashed' || x === 'dotted').filter(transformed).map((nc) => nc.case.id);
+    expect(out.length).toBeGreaterThan(0);
+    for (const id of out) expect(id, id).toMatch(/^transform-/);
+  });
   it('covers the border-join fixture and the earlier solid-border cases', () => {
     expect(solid.map((nc) => nc.case.id)).toEqual(expect.arrayContaining(['border-join', 'tree-projected-text#3']));
   });

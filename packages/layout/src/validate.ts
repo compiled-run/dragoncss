@@ -12,7 +12,9 @@ type TaggedRule = { readonly t: 'tagged'; readonly variants: { readonly [kind: s
  */
 type CalcRule = { readonly t: 'calc'; readonly fontSize: boolean };
 type BooleanRule = { readonly t: 'boolean' };
-type Rule = NumberRule | StringRule | LiteralRule<string> | ObjectRule | TaggedRule | CalcRule | BooleanRule;
+type ArrayRule = { readonly t: 'array'; readonly item: Rule; readonly minItems: number };
+type NullableRule = { readonly t: 'nullable'; readonly rule: Rule };
+type Rule = NumberRule | StringRule | LiteralRule<string> | ObjectRule | TaggedRule | CalcRule | BooleanRule | ArrayRule | NullableRule;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
@@ -20,6 +22,10 @@ type Infer<R> = R extends CalcRule
   ? CalcExpr
   : R extends BooleanRule
   ? boolean
+  : R extends { readonly t: 'array'; readonly item: infer I }
+  ? readonly Infer<I>[]
+  : R extends { readonly t: 'nullable'; readonly rule: infer N }
+  ? Infer<N> | null
   : R extends NumberRule
   ? number
   : R extends StringRule
@@ -36,6 +42,15 @@ const num = (minimum: number): NumberRule => ({ t: 'number', min: minimum, exclu
 const positive: NumberRule = { t: 'number', min: 0, exclusiveMin: true, integer: false };
 const anyNum: NumberRule = { t: 'number', min: -Infinity, exclusiveMin: false, integer: false };
 const str: StringRule = { t: 'string' };
+const int: NumberRule = { t: 'number', min: -Infinity, exclusiveMin: false, integer: true };
+const count: NumberRule = { t: 'number', min: 1, exclusiveMin: false, integer: true };
+const count0: NumberRule = { t: 'number', min: 0, exclusiveMin: false, integer: true };
+function arr<const I extends Rule>(item: I, minItems: number): { readonly t: 'array'; readonly item: I; readonly minItems: number } {
+  return { t: 'array', item, minItems };
+}
+function nullable<const N extends Rule>(rule: N): { readonly t: 'nullable'; readonly rule: N } {
+  return { t: 'nullable', rule };
+}
 function lit<const V extends string>(...values: V[]): LiteralRule<V> {
   return { t: 'literal', values };
 }
@@ -77,15 +92,39 @@ const alignItemsValues = [
   'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end',
 ] as const;
 
+// css-grid-2 §7: track sizes, repeaters, placements and the grid self-alignment keywords.
+const breadth = tagged({ ...px(0), ...percent(0), fr: { value: num(0) }, ...auto, 'min-content': {}, 'max-content': {} });
+const trackSize = tagged({ breadth: { breadth }, minmax: { min: breadth, max: breadth }, 'fit-content': { limit: tagged({ ...px(0), ...percent(0) }) } });
+const repeater = obj({ count, sizes: arr(trackSize, 1) });
+const gridLine = tagged({ auto: {}, line: { n: int }, 'named-line': { n: int, name: count0 }, span: { n: count }, 'named-span': { n: count, name: count0 }, area: { implicitName: count0, name: count0 } });
+const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count }, lines: { start: gridLine, end: gridLine } });
+const lineList = arr(count0, 0);
+const gridAutoRepeat = obj({ type: lit('auto-fill', 'auto-fit'), index: count0, sizes: arr(trackSize, 1), lineNames: arr(obj({ explicit: lineList, repeat: lineList, implicit: lineList }), 0) });
+const gridSelfAlignValues = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'] as const;
+const gridContainer = obj({
+  templateColumns: arr(repeater, 0),
+  templateRows: arr(repeater, 0),
+  autoColumns: arr(trackSize, 1),
+  autoRows: arr(trackSize, 1),
+  explicitColumnCount: count0,
+  explicitRowCount: count0,
+  autoRepeatColumns: nullable(gridAutoRepeat),
+  autoRepeatRows: nullable(gridAutoRepeat),
+  autoFlow: lit('row', 'column'),
+  dense: bool,
+  justifyItems: lit(...gridSelfAlignValues),
+});
+const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto', ...gridSelfAlignValues) });
+
 export const styleSchema = obj({
-  display: lit('block', 'flex', 'inline'),
+  display: lit('block', 'flex', 'grid', 'inline'),
   position: lit('static', 'relative', 'absolute'),
   top: inset,
   right: inset,
   bottom: inset,
   left: inset,
-  overflowX: lit('visible', 'hidden'),
-  overflowY: lit('visible', 'hidden'),
+  overflowX: lit('visible', 'hidden', 'clip', 'auto', 'scroll'),
+  overflowY: lit('visible', 'hidden', 'clip', 'auto', 'scroll'),
   direction: lit('ltr', 'rtl'),
   boxSizing: lit('content-box', 'border-box'),
   width: size,
@@ -130,6 +169,8 @@ export const styleSchema = obj({
     percent: { value: anyNum },
     ...calc,
   }),
+  grid: nullable(gridContainer),
+  gridItem: nullable(gridItem),
 });
 
 /** css-fonts-4 §2: a font with its specified size expression (input.ts FontSpec). */
@@ -184,6 +225,7 @@ export type ValidationErrorCode =
   | 'duplicate-id'
   | 'mixed-children'
   | 'text-in-flex'
+  | 'grid-shape'
   | 'uncollapsed-text'
   | 'leaf-font'
   | 'anonymous-shape'
@@ -380,6 +422,17 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
     case 'string':
       if (typeof value !== 'string') errors.push({ path, code: 'wrong-type', message: 'expected a string' });
       return;
+    case 'nullable':
+      if (value !== null) checkRule(value, rule.rule, path, errors);
+      return;
+    case 'array':
+      if (!Array.isArray(value)) {
+        errors.push({ path, code: 'wrong-type', message: 'expected an array' });
+        return;
+      }
+      if (value.length < rule.minItems) errors.push({ path, code: 'bad-value', message: `expected at least ${rule.minItems} items` });
+      value.forEach((v: unknown, i: number) => checkRule(v, rule.item, `${path}[${i}]`, errors));
+      return;
     case 'literal':
       if (typeof value !== 'string' || !rule.values.includes(value)) {
         errors.push({ path, code: 'bad-value', message: `expected one of ${rule.values.join(', ')}` });
@@ -438,6 +491,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     checkFields(value, { id: str, style: styleSchema, font: fontSpecSchema, lineHeight: lineHeightSchema }, path, errors, ['kind', 'children']);
     const style = value['style'];
     if (isRecord(style) && style['display'] !== 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an inline box has display inline' });
+    // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
+    if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
     const kids = childrenOf(value, path, errors);
     if (kids === null) return;
     kids.forEach((child: unknown, i: number) => {
@@ -457,6 +512,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
       if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
       checkRatioBlockLengths(style, path, errors, false);
+      // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
+      if (style['display'] === 'grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
     }
     return;
   }
@@ -466,17 +523,148 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   }
   checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
   const style = value['style'];
-  if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block or flex; an inline box has kind inline' });
+  if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   const children = childrenOf(value, path, errors);
   if (children === null) return;
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
   checkStrut(value, children, path, errors);
   checkInlineContent(value, children, path, errors);
-  if (isRecord(style) && style['overflowX'] !== style['overflowY']) {
-    errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
+  if (isRecord(style) && clipsOnly(style['overflowX']) !== clipsOnly(style['overflowY'])) {
+    errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be a computed pair: css-overflow-3 §3.1 computes visible beside hidden, auto or scroll to auto, and clip to hidden' });
   }
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
   if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
+  if (isRecord(style)) checkGrid(style, children, path, errors);
+}
+
+/** Blink kGridMaxTracks (core/style/grid_area.h): the most tracks a grid axis has, and the largest line magnitude. */
+const GRID_MAX_TRACKS = 10000000;
+
+// css-grid-2 §7 and §8: a grid style only on a grid container, a placement on each in-flow child of one and nowhere else, no
+// flexible minimum, definite lines in order and within Blink's track limit, and explicit counts that cover the template.
+function checkGrid(style: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[]): void {
+  const bad = (at: string, message: string): void => {
+    errors.push({ path: at, code: 'grid-shape', message });
+  };
+  const isGrid = style['display'] === 'grid';
+  const grid = style['grid'];
+  if (isGrid !== (grid !== null && grid !== undefined)) bad(`${path}.style.grid`, 'a grid style is written for display: grid and only there');
+  if (isRecord(grid)) {
+    for (const axis of ['Columns', 'Rows'] as const) {
+      const template = grid[`template${axis}`];
+      let tracks = 0;
+      if (Array.isArray(template)) {
+        for (const r of template) {
+          if (isRecord(r) && typeof r['count'] === 'number' && Array.isArray(r['sizes'])) tracks += r['count'] * r['sizes'].length;
+          if (isRecord(r) && Array.isArray(r['sizes'])) r['sizes'].forEach((t: unknown) => checkTrackSize(t, `${path}.style.grid.template${axis}`, bad));
+        }
+      }
+      const auto = grid[`auto${axis}`];
+      if (Array.isArray(auto)) auto.forEach((t: unknown) => checkTrackSize(t, `${path}.style.grid.auto${axis}`, bad));
+      const explicit = grid[`explicit${axis === 'Columns' ? 'Column' : 'Row'}Count`];
+      const repeat = grid[`autoRepeat${axis}`];
+      if (isRecord(repeat)) checkAutoRepeat(repeat, template, `${path}.style.grid.autoRepeat${axis}`, bad);
+      const repeated = isRecord(repeat) && Array.isArray(repeat['sizes']) ? repeat['sizes'].length : 0;
+      if (tracks + repeated > GRID_MAX_TRACKS) bad(`${path}.style.grid.template${axis}`, `a track list holds at most ${GRID_MAX_TRACKS} tracks`);
+      if (typeof explicit === 'number' && (explicit < tracks || explicit > GRID_MAX_TRACKS)) bad(`${path}.style.grid`, `the explicit ${axis.toLowerCase()} count is at least the template's ${tracks} tracks and at most ${GRID_MAX_TRACKS}`);
+    }
+  }
+  children.forEach((child: unknown, i: number) => {
+    if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced') || !isRecord(child['style'])) return;
+    const cs = child['style'];
+    const item = cs['gridItem'];
+    const inFlowItem = isGrid && cs['position'] !== 'absolute';
+    const at = `${path}.children[${i}].style.gridItem`;
+    if (inFlowItem !== (item !== null && item !== undefined)) bad(at, 'a grid placement is written for each in-flow child of a grid container and only there');
+    if (!isRecord(item)) return;
+    for (const axis of ['column', 'row'] as const) {
+      const span = item[axis];
+      if (!isRecord(span)) continue;
+      if (span['kind'] === 'lines') {
+        const repeat = isRecord(grid) ? grid[axis === 'column' ? 'autoRepeatColumns' : 'autoRepeatRows'] : null;
+        const names = isRecord(repeat) && Array.isArray(repeat['lineNames']) ? repeat['lineNames'].length : 0;
+        if (!isRecord(repeat)) bad(`${at}.${axis}`, 'grid lines are resolved by the engine only in an axis with an automatic repeater');
+        for (const side of ['start', 'end'] as const) checkGridLine(span[side], names, `${at}.${axis}.${side}`, bad);
+        continue;
+      }
+      if (span['kind'] === 'definite') {
+        const start = span['start'];
+        const end = span['end'];
+        if (typeof start === 'number' && typeof end === 'number' && (start >= end || start < -GRID_MAX_TRACKS || end > GRID_MAX_TRACKS)) bad(`${at}.${axis}`, `definite lines need start < end within ±${GRID_MAX_TRACKS}`);
+      } else if (span['kind'] === 'auto' && typeof span['span'] === 'number' && span['span'] > GRID_MAX_TRACKS) {
+        bad(`${at}.${axis}`, `a span is at most ${GRID_MAX_TRACKS}`);
+      }
+    }
+    if (child['boxType'] === 'anonymous' && !sameValue(item, ANONYMOUS_GRID_ITEM)) bad(at, `an anonymous grid item is auto-placed with justify-self auto (${JSON.stringify(ANONYMOUS_GRID_ITEM)})`);
+  });
+}
+
+const isFixedBreadth = (b: unknown): boolean => isRecord(b) && (b['kind'] === 'px' || b['kind'] === 'percent');
+
+/** css-grid-2 §7.2: <fixed-size>, a track size with a length or percentage minimum or maximum (never fit-content()). */
+function isFixedSize(t: unknown): boolean {
+  if (!isRecord(t)) return false;
+  if (t['kind'] === 'breadth') return isFixedBreadth(t['breadth']);
+  return t['kind'] === 'minmax' && (isFixedBreadth(t['min']) || isFixedBreadth(t['max']));
+}
+
+const ascending = (v: unknown): boolean => Array.isArray(v) && v.every((x: unknown, k: number) => k === 0 || (typeof x === 'number' && x >= (v[k - 1] as number)));
+
+/**
+ * css-grid-2 §7.2 <auto-track-list>: one automatic repeater among the template's repeaters, every track a <fixed-size>, and its
+ * line names in ascending lists, the repeated ones within one repetition.
+ */
+function checkAutoRepeat(repeat: Record<string, unknown>, template: unknown, at: string, bad: (at: string, message: string) => void): void {
+  const index = repeat['index'];
+  if (Array.isArray(template) && typeof index === 'number' && index > template.length) bad(at, `the automatic repeater stands at most after the template's ${template.length} repeaters`);
+  const sizes = repeat['sizes'];
+  const all: unknown[] = Array.isArray(sizes) ? [...sizes] : [];
+  if (Array.isArray(template)) for (const r of template) if (isRecord(r) && Array.isArray(r['sizes'])) all.push(...r['sizes']);
+  if (!all.every(isFixedSize)) bad(at, 'a track list with an automatic repeater holds only fixed sizes (a length or percentage minimum or maximum)');
+  const names = repeat['lineNames'];
+  if (!Array.isArray(names)) return;
+  const length = Array.isArray(sizes) ? sizes.length : 0;
+  names.forEach((n: unknown, i: number) => {
+    if (!isRecord(n)) return;
+    if (!ascending(n['explicit']) || !ascending(n['repeat']) || !ascending(n['implicit'])) bad(`${at}.lineNames[${i}]`, 'line name lists are ascending');
+    const r = n['repeat'];
+    if (Array.isArray(r) && r.some((x: unknown) => typeof x === 'number' && x > length)) bad(`${at}.lineNames[${i}]`, `a repeated line name is within one repetition (0 to ${length})`);
+  });
+}
+
+/** A GridLine position the engine resolves: a non-zero line within Blink's track limit, a span within it, and known name ids. */
+function checkGridLine(p: unknown, names: number, at: string, bad: (at: string, message: string) => void): void {
+  if (!isRecord(p)) return;
+  const n = p['n'];
+  if ((p['kind'] === 'line' || p['kind'] === 'named-line') && typeof n === 'number' && (n === 0 || n > GRID_MAX_TRACKS || n < -GRID_MAX_TRACKS)) bad(at, `a grid line is a non-zero integer within ±${GRID_MAX_TRACKS}`);
+  if ((p['kind'] === 'span' || p['kind'] === 'named-span') && typeof n === 'number' && n > GRID_MAX_TRACKS) bad(at, `a span is at most ${GRID_MAX_TRACKS}`);
+  for (const key of ['name', 'implicitName']) {
+    const id = p[key];
+    if (typeof id === 'number' && id >= names) bad(at, `a line name id is below the axis's ${names} line names`);
+  }
+}
+
+/** css-grid-2 §7.2.1: a flexible breadth is never a minimum; the compiler writes minmax(auto, <flex>) as the <flex>. */
+function checkTrackSize(t: unknown, at: string, bad: (at: string, message: string) => void): void {
+  if (isRecord(t) && t['kind'] === 'minmax' && isRecord(t['min']) && t['min']['kind'] === 'fr') bad(at, 'minmax() takes no flexible minimum');
+}
+
+/** The placement and justify-self of an anonymous grid item: every non-inherited property is its initial value. */
+const ANONYMOUS_GRID_ITEM = { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' };
+
+/** Structural equality of JSON values, so key order never matters. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameValue(v, b[i]));
+  if (isRecord(a) && isRecord(b)) {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((k) => Object.hasOwn(b, k) && sameValue(a[k], b[k]));
+  }
+  return a === b;
+}
+
+/** css-overflow-3 §3.1: visible and clip stay as they are only beside visible or clip. */
+function clipsOnly(v: unknown): boolean {
+  return v === 'visible' || v === 'clip';
 }
 
 function childrenOf(value: Record<string, unknown>, path: string, errors: ValidationError[]): readonly unknown[] | null {
@@ -591,7 +779,7 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
 }
 
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
-const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign'>]: LayoutStyle[K] } = {
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'gridItem'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
   top: { kind: 'auto' },
@@ -633,6 +821,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   columnGap: { kind: 'normal' },
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
+  grid: null,
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its
@@ -647,7 +836,7 @@ function checkAnonymous(box: Record<string, unknown>, children: readonly unknown
   const style = box['style'];
   if (!isRecord(style)) return;
   for (const [key, initial] of Object.entries(ANONYMOUS_INITIAL)) {
-    if (JSON.stringify(style[key]) !== JSON.stringify(initial)) bad(`an anonymous box takes the initial ${key} (${JSON.stringify(initial)}), not ${JSON.stringify(style[key])}`);
+    if (!sameValue(style[key], initial)) bad(`an anonymous box takes the initial ${key} (${JSON.stringify(initial)}), not ${JSON.stringify(style[key])}`);
   }
 }
 
@@ -667,8 +856,8 @@ function checkInlineContent(box: Record<string, unknown>, children: readonly unk
     errors.push({ path: `${path}.children`, code: 'mixed-children', message: 'a box has either inline-level children or box children; wrap the inline content in anonymous boxes' });
   }
   const style = box['style'];
-  if (isRecord(style) && style['display'] === 'flex') {
-    errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'inline content directly in a flex container must be wrapped in an anonymous flex item' });
+  if (isRecord(style) && (style['display'] === 'flex' || style['display'] === 'grid')) {
+    errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'inline content directly in a flex or grid container must be wrapped in an anonymous item' });
   }
   const runs: (Record<string, unknown> | null)[] = [];
   inlineTexts(children, runs);
@@ -715,6 +904,10 @@ export function validateLayoutInput(json: unknown): ValidationResult {
     const root = json['root'];
     if (isRecord(root) && root['kind'] !== 'box') {
       errors.push({ path: '$.root.kind', code: 'bad-value', message: 'the root must be a box' });
+    }
+    // css-grid-2 §8: the root has no grid container parent, so it carries no placement.
+    if (isRecord(root) && isRecord(root['style']) && root['style']['gridItem'] !== null && root['style']['gridItem'] !== undefined) {
+      errors.push({ path: '$.root.style.gridItem', code: 'grid-shape', message: 'the root box is not a grid item' });
     }
     // CSS2 §10.1: the root box is laid out in the initial containing block; the engine places it in flow.
     if (isRecord(root) && isRecord(root['style']) && root['style']['position'] === 'absolute') {

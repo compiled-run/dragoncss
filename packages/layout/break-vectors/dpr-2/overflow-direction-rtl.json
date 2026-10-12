@@ -1,0 +1,7 @@
+{
+  "case": "overflow-direction-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"r4:text0","lines":[[0,11],[11,14]]}
+  ]
+}

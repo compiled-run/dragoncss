@@ -1,0 +1,195 @@
+// Device lanes on CI (.github/workflows/device-lanes.yml): every matrix device runs in its own job (cli/device-ci.ts one), which
+// writes its outcome with the evidence stamp it was made under and the host that made it. Every lane runs there, the android
+// vectors lane too since a NaN matches any NaN in the corpus comparison (#147). The merge (cli/device-ci.ts merge) checks that
+// every device of both targets ran exactly once on this tree's evidence, merges in matrix order as a local run does
+// (mergeOutcomes), and writes the same lanes.json and device-failures-<target>.json records, each device lane naming the hosts
+// that produced it (producedOn).
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { DeviceEvidence } from './device-evidence.ts';
+import { parseOutcome } from './device-jobs.ts';
+import type { BlockReason, DeviceOutcome } from './device-lanes.ts';
+import { BLOCK_REASONS, mergeOutcomes } from './device-lanes.ts';
+import type { DeviceSpec } from './device-run.ts';
+import { DEVICE_MATRIX } from './device-run.ts';
+import type { DeviceRun } from './lanes.ts';
+import { nativeOut } from './native-host.ts';
+import type { NativeTarget } from './targets.ts';
+
+export const OUTCOME_SCHEMA = 'dragon.device-outcome/2';
+/** device-ci.ts one's exit code for a device the tooling blocked (boot, settle, install): the job judges nothing of the tree. */
+export const TOOLING_EXIT = 4;
+/** device-ci.ts one's exit code for a device run that judged the tree (a failed run, or a block the tree caused): a verdict. */
+export const VERDICT_EXIT = 1;
+
+/**
+ * The exit code of a blocked device: TOOLING_EXIT only when every reason is the tooling's; any reason of the tree's (a matrix
+ * mismatch, a device record from an app that ran) or a block without its reasons (an older producer) is a verdict.
+ */
+export function blockedExit(reasons: readonly BlockReason[] | undefined): number {
+  return reasons !== undefined && reasons.length > 0 && reasons.every((r) => BLOCK_REASONS[r] === 'tooling') ? TOOLING_EXIT : VERDICT_EXIT;
+}
+
+/**
+ * sha256 of every dump and hit record a device wrote, by case, with the device header (model, ABI, OS build, toolchain) and the
+ * timing removed, so two hosts' raw output can be compared case by case. Absent from an older outcome; null for a blocked device.
+ */
+export type CaseDumpHashes = { readonly dpr: number; readonly set: Readonly<Record<string, string>>; readonly states: Readonly<Record<string, string>>; readonly hits: Readonly<Record<string, string>>; readonly anim: Readonly<Record<string, string>> };
+
+/** A dump's hash without its device header and timing; a dump that is not a JSON object is hashed as it is, marked unparseable. */
+export function rawDumpHash(text: string): string {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    v = undefined;
+  }
+  const body = typeof v === 'object' && v !== null && !Array.isArray(v) ? JSON.stringify({ ...v, timing: null, device: null }) : `unparseable\0${text}`;
+  return createHash('sha256').update(body).digest('hex');
+}
+
+/** A case id usable as a map key: never one of Object.prototype's names (__proto__, constructor, ...). */
+const caseKey = (k: string): boolean => k !== '' && !(k in Object.prototype);
+
+/** The hashes of the files <case>@<dpr><ext> in dir, by case id (a missing dir has none; a file named for a prototype key throws). */
+export function dumpHashesIn(dir: string, ext: '.json' | '.hit', dpr: number): Record<string, string> {
+  if (!existsSync(dir)) return {};
+  const suffix = `@${dpr}${ext}`;
+  const out: Record<string, string> = {};
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(suffix)).sort()) {
+    const text = readFileSync(join(dir, f), 'utf8');
+    const id = f.slice(0, -suffix.length);
+    if (!caseKey(id)) throw new Error(`${join(dir, f)}: ${JSON.stringify(id)} is not a case id`);
+    out[id] = ext === '.hit' ? createHash('sha256').update(text).digest('hex') : rawDumpHash(text);
+  }
+  return out;
+}
+
+/** A device's per-case hashes at its DPR from the directories its run wrote (runOneDevice), or null when it ran no set (no DPR). */
+export function caseDumpHashes(target: NativeTarget, device: string, dpr: number | null, root: string = nativeOut(target)): CaseDumpHashes | null {
+  if (dpr === null) return null;
+  const lanes = join(root, 'lanes');
+  return { dpr, set: dumpHashesIn(join(lanes, device), '.json', dpr), states: dumpHashesIn(join(lanes, `${device}-states`), '.json', dpr), hits: dumpHashesIn(join(lanes, device), '.hit', dpr), anim: dumpHashesIn(join(lanes, `${device}-anim`), '.json', dpr) };
+}
+
+/** The cases whose hashes differ between two hosts' outcomes, by kind (a case on one side only counts as differing). */
+export function diffCaseHashes(a: CaseDumpHashes, b: CaseDumpHashes): { readonly set: string[]; readonly states: string[]; readonly hits: string[]; readonly anim: string[] } {
+  const diff = (x: Readonly<Record<string, string>>, y: Readonly<Record<string, string>>): string[] => [...new Set([...Object.keys(x), ...Object.keys(y)])].filter((k) => x[k] !== y[k]).sort();
+  return { set: diff(a.set, b.set), states: diff(a.states, b.states), hits: diff(a.hits, b.hits), anim: diff(a.anim, b.anim) };
+}
+
+/** One device job's result: the device, the evidence stamp of the tree it ran on, the host that ran it, its outcome and its per-case hashes. */
+export type CiOutcome = { readonly schema: typeof OUTCOME_SCHEMA; readonly target: NativeTarget; readonly device: string; readonly evidence: DeviceEvidence; readonly producedOn: string; readonly outcome: DeviceOutcome; readonly dumps?: CaseDumpHashes | null };
+
+export const ciOutcomeText = (o: CiOutcome): string => `${JSON.stringify(o)}\n`;
+
+/** Who produced a record: the GitHub Actions run (runner OS, architecture and run URL), or this machine. */
+export function producerLabel(env: Readonly<Record<string, string | undefined>> = process.env, platform: string = process.platform, arch: string = process.arch): string {
+  if (env['GITHUB_ACTIONS'] === 'true') return `GitHub Actions ${env['RUNNER_OS'] ?? '?'} ${env['RUNNER_ARCH'] ?? '?'} (${env['ImageOS'] ?? 'image ?'}) run ${env['GITHUB_SERVER_URL'] ?? ''}/${env['GITHUB_REPOSITORY'] ?? ''}/actions/runs/${env['GITHUB_RUN_ID'] ?? '?'}`;
+  return `local ${platform}-${arch}`;
+}
+
+const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
+const HEX64 = /^[0-9a-f]{64}$/;
+
+function parseEvidence(ev: unknown, file: string): DeviceEvidence {
+  if (!isObj(ev) || !['laneCode', 'referenceData', 'app'].every((k) => typeof ev[k] === 'string' && HEX64.test(ev[k] as string))) throw new Error(`${file}: evidence is not a stamp of three sha256 digests`);
+  return { laneCode: ev['laneCode'] as string, referenceData: ev['referenceData'] as string, app: ev['app'] as string };
+}
+
+function parseProducer(v: unknown, file: string): string {
+  if (typeof v !== 'string' || v.trim() === '') throw new Error(`${file}: producedOn is not a host label`);
+  return v;
+}
+
+/** A device job's file, checked: schema, a matrix device of its target, a full evidence stamp and a well-formed outcome. */
+export function parseCiOutcome(text: string, file: string): CiOutcome {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`${file}: not JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (!isObj(v)) throw new Error(`${file}: not an object`);
+  if (v['schema'] !== OUTCOME_SCHEMA) throw new Error(`${file}: schema ${JSON.stringify(v['schema'])}, not ${OUTCOME_SCHEMA}`);
+  const target = v['target'];
+  const device = v['device'];
+  if (target !== 'ios' && target !== 'android') throw new Error(`${file}: target ${JSON.stringify(target)} is not ios or android`);
+  if (typeof device !== 'string' || !DEVICE_MATRIX.some((d) => d.target === target && d.name === device)) throw new Error(`${file}: ${JSON.stringify(device)} is not a ${target} matrix device`);
+  const evidence = parseEvidence(v['evidence'], file);
+  const producedOn = parseProducer(v['producedOn'], file);
+  const outcome = parseOutcome(JSON.stringify(v['outcome'] ?? null), device);
+  const dumps = parseCaseHashes(v['dumps'], file);
+  return { schema: OUTCOME_SCHEMA, target, device, evidence, producedOn, outcome, ...(dumps === undefined ? {} : { dumps }) };
+}
+
+/** The per-case hashes of an outcome, checked: absent (an older outcome), null, or a DPR and three maps of case id to sha256. */
+export function parseCaseHashes(v: unknown, file: string): CaseDumpHashes | null | undefined {
+  if (v === undefined || v === null) return v;
+  const map = (m: unknown): m is Record<string, string> => isObj(m) && Object.keys(m).every(caseKey) && Object.values(m).every((h) => typeof h === 'string' && HEX64.test(h));
+  if (!isObj(v) || typeof v['dpr'] !== 'number' || !map(v['set']) || !map(v['states']) || !map(v['hits']) || !map(v['anim'])) throw new Error(`${file}: dumps is not a DPR and per-case sha256 maps of set, states, hits and anim (case ids, never a prototype key)`);
+  return { dpr: v['dpr'], set: v['set'], states: v['states'], hits: v['hits'], anim: v['anim'] };
+}
+
+/**
+ * The runs of both targets from the device jobs' outcomes: every matrix device exactly once, each made under this tree's evidence
+ * stamp (evidenceOf), merged in matrix order. Throws naming every missing, repeated or foreign outcome; nothing is merged from a
+ * subset.
+ */
+export function mergeCiOutcomes(outcomes: readonly CiOutcome[], evidenceOf: (t: NativeTarget) => DeviceEvidence, matrix: readonly DeviceSpec[] = DEVICE_MATRIX): Map<NativeTarget, DeviceRun> {
+  const problems: string[] = [];
+  const key = (t: string, d: string): string => `${t}/${d}`;
+  const seen = new Map<string, CiOutcome>();
+  for (const o of outcomes) {
+    const k = key(o.target, o.device);
+    if (seen.has(k)) problems.push(`${k}: two outcomes`);
+    seen.set(k, o);
+    const want = evidenceOf(o.target);
+    for (const f of ['laneCode', 'referenceData', 'app'] as const) if (o.evidence[f] !== want[f]) problems.push(`${k}: evidence ${f} ${o.evidence[f].slice(0, 12)} is not this tree's ${want[f].slice(0, 12)}`);
+  }
+  for (const d of matrix) if (!seen.has(key(d.target, d.name))) problems.push(`${key(d.target, d.name)}: no outcome`);
+  if (problems.length > 0) throw new Error(`device outcomes cannot be merged:\n  ${problems.join('\n  ')}`);
+  const runs = new Map<NativeTarget, DeviceRun>();
+  for (const t of ['ios', 'android'] as const) {
+    const mine = matrix.filter((d) => d.target === t).map((d) => seen.get(key(t, d.name))!);
+    const merged = mergeOutcomes(mine.map((o) => o.outcome), evidenceOf(t));
+    const v = mine.find((o) => o.outcome.vectors !== null);
+    runs.set(t, { ...merged, producedOn: { devices: Object.fromEntries(mine.map((o) => [o.device, o.producedOn])), vectors: v?.producedOn ?? null } });
+  }
+  return runs;
+}
+
+type LanesRecords = { readonly targets: readonly { readonly target: string; readonly lanes: readonly { readonly lane: string; readonly where: string; readonly state: string; readonly reason: string | null }[] }[] };
+type Failure = { readonly lane: string; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: string; readonly detail: string };
+export type LaneComparison = { readonly target: string; readonly lane: string; readonly committed: string; readonly ci: string; readonly set: string; readonly detail: string; readonly same: boolean };
+
+/**
+ * Every device lane of the merged CI records against the records committed at the tested commit: the state, and the failure set
+ * (lane, case, DPR, node, kind) with and without its detail text. It informs a run made for review (the `devices` label); a run
+ * the landing driver dispatches is judged by the driver against the previous position, since its tree's own committed records
+ * are the "not run" ones its regen wrote (judgeCommitted false).
+ */
+export function compareWithCommitted(committed: { readonly lanes: LanesRecords; readonly failures: (t: string) => readonly Failure[] }, ci: { readonly lanes: LanesRecords; readonly failures: (t: string) => readonly Failure[] }): { readonly rows: readonly LaneComparison[]; readonly same: boolean } {
+  const rows: LaneComparison[] = [];
+  const key = (f: Failure): string => JSON.stringify([f.lane, f.case, f.dpr, f.node, f.kind]);
+  for (const t of committed.lanes.targets) {
+    const mine = ci.lanes.targets.find((x) => x.target === t.target);
+    for (const l of t.lanes.filter((x) => x.where === 'device')) {
+      const m = mine?.lanes.find((x) => x.lane === l.lane);
+      const a = committed.failures(t.target).filter((f) => f.lane === l.lane);
+      const b = ci.failures(t.target).filter((f) => f.lane === l.lane);
+      const [ka, kb] = [a.map(key).sort(), b.map(key).sort()];
+      const [da, db] = [a.map((f) => key(f) + f.detail).sort(), b.map((f) => key(f) + f.detail).sort()];
+      const setSame = JSON.stringify(ka) === JSON.stringify(kb);
+      const detailSame = JSON.stringify(da) === JSON.stringify(db);
+      const fmt = (x: { state: string; reason: string | null } | undefined): string => (x === undefined ? 'missing' : `${x.state}${x.reason === null ? '' : ` (${x.reason})`}`);
+      rows.push({ target: t.target, lane: l.lane, committed: fmt(l), ci: fmt(m), set: setSame ? `same (${ka.length})` : `differs: ${ka.filter((k) => !kb.includes(k)).length} only committed, ${kb.filter((k) => !ka.includes(k)).length} only CI`, detail: detailSame ? 'same' : 'differs', same: m?.state === l.state && setSame && detailSame });
+    }
+  }
+  return { rows, same: rows.every((r) => r.same) };
+}
+
+/** The comparison as a markdown table, with its verdict line. */
+export const comparisonText = (c: ReturnType<typeof compareWithCommitted>): string =>
+  `${['| target | lane | committed | CI | failure set (lane, case, dpr, node, kind) | detail text |', '|---|---|---|---|---|---|', ...c.rows.map((r) => `| ${r.target} | ${r.lane} | ${r.committed} | ${r.ci} | ${r.set} | ${r.detail} |`)].join('\n')}\n\n${c.same ? 'Every device lane judges exactly as the committed records.' : 'Some device lanes differ from the committed records.'}\n`;

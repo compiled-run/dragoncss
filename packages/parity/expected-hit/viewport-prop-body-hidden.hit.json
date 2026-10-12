@@ -1,0 +1,17 @@
+{
+  "case": "viewport-prop-body-hidden",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 56,
+  "gridSha256": "0abc1bef8b875fa7b0f6165191edf4e1e599ec391f53893f1bc4960a1d6ea17f",
+  "ids": [
+    "a",
+    "html"
+  ],
+  "runs": [[0,32],[1,24]]
+}

@@ -1,0 +1,10 @@
+{
+  "case": "list-items-flex-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"r1:text0","lines":[[0,2]]},
+    {"id":"r2:text0","lines":[[0,3]]},
+    {"id":"c1:text0","lines":[[0,2]]},
+    {"id":"c2:text0","lines":[[0,1]]}
+  ]
+}

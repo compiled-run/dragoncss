@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.outer { overflow: auto; width: 80px; height: 50px; padding: 4px; border: 1px solid #000; margin-bottom: 4px; }
+.inner { overflow: auto; width: 60px; height: 30px; padding: 3px; }
+.vis { width: 40px; height: 20px; padding-bottom: 6px; background-color: #ddd; }
+.wide { width: 150px; height: 120px; background-color: #ccc; }
+.cx { overflow: clip; width: 40px; height: 20px; }
+.cxy { overflow-x: clip; overflow-y: clip; width: 50px; height: 25px; }
+.pos { position: relative; }
+.abs { position: absolute; left: 100px; top: 90px; width: 10px; height: 10px; background-color: #c00; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="o1" class="outer"><div data-dragon-id="i1" class="inner"><div data-dragon-id="w1" class="wide"></div></div></div>
+<div data-dragon-id="o2" class="outer"><div data-dragon-id="v2" class="vis"><div data-dragon-id="w2" class="wide"></div></div></div>
+<div data-dragon-id="o3" class="outer"><div data-dragon-id="c3" class="cx"><div data-dragon-id="w3" class="wide"></div></div></div>
+<div data-dragon-id="o4" class="outer pos"><div data-dragon-id="v4" class="vis"><div data-dragon-id="a4" class="abs"></div></div><div data-dragon-id="c4" class="cxy"><div data-dragon-id="w4" class="wide"></div></div></div>
+</body>
+</html>

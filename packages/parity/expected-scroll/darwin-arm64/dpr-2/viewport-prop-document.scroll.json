@@ -1,0 +1,19 @@
+{
+ "case": "viewport-prop-document",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "direction": "ltr",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 454,
+   "scrollHeight": 430,
+   "clientWidth": 400,
+   "clientHeight": 300
+  }
+ ],
+ "extents": []
+}

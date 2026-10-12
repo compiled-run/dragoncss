@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.rel { position: relative; width: 200px; height: 140px; padding: 20px; border: 4px solid #123; background-color: #eee; }
+.abs { position: absolute; left: 10px; top: 86px; width: 50px; height: 50px; padding: 10%; background: linear-gradient(90deg, #fa0, #05a) content-box; }
+.abs-icb { position: absolute; left: 300px; top: 200px; width: 40px; height: 30px; padding: 5% 2%; background: radial-gradient(circle, #fa0, #05a) content-box; }
+.abs-wrap { position: absolute; left: 130px; top: 86px; width: 50px; padding: 10%; }
+.abs-kid { height: 10px; padding: 10%; background: linear-gradient(#0a5, #a05) content-box; }
+.flow { width: 60px; height: 20px; padding: 10%; background: linear-gradient(#fa0, #05a) content-box; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs"></div><div data-dragon-id="abs-wrap" class="abs-wrap"><div data-dragon-id="abs-kid" class="abs-kid"></div></div><div data-dragon-id="flow" class="flow"></div></div>
+<div data-dragon-id="abs-icb" class="abs-icb"></div>
+</body>
+</html>

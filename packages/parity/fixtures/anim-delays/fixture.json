@@ -1,0 +1,247 @@
+{
+ "sources": [
+  "view.dg",
+  "doc.css",
+  "view.css"
+ ],
+ "modules": [
+  {
+   "id": "view",
+   "source": "view.dg"
+  }
+ ],
+ "styles": [
+  {
+   "id": "doc",
+   "file": "doc.css",
+   "scope": "document"
+  },
+  {
+   "id": "view",
+   "file": "view.css",
+   "scope": "App"
+  }
+ ],
+ "document": {
+  "root": "App",
+  "documentElement": "html",
+  "styles": [
+   "doc",
+   "view"
+  ]
+ },
+ "components": [
+  {
+   "id": "App",
+   "module": "view",
+   "at": "component App",
+   "states": [
+    {
+     "id": "on",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "on: [false, true] = false"
+    }
+   ],
+   "root": [
+    {
+     "el": "html",
+     "id": "html",
+     "at": "<html>",
+     "children": [
+      {
+       "el": "body",
+       "id": "body",
+       "at": "<body>",
+       "children": [
+        {
+         "el": "div",
+         "id": "d0",
+         "at": "<div d0",
+         "class": [
+          "view.d",
+          "view.pos",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "d1",
+         "at": "<div d1",
+         "class": [
+          "view.d",
+          "view.neg",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "d2",
+         "at": "<div d2",
+         "class": [
+          "view.d",
+          "view.st1",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "d3",
+         "at": "<div d3",
+         "class": [
+          "view.d",
+          "view.st2",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "d4",
+         "at": "<div d4",
+         "class": [
+          "view.d",
+          "view.st3",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "d5",
+         "at": "<div d5",
+         "class": [
+          "view.d",
+          "view.list",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

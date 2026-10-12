@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 42688
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 42016
+  },
+  {
+   "id": "o1",
+   "parent": "body",
+   "x": 52160,
+   "y": 0,
+   "width": 15040,
+   "height": 10000
+  },
+  {
+   "id": "i1",
+   "parent": "o1",
+   "x": 3152,
+   "y": 800,
+   "width": 11088,
+   "height": 6048
+  },
+  {
+   "id": "w1",
+   "parent": "i1",
+   "x": -14616,
+   "y": 504,
+   "width": 25200,
+   "height": 20160
+  },
+  {
+   "id": "o2",
+   "parent": "body",
+   "x": 52160,
+   "y": 10672,
+   "width": 15040,
+   "height": 10000
+  },
+  {
+   "id": "v2",
+   "parent": "o2",
+   "x": 7520,
+   "y": 800,
+   "width": 6720,
+   "height": 4368
+  },
+  {
+   "id": "w2",
+   "parent": "v2",
+   "x": -18480,
+   "y": 0,
+   "width": 25200,
+   "height": 20160
+  },
+  {
+   "id": "o3",
+   "parent": "body",
+   "x": 52160,
+   "y": 21344,
+   "width": 15040,
+   "height": 10000
+  },
+  {
+   "id": "c3",
+   "parent": "o3",
+   "x": 7520,
+   "y": 800,
+   "width": 6720,
+   "height": 3360
+  },
+  {
+   "id": "w3",
+   "parent": "c3",
+   "x": -18480,
+   "y": 0,
+   "width": 25200,
+   "height": 20160
+  },
+  {
+   "id": "o4",
+   "parent": "body",
+   "x": 52160,
+   "y": 32016,
+   "width": 15040,
+   "height": 10000
+  },
+  {
+   "id": "v4",
+   "parent": "o4",
+   "x": 7520,
+   "y": 800,
+   "width": 6720,
+   "height": 4368
+  },
+  {
+   "id": "c4",
+   "parent": "o4",
+   "x": 5840,
+   "y": 5168,
+   "width": 8400,
+   "height": 4200
+  },
+  {
+   "id": "w4",
+   "parent": "c4",
+   "x": -16800,
+   "y": 0,
+   "width": 25200,
+   "height": 20160
+  },
+  {
+   "id": "a4",
+   "parent": "v4",
+   "x": 9408,
+   "y": 14448,
+   "width": 1680,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 667,
+   "width": 1050,
+   "height": 667
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 657,
+   "width": 1050,
+   "height": 657
+  },
+  {
+   "id": "o1",
+   "left": 815,
+   "top": 0,
+   "right": 1050,
+   "bottom": 156,
+   "width": 235,
+   "height": 156
+  },
+  {
+   "id": "i1",
+   "left": 864,
+   "top": 13,
+   "right": 1038,
+   "bottom": 107,
+   "width": 174,
+   "height": 94
+  },
+  {
+   "id": "w1",
+   "left": 636,
+   "top": 20,
+   "right": 1030,
+   "bottom": 335,
+   "width": 394,
+   "height": 315
+  },
+  {
+   "id": "o2",
+   "left": 815,
+   "top": 167,
+   "right": 1050,
+   "bottom": 323,
+   "width": 235,
+   "height": 156
+  },
+  {
+   "id": "v2",
+   "left": 933,
+   "top": 179,
+   "right": 1038,
+   "bottom": 248,
+   "width": 105,
+   "height": 69
+  },
+  {
+   "id": "w2",
+   "left": 644,
+   "top": 179,
+   "right": 1038,
+   "bottom": 494,
+   "width": 394,
+   "height": 315
+  },
+  {
+   "id": "o3",
+   "left": 815,
+   "top": 334,
+   "right": 1050,
+   "bottom": 490,
+   "width": 235,
+   "height": 156
+  },
+  {
+   "id": "c3",
+   "left": 933,
+   "top": 346,
+   "right": 1038,
+   "bottom": 399,
+   "width": 105,
+   "height": 53
+  },
+  {
+   "id": "w3",
+   "left": 644,
+   "top": 346,
+   "right": 1038,
+   "bottom": 661,
+   "width": 394,
+   "height": 315
+  },
+  {
+   "id": "o4",
+   "left": 815,
+   "top": 500,
+   "right": 1050,
+   "bottom": 657,
+   "width": 235,
+   "height": 157
+  },
+  {
+   "id": "v4",
+   "left": 933,
+   "top": 513,
+   "right": 1038,
+   "bottom": 581,
+   "width": 105,
+   "height": 68
+  },
+  {
+   "id": "c4",
+   "left": 906,
+   "top": 581,
+   "right": 1038,
+   "bottom": 647,
+   "width": 132,
+   "height": 66
+  },
+  {
+   "id": "w4",
+   "left": 644,
+   "top": 581,
+   "right": 1038,
+   "bottom": 896,
+   "width": 394,
+   "height": 315
+  },
+  {
+   "id": "a4",
+   "left": 1080,
+   "top": 739,
+   "right": 1106,
+   "bottom": 765,
+   "width": 26,
+   "height": 26
+  }
+ ]
+}

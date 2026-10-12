@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 49920
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 7680,
+   "width": 76800,
+   "height": 42240
+  },
+  {
+   "id": "outer",
+   "parent": "body",
+   "x": 11520,
+   "y": 0,
+   "width": 30720,
+   "height": 19200
+  },
+  {
+   "id": "inner",
+   "parent": "outer",
+   "x": 7680,
+   "y": 0,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "leaf",
+   "parent": "inner",
+   "x": 960,
+   "y": 0,
+   "width": 3840,
+   "height": 3840
+  },
+  {
+   "id": "second",
+   "parent": "body",
+   "x": 48000,
+   "y": 30720,
+   "width": 19200,
+   "height": 11520
+  },
+  {
+   "id": "second:text0",
+   "parent": "second",
+   "x": 0,
+   "y": 0,
+   "width": 15360,
+   "height": 3840
+  },
+  {
+   "id": "second:text0:line0",
+   "parent": "second:text0",
+   "x": 0,
+   "y": 0,
+   "width": 15360,
+   "height": 3840
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 780,
+   "width": 1200,
+   "height": 780
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 120,
+   "right": 1200,
+   "bottom": 780,
+   "width": 1200,
+   "height": 660
+  },
+  {
+   "id": "outer",
+   "left": 180,
+   "top": 120,
+   "right": 660,
+   "bottom": 420,
+   "width": 480,
+   "height": 300
+  },
+  {
+   "id": "inner",
+   "left": 300,
+   "top": 120,
+   "right": 480,
+   "bottom": 240,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "leaf",
+   "left": 315,
+   "top": 120,
+   "right": 375,
+   "bottom": 180,
+   "width": 60,
+   "height": 60
+  },
+  {
+   "id": "second",
+   "left": 750,
+   "top": 600,
+   "right": 1050,
+   "bottom": 780,
+   "width": 300,
+   "height": 180
+  },
+  {
+   "id": "second:text0",
+   "left": 750,
+   "top": 600,
+   "right": 990,
+   "bottom": 660,
+   "width": 240,
+   "height": 60
+  },
+  {
+   "id": "second:text0:line0",
+   "left": 750,
+   "top": 600,
+   "right": 990,
+   "bottom": 660,
+   "width": 240,
+   "height": 60
+  }
+ ]
+}

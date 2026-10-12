@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { display: flex; width: 180px; height: 40px; margin-bottom: 2px; background-color: #eee; }
+.i { width: 20px; height: 8px; background-color: #888; }
+.dir { -webkit-flex-direction: row-reverse; -webkit-justify-content: space-between; -webkit-align-items: center; }
+.col { -webkit-flex-direction: column; -webkit-flex-wrap: wrap; -webkit-align-content: center; -webkit-column-gap: 6px; }
+.flow { -webkit-flex-flow: row wrap; -webkit-align-content: space-around; -webkit-column-gap: 3px; }
+.grow { -webkit-flex-grow: 2; } .shrink { -webkit-flex-shrink: 0; width: 120px; } .basis { -webkit-flex-basis: 30px; }
+.fl { -webkit-flex: 1 1 10px; } .first { -webkit-order: -1; } .end { -webkit-align-self: flex-end; }
+.bs { -webkit-box-sizing: border-box; width: 30px; padding: 0 4px; border: 2px solid #000; }
+.as { -webkit-flex-direction: column; flex-direction: row; }
+.sa { flex-direction: row; -webkit-flex-direction: column; }
+.js { -webkit-justify-content: center; justify-content: flex-end; }
+.sj { justify-content: flex-end; -webkit-justify-content: center; }
+.gs { -webkit-flex: 3; flex-grow: 1; }
+.sg { flex-grow: 1; -webkit-flex: 3; }
+.bx { box-sizing: border-box; -webkit-box-sizing: content-box; width: 30px; padding: 0 4px; }
+.imp { -webkit-align-items: flex-end !important; align-items: flex-start; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="w dir"><div data-dragon-id="a1" class="i grow"></div><div data-dragon-id="a2" class="i first"></div><div data-dragon-id="a3" class="i end"></div></div>
+<div data-dragon-id="b" class="w col"><div data-dragon-id="b1" class="i"></div><div data-dragon-id="b2" class="i"></div><div data-dragon-id="b3" class="i"></div><div data-dragon-id="b4" class="i basis"></div><div data-dragon-id="b5" class="i"></div></div>
+<div data-dragon-id="c" class="w flow"><div data-dragon-id="c1" class="i shrink"></div><div data-dragon-id="c2" class="i fl"></div><div data-dragon-id="c3" class="i bs"></div><div data-dragon-id="c4" class="i shrink"></div></div>
+<div data-dragon-id="d" class="w as"><div data-dragon-id="d1" class="i"></div><div data-dragon-id="d2" class="i"></div></div>
+<div data-dragon-id="e" class="w sa"><div data-dragon-id="e1" class="i"></div><div data-dragon-id="e2" class="i"></div></div>
+<div data-dragon-id="f" class="w js imp"><div data-dragon-id="f1" class="i gs"></div><div data-dragon-id="f2" class="i sg"></div><div data-dragon-id="f3" class="i bx"></div></div>
+<div data-dragon-id="g" class="w sj"><div data-dragon-id="g1" class="i"></div><div data-dragon-id="g2" class="i"></div></div>
+</body>
+</html>

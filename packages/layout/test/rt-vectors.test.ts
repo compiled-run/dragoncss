@@ -97,4 +97,16 @@ describe('rt vectors', () => {
     const v = read('rt-vectors', 'hold.json') as Hold;
     expect(holdMismatches(v, { ...NO_RT_FAULTS, holdTimeLost: true })).toBeGreaterThan(0);
   });
+
+  // ANIM-b (T065): the reference equals Chrome on every frozen-timeline record (rt-faults.test.ts), so each vector file is
+  // its oracle file with the reference's provenance line.
+  for (const name of ['advance.json', 'keyframes.json', 'transitions.json', 'animations.json']) {
+    it(`${name}: the inputs and records are the oracle's`, () => {
+      const v = read('rt-vectors', name) as { readonly about: string; readonly records: readonly unknown[] };
+      const o = read('rt-oracle', name) as { readonly about: string; readonly records: readonly unknown[] };
+      expect(v.about).not.toBe(o.about);
+      expect(v.records.length).toBeGreaterThan(0);
+      expect({ ...v, about: '' }).toEqual({ ...o, about: '' });
+    });
+  }
 });

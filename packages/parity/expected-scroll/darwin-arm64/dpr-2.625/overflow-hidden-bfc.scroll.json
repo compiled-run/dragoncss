@@ -1,0 +1,118 @@
+{
+ "case": "overflow-hidden-bfc",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "direction": "ltr",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 300,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "q",
+   "scrollWidth": 400,
+   "scrollHeight": 25,
+   "clientWidth": 400,
+   "clientHeight": 25
+  },
+  {
+   "id": "zero",
+   "scrollWidth": 400,
+   "scrollHeight": 0,
+   "clientWidth": 400,
+   "clientHeight": 0
+  },
+  {
+   "id": "fixed",
+   "scrollWidth": 40,
+   "scrollHeight": 34,
+   "clientWidth": 40,
+   "clientHeight": 12
+  },
+  {
+   "id": "minh",
+   "scrollWidth": 400,
+   "scrollHeight": 20,
+   "clientWidth": 400,
+   "clientHeight": 20
+  },
+  {
+   "id": "neg",
+   "scrollWidth": 400,
+   "scrollHeight": 3,
+   "clientWidth": 400,
+   "clientHeight": 3
+  },
+  {
+   "id": "txt",
+   "scrollWidth": 30,
+   "scrollHeight": 40,
+   "clientWidth": 30,
+   "clientHeight": 15
+  },
+  {
+   "id": "pct",
+   "scrollWidth": 400,
+   "scrollHeight": 20,
+   "clientWidth": 400,
+   "clientHeight": 20
+  }
+ ],
+ "extents": [
+  {
+   "id": "q",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "zero",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "fixed",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 21.714284896850586
+  },
+  {
+   "id": "minh",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "neg",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "txt",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 24.761905670166016
+  },
+  {
+   "id": "pct",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  }
+ ]
+}

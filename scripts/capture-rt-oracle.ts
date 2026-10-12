@@ -7,12 +7,17 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { launchChrome } from '../packages/parity/src/chrome.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
-import type { EasingSpec, StepPosition } from '../packages/layout/src/rt-easing.ts';
-import { cubicBezier, easingFromSpec, NO_RT_FAULTS, solveBezier } from '../packages/layout/src/rt-easing.ts';
-import type { AnimatedValue, LegacyColor, LengthValue, TransformOp } from '../packages/layout/src/rt-interpolate.ts';
+import { runAnimationScript } from '../packages/layout/src/rt-animations.ts';
+import type { Easing, EasingSpec, RtFaults, StepPosition } from '../packages/layout/src/rt-easing.ts';
+import { cubicBezier, easingFromSpec, LINEAR, NO_RT_FAULTS, solveBezier } from '../packages/layout/src/rt-easing.ts';
+import type { AnimatedValue, LegacyColor, LengthValue, TransformOp, ValueRange } from '../packages/layout/src/rt-interpolate.ts';
 import { interpolateValue, legacyColorFromCss, lengthPercent, lengthPx, rotateOp, scaleOp, serializeValue, TRANSPARENT, translateOp, ZERO_PX } from '../packages/layout/src/rt-interpolate.ts';
-import type { EffectTimingSpec, FillMode, PlaybackDirection } from '../packages/layout/src/rt-timing.ts';
-import { computeTiming, currentTimeAt, seekPaused } from '../packages/layout/src/rt-timing.ts';
+import type { RuleKeyframe } from '../packages/layout/src/rt-keyframes.ts';
+import { groupFromRule, sampleKeyframeEffect } from '../packages/layout/src/rt-keyframes.ts';
+import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } from '../packages/layout/src/rt-timing.ts';
+import { advanceHeld, computeSecondsTiming, computeTiming, currentTimeAt, HELD_ZERO, seekPaused } from '../packages/layout/src/rt-timing.ts';
+import type { ScriptStep } from '../packages/layout/src/rt-transition.ts';
+import { runTransitionScript } from '../packages/layout/src/rt-transition.ts';
 
 const ORACLE_DIR = repoPath('packages/layout/rt-oracle');
 const VECTOR_DIR = repoPath('packages/layout/rt-vectors');
@@ -380,6 +385,382 @@ function referenceInterp(c: InterpCase, timeMs: number): { progress: string | nu
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// ANIM-b (T065 R2): CSS transitions, @keyframes and animation lists on held elements. The page's animations run at playback
+// rate 0 (CDP Animation.setPlaybackRate before load), so document.timeline stays at 0; a step either changes the element's
+// class (one style change event) or sets `currentTime = currentTime + delta` on every running animation of the element. No
+// animation is ever paused by script.
+
+type ValueSpec = { readonly v: AnimatedValue; readonly css: string };
+type ScriptJson = readonly (readonly ['s', number] | readonly ['a', number])[];
+type ListingJson = { readonly mode: 'listed' | 'unlisted' | 'initial'; readonly delay: number; readonly duration: number; readonly easing: EasingSpec };
+type TransitionCase = { readonly id: string; readonly property: string; readonly range: ValueRange; readonly states: readonly { readonly value: ValueSpec; readonly listing: ListingJson }[]; readonly steps: ScriptJson };
+type RuleJson = readonly { readonly offset: number; readonly easing: EasingSpec | null; readonly value: ValueSpec | null }[];
+type SecondsJson = { readonly delay: number; readonly duration: number; readonly iterations: number | 'Infinity'; readonly direction: PlaybackDirection; readonly fill: FillMode; readonly easing: EasingSpec };
+type KeyframeCase = { readonly id: string; readonly property: string; readonly range: ValueRange; readonly underlying: ValueSpec; readonly rule: RuleJson; readonly timing: SecondsJson; readonly times: readonly number[] };
+type EntryJson = { readonly name: string; readonly paused: boolean; readonly timing: SecondsJson };
+type AnimationCase = { readonly id: string; readonly property: string; readonly range: ValueRange; readonly rules: readonly { readonly name: string; readonly rule: RuleJson }[]; readonly states: readonly { readonly base: ValueSpec; readonly entries: readonly EntryJson[] }[]; readonly steps: ScriptJson };
+
+const vpx = (n: number): ValueSpec => ({ v: length(lengthPx(n)), css: `${n}px` });
+const vop = (n: number): ValueSpec => ({ v: opacity(Math.fround(n)), css: String(n) });
+const vrgba = (r: number, g: number, b: number, a: number): ValueSpec => ({ v: color(legacyColorFromCss(r, g, b, a)), css: a === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${a})` });
+const VCLEAR: ValueSpec = { v: color(TRANSPARENT), css: 'transparent' };
+const EASE = bezier(0.25, 0.1, 0.25, 1);
+const OVERSHOOT = bezier(0.5, -1, 0.5, 2);
+
+function listed(duration: number, easing: EasingSpec, delay = 0): ListingJson {
+  return { mode: 'listed', delay, duration, easing };
+}
+const UNLISTED_JSON: ListingJson = { mode: 'unlisted', delay: 0, duration: 0, easing: linear() };
+const INITIAL_JSON: ListingJson = { mode: 'initial', delay: 0, duration: 0, easing: linear() };
+const adv = (ms: number, n = 1): ScriptJson => Array.from({ length: n }, () => ['a', ms] as const);
+
+function transitionCases(): TransitionCase[] {
+  const out: TransitionCase[] = [];
+  const two = (id: string, property: string, range: ValueRange, a: ValueSpec, b: ValueSpec, l: ListingJson, steps: ScriptJson): void => {
+    out.push({ id, property, range, states: [{ value: a, listing: l }, { value: b, listing: l }], steps });
+  };
+  const flip = (n: number, ms: number): ScriptJson => Array.from({ length: n }, (_, i) => [['s', (i + 1) % 2] as const, ['a', ms] as const]).flat();
+  two('opacity reversal (M5)', 'opacity', 'all', vop(0), vop(1), listed(0.5, EASE), [['s', 1], ['a', 250], ['s', 0], ['a', 100], ['s', 1], ['a', 50], ['s', 0], ['a', 1000], ['s', 1], ...adv(1000 / 60, 3), ['s', 0], ...adv(100, 6)]);
+  out.push({ id: 'width interrupt, none, initial (M22, M23)', property: 'min-width', range: 'non-negative', states: [
+    { value: vpx(0), listing: listed(1, linear()) }, { value: vpx(200), listing: listed(1, linear()) }, { value: vpx(50), listing: listed(1, linear()) },
+    { value: vpx(200), listing: UNLISTED_JSON }, { value: vpx(0), listing: INITIAL_JSON }, { value: vpx(30), listing: INITIAL_JSON },
+  ], steps: [['s', 1], ['a', 250], ['s', 2], ['a', 100], ['s', 1], ['a', 300], ['s', 3], ['a', 100], ['s', 0], ['a', 400], ['s', 4], ['a', 100], ['s', 5], ['a', 100], ['s', 1], ['a', 2000]] });
+  out.push({ id: 'opacity delays (M19)', property: 'opacity', range: 'all', states: [
+    { value: vop(0), listing: listed(1, linear(), 0.5) }, { value: vop(1), listing: listed(1, linear(), 0.5) }, { value: vop(0), listing: listed(1, linear(), -0.5) }, { value: vop(1), listing: listed(1, linear(), -0.5) },
+  ], steps: [['s', 1], ['a', 250], ['a', 249], ['a', 1], ['a', 1], ['a', 250], ['s', 0], ['a', 300], ['s', 1], ['a', 2000], ['s', 2], ['a', 100], ['s', 3], ['a', 100], ['s', 2], ['a', 2000]] });
+  for (const [prop, range, a, b] of [['min-height', 'non-negative', vpx(2), vpx(50)], ['text-indent', 'all', vpx(2), vpx(50)], ['min-width', 'non-negative', vpx(2), vpx(50)], ['background-color', 'all', vrgba(10, 10, 10, 1), vrgba(250, 250, 250, 1)], ['opacity', 'all', vop(0.2), vop(0.9)]] as const) {
+    two(`${prop} overshoot (M26)`, prop, range, a, b, listed(1, OVERSHOOT), [['s', 1], ...adv(50, 6), ['s', 0], ...adv(50, 4), ['s', 1], ...adv(100, 12)]);
+  }
+  two('color transparent ease', 'background-color', 'all', VCLEAR, vrgba(0, 0, 255, 0.5), listed(0.3, EASE), [['s', 1], ...adv(30, 4), ['s', 0], ...adv(30, 4), ['s', 1], ...adv(100, 4)]);
+  for (const p of ['jump-start', 'jump-end', 'jump-none', 'jump-both', 'start', 'end'] as const) {
+    const steps4 = steps(4, p);
+    two(`min-width steps(4, ${p}) delay`, 'min-width', 'non-negative', vpx(0), vpx(100), listed(1, steps4, 0.2), [['s', 1], ['a', 100], ['a', 99], ['a', 1], ['a', 1], ...[0, 1, 2, 3].flatMap(() => [['a', 248] as const, ['a', 1] as const, ['a', 1] as const]), ['a', 100]]);
+  }
+  two('min-width step-start negative delay', 'min-width', 'non-negative', vpx(0), vpx(100), listed(1, steps(1, 'start'), -0.25), [['s', 1], ['a', 1], ['a', 500], ['s', 0], ['a', 100], ['a', 1000]]);
+  out.push({ id: 'zero duration', property: 'min-width', range: 'non-negative', states: [{ value: vpx(0), listing: listed(0, linear()) }, { value: vpx(100), listing: listed(1, linear()) }, { value: vpx(50), listing: listed(0, linear()) }, { value: vpx(100), listing: listed(0, linear(), -0.5) }], steps: [['s', 1], ['a', 200], ['s', 2], ['a', 100], ['s', 1], ['a', 100], ['s', 3], ['a', 100], ['s', 0], ['a', 100]] });
+  two('width reversal chain', 'min-width', 'non-negative', vpx(0), vpx(100), listed(1, EASE), [['s', 1], ['a', 300], ['s', 0], ['a', 100], ['s', 1], ['a', 100], ['s', 0], ['a', 50], ['s', 1], ...adv(250, 6)]);
+  two('opacity 60 Hz', 'opacity', 'all', vop(0), vop(1), listed(1, EASE), [['s', 1], ...adv(1000 / 60, 66)]);
+  two('opacity 120 Hz flips', 'opacity', 'all', vop(0), vop(1), listed(0.25, EASE), flip(12, 1000 / 120 * 7));
+  return out;
+}
+
+function keyframeTimes(t: SecondsJson, rule: RuleJson): number[] {
+  const set = new Set<number>();
+  const durMs = t.duration * 1000;
+  const iters = t.iterations === 'Infinity' ? 3 : Math.ceil(t.iterations);
+  const delayMs = t.delay * 1000;
+  for (let k = -4; k <= 32 * iters + 4; k++) set.add(delayMs + (k * durMs) / 32);
+  for (let i = 0; i < iters; i++) for (const kf of rule) for (const d of [-1, 0, 1]) set.add(delayMs + (i + kf.offset) * durMs + d);
+  for (const d of [-1, 0, 1]) set.add(d);
+  if (t.iterations === 'Infinity') for (const i of [1, 2, 1000]) for (const d of [-1, 0, 1]) set.add(delayMs + i * durMs + d);
+  return [...set].filter((x) => x >= -2000).sort((a, b) => a - b);
+}
+
+function keyframeCases(): KeyframeCase[] {
+  const out: KeyframeCase[] = [];
+  const timing = (duration: number, easing: EasingSpec = linear(), extra: Partial<SecondsJson> = {}): SecondsJson => ({ delay: 0, duration, iterations: 1, direction: 'normal', fill: 'none', easing, ...extra });
+  const add = (id: string, property: string, range: ValueRange, underlying: ValueSpec, rule: RuleJson, t: SecondsJson): void => {
+    out.push({ id, property, range, underlying, rule, timing: t, times: keyframeTimes(t, rule) });
+  };
+  const kf = (offset: number, value: ValueSpec | null, easing: EasingSpec | null = null): RuleJson[number] => ({ offset, value, easing });
+  add('offsets and easings', 'min-width', 'non-negative', vpx(10), [kf(0, vpx(0), bezier(0.42, 0, 1, 1)), kf(0.25, vpx(100), steps(3, 'jump-start')), kf(0.6, vpx(40), OVERSHOOT), kf(1, vpx(200))], timing(1));
+  add('partial keyframe (M20)', 'opacity', 'all', vop(0.6), [kf(0.5, vop(0))], timing(1));
+  add('from only', 'min-width', 'non-negative', vpx(80), [kf(0, vpx(10))], timing(1, EASE));
+  add('to only', 'text-indent', 'all', vpx(-20), [kf(1, vpx(30))], timing(1, OVERSHOOT, { fill: 'both' }));
+  add('zero-offset easing from another property', 'min-width', 'non-negative', vpx(10), [kf(0, null, steps(2, 'end')), kf(0.4, vpx(80))], timing(1, bezier(0.42, 0, 0.58, 1)));
+  add('colours', 'background-color', 'all', vrgba(1, 2, 3, 1), [kf(0, vrgba(255, 0, 0, 0.5)), kf(0.25, vrgba(0, 128, 0, 0.25)), kf(1, vrgba(0, 0, 255, 1))], timing(1, EASE));
+  add('padding overshoot (M26)', 'min-height', 'non-negative', vpx(0), [kf(0, vpx(2)), kf(1, vpx(50))], timing(1, OVERSHOOT));
+  add('margin overshoot (M26)', 'text-indent', 'all', vpx(0), [kf(0, vpx(2)), kf(1, vpx(50))], timing(1, OVERSHOOT));
+  add('2.5 alternate-reverse fill both', 'min-width', 'non-negative', vpx(5), [kf(0, vpx(0)), kf(1, vpx(100))], timing(0.4, EASE, { iterations: 2.5, direction: 'alternate-reverse', fill: 'both', delay: 0.2 }));
+  add('before flag in keyframes', 'min-width', 'non-negative', vpx(5), [kf(0, vpx(0), steps(2, 'jump-start')), kf(1, vpx(100))], timing(1, linear(), { delay: 0.3, fill: 'backwards' }));
+  add('duplicate offsets', 'min-width', 'non-negative', vpx(5), [kf(0, vpx(10)), kf(0.5, vpx(50), bezier(0.42, 0, 1, 1)), kf(0, vpx(0)), kf(0.5, vpx(70), steps(2, 'end')), kf(1, vpx(100))], timing(1));
+  add('infinite edges', 'background-color', 'all', vrgba(0, 0, 0, 1), [kf(0, vrgba(0, 0, 0, 1)), kf(1, vrgba(200, 100, 50, 1))], timing(1, linear(), { iterations: 'Infinity' }));
+  add('negative delay steps', 'min-width', 'non-negative', vpx(5), [kf(0, vpx(0)), kf(1, vpx(100))], timing(1, steps(4, 'jump-both'), { delay: -0.25, fill: 'both', direction: 'reverse' }));
+  return out;
+}
+
+function entry(name: string, duration: number, extra: Partial<SecondsJson> & { paused?: boolean } = {}): EntryJson {
+  const { paused = false, ...t } = extra;
+  return { name, paused, timing: { delay: 0, duration, iterations: 'Infinity', direction: 'normal', fill: 'none', easing: linear(), ...t } };
+}
+
+function animationCases(): AnimationCase[] {
+  const kf = (offset: number, value: ValueSpec): RuleJson[number] => ({ offset, value, easing: null });
+  const up = { name: 'up', rule: [kf(0, vpx(0)), kf(1, vpx(100))] };
+  const down = { name: 'down', rule: [kf(0, vpx(100)), kf(1, vpx(0))] };
+  const mid = { name: 'mid', rule: [kf(0.5, vpx(300))] };
+  const spin = { name: 'spin', rule: [kf(0, vpx(0)), kf(1, vpx(1000))] };
+  const out: AnimationCase[] = [];
+  out.push({ id: 'name change and in-place duration (M15, M17)', property: 'min-width', range: 'non-negative', rules: [up, down], states: [{ base: vpx(5), entries: [entry('up', 1)] }, { base: vpx(5), entries: [entry('down', 1)] }, { base: vpx(5), entries: [entry('up', 4)] }], steps: [['a', 300], ['s', 2], ['a', 100], ['s', 1], ['a', 250], ['s', 0], ['a', 10]] });
+  out.push({ id: 'play state (M25)', property: 'min-width', range: 'non-negative', rules: [spin], states: [{ base: vpx(5), entries: [entry('spin', 20, { paused: true })] }, { base: vpx(5), entries: [entry('spin', 20)] }], steps: [['a', 1000], ['s', 1], ['a', 5000], ['s', 0], ['a', 1000], ['s', 1], ['a', 1000], ['s', 0], ['a', 500], ['s', 1], ...adv(1000 / 60, 3)] });
+  out.push({ id: 'duplicate names', property: 'min-width', range: 'non-negative', rules: [up, down], states: [{ base: vpx(5), entries: [entry('up', 1), entry('down', 2), entry('up', 3)] }, { base: vpx(5), entries: [entry('down', 2), entry('up', 3)] }], steps: [['a', 400], ['s', 1], ['a', 100], ['s', 0], ['a', 100]] });
+  out.push({ id: 'finished, paused and resumed', property: 'min-width', range: 'non-negative', rules: [up], states: [{ base: vpx(5), entries: [entry('up', 1, { iterations: 2, fill: 'both' })] }, { base: vpx(5), entries: [entry('up', 1, { iterations: 2, fill: 'both', paused: true })] }], steps: [['a', 1500], ['a', 600], ['a', 100], ['s', 1], ['a', 100], ['s', 0], ['a', 100]] });
+  out.push({ id: 'stacked neutral keyframes', property: 'min-width', range: 'non-negative', rules: [up, mid], states: [{ base: vpx(10), entries: [entry('up', 1), entry('mid', 2)] }, { base: vpx(40), entries: [entry('up', 1), entry('mid', 2)] }], steps: [['a', 250], ['a', 250], ['s', 1], ['a', 250], ['a', 600]] });
+  out.push({ id: 'missing keyframes and none', property: 'min-width', range: 'non-negative', rules: [up], states: [{ base: vpx(5), entries: [entry('nosuch', 1), entry('up', 1)] }, { base: vpx(5), entries: [entry('none', 1)] }, { base: vpx(5), entries: [entry('up', 1), entry('nosuch', 1)] }], steps: [['a', 200], ['s', 1], ['a', 100], ['s', 2], ['a', 100], ['s', 0], ['a', 100]] });
+  out.push({ id: 'play-state lists', property: 'min-width', range: 'non-negative', rules: [up, down, mid], states: [
+    { base: vpx(5), entries: [entry('up', 1, { paused: true }), entry('down', 1), entry('mid', 1, { paused: true })] },
+    { base: vpx(5), entries: [entry('up', 1), entry('down', 1), entry('mid', 1)] },
+    { base: vpx(5), entries: [entry('up', 1), entry('down', 1, { paused: true }), entry('mid', 1)] },
+  ], steps: [['a', 100], ['s', 1], ['a', 100], ['s', 2], ['a', 100], ['s', 0], ['a', 100], ['s', 1], ['a', 100]] });
+  return out;
+}
+
+/** Delta sequences for the held-time arithmetic: frame grids, odd steps, and exact sums. */
+function advanceSequences(): number[][] {
+  return [
+    Array.from({ length: 120 }, () => 1000 / 60),
+    Array.from({ length: 240 }, () => 1000 / 120),
+    Array.from({ length: 100 }, () => 16.7),
+    Array.from({ length: 100 }, () => 0.1),
+    Array.from({ length: 64 }, () => 0.125),
+    Array.from({ length: 50 }, () => 1),
+    [5000, 1000, ...Array.from({ length: 10 }, () => 1000 / 60), 0.5, 3.3, 1e7 / 3, 1000 / 120, 7, 0.001],
+  ];
+}
+
+function easingCssOf(e: EasingSpec): string {
+  return easingCss(e);
+}
+function timingCss(t: SecondsJson): string {
+  return `${t.duration}s ${easingCssOf(t.easing)} ${t.delay}s ${t.iterations === 'Infinity' ? 'infinite' : t.iterations} ${t.direction} ${t.fill}`;
+}
+function ruleCss(name: string, property: string, rule: RuleJson): string {
+  return `@keyframes ${name}{${rule.map((k) => `${Math.round(k.offset * 100)}%{${k.value === null ? 'opacity:0.5' : `${property}:${k.value.css}`}${k.easing === null ? '' : `;animation-timing-function:${easingCssOf(k.easing)}`}}`).join('')}}`;
+}
+function listingCss(property: string, l: ListingJson): string {
+  if (l.mode === 'initial') return '';
+  if (l.mode === 'unlisted') return 'transition:none;';
+  return `transition:${property} ${l.duration}s ${easingCssOf(l.easing)} ${l.delay}s;`;
+}
+
+type AnimCapture = {
+  readonly advance: (string | null)[][];
+  readonly keyframes: { readonly case: number; readonly timeMs: number; readonly progress: string | null; readonly value: string }[];
+  readonly transitions: { readonly case: number; readonly readings: (readonly [string, string | null])[] }[];
+  readonly animations: { readonly case: number; readonly readings: (readonly [readonly string[], readonly (string | null)[], readonly string[], string])[] }[];
+};
+
+async function captureAnim(): Promise<AnimCapture> {
+  const tcases = transitionCases();
+  const kcases = keyframeCases();
+  const acases = animationCases();
+  const css: string[] = ['@keyframes adv{from{opacity:0}to{opacity:1}}', '.adv{animation:adv 1000s linear infinite}'];
+  tcases.forEach((c, i) => c.states.forEach((s, k) => css.push(`.t${i}.s${k}{${c.property}:${s.value.css};${listingCss(c.property, s.listing)}}`)));
+  kcases.forEach((c, i) => {
+    css.push(ruleCss(`k${i}`, c.property, c.rule));
+    css.push(`.k${i}{${c.property}:${c.underlying.css};animation:${timingCss(c.timing)} k${i}}`);
+  });
+  acases.forEach((c, i) => {
+    for (const r of c.rules) css.push(ruleCss(`a${i}-${r.name}`, c.property, r.rule));
+    c.states.forEach((s, k) => {
+      const list = (f: (e: EntryJson) => string): string => s.entries.map(f).join(', ');
+      const t = (e: EntryJson): SecondsJson => e.timing;
+      css.push(`.a${i}.s${k}{${c.property}:${s.base.css};animation-name:${list((e) => (e.name === 'none' ? 'none' : `a${i}-${e.name}`))};animation-duration:${list((e) => `${t(e).duration}s`)};animation-timing-function:${list((e) => easingCssOf(t(e).easing))};animation-delay:${list((e) => `${t(e).delay}s`)};animation-iteration-count:${list((e) => (t(e).iterations === 'Infinity' ? 'infinite' : String(t(e).iterations)))};animation-direction:${list((e) => t(e).direction)};animation-fill-mode:${list((e) => t(e).fill)};animation-play-state:${list((e) => (e.paused ? 'paused' : 'running'))}}`);
+    });
+  });
+  const browser = await launchChrome(1);
+  try {
+    const context = await browser.newContext({ viewport: { width: 800, height: 600 } });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Animation.enable');
+    await cdp.send('Animation.setPlaybackRate', { playbackRate: 0 });
+    await page.setContent(`<!doctype html><html><head><style>${css.join('\n')}</style></head><body style="margin:0"></body></html>`);
+    await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+    return await page.evaluate(
+      ({ tjobs, kjobs, ajobs, seqs }) => {
+        const dv = new DataView(new ArrayBuffer(8));
+        const bits = (v: number | null | undefined): string | null => {
+          if (v === null || v === undefined) return null;
+          dv.setFloat64(0, v);
+          return dv.getBigUint64(0).toString(16).padStart(16, '0');
+        };
+        const frozen = (): void => {
+          if (document.timeline.currentTime !== 0) throw new Error(`document.timeline.currentTime is ${String(document.timeline.currentTime)}, not 0`);
+        };
+        const make = (cls: string): HTMLElement => {
+          const el = document.createElement('div');
+          el.className = cls;
+          document.body.appendChild(el);
+          getComputedStyle(el).width;
+          return el;
+        };
+        const step = (el: HTMLElement, base: string, s: readonly ['s', number] | readonly ['a', number]): void => {
+          if (s[0] === 's') el.className = `${base} s${s[1]}`;
+          else for (const a of el.getAnimations()) if (a.playState === 'running') a.currentTime = Number(a.currentTime) + s[1];
+          frozen();
+        };
+        const advance = seqs.map((deltas) => {
+          const el = make('adv');
+          const a = el.getAnimations()[0];
+          if (a === undefined) throw new Error('the advance animation did not start');
+          const out = deltas.map((d) => {
+            a.currentTime = Number(a.currentTime) + d;
+            frozen();
+            return bits(Number(a.currentTime));
+          });
+          el.remove();
+          return out;
+        });
+        const keyframes: { case: number; timeMs: number; progress: string | null; value: string }[] = [];
+        kjobs.forEach((j, i) => {
+          const el = make(`k${i}`);
+          const a = el.getAnimations()[0];
+          if (a === undefined) throw new Error(`keyframes case ${i} did not start`);
+          for (const t of j.times) {
+            // A sample whose iteration and fraction equal the previous one is not re-applied (KeyframeEffectModelBase::Sample),
+            // so each read first moves to a time with another fraction.
+            a.currentTime = j.prime;
+            getComputedStyle(el).getPropertyValue(j.property);
+            a.currentTime = t;
+            frozen();
+            keyframes.push({ case: i, timeMs: t, progress: bits(a.effect?.getComputedTiming().progress), value: getComputedStyle(el).getPropertyValue(j.property) });
+          }
+          el.remove();
+        });
+        const transitions = tjobs.map((j, i) => {
+          const el = make(`t${i} s0`);
+          const readings = j.steps.map((s) => {
+            step(el, `t${i}`, s);
+            const value = getComputedStyle(el).getPropertyValue(j.property);
+            const ts = el.getAnimations().filter((a) => a instanceof CSSTransition);
+            if (ts.length > 1) throw new Error(`transition case ${i} has ${ts.length} transitions`);
+            const t = ts[0];
+            return [value, t === undefined ? null : bits(Number(t.effect?.getComputedTiming().duration))] as const;
+          });
+          el.remove();
+          return { case: i, readings };
+        });
+        const animations = ajobs.map((j, i) => {
+          const el = make(`a${i} s0`);
+          const readings = j.steps.map((s) => {
+            step(el, `a${i}`, s);
+            const value = getComputedStyle(el).getPropertyValue(j.property);
+            const as = el.getAnimations().filter((a): a is CSSAnimation => a instanceof CSSAnimation);
+            return [as.map((a) => a.animationName.replace(`a${i}-`, '')), as.map((a) => bits(Number(a.currentTime))), as.map((a) => a.playState), value] as const;
+          });
+          el.remove();
+          return { case: i, readings };
+        });
+        return { advance, keyframes, transitions, animations };
+      },
+      { tjobs: tcases.map((c) => ({ property: c.property, steps: c.steps })), kjobs: kcases.map((c) => ({ property: c.property, times: c.times, prime: (c.timing.delay + c.timing.duration * 0.3712) * 1000 })), ajobs: acases.map((c) => ({ property: c.property, steps: c.steps })), seqs: advanceSequences() },
+    );
+  } finally {
+    await browser.close();
+  }
+}
+
+// The TS reference on the same scripts.
+
+function easingOf(e: EasingSpec | null): Easing {
+  return e === null ? LINEAR : easingFromSpec(e);
+}
+function secondsOf(t: SecondsJson): SecondsTiming {
+  return { delay: t.delay, duration: t.duration, iterations: t.iterations === 'Infinity' ? Infinity : t.iterations, direction: t.direction, fill: t.fill, easing: easingFromSpec(t.easing) };
+}
+function ruleOf(rule: RuleJson): RuleKeyframe[] {
+  return rule.map((k) => ({ offset: k.offset, hasEasing: k.easing !== null, easing: easingOf(k.easing), sets: k.value !== null, value: k.value === null ? EMPTY : k.value.v }));
+}
+function stepsOf(s: ScriptJson): ScriptStep[] {
+  return s.map((x) => (x[0] === 's' ? { kind: 'state', state: x[1], deltaMs: 0 } : { kind: 'advance', state: 0, deltaMs: x[1] }));
+}
+function serialize(v: AnimatedValue): string {
+  return serializeValue(v, BOX_WIDTH, BOX_HEIGHT, TRIG);
+}
+
+function referenceAdvance(deltas: readonly number[], faults: RtFaults = NO_RT_FAULTS): (string | null)[] {
+  let h = HELD_ZERO;
+  return deltas.map((d) => {
+    h = advanceHeld(h, d, faults);
+    return bitsOf(h.seconds * 1000);
+  });
+}
+
+function referenceKeyframe(c: KeyframeCase, timeMs: number, faults: RtFaults = NO_RT_FAULTS): { progress: string | null; value: string } {
+  const timing = secondsOf(c.timing);
+  const t = computeSecondsTiming({ ...timing, easing: LINEAR }, timeMs / 1000, faults);
+  const v = sampleKeyframeEffect(timing, timeMs / 1000, groupFromRule(ruleOf(c.rule), timing.easing), c.underlying.v, c.range, faults);
+  return { progress: bitsOf(t.progress), value: v === null ? serialize(c.underlying.v) : v.refused ? 'refused' : serialize(v.value) };
+}
+
+function referenceTransitions(c: TransitionCase, faults: RtFaults = NO_RT_FAULTS): (readonly [string, string | null])[] {
+  const states = c.states.map((s) => ({ value: s.value.v, listing: { mode: s.listing.mode, delay: s.listing.delay, duration: s.listing.duration, easing: easingFromSpec(s.listing.easing) } }));
+  return runTransitionScript(states, c.range, stepsOf(c.steps), faults).map((r) => [serialize(r.value), r.durationMs === null ? null : bitsOf(r.durationMs)] as const);
+}
+
+function referenceAnimations(c: AnimationCase, faults: RtFaults = NO_RT_FAULTS): (readonly [readonly string[], readonly (string | null)[], readonly string[], string])[] {
+  const names = new Set(c.rules.map((r) => r.name));
+  const states = c.states.map((s) => ({ base: s.base.v, entries: s.entries.map((e) => ({ name: e.name, hasKeyframes: names.has(e.name), paused: e.paused, timing: secondsOf(e.timing) })) }));
+  const rules = c.rules.map((r) => ({ name: r.name, keyframes: ruleOf(r.rule) }));
+  return runAnimationScript(states, rules, c.range, stepsOf(c.steps), faults).map((r) => [r.names, r.currentTimesMs.map((t) => bitsOf(t)), r.playStates, serialize(r.value)] as const);
+}
+
+function animFiles(cap: AnimCapture | null): Map<string, string> {
+  const seqs = advanceSequences();
+  const tcases = transitionCases();
+  const kcases = keyframeCases();
+  const acases = animationCases();
+  const files = new Map<string, string>();
+  const advance = cap === null ? seqs.map((s) => referenceAdvance(s)) : cap.advance;
+  const keyframes = cap === null ? kcases.flatMap((c, i) => c.times.map((t) => ({ case: i, timeMs: t, ...referenceKeyframe(c, t) }))) : cap.keyframes;
+  const transitions = cap === null ? tcases.map((c, i) => ({ case: i, readings: referenceTransitions(c) })) : cap.transitions;
+  const animations = cap === null ? acases.map((c, i) => ({ case: i, readings: referenceAnimations(c) })) : cap.animations;
+  const about = cap === null ? 'The TS rt reference on the ANIM-b oracle inputs (pnpm run rt:oracle). Do not edit.' : 'Captured from Chrome 145.0.7632.6 at playback rate 0 by pnpm run rt:oracle (T065 R2: class changes and currentTime += delta on running animations). Do not edit.';
+  files.set('advance.json', json({ about, sequences: seqs, records: advance.map((r, i) => [i, r]) }));
+  files.set('keyframes.json', json({ about, box: { width: BOX_WIDTH, height: BOX_HEIGHT }, cases: kcases, records: keyframes.map((r) => [r.case, r.timeMs, r.progress, r.value]) }));
+  files.set('transitions.json', json({ about, cases: tcases, records: transitions.map((r) => [r.case, r.readings]) }));
+  files.set('animations.json', json({ about, cases: acases, records: animations.map((r) => [r.case, r.readings]) }));
+  return files;
+}
+
+function compareAnim(cap: AnimCapture): { counts: Record<string, number>; failures: string[] } {
+  const failures: string[] = [];
+  const counts: Record<string, number> = { advance: 0, keyframes: 0, transitions: 0, animations: 0 };
+  const seqs = advanceSequences();
+  if (cap.advance.length !== seqs.length) failures.push(`advance: chrome ran ${cap.advance.length} of ${seqs.length} sequences`);
+  cap.advance.forEach((got, i) => {
+    const want = referenceAdvance(seqs[i] as number[]);
+    if (got.length !== want.length) failures.push(`advance ${i}: chrome read ${got.length} of ${want.length} steps`);
+    got.forEach((g, k) => {
+      counts.advance = (counts.advance ?? 0) + 1;
+      if (g !== want[k]) failures.push(`advance ${i} step ${k}: chrome ${g}, reference ${want[k]}`);
+    });
+  });
+  const kcases = keyframeCases();
+  const samples = kcases.reduce((n, c) => n + c.times.length, 0);
+  if (cap.keyframes.length !== samples) failures.push(`keyframes: chrome read ${cap.keyframes.length} of ${samples} samples`);
+  if (cap.transitions.length !== transitionCases().length || cap.animations.length !== animationCases().length) failures.push('chrome ran a different number of transition or animation scripts');
+  for (const r of cap.keyframes) {
+    counts.keyframes = (counts.keyframes ?? 0) + 1;
+    const c = kcases[r.case] as KeyframeCase;
+    const ref = referenceKeyframe(c, r.timeMs);
+    if (ref.progress !== r.progress || ref.value !== r.value) failures.push(`keyframes ${c.id} t=${r.timeMs}: chrome ${r.progress} ${JSON.stringify(r.value)}, reference ${ref.progress} ${JSON.stringify(ref.value)}`);
+  }
+  const tcases = transitionCases();
+  for (const r of cap.transitions) {
+    const c = tcases[r.case] as TransitionCase;
+    const want = referenceTransitions(c);
+    if (r.readings.length !== want.length) failures.push(`transitions ${c.id}: chrome read ${r.readings.length} of ${want.length} steps`);
+    r.readings.forEach((g, k) => {
+      counts.transitions = (counts.transitions ?? 0) + 1;
+      if (JSON.stringify(g) !== JSON.stringify(want[k])) failures.push(`transitions ${c.id} step ${k}: chrome ${JSON.stringify(g)}, reference ${JSON.stringify(want[k])}`);
+    });
+  }
+  const acases = animationCases();
+  for (const r of cap.animations) {
+    const c = acases[r.case] as AnimationCase;
+    const want = referenceAnimations(c);
+    if (r.readings.length !== want.length) failures.push(`animations ${c.id}: chrome read ${r.readings.length} of ${want.length} steps`);
+    r.readings.forEach((g, k) => {
+      counts.animations = (counts.animations ?? 0) + 1;
+      if (JSON.stringify(g) !== JSON.stringify(want[k])) failures.push(`animations ${c.id} step ${k}: chrome ${JSON.stringify(g)}, reference ${JSON.stringify(want[k])}`);
+    });
+  }
+  return { counts, failures };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // Files.
 
 /** One line per list item; records are arrays in the order the README gives. */
@@ -466,10 +847,16 @@ function compare(cap: Awaited<ReturnType<typeof capture>>): { counts: Record<str
 
 const check = process.argv.includes('--check');
 const cap = await capture();
+const animCap = await captureAnim();
 const oracle = oracleFiles(cap);
 const vectors = vectorFiles();
+for (const [name, text] of animFiles(animCap)) oracle.set(name, text);
+for (const [name, text] of animFiles(null)) vectors.set(name, text);
 const { counts, failures } = compare(cap);
+const anim = compareAnim(animCap);
+failures.push(...anim.failures);
 console.log(`rt:oracle samples: timing ${counts.timing}, easing ${counts.easing}, hold ${counts.hold}, interp ${counts.interp} (${timingCombos().length} timing combos, ${easings().length} easings, ${interpCases().length} interpolation cases)`);
+console.log(`rt:oracle ANIM-b samples: advance ${anim.counts.advance}, keyframes ${anim.counts.keyframes}, transitions ${anim.counts.transitions}, animations ${anim.counts.animations} (${advanceSequences().length} advance sequences, ${keyframeCases().length} keyframe cases, ${transitionCases().length} transition scripts, ${animationCases().length} animation scripts)`);
 if (check) {
   const stale: string[] = [];
   for (const [dir, files] of [[ORACLE_DIR, oracle], [VECTOR_DIR, vectors]] as const) {

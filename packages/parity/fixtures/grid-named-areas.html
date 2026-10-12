@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; width: 200px; margin-bottom: 5px; }
+.a { grid-template-areas: "head head side" "main main side" "foot . side"; grid-template-columns: 30px 40px 25px; grid-template-rows: 8px 12px 6px; column-gap: 2px; }
+.b { grid-template-columns: [start] 20px [mid a] 20px [a] 30px [end]; grid-auto-columns: 7px; grid-auto-rows: 5px; }
+.c { grid-template: [top] "x y" 10px [middle] "z z" 8px [bottom] / 25px 35px; }
+.d { grid-template-areas: "p p q q r"; grid-template-columns: 10px 20px; grid-auto-columns: 6px; grid-auto-rows: 7px; }
+.x { height: 3px; }
+.h { grid-area: head; }
+.m { grid-area: main; height: auto; }
+.s { grid-area: side; }
+.f { grid-area: foot; }
+.n1 { grid-column: a 2 / end; }
+.n2 { grid-column: mid; }
+.n3 { grid-column: a -1; }
+.n4 { grid-column: start / a; }
+.n5 { grid-column: missing; }
+.n6 { grid-column: span a / end; }
+.n7 { grid-column: span 2 missing / 3; }
+.k1 { grid-row: top / middle; grid-column: y; }
+.k2 { grid-row: middle / bottom; grid-column: x-start / y-end; }
+.k3 { grid-area: y; }
+.q1 { grid-area: q; }
+.q2 { grid-column: r-start / r-end; }
+.q3 { grid-column: p-end; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="g a"><div data-dragon-id="a1" class="x f"></div><div data-dragon-id="a2" class="x s"></div><div data-dragon-id="a3" class="m">XX XXX</div><div data-dragon-id="a4" class="x h"></div></div>
+<div data-dragon-id="b" class="g b"><div data-dragon-id="b1" class="x n1"></div><div data-dragon-id="b2" class="x n2"></div><div data-dragon-id="b3" class="x n3"></div><div data-dragon-id="b4" class="x n4"></div><div data-dragon-id="b5" class="x n5"></div><div data-dragon-id="b6" class="x n6"></div><div data-dragon-id="b7" class="x n7"></div></div>
+<div data-dragon-id="c" class="g c"><div data-dragon-id="c1" class="x k1"></div><div data-dragon-id="c2" class="x k2"></div><div data-dragon-id="c3" class="x k3"></div></div>
+<div data-dragon-id="d" class="g d"><div data-dragon-id="d1" class="x q1"></div><div data-dragon-id="d2" class="x q2"></div><div data-dragon-id="d3" class="x q3"></div></div>
+</body>
+</html>

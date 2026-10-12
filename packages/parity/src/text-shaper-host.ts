@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import type { EngineFaults, FontData, GlyphShaper, HanKerningFontData, ShapedFace, TextMeasurer } from '@dragon/layout';
-import { AHEM_FACE_ID, AHEM_SHA256, FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_ENGINE_FAULTS, NO_HAN_KERNING, shapedMeasurerFor } from '@dragon/layout';
+import { AHEM_FACE_ID, AHEM_SHA256, FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_ENGINE_FAULTS, NO_HAN_KERNING, REFERENCE_LANGUAGE, shapedMeasurerFor } from '@dragon/layout';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 
@@ -22,8 +22,8 @@ type HB = {
 };
 const wasm = (await import(new URL('../../text-shaper/src/wasm.ts', import.meta.url).href)) as { DragonHB: { load(): HB }; tagToString(tag: number): string };
 
-/** The language HarfBuzz shapes with when no lang attribute applies: the pinned Chrome's default locale. */
-export const REFERENCE_LANGUAGE = 'en-US';
+/** The language HarfBuzz shapes with when no lang attribute applies (platform.ts), which the device apps shape with too. */
+export { REFERENCE_LANGUAGE };
 
 /** The repo file of the bundled Ahem, whose sha256 is AHEM_SHA256. */
 export const AHEM_FILE = 'vendor/fonts/Ahem.ttf';

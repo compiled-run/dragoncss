@@ -1,0 +1,4 @@
+.box { width: 20px; height: 10px; background-color: rgb(0, 0, 255); transition: width 1s ease, background-color 1s ease; }
+.box.b { width: 120px; background-color: rgb(255, 0, 0); }
+.box.c { width: 60px; background-color: rgb(0, 160, 0); }
+.box.n { width: 120px; background-color: rgb(255, 0, 0); transition: none; }

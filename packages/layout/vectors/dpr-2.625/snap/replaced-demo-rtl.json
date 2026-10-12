@@ -1,0 +1,229 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 81988
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 81988
+  },
+  {
+   "id": "record",
+   "parent": "body",
+   "x": 26880,
+   "y": 0,
+   "width": 40320,
+   "height": 40320
+  },
+  {
+   "id": "song",
+   "parent": "body",
+   "x": 15456,
+   "y": 40320,
+   "width": 51744,
+   "height": 11172
+  },
+  {
+   "id": "song-cover",
+   "parent": "song",
+   "x": 33600,
+   "y": 672,
+   "width": 17472,
+   "height": 9828
+  },
+  {
+   "id": "title",
+   "parent": "song",
+   "x": 25200,
+   "y": 4754,
+   "width": 8400,
+   "height": 1664
+  },
+  {
+   "id": "title:text0",
+   "parent": "title",
+   "x": 0,
+   "y": 0,
+   "width": 8400,
+   "height": 1664
+  },
+  {
+   "id": "title:text0:line0",
+   "parent": "title:text0",
+   "x": 0,
+   "y": 0,
+   "width": 8400,
+   "height": 1664
+  },
+  {
+   "id": "shell",
+   "parent": "body",
+   "x": 13184,
+   "y": 51492,
+   "width": 54016,
+   "height": 30496
+  },
+  {
+   "id": "player",
+   "parent": "shell",
+   "x": 128,
+   "y": 128,
+   "width": 53760,
+   "height": 30240
+  },
+  {
+   "id": "video",
+   "parent": "player",
+   "x": 0,
+   "y": 0,
+   "width": 53760,
+   "height": 30240
+  },
+  {
+   "id": "label",
+   "parent": "record",
+   "x": 12902,
+   "y": 12902,
+   "width": 15795,
+   "height": 15795
+  },
+  {
+   "id": "cover",
+   "parent": "label",
+   "x": 640,
+   "y": 640,
+   "width": 14515,
+   "height": 14515
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 1281,
+   "width": 1050,
+   "height": 1281
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 1281,
+   "width": 1050,
+   "height": 1281
+  },
+  {
+   "id": "record",
+   "left": 420,
+   "top": 0,
+   "right": 1050,
+   "bottom": 630,
+   "width": 630,
+   "height": 630
+  },
+  {
+   "id": "song",
+   "left": 242,
+   "top": 630,
+   "right": 1050,
+   "bottom": 805,
+   "width": 808,
+   "height": 175
+  },
+  {
+   "id": "song-cover",
+   "left": 767,
+   "top": 641,
+   "right": 1040,
+   "bottom": 794,
+   "width": 273,
+   "height": 153
+  },
+  {
+   "id": "title",
+   "left": 635,
+   "top": 704,
+   "right": 767,
+   "bottom": 730,
+   "width": 132,
+   "height": 26
+  },
+  {
+   "id": "title:text0",
+   "left": 635,
+   "top": 704,
+   "right": 767,
+   "bottom": 730,
+   "width": 132,
+   "height": 26
+  },
+  {
+   "id": "title:text0:line0",
+   "left": 635,
+   "top": 704,
+   "right": 767,
+   "bottom": 730,
+   "width": 132,
+   "height": 26
+  },
+  {
+   "id": "shell",
+   "left": 206,
+   "top": 805,
+   "right": 1050,
+   "bottom": 1281,
+   "width": 844,
+   "height": 476
+  },
+  {
+   "id": "player",
+   "left": 208,
+   "top": 807,
+   "right": 1048,
+   "bottom": 1279,
+   "width": 840,
+   "height": 472
+  },
+  {
+   "id": "video",
+   "left": 208,
+   "top": 807,
+   "right": 1048,
+   "bottom": 1279,
+   "width": 840,
+   "height": 472
+  },
+  {
+   "id": "label",
+   "left": 622,
+   "top": 202,
+   "right": 868,
+   "bottom": 448,
+   "width": 246,
+   "height": 246
+  },
+  {
+   "id": "cover",
+   "left": 632,
+   "top": 212,
+   "right": 858,
+   "bottom": 438,
+   "width": 226,
+   "height": 226
+  }
+ ]
+}

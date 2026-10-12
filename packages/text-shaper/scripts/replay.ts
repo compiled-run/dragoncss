@@ -10,7 +10,7 @@
 // Usage: node packages/text-shaper/scripts/replay.ts --record | --check | --swift | --kotlin [--plant off-by-one | bad-index | fractional-index]
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -67,13 +67,17 @@ function must(cmd: string, args: readonly string[], cwd?: string): string {
   return r.out;
 }
 
-/** The transcript file a native replay reads: the committed one, or a planted copy in a temporary directory. */
-function transcriptFor(plant: TranscriptPlant | undefined): string {
-  if (plant === undefined) return GATE_TRANSCRIPT_PATH;
+/** Runs `use` on the transcript file a native replay reads: the committed one, or a planted copy in a temporary directory removed afterwards. */
+function withTranscript<T>(plant: TranscriptPlant | undefined, use: (path: string) => T): T {
+  if (plant === undefined) return use(GATE_TRANSCRIPT_PATH);
   const dir = mkdtempSync(join(tmpdir(), 'dragon-hb-replay-'));
-  const path = join(dir, 'gate.json');
-  writeFileSync(path, serializeTranscript(plantTranscript(parseTranscript(readFileSync(GATE_TRANSCRIPT_PATH, 'utf8')), plant)));
-  return path;
+  try {
+    const path = join(dir, 'gate.json');
+    writeFileSync(path, serializeTranscript(plantTranscript(parseTranscript(readFileSync(GATE_TRANSCRIPT_PATH, 'utf8')), plant)));
+    return use(path);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 /** Builds the Swift host replay (swift/, linked against zig build host) and returns the executable. */
@@ -151,13 +155,13 @@ function main(argv: readonly string[]): number {
   }
   if (mode === '--swift') {
     const exe = buildSwiftReplay();
-    const r = run(exe, [transcriptFor(plant), REPO_ROOT]);
+    const r = withTranscript(plant, (t) => run(exe, [t, REPO_ROOT]));
     process.stdout.write(r.out);
     return r.status;
   }
   if (mode === '--kotlin') {
     const { jar, lib } = buildKotlinReplay();
-    const r = run(join(javaHome(), 'bin', 'java'), ['-cp', jar, 'dev.dragon.text.ReplayKt', '--lib', lib, transcriptFor(plant), REPO_ROOT]);
+    const r = withTranscript(plant, (t) => run(join(javaHome(), 'bin', 'java'), ['-cp', jar, 'dev.dragon.text.ReplayKt', '--lib', lib, t, REPO_ROOT]));
     process.stdout.write(r.out);
     return r.status;
   }

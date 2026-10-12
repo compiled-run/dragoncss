@@ -1,0 +1,166 @@
+{
+ "sources": [
+  "view.dg",
+  "doc.css",
+  "view.css"
+ ],
+ "modules": [
+  {
+   "id": "view",
+   "source": "view.dg"
+  }
+ ],
+ "styles": [
+  {
+   "id": "doc",
+   "file": "doc.css",
+   "scope": "document"
+  },
+  {
+   "id": "view",
+   "file": "view.css",
+   "scope": "App"
+  }
+ ],
+ "document": {
+  "root": "App",
+  "documentElement": "html",
+  "styles": [
+   "doc",
+   "view"
+  ]
+ },
+ "components": [
+  {
+   "id": "App",
+   "module": "view",
+   "at": "component App",
+   "states": [
+    {
+     "id": "x",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "x: [false, true] = false"
+    }
+   ],
+   "root": [
+    {
+     "el": "html",
+     "id": "html",
+     "at": "<html>",
+     "children": [
+      {
+       "el": "body",
+       "id": "body",
+       "at": "<body>",
+       "children": [
+        {
+         "el": "div",
+         "id": "t0",
+         "at": "<div t0",
+         "class": [
+          "view.t0",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t1",
+         "at": "<div t1",
+         "class": [
+          "view.t1",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t2",
+         "at": "<div t2",
+         "class": [
+          "view.t2",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t3",
+         "at": "<div t3",
+         "class": [
+          "view.t3",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t4",
+         "at": "<div t4",
+         "class": [
+          "view.t4",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t5",
+         "at": "<div t5",
+         "class": [
+          "view.t5",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t6",
+         "at": "<div t6",
+         "class": [
+          "view.t6",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t7",
+         "at": "<div t7",
+         "class": [
+          "view.t7",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t8",
+         "at": "<div t8",
+         "class": [
+          "view.t8",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t9",
+         "at": "<div t9",
+         "class": [
+          "view.t9",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "t10",
+         "at": "<div t10",
+         "class": [
+          "view.t10",
+          "view.bar"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

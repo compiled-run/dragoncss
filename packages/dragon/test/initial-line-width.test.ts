@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { ahemMeasurer, layout } from '@dragon/layout';
 import { createProject } from '../src/index.ts';
-import { iosLayoutProjection, referenceDataset, WEB_CSS_PATH } from '../src/internal.ts';
+import { iosLayoutProjection, iosProfile, referenceDataset, WEB_CSS_PATH, webProfile } from '../src/internal.ts';
 import { isInitialByProvenance } from '../src/analysis/resolve.ts';
 import { div, explainOne, inputFor } from './helpers.ts';
 
@@ -86,11 +86,16 @@ describe('R5: initial line widths lower to device px', () => {
     expect(isInitialByProvenance({ value: { kind: 'keyword', value: 'medium' }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }, 'border-top-width')).toBe(false);
   });
 
-  it('latent finding (not widened): border-width inherit and initial stay refused by the m1-s5 profile', () => {
-    for (const kw of ['inherit', 'initial']) {
+  it('latent finding (not widened here): border-top-width initial compiles since CASC proved it (casc-css-wide) and inherit since ctx-proof-inherit proved it, each backed by its profile rows', () => {
+    for (const [kw, fixture] of [['initial', 'casc-css-wide'], ['inherit', 'ctx-proof-inherit']] as const) {
+      for (const profile of [webProfile, iosProfile]) {
+        const rows = profile.rows.filter((r) => r.feature === `border-top-width:${kw}`);
+        expect(rows.map((r) => r.context).sort(), `${profile.target} ${kw}`).toEqual(['block/ltr', 'block/rtl']);
+        for (const r of rows) expect(r.proofs.flatMap((pr) => pr.cases), `${profile.target} ${kw} ${r.context}`).toContain(r.context.endsWith('/rtl') ? `${fixture}-rtl` : fixture);
+      }
       const c = project().compile(inputFor(`.a { border-style: solid; border-top-width: ${kw}; }`, (r) => [div(r, 'a', ['a'])]));
-      expect(c.ok, kw).toBe(false);
-      expect(c.diagnostics.map((d) => d.code), kw).toContain('DRAGON_UNSUPPORTED_VALUE');
+      expect(c.ok, kw).toBe(true);
+      expect(c.diagnostics.filter((d) => d.severity === 'error'), kw).toEqual([]);
     }
   });
 });

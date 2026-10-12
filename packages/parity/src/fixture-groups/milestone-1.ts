@@ -126,7 +126,8 @@ export const MILESTONE_1: readonly FixtureSpec[] = [
   layout('line-height-rounding'),
   layout('text-min-content-word-positions'),
   layout('border-initial-width'),
-  reject('reject-display-grid', 'DRAGON_UNSUPPORTED_VALUE', 'grid'),
+  // GRID G1a proves display: grid in block and flex-row contexts; a grid item of a column flex container stays unproven.
+  reject('reject-display-grid', 'DRAGON_UNPROVEN_CONTEXT', 'grid', 'display:grid on grid is used in the flex-column/ltr context, which is not proven'),
   reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 40 59)'),
   // M4: the implicitly filled longhand is named at the start of the message.
   reject('reject-shorthand-filled', 'DRAGON_UNPROVEN_CONTEXT', '3px', 'border-top-style:none'),
@@ -140,9 +141,7 @@ export const MILESTONE_1: readonly FixtureSpec[] = [
   reject('reject-white-space-pre', 'DRAGON_UNSUPPORTED_VALUE', 'pre'),
   reject('reject-nesting-ampersand', 'DRAGON_UNSUPPORTED_NESTED_RULE', '& .b { width: 5px; }'),
   reject('reject-nested-media', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (min-width: 1px) { width: 30px; }'),
-  reject('reject-overflow-single-axis', 'DRAGON_UNSUPPORTED_VALUE', 'hidden'),
-  reject('reject-overflow-body', 'DRAGON_UNSUPPORTED_VALUE', 'hidden'),
-  reject('reject-overflow-scroll', 'DRAGON_UNSUPPORTED_VALUE', 'scroll'),
+  reject('reject-overflow-single-axis', 'DRAGON_UNSUPPORTED_VALUE', 'clip'),
   reject('reject-last-baseline', 'DRAGON_UNSUPPORTED_VALUE', 'last baseline'),
   reject('reject-bidi-neutral', 'DRAGON_UNSUPPORTED_BIDI', 'AB 12.'),
   reject('reject-position-fixed', 'DRAGON_UNSUPPORTED_VALUE', 'fixed'),

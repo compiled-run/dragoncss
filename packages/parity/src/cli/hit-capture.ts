@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { launchChrome } from '../chrome.ts';
+import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { captureHits, expectedHitDir, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../hit-capture.ts';
 import { repoPath } from '../paths.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
@@ -47,10 +48,10 @@ for (const f of readdirSync(dir)) if (f.endsWith('.hit.json') && !keep.has(f)) r
 const browser = await launchChrome();
 let points = 0;
 try {
-  for (const n of cases) {
-    const c = await captureHits(browser, n);
+  // Each case in its own context (captureHits), CHROME_PAGES at a time.
+  for (const c of await inOrder(cases, CHROME_PAGES, (n) => captureHits(browser, n))) {
     points += c.points;
-    writeFileSync(expectedHitPath(n.case.id), hitCaptureJson(c));
+    writeFileSync(expectedHitPath(c.case), hitCaptureJson(c));
   }
 } finally {
   await browser.close();

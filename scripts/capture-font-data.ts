@@ -366,9 +366,10 @@ if (!check) {
     const extra = committed.filter((f) => !fresh.includes(f));
     if (differ.length > 0 || extra.length > 0) {
       console.error(`font captures differ from a fresh Chrome capture: ${[...differ, ...extra].join(', ')}`);
-      process.exit(1);
+      process.exitCode = 1;
+    } else {
+      console.log(`font captures byte-identical to a fresh capture (${fresh.length} files)`);
     }
-    console.log(`font captures byte-identical to a fresh capture (${fresh.length} files)`);
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }

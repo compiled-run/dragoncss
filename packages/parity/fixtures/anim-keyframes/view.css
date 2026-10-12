@@ -1,0 +1,10 @@
+@keyframes offsets { 0% { width: 0px; animation-timing-function: ease-in; } 25% { width: 100px; animation-timing-function: steps(3, jump-start); } 60% { width: 40px; } 100% { width: 200px; } }
+@keyframes part { 50% { width: 80px; } }
+@keyframes dup { from { background-color: rgb(0, 0, 0); } to { background-color: rgb(10, 10, 10); } }
+@keyframes dup { from { background-color: rgb(0, 0, 255); } to { background-color: rgb(255, 0, 0); } }
+@keyframes tall { from { height: 4px; } to { height: 24px; } }
+.k0 { height: 4px; animation: offsets 1s linear; }
+.k1 { width: 20px; height: 4px; animation: part 2s linear; }
+.k1.wide { width: 140px; }
+.k2 { width: 30px; height: 4px; animation: dup 0.4s ease 0.2s 2.5 alternate-reverse both; }
+.k3 { width: 30px; height: 4px; background-color: rgb(9, 9, 9); animation: dup 0.5s linear 2 forwards, tall 0.3s linear 0.1s both; }

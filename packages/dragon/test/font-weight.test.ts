@@ -102,6 +102,15 @@ describe('computed font-weight and font-style (fonts/weight.ts)', () => {
       o: '400 oblique 20deg', oi: '400 italic',
     });
   });
+  it('revert and revert-layer roll back to the UA origin: the html.css row (b is bolder) or else the parent', () => {
+    const css = 'body { font-family: Ahem; } .l { font-weight: 300; font-style: italic; } .r { font-weight: revert; font-style: revert-layer; } .v { --k: revert; font-weight: var(--k); }';
+    // --k: revert reverts the custom property itself, so var(--k) is invalid at computed-value time and font-weight inherits.
+    const { fonts, diagnostics } = computed(css, (r) => [
+      el(r, 'l', 'div', ['l'], [el(r, 'lb', 'b', ['r']), el(r, 'ld', 'div', ['r']), el(r, 'lv', 'strong', ['v']), el(r, 'le', 'em', ['r'])]),
+    ]);
+    expect(diagnostics).toEqual([]);
+    expect(Object.fromEntries(fonts)).toMatchObject({ l: '300 italic', lb: '400 italic', ld: '300 italic', lv: '300 italic', le: '300 italic' });
+  });
   it('parses as Chrome 145: left and right, and an oblique number beyond 90, are invalid; a calculated or converted angle beyond 90deg is refused', () => {
     const codes = (decl: string): string[] => computed(`.a { ${decl}; }`, () => []).diagnostics.map((d) => `${d.code}: ${d.message}`);
     expect(codes('font-style: left')).toEqual(['DRAGON_CSS_INVALID_VALUE: "left" is not a valid value for font-style: Chrome 145 does not parse font-style: left']);
@@ -142,6 +151,11 @@ describe('synthesis (css_segmented_font_face.cc)', () => {
 describe('Ahem: one regular face', () => {
   const project = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
   const fonts = (css: string): string[] => project().compile(inputFor(`body { font-family: Ahem; } ${css}`, (r) => [el(r, 'd', 'div', ['a'], [text(r, 't', 'XX')])])).diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message.split(';')[0]}`);
+  it('refuses on native a font-weight or oblique calculation Dragon does not fold, which web hands to Chrome, without failing the compile', () => {
+    for (const v of ['calc(infinity)', 'calc(-infinity)', 'calc(NaN)', 'calc(1px / 1px * 500)', 'calc(100 * sign(-1))']) {
+      expect(fonts(`.a { font-weight: ${v}; }`).map((d) => d.split(' ').slice(0, 3).join(' ')), v).toEqual(['DRAGON_UNSUPPORTED_VALUE ios font-weight:']);
+    }
+  });
   it('refuses on ios the weights and slopes Chrome synthesizes, naming the author value, and accepts the rest', () => {
     expect(fonts('.a { font-weight: 600; }')).toEqual(["DRAGON_UNSUPPORTED_FONT ios text d:text0 inherits font-weight: 600 from the author's style on <div> d"]);
     expect(fonts('.a { font-style: oblique 20deg; }')).toEqual(["DRAGON_UNSUPPORTED_FONT ios text d:text0 inherits font-style: oblique 20deg from the author's style on <div> d"]);

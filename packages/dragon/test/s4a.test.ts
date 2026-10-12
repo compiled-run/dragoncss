@@ -83,24 +83,32 @@ describe('the css-overflow-3 §3.1 computed pair and the overflow refusals', () 
     const c = project('ltr').compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'])]));
     return { c, x: explainOne(c, 'web', 'a', 'overflow-x').value, y: explainOne(c, 'web', 'a', 'overflow-y').value };
   };
+  // OVFL (T078J) supports every computed pair but clip beside visible; the refusal pins moved to that pair (OVFL-c).
   it('visible beside hidden computes to auto, clip beside hidden to hidden, and clip beside visible stays', () => {
     const pair = project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])]));
-    expect(pair.diagnostics.map((d) => d.message)).toEqual(['overflow-y computes to auto on a (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported', 'overflow-y computes to auto on a (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported']);
+    // The computed auto makes a box the user scrolls: a native scroll view (OVFL-B) on ios, the browser's on web.
+    expect(pair.diagnostics).toEqual([]);
+    expect([resolved('.a { overflow-x: hidden; }').x, resolved('.a { overflow-x: hidden; }').y]).toEqual(['hidden', 'auto']);
     expect([resolved('.a { overflow: clip hidden; }').x, resolved('.a { overflow: clip hidden; }').y]).toEqual(['hidden', 'hidden']);
-    expect([resolved('.a { overflow-y: clip; }').x, resolved('.a { overflow-y: clip; }').y]).toEqual(['visible', 'clip']);
+    // clip beside visible keeps both (the refusal below names the pair as computed).
+    const kept = project('ltr').compile(inputFor(`${FONT} .a { overflow-y: clip; }`, (r) => [div(r, 'a', ['a'])]));
+    expect(kept.diagnostics[0]?.message).toBe('overflow-y: clip beside overflow-x: visible on a clips one axis only, which needs OVFL-c (css-overflow-3 §3.1)');
   });
-  it('a computed auto from the pair rule and overflow on body are DRAGON_UNSUPPORTED_VALUE on every target, located at the declaration', () => {
-    for (const css of ['.a { overflow-x: hidden; }', 'body { overflow: hidden; }']) {
+  it('clip beside visible is DRAGON_UNSUPPORTED_VALUE on every target, located at the declaration; overflow on body compiles', () => {
+    for (const css of ['.a { overflow-x: clip; }', '.a { overflow-y: clip; }']) {
       const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'])]);
       const c = project('ltr').compile(input);
       const hits = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
       expect(hits.map((d) => d.target).sort(), css).toEqual(['ios', 'web']);
-      for (const d of hits) expect(spanTextOf(input, d), css).toBe('hidden');
+      for (const d of hits) expect(spanTextOf(input, d), css).toBe('clip');
       expect([c.outputs.ios.kind, c.outputs.web.kind], css).toEqual(['blocked', 'blocked']);
       expectCatalogued(c.diagnostics);
     }
-    const ok = project('ltr').compile(inputFor(`${FONT} .a { overflow: hidden; }`, (r) => [div(r, 'a', ['a'])]));
-    expect(ok.diagnostics).toEqual([]);
+    for (const css of ['.a { overflow: hidden; }', 'body { overflow: hidden; }', 'body { overflow-x: hidden; }']) {
+      expect(project('ltr').compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'])])).diagnostics, css).toEqual([]);
+    }
+    // overflow-x: hidden alone computes overflow-y to auto, a native scroll view (OVFL-B).
+    expect(project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);
   });
 });
 

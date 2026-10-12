@@ -7,6 +7,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync }
 import { join } from 'node:path';
 import type { Browser } from 'playwright';
 import { launchChrome, openPage } from '../chrome.ts';
+import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import type { ParityCase } from '../cases.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
 import { nativeCases } from '../native-host.ts';
@@ -70,8 +71,9 @@ for (const dpr of DPRS) {
     if (recheck !== null) {
       let same = 0;
       const subset = cases.filter((_, i) => i % recheck === 0);
-      for (const n of subset) {
-        const png = await shoot(browser, n.case, dpr);
+      const pngs = await inOrder(subset, CHROME_PAGES, (n) => shoot(browser, n.case, dpr));
+      for (const [k, n] of subset.entries()) {
+        const png = pngs[k] as Buffer;
         const committed = readFileSync(expectedPixelsPath(n.case.id, dpr, platform));
         if (Buffer.compare(png, committed) === 0) same++;
         else {
@@ -83,12 +85,12 @@ for (const dpr of DPRS) {
     } else {
       mkdirSync(dir, { recursive: true });
       for (const f of readdirSync(dir)) if (f.endsWith('.png')) rmSync(join(dir, f));
-      const set: { case: string; png: Uint8Array }[] = [];
-      for (const n of cases) {
+      // Each case in its own context, CHROME_PAGES at a time; the manifest keeps case order.
+      const set = await inOrder(cases, CHROME_PAGES, async (n) => {
         const png = await shoot(browser, n.case, dpr);
         writeFileSync(expectedPixelsPath(n.case.id, dpr, platform), png);
-        set.push({ case: n.case.id, png });
-      }
+        return { case: n.case.id, png: png as Uint8Array };
+      });
       sets.push({ dpr, raster, cases: set });
       const written = readdirSync(dir).filter((f) => f.endsWith('.png')).length;
       if (written !== cases.length) throw new Error(`DPR ${dpr}: ${written} PNGs written, ${cases.length} cases`);

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; width: 200px; grid-template-columns: auto 1fr; column-gap: 4px; margin-bottom: 4px; }
+.inner { display: grid; grid-template-columns: 10px auto; grid-auto-rows: 5px; }
+.fl { display: flex; }
+.it { width: 12px; height: 4px; }
+.fx { display: flex; width: 220px; margin-bottom: 4px; }
+.fg { display: grid; grid-template-columns: min-content 20px; grid-auto-rows: 6px; }
+.fg2 { display: grid; grid-template-columns: 1fr 1fr; flex-grow: 1; }
+.tx { display: grid; width: 120px; grid-template-columns: 50px auto; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="g"><div data-dragon-id="a1" class="inner"><div data-dragon-id="a1a" class="it"></div><div data-dragon-id="a1b">XXX</div><div data-dragon-id="a1c" class="it"></div></div><div data-dragon-id="a2" class="fl"><div data-dragon-id="a2a" class="it"></div><div data-dragon-id="a2b">XX</div></div></div>
+<div data-dragon-id="t" class="tx">XX XXX<div data-dragon-id="t1" class="it"></div>XXX</div>
+<div data-dragon-id="f" class="fx"><div data-dragon-id="f1" class="fg"><div data-dragon-id="f1a">XX XXX</div><div data-dragon-id="f1b" class="it"></div></div><div data-dragon-id="f2" class="fg2"><div data-dragon-id="f2a" class="it"></div><div data-dragon-id="f2b">X</div></div></div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.row { display: flex; width: 300px; height: 50px; margin-bottom: 4px; background-color: #eee; }
+.col { display: flex; flex-direction: column; width: 120px; height: 90px; margin-bottom: 4px; background-color: #ddd; }
+.cb { position: relative; }
+.i { width: 40px; height: 14px; background-color: #0c0; }
+.rel { position: relative; }
+.mt { margin-top: auto; }
+.mb { margin-bottom: auto; }
+.ml { margin-left: auto; }
+.mr { margin-right: auto; }
+.all { margin: auto; }
+.a { position: absolute; width: 30px; height: 10px; background-color: #c00; }
+.tl { top: 4px; left: 6px; right: auto; bottom: auto; }
+.br { top: auto; left: auto; right: 8px; bottom: 2px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r1" class="row"><div data-dragon-id="r1a" class="i rel mt"></div><div data-dragon-id="r1b" class="i rel mb"></div><div data-dragon-id="r1c" class="i rel ml"></div><div data-dragon-id="r1d" class="i rel all"></div></div>
+<div data-dragon-id="k1" class="col"><div data-dragon-id="k1a" class="i rel mt"></div><div data-dragon-id="k1b" class="i rel ml mb"></div><div data-dragon-id="k1c" class="i rel all"></div></div>
+<div data-dragon-id="k2" class="col"><div data-dragon-id="k2a" class="i mt mr"></div><div data-dragon-id="k2b" class="i mb ml"></div></div>
+<div data-dragon-id="k3" class="col cb"><div data-dragon-id="k3s" class="i"></div><div data-dragon-id="k3a" class="a tl"></div><div data-dragon-id="k3b" class="a br"></div></div>
+</body>
+</html>

@@ -1,0 +1,212 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 15392
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 15392
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 15392
+  },
+  {
+   "id": "hid-deco",
+   "parent": "stage",
+   "x": 2688,
+   "y": 2688,
+   "width": 14048,
+   "height": 10016
+  },
+  {
+   "id": "kid-deco",
+   "parent": "hid-deco",
+   "x": 1648,
+   "y": 1648,
+   "width": 4032,
+   "height": 2688
+  },
+  {
+   "id": "hid-clip",
+   "parent": "stage",
+   "x": 20768,
+   "y": 2688,
+   "width": 8960,
+   "height": 6272
+  },
+  {
+   "id": "kid-over",
+   "parent": "hid-clip",
+   "x": 1792,
+   "y": 448,
+   "width": 13440,
+   "height": 3360
+  },
+  {
+   "id": "hid-round",
+   "parent": "stage",
+   "x": 33760,
+   "y": 2688,
+   "width": 8064,
+   "height": 8064
+  },
+  {
+   "id": "kid-fill",
+   "parent": "hid-round",
+   "x": 0,
+   "y": 0,
+   "width": 10752,
+   "height": 10752
+  },
+  {
+   "id": "hid-pad",
+   "parent": "stage",
+   "x": 45856,
+   "y": 2688,
+   "width": 10048,
+   "height": 8704
+  },
+  {
+   "id": "kid-pad",
+   "parent": "hid-pad",
+   "x": 992,
+   "y": 992,
+   "width": 4032,
+   "height": 2688
+  },
+  {
+   "id": "hid-pad-kid",
+   "parent": "hid-pad",
+   "x": 992,
+   "y": 3680,
+   "width": 4032,
+   "height": 1344
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 241,
+   "width": 1050,
+   "height": 241
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 241,
+   "width": 1050,
+   "height": 241
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 241,
+   "width": 1050,
+   "height": 241
+  },
+  {
+   "id": "hid-deco",
+   "left": 42,
+   "top": 42,
+   "right": 262,
+   "bottom": 199,
+   "width": 220,
+   "height": 157
+  },
+  {
+   "id": "kid-deco",
+   "left": 68,
+   "top": 68,
+   "right": 131,
+   "bottom": 110,
+   "width": 63,
+   "height": 42
+  },
+  {
+   "id": "hid-clip",
+   "left": 325,
+   "top": 42,
+   "right": 465,
+   "bottom": 140,
+   "width": 140,
+   "height": 98
+  },
+  {
+   "id": "kid-over",
+   "left": 353,
+   "top": 49,
+   "right": 563,
+   "bottom": 102,
+   "width": 210,
+   "height": 53
+  },
+  {
+   "id": "hid-round",
+   "left": 528,
+   "top": 42,
+   "right": 654,
+   "bottom": 168,
+   "width": 126,
+   "height": 126
+  },
+  {
+   "id": "kid-fill",
+   "left": 528,
+   "top": 42,
+   "right": 696,
+   "bottom": 210,
+   "width": 168,
+   "height": 168
+  },
+  {
+   "id": "hid-pad",
+   "left": 717,
+   "top": 42,
+   "right": 874,
+   "bottom": 178,
+   "width": 157,
+   "height": 136
+  },
+  {
+   "id": "kid-pad",
+   "left": 732,
+   "top": 58,
+   "right": 795,
+   "bottom": 100,
+   "width": 63,
+   "height": 42
+  },
+  {
+   "id": "hid-pad-kid",
+   "left": 732,
+   "top": 100,
+   "right": 795,
+   "bottom": 121,
+   "width": 63,
+   "height": 21
+  }
+ ]
+}

@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 20992
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 20992
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 20992
+  },
+  {
+   "id": "px",
+   "parent": "row",
+   "x": 43008,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "pct",
+   "parent": "row",
+   "x": 34560,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "circle",
+   "parent": "row",
+   "x": 28160,
+   "y": 512,
+   "width": 5632,
+   "height": 5632
+  },
+  {
+   "id": "pill",
+   "parent": "row",
+   "x": 19712,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "ellipse",
+   "parent": "row",
+   "x": 11264,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "corners",
+   "parent": "row",
+   "x": 2816,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "eight",
+   "parent": "row",
+   "x": 43008,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "rem",
+   "parent": "row",
+   "x": 34560,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "em",
+   "parent": "row",
+   "x": 26112,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "mixed",
+   "parent": "row",
+   "x": 17664,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "one",
+   "parent": "row",
+   "x": 9216,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "frac",
+   "parent": "row",
+   "x": 1088,
+   "y": 6912,
+   "width": 7360,
+   "height": 4262
+  },
+  {
+   "id": "tall",
+   "parent": "row",
+   "x": 47616,
+   "y": 12800,
+   "width": 3072,
+   "height": 7680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 328,
+   "width": 800,
+   "height": 328
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 328,
+   "width": 800,
+   "height": 328
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 328,
+   "width": 800,
+   "height": 328
+  },
+  {
+   "id": "px",
+   "left": 672,
+   "top": 8,
+   "right": 792,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "pct",
+   "left": 540,
+   "top": 8,
+   "right": 660,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "circle",
+   "left": 440,
+   "top": 8,
+   "right": 528,
+   "bottom": 96,
+   "width": 88,
+   "height": 88
+  },
+  {
+   "id": "pill",
+   "left": 308,
+   "top": 8,
+   "right": 428,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "ellipse",
+   "left": 176,
+   "top": 8,
+   "right": 296,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "corners",
+   "left": 44,
+   "top": 8,
+   "right": 164,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "eight",
+   "left": 672,
+   "top": 108,
+   "right": 792,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "rem",
+   "left": 540,
+   "top": 108,
+   "right": 660,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "em",
+   "left": 408,
+   "top": 108,
+   "right": 528,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "mixed",
+   "left": 276,
+   "top": 108,
+   "right": 396,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "one",
+   "left": 144,
+   "top": 108,
+   "right": 264,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "frac",
+   "left": 17,
+   "top": 108,
+   "right": 132,
+   "bottom": 175,
+   "width": 115,
+   "height": 67
+  },
+  {
+   "id": "tall",
+   "left": 744,
+   "top": 200,
+   "right": 792,
+   "bottom": 320,
+   "width": 48,
+   "height": 120
+  }
+ ]
+}

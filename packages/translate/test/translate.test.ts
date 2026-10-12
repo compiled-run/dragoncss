@@ -10,6 +10,7 @@ import { FAULTS } from '../src/faults.ts';
 import { engineFiles, EXEMPT, LAYOUT_SRC, lowerAll } from '../src/generate.ts';
 import { checkSubset } from '../src/subset.ts';
 import { hexBits } from '../harness/host.ts';
+import { suiteFloorProblems } from './floor.ts';
 
 const lowered = lowerAll();
 
@@ -149,8 +150,10 @@ describe('differential corpus (native-strategy.md 1.7)', () => {
   it('matches the committed seed, sizes and digest; at least 50% of the engine corpus lays out ok', () => {
     expect(c.digest).toBe(lockedDigest());
     const n = Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length]));
-    // ANIM-a2 appends the rt suite (one line per rt vector record); the four P1 suites keep their sizes.
-    expect(n).toEqual({ vectors: 258, units: 320000, engine: 20258, library: 22000, rt: 54588, hit: 2028 });
+    // PIN-DERIVE: p1-floor.json holds every P1 suite in order at no fewer cases than it had (rt-vectors.test reads it too); the
+    // four P1 suites keep their exact sizes, and any later suite (ANIM-a2 rt, SELD-R1b hit, ANIM-b1 3b animator, SELD-R2 interaction) only grows.
+    expect(suiteFloorProblems(new URL('./p1-floor.json', import.meta.url), 'p1', c.suites.map((s) => ({ name: s.name, count: s.lines.length })))).toEqual([]);
+    expect([n['vectors'], n['units'], n['engine'], n['library']]).toEqual([258, 320000, 20258, 22000]);
     expect(c.engineSplit.ok / 20258).toBeGreaterThanOrEqual(0.5);
     expect(c.engineSplit.threw + c.engineSplit.harnessError).toBe(0);
   });
@@ -190,5 +193,19 @@ describe('the harness decodes a calculated line height only with the non-negativ
     };
     expect(runEngineCase(withLineHeight('non-negative'))).toMatch(/^\["ok",/);
     expect(runEngineCase(withLineHeight('all'))).toMatch(/^\["harness-error",".*range/);
+  });
+});
+
+describe('the harness refuses a shaping plant, which only the shaped measurer acts on (TXT1a-1)', () => {
+  it('reports a harness error naming each shaping plant, and lays out the same input without it', async () => {
+    const { runEngineCase } = await import('../harness/harness.ts');
+    const { NO_ENGINE_FAULTS } = await import('../../layout/src/block.ts');
+    const v = JSON.parse(readFileSync(join(import.meta.dirname, '../../layout/vectors/text-fractional-font-size.json'), 'utf8')) as { platform: string; input: unknown };
+    expect(runEngineCase(JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input: v.input }))).toMatch(/^\["ok",/);
+    const plants = ['advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing', 'metricRoundingSwapped', 'latinCheckSkipped'];
+    for (const plant of plants) {
+      const out = runEngineCase(JSON.stringify({ platform: v.platform, faults: { ...NO_ENGINE_FAULTS, [plant]: true }, input: v.input }));
+      expect(out, plant).toBe(`["harness-error","$.faults.${plant} is a shaping plant, which acts only through the shaped measurer; the harness has only measurerFor's Ahem measurer"]`);
+    }
   });
 });

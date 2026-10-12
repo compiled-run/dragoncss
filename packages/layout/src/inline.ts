@@ -12,6 +12,7 @@ import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
 import { asciiPairBreaks } from './linebreak.ts';
+import type { FontMetrics } from './text.ts';
 import { AHEM_FACE_ID, coveredIndex } from './text.ts';
 import { scriptCode, scriptExtensions, USCRIPT_COMMON, USCRIPT_INHERITED, USCRIPT_LATIN } from './script-data.ts';
 import type { BreakItem, BreakResult, BrokenLine } from './shaping.ts';
@@ -211,7 +212,7 @@ function resolvedLineHeight(id: string, lh: LineHeightValue): NormalValue | Numb
 // leading, and the descent side takes the rest. The planted spec reading of deviation half-leading-floor keeps the exact half,
 // and planted fault halfLeadingUnflooredPerBox keeps it for inline boxes only.
 function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightValue, inlineBox: boolean): BoxMetrics {
-  const m = ctx.measurer.metrics(fontOf(font));
+  const m = fontMetricsOf(ctx, id, font);
   const glyphHeight = add(add(m.ascent, m.descent), m.lineGap);
   const lh = resolvedLineHeight(id, lineHeight);
   const height = lh.kind === 'normal' ? glyphHeight : lh.kind === 'number' ? lineHeightFromNumber(font.size, lh.value) : fromFloatRound(lh.value);
@@ -219,6 +220,12 @@ function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightV
   const half = exact ? divInt(sub(height, glyphHeight), 2) : floorToWholePx(divInt(sub(height, glyphHeight), 2));
   const above = add(m.ascent, half);
   return { above, below: sub(height, above), ascent: m.ascent, descent: m.descent };
+}
+
+/** The rounded metrics of a node's font, or the text-glyph refusal for a face the measurer does not hold. */
+function fontMetricsOf(ctx: Ctx, id: string, font: FontSpec): FontMetrics {
+  if (!ctx.measurer.hasFace(font.family)) unsupported('text-glyph', id, 'css-fonts-4 §5', `${id} names the face ${font.family}, which the measurer does not hold`);
+  return ctx.measurer.metrics(fontOf(font));
 }
 
 /** Whether a margin or padding is zero: a zero px or percentage (a calculation counts as a decoration). */
@@ -319,7 +326,10 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   if (shaped) checkShapedText(ctx, box, flat.leaves, items);
   for (const t of flat.leaves) {
     const m = ctx.measurer.measure(t.text, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
     }
@@ -346,7 +356,10 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   };
 }
 
-/** Whether every code point is in R4's Latin scope: Script Latin, or Common or Inherited whose Script_Extensions hold Latin. */
+/**
+ * Why text is outside real-font Latin scope, or '': R4 (shaping.ts latinScopedMeasurer, every face) plus, for a real face, Common
+ * or Inherited code points whose Script_Extensions exclude Latin, which Blink shapes in a run of their own.
+ */
 function latinScopeRefusal(text: string): string {
   for (const ch of text) {
     const cp = ch.codePointAt(0) as number;
@@ -371,7 +384,7 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
   if (!ctx.faults.latinCheckSkipped) {
     for (const t of leaves) {
       const r = latinScopeRefusal(t.text);
-      if (r !== '') unsupported('text-script', t.id, 'TXT1a R4', `${r}; real-font text is Latin only (TXT1c, TXT2)`);
+      if (r !== '') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', `${r}; real-font text is Latin only (TXT1c, TXT2)`);
     }
   }
   let last = -1;
@@ -738,7 +751,10 @@ function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) text += (ifc.items[i++] as Item).ch;
     const t = ifc.leaves[it.leaf] as TextLeaf;
     const m = ctx.measurer.measure(text, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     total = add(total, m.measure.width);
   }
   return total;
@@ -762,7 +778,10 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === first.leaf) last = ifc.items[i++] as Item;
     const t = ifc.leaves[first.leaf] as TextLeaf;
     const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     total = add(total, m.measure.width);
   }
   return total;
@@ -870,7 +889,10 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       while (i < ifc.items.length && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) i++;
       const t = ifc.leaves[it.leaf] as TextLeaf;
       const s = ctx.measurer.shaped(t.text, fontOf(t.font));
-      if (!s.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', s.reason);
+      if (!s.ok) {
+        if (s.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', s.reason);
+        unsupported('text-glyph', t.id, 'css-fonts-4 §5', s.reason);
+      }
       if (s.result.end !== i - first) unsupported('text-glyph', t.id, 'css-fonts-4 §5', `${t.id} holds a code point outside the Basic Multilingual Plane`);
       const opps: number[] = [];
       for (let o = 1; o < i - first; o++) if (opportunityAt(ifc, first + o)) opps.push(o);
@@ -1059,7 +1081,7 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       let through = i;
       while (through < line.end && (ifc.items[through] as Item).kind === 'char' && (ifc.items[through] as Item).leaf === it.leaf) through++;
       const t = ifc.leaves[it.leaf] as TextLeaf;
-      const m = ctx.measurer.metrics(fontOf(t.font));
+      const m = fontMetricsOf(ctx, t.id, t.font);
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
       const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
       pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: spanWidth(ctx, ifc, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.app { padding: 0 clamp(8px, 3vw, 24px); margin-right: 80px; }
+.record { width: 120px; height: 20px; background-color: #333; }
+.play { display: flex; width: min(100%, 224px); height: 12px; background-color: #ccc; }
+.btn { width: 20px; height: 8px; background-color: #c00; }
+.title { font-size: 10px; line-height: 12px; width: 160px; }
+.time { width: 200px; height: 6px; background-color: #0c0; }
+@media screen and (max-width: 384px) {
+  .app { margin-right: 0; }
+  .record { width: min(72vw, 144px); }
+  .play { width: min(80%, 144px); }
+}
+@media screen and (max-width: 320px) {
+  .title { font-size: 12px; line-height: 1.15; width: 144px; }
+  .time { width: 144px; }
+}
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="app" class="app">
+<div data-dragon-id="record" class="record"></div>
+<div data-dragon-id="title" class="title">Song name</div>
+<div data-dragon-id="play" class="play"><div data-dragon-id="btn" class="btn"></div></div>
+<div data-dragon-id="time" class="time"></div>
+</div>
+</body>
+</html>

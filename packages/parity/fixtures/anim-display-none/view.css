@@ -1,0 +1,4 @@
+@keyframes glow { from { background-color: rgb(0, 0, 0); } to { background-color: rgb(0, 200, 0); } }
+.wrap.hide { display: none; }
+.box { width: 10px; height: 10px; transition: width 1s linear; animation: glow 2s linear infinite; }
+.box.on { width: 110px; }

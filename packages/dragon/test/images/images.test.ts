@@ -270,3 +270,202 @@ describe('the quadrant probe (R7)', () => {
     expect(off).toEqual([]);
   });
 });
+
+describe('base64Encode (the PNG bytes the native image paint embeds)', () => {
+  it('equals RFC 4648 base64 with padding on every length remainder, every byte value and every corpus image', async () => {
+    const { base64Encode } = await import('../../src/images/compile.ts');
+    const cases: Uint8Array[] = [new Uint8Array(0), Uint8Array.of(0), Uint8Array.of(255, 254), Uint8Array.of(1, 2, 3), Uint8Array.from({ length: 256 }, (_, i) => i)];
+    let seed = 7;
+    for (let n = 0; n < 64; n++) cases.push(Uint8Array.from({ length: n }, () => (seed = (seed * 1103515245 + 12345) >>> 0) >>> 24));
+    const dir = new URL('./corpus/', import.meta.url);
+    for (const f of readdirSync(dir)) if (f.endsWith('.png')) cases.push(new Uint8Array(readFileSync(new URL(f, dir))));
+    expect(cases.length).toBeGreaterThan(69);
+    for (const b of cases) expect(base64Encode(b), `${b.length} bytes`).toBe(Buffer.from(b).toString('base64'));
+  });
+});
+
+describe('zlibInflate and the PNG decode refusal (Macroscope 4169579864: CRC-valid PNGs whose image data does not decode)', () => {
+  it('inflates exactly as node:zlib on every corpus PNG and on seeded data at every level and strategy', async () => {
+    const { deflateSync, constants } = await import('node:zlib');
+    const { zlibInflate } = await import('../../src/images/inflate.ts');
+    const { parsePng } = await import('../../src/images/png.ts');
+    let checked = 0;
+    for (const f of readdirSync(here('./corpus/'))) {
+      if (!f.endsWith('.png')) continue;
+      const p = parsePng(corpus(f));
+      if (!p.ok) continue;
+      expect(Buffer.from(zlibInflate(p.idat)).equals(inflateSync(p.idat)), f).toBe(true);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(30);
+    let seed = 11;
+    const rand = (): number => (seed = (seed * 1103515245 + 12345) >>> 0) >>> 24;
+    for (const n of [0, 1, 7, 300, 5000, 70000]) {
+      // Runs and noise, so every block type and long back-references occur.
+      const data = Uint8Array.from({ length: n }, (_, i) => ((i >> 6) % 3 === 0 ? rand() : (i >> 4) & 0xff));
+      for (const level of [0, 1, 6, 9]) {
+        for (const strategy of [constants.Z_DEFAULT_STRATEGY, constants.Z_FIXED, constants.Z_HUFFMAN_ONLY, constants.Z_RLE]) {
+          const z = deflateSync(data, { level, strategy });
+          expect(Buffer.from(zlibInflate(z)).equals(Buffer.from(data)), `${n} bytes, level ${level}, strategy ${strategy}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('throws on a bad header, a preset dictionary, a truncated stream, a corrupt block and a checksum mismatch', async () => {
+    const { deflateSync } = await import('node:zlib');
+    const { zlibInflate } = await import('../../src/images/inflate.ts');
+    const good = new Uint8Array(deflateSync(Uint8Array.from({ length: 4000 }, (_, i) => (i * 7) & 0xff)));
+    const flip = (at: number, mask: number): Uint8Array => {
+      const b = good.slice();
+      b[at] = (b[at] as number) ^ mask;
+      return b;
+    };
+    expect(() => zlibInflate(flip(0, 0x01))).toThrow(/compression method|header check/);
+    expect(() => zlibInflate(Uint8Array.of(0x78, 0xbb, 0, 0, 0, 0, 0, 0))).toThrow(/preset dictionary/);
+    for (const cut of [2, 5, good.length - 5, good.length - 1]) expect(() => zlibInflate(good.subarray(0, cut)), `cut at ${cut}`).toThrow(/zlib stream is invalid/);
+    expect(() => zlibInflate(flip(good.length - 1, 0x01))).toThrow(/Adler-32/);
+    // A stored block whose length does not match its complement, and block type 3.
+    expect(() => zlibInflate(Uint8Array.of(0x78, 0x01, 0x01, 0x05, 0x00, 0x00, 0x00, 0, 0, 0, 0))).toThrow(/complement/);
+    expect(() => zlibInflate(Uint8Array.of(0x78, 0x01, 0x07, 0, 0, 0, 0, 0))).toThrow(/block type 3/);
+    // pngRawSize equals the inflated IDAT size of every corpus PNG, interlaced or not.
+    const { pngRawSize } = await import('../../src/images/png.ts');
+    let sized = 0;
+    for (const f of readdirSync(here('./corpus/'))) {
+      if (!f.endsWith('.png')) continue;
+      const p = parsePng(corpus(f));
+      if (!p.ok) continue;
+      expect(pngRawSize(p.facts), f).toBe(inflateSync(p.idat).length);
+      sized++;
+    }
+    expect(sized).toBeGreaterThan(30);
+    // The limit: exactly the output size passes, one byte less throws.
+    expect(zlibInflate(good, 4000).length).toBe(4000);
+    expect(() => zlibInflate(good, 3999)).toThrow(/inflates past 3999 bytes/);
+    // Every single-bit flip in the deflate data either throws or changes nothing the checksum would miss.
+    for (let at = 2; at < good.length - 4; at += 13) {
+      let out: Uint8Array | null = null;
+      try {
+        out = zlibInflate(flip(at, 0x10));
+      } catch {
+        continue;
+      }
+      expect(Buffer.from(out).equals(inflateSync(good)), `flip at ${at}`).toBe(true);
+    }
+  });
+
+  it('rejects an incomplete Huffman code as zlib inflate_table does, except a single one-bit literal/length or distance code', async () => {
+    const { zlibInflate } = await import('../../src/images/inflate.ts');
+    // A one-block dynamic-Huffman zlib stream, written bit by bit (RFC 1951 §3.2.7). The code-length code is complete: symbols
+    // 0, 1, 2 and 18 at two bits each. lit and dist give each symbol's code length; body lists the literal/length symbols to emit.
+    const stream = (lit: ReadonlyMap<number, number>, dist: readonly number[], body: readonly number[], out: readonly number[]): Uint8Array => {
+      const bytes: number[] = [0x78, 0x01];
+      let acc = 0;
+      let n = 0;
+      const put = (v: number, bits: number): void => {
+        for (let i = 0; i < bits; i++) {
+          acc |= ((v >>> i) & 1) << n++;
+          if (n === 8) { bytes.push(acc); acc = 0; n = 0; }
+        }
+      };
+      const code = (c: number, len: number): void => { for (let i = len - 1; i >= 0; i--) put((c >>> i) & 1, 1); };
+      const canonical = (lens: readonly number[]): number[] => {
+        const codes: number[] = [];
+        let next = 0;
+        for (let len = 1; len < 16; len++) {
+          for (let s2 = 0; s2 < lens.length; s2++) if (lens[s2] === len) codes[s2] = next++;
+          next <<= 1;
+        }
+        return codes;
+      };
+      put(1, 1); put(2, 2); put(0, 5); put(dist.length - 1, 5); put(14, 4);
+      const order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1];
+      const clen = (sym: number): number => ([0, 1, 2, 18].includes(sym) ? 2 : 0);
+      for (const sym of order) put(clen(sym), 3);
+      const clCodes = canonical(Array.from({ length: 19 }, (_, i) => clen(i)));
+      const litLens = Array.from({ length: 257 }, (_, i) => lit.get(i) ?? 0);
+      const all = [...litLens, ...dist];
+      for (let i = 0; i < all.length;) {
+        let run = 0;
+        while (all[i + run] === 0 && run < 138 && i + run < all.length) run++;
+        if (run >= 11) { code(clCodes[18] as number, 2); put(run - 11, 7); i += run; continue; }
+        code(clCodes[all[i] as number] as number, 2);
+        i++;
+      }
+      const litCodes = canonical(litLens);
+      for (const sym of body) code(litCodes[sym] as number, litLens[sym] as number);
+      if (n > 0) bytes.push(acc);
+      let a = 1;
+      let b = 0;
+      for (const x of out) { a = (a + x) % 65521; b = (b + a) % 65521; }
+      return Uint8Array.from([...bytes, (b >>> 8) & 0xff, b & 0xff, (a >>> 8) & 0xff, a & 0xff]);
+    };
+    // Literal 0 and end-of-block at two bits each: two of four two-bit codes, so the code is incomplete. zlib: "invalid literal/lengths set".
+    expect(() => zlibInflate(stream(new Map([[0, 2], [256, 2]]), [1], [0, 256], [0]))).toThrow(/incomplete literal\/length code/);
+    // The same with a complete literal/length code (0, 1 and 256 at 1, 2 and 2 bits) inflates.
+    expect([...zlibInflate(stream(new Map([[0, 1], [1, 2], [256, 2]]), [1], [0, 1, 256], [0, 1]))]).toEqual([0, 1]);
+    // A single one-bit literal/length code (end-of-block only) and a single one-bit distance code are allowed, as in zlib.
+    expect([...zlibInflate(stream(new Map([[256, 1]]), [1], [256], []))]).toEqual([]);
+    // An incomplete distance code with a longest code over one bit is not. zlib: "invalid distances set".
+    expect(() => zlibInflate(stream(new Map([[0, 1], [1, 2], [256, 2]]), [2, 2], [0, 1, 256], [0, 1]))).toThrow(/incomplete distance code/);
+    // An incomplete code-length code (only symbol 0, at one bit) is never allowed. zlib: "invalid code lengths set".
+    const clIncomplete = Uint8Array.from([0x78, 0x01, 0b00000101, 0b10000000, 0b00000000, 0b00000001, 0, 0, 0, 0, 0, 0]);
+    expect(() => zlibInflate(clIncomplete)).toThrow(/incomplete code length code/);
+    // node:zlib agrees on every case above.
+    expect(() => inflateSync(stream(new Map([[0, 2], [256, 2]]), [1], [0, 256], [0]))).toThrow(/invalid literal\/lengths set/);
+    expect(() => inflateSync(stream(new Map([[0, 1], [1, 2], [256, 2]]), [2, 2], [0, 1, 256], [0, 1]))).toThrow(/invalid distances set/);
+    expect(() => inflateSync(clIncomplete)).toThrow(/invalid code lengths set/);
+    expect([...inflateSync(stream(new Map([[0, 1], [1, 2], [256, 2]]), [1], [0, 1, 256], [0, 1]))]).toEqual([0, 1]);
+    expect([...inflateSync(stream(new Map([[256, 1]]), [1], [256], []))]).toEqual([]);
+  });
+
+  it('refuses a PNG whose chunks and CRCs are valid but whose image data does not decode, and accepts the corpus PNGs it accepted', async () => {
+    const { crc32, parsePng } = await import('../../src/images/png.ts');
+    const { deflateSync } = await import('node:zlib');
+    const u32 = (n: number): number[] => [(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff];
+    const chunk = (type: string, data: Uint8Array): number[] => {
+      const body = Uint8Array.from([...type].map((c) => c.charCodeAt(0)).concat([...data]));
+      return [...u32(data.length), ...body, ...u32(crc32(body))];
+    };
+    // A 2 x 2 8-bit RGB PNG: IHDR, one IDAT, IEND, with every CRC correct.
+    const png = (idat: Uint8Array): Uint8Array => Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ...chunk('IHDR', Uint8Array.from([...u32(2), ...u32(2), 8, 2, 0, 0, 0])),
+      ...chunk('IDAT', idat),
+      ...chunk('IEND', new Uint8Array(0)),
+    ]);
+    const rows = Uint8Array.of(0, 255, 0, 0, 0, 255, 0, 0, 0, 0, 255, 255, 255, 255);
+    const ok = png(new Uint8Array(deflateSync(rows)));
+    expect(parsePng(ok).ok).toBe(true);
+    expect(imageRefusal(ok, 'image/png')).toBeNull();
+    const cases: [string, Uint8Array, RegExp][] = [
+      ['not a zlib stream', Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8), /does not decode: the zlib stream is invalid/],
+      ['truncated image data', new Uint8Array(deflateSync(rows.subarray(0, 7))), /does not decode: PNG image data is truncated/],
+      ['an unknown row filter', new Uint8Array(deflateSync(Uint8Array.of(9, ...rows.subarray(1)))), /does not decode: unknown PNG filter 9/],
+    ];
+    for (const [what, idat, why] of cases) {
+      const bytes = png(idat);
+      expect(parsePng(bytes).ok, what).toBe(true);
+      const r = imageRefusal(bytes, 'image/png');
+      expect(r?.package, what).toBeNull();
+      expect(r?.reason, what).toMatch(why);
+    }
+    // An expansion bomb (Macroscope 4170043800): 64 MiB of zeros in a few KB of IDAT stops at the 14 bytes IHDR declares.
+    const bomb = new Uint8Array(deflateSync(new Uint8Array(64 * 1024 * 1024), { level: 9 }));
+    expect(bomb.length).toBeLessThan(100_000);
+    expect(imageRefusal(png(bomb), 'image/png')?.reason).toMatch(/does not decode: the zlib stream is invalid: it inflates past 14 bytes/);
+    // A bitmap Android cannot draw (over 100 MiB) is refused from IHDR alone, before any image buffer is allocated.
+    const huge = Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ...chunk('IHDR', Uint8Array.from([...u32(6000), ...u32(5000), 8, 2, 0, 0, 0])),
+      ...chunk('IDAT', bomb),
+      ...chunk('IEND', new Uint8Array(0)),
+    ]);
+    expect(imageRefusal(huge, 'image/png')?.reason).toBe('its 6000 x 5000 bitmap is 120000000 bytes, over the 104857600 bytes Android draws');
+    // The decode check refuses nothing the corpus accepted before it: every corpus PNG it accepts decodes with node:zlib too.
+    for (const f of readdirSync(here('./corpus/'))) {
+      if (!f.endsWith('.png') || imageRefusal(corpus(f), 'image/png') !== null) continue;
+      expect(() => decodePng(corpus(f), (d) => new Uint8Array(inflateSync(d))), f).not.toThrow();
+    }
+  });
+});

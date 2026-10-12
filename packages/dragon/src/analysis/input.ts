@@ -276,6 +276,8 @@ export function validateInput(input: FrontEndResult, projectId: string, diagnost
     return null;
   }
   if (document.id.includes('/') || document.id.length === 0) invalid(`document id "${document.id}" must be non-empty and contain no "/"`);
+  // MQ-R1: '@' starts the ids Dragon reserves for its own environment states (@env#band), so no document may take one.
+  if (document.id.startsWith('@')) invalid(`document id "${document.id}" must not start with "@", which Dragon reserves for its environment states`);
 
   const styles = new Map<string, StyleUse>();
   const styleOwner = new Map<string, string>();

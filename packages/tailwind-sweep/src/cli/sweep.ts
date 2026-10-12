@@ -16,5 +16,5 @@ mkdirSync(SNAPSHOT_DIR, { recursive: true });
 writeFileSync(SNAPSHOT_PATH, serialize(result.records, { chrome: CHROME_VERSION }));
 const summary = summarize(result.records);
 writeFileSync(SUMMARY_PATH, summaryMarkdown(summary, { chrome: CHROME_VERSION }));
-const line = (['web', 'ios', 'android'] as const).map((t) => `${t} ${summary.byTarget[t].supported} supported, ${summary.byTarget[t].refused} refused, ${summary.byTarget[t].invalid} invalid, ${summary.byTarget[t].mismatch} mismatch`).join('; ');
+const line = (['web', 'ios', 'android'] as const).map((t) => `${t} ${summary.byTarget[t].supported} supported, ${summary.byTarget[t].refused} refused, ${summary.byTarget[t].invalid} invalid, ${summary.byTarget[t].mismatch} mismatch, ${summary.byTarget[t]['na-native']} not applicable on native`).join('; ');
 console.log(`${summary.total} utilities: ${line}`);

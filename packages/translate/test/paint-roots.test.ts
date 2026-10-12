@@ -10,6 +10,7 @@ import { committedFiles, runTarget } from '../src/check.ts';
 import type { Corpus, Suite } from '../src/corpus.ts';
 import { digestsOf, split } from '../src/corpus.ts';
 import { engineFiles, engineRoots, LAYOUT_SRC, PAINT_ROOT_FILES, ROOT } from '../src/generate.ts';
+import { isBlocked } from '../src/native.ts';
 
 const features = PAINT_ROOT_FILES.filter((f) => f.startsWith('paint-')).map((f) => f.slice('paint-'.length, -'.ts'.length));
 type Vectors = { readonly feature: string; readonly cases: number; readonly lines: readonly string[]; readonly expected: readonly string[] };
@@ -68,7 +69,7 @@ describe('paint vectors (EMS)', () => {
     const corpus: Corpus = { suites, vectors: [], engineSplit: split([]), digest: d.digest, digests: d.digests };
     for (const target of ['swift', 'kotlin'] as const) {
       const r = runTarget(target, corpus, committedFiles(target), `test-paint-${target}`);
-      if (r.status === 'blocked (owner tooling)') continue;
+      if (isBlocked(r)) continue;
       expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(suites.map((s) => `${s.name} ${s.lines.length}/${s.lines.length}`));
       expect(r.status).toBe('pass');
     }

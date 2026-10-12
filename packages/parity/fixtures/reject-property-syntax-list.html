@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+@property --x { syntax: "<length>+"; inherits: true; initial-value: 1px; }
+.a { height: 4px; width: var(--x, 20px); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="a"></div>
+</body>
+</html>

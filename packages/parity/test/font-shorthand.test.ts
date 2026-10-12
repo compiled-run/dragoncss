@@ -2,8 +2,10 @@
 // Chrome 145 expands them. Each value of the grammar table is set as written on one element and as Dragon's longhands on its
 // sibling, under a parent with non-initial line-height, weight and font-synthesis; the computed values must agree, every longhand
 // Dragon does not model must stay initial, and values Dragon calls invalid must be ones Chrome drops. The three plants are caught.
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import type { Dirent } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { describe, expect, it } from 'vitest';
@@ -141,37 +143,40 @@ describe('font-synthesis on native', () => {
 });
 
 describe('the font-shorthand group', () => {
-  it('every capture of TXT-W1 (txt-w1-v2 53699e28b) is unchanged but for the font-synthesis keys', () => {
-    const W1 = '53699e28b';
-    const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
-    const root = repoPath('.');
-    const paths = execFileSync('git', ['ls-tree', '-r', '--name-only', W1, '--', 'packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 }).split('\n').filter((p) => p.endsWith('.json'));
-    expect(paths.length).toBeGreaterThan(1500);
-    const blobs = execFileSync('git', ['cat-file', '--batch'], { cwd: root, input: paths.map((p) => `${W1}:${p}`).join('\n'), maxBuffer: 1 << 30 });
-    const strip = (c: { nodes?: { computed: Record<string, string> | null }[] }): string => {
-      for (const n of c.nodes ?? []) if (n.computed !== null) for (const k of ADDED) delete n.computed[k];
-      return JSON.stringify(c);
-    };
-    let at = 0;
-    const differ: string[] = [];
-    for (const p of paths) {
-      const nl = blobs.indexOf(10, at);
-      const size = Number(blobs.subarray(at, nl).toString('utf8').split(' ')[2]);
-      const before = JSON.parse(blobs.subarray(nl + 1, nl + 1 + size).toString('utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
-      at = nl + 1 + size + 1;
-      const now = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
-      if ((now.nodes ?? []).some((n) => n.computed !== null && ADDED.some((k) => n.computed?.[k] === undefined))) differ.push(`${p}: a node lacks a font-synthesis key`);
-      if (strip(now) !== strip(before)) differ.push(p);
-    }
-    expect(differ).toEqual([]);
+  // BASE is master af67457777 (#262, which landed TXT-W1). The pins are digests (PIN-DERIVE: CI checks out the head alone, so they
+  // read no git history), each taken at BASE with git; a merge that moves BASE retakes them there and states why in its message.
+  /** sha256 of "<path>\t<sha256 of the capture without the font-synthesis keys>" lines in path order, over every capture but TXT-W2's own. */
+  const BASE_CAPTURES = { files: 3164, digest: '212927bd75ad77ec1c87160f5dad064452cf959f9ee8ef38bfc9572d9f33fc45' };
+  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
+  it('every capture of BASE is unchanged but for the font-synthesis keys, which every node has', () => {
+    const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
+    const paths = dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
+      .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/')))
+      .filter((p) => p.endsWith('.json') && !/(^|\/)font-shorthand-/.test(p)).sort();
+    const lacking: string[] = [];
+    const lines = paths.map((p) => {
+      const c = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
+      for (const n of c.nodes ?? []) {
+        if (n.computed === null) continue;
+        if (ADDED.some((k) => n.computed?.[k] === undefined)) lacking.push(p);
+        for (const k of ADDED) delete n.computed[k];
+      }
+      return `${p}\t${createHash('sha256').update(JSON.stringify(c)).digest('hex')}\n`;
+    });
+    expect({ files: paths.length, digest: createHash('sha256').update(lines.join('')).digest('hex') }).toEqual(BASE_CAPTURES);
+    expect([...new Set(lacking)]).toEqual([]);
   });
 
-  it('is appended last and adds exactly its own layout cases', () => {
-    expect(FIXTURE_GROUPS[FIXTURE_GROUPS.length - 1]?.id).toBe('font-shorthand');
+  it('adds exactly its own layout cases and keeps every BASE case in order', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = FONT_SHORTHAND.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    expect(ids.slice(-added.length)).toEqual(added);
-    expect(ids.length).toBe(545 + added.length);
+    // Groups after the per-feature split run in id order (fixtures.ts), so the font-shorthand group sits among them.
+    expect(FIXTURE_GROUPS.some((g) => g.id === 'font-shorthand')).toBe(true);
+    expect(ids.filter((id) => added.includes(id))).toEqual(added);
+    const base = ids.filter((id) => !added.includes(id));
+    // BASE's FIXTURES hold 778 layout cases.
+    expect(base.length).toBe(778);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('42a7d7b6b83d9843d09b712fd88325a0d88f54ed82f0954fe5e79c54753da1dc');
   });
 });
 

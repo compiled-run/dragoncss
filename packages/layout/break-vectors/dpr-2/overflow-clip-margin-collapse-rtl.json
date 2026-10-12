@@ -1,0 +1,7 @@
+{
+  "case": "overflow-clip-margin-collapse-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,3],[3,6],[6,9],[9,11]]}
+  ]
+}
