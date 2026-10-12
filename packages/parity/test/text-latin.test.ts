@@ -420,7 +420,7 @@ describe('TXT1a-2 phase F: text-latin vectors replay in the translated engine (R
   const lineOf = (v: ReturnType<typeof tl.textLatinVector>, faults: EngineFaults = NO_ENGINE_FAULTS): string => JSON.stringify({ platform: v.platform, faults, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls } });
 
   it('has a vector for every case at every DPR, each written from the committed captures', () => {
-    expect(vecs.length).toBe((NEW_IDS.length + TAG_IDS.length) * 4);
+    expect(vecs.length).toBe((NEW_IDS.length + TAG_IDS.length + JUSTIFY_SHAPED_IDS.length) * 4);
     for (const { file, v } of vecs) expect(readFileSync(file, 'utf8'), file).toBe(tl.textLatinVectorText(tl.textLatinVector(v.input)));
   });
 

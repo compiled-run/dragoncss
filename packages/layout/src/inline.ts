@@ -5,7 +5,7 @@
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
 import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
+import { add, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
 import { resolveBorder } from './box.ts';
 import type { Ctx } from './block.ts';
@@ -1054,7 +1054,7 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, line: Line, last: boole
   if ((ifc.items[final] as Item).cp === SOFT_HYPHEN) unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify on a hyphenated line is not proven against Chrome');
   if (count === 0) return null;
   const total = free * 1024;
-  const each = Math.floor(total / count);
+  const each = inlineDivInt(total, count);
   const expansions: number[] = [];
   let seen = 0;
   for (let i = line.start; i < line.visibleEnd; i++) {
@@ -1083,7 +1083,7 @@ function ahemJustifiedRuns(box: LayoutBox, ifc: Ifc, line: Line, expansions: rea
     }
     const from = i;
     const t = ifc.leaves[it.leaf] as TextLeaf;
-    const em = Math.fround(platformFontSize(t.font.size)) * 65536;
+    const em = floatToInlineRaw(platformFontSize(t.font.size));
     if (!Number.isInteger(em)) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify needs ${t.id}'s glyph advance exact in 16.16, and ${platformFontSize(t.font.size)}px is not`);
     let raw = 0;
     while (i < line.visibleEnd && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) {

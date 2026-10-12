@@ -156,6 +156,17 @@ export function divInt(a: LU, n: number): LU {
   return saturate(Math.trunc(a / n));
 }
 
+/** A float px value as a 16.16 raw value, unrounded: a whole number exactly when the float is exact in 16.16. */
+export function floatToInlineRaw(px: number): number {
+  return Math.fround(px) * 65536;
+}
+
+/** Blink FixedPoint operator/(int): an InlineLayoutUnit (16.16 raw, int64) divided by a non-zero integer, truncating toward zero. */
+export function inlineDivInt(raw: number, n: number): number {
+  if (!Number.isInteger(n) || n === 0) throw new Error(`non-zero integer divisor expected, got ${n}`);
+  return Math.trunc(raw / n);
+}
+
 /** Blink operator/(LayoutUnit, LayoutUnit): 64 * a.raw / b.raw in int64, truncating toward zero, clamped to the raw range. */
 export function divLu(a: LU, b: LU): LU {
   if (b === 0) throw new Error('LayoutUnit division by zero');
