@@ -726,6 +726,8 @@
     "radius-cascade-rtl": "border-radius on base, over, after, var, varpair, parent, inherit, unset, zero-one: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-longhands": "border-radius on tl, tr, br, bl, all, wk1, wk2, wk4, wkslash, wk3, std-after, wk-after, wk-corner, bordered: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-longhands-rtl": "border-radius on tl, tr, br, bl, all, wk1, wk2, wk4, wkslash, wk3, std-after, wk-after, wk-corner, bordered: hit testing through rounded corners is not modelled yet (PNT1)",
+    "radius-replaced": "border-radius on avatar, ring, thick, ellipse, ellipse-ring, corners, corners-ring, fill, tall: hit testing through rounded corners is not modelled yet (PNT1)",
+    "radius-replaced-rtl": "border-radius on avatar, ring, thick, ellipse, ellipse-ring, corners, corners-ring, fill, tall: hit testing through rounded corners is not modelled yet (PNT1)",
     "shadow-rounded": "border-radius on simple, pill, circle, mixed, spread, ring, bordered: hit testing through rounded corners is not modelled yet (PNT1)",
     "shadow-rounded-rtl": "border-radius on simple, pill, circle, mixed, spread, ring, bordered: hit testing through rounded corners is not modelled yet (PNT1)",
     "shadow-inset": "border-radius on round, both, circle: hit testing through rounded corners is not modelled yet (PNT1)",
