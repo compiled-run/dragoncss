@@ -224,6 +224,8 @@ const TAG_IDS = ['inline-tags-faces', 'inline-tags-faces-rtl',
   ...['numeric', 'relative', 'styles', 'nested-bold', 'nested-italic', 'contexts'].flatMap((n) => [`text-weight-${n}`, `text-weight-${n}-rtl`]),
   // TXT-W2 (fixture-groups/font-shorthand.ts), appended after them.
   ...['faces', 'synthesis'].flatMap((n) => [`font-shorthand-${n}`, `font-shorthand-${n}-rtl`])];
+/** TXT-W2's Ahem case (font: inherit over Ahem): captured under the reference map with its group, but unshaped, so it lowers natively. */
+const AHEM_ADDED = ['font-shorthand-inherit', 'font-shorthand-inherit-rtl'];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);
@@ -251,11 +253,12 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     // BASE is master f88834ce3d plus #257, #238, #254 and #260 (batch #262, which lands this change), whose FIXTURES hold 753 layout cases.
     // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
-    const base = ids.filter((id) => !ADDED.includes(id));
+    const base = ids.filter((id) => !ADDED.includes(id) && !AHEM_ADDED.includes(id));
     expect(base.length).toBe(BASE_LAYOUT_CASES);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('196db82e56abe73fc24b9f12e7f08f60d35f40f7a6c3e08c2544f25c0278f7ef');
     expect(ids.filter((id) => ADDED.includes(id)).sort()).toEqual([...ADDED].sort());
-    expect(ids.length).toBe(BASE_LAYOUT_CASES + ADDED.length);
+    expect(ids.filter((id) => AHEM_ADDED.includes(id))).toEqual(AHEM_ADDED);
+    expect(ids.length).toBe(BASE_LAYOUT_CASES + ADDED.length + AHEM_ADDED.length);
   });
 
   it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
@@ -273,7 +276,9 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
       if (fixture !== 'text-ahem-fractional') expect(expectedFacesOf(fixture), id).not.toBeNull();
     }
     expect(expectedFacesOf('text-ahem-fractional')).toBeNull();
-    for (const f of FIXTURES) if (![...NEW_IDS, ...TAG_IDS].includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
+    for (const f of FIXTURES) if (![...NEW_IDS, ...TAG_IDS, ...AHEM_ADDED].includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
+    // The Ahem font-shorthand case is captured under the reference map with its group.
+    for (const id of AHEM_ADDED) expect(fontMapOf(id.replace(/-rtl$/, '')), id).toBe(FONT_REFERENCE_MAP);
   });
 
   it('makes the Ahem fractional case shaped because the Ahem measurer misses Chrome there, and HarfBuzz does not', () => {
@@ -328,8 +333,9 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
         }
       }
     }
-    // The 10 real-face cases and T133's 2 are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively.
-    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1) * 4, (NEW_IDS.length - 1 + TAG_IDS.length) * 4]);
+    // The 10 real-face cases and T133's 2 are native-refused (engine only); every other case, the Ahem fractional and font-shorthand
+    // inherit ones too, lowers natively.
+    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1 + AHEM_ADDED.length) * 4, (NEW_IDS.length - 1 + TAG_IDS.length) * 4]);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {
