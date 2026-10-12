@@ -330,8 +330,10 @@ function tagIndex(items: readonly Item[], b: number, kind: 'open' | 'close'): nu
 
 /** Flattens the formatting context into items and resolves its boxes' metrics. */
 export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
+  const kids = inlineChildren(box);
+  checkPreservedBesideInline(box, kids);
   const flat: Flat = { leaves: [], boxes: [], boxParent: [], brs: [], items: [] };
-  flatten(ctx, inlineChildren(box), -1, flat);
+  flatten(ctx, kids, -1, flat);
   const items = flat.items;
   const first = flat.leaves[0];
   const mode: WhiteSpaceCollapse = first === undefined ? 'collapse' : first.whiteSpaceCollapse;
@@ -402,6 +404,13 @@ function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpa
     }
   }
   if (directionOf(ctx, box) === 'rtl') unsupported('bidi-neutral', box.id, 'UAX #9 L1', `preserved white space in the rtl paragraph of ${box.id} takes the paragraph direction`);
+}
+
+/** Preserved text beside an inline box or a <br> is refused before the boxes are checked, as the compiler refuses it (computed-checks.ts). */
+function checkPreservedBesideInline(box: LayoutBox, kids: readonly InlineChild[]): void {
+  if (kids.every((k) => k.kind === 'text')) return;
+  const leaves = inlineLeaves(box);
+  for (const t of leaves) if (t.whiteSpaceCollapse !== 'collapse') unsupported('mixed-white-space', t.id, 'css-text-4 §4.1.1', `white-space-collapse: ${t.whiteSpaceCollapse} text beside inline boxes or <br>s in ${box.id}`);
 }
 
 /** The char items that end the run of spaces starting a paragraph (the context start, or after a preserved U+000A) and precede a non-space. */
