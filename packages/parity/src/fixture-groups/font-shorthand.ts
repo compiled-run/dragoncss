@@ -11,8 +11,9 @@ const MONO = 'NotoSansMono-Regular';
 export const FONT_SHORTHAND: readonly FixtureSpec[] = [
   layout('font-shorthand-faces', ['ltr', 'rtl']),
   layout('font-shorthand-synthesis', ['ltr', 'rtl']),
-  // font: inherit over Ahem: the native proof of font-size and line-height inherit in a text block, which the real-face cases above
-  // cannot give (their face features defer to the engine lane, and only Ahem cases prove native rows).
+  // font: inherit and em lengths over Ahem: the native proof of font-size and line-height inherit and <length-em> in a text block,
+  // ltr and rtl, which the real-face cases above cannot give (their face features defer to the engine lane, and only Ahem cases
+  // prove native rows).
   layout('font-shorthand-inherit', ['ltr', 'rtl']),
   reject('reject-font-shorthand-small-caps', 'DRAGON_UNSUPPORTED_VALUE', 'small-caps', 'font: small-caps sets font-variant-caps'),
   reject('reject-font-shorthand-stretch', 'DRAGON_UNSUPPORTED_VALUE', 'condensed', 'font: condensed sets font-stretch'),
