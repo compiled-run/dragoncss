@@ -119,7 +119,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -231,7 +232,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -343,7 +345,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -485,7 +488,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -627,7 +631,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -769,7 +774,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -911,7 +917,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -1053,7 +1060,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -1195,7 +1203,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -1337,7 +1346,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -1479,7 +1489,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -1621,7 +1632,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -1763,7 +1775,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
@@ -1875,7 +1888,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "user-select": "auto"
       }
     },
     {
