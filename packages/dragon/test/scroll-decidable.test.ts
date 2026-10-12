@@ -150,13 +150,9 @@ describe('OVFL-B: the compiler refuses an undecided native scroll container', ()
     expect([span.outputs.ios.kind, span.outputs.android.kind, span.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
     const brk = compile('', (r) => [text(r, 't', 'XX'), el(r, 'br', 'b', []), text(r, 'u', 'YY')]);
     expect(refusals(brk)).toEqual(both(`${prefix('b')}a <br> in the inline formatting context of a: its scrollable overflow is not decided here (R16, INL1a) (OVFL-B)`));
-    // An atomic inline (an inline-level box beside text) never reaches the engine on native: the lowering refuses it first
-    // (INL2 has not landed), so its scroll container is blocked there; the engine's atomic-inline rule is covered on its input above.
+    // INL2a lowers an atomic inline (an inline-level box beside text) on native, so the engine's atomic-inline rule refuses its scroll container.
     const atomic = compile('.k { display: inline-flex; width: 10px; height: 10px; }', (r) => [text(r, 't', 'XX'), div(r, 'k', ['k'])]);
-    expect(atomic.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target}: ${d.message}`).sort()).toEqual([
-      'DRAGON_LOWERING_FAILED android: display: inline-flex on k has no layout mapping (expected block | flex | grid | inline)',
-      'DRAGON_LOWERING_FAILED ios: display: inline-flex on k has no layout mapping (expected block | flex | grid | inline)',
-    ]);
+    expect(refusals(atomic)).toEqual(both(`${prefix('k')}an atomic inline in the inline formatting context of a: its scrollable overflow is not decided here (R16, INL2) (OVFL-B)`));
     expect([atomic.outputs.ios.kind, atomic.outputs.android.kind]).toEqual(['blocked', 'blocked']);
     const pctHeight = compile('.p { height: 50%; } .k { height: 10px; margin-bottom: 5px; }', (r) => [div(r, 'p', ['p'], [div(r, 'k', ['k'])])]);
     expect(refusals(pctHeight)).toEqual(both(`${prefix('p')}a percentage height on a box whose end margins may collapse through it: its basis is not decided here (OVFL-B)`));

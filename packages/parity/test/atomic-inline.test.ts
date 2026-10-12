@@ -31,7 +31,7 @@ const STYLE = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
-  verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' },
+  verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' }, grid: null, gridItem: null,
 } as const satisfies LayoutStyle;
 
 describe('compare.ts: an anonymous box holding only atomic inlines', () => {
