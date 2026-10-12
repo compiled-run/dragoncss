@@ -760,7 +760,9 @@
         {"case":"visibility-text","width":800,"height":600,"sha256":"c1bfe7950d18d9922437d655a5820a1bb532d18a760e6d961b600c3b4cd3cd6b"},
         {"case":"visibility-text-rtl","width":800,"height":600,"sha256":"d5ca08862a0753d664e8e3c0728033a696246ad19d5788adfe03e65aa05fa466"},
         {"case":"visibility-root","width":800,"height":600,"sha256":"85dca9e46caa376d6e73585cf6fec662d096c5077b074e716846c1c1ddf325db"},
-        {"case":"visibility-root-rtl","width":800,"height":600,"sha256":"1ad578fedc1407129e3a0fde33e52a9502aba75a65982695c97334d0b4eab128"}
+        {"case":"visibility-root-rtl","width":800,"height":600,"sha256":"1ad578fedc1407129e3a0fde33e52a9502aba75a65982695c97334d0b4eab128"},
+        {"case":"visibility-outline","width":800,"height":600,"sha256":"38b1a543f2381b77bb09a954885381083504d04ccaf1dd999e1591f1990e0658"},
+        {"case":"visibility-outline-rtl","width":800,"height":600,"sha256":"a2cc3a09994ce15d7c13d79b6983ae3ff984ba74560da5c39f2121af37433426"}
       ]
     },
     {
@@ -1520,7 +1522,9 @@
         {"case":"visibility-text","width":1200,"height":900,"sha256":"60531967ab7ebe4885b9c0ead640a5b3a1afc283f28cd375cc7c409460c09342"},
         {"case":"visibility-text-rtl","width":1200,"height":900,"sha256":"2f16f95466409a03bb24365173c8fd80d14c8683f644ef7dfd82566b05bdcde7"},
         {"case":"visibility-root","width":1200,"height":900,"sha256":"9c86aa8fa1ec8279610aba16073d17ec0d4917bb9c43ac5a90816bc056960877"},
-        {"case":"visibility-root-rtl","width":1200,"height":900,"sha256":"57c97650dcee2e984751b42c9e5437cbb66edb60c44a4936cfa8bb1160228213"}
+        {"case":"visibility-root-rtl","width":1200,"height":900,"sha256":"57c97650dcee2e984751b42c9e5437cbb66edb60c44a4936cfa8bb1160228213"},
+        {"case":"visibility-outline","width":1200,"height":900,"sha256":"73be9065860abfafcbe7f2d75ceb9cdbae4bcc8dc878466fc98c0b7773d322c0"},
+        {"case":"visibility-outline-rtl","width":1200,"height":900,"sha256":"f005c0149ef484eec1f0ad071e3c0e432bd5f0601b0eadd12b5c2e4dc930718b"}
       ]
     },
     {
@@ -2280,7 +2284,9 @@
         {"case":"visibility-text","width":1050,"height":788,"sha256":"824268cec64155556fc1b057fb3eabbfd63a72711cb17d9fa3657481b9ad2d91"},
         {"case":"visibility-text-rtl","width":1050,"height":788,"sha256":"a0a9095a68140faa3ee78ab55d438c2d102157fb40d6c918b8968f7f106c9acc"},
         {"case":"visibility-root","width":1050,"height":788,"sha256":"9a3eab77ff090da1594c805ef08aef4826a795a4719911ba2ad5ae932ee39221"},
-        {"case":"visibility-root-rtl","width":1050,"height":788,"sha256":"2f6e8cb287fc1c7511232443d27674219c9547a41d0e158430c024dadd3f0ad4"}
+        {"case":"visibility-root-rtl","width":1050,"height":788,"sha256":"2f6e8cb287fc1c7511232443d27674219c9547a41d0e158430c024dadd3f0ad4"},
+        {"case":"visibility-outline","width":1050,"height":788,"sha256":"1921900b75dc75113cc53de6db7a60891291ee1bb2d84d214f92b44b65ef476d"},
+        {"case":"visibility-outline-rtl","width":1050,"height":788,"sha256":"2602019189d75ce9719cb2bc35919c95a14b07a5764f1d876ed0e498c7226de3"}
       ]
     }
   ]

@@ -754,6 +754,8 @@
     "visibility-text": "visibility on hid-t1, hid-t2, hid-t2a, hid-t3, hid-f: hit testing past a box that is not visible is not modelled yet (T150b)",
     "visibility-text-rtl": "visibility on hid-t1, hid-t2, hid-t2a, hid-t3, hid-f: hit testing past a box that is not visible is not modelled yet (T150b)",
     "visibility-root": "visibility on html, body, hid-a: hit testing past a box that is not visible is not modelled yet (T150b)",
-    "visibility-root-rtl": "visibility on html, body, hid-a: hit testing past a box that is not visible is not modelled yet (T150b)"
+    "visibility-root-rtl": "visibility on html, body, hid-a: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-outline": "visibility on hid-ring, hid-dbl, hid-wrap, hid-inh: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-outline-rtl": "visibility on hid-ring, hid-dbl, hid-wrap, hid-inh: hit testing past a box that is not visible is not modelled yet (T150b)"
   }
 }
