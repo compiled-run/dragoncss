@@ -191,7 +191,8 @@ export type GridArgs = {
  * baseline: the container's first baseline from its border-box top, or null with no items. outOfFlow: the absolutely positioned
  * children, which gridOutOfFlow places once the container's border-box height is known.
  */
-export type GridResult = { readonly contentHeight: LU; readonly placed: readonly Placed[]; readonly baseline: LU | null; readonly outOfFlow: readonly GridOutOfFlow[] };
+/** inflow: the grid's tracks in its border box, a scroll container's inflow bounds (Blink SetInflowBounds, gridInflowBounds). */
+export type GridResult = { readonly contentHeight: LU; readonly placed: readonly Placed[]; readonly baseline: LU | null; readonly outOfFlow: readonly GridOutOfFlow[]; readonly inflow: AreaRect };
 
 /**
  * An absolutely positioned child of a grid container (Blink GridLayoutAlgorithm::PlaceOutOfFlowItems). The area edges are logical
@@ -1989,7 +1990,22 @@ function placeItems(ctx: Ctx, grid: GridState, a: GridArgs, intrinsicContent: LU
       baselineColumn = item.column.start;
     }
   }
-  return { contentHeight: intrinsicContent, placed, baseline, outOfFlow: grid.outOfFlow.map((b) => outOfFlowItem(ctx, grid, b)) };
+  return { contentHeight: intrinsicContent, placed, baseline, outOfFlow: grid.outOfFlow.map((b) => outOfFlowItem(ctx, grid, b)), inflow: gridInflowBounds(grid, borderBoxWidth) };
+}
+
+/**
+ * Blink GridLayoutAlgorithm::LayoutInternal (grid_layout_algorithm.cc 180-190): a grid scroll container's inflow bounds are the grid's size, from the first set's offset over
+ * the span of every set (CalculateSetSpanSize, without a trailing gutter), and not where its items are placed; physical in rtl.
+ */
+function gridInflowBounds(grid: GridState, borderBoxWidth: LU): AreaRect {
+  const x = setOffset(grid.columns, 0);
+  const width = setSpanSize(grid.columns, 0, grid.columns.geometry.length - 1);
+  return {
+    x: grid.rtl ? sub(sub(borderBoxWidth, x), width) : x,
+    y: setOffset(grid.rows, 0),
+    width,
+    height: setSpanSize(grid.rows, 0, grid.rows.geometry.length - 1),
+  };
 }
 
 // ---- Absolutely positioned children (Blink PlaceOutOfFlowItems, ComputeOutOfFlowItemContainingRect, GR17) --------------------

@@ -264,7 +264,7 @@ export function replacedBlockBasis(leaf: ReplacedLeaf, basis: HeightBasis): LU |
 
 /** A leaf's fragment of a border-box size: no children, and no baseline of its own (one is synthesized from its border box). */
 export function replacedFrag(leaf: ReplacedLeaf, size: ReplacedSize): Frag {
-  return { id: leaf.id, width: size.inline, height: size.block, baseline: null, children: [], outOfFlow: [] };
+  return { id: leaf.id, width: size.inline, height: size.block, baseline: null, children: [], outOfFlow: [], inflow: null };
 }
 
 /** The sum of a pair of margins with auto as 0. */

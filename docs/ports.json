@@ -1089,6 +1089,7 @@
       "fileSha256": "f30967be05c68ca46b007512ea4d8e7cd8c913b927a26f7288d3740037e77a9d",
       "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
       "ranges": [
+        { "lines": "180-190", "symbol": "GridLayoutAlgorithm::LayoutInternal", "source": "cited" },
         { "lines": "270-326", "symbol": "GridLayoutAlgorithm::ComputeMinMaxSizes", "source": "located" },
         { "lines": "587-743", "symbol": "ComputeGridGeometry", "source": "located" },
         { "lines": "871-1101", "symbol": "GridLayoutAlgorithm::ContributionSizeForGridItem", "source": "located" },
