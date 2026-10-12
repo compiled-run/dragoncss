@@ -10,7 +10,7 @@ export const TEXT_OVERFLOW: readonly FixtureSpec[] = [
   layout('text-overflow-lines'),
   layout('text-overflow-fonts'),
   layout('text-overflow-blocks'),
-  reject('reject-text-overflow-rtl', 'DRAGON_UNSUPPORTED_VALUE', 'ellipsis', 'text-overflow: ellipsis on'),
+  reject('reject-text-overflow-direction', 'DRAGON_UNSUPPORTED_VALUE', 'ellipsis', 'text-overflow: ellipsis on'),
   reject('reject-text-overflow-string', 'DRAGON_CSS_INVALID_VALUE', '"--"'),
   reject('reject-text-overflow-anonymous', 'DRAGON_UNSUPPORTED_VALUE', 'ellipsis', 'text-overflow: ellipsis on'),
 ];
