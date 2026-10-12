@@ -48,6 +48,8 @@ export type ResolvedText = {
   readonly node: LinkedText;
   readonly text: string;
   readonly props: ReadonlyMap<TextLonghand, ResolvedValue>;
+  /** TXT2-e: why native targets refuse this text's transform in this resolved tree (text-transform.ts transformRun). */
+  readonly transformRefusal?: string;
 };
 
 const WHITE_SPACE = /[ \t\n\r\f]/;
@@ -274,12 +276,13 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // An inline formatting context is a maximal sequence of text, inline boxes and <br>s; display: none elements generate no box
     // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
+    const refusals = new Map<LinkedText, string>();
     let run: (LinkedText | null)[] = [];
     // TXT2-e: each text's transform, and the boxes that end its previous character, in tree order (text-transform.ts).
     let transforms: TransformItem[] = [];
     const flush = (): void => {
       // R7: Chrome transforms the DOM text before white-space processing, so the transform comes before the collapse.
-      const transformed = transformRun(transforms, faults);
+      const transformed = transformRun(transforms, faults, refusals);
       const texts = collapseInlineContext(run.map((t) => (t === null ? null : (transformed.get(t) as string))));
       run.forEach((t, i) => {
         if (t !== null) collapsed.set(t, texts[i] as string);
@@ -315,7 +318,10 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         }
         const text = collapsed.get(kid);
         if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
-        if (text.length > 0) owner.children.push({ kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua) });
+        if (text.length === 0) continue;
+        const refusal = refusals.get(kid);
+        const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua) };
+        owner.children.push(refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal });
       }
     };
     place(self, props, kids);
