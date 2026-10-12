@@ -1,0 +1,9 @@
+<div k0
+<div k1
+{wide === true ? 'wide' : ''}
+<div k2
+<div k3
+wide: [false, true] = false
+component App
+<html>
+<body>

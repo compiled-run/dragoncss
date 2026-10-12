@@ -153,6 +153,13 @@ export function serializeString(value: string): string {
   return `${out}"`;
 }
 
+/** The string serializeString wrote: the inverse of its quoting and its three escapes. Throws on any other text. */
+export function parseSerializedString(serialized: string): string {
+  const m = /^"((?:[^"\\]|\\[0-9a-f]+ |\\["\\])*)"$/su.exec(serialized);
+  if (m === null) throw new Error(`${serialized} is not a serialized CSS string`);
+  return (m[1] as string).replace(/\\([0-9a-f]+) |\\(["\\])/g, (_, hex: string | undefined, c: string | undefined) => (hex !== undefined ? String.fromCodePoint(parseInt(hex, 16)) : (c as string)));
+}
+
 /**
  * The input as Chrome 145 tokenizes it, at the same length so every offset holds: css-syntax-3 §3.3 NUL is U+FFFD, and §4.3.7 an
  * escape at the end of the input is U+FFFD, which css-tree does not read, so a trailing backslash outside a string or comment becomes

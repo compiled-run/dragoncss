@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.b { width: 103px; margin-bottom: 1px; }
+.t1 { display: grid; grid-template: auto 1fr / auto 1fr; height: 30px; }
+.t2 { display: grid; grid-template: none; grid-auto-columns: 17px; }
+.t3 { display: grid; grid-template-rows: none; grid-template-columns: none; grid-template-areas: none; grid-auto-flow: row; grid-auto-columns: auto; }
+.t4 { display: grid; grid: auto-flow / 1fr 1fr; }
+.t5 { display: grid; grid: auto-flow dense 9px / 20px 30px 15px; }
+.t6 { display: grid; grid: 10px 12px / auto-flow 15px; }
+.t7 { display: grid; grid: none; }
+.t8 { display: grid; grid-template-columns: [a] 10px [b] 11px [c] 12px [d] 13px [e]; grid-auto-rows: 7px; }
+.e1 { grid-column: 1 / span 2; }
+.e2 { grid-column-end: span 3; }
+.e3 { grid-column: 2 / span b; grid-row-end: span 2; }
+.e4 { grid-row: 1 / span 3; grid-column-start: 4; }
+.e5 { grid-column-end: span 2 d; }
+.e6 { grid-row: span 2 / span 1; }
+.w2 { grid-column: span 2; }
+.x { height: 3px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="t1" class="b t1"><div data-dragon-id="t1a">X</div><div data-dragon-id="t1b">XX</div><div data-dragon-id="t1c" class="x"></div><div data-dragon-id="t1d">XXX</div></div>
+<div data-dragon-id="t2" class="b t2"><div data-dragon-id="t2a" class="x"></div><div data-dragon-id="t2b">X</div></div>
+<div data-dragon-id="t3" class="b t3"><div data-dragon-id="t3a" class="x"></div><div data-dragon-id="t3b">XX</div></div>
+<div data-dragon-id="t4" class="b t4"><div data-dragon-id="t4a">X</div><div data-dragon-id="t4b" class="x"></div><div data-dragon-id="t4c">XX</div></div>
+<div data-dragon-id="t5" class="b t5"><div data-dragon-id="t5a" class="w2 x"></div><div data-dragon-id="t5b" class="w2 x"></div><div data-dragon-id="t5c" class="x"></div><div data-dragon-id="t5d" class="x"></div></div>
+<div data-dragon-id="t6" class="b t6"><div data-dragon-id="t6a" class="x"></div><div data-dragon-id="t6b">X</div><div data-dragon-id="t6c" class="x"></div></div>
+<div data-dragon-id="t7" class="b t7"><div data-dragon-id="t7a" class="x"></div><div data-dragon-id="t7b">X</div></div>
+<div data-dragon-id="t8" class="b t8"><div data-dragon-id="e1" class="e1 x"></div><div data-dragon-id="e2" class="e2 x"></div><div data-dragon-id="e3" class="e3 x"></div><div data-dragon-id="e4" class="e4 x"></div><div data-dragon-id="e5" class="e5 x"></div><div data-dragon-id="e6" class="e6 x"></div><div data-dragon-id="e7" class="x"></div></div>
+</body>
+</html>

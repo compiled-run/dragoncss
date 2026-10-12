@@ -19,6 +19,8 @@ import {
   sumEdges,
 } from './box.ts';
 import { layoutFlexContainer } from './flex.ts';
+import type { GridFaults } from './grid.ts';
+import { layoutGridContainer } from './grid.ts';
 import { layoutInline } from './inline.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
@@ -125,6 +127,10 @@ export type EngineFaults = {
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
   readonly orderUnclamped: boolean;
+  /** A scroll container reserves a classic 15px scrollbar gutter at its inline end and block end (overflow.ts). */
+  readonly gutterReserved: boolean;
+  /** A scroll container's scrollable overflow leaves out its end padding after the in-flow content (overflow.ts). */
+  readonly overflowIgnoresPadding: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -177,9 +183,12 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   latinCheckSkipped: false,
   orderHalfEven: false,
   orderUnclamped: false,
+  gutterReserved: false,
+  overflowIgnoresPadding: false,
 };
 
-export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
+/** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
+export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults; readonly gridFaults: GridFaults };
 
 /** css-writing-modes-4 §2.1: the box's inline base direction. */
 export function directionOf(ctx: Ctx, box: LayoutNode): Direction {
@@ -268,6 +277,22 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       },
       childBasis,
       sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
+    });
+    const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
+    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+  }
+
+  if (s.display === 'grid') {
+    const r = layoutGridContainer(ctx, box, {
+      pad,
+      bor,
+      contentWidth,
+      definiteInnerHeight: fixedBorderBox === null ? null : contentBox(fixedBorderBox, vbp),
+      innerHeightMinMax: {
+        min: contentBox(minMax.min, vbp),
+        max: minMax.max === null ? null : contentBox(minMax.max, vbp),
+      },
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
     const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };

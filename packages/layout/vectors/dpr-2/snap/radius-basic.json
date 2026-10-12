@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 20992
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 20992
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 20992
+  },
+  {
+   "id": "px",
+   "parent": "row",
+   "x": 512,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "pct",
+   "parent": "row",
+   "x": 8960,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "circle",
+   "parent": "row",
+   "x": 17408,
+   "y": 512,
+   "width": 5632,
+   "height": 5632
+  },
+  {
+   "id": "pill",
+   "parent": "row",
+   "x": 23808,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "ellipse",
+   "parent": "row",
+   "x": 32256,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "corners",
+   "parent": "row",
+   "x": 40704,
+   "y": 512,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "eight",
+   "parent": "row",
+   "x": 512,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "rem",
+   "parent": "row",
+   "x": 8960,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "em",
+   "parent": "row",
+   "x": 17408,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "mixed",
+   "parent": "row",
+   "x": 25856,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "one",
+   "parent": "row",
+   "x": 34304,
+   "y": 6912,
+   "width": 7680,
+   "height": 5120
+  },
+  {
+   "id": "frac",
+   "parent": "row",
+   "x": 42752,
+   "y": 6912,
+   "width": 7360,
+   "height": 4262
+  },
+  {
+   "id": "tall",
+   "parent": "row",
+   "x": 512,
+   "y": 12800,
+   "width": 3072,
+   "height": 7680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 328,
+   "width": 800,
+   "height": 328
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 328,
+   "width": 800,
+   "height": 328
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 328,
+   "width": 800,
+   "height": 328
+  },
+  {
+   "id": "px",
+   "left": 8,
+   "top": 8,
+   "right": 128,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "pct",
+   "left": 140,
+   "top": 8,
+   "right": 260,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "circle",
+   "left": 272,
+   "top": 8,
+   "right": 360,
+   "bottom": 96,
+   "width": 88,
+   "height": 88
+  },
+  {
+   "id": "pill",
+   "left": 372,
+   "top": 8,
+   "right": 492,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "ellipse",
+   "left": 504,
+   "top": 8,
+   "right": 624,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "corners",
+   "left": 636,
+   "top": 8,
+   "right": 756,
+   "bottom": 88,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "eight",
+   "left": 8,
+   "top": 108,
+   "right": 128,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "rem",
+   "left": 140,
+   "top": 108,
+   "right": 260,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "em",
+   "left": 272,
+   "top": 108,
+   "right": 392,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "mixed",
+   "left": 404,
+   "top": 108,
+   "right": 524,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "one",
+   "left": 536,
+   "top": 108,
+   "right": 656,
+   "bottom": 188,
+   "width": 120,
+   "height": 80
+  },
+  {
+   "id": "frac",
+   "left": 668,
+   "top": 108,
+   "right": 783,
+   "bottom": 175,
+   "width": 115,
+   "height": 67
+  },
+  {
+   "id": "tall",
+   "left": 8,
+   "top": 200,
+   "right": 56,
+   "bottom": 320,
+   "width": 48,
+   "height": 120
+  }
+ ]
+}

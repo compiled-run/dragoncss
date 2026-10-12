@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.cb { position: relative; width: 300px; height: 60px; margin-bottom: 4px; background-color: #eee; }
+.row { display: flex; }
+.a { position: absolute; width: 40px; height: 20px; background-color: #0c0; }
+.tl { top: 5px; left: 7px; right: auto; bottom: auto; }
+.br { top: auto; left: auto; right: 9px; bottom: 3px; }
+.none { top: auto; right: auto; bottom: auto; left: auto; }
+.short { inset: 10px auto auto 0; }
+.r { position: relative; width: 50px; height: 12px; background-color: #c00; }
+.rauto { top: auto; right: auto; bottom: auto; left: auto; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="cb"><div data-dragon-id="c1a" class="a tl"></div><div data-dragon-id="c1b" class="a br"></div><div data-dragon-id="c1c" class="a short"></div></div>
+<div data-dragon-id="c2" class="cb"><div data-dragon-id="c2s" class="r"></div><div data-dragon-id="c2a" class="a none"></div></div>
+<div data-dragon-id="c3" class="cb row"><div data-dragon-id="c3a" class="a tl"></div><div data-dragon-id="c3b" class="a br"></div><div data-dragon-id="c3c" class="a short"></div></div>
+<div data-dragon-id="c4" class="cb"><div data-dragon-id="c4a" class="r rauto"></div><div data-dragon-id="c4b" class="r rauto"></div></div>
+</body>
+</html>

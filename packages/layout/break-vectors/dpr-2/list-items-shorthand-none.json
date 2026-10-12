@@ -1,0 +1,12 @@
+{
+  "case": "list-items-shorthand-none",
+  "dpr": 2,
+  "texts": [
+    {"id":"la:text0","lines":[[0,2]]},
+    {"id":"lb:text0","lines":[[0,2]]},
+    {"id":"lc:text0","lines":[[0,2]]},
+    {"id":"ld:text0","lines":[[0,2]]},
+    {"id":"le:text0","lines":[[0,2]]},
+    {"id":"lf:text0","lines":[[0,2]]}
+  ]
+}

@@ -44,7 +44,7 @@ describe('unit registry conversions', () => {
   it('viewport, font-metric, line-height and container units and math functions are refused with a reason', () => {
     for (const u of ['svh', 'lvh', 'dvh', 'svw', 'ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqw']) expect(unitRefusal(u), u).not.toBeNull();
     for (const u of ['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'furlong']) expect(unitRefusal(u), u).toBeNull();
-    for (const f of ['round', 'mod', 'rem', 'abs', 'sign', 'env', 'ROUND']) expect(mathFunctionRefusal(f), f).not.toBeNull();
+    for (const f of ['round', 'mod', 'rem', 'abs', 'sign', 'ROUND']) expect(mathFunctionRefusal(f), f).not.toBeNull();
     expect(mathFunctionRefusal('rgb')).toBeNull();
   });
   it('V1 of the value model accepts vw, vh, vi, vb, vmin and vmax, and calc(), min(), max() and clamp(); the engine resolves them', () => {

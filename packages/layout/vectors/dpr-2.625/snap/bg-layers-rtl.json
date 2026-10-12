@@ -1,0 +1,297 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 26464
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 26464
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 26464
+  },
+  {
+   "id": "two",
+   "parent": "row",
+   "x": 55440,
+   "y": 0,
+   "width": 11760,
+   "height": 6720
+  },
+  {
+   "id": "three",
+   "parent": "row",
+   "x": 42840,
+   "y": 0,
+   "width": 11760,
+   "height": 6720
+  },
+  {
+   "id": "none",
+   "parent": "row",
+   "x": 30240,
+   "y": 0,
+   "width": 11760,
+   "height": 6720
+  },
+  {
+   "id": "norep",
+   "parent": "row",
+   "x": 17640,
+   "y": 0,
+   "width": 11760,
+   "height": 6720
+  },
+  {
+   "id": "norep2",
+   "parent": "row",
+   "x": 5040,
+   "y": 0,
+   "width": 11760,
+   "height": 6720
+  },
+  {
+   "id": "rx",
+   "parent": "row",
+   "x": 55440,
+   "y": 7560,
+   "width": 11760,
+   "height": 6720
+  },
+  {
+   "id": "ry",
+   "parent": "row",
+   "x": 42840,
+   "y": 7560,
+   "width": 11760,
+   "height": 6720
+  },
+  {
+   "id": "border",
+   "parent": "row",
+   "x": 28960,
+   "y": 7560,
+   "width": 13040,
+   "height": 8000
+  },
+  {
+   "id": "pclip",
+   "parent": "row",
+   "x": 13688,
+   "y": 7560,
+   "width": 14432,
+   "height": 9392
+  },
+  {
+   "id": "bclip",
+   "parent": "row",
+   "x": 192,
+   "y": 7560,
+   "width": 12656,
+   "height": 7616
+  },
+  {
+   "id": "cbox",
+   "parent": "row",
+   "x": 54800,
+   "y": 17792,
+   "width": 12400,
+   "height": 7360
+  },
+  {
+   "id": "origin",
+   "parent": "row",
+   "x": 40280,
+   "y": 17792,
+   "width": 13680,
+   "height": 8640
+  },
+  {
+   "id": "long",
+   "parent": "row",
+   "x": 27680,
+   "y": 17792,
+   "width": 11760,
+   "height": 6720
+  },
+  {
+   "id": "clipcolor",
+   "parent": "row",
+   "x": 13128,
+   "y": 17792,
+   "width": 13712,
+   "height": 8672
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 414,
+   "width": 1050,
+   "height": 414
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 414,
+   "width": 1050,
+   "height": 414
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 414,
+   "width": 1050,
+   "height": 414
+  },
+  {
+   "id": "two",
+   "left": 866,
+   "top": 0,
+   "right": 1050,
+   "bottom": 105,
+   "width": 184,
+   "height": 105
+  },
+  {
+   "id": "three",
+   "left": 669,
+   "top": 0,
+   "right": 853,
+   "bottom": 105,
+   "width": 184,
+   "height": 105
+  },
+  {
+   "id": "none",
+   "left": 473,
+   "top": 0,
+   "right": 656,
+   "bottom": 105,
+   "width": 183,
+   "height": 105
+  },
+  {
+   "id": "norep",
+   "left": 276,
+   "top": 0,
+   "right": 459,
+   "bottom": 105,
+   "width": 183,
+   "height": 105
+  },
+  {
+   "id": "norep2",
+   "left": 79,
+   "top": 0,
+   "right": 263,
+   "bottom": 105,
+   "width": 184,
+   "height": 105
+  },
+  {
+   "id": "rx",
+   "left": 866,
+   "top": 118,
+   "right": 1050,
+   "bottom": 223,
+   "width": 184,
+   "height": 105
+  },
+  {
+   "id": "ry",
+   "left": 669,
+   "top": 118,
+   "right": 853,
+   "bottom": 223,
+   "width": 184,
+   "height": 105
+  },
+  {
+   "id": "border",
+   "left": 453,
+   "top": 118,
+   "right": 656,
+   "bottom": 243,
+   "width": 203,
+   "height": 125
+  },
+  {
+   "id": "pclip",
+   "left": 214,
+   "top": 118,
+   "right": 439,
+   "bottom": 265,
+   "width": 225,
+   "height": 147
+  },
+  {
+   "id": "bclip",
+   "left": 3,
+   "top": 118,
+   "right": 201,
+   "bottom": 237,
+   "width": 198,
+   "height": 119
+  },
+  {
+   "id": "cbox",
+   "left": 856,
+   "top": 278,
+   "right": 1050,
+   "bottom": 393,
+   "width": 194,
+   "height": 115
+  },
+  {
+   "id": "origin",
+   "left": 629,
+   "top": 278,
+   "right": 843,
+   "bottom": 413,
+   "width": 214,
+   "height": 135
+  },
+  {
+   "id": "long",
+   "left": 433,
+   "top": 278,
+   "right": 616,
+   "bottom": 383,
+   "width": 183,
+   "height": 105
+  },
+  {
+   "id": "clipcolor",
+   "left": 205,
+   "top": 278,
+   "right": 419,
+   "bottom": 414,
+   "width": 214,
+   "height": 136
+  }
+ ]
+}

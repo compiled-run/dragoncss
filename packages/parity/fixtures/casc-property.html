@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+@property --w { syntax: "<length>"; inherits: false; initial-value: 40px; }
+@property --h { syntax: "*"; inherits: true; initial-value: 6px; }
+@property --c { syntax: "<color>"; inherits: true; initial-value: #00aa00; }
+@property --n { syntax: "<number>"; inherits: false; initial-value: 2; }
+@property --p { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+@property --lp { syntax: "<length-percentage>"; inherits: false; initial-value: 25%; }
+@property --i { syntax: "<integer>"; inherits: true; initial-value: 3; }
+@property --d { syntax: "<length>"; inherits: true; initial-value: 10px; }
+@property --d { syntax: "<length>"; inherits: false; initial-value: 20px; }
+@property --u { syntax: "*"; inherits: false; }
+@property --r { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --rl { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --ri { syntax: "<integer>"; inherits: false; initial-value: 0; }
+body { margin: 0; width: 300px; }
+.box { height: var(--h, 7px); margin-bottom: 2px; }
+.outer { --w: 100px; --d: 30px; --u: 14px; --c: rgb(10, 20, 30); width: var(--w); background-color: var(--c); padding-left: var(--d); }
+.inner { width: var(--w, 77px); padding-left: var(--d, 1px); margin-left: var(--u, 9px); background-color: var(--c); }
+.keep { --w: inherit; --d: inherit; width: var(--w); padding-left: var(--d); }
+.bad { --w: red; --n: 1px; --c: 5px; width: var(--w, 11px); background-color: var(--c); }
+.reset { --h: 12px; --c: #ff0000; }
+.reset2 { --h: initial; --c: unset; background-color: var(--c); }
+.pct { width: var(--p, 10%); }
+.lp { width: var(--lp, 10%); }
+.row { display: flex; width: 120px; height: 8px; margin-bottom: 2px; }
+.g1 { flex-grow: var(--n, 1); flex-basis: 0px; height: 4px; }
+.g2 { flex-grow: 1; flex-basis: 0px; height: 4px; }
+.o { order: var(--i, 1); width: 10px; height: 4px; }
+.o2 { order: 2; width: 20px; height: 4px; }
+.calc { width: calc(var(--n, 1) * 30px); }
+.round { --r: 0.10000049; --rl: 10.0000049px; height: 4px; width: calc((var(--r) - 0.1) * 10000000px + 10px); margin-left: calc((var(--rl) - 10px) * 1000000); }
+.big { --ri: 1234567; height: 4px; width: calc(var(--ri) * 1px - 1234500px); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="outer" class="box outer"><div data-dragon-id="inner" class="box inner"></div><div data-dragon-id="keep" class="box keep"></div><div data-dragon-id="bad" class="box bad"></div></div>
+<div data-dragon-id="reset" class="box reset"><div data-dragon-id="reset2" class="box reset2"></div><div data-dragon-id="rc" class="box inner"></div></div>
+<div data-dragon-id="pct" class="box pct"></div>
+<div data-dragon-id="lp" class="box lp"></div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="g1" class="g1"></div><div data-dragon-id="g2" class="g2"></div></div>
+<div data-dragon-id="row2" class="row"><div data-dragon-id="o1" class="o"></div><div data-dragon-id="o2" class="o2"></div></div>
+<div data-dragon-id="calc" class="box calc"></div>
+<div data-dragon-id="round" class="round"></div>
+<div data-dragon-id="big" class="big"></div>
+</body>
+</html>

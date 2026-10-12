@@ -1,8 +1,9 @@
 // The one pixel-snap rule (docs/research/native-strategy.md section 3.3): engine LU are 1/64 device px, and every edge is snapped
-// from its absolute position, so a box's snapped size is the distance between its snapped edges. Results stay numbers (Double).
+// from its absolute position, so a box's snapped size is the distance between its snapped edges, except that a size above 4 LU
+// that snaps to none is one device px (Blink ToPixelSnappedRect, SnapSizeToPixel). Results stay numbers (Double).
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects } from './layout.ts';
-import { add, snapEdge } from './units.ts';
+import { snapEdge, snapSize } from './units.ts';
 
 /** A box's absolute border-box edges in whole device px; width and height come from the snapped edges. */
 export type SnappedRect = {
@@ -15,12 +16,12 @@ export type SnappedRect = {
   readonly height: number;
 };
 
-/** Snaps one rect with absolute LU coordinates (the fixture root sits at device origin 0, 0). */
+/** Snaps one rect with absolute LU coordinates (the fixture root sits at device origin 0, 0): rounded origin, snapped size. */
 export function snapRect(r: LayoutRect): SnappedRect {
   const left = snapEdge(r.x);
   const top = snapEdge(r.y);
-  const right = snapEdge(add(r.x, r.width));
-  const bottom = snapEdge(add(r.y, r.height));
+  const right = left + snapSize(r.width, r.x);
+  const bottom = top + snapSize(r.height, r.y);
   return { id: r.id, left, top, right, bottom, width: right - left, height: bottom - top };
 }
 

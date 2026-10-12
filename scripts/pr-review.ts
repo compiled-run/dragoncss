@@ -1,54 +1,62 @@
 // Prints a PR's check runs and the Macroscope review comments nobody has answered yet; exits 1 while anything is open.
-// Run with: pnpm run pr:review [<pr number>] [--wait]
+// Run with: pnpm run pr:review [<pr number>] [--wait | --once] [--conflicts-ok]
+// --once polls a single time and exits 0 (clean), 1 (not clean) or 2 (pending, where --wait would poll again); the caller owns the deadline.
 import { execFileSync } from 'node:child_process';
+import { ghRest } from './gh-rest.ts';
 import {
   CORRECTNESS,
+  CORRECTNESS_GRACE_MS,
   type CheckRun,
-  checkSha,
   correctnessSucceeded,
   type Earlier,
   type Git,
   type Ignore,
   ignoreAt,
   isVouchableSkip,
+  judgedHead,
+  onceExit,
   outcome,
-  parseCheckRunPages,
-  parseCrossRepository,
-  parsePrCommits,
-  parseReviewCommentPages,
+  type PrHead,
   type PatchId,
   patchIdOver,
+  reviewExit,
   settled,
   skipScope,
+  SPENDING_LIMIT,
   type Vouch,
   vouchForSkip,
+  waivedWithoutCorrectness,
 } from './pr-review-vouch.ts';
 
-// GitHub's API times out now and then; a transient failure must not end a --wait.
-const gh = (args: string[], attempt = 1): string => {
-  try {
-    return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
-  } catch (error) {
-    if (attempt >= 5) throw error;
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, attempt * 5_000);
-    return gh(args, attempt + 1);
-  }
-};
-const ghJson = (path: string): unknown => JSON.parse(gh(['api', '--paginate', '--slurp', path]));
 const isMacroscope = (login: string): boolean => login.toLowerCase().includes('macroscope');
 
 const args = process.argv.slice(2);
 const wait = args.includes('--wait');
-const pr = args.find((a) => /^\d+$/.test(a)) ?? gh(['pr', 'view', '--json', 'number', '--jq', '.number']).trim();
+const once = args.includes('--once');
+if (wait && once) throw new Error('pr-review: --wait and --once are exclusive');
+const conflictsOk = args.includes('--conflicts-ok');
+const rest = ghRest();
+const currentBranchPr = (): string => {
+  const branch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).trim();
+  const found = rest.prForBranch(branch);
+  if (found === null) throw new Error(`pr-review: no open PR has ${branch} as its head; pass the PR number`);
+  return String(found.number);
+};
+const pr = args.find((a) => /^\d+$/.test(a)) ?? currentBranchPr();
 if (!/^\d+$/.test(pr)) throw new Error(`pr-review: not a PR number: ${JSON.stringify(pr)}`);
-const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
+const prNumber = Number(pr);
 // The head is re-read on every poll, so a push during --wait is judged on its own checks, never on the previous commit's.
+let head: PrHead = { sha: '', mergeable: 'UNKNOWN' };
 let sha = '';
 const checkRuns = (): CheckRun[] => {
-  sha = checkSha(gh(['pr', 'view', pr, '--json', 'headRefOid', '--jq', '.headRefOid']).trim(), 'PR head sha');
+  const view = rest.prView(prNumber);
+  const seen: PrHead = { sha: view.sha, mergeable: view.mergeable };
+  if (conflictsOk && seen.mergeable === 'CONFLICTING' && head.sha !== seen.sha) console.error(`pr-review: GitHub reports ${seen.sha} CONFLICTING; --conflicts-ok leaves that to the merge train's drivers`);
+  head = judgedHead(seen, conflictsOk, view.state === 'OPEN');
+  sha = head.sha;
   return runsOf(sha);
 };
-const runsOf = (commit: string): CheckRun[] => parseCheckRunPages(ghJson(`repos/${repo}/commits/${commit}/check-runs?per_page=100`));
+const runsOf = (commit: string): CheckRun[] => rest.checkRuns(commit);
 
 const git: Git = (args, input) => execFileSync('git', args, { input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024 });
 const message = (error: unknown): string => {
@@ -74,7 +82,10 @@ const fetched = (commit: string): { error: string } | null => {
 };
 
 const vouchFor = (run: CheckRun, head: string): Vouch => {
-  const { base, commits } = parsePrCommits(JSON.parse(gh(['pr', 'view', pr, '--json', 'commits,baseRefName'])));
+  const view = rest.prView(prNumber);
+  const base = view.base;
+  const commits = rest.prCommits(prNumber);
+  if (commits.length === 0) throw new Error(`pr-review: PR #${pr} lists no commits`);
   const at = commits.indexOf(head);
   if (at < 0) return { ok: false, reason: `head ${head} is not in the PR's commit list` };
   const baseRef = `refs/remotes/origin/${base}`;
@@ -85,7 +96,7 @@ const vouchFor = (run: CheckRun, head: string): Vouch => {
   }
   const scope = skipScope(run);
   if (scope === null) return vouchForSkip(run, { error: 'not a vouchable skip' }, []);
-  if (scope === 'reviewed paths' && parseCrossRepository(JSON.parse(gh(['pr', 'view', pr, '--json', 'isCrossRepository'])))) {
+  if (scope === 'reviewed paths' && view.crossRepository) {
     return { ok: false, reason: `PR #${pr} comes from a fork, which Macroscope reviews with the base branch's ignore file` };
   }
   const headMissing = fetched(head);
@@ -103,7 +114,8 @@ const vouchFor = (run: CheckRun, head: string): Vouch => {
 };
 
 // A skipped correctness review (for example over the per-review cost limit) is no review, so it never counts as passed,
-// except a "Diff unchanged" or "already reviewed" skip that vouchForSkip ties to an earlier reviewed commit with the same patch id.
+// except a "Diff unchanged", "already reviewed" or "no code objects reviewed" skip that vouchForSkip ties to an earlier reviewed
+// commit with the same patch id.
 // Vouches are judged on every poll, before settled(), so the wait loop and the final verdict read the same verdictOf.
 const vouches = new Map<string, Vouch>();
 const judge = (rs: CheckRun[]): Map<string, Vouch> => {
@@ -116,11 +128,13 @@ const judge = (rs: CheckRun[]): Map<string, Vouch> => {
 
 let runs = checkRuns();
 const deadline = Date.now() + 45 * 60_000;
-while (wait && !settled(runs, judge(runs)) && Date.now() < deadline) {
+while (wait && !settled(runs, judge(runs), head) && Date.now() < deadline) {
   await new Promise((resolve) => setTimeout(resolve, 30_000));
   runs = checkRuns();
 }
-judge(runs);
+// One clock for the settled test and the verdict, so --once never reports pending beside a clean verdict.
+const now = Date.now();
+const isSettled = settled(runs, judge(runs), head, now);
 
 console.log(`PR #${pr} at ${sha}\n\nChecks:`);
 for (const run of runs) console.log(`  ${run.status === 'completed' ? run.conclusion : run.status}\t${run.name}\t${run.html_url}${run.output?.title ? `\t(${run.output.title})` : ''}`);
@@ -133,14 +147,20 @@ for (const run of runs.filter(isVouchableSkip)) {
 }
 
 // Macroscope reports findings as inline review comments; a finding is answered once anyone else replies in its thread.
-const comments = parseReviewCommentPages(ghJson(`repos/${repo}/pulls/${pr}/comments?per_page=100`));
+const comments = rest.reviewComments(prNumber);
 const answered = new Set(comments.filter((c) => c.in_reply_to_id !== undefined && !isMacroscope(c.user.login)).map((c) => c.in_reply_to_id));
 const open = comments.filter((c) => c.in_reply_to_id === undefined && isMacroscope(c.user.login) && !answered.has(c.id));
 
 console.log(`\nUnanswered Macroscope findings: ${open.length}`);
 for (const c of open) console.log(`\n--- ${c.path}:${c.line ?? '?'} (comment ${c.id})\n${c.html_url}\n${c.body.trim()}`);
 
-const { pending, failed } = outcome(runs, vouches);
+const result = outcome(runs, vouches, head, now);
+const { pending, failed } = result;
+if (result.unreviewed) {
+  console.log(`\n!!! UNREVIEWED: Macroscope spending limit. Every Macroscope check of ${sha} was skipped with "${SPENDING_LIMIT}"; the owner's`);
+  console.log('!!! standing directive (2026-10-02) lets this commit land without a Macroscope review once CI passes and every finding is answered.');
+  if (waivedWithoutCorrectness(runs, now)) console.log(`!!! Macroscope created no "${CORRECTNESS}" check within ${CORRECTNESS_GRACE_MS / 60_000} minutes of CI passing; treated as the same limit.`);
+}
 if (pending.length > 0) console.log(`\nStill running: ${pending.join(', ')}`);
 if (failed.length > 0) console.log(`\nFailed: ${failed.join(', ')}`);
-process.exit(pending.length + failed.length + open.length > 0 ? 1 : 0);
+process.exit(once ? onceExit(isSettled, result, open.length) : reviewExit(result, open.length));

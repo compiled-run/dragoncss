@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 43680
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 6720,
+   "width": 67200,
+   "height": 36960
+  },
+  {
+   "id": "outer",
+   "parent": "body",
+   "x": 10080,
+   "y": 0,
+   "width": 26880,
+   "height": 16800
+  },
+  {
+   "id": "inner",
+   "parent": "outer",
+   "x": 6720,
+   "y": 0,
+   "width": 10080,
+   "height": 6720
+  },
+  {
+   "id": "leaf",
+   "parent": "inner",
+   "x": 840,
+   "y": 0,
+   "width": 3360,
+   "height": 3360
+  },
+  {
+   "id": "second",
+   "parent": "body",
+   "x": 42000,
+   "y": 26880,
+   "width": 16800,
+   "height": 10080
+  },
+  {
+   "id": "second:text0",
+   "parent": "second",
+   "x": 0,
+   "y": 0,
+   "width": 13440,
+   "height": 3328
+  },
+  {
+   "id": "second:text0:line0",
+   "parent": "second:text0",
+   "x": 0,
+   "y": 0,
+   "width": 13440,
+   "height": 3328
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 683,
+   "width": 1050,
+   "height": 683
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 105,
+   "right": 1050,
+   "bottom": 683,
+   "width": 1050,
+   "height": 578
+  },
+  {
+   "id": "outer",
+   "left": 158,
+   "top": 105,
+   "right": 578,
+   "bottom": 368,
+   "width": 420,
+   "height": 263
+  },
+  {
+   "id": "inner",
+   "left": 263,
+   "top": 105,
+   "right": 420,
+   "bottom": 210,
+   "width": 157,
+   "height": 105
+  },
+  {
+   "id": "leaf",
+   "left": 276,
+   "top": 105,
+   "right": 328,
+   "bottom": 158,
+   "width": 52,
+   "height": 53
+  },
+  {
+   "id": "second",
+   "left": 656,
+   "top": 525,
+   "right": 919,
+   "bottom": 683,
+   "width": 263,
+   "height": 158
+  },
+  {
+   "id": "second:text0",
+   "left": 656,
+   "top": 525,
+   "right": 866,
+   "bottom": 577,
+   "width": 210,
+   "height": 52
+  },
+  {
+   "id": "second:text0:line0",
+   "left": 656,
+   "top": 525,
+   "right": 866,
+   "bottom": 577,
+   "width": 210,
+   "height": 52
+  }
+ ]
+}

@@ -5,14 +5,18 @@
 // projection read only the program; nothing downstream re-resolves CSS.
 import type { FontSpec, InlineChild, LayoutBox, LayoutNode, TextLeaf } from '@dragon/layout';
 import { rootFontSizeOf } from './ios-layout.ts';
+import type { AnimationAnalysis } from '../analysis/animations.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
+import { canonicalJson } from '../digest.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
 import type { Longhand } from '../css/properties.ts';
 import { colorChannels, usedColors } from './paint/colors.ts';
+import { borderWrites } from './paint/border.ts';
 import { clipsChildren } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
 import { lowerBoxPaint, paintVocabulary, paintWriteCss } from './paint/registry.ts';
+import { inlineStackingFacts } from './paint/stacking.ts';
 import type { NativeBackend, Technique, VocabularyEntry } from './paint/types.ts';
 import { ProgramError } from './paint/types.ts';
 
@@ -118,7 +122,7 @@ type NodePaint = {
   readonly facts: Readonly<Record<string, unknown>>;
 };
 
-function sharedPaint(root: LayoutBox, resolved: ResolvedElement): NodePaint[] {
+function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, movingTransforms: ReadonlySet<string>): NodePaint[] {
   const elements = new Map<string, ResolvedElement>();
   const texts = new Map<string, ResolvedText>();
   const walk = (el: ResolvedElement): void => {
@@ -130,19 +134,20 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement): NodePaint[] {
   };
   walk(resolved);
   const out: NodePaint[] = [];
-  const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8): void => {
+  const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8, ancestorMoves: boolean): void => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
     const el = anonymous ? null : (elements.get(b.id) ?? null);
     if (!anonymous && el === null) throw new ProgramError(`${b.id}: no resolved element for the layout box`);
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
-    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts });
+    const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
+    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves });
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: clipsChildren(b), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
     for (const c of b.children) {
       if (c.kind === 'box' || c.kind === 'replaced') {
-        visit(c, b.id, own);
+        visit(c, b.id, own, transformMoves);
         continue;
       }
       inline(c, b.id);
@@ -155,11 +160,16 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement): NodePaint[] {
       out.push(textPaint(c, container, texts));
       return;
     }
-    // The dump schema (native-dump.ts) knows element, text and anonymous nodes: an inline box and a <br> are element nodes.
-    out.push({ id: c.id, parent: container, kind: 'element', clips: false, text: null, writes: [], facts: {} });
+    // The dump schema (native-dump.ts) knows element, text and anonymous nodes: an inline box and a <br> are element nodes. Its view
+    // is a box view, which reads back its background and borders, so it gets their writes: transparent and zero wide, as the
+    // compiler refuses a painted inline box on native (computed-checks.ts checkInline) and the engine a bordered one (inline.ts).
+    const el = elements.get(c.id);
+    if (el === undefined) throw new ProgramError(`${c.id}: no resolved element for the inline box`);
+    const writes: PaintWrite[] = [{ kind: 'background-color', color: usedColors(el)['background-color'] }, ...borderWrites(c.id, el, TRANSPARENT)];
+    out.push({ id: c.id, parent: container, kind: 'element', clips: false, text: null, writes, facts: { stacking: inlineStackingFacts(c) } });
     if (c.kind === 'inline') for (const k of c.children) inline(k, container);
   };
-  visit(root, null, TRANSPARENT);
+  visit(root, null, TRANSPARENT, false);
   return out;
 }
 
@@ -193,9 +203,37 @@ function toBackend(backend: NativeBackend, root: LayoutBox, rootFontSize: number
   };
 }
 
+/**
+ * The elements whose transform moves at run time: a transform transition is listed for it, one of its keyframe animations sets
+ * transform, or its computed transform differs between two reachable cases (a state change). Conservative: any case counts.
+ */
+export function movingTransforms(cases: readonly (ResolvedElement | null)[], animation: AnimationAnalysis | null): ReadonlySet<string> {
+  const out = new Set<string>();
+  const seen = new Map<string, string>();
+  const walk = (el: ResolvedElement): void => {
+    const v = el.props.get('transform');
+    const text = v === undefined ? '' : canonicalJson(v.value);
+    const was = seen.get(el.element.address);
+    if (was === undefined) seen.set(el.element.address, text);
+    else if (was !== text) out.add(el.element.address);
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  for (const r of cases) if (r !== null) walk(r);
+  for (const c of animation?.cases ?? []) {
+    for (const [address, e] of c.elements) {
+      if (e.listings.get('transform')?.mode === 'listed') out.add(address);
+      for (const a of e.animations) {
+        const rule = animation?.keyframes.get(a.name);
+        if (rule !== undefined && rule.blocks.some((b) => b.values.some((d) => d.property === 'transform'))) out.add(address);
+      }
+    }
+  }
+  return out;
+}
+
 /** Both backends' programs of one case, from one shared layout tree and one paint lowering. */
-export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement): { readonly [B in NativeBackend]: NativeProgram } {
-  const paint = sharedPaint(root, resolved);
+export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set()): { readonly [B in NativeBackend]: NativeProgram } {
+  const paint = sharedPaint(root, resolved, images, moving);
   const rootFontSize = rootFontSizeOf(resolved);
   return { uikit: toBackend('uikit', root, rootFontSize, paint), 'android-views': toBackend('android-views', root, rootFontSize, paint) };
 }

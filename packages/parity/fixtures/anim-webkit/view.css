@@ -1,0 +1,18 @@
+@keyframes p { from { width: 0px; } to { width: 50px; } }
+@-webkit-keyframes p { from { width: 0px; } to { width: 150px; } }
+@-webkit-keyframes w { from { width: 20px; } to { width: 120px; } }
+@-webkit-keyframes v { from { width: 0px; } to { width: 30px; } }
+@-webkit-keyframes v { from { width: 0px; } to { width: 90px; } }
+@-webkit-keyframes q { from { width: 0px; } to { width: 70px; } }
+@keyframes q { from { width: 0px; } to { width: 140px; } }
+.bar { height: 4px; background-color: rgb(0, 0, 0); }
+.tr { width: 0; }
+.tr.on { width: 100px; }
+.w0 { -webkit-transition: width 1s ease-in; }
+.w1 { -webkit-transition-property: width; -webkit-transition-duration: 0.8s; -webkit-transition-timing-function: ease-out; -webkit-transition-delay: 0.1s; }
+.w2 { transition: width 1s linear; -webkit-transition: width 0.5s step-end; }
+.w3 { -webkit-transition: width 0.5s step-end; transition: width 1s linear; }
+.a0 { -webkit-animation: p 1s linear; }
+.a1 { -webkit-animation-name: w; -webkit-animation-duration: 0.6s; -webkit-animation-timing-function: ease-in-out; -webkit-animation-delay: 0.1s; -webkit-animation-iteration-count: 2; -webkit-animation-direction: alternate; -webkit-animation-fill-mode: backwards; -webkit-animation-play-state: running; }
+.a2 { animation: v 1s linear; -webkit-animation: v 0.5s ease-out; }
+.a3 { -webkit-animation: q 1s linear; animation-duration: 0.7s; }

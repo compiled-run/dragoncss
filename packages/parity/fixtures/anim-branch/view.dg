@@ -1,0 +1,9 @@
+<div host
+{on === true ? 'on' : ''}
+{show === true && <b>}
+<div made
+show: [false, true] = false
+on: [false, true] = false
+component App
+<html>
+<body>

@@ -192,7 +192,23 @@ This decision uses the spike's measurements in docs/research/text-spike/: 620 ca
 - **Animation frames:** Dragon computes every frame from a translated port of Chrome's `gfx::CubicBezier` and timing model, checked bit for bit against Chrome's `getComputedTiming`. Core Animation and Android animators are not used; Android's curve approximation misses the 1 device px gate. Handing work to the compositor is a later performance package, allowed only once it proves equal frames.
 - **Clock:** on device, lane runs use a virtual clock equivalent to Chrome's frozen timeline.
 - **Hit testing:** Dragon does its own, checked against Chrome's `elementFromPoint`.
-- **Hover and focus:** tap behaviour follows recorded Chrome traces.
+- **Hover and focus:** a tap never hovers (principle 3); focus and activation follow Chrome traces. The SELD-R2 rulings (notes/T064-seld-r2-spec.md, PM 2026-10-03) are:
+  - **R1, no tap hover.** A touch tap never sets `:hover` on any target. Hover comes only from a pointer that can hover: an iPad pointer, Apple Pencil hover, or an Android mouse or stylus hover. This reverses T064J's sticky tap hover; Chrome's own tap hover is a compatibility hack (gesture_manager.cc, crbug.com/368256331).
+  - **R2, effective traces.** The trace oracle compares effective hover (`:hover` and `(hover: hover)`); touch traces run touch-emulated, and a style check renders Dragon's web output after each touch step.
+  - **R3, web gate.** Web conditions that test `:hover` are emitted inside `@media (hover: hover)`, as Tailwind's hover variant does; an authored `@media (hover: hover)` around hover-only rules folds to the same output.
+  - **R4, four dimensions.** Interaction states are hover chains, active chains, focus, and focus-visible with focus, per case; each is linear in the elements.
+  - **R5, collapse.** States whose resolution is identical are stored once (a `:focus` that changes nothing is the none state).
+  - **R6, pointer events.** Mouse focus at press, touch focus at release; a touch press sets `:active` (caveat: the CDP path cannot show it); hover is recomputed after layout under a still pointer; a range consumes the tap.
+  - **R7, second level.** The interaction states are a table under each app assignment, compiled in full, at most 256 per assignment (more is refused, package SELD-R2s); they never count against the 64-assignment app table.
+  - **R8, focus-visible.** Blink's heuristic, implemented from selectors-4 and probes (LGPL, class A): pointer focus gives it only to text entry; keyboard focus and a non-meta key after pointer focus give it.
+  - **R9, focusability.** A compiled fact per element (HTML §6.6.3 and probes; tabindex −1 is pointer-focusable); `visibility` joins it with T150b.
+  - **R10, keyboard order.** HTML sequential focus order, compiled as a table; the platform keys, the ring and the outline write are P6e.
+  - **R11, cursor.** Exact on Android (PointerIcon through Chrome's two tables), caveat on iPadOS (UIPointerInteraction beams), no effect on iPhone.
+  - **R12, runtime.** The interaction runtime is the translated root `rt-interaction.ts`; on device it only looks tables up.
+  - **R13, hit model.** The hit test is fail-closed: on native, an interaction rule in a case with a compiled paint fact the hit test does not model (transform, z-index, opacity, radius, visibility, scrolling, …) is refused, naming SELD-R2b (T146), which lifts each fact.
+  - **R14, proof.** Three-way: the TS trace equals Chrome's effective trace, and the device trace equals TS on a `device-traces` lane; Android is also driven through real MotionEvents.
+  - **R15, Android hover exit.** `HOVER_EXIT` before a mouse `DOWN` does not clear hover (Chrome keeps hover during a press).
+  - **R16, change hook.** Every committed interaction change calls `onInteractionChange(app, oldCombo, newCombo)` once per step, the ANIM-b2 style-change hook.
 - **Script-set text (T068):** a text slot is a format template over typed integer inputs (the music player's time labels are '{m}:{s:02}'), so every possible string is proven against Chrome at build time. A write re-runs layout with the HarfBuzz shaper, with no width tables. Free-form dynamic text is refused for now (DTXT2).
 - **Script-set styles:** these become typed override slots with declared ranges. The music player's progress bar is `translateX(p%)`. Script-set text is covered by DTXT.
 

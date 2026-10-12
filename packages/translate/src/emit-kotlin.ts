@@ -36,8 +36,31 @@ export function kotlinNum(v: number): string {
 export class KotlinEmitter {
   private readonly unions: ReadonlyMap<string, UnionDecl>;
   private tmp = 0;
+  /** Each block being emitted: its local names, true for a local function, which a value reference names as ::f. */
+  private readonly scopes: Map<string, boolean>[] = [];
   constructor(unions: ReadonlyMap<string, UnionDecl>) {
     this.unions = unions;
+  }
+
+  private declareLocal(name: string, isFunc: boolean): void {
+    this.scopes[this.scopes.length - 1]?.set(name, isFunc);
+  }
+
+  private scoped<T>(names: readonly string[], f: () => T): T {
+    this.scopes.push(new Map(names.map((n) => [n, false] as const)));
+    try {
+      return f();
+    } finally {
+      this.scopes.pop();
+    }
+  }
+
+  private isLocalFunc(name: string): boolean {
+    for (let i = this.scopes.length - 1; i >= 0; i--) {
+      const v = this.scopes[i]?.get(name);
+      if (v !== undefined) return v;
+    }
+    return false;
   }
 
   fileHeader(): string {
@@ -118,16 +141,20 @@ export class KotlinEmitter {
   private body(params: readonly Param[], stmts: readonly Stmt[], ret: Ty, depth: number): string[] {
     const assigned = assignedLocals(stmts);
     const out: string[] = [];
-    for (const p of params) if (assigned.has(p.name)) out.push(`${pad(depth)}var ${kotlinId(p.name)} = ${kotlinId(p.name)}`);
-    out.push(...this.stmts(stmts, depth));
+    this.scoped(
+      params.map((p) => p.name),
+      () => {
+        for (const p of params) if (assigned.has(p.name)) out.push(`${pad(depth)}var ${kotlinId(p.name)} = ${kotlinId(p.name)}`);
+        out.push(...this.stmts(stmts, depth));
+      },
+    );
     if (ret.k !== 'void' && !terminates(stmts)) out.push(`${pad(depth)}jsUnreachable()`);
     return out;
   }
 
-  private stmts(stmts: readonly Stmt[], depth: number): string[] {
-    const out: string[] = [];
-    for (const s of stmts) out.push(...this.stmt(s, depth));
-    return out;
+  /** A block, in a scope of its own that also holds names (a loop or catch variable). */
+  private stmts(stmts: readonly Stmt[], depth: number, names: readonly string[] = []): string[] {
+    return this.scoped(names, () => stmts.flatMap((s) => this.stmt(s, depth)));
   }
 
   private stmt(s: Stmt, d: number): string[] {
@@ -135,9 +162,11 @@ export class KotlinEmitter {
     const src = `${p}// ts: ${s.loc.file}:${s.loc.line}`;
     switch (s.s) {
       case 'let':
+        this.declareLocal(s.name, false);
         if (s.init === null) return [`${p}var ${kotlinId(s.name)}: ${this.ty(s.ty)}`];
         return [`${p}${s.mutable ? 'var' : 'val'} ${kotlinId(s.name)}: ${this.ty(s.ty)} = ${this.ex(s.init)}`];
       case 'localFunc':
+        this.declareLocal(s.name, true);
         return [src, `${p}fun ${kotlinId(s.name)}(${this.params(s.params)}): ${this.ty(s.ret)} {`, ...this.body(s.params, s.body, s.ret, d + 1), `${p}}`];
       case 'expr':
         return [`${p}${this.ex(s.e)}`];
@@ -147,17 +176,9 @@ export class KotlinEmitter {
         return [src, ...this.ifChain(s, d)];
       case 'while':
         return [src, `${p}while (${this.ex(s.cond)}) {`, ...this.stmts(s.body, d + 1), `${p}}`];
-      case 'for': {
-        const cond = s.cond === null ? 'true' : this.ex(s.cond);
-        const out = [src, `${p}run {`, ...this.stmts(s.init, d + 1)];
-        if (s.label === null) {
-          out.push(`${pad(d + 1)}while (${cond}) {`, ...this.stmts(s.body, d + 2), ...this.stmts(s.incr, d + 2), `${pad(d + 1)}}`);
-        } else {
-          out.push(`${pad(d + 1)}${s.label}@ while (${cond}) {`, `${pad(d + 2)}${s.label}_body@ do {`, ...this.stmts(s.body, d + 3), `${pad(d + 2)}} while (false)`, ...this.stmts(s.incr, d + 2), `${pad(d + 1)}}`);
-        }
-        out.push(`${p}}`);
-        return out;
-      }
+      case 'for':
+        // The init's names are in scope through the condition, body and increment.
+        return this.scoped([], () => this.forLoop(s, d, src));
       case 'forOf': {
         const n = ++this.tmp;
         return [
@@ -168,19 +189,19 @@ export class KotlinEmitter {
           `${pad(d + 1)}while (_i${n} < _a${n}.size) {`,
           `${pad(d + 2)}val ${kotlinId(s.name)}: ${this.ty(s.ty)} = _a${n}[_i${n}]`,
           `${pad(d + 2)}_i${n}++`,
-          ...this.stmts(s.body, d + 2),
+          ...this.stmts(s.body, d + 2, [s.name]),
           `${pad(d + 1)}}`,
           `${p}}`,
         ];
       }
       case 'forOfMap':
-        return [src, `${p}for ((${kotlinId(s.key)}, ${kotlinId(s.value)}) in ${this.ex(s.map)}.entries()) {`, ...this.stmts(s.body, d + 1), `${p}}`];
+        return [src, `${p}for ((${kotlinId(s.key)}, ${kotlinId(s.value)}) in ${this.ex(s.map)}.entries()) {`, ...this.stmts(s.body, d + 1, [s.key, s.value]), `${p}}`];
       case 'return':
         return [s.e === null ? `${p}return` : `${p}return ${this.ex(s.e)}`];
       case 'throw':
         return [`${p}throw ${this.ex(s.e)}`];
       case 'try':
-        return [src, `${p}try {`, ...this.stmts(s.body, d + 1), `${p}} catch (${kotlinId(s.name)}: Throwable) {`, ...this.stmts(s.handler, d + 1), `${p}}`];
+        return [src, `${p}try {`, ...this.stmts(s.body, d + 1), `${p}} catch (${kotlinId(s.name)}: Throwable) {`, ...this.stmts(s.handler, d + 1, [s.name]), `${p}}`];
       case 'switch': {
         const out = [src, `${p}when (${this.ex(s.subject)}) {`];
         for (const c of s.cases) out.push(`${pad(d + 1)}${c.values.map((v) => this.ex(v)).join(', ')} -> {`, ...this.stmts(c.body, d + 2), `${pad(d + 1)}}`);
@@ -192,6 +213,19 @@ export class KotlinEmitter {
       case 'continue':
         return [s.target === null ? `${p}continue` : `${p}break@${s.target}_body`];
     }
+  }
+
+  private forLoop(s: Stmt & { s: 'for' }, d: number, src: string): string[] {
+    const p = pad(d);
+    const out = [src, `${p}run {`, ...s.init.flatMap((x) => this.stmt(x, d + 1))];
+    const cond = s.cond === null ? 'true' : this.ex(s.cond);
+    if (s.label === null) {
+      out.push(`${pad(d + 1)}while (${cond}) {`, ...this.stmts(s.body, d + 2), ...this.stmts(s.incr, d + 2), `${pad(d + 1)}}`);
+    } else {
+      out.push(`${pad(d + 1)}${s.label}@ while (${cond}) {`, `${pad(d + 2)}${s.label}_body@ do {`, ...this.stmts(s.body, d + 3), `${pad(d + 2)}} while (false)`, ...this.stmts(s.incr, d + 2), `${pad(d + 1)}}`);
+    }
+    out.push(`${p}}`);
+    return out;
   }
 
   private ifChain(s: Stmt & { s: 'if' }, d: number): string[] {
@@ -225,7 +259,7 @@ export class KotlinEmitter {
       case 'null':
         return 'null';
       case 'local':
-        return kotlinId(e.name);
+        return this.isLocalFunc(e.name) ? `::${kotlinId(e.name)}` : kotlinId(e.name);
       case 'global':
         return e.ty.k === 'fn' ? `::${e.name}` : e.name;
       case 'field':

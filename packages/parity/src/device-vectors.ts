@@ -29,6 +29,7 @@ type Translate = {
   readonly suiteCause: (r: { status: number | null; signal: NodeJS.Signals | null; error?: Error | undefined }, timeoutMs: number) => string | null;
   readonly SUITE_TIMEOUT_MS: number;
   readonly SWIFT_FLAGS: readonly string[];
+  readonly withToolTmp: <T>(use: (env: NodeJS.ProcessEnv) => T) => T;
   readonly KOTLIN_FLAGS: readonly string[];
   readonly kotlinTool: () => { readonly kotlinc: string; readonly javaHome: string; readonly version: string } | null;
   readonly buildKotlin: (tool: { kotlinc: string; javaHome: string; version: string }, files: Files) => { jar: string };
@@ -59,7 +60,7 @@ const SUITE_FAILS = 'a suite that crashes or times out is judged: its cause is t
 export async function buildIosHarness(): Promise<string> {
   const t = await translate();
   const files = t.committedFiles('swift');
-  const swiftVersion = must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '--version']), 'swiftc --version');
+  const swiftVersion = t.withToolTmp((env) => must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '--version'], { env }), 'swiftc --version'));
   const dir = join(nativeOut('ios'), 'vectors', key(files, [...t.SWIFT_FLAGS, IOS_TARGET, swiftVersion]));
   const binary = join(dir, 'harness');
   if (existsSync(binary)) return binary;
@@ -118,8 +119,11 @@ const DEVICE_DIR = '/data/local/tmp/dragon-vectors';
 /** The most bytes of corpus lines one app_process run reads (the harness reads its input file whole). */
 const CHUNK_BYTES = 16 * 1024 * 1024;
 
-/** Runs every suite of both corpora on the device; returns the device lane's run, judged against the host lane's run. */
-export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, host: HostRun | null): Promise<HostRun & { readonly device: string }> {
+/**
+ * Runs every suite of both corpora on the device; returns the device lane's run, judged against the host lane's run. The host run
+ * may still be running (parity:lanes overlaps the host lanes with the devices): it is awaited only for the verdict.
+ */
+export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, host: HostRun | null | Promise<HostRun | null>): Promise<HostRun & { readonly device: string }> {
   const t = await translate();
   const p1 = t.buildCorpus();
   const x = t.buildExtendedCorpus();
@@ -131,7 +135,7 @@ export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, ho
       const r = run('xcrun', ['simctl', 'spawn', h.udid, binary, mode, input, output], { timeoutMs: t.SUITE_TIMEOUT_MS, allowFailure: SUITE_FAILS });
       return t.suiteCause(causeOf(r), t.SUITE_TIMEOUT_MS);
     };
-    toolchain = `${must(run('xcrun', ['swiftc', '--version']), 'swiftc --version').split('\n').find((l) => l.includes('Swift version'))?.trim() ?? 'swiftc'}; ${IOS_TARGET}; simctl spawn on ${h.spec.name}`;
+    toolchain = `${t.withToolTmp((env) => must(run('xcrun', ['swiftc', '--version'], { env }), 'swiftc --version')).split('\n').find((l) => l.includes('Swift version'))?.trim() ?? 'swiftc'}; ${IOS_TARGET}; simctl spawn on ${h.spec.name}`;
   } else {
     const dexJar = await buildAndroidHarness();
     const adb = (args: readonly string[], timeoutMs = 600_000, allowFailure?: string): ExecResult => run(h.tools.adb, ['-s', h.serial, ...args], allowFailure === undefined ? { timeoutMs } : { timeoutMs, allowFailure });
@@ -179,11 +183,13 @@ export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, ho
       return null;
     };
     const rel = adb(['shell', 'getprop', 'ro.build.version.release']).stdout.trim();
-    toolchain = `${t.kotlinTool()?.version ?? 'kotlinc'}; d8 --min-api ${NATIVE_CONFIG.android.minSdk}; ART app_process on ${h.spec.name} (Android ${rel})`;
+    // The ABI the vectors ran on is part of the record: the landing judge binds each lane to its architecture (#132 review).
+    const abi = adb(['shell', 'getprop', 'ro.product.cpu.abi']).stdout.trim();
+    toolchain = `${t.kotlinTool()?.version ?? 'kotlinc'}; d8 --min-api ${NATIVE_CONFIG.android.minSdk}; ART app_process on ${h.spec.name} (Android ${rel}, ${abi})`;
   }
   const tag = `device-${target.target}`;
   const results = [...t.runSuites(p1, exec, `${tag}-p1`).map((r) => ({ ...r, corpus: 'p1' as const })), ...t.runSuites(x, exec, `${tag}-extended`).map((r) => ({ ...r, corpus: 'extended' as const }))];
-  return { ...judgeDeviceVectors(target, results, { p1: p1.digest, extended: x.digest }, host), toolchain, device: h.spec.name };
+  return { ...judgeDeviceVectors(target, results, { p1: p1.digest, extended: x.digest }, await host), toolchain, device: h.spec.name };
 }
 
 export type DeviceSuiteResult = { readonly corpus: 'p1' | 'extended'; readonly name: string; readonly total: number; readonly pass: number; readonly cause: string | null; readonly mismatches: readonly { index: number; expected: string; got: string }[] };

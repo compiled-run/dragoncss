@@ -1,0 +1,8 @@
+<div app
+{open === true ? 'open' : ''}
+<div item
+X
+open: [false, true] = false
+component App
+<html>
+<body>

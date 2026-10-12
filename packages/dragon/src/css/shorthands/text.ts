@@ -14,6 +14,7 @@ import { kw } from '../values.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { explicit, implicit } from './shared.ts';
 import { asciiLower } from '../escapes.ts';
+import { BLINK_MATH_FUNCTIONS, mathInvalidity } from '../math.ts';
 
 const WHITE_SPACE_TRIM: ReadonlySet<string> = new Set(['none', 'discard-before', 'discard-after', 'discard-inner']);
 const WHITE_SPACE_COLLAPSE: ReadonlySet<string> = new Set(['collapse', 'discard', 'preserve', 'preserve-breaks', 'preserve-spaces', 'break-spaces']);
@@ -53,6 +54,9 @@ const whiteSpace: ShorthandHandler = {
 };
 
 const ident = (n: CssNode | undefined): string | null => (n !== undefined && n.type === 'Identifier' ? asciiLower(String(n['name'])) : null);
+/** Whether n is a math function Chrome takes as a value of the grammar (a number for the weight, an angle for the oblique angle). */
+const mathOf = (n: CssNode | undefined, grammar: 'number' | 'angle'): boolean =>
+  n !== undefined && n.type === 'Function' && BLINK_MATH_FUNCTIONS.has(asciiLower(String(n['name']))) && mathInvalidity(generate(n), grammar) === null;
 
 /** css-fonts-4 <system-family-name> and Chrome's -webkit- system fonts: their faces are the platform's, which no target draws. */
 const SYSTEM_FONTS: ReadonlySet<string> = new Set(['caption', 'icon', 'menu', 'message-box', 'small-caption', 'status-bar']);
@@ -84,10 +88,11 @@ function fontParts(tokens: readonly CssNode[]): FontParts | null {
     if (k === 'italic' || k === 'left' || k === 'right') style.push(t);
     else if (k === 'oblique') {
       style.push(t);
-      if (tokens[i + 1]?.type === 'Dimension' && /^(deg|grad|rad|turn)$/i.test(String(tokens[i + 1]?.['unit']))) style.push(tokens[++i] as CssNode);
+      const next = tokens[i + 1];
+      if ((next?.type === 'Dimension' && /^(deg|grad|rad|turn)$/i.test(String(next['unit']))) || mathOf(next, 'angle')) style.push(tokens[++i] as CssNode);
     } else if (k === 'small-caps') variant = t;
     else if (k !== null && STRETCH.has(k)) stretch = t;
-    else if ((k !== null && WEIGHT_KEYWORDS.has(k)) || (t.type === 'Number' && Number(t['value']) !== 0)) weight = t;
+    else if ((k !== null && WEIGHT_KEYWORDS.has(k)) || (t.type === 'Number' && Number(t['value']) !== 0) || mathOf(t, 'number')) weight = t;
     else break;
   }
   const size = tokens[i];
@@ -98,6 +103,8 @@ function fontParts(tokens: readonly CssNode[]): FontParts | null {
     lineHeight = tokens[i + 1] ?? null;
     i += 2;
   }
+  // A family is required: a value whose last token was taken as the size has none.
+  if (i >= tokens.length) return null;
   return { style, weight, variant, stretch, size, lineHeight, family: tokens.slice(i) };
 }
 

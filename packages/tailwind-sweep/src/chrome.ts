@@ -3,6 +3,7 @@
 //         each rendered in the sweep environment; on every element the border box and every standard computed property
 //         (getComputedStyle's full list, custom properties excluded) must be equal. There is no tolerance.
 //   parses: whether Chrome keeps a declaration or selector that Dragon reports invalid (CSS.supports).
+import { availableParallelism } from 'node:os';
 import type { Browser, Page } from 'playwright';
 import { harnessStyle, launchChrome } from '../../parity/src/chrome.ts';
 import { ELEMENT_IDS, SWEEP_ENVIRONMENT } from './dragon.ts';
@@ -32,15 +33,49 @@ export function checkCaptured(raw: unknown): Captured[] {
   return out;
 }
 
+/** Marks a number JSON cannot carry (-0, NaN, ±Infinity) so the page's JSON string stays lossless; fromPageJson restores it. */
+const NUMBER_TAG = '__dragonNumber';
+
+/** The page result, parsed from the JSON string capture returns (Playwright's own serializer is ~5x slower on these dumps). */
+export function fromPageJson(text: unknown): unknown {
+  if (typeof text !== 'string') throw new Error(`the page capture is not a JSON string: ${typeof text}`);
+  return JSON.parse(text, (_k, v: unknown) => {
+    if (typeof v !== 'object' || v === null || Array.isArray(v)) return v;
+    const keys = Object.keys(v);
+    if (keys.length !== 1 || keys[0] !== NUMBER_TAG) return v;
+    const t = (v as Record<string, unknown>)[NUMBER_TAG];
+    if (t === '-0') return -0;
+    if (t === 'NaN') return NaN;
+    if (t === 'Infinity') return Infinity;
+    if (t === '-Infinity') return -Infinity;
+    throw new Error(`the page capture tags an unknown number ${JSON.stringify(t)}`);
+  });
+}
+
+/** How long a capture waits for the page's fonts before it fails. */
+export const FONT_WAIT_MS = 10_000;
+
 async function capture(page: Page, html: string): Promise<Captured[]> {
   await page.setContent(injected(html));
-  return checkCaptured(await page.evaluate(`Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
+  // As parity's openPage: Ahem loaded and two frames drawn, so a font-relative value (ch, ex) is never read off a fallback font.
+  // A font that never settles must fail the capture after FONT_WAIT_MS, not hang the sweep.
+  const fonts = await page.evaluate(`Promise.race([
+    (async () => {
+      await document.fonts.load('10px Ahem');
+      await document.fonts.ready;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+      return document.fonts.status;
+    })(),
+    new Promise((r) => setTimeout(() => r('still loading after ${FONT_WAIT_MS} ms'), ${FONT_WAIT_MS})),
+  ])`);
+  if (fonts !== 'loaded') throw new Error(`the page's fonts are ${JSON.stringify(fonts)}, not loaded, so a capture would measure a fallback font`);
+  return checkCaptured(fromPageJson(await page.evaluate(`JSON.stringify(Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
     const computed = [];
     for (let i = 0; i < cs.length; i++) { const p = cs[i]; if (!p.startsWith('--')) computed.push([p, cs.getPropertyValue(p)]); }
     return { id: el.getAttribute('data-dragon-id'), box: [r.x, r.y, r.width, r.height], computed };
-  })`));
+  }), (k, v) => typeof v === 'number' && (Object.is(v, -0) || !Number.isFinite(v)) ? { ${NUMBER_TAG}: Object.is(v, -0) ? '-0' : String(v) } : v)`)));
 }
 
 /** Every difference between the two renderings; none means Chrome agrees with Dragon. */
@@ -62,23 +97,46 @@ export function compareCaptures(authored: readonly Captured[], compiled: readonl
 }
 
 export type ChromeSession = {
+  /** How many calls the session serves at once, each on its own page. */
+  readonly pages: number;
   dual(c: DualCase): Promise<string[]>;
   /** CSS.supports for "property: value" or for "selector(...)". */
   supports(condition: string): Promise<boolean>;
   close(): Promise<void>;
 };
 
-export async function openChrome(): Promise<ChromeSession> {
+/** Pages a session opens by default: one per core, at most 8. */
+export const DEFAULT_PAGES = Math.max(1, Math.min(8, availableParallelism()));
+
+/** One browser with `pages` pages, each in its own context; a call waits for a free page, so calls may overlap. */
+export async function openChrome(pages: number = DEFAULT_PAGES): Promise<ChromeSession> {
+  if (!Number.isInteger(pages) || pages < 1) throw new Error(`a Chrome session needs a whole number of pages, at least 1, not ${pages}`);
   const browser: Browser = await launchChrome();
   try {
-    const context = await browser.newContext({ viewport: { ...SWEEP_ENVIRONMENT.viewport }, deviceScaleFactor: SWEEP_ENVIRONMENT.devicePixelRatio });
-    const page = await context.newPage();
+    const free: Page[] = [];
+    for (let i = 0; i < pages; i++) {
+      const context = await browser.newContext({ viewport: { ...SWEEP_ENVIRONMENT.viewport }, deviceScaleFactor: SWEEP_ENVIRONMENT.devicePixelRatio });
+      free.push(await context.newPage());
+    }
+    const waiting: ((p: Page) => void)[] = [];
+    const withPage = async <T>(run: (page: Page) => Promise<T>): Promise<T> => {
+      const page = free.pop() ?? (await new Promise<Page>((r) => waiting.push(r)));
+      try {
+        return await run(page);
+      } finally {
+        const next = waiting.shift();
+        if (next === undefined) free.push(page);
+        else next(page);
+      }
+    };
     return {
-      dual: async (c) => compareCaptures(await capture(page, c.authoredHtml), await capture(page, c.compiledHtml)),
-      supports: async (condition) => {
-        await page.setContent('<!DOCTYPE html><html><head></head><body></body></html>');
-        return (await page.evaluate(`CSS.supports(${JSON.stringify(condition)})`)) as boolean;
-      },
+      pages,
+      dual: (c) => withPage(async (page) => compareCaptures(await capture(page, c.authoredHtml), await capture(page, c.compiledHtml))),
+      supports: (condition) =>
+        withPage(async (page) => {
+          await page.setContent('<!DOCTYPE html><html><head></head><body></body></html>');
+          return (await page.evaluate(`CSS.supports(${JSON.stringify(condition)})`)) as boolean;
+        }),
       close: () => browser.close(),
     };
   } catch (e) {

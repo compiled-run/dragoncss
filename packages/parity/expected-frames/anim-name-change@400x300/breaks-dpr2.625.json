@@ -1,0 +1,22 @@
+{
+ "schema": "dragon-frame-breaks/1",
+ "case": "anim-name-change@400x300",
+ "chrome": "145.0.7632.6",
+ "dpr": 2.625,
+ "samples": [
+  {"at": 0, "texts": []},
+  {"at": 1, "texts": []},
+  {"at": 250, "texts": []},
+  {"at": 300, "texts": []},
+  {"at": 300, "texts": []},
+  {"at": 700, "texts": []},
+  {"at": 700, "texts": []},
+  {"at": 701, "texts": []},
+  {"at": 950, "texts": []},
+  {"at": 950, "texts": []},
+  {"at": 951, "texts": []},
+  {"at": 1200, "texts": []},
+  {"at": 1250, "texts": []},
+  {"at": 1251, "texts": []}
+ ]
+}

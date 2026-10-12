@@ -2,12 +2,17 @@
 // somewhere; with none switched on the reference agrees everywhere.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { runAnimationScript } from '../src/rt-animations.ts';
 import type { EasingSpec, RtFaults } from '../src/rt-easing.ts';
-import { cubicBezier, easingFromSpec, NO_RT_FAULTS, solveBezier } from '../src/rt-easing.ts';
-import type { AnimatedValue } from '../src/rt-interpolate.ts';
-import { interpolateValue, serializeValue } from '../src/rt-interpolate.ts';
-import type { EffectTimingSpec, FillMode, PlaybackDirection } from '../src/rt-timing.ts';
-import { animationTiming, seekPaused } from '../src/rt-timing.ts';
+import { cubicBezier, easingFromSpec, LINEAR, NO_RT_FAULTS, solveBezier } from '../src/rt-easing.ts';
+import type { AnimatedValue, ValueRange } from '../src/rt-interpolate.ts';
+import { interpolateValue, serializeValue, TRANSPARENT, ZERO_PX } from '../src/rt-interpolate.ts';
+import type { RuleKeyframe } from '../src/rt-keyframes.ts';
+import { groupFromRule, sampleKeyframeEffect } from '../src/rt-keyframes.ts';
+import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } from '../src/rt-timing.ts';
+import { advanceHeld, animationTiming, computeSecondsTiming, HELD_ZERO, seekPaused } from '../src/rt-timing.ts';
+import type { ScriptStep, TransitionListing } from '../src/rt-transition.ts';
+import { runTransitionScript } from '../src/rt-transition.ts';
 
 type Combo = { readonly delayMs: number; readonly endDelayMs: number; readonly durationMs: number; readonly iterations: number | 'Infinity'; readonly iterationStart: number; readonly direction: PlaybackDirection; readonly fill: FillMode; readonly easing: EasingSpec };
 type TimingOracle = { readonly combos: readonly Combo[]; readonly records: readonly (readonly [number, number, string | null, string | null])[] };
@@ -60,6 +65,69 @@ function mismatches(faults: RtFaults): number {
   return n;
 }
 
+// ANIM-b (T065): the frozen-timeline sections. Values are the cases' AnimatedValue fields; numbers are plain JSON numbers.
+type Spec = { readonly v: AnimatedValue };
+type Seconds = { readonly delay: number; readonly duration: number; readonly iterations: number | 'Infinity'; readonly direction: PlaybackDirection; readonly fill: FillMode; readonly easing: EasingSpec };
+type Rule = readonly { readonly offset: number; readonly easing: EasingSpec | null; readonly value: Spec | null }[];
+type Script = readonly (readonly [string, number])[];
+type KeyframeCase = { readonly range: ValueRange; readonly underlying: Spec; readonly rule: Rule; readonly timing: Seconds };
+type TransitionCase = { readonly range: ValueRange; readonly states: readonly { readonly value: Spec; readonly listing: { readonly mode: TransitionListing['mode']; readonly delay: number; readonly duration: number; readonly easing: EasingSpec } }[]; readonly steps: Script };
+type AnimationCase = { readonly range: ValueRange; readonly rules: readonly { readonly name: string; readonly rule: Rule }[]; readonly states: readonly { readonly base: Spec; readonly entries: readonly { readonly name: string; readonly paused: boolean; readonly timing: Seconds }[] }[]; readonly steps: Script };
+const advance = load('advance.json') as { readonly sequences: readonly (readonly number[])[]; readonly records: readonly (readonly [number, readonly (string | null)[]])[] };
+const keyframes = load('keyframes.json') as { readonly cases: readonly KeyframeCase[]; readonly records: readonly (readonly [number, number, string | null, string])[] };
+const transitions = load('transitions.json') as { readonly cases: readonly TransitionCase[]; readonly records: readonly (readonly [number, readonly unknown[]])[] };
+const animations = load('animations.json') as { readonly cases: readonly AnimationCase[]; readonly records: readonly (readonly [number, readonly unknown[]])[] };
+
+/** The value of a block that does not set the property; groupFromRule never reads it. */
+const UNSET: AnimatedValue = { kind: 'opacity', number: 0, length: ZERO_PX, color: TRANSPARENT, ops: [] };
+const seconds = (t: Seconds): SecondsTiming => ({ ...t, iterations: t.iterations === 'Infinity' ? Infinity : t.iterations, easing: easingFromSpec(t.easing) });
+const ruleOf = (r: Rule): RuleKeyframe[] => r.map((k) => ({ offset: k.offset, hasEasing: k.easing !== null, easing: k.easing === null ? LINEAR : easingFromSpec(k.easing), sets: k.value !== null, value: k.value === null ? UNSET : k.value.v }));
+const stepsOf = (s: Script): ScriptStep[] => s.map(([k, n]) => (k === 's' ? { kind: 'state', state: n, deltaMs: 0 } : { kind: 'advance', state: 0, deltaMs: n }));
+const show = (v: AnimatedValue): string => serializeValue(v, interp.box.width, interp.box.height, TRIG);
+
+/** Mismatches between the reference under `faults` and the ANIM-b oracle sections, by section. */
+function animMismatches(faults: RtFaults): Record<string, number> {
+  const n = { advance: 0, keyframes: 0, transitions: 0, animations: 0 };
+  for (const [i, want] of advance.records) {
+    let h = HELD_ZERO;
+    const deltas = advance.sequences[i];
+    if (deltas === undefined || deltas.length !== want.length) throw new Error(`advance record ${i} does not match its sequence`);
+    deltas.forEach((d, k) => {
+      h = advanceHeld(h, d, faults);
+      if (bits(h.seconds * 1000) !== want[k]) n.advance++;
+    });
+  }
+  for (const [i, t, progress, value] of keyframes.records) {
+    const c = keyframes.cases[i];
+    if (c === undefined) throw new Error(`keyframes record names case ${i}, which does not exist`);
+    const timing = seconds(c.timing);
+    const p = computeSecondsTiming({ ...timing, easing: LINEAR }, t / 1000, faults).progress;
+    const v = sampleKeyframeEffect(timing, t / 1000, groupFromRule(ruleOf(c.rule), timing.easing), c.underlying.v, c.range, faults);
+    if (bits(p) !== progress || (v === null ? show(c.underlying.v) : v.refused ? 'refused' : show(v.value)) !== value) n.keyframes++;
+  }
+  for (const [i, readings] of transitions.records) {
+    const c = transitions.cases[i];
+    if (c === undefined) throw new Error(`transitions record names case ${i}, which does not exist`);
+    const states = c.states.map((s) => ({ value: s.value.v, listing: { ...s.listing, easing: easingFromSpec(s.listing.easing) } }));
+    if (readings.length !== c.steps.length) throw new Error(`transition record ${i} has ${readings.length} readings for ${c.steps.length} steps`);
+    runTransitionScript(states, c.range, stepsOf(c.steps), faults).forEach((r, k) => {
+      if (JSON.stringify([show(r.value), r.durationMs === null ? null : bits(r.durationMs)]) !== JSON.stringify(readings[k])) n.transitions++;
+    });
+  }
+  for (const [i, readings] of animations.records) {
+    const c = animations.cases[i];
+    if (c === undefined) throw new Error(`animations record names case ${i}, which does not exist`);
+    const names = new Set(c.rules.map((r) => r.name));
+    const states = c.states.map((s) => ({ base: s.base.v, entries: s.entries.map((e) => ({ name: e.name, hasKeyframes: names.has(e.name), paused: e.paused, timing: seconds(e.timing) })) }));
+    const rules = c.rules.map((r) => ({ name: r.name, keyframes: ruleOf(r.rule) }));
+    if (readings.length !== c.steps.length) throw new Error(`animation record ${i} has ${readings.length} readings for ${c.steps.length} steps`);
+    runAnimationScript(states, rules, c.range, stepsOf(c.steps), faults).forEach((r, k) => {
+      if (JSON.stringify([r.names, r.currentTimesMs.map(bits), r.playStates, show(r.value)]) !== JSON.stringify(readings[k])) n.animations++;
+    });
+  }
+  return n;
+}
+
 /** The planted fault names of T047 §3.1, and the RtFaults field each one sets. */
 const PLANTS: readonly (readonly [string, keyof RtFaults])[] = [
   ['newtonIterations3', 'newtonIterations3'],
@@ -71,9 +139,20 @@ const PLANTS: readonly (readonly [string, keyof RtFaults])[] = [
   ['holdTimeLost', 'holdTimeLost'],
 ];
 
+/** The ANIM-b plants of T065 §4 that live in the rt reference, and the oracle section each must fail. */
+const ANIM_PLANTS: readonly (readonly [keyof RtFaults, string])[] = [
+  ['heldTimeShortcut', 'advance'],
+  ['noReversalShortening', 'transitions'],
+  ['perKeyframeEasingIgnored', 'keyframes'],
+  ['nameChangeKeepsAnimation', 'animations'],
+  ['pauseLosesPhase', 'animations'],
+  ['pauseClockRuns', 'animations'],
+  ['nonNegativeUnclamped', 'keyframes'],
+];
+
 describe('rt planted faults', () => {
   it('names every RtFaults field once', () => {
-    expect(PLANTS.map(([, f]) => f).sort()).toEqual(Object.keys(NO_RT_FAULTS).sort());
+    expect([...PLANTS.map(([, f]) => f), ...ANIM_PLANTS.map(([f]) => f)].sort()).toEqual(Object.keys(NO_RT_FAULTS).sort());
     expect(LINEAR_SPEC.kind).toBe('linear');
   });
 
@@ -84,6 +163,17 @@ describe('rt planted faults', () => {
   for (const [name, field] of PLANTS) {
     it(`${name} is caught by the oracle`, () => {
       expect(mismatches({ ...NO_RT_FAULTS, [field]: true })).toBeGreaterThan(0);
+    });
+  }
+
+  it('with no fault the reference equals every ANIM-b oracle section', () => {
+    expect(advance.records.length).toBe(advance.sequences.length);
+    expect(animMismatches(NO_RT_FAULTS)).toEqual({ advance: 0, keyframes: 0, transitions: 0, animations: 0 });
+  });
+
+  for (const [field, section] of ANIM_PLANTS) {
+    it(`${field} is caught by the ${section} oracle`, () => {
+      expect(animMismatches({ ...NO_RT_FAULTS, [field]: true })[section]).toBeGreaterThan(0);
     });
   }
 });

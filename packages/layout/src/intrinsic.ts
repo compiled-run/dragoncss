@@ -4,6 +4,7 @@ import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
+import { gridIntrinsicContentInlineSize } from './grid.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
 import { hasAspectRatio, ratioInlineContribution } from './ratio.ts';
@@ -17,6 +18,7 @@ export type IntrinsicKind = 'min' | 'max';
 export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const kids = box.children;
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
+  if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);
   if (box.strut !== null) return inlineIntrinsicSize(ctx, box, kind);
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   let widest = ZERO;

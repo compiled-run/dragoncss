@@ -20,6 +20,8 @@ import type {
   FlexBasisValue,
   FontSpec,
   GapValue,
+  GridAutoRepeat,
+  GridContainerStyle,
   InsetValue,
   InlineChild,
   LayoutBox,
@@ -40,6 +42,9 @@ import type {
   SafeAreaInsets,
   SizeValue,
   TextLeaf,
+  TrackBreadth,
+  TrackRepeater,
+  TrackSize,
   VerticalAlignValue,
   ViewportLength,
 } from './input.ts';
@@ -47,6 +52,7 @@ import type { EngineFaults } from './block.ts';
 import { calcHasPercent, evaluateCalc, resolveCalc } from './calc.ts';
 import type { FontLengths, TextMeasurer } from './text.ts';
 import { AHEM_FONT_DATA, ahemMeasurerWith } from './text.ts';
+import { unsupported } from './unsupported.ts';
 import {
   clampLengthFloat,
   clampNonNegativeDouble,
@@ -103,6 +109,8 @@ type Env = {
   readonly rootFontSize: number;
   readonly measurer: TextMeasurer;
   readonly faults: EngineFaults;
+  /** The node being resolved, which a refusal names. */
+  readonly node: string;
 };
 
 /** Blink's initial font size (medium), which planted fault rootFontSizeIgnored reads for rem. */
@@ -138,6 +146,7 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
     rootFontSize: faults.rootFontSizeIgnored ? INITIAL_FONT_SIZE : input.rootFontSize,
     measurer,
     faults,
+    node: input.root.id,
   };
   const viewport = z === 1 ? input.viewport : { width: zoomViewportPx(input.viewport.width, z), height: zoomViewportPx(input.viewport.height, z) };
   return { viewport, devicePixelRatio: 1, viewportUnits: input.viewportUnits, safeArea: input.safeArea, rootFontSize: input.rootFontSize, root: resolveBox(input.root, env) };
@@ -198,16 +207,18 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
     s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap,
   ];
   for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
-  return false;
+  return gridNeedsEnvironment(s.grid);
 }
 
-function resolveBox(b: LayoutBox, env: Env): LayoutBox {
+function resolveBox(b: LayoutBox, parent: Env): LayoutBox {
+  const env: Env = { ...parent, node: b.id };
   const children = b.children.map((c): LayoutBox | ReplacedLeaf | InlineChild => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : resolveInline(c, env)));
   return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: b.strut === null ? null : resolveStrut(b.strut, env), children };
 }
 
-function resolveInline(c: InlineChild, env: Env): InlineChild {
-  if (c.kind === 'text') return resolveText(c, env);
+function resolveInline(c: InlineChild, parent: Env): InlineChild {
+  if (c.kind === 'text') return resolveText(c, parent);
+  const env: Env = { ...parent, node: c.id };
   const size = computedSize(c.font, env);
   const font: FontSpec = { family: c.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
   const lineHeight = resolveLineHeightValue(c.lineHeight, size, env);
@@ -222,7 +233,8 @@ function resolveStrut(s: LineStrut, env: Env): LineStrut {
 }
 
 /** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */
-function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
+function resolveReplaced(r: ReplacedLeaf, parent: Env): ReplacedLeaf {
+  const env: Env = { ...parent, node: r.id };
   const z = env.zoom;
   const natural: ReplacedLeaf['natural'] = r.natural.kind === 'image' ? { kind: 'image', width: zoomCssPx(r.natural.width, z), height: zoomCssPx(r.natural.height, z) } : { kind: 'none' };
   const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? lengthPx(v, z) : v);
@@ -243,7 +255,8 @@ function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
  * A text run at its computed font size, which the pass writes back as an absolute px size so a resolved input resolves to itself,
  * with a percentage or calculated line height as px at the zoom (Blink ConvertLineHeight).
  */
-function resolveText(t: TextLeaf, env: Env): TextLeaf {
+function resolveText(t: TextLeaf, parent: Env): TextLeaf {
+  const env: Env = { ...parent, node: t.id };
   const size = computedSize(t.font, env);
   const font: FontSpec = { family: t.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
   return { kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode };
@@ -279,6 +292,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     rowGap: resolveGap(s.rowGap, env),
     columnGap: resolveGap(s.columnGap, env),
     verticalAlign: resolveVerticalAlign(s.verticalAlign, env),
+    grid: s.grid === null ? null : zoomGrid(s.grid, env.zoom),
   };
 }
 
@@ -286,6 +300,61 @@ function resolveVerticalAlign(v: VerticalAlignValue, env: Env): VerticalAlignVal
   if (v.kind === 'px') return zoomPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
+}
+
+/** Grid track sizes: px breadths and fit-content limits are zoomed; %, fr and the keywords are not. */
+function zoomGrid(g: GridContainerStyle, z: number): GridContainerStyle {
+  const repeaters = (rs: readonly TrackRepeater[]): TrackRepeater[] => rs.map((r): TrackRepeater => ({ count: r.count, sizes: r.sizes.map((t) => zoomTrack(t, z)) }));
+  return {
+    ...g,
+    templateColumns: repeaters(g.templateColumns),
+    templateRows: repeaters(g.templateRows),
+    autoColumns: g.autoColumns.map((t) => zoomTrack(t, z)),
+    autoRows: g.autoRows.map((t) => zoomTrack(t, z)),
+    autoRepeatColumns: zoomAutoRepeat(g.autoRepeatColumns, z),
+    autoRepeatRows: zoomAutoRepeat(g.autoRepeatRows, z),
+  };
+}
+
+function zoomAutoRepeat(r: GridAutoRepeat | null, z: number): GridAutoRepeat | null {
+  if (r === null) return null;
+  return { type: r.type, index: r.index, sizes: r.sizes.map((t) => zoomTrack(t, z)), lineNames: r.lineNames };
+}
+
+function zoomTrack(t: TrackSize, z: number): TrackSize {
+  if (t.kind === 'breadth') return { kind: 'breadth', breadth: zoomBreadth(t.breadth, z) };
+  if (t.kind === 'minmax') return { kind: 'minmax', min: zoomBreadth(t.min, z), max: zoomBreadth(t.max, z) };
+  return { kind: 'fit-content', limit: t.limit.kind === 'px' ? lengthPx(t.limit, z) : t.limit };
+}
+
+/** A px track breadth is a length (Blink ConvertGridTrackBreadth through ConvertLength): zoomed, then clamped to the CSS length range. */
+function zoomBreadth(b: TrackBreadth, z: number): TrackBreadth {
+  return b.kind === 'px' ? lengthPx(b, z) : b;
+}
+
+function breadthOutOfRange(b: TrackBreadth): boolean {
+  return b.kind === 'px' && !inCssLengthRange(b.value);
+}
+
+function trackOutOfRange(t: TrackSize): boolean {
+  if (t.kind === 'breadth') return breadthOutOfRange(t.breadth);
+  if (t.kind === 'minmax') return breadthOutOfRange(t.min) || breadthOutOfRange(t.max);
+  return t.limit.kind === 'px' && !inCssLengthRange(t.limit.value);
+}
+
+function tracksOutOfRange(ts: readonly TrackSize[]): boolean {
+  for (const t of ts) if (trackOutOfRange(t)) return true;
+  return false;
+}
+
+/** Whether a grid container holds a px track size or fit-content() limit outside the CSS length range (clamped by the pass). */
+function gridNeedsEnvironment(g: GridContainerStyle | null): boolean {
+  if (g === null) return false;
+  for (const r of g.templateColumns) if (tracksOutOfRange(r.sizes)) return true;
+  for (const r of g.templateRows) if (tracksOutOfRange(r.sizes)) return true;
+  if (g.autoRepeatColumns !== null && tracksOutOfRange(g.autoRepeatColumns.sizes)) return true;
+  if (g.autoRepeatRows !== null && tracksOutOfRange(g.autoRepeatRows.sizes)) return true;
+  return tracksOutOfRange(g.autoColumns) || tracksOutOfRange(g.autoRows);
 }
 
 /** order: a math function's number rounded half toward +infinity and clamped to int; an integer in range is itself. */
@@ -385,7 +454,13 @@ function computedSize(font: FontSpec, env: Env): number {
 function fontLengths(font: FontSpec, env: Env): FontLengths {
   const size = computedSize(font, env);
   const m = env.faults.exUntruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: env.faults.metricHalfUp, untruncatedFontSize: true }) : env.measurer;
+  refuseUnknownFace(m, font, env);
   return m.lengths({ family: font.family, size });
+}
+
+/** A face the measurer does not hold is refused with text-glyph, at the node whose font or length names it. */
+function refuseUnknownFace(m: TextMeasurer, font: FontSpec, env: Env): void {
+  if (!m.hasFace(font.family)) unsupported('text-glyph', env.node, 'css-fonts-4 §5', `${env.node} names the face ${font.family}, which the measurer does not hold`);
 }
 
 /** ex, ch or cap in zoomed px at the conversion zoom (CSSToLengthConversionData::FontSizes); no x-height is em / 2, unzoomed. */
@@ -410,6 +485,7 @@ function computedLineHeightPx(lh: LineHeightValue, font: FontSpec, env: Env): nu
         const d = AHEM_FONT_DATA;
         return floatAdd(floatAdd(fontMetricPx(i, d.unitsPerEm, d.ascent), fontMetricPx(i, d.unitsPerEm, d.descent)), fontMetricPx(i, d.unitsPerEm, d.lineGap));
       }
+      refuseUnknownFace(env.measurer, font, env);
       const m = env.measurer.metrics({ family: font.family, size });
       return toPx(add(add(m.ascent, m.descent), m.lineGap));
     }

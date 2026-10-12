@@ -1,0 +1,27 @@
+{
+  "case": "grid-intrinsic-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"a1:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"a2:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"a3:text0","data":"XXXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"b1:text0","data":"X XXX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"b2:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"b3:text0","data":"XXX X","lines":2,"units":[0,0,0,0,1],"blank":[3]},
+    {"id":"c1:text0","data":"XXXXX X","lines":2,"units":[0,0,0,0,0,0,1],"blank":[5]},
+    {"id":"c2:text0","data":"XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"c3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f1:text0","data":"XXXX XXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"f2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"h1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"h2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"i1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"i2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"i3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"j1:text0","data":"XXX XX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"j2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"j3:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

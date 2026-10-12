@@ -1,0 +1,24 @@
+{
+ "schema": "dragon-frame-pixels/1",
+ "case": "anim-overshoot@400x300",
+ "chrome": "145.0.7632.6",
+ "capture": "CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor",
+ "rasterRule": "ceil(viewport css px x DPR) in each dimension; 400x300 at 2.625 is 1050x788",
+ "dpr": 2,
+ "flags": ["--force-device-scale-factor=2","--force-color-profile=srgb","--font-render-hinting=none","--disable-lcd-text","--hide-scrollbars"],
+ "raster": {"rasterization":"disabled_software","gpu_compositing":"disabled_software"},
+ "samples": [
+  {"k":0,"at":0,"width":800,"height":600,"sha256":"cb8433cda5e92ff1f205036b7bdbe128b7c2949844cc08473eee295ee6b6943f"},
+  {"k":1,"at":0,"width":800,"height":600,"sha256":"cb8433cda5e92ff1f205036b7bdbe128b7c2949844cc08473eee295ee6b6943f"},
+  {"k":2,"at":1,"width":800,"height":600,"sha256":"d40309f49878c69675ef939ab11695e4199f58f192a970208bf30bb0ac5c8a30"},
+  {"k":4,"at":500,"width":800,"height":600,"sha256":"42a2d03eba7ddf3a482227123217f260091510e6c8b51981abb882dbe405886e"},
+  {"k":8,"at":1001,"width":800,"height":600,"sha256":"27867c7ccfe9bb664d0610b848ecda54e5512189ac90334939c18b828c2410e3"},
+  {"k":10,"at":1100,"width":800,"height":600,"sha256":"27867c7ccfe9bb664d0610b848ecda54e5512189ac90334939c18b828c2410e3"},
+  {"k":11,"at":1101,"width":800,"height":600,"sha256":"90d0d6ad4791733cb5441a17d1fbc9d1f68e4427a1fe82add901f382b75e813e"},
+  {"k":14,"at":1500,"width":800,"height":600,"sha256":"74e47ce717d0073ddc0c2b8f5be6d92161771e5e73db214caef25a93cbc07ca5"},
+  {"k":15,"at":1501,"width":800,"height":600,"sha256":"da8366981e89477cc32d5ac4494bb39a2b0ecdb14d70df64ad3cd18fcb4ec7b3"},
+  {"k":17,"at":1563.297429084976,"width":800,"height":600,"sha256":"aba2c381f1e1c5fe0e07807368cd0352500fcd515290c74d7f08abac75dab418"},
+  {"k":21,"at":1627.5948581699522,"width":800,"height":600,"sha256":"27867c7ccfe9bb664d0610b848ecda54e5512189ac90334939c18b828c2410e3"},
+  {"k":23,"at":2601,"width":800,"height":600,"sha256":"27867c7ccfe9bb664d0610b848ecda54e5512189ac90334939c18b828c2410e3"}
+ ]
+}

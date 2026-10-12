@@ -1,0 +1,6 @@
+component App {
+  <html><body><Toggle t /></body></html>
+}
+component Toggle(checked: boolean = false) {
+  <div box class="toggle {checked ? 'on' : ''}" />
+}

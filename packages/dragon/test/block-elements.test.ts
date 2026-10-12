@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { SUPPORTED_TAGS, UNSTYLED_TAGS } from '../src/analysis/elements.ts';
-import { computed, userAgentContexts, userAgentDeclared, userAgentTextFonts } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
+import { REPLACED_TAGS, REPLACED_UA_KEYS } from '../src/analysis/elements/replaced.ts';
+import { computed, replacedKeySpecs, userAgentContexts, userAgentDeclared, userAgentTextFonts } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { DOC, explainOne, inputFor, staticClass, text } from './helpers.ts';
 
 const project = (direction: 'ltr' | 'rtl' = 'ltr') =>
@@ -19,7 +20,9 @@ const FONT = 'body { font-family: Ahem; }';
 
 describe('the element table', () => {
   it('is exactly the captured tags other than the unstyled probe element, plus the tags that resolve as it', () => {
-    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
+    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t) && !REPLACED_TAGS.includes(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
+    // REPL-a: the replaced tags read REPL-0's replaced keys instead.
+    expect(REPLACED_TAGS.map((t) => replacedKeySpecs[REPLACED_UA_KEYS[t] as keyof typeof replacedKeySpecs].tag)).toEqual([...REPLACED_TAGS]);
     expect([...UNSTYLED_TAGS].every((t) => SUPPORTED_TAGS.has(t) && !(t in computed))).toBe(true);
     expect(SUPPORTED_TAGS.has('pre')).toBe(false);
   });
@@ -110,9 +113,11 @@ describe('refusals of UA defaults Dragon does not model', () => {
   it('headings without text compile on every target', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'h1', 'h1'), el(r, 'h6', 'h6'), el(r, 'p', 'p', [], [text(r, 't', 'XX')])]))).toEqual([]);
   });
-  it('display: list-item from the UA sheet is refused on every target; an authored display: block is not', () => {
+  // GEN-b (T151 R13): the UA list item keeps its disc marker and stays refused; list-style: none leaves it no marker box.
+  it('display: list-item from the UA sheet with its disc marker is refused on every target; an authored display: block or list-style: none is not', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li')])]))).toEqual(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
     expect(codes(inputFor(`${FONT} .b { display: block; }`, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', ['b'])])]))).toEqual([]);
+    expect(codes(inputFor(`${FONT} .n { list-style: none; }`, (r) => [el(r, 'ul', 'ul', ['n'], [el(r, 'li', 'li')])]))).toEqual([]);
   });
   it('hr: the UA inset border is refused; an authored border-style is not', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'hr', 'hr')]))).toEqual(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
@@ -130,5 +135,19 @@ describe('refusals of UA defaults Dragon does not model', () => {
   it('pre is not in the element table', () => {
     const c = project().compile(inputFor(FONT, (r) => [el(r, 'pre', 'pre')]));
     expect(c.diagnostics.map((d) => [d.code, d.message])).toEqual([['DRAGON_UNSUPPORTED_ELEMENT', expect.stringMatching(/^<pre> pre is not supported \(supported: html, body, div, p, h1/)]]);
+  });
+});
+
+describe('REPL-a forced UA values in explain (Macroscope 4164413940)', () => {
+  it('names the forced value as what beat the author winner, and keeps the cascade reason for the declarations that winner beat', () => {
+    const css = `${FONT} .f { display: block; border: 0; overflow: hidden; } .f.g { overflow: auto; }`;
+    const c = project().compile(inputFor(css, (r) => [el(r, 'fr', 'iframe', ['f', 'g'])]));
+    const e = explainOne(c, 'ios', 'fr', 'overflow-x');
+    expect(e.value).toBe('clip');
+    expect(e.cascade).toBe('user-agent');
+    expect(e.losing.map((l) => l.reason)).toEqual(['the user agent forces overflow-x on this element whatever the cascade says', 'lower specificity or earlier in the style order']);
+    const spans = e.losing.map((l) => (l.origin.kind === 'authored' ? css.slice(l.origin.span.start, l.origin.span.end) : null));
+    expect(spans[0]).toContain('auto');
+    expect(spans[1]).toContain('hidden');
   });
 });

@@ -1,0 +1,10 @@
+{
+  "case": "list-items-preflight-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"ul-li1:text0","lines":[[0,6],[6,12]]},
+    {"id":"ul-li2-div:text0","lines":[[0,2]]},
+    {"id":"ol-li1:text0","lines":[[0,3]]},
+    {"id":"ol-li2:text0","lines":[[0,1]]}
+  ]
+}

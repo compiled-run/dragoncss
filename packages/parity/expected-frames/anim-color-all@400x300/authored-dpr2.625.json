@@ -1,0 +1,1753 @@
+{
+ "schema": "dragon-frames-capture/1",
+ "case": "anim-color-all@400x300",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2.625,
+ "direction": "ltr",
+ "viewport": {
+  "width": 400,
+  "height": 300
+ },
+ "steps": 43,
+ "samples": [
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(58, 65, 79)",
+      "border-right-color": "rgb(58, 65, 79)",
+      "border-bottom-color": "rgb(58, 65, 79)",
+      "border-left-color": "rgb(58, 65, 79)",
+      "color": "rgb(237, 240, 245)",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(237, 240, 245)",
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(58, 65, 79)",
+      "border-right-color": "rgb(58, 65, 79)",
+      "border-bottom-color": "rgb(58, 65, 79)",
+      "border-left-color": "rgb(58, 65, 79)",
+      "color": "rgb(237, 240, 245)",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(237, 240, 245)",
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 1,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(58, 65, 79)",
+      "border-right-color": "rgb(58, 65, 79)",
+      "border-bottom-color": "rgb(58, 65, 79)",
+      "border-left-color": "rgb(58, 65, 79)",
+      "color": "rgb(237, 240, 245)",
+      "background-color": "rgba(237, 240, 245, 0)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(237, 240, 245)",
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 62.98667519999999,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(115, 121, 132)",
+      "border-right-color": "rgb(115, 121, 132)",
+      "border-bottom-color": "rgb(115, 121, 132)",
+      "border-left-color": "rgb(115, 121, 132)",
+      "color": "rgb(167, 169, 174)",
+      "background-color": "rgba(237, 240, 245, 0.318)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(167, 169, 174)",
+      "border-top-color": "rgb(167, 169, 174)",
+      "border-right-color": "rgb(167, 169, 174)",
+      "border-bottom-color": "rgb(167, 169, 174)",
+      "border-left-color": "rgb(167, 169, 174)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 150,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(202, 205, 212)",
+      "border-right-color": "rgb(202, 205, 212)",
+      "border-bottom-color": "rgb(202, 205, 212)",
+      "border-left-color": "rgb(202, 205, 212)",
+      "color": "rgb(60, 62, 66)",
+      "background-color": "rgba(237, 240, 245, 0.804)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(60, 62, 66)",
+      "border-top-color": "rgb(60, 62, 66)",
+      "border-right-color": "rgb(60, 62, 66)",
+      "border-bottom-color": "rgb(60, 62, 66)",
+      "border-left-color": "rgb(60, 62, 66)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 299,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgba(237, 240, 245, 1)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 300,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 301,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 400,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 400,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 401,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgba(237, 240, 245, 1)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 462.9866752,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(180, 184, 192)",
+      "border-right-color": "rgb(180, 184, 192)",
+      "border-bottom-color": "rgb(180, 184, 192)",
+      "border-left-color": "rgb(180, 184, 192)",
+      "color": "rgb(86, 89, 93)",
+      "background-color": "rgba(237, 240, 245, 0.682)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(86, 89, 93)",
+      "border-top-color": "rgb(86, 89, 93)",
+      "border-right-color": "rgb(86, 89, 93)",
+      "border-bottom-color": "rgb(86, 89, 93)",
+      "border-left-color": "rgb(86, 89, 93)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 550,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(93, 100, 112)",
+      "border-right-color": "rgb(93, 100, 112)",
+      "border-bottom-color": "rgb(93, 100, 112)",
+      "border-left-color": "rgb(93, 100, 112)",
+      "color": "rgb(193, 196, 201)",
+      "background-color": "rgba(237, 240, 245, 0.196)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(193, 196, 201)",
+      "border-top-color": "rgb(193, 196, 201)",
+      "border-right-color": "rgb(193, 196, 201)",
+      "border-bottom-color": "rgb(193, 196, 201)",
+      "border-left-color": "rgb(193, 196, 201)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 550,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(93, 100, 112)",
+      "border-right-color": "rgb(93, 100, 112)",
+      "border-bottom-color": "rgb(93, 100, 112)",
+      "border-left-color": "rgb(93, 100, 112)",
+      "color": "rgb(193, 196, 201)",
+      "background-color": "rgba(237, 240, 245, 0.196)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(193, 196, 201)",
+      "border-top-color": "rgb(193, 196, 201)",
+      "border-right-color": "rgb(193, 196, 201)",
+      "border-bottom-color": "rgb(193, 196, 201)",
+      "border-left-color": "rgb(193, 196, 201)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 551,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(94, 100, 112)",
+      "border-right-color": "rgb(94, 100, 112)",
+      "border-bottom-color": "rgb(94, 100, 112)",
+      "border-left-color": "rgb(94, 100, 112)",
+      "color": "rgb(193, 196, 201)",
+      "background-color": "rgba(237, 240, 245, 0.2)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(193, 196, 201)",
+      "border-top-color": "rgb(193, 196, 201)",
+      "border-right-color": "rgb(193, 196, 201)",
+      "border-bottom-color": "rgb(193, 196, 201)",
+      "border-left-color": "rgb(193, 196, 201)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 600.5407217720649,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(139, 144, 154)",
+      "border-right-color": "rgb(139, 144, 154)",
+      "border-bottom-color": "rgb(139, 144, 154)",
+      "border-left-color": "rgb(139, 144, 154)",
+      "color": "rgb(137, 139, 144)",
+      "background-color": "rgba(237, 240, 245, 0.45)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(137, 139, 144)",
+      "border-top-color": "rgb(137, 139, 144)",
+      "border-right-color": "rgb(137, 139, 144)",
+      "border-bottom-color": "rgb(137, 139, 144)",
+      "border-left-color": "rgb(137, 139, 144)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 670.3605086589765,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(209, 212, 219)",
+      "border-right-color": "rgb(209, 212, 219)",
+      "border-bottom-color": "rgb(209, 212, 219)",
+      "border-left-color": "rgb(209, 212, 219)",
+      "color": "rgb(51, 53, 57)",
+      "background-color": "rgba(237, 240, 245, 0.843)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(51, 53, 57)",
+      "border-top-color": "rgb(51, 53, 57)",
+      "border-right-color": "rgb(51, 53, 57)",
+      "border-bottom-color": "rgb(51, 53, 57)",
+      "border-left-color": "rgb(51, 53, 57)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 789.721017317953,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgba(237, 240, 245, 1)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 790.721017317953,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 791.721017317953,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 950,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 951,
+   "settle": true,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 27.809524536132812,
+     "computed": {}
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 83.80952453613281,
+     "height": 27.809524536132812,
+     "computed": {
+      "border-top-color": "rgb(237, 240, 245)",
+      "border-right-color": "rgb(237, 240, 245)",
+      "border-bottom-color": "rgb(237, 240, 245)",
+      "border-left-color": "rgb(237, 240, 245)",
+      "color": "rgb(16, 18, 22)",
+      "background-color": "rgb(237, 240, 245)"
+     }
+    },
+    {
+     "id": "label",
+     "kind": "element",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 80,
+     "height": 10,
+     "computed": {
+      "color": "rgb(16, 18, 22)",
+      "border-top-color": "rgb(16, 18, 22)",
+      "border-right-color": "rgb(16, 18, 22)",
+      "border-bottom-color": "rgb(16, 18, 22)",
+      "border-left-color": "rgb(16, 18, 22)"
+     }
+    },
+    {
+     "id": "label:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "label:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 1.9047619104385376,
+     "y": 1.9047619104385376,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  }
+ ]
+}
