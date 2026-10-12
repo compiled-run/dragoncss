@@ -51,6 +51,7 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  WhiteSpaceCollapse,
   VerticalAlignKeyword,
   VerticalAlignValue,
   ViewportLength,
@@ -821,14 +822,13 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
   obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode'], path);
-  lit(field(o, 'whiteSpaceCollapse', path), ['collapse'], `${path}.whiteSpaceCollapse`);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
     text: str(field(o, 'text', path), `${path}.text`),
     font: fontSpec(field(o, 'font', path), `${path}.font`),
     lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
-    whiteSpaceCollapse: 'collapse',
+    whiteSpaceCollapse: lit(field(o, 'whiteSpaceCollapse', path), ['collapse', 'preserve', 'preserve-breaks', 'break-spaces'], `${path}.whiteSpaceCollapse`) as WhiteSpaceCollapse,
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
   };
 }
