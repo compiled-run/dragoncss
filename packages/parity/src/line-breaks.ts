@@ -18,7 +18,8 @@ import { applyTransformTwin } from './transform-capture.ts';
 export const BREAK_MISMATCH = 'break-mismatch';
 
 /** One line of a text node as the engine breaks it: UTF-16 [start, end), the shown code points, the absolute line rect and its snapped edges. */
-export type EngineLine = { readonly start: number; readonly end: number; readonly cps: readonly number[]; readonly rect: LayoutRect; readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } };
+/** shifts: on a justified line, per code point of cps, the px its glyphs move right by the expansions before it (LinePiece.shifts). */
+export type EngineLine = { readonly start: number; readonly end: number; readonly cps: readonly number[]; readonly shifts: readonly number[]; readonly rect: LayoutRect; readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } };
 export type EngineText = { readonly id: string; readonly container: string; readonly font: TextLeaf['font']; readonly lines: readonly EngineLine[] };
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
@@ -107,7 +108,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
       const a = abs.get(piece.id);
       const e = snapped.get(piece.id);
       if (a === undefined || e === undefined) throw new Error(`no absolute rect for ${piece.id}`);
-      own.push({ start: utf16(mine.start), end: utf16(mine.end), cps: scalars.slice(mine.start, mine.visibleEnd).map((ch) => ch.codePointAt(0) as number), rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
+      own.push({ start: utf16(mine.start), end: utf16(mine.end), cps: scalars.slice(mine.start, mine.visibleEnd).map((ch) => ch.codePointAt(0) as number), shifts: mine.shifts, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
     }
     if (own.length !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${own.length} lines, its layout ${pieces.length}`);
     out.push({ id: r.id, container: pId, font: leaf.font, lines: own });

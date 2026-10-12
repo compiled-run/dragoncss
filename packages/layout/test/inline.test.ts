@@ -162,8 +162,8 @@ describe('engine refusals for text', () => {
     const r = run(block(30, [text('t0', 'XX'), text('t1', 'YY', { textWrapMode: 'nowrap' })]));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('mixed-text-wrap-mode');
   });
-  it('text-align: justify returns text-align until a fixture proves it', () => {
-    const r = run(block(30, [text('t', 'XX XX')], { textAlign: 'justify' }));
+  it('text-align: justify returns text-align where an Ahem advance is not exact in 16.16, so the expanded width is not proven', () => {
+    const r = run(block(60, [text('t', 'XX XX XX', { font: ahemFont(10.33) })], { textAlign: 'justify' }));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('text-align');
   });
   it('a code point Ahem does not cover returns text-glyph', () => {
@@ -185,9 +185,9 @@ describe('placeLines: the one source of lines (INL1a, notes/T044-inl-spec.md R3)
     const b = box('a', { width: px(30) }, [text('t0', 'XX X'), text('t1', 'Y YY')]);
     const got = placeLines(ctx, b, fromCssPx(30));
     expect(got).toEqual([
-      { top: 0, height: G, baseline: 512, pieces: [{ leaf: 0, start: 0, visibleEnd: 2, end: 3, x: 0, width: 2 * G, top: 0, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
-      { top: G, height: G, baseline: G + 512, pieces: [{ leaf: 0, start: 3, visibleEnd: 4, end: 4, x: 0, width: G, top: G, ascent: 512, descent: 128 }, { leaf: 1, start: 0, visibleEnd: 1, end: 2, x: G, width: G, top: G, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
-      { top: 2 * G, height: G, baseline: 2 * G + 512, pieces: [{ leaf: 1, start: 2, visibleEnd: 4, end: 4, x: 0, width: 2 * G, top: 2 * G, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
+      { top: 0, height: G, baseline: 512, pieces: [{ leaf: 0, start: 0, visibleEnd: 2, end: 3, x: 0, width: 2 * G, top: 0, ascent: 512, descent: 128, shifts: [] }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
+      { top: G, height: G, baseline: G + 512, pieces: [{ leaf: 0, start: 3, visibleEnd: 4, end: 4, x: 0, width: G, top: G, ascent: 512, descent: 128, shifts: [] }, { leaf: 1, start: 0, visibleEnd: 1, end: 2, x: G, width: G, top: G, ascent: 512, descent: 128, shifts: [] }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
+      { top: 2 * G, height: G, baseline: 2 * G + 512, pieces: [{ leaf: 1, start: 2, visibleEnd: 4, end: 4, x: 0, width: 2 * G, top: 2 * G, ascent: 512, descent: 128, shifts: [] }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
     ]);
   });
   it('the leaf pieces sit at the baseline minus the ascent: a 13px line-height floors the 1.5px half-leading to 1px', () => {

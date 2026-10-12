@@ -5,7 +5,7 @@
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
 import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, floorToWholePx, fromFloatRound, fromRaw, lineHeightFromNumber, max, min, sub, toPx, ZERO } from './units.ts';
+import { add, divInt, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
 import { resolveBorder } from './box.ts';
 import type { Ctx } from './block.ts';
@@ -13,10 +13,10 @@ import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
 import { asciiPairBreaks } from './linebreak.ts';
 import type { FontMetrics } from './text.ts';
-import { AHEM_FACE_ID, coveredIndex } from './text.ts';
+import { AHEM_FACE_ID, AHEM_FONT_DATA, coveredIndex } from './text.ts';
 import { scriptCode, scriptExtensions, USCRIPT_COMMON, USCRIPT_INHERITED, USCRIPT_LATIN } from './script-data.ts';
-import type { BreakItem, BreakResult, BrokenLine } from './shaping.ts';
-import { breakItemLines } from './shaping.ts';
+import type { BreakItem, BreakResult, BrokenLine, LineView, ShapeItem } from './shaping.ts';
+import { breakItemLines, justifiedViewWidth, subView } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
 import { unsupported } from './unsupported.ts';
@@ -25,6 +25,10 @@ const SPACE = 0x20;
 const ZWSP = 0x200b;
 const HYPHEN_MINUS = 0x2d;
 const SOLIDUS = 0x2f;
+const TAB = 0x09;
+const LINE_FEED = 0x0a;
+const NO_BREAK_SPACE = 0xa0;
+const SOFT_HYPHEN = 0xad;
 
 /**
  * One item of the formatting context in tree order: a code point of a leaf, the open or close tag of an inline box, or a <br>.
@@ -63,13 +67,37 @@ export type Ifc = {
  * One text result of a real-font line: the char items [from, to) of one leaf, its inline size, and its inline size without a
  * trailing space that hangs at the line end (visibleTo is where that space starts, else to).
  */
-type ShapedPiece = { readonly from: number; readonly to: number; readonly visibleTo: number; readonly width: LU; readonly visibleWidth: LU };
+type ShapedPiece = {
+  readonly from: number;
+  readonly to: number;
+  readonly visibleTo: number;
+  readonly width: LU;
+  readonly visibleWidth: LU;
+  /** The text result's shaped item and view, and the item offset of char item from (justification reshapes the view's runs). */
+  readonly item: ShapeItem;
+  readonly view: LineView;
+  readonly offset: number;
+};
 
 /**
  * A line: items [start, end); the characters before visibleEnd show, and the ones after it (spaces) hang. A real-font line also
  * carries its text results (pieces), whose inline sizes the line's widths sum; an Ahem line has none and is measured by width.
  */
-type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number; readonly pieces: readonly ShapedPiece[] };
+type Line = {
+  readonly start: number;
+  readonly end: number;
+  readonly visibleEnd: number;
+  readonly pieces: readonly ShapedPiece[];
+  readonly forced: boolean;
+  /** Set on a line text-align: justify expands (justifyLine), else null. */
+  readonly justified: Justified | null;
+};
+
+/** A justified line's text runs: char items [from, to) of one leaf and the run's inline size after expansion. */
+type JustifiedRun = { readonly from: number; readonly to: number; readonly width: LU };
+
+/** A justified line: its runs in order, and per char item of [line start, visible end) the 16.16 expansion added after it. */
+type Justified = { readonly runs: readonly JustifiedRun[]; readonly expansions: readonly number[] };
 
 /**
  * What one leaf shows on one line. Code points [start, visibleEnd) of the leaf show; [start, end) adds the leaf's own spaces that
@@ -86,6 +114,11 @@ export type LinePiece = {
   readonly top: LU;
   readonly ascent: LU;
   readonly descent: LU;
+  /**
+   * On a justified line (css-text-3 §7.3), per code point of [start, visibleEnd), the px its glyphs move right by the expansion of
+   * the spaces before it in the piece; empty on any other line.
+   */
+  readonly shifts: readonly number[];
 };
 
 /** A rectangle in LU from the content-box top-left. */
@@ -837,7 +870,7 @@ function breakLines(ctx: Ctx, ifc: Ifc, available: LU): Line[] {
       forced = next.forced;
       k++;
     }
-    lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: [] });
+    lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: [], forced, justified: null });
     start = end;
   }
   return lines;
@@ -945,7 +978,7 @@ function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Li
   for (const bl of r.lines) {
     if (!hasContent(ifc, start, ifc.items.length)) break;
     const end = itemIndexOf(ifc, s, bl.nextItem, bl.nextOffset);
-    lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: piecesOf(ifc, s, bl) });
+    lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: piecesOf(ifc, s, bl), forced: bl.forced, justified: null });
     start = end;
   }
   for (let i = start; i < ifc.items.length && lines.length > 0; i++) {
@@ -965,7 +998,8 @@ function piecesOf(ifc: Ifc, s: ShapedItems, bl: BrokenLine): ShapedPiece[] {
     const to = (s.firstItem[res.index] as number) + res.end;
     const visibleWidth = bl.visibleWidths[k] as LU;
     const hangs = visibleWidth !== res.width && (ifc.items[to - 1] as Item).cp === SPACE;
-    out.push({ from, to, visibleTo: hangs ? to - 1 : to, width: res.width, visibleWidth });
+    if (res.view === null) throw new Error(`the text result [${from}, ${to}) has no view`);
+    out.push({ from, to, visibleTo: hangs ? to - 1 : to, width: res.width, visibleWidth, item: it.item, view: res.view, offset: res.start });
   }
   return out;
 }
@@ -975,6 +1009,7 @@ function piecesOf(ifc: Ifc, s: ShapedItems, bl: BrokenLine): ShapedPiece[] {
  * sizes of its text results there, a result cut at its hanging trailing space taking its size without it.
  */
 function spanWidth(ctx: Ctx, ifc: Ifc, line: Line, start: number, end: number): LU {
+  if (line.justified !== null) return justifiedSpan(line.justified, start, end);
   if (!ifc.shaped) return width(ctx, ifc, start, end);
   let total = ZERO;
   for (const p of line.pieces) {
@@ -986,12 +1021,126 @@ function spanWidth(ctx: Ctx, ifc: Ifc, line: Line, start: number, end: number): 
   return total;
 }
 
+/** Character::TreatAsSpace: the characters text-justify auto expands after in Latin text (CheckJustificationOpportunity). */
+function treatAsSpace(cp: number): boolean {
+  return cp === SPACE || cp === TAB || cp === LINE_FEED || cp === NO_BREAK_SPACE;
+}
+
+// css-text-3 §7.3 and §7.4 with text-align-last and text-justify at their initial auto, as Blink 145 justifies Latin text
+// (ApplyJustificationInternal, justification_utils.cc 398-492; ShapeResultSpacing::ExpansionSetup and NextExpansion,
+// shape_result_spacing.cc 34-117; CheckJustificationOpportunity, justification_opportunity.cc 35-123). Every line but the last and
+// one ending in a forced break expands when it has free space: each space or no-break space in its visible content is one
+// opportunity after it; the free space in 16.16 (InlineLayoutUnit) divided by the count, truncated, goes to each opportunity in
+// logical order and the last takes what is left. A line without an opportunity, or without free space, is start-aligned.
+function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, line: Line, last: boolean, available: LU): Justified | null {
+  if (box.style.textAlign !== 'justify' || last || line.forced) return null;
+  const free = sub(available, spanWidth(ctx, ifc, line, line.start, line.visibleEnd));
+  if (free <= 0) return null;
+  let count = 0;
+  let first = -1;
+  let final = -1;
+  for (let i = line.start; i < line.visibleEnd; i++) {
+    const it = ifc.items[i] as Item;
+    if (it.kind !== 'char') continue;
+    if (first < 0) first = i;
+    final = i;
+    if (it.cp === TAB || it.cp === LINE_FEED) unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify on a line holding a preserved tab or line feed is not proven against Chrome');
+    if (treatAsSpace(it.cp)) count++;
+  }
+  if (first < 0) return null;
+  // Blink counts an opportunity at a line's edge differently from where it spends it (allows_leading_expansion and
+  // allows_trailing_expansion false); collapsible white space never puts one there, and no fixture measures one.
+  if (treatAsSpace((ifc.items[first] as Item).cp) || treatAsSpace((ifc.items[final] as Item).cp)) unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify on a line that starts or ends with a space Chrome keeps is not proven against Chrome');
+  if ((ifc.items[final] as Item).cp === SOFT_HYPHEN) unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify on a hyphenated line is not proven against Chrome');
+  if (count === 0) return null;
+  const total = free * 1024;
+  const each = Math.floor(total / count);
+  const expansions: number[] = [];
+  let seen = 0;
+  for (let i = line.start; i < line.visibleEnd; i++) {
+    const it = ifc.items[i] as Item;
+    if (it.kind === 'char' && treatAsSpace(it.cp)) {
+      seen++;
+      expansions.push(seen === count ? total - (count - 1) * each : each);
+    } else expansions.push(0);
+  }
+  const runs = ifc.shaped ? shapedJustifiedRuns(line, expansions) : ahemJustifiedRuns(box, ifc, line, expansions);
+  return { runs, expansions };
+}
+
+/**
+ * Ahem runs after expansion: each glyph's 16.16 advance (its whole ems times the instance size, which must be exact in 16.16) and
+ * the expansions after it summed exactly, as float, then LayoutUnit::FromFloatCeil (ShapeResult::SnappedWidth).
+ */
+function ahemJustifiedRuns(box: LayoutBox, ifc: Ifc, line: Line, expansions: readonly number[]): JustifiedRun[] {
+  const runs: JustifiedRun[] = [];
+  let i = line.start;
+  while (i < line.visibleEnd) {
+    const it = ifc.items[i] as Item;
+    if (it.kind !== 'char') {
+      i++;
+      continue;
+    }
+    const from = i;
+    const t = ifc.leaves[it.leaf] as TextLeaf;
+    const em = Math.fround(platformFontSize(t.font.size)) * 65536;
+    if (!Number.isInteger(em)) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify needs ${t.id}'s glyph advance exact in 16.16, and ${platformFontSize(t.font.size)}px is not`);
+    let raw = 0;
+    while (i < line.visibleEnd && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) {
+      const k = coveredIndex((ifc.items[i] as Item).cp);
+      const units = k < 0 ? undefined : AHEM_FONT_DATA.advances[k];
+      if (units === undefined) unsupported('text-glyph', t.id, 'css-fonts-4 §5', `U+${(ifc.items[i] as Item).cp.toString(16).toUpperCase()} is not an Ahem glyph`);
+      raw = raw + (units / AHEM_FONT_DATA.unitsPerEm) * em + (expansions[i - line.start] as number);
+      i++;
+    }
+    runs.push({ from, to: i, width: fromPxCeil(inlineToFloat(raw)) });
+  }
+  return runs;
+}
+
+/** Real-font runs after expansion: each text result's view without its hanging space, with the expansions (justifiedViewWidth). */
+function shapedJustifiedRuns(line: Line, expansions: readonly number[]): JustifiedRun[] {
+  const runs: JustifiedRun[] = [];
+  for (const p of line.pieces) {
+    if (p.from < line.start || p.visibleTo > line.visibleEnd) throw new Error(`the text result [${p.from}, ${p.to}) is outside its line`);
+    const view = p.visibleTo < p.to ? subView(p.view, p.offset, p.offset + (p.visibleTo - p.from)) : p.view;
+    const own: number[] = [];
+    for (let i = p.from; i < p.visibleTo; i++) own.push(expansions[i - line.start] as number);
+    runs.push({ from: p.from, to: p.visibleTo, width: justifiedViewWidth(p.item, view, p.offset, own) });
+  }
+  return runs;
+}
+
+/** The inline size of items [start, end) of a justified line: its runs that start there, each whole. */
+function justifiedSpan(j: Justified, start: number, end: number): LU {
+  let total = ZERO;
+  for (const r of j.runs) {
+    if (r.from < start || r.from >= end) continue;
+    if (end < r.to) throw new Error(`a span of items [${start}, ${end}) cuts the justified run [${r.from}, ${r.to})`);
+    total = add(total, r.width);
+  }
+  return total;
+}
+
+/** LinePiece.shifts of char items [from, to) of a line: the expansions before each code point in the piece, in px. */
+function shiftsOf(line: Line, from: number, to: number): number[] {
+  const out: number[] = [];
+  if (line.justified === null) return out;
+  let raw = 0;
+  for (let i = from; i < to; i++) {
+    out.push(raw / 65536);
+    raw = raw + (line.justified.expansions[i - line.start] as number);
+  }
+  return out;
+}
+
 // css-text-3 §7.1 (Blink LineOffsetForTextAlign): the line-left offset of a line with free space free. start and end map through
 // the box's direction to left and right; center takes LayoutUnit / 2 from the left. A line wider than the box is start-aligned,
 // so it overflows to the right in ltr and to the left in rtl.
 function alignOffset(ctx: Ctx, box: LayoutBox, free: LU): LU {
-  const align = box.style.textAlign;
-  if (align === 'justify') unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify is not yet proven against Chrome');
+  // A line justify does not expand (the last line, a line ending in a forced break, a full line or one without an expansion
+  // opportunity) is start-aligned (Blink ApplyTextAlign, inline_layout_algorithm.cc 902-928, with text-align-last auto).
+  const align = box.style.textAlign === 'justify' ? 'start' : box.style.textAlign;
   const rtl = directionOf(ctx, box) === 'rtl';
   if (free <= 0) return rtl ? free : ZERO;
   const physical = align === 'start' ? (rtl ? 'right' : 'left') : align === 'end' ? (rtl ? 'left' : 'right') : align;
@@ -1047,12 +1196,16 @@ export function placeLines(ctx: Ctx, box: LayoutBox, available: LU): PlacedLine[
 }
 
 export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): PlacedLine[] {
-  const lines = ifc.shaped ? breakShapedLines(ctx, box, ifc, available) : breakLines(ctx, ifc, available);
+  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available) : breakLines(ctx, ifc, available);
   const rtl = directionOf(ctx, box) === 'rtl';
   const out: PlacedLine[] = [];
   let top = ZERO;
-  for (const line of lines) {
-    const offset = alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, line, line.start, line.visibleEnd)));
+  for (let n = 0; n < broken.length; n++) {
+    const unjustified = broken[n] as Line;
+    const justified = justifyLine(ctx, box, ifc, unjustified, n === broken.length - 1, available);
+    const line: Line = justified === null ? unjustified : { start: unjustified.start, end: unjustified.end, visibleEnd: unjustified.visibleEnd, pieces: unjustified.pieces, forced: unjustified.forced, justified };
+    // A justified line starts at its line-left edge in either direction (ApplyJustification returns inset / 2, zero outside ruby).
+    const offset = justified === null ? alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, line, line.start, line.visibleEnd))) : ZERO;
     const on: number[] = [];
     for (let b = 0; b < ifc.boxes.length; b++) if (boxOnLine(ifc, b, line.start, line.end)) on.push(b);
     // CSS2 §10.8.1 with baseline alignment: the strut and every inline box on the line add their ascent and descent with their
@@ -1084,7 +1237,7 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       const m = fontMetricsOf(ctx, t.id, t.font);
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
       const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
-      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: spanWidth(ctx, ifc, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });
+      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: spanWidth(ctx, ifc, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: shiftsOf(line, from, i) });
     }
     // A <br>'s content area is its parent box's (Blink places the control item with the parent's text top and height).
     const breaks: number[] = [];

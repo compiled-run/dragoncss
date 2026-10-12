@@ -40,6 +40,7 @@ import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
+import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
@@ -141,6 +142,7 @@ export const GROUPS = {
   'sizing-ratio': SIZING,
   states: STATES,
   'text-calibration': TEXT_CALIBRATION,
+  'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,
   'text-weight': TEXT_WEIGHT,
   transforms: TRANSFORMS,

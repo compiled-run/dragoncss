@@ -780,6 +780,9 @@ public final class DragonTree {
         // unitsPerEm, summed in float as textAdvanceAt does.
         let xLU = a.x - e[0] * lu
         let shown = Array(scalars[Int(piece.start)..<Int(piece.visibleEnd)])
+        // A justified line (text-align: justify) moves each glyph right by its code point's shift, the expansions before it.
+        let shifts = piece.shifts.items
+        func shift(_ c: Int) -> Double { return shifts.isEmpty ? 0 : shifts[c] }
         var glyphs: [CGGlyph] = []
         var xs: [Double] = []
         if bridge.shaped {
@@ -787,14 +790,14 @@ public final class DragonTree {
           guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) line \(k): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
           for (j, gid) in g.glyphs.items.enumerated() {
             glyphs.append(CGGlyph(dragonCheckedInt(gid, "\(id) glyph id")))
-            xs.append(xLU / lu + g.xs.items[j])
+            xs.append(xLU / lu + g.xs.items[j] + shift(dragonCheckedInt(g.chars.items[j], "\(id) glyph code point")))
           }
         } else {
           var pen: Float = 0
-          for sc in shown {
+          for (n, sc) in shown.enumerated() {
             let gid = bridge.glyph(Int(sc.value))
             glyphs.append(CGGlyph(gid))
-            xs.append(xLU / lu + Double(pen))
+            xs.append(xLU / lu + Double(pen) + shift(n))
             pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
           }
         }
@@ -1700,11 +1703,14 @@ class DragonTree(val context: Context) {
         val text = leafText.substring(from, utf16(piece.visibleEnd.toInt()))
         val glyphs: IntArray
         val xs: DoubleArray
+        // A justified line (text-align: justify) moves each glyph right by its code point's shift, the expansions before it.
+        val shifts = piece.shifts
+        fun shift(c: Int): Double = if (shifts.isEmpty()) 0.0 else shifts[c]
         if (bridge.shaped) {
           val pg = shaping_pieceGlyphs(measurer, leafText, inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
           val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " line " + k + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
           glyphs = IntArray(g.glyphs.size) { dragonCheckedInt(g.glyphs[it], id + " glyph id") }
-          xs = DoubleArray(g.xs.size) { xLU / lu + g.xs[it] }
+          xs = DoubleArray(g.xs.size) { xLU / lu + g.xs[it] + shift(dragonCheckedInt(g.chars[it], id + " glyph code point")) }
         } else {
           val cps = text.codePoints().toArray()
           glyphs = IntArray(cps.size)
@@ -1713,7 +1719,7 @@ class DragonTree(val context: Context) {
           for ((n, cp) in cps.withIndex()) {
             val gid = bridge.glyph(cp)
             glyphs[n] = gid
-            xs[n] = xLU / lu + pen.toDouble()
+            xs[n] = xLU / lu + pen.toDouble() + shift(n)
             pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
           }
         }

@@ -44,6 +44,8 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/grid/grid_track_collection.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_track_sizing_algorithm.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/inline_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/justification_utils.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_utils.cc`: Copyright 2018 The Chromium Authors
@@ -64,6 +66,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/han_kerning.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/run_segmenter.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/platform/fonts/shaping/shape_result_spacing.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result_view.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/shaping_line_breaker.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/skia/skia_text_metrics.cc`: Copyright 2016 The Chromium Authors
@@ -73,6 +76,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/geometry/contoured_rect.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/physical_size.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/platform/text/justification_opportunity.cc`: Copyright 2025 The Chromium Authors
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors
 - `ui/gfx/geometry/quad_f.cc`: Copyright 2012 The Chromium Authors

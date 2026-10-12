@@ -308,7 +308,9 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
         // TXT1a-2: a real face's glyph boxes are HarfBuzz's extents of the shaped line (text-shaper-host.ts shapedInk), from its left.
         const x0 = line.rect.x / 64;
         const ink = shapedInk(css.family, size, String.fromCodePoint(...line.cps));
-        const glyphs: GlyphBox[] = ink.flatMap((g) => (g === null ? [] : [{ left: x0 + g.left, right: x0 + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
+        // A justified line moves each glyph by its cluster's code point shift (the line's code points are in the BMP).
+        const shift = (cluster: number): number => (line.shifts.length === 0 ? 0 : (line.shifts[cluster] as number));
+        const glyphs: GlyphBox[] = ink.flatMap((g) => (g === null ? [] : [{ left: x0 + shift(g.cluster) + g.left, right: x0 + shift(g.cluster) + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
         out.push({ id: `${t.id}:line${j}`, glyphs });
         continue;
       }
@@ -322,7 +324,7 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
       for (const [n, cp] of line.cps.entries()) {
         if (coveredIndex(cp) < 0) throw new Error(`${t.id}: U+${cp.toString(16)} is not covered by Ahem`);
         const b = boxes.get(cp);
-        const x = line.rect.x / 64 + (shaped.xs[n] as number);
+        const x = line.rect.x / 64 + (shaped.xs[n] as number) + (line.shifts.length === 0 ? 0 : (line.shifts[n] as number));
         if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem, right: x + (b.xMax * size) / upem, top: baseline - (b.yMax * size) / upem, bottom: baseline - (b.yMin * size) / upem });
       }
       out.push({ id: `${t.id}:line${j}`, glyphs });
