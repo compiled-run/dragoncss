@@ -1,6 +1,7 @@
 // T154 (css-ui-4 §6.1): user-select is a longhand appended after visibility, inherited as Blink declares it, with no layout or
-// paint aspect. Chrome 145 parses auto, text, none and all (contain only under a test-status flag); web compiles all four, and
-// iOS and Android compile an author's user-select only at none until package P6c (T077) builds selection.
+// paint aspect. Chrome 145 parses auto, text, none and all (contain only under a test-status flag). Unenforced, web compiles all
+// four, and iOS and Android refuse every author value but none until package P6c (T077) builds selection; the profiles admit none
+// only until a web-only fixture proves the rest on web (fixture-groups/selection.ts).
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
