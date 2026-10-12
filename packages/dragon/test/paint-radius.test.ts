@@ -210,12 +210,12 @@ describe('border-radius: lowering and emission', () => {
   });
 
   it('both image stages clip the bitmap to the padding-edge curve of a rounded img (the roundedPath hook)', () => {
-    const swift = IMAGE_EMITTER.native.uikit.file;
+    const swift = IMAGE_EMITTER.native.uikit.file ?? '';
     const stage = swift.slice(swift.indexOf('public func dragonPaintImageStage('));
     const clip = stage.indexOf('  if let curve = dragonRoundedPath(v, shape, inner: true) {\n    ctx.addPath(curve)\n    ctx.clip()\n  }\n');
     expect(clip).toBeGreaterThan(stage.indexOf('ctx.clip(to: CGRect('));
     expect(clip).toBeLessThan(stage.indexOf('.draw(in: CGRect('));
-    const kotlin = IMAGE_EMITTER.native['android-views'].file;
+    const kotlin = IMAGE_EMITTER.native['android-views'].file ?? '';
     const at = kotlin.indexOf('fun dragonPaintImageStage(');
     const k = kotlin.slice(at, kotlin.indexOf('\n}\n', at));
     expect(k).toContain('val curve = dragonRoundedPath(v, shape, true)');
