@@ -16,8 +16,9 @@ import { environmentsOf, FIXTURES } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
-// Later fixtures that hold replaced leaves by design are not earlier cases: OVFL's overflow-replaced (images in scroll containers).
-const LATER_WITH_REPLACED: readonly string[] = ['overflow-replaced'];
+// Later fixtures that hold replaced leaves by design are not earlier cases: OVFL's overflow-replaced (images in scroll containers)
+// and PNT1's radius-replaced (rounded images).
+const LATER_WITH_REPLACED: readonly string[] = ['overflow-replaced', 'radius-replaced'];
 const replacedIds = new Set([...REPLACED.map((f) => f.id), ...LATER_WITH_REPLACED]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !replacedIds.has(f.id));
 

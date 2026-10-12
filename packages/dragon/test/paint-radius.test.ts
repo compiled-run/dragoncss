@@ -8,6 +8,7 @@ import type { Targets } from '../src/types.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
+import { IMAGE_EMITTER } from '../src/emit/paint/image.ts';
 import { RADIUS_EMITTER } from '../src/emit/paint/radius.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
 
@@ -121,18 +122,36 @@ describe('border-radius: refusals', () => {
     }
   });
 
-  it('a rounded html, body or replaced element is refused for ios and android at the radius declaration, and not for web', () => {
+  it('a rounded html, body or iframe, and a rounded img with padding or another overflow, are refused for ios and android at the radius declaration, and not for web', () => {
     const targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
-    for (const [tag, css, says] of [['html', 'html { border-radius: 8px; }', 'propagates to the canvas'], ['body', 'body { border-radius: 8px; }', 'propagates to the canvas'], ['img', '.i { width: 20px; height: 20px; border-radius: 8px; }', 'draws replaced content square']] as const) {
-      const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'i', ['i']), tag: 'img', attributes: [] } as never]);
+    const cases = [
+      ['html', 'img', 'html { border-radius: 8px; }', 'propagates to the canvas'],
+      ['body', 'img', 'body { border-radius: 8px; }', 'propagates to the canvas'],
+      ['iframe', 'iframe', '.i { width: 20px; height: 20px; border-radius: 8px; }', 'draws a web view square (a rounded iframe is not supported yet)'],
+      ['img padding', 'img', '.i { width: 20px; height: 20px; padding: 0 0 2px; border-radius: 8px; }', 'has padding-bottom: 2px; ios clips a rounded image only at its padding edge'],
+      ['img padding %', 'img', '.i { width: 20px; height: 20px; padding-left: 1%; border-radius: 8px; }', 'has padding-left: 1%;'],
+      ['img overflow visible', 'img', '.i { width: 20px; height: 20px; overflow: visible; border-radius: 8px; }', 'rounds its corners with overflow: visible, under which Chrome does not clip the image round'],
+      ['img overflow-y hidden', 'img', '.i { width: 20px; height: 20px; overflow-y: hidden; border-radius: 8px; }', 'rounds its corners with overflow: hidden, under which Chrome does not clip the image round'],
+    ] as const;
+    for (const [name, tag, css, says] of cases) {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'i', ['i']), tag, attributes: [] } as never]);
       const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
       const refused = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('rounds its corners'));
-      expect(refused.map((d) => d.target).sort(), tag).toEqual(['android', 'ios']);
+      expect(refused.map((d) => d.target).sort(), name).toEqual(['android', 'ios']);
       for (const d of refused) {
-        expect(spanTextOf(input, d), tag).toBe('8px');
-        expect(d.message, tag).toContain(says);
+        expect(spanTextOf(input, d), name).toBe('8px');
+        expect(d.message, name).toContain(says.replace('ios', d.target ?? ''));
       }
       expectCatalogued(refused);
+    }
+  });
+
+  it('a rounded img with no padding under its default overflow: clip compiles on every target, with and without a border', () => {
+    const targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+    for (const css of ['.i { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }', '.i { width: 20px; height: 12px; border: 2px solid red; border-radius: 4px 8px 0 6px / 2px 6px 0 9px; object-fit: contain; }', '.i { width: 20px; height: 20px; padding: 0; overflow: clip; border-radius: 3px; }']) {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'i', ['i']), tag: 'img', attributes: [] } as never]);
+      const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+      expect(c.diagnostics.filter((d) => d.message.includes('rounds its corners')), css).toEqual([]);
     }
   });
 
@@ -188,5 +207,19 @@ describe('border-radius: lowering and emission', () => {
     const applied = RADIUS_EMITTER.applied({ paint: { roundedShape } } as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box, size: [200, 80], fontSize: null, replaced: null, scroll: null });
     // 120 + 120 device px over an 80 px side: the §5.5 factor 80 / 240 scales every radius to 40.
     expect(applied).toEqual([40, 40, 40, 40, 40, 40, 40, 40]);
+  });
+
+  it('both image stages clip the bitmap to the padding-edge curve of a rounded img (the roundedPath hook)', () => {
+    const swift = IMAGE_EMITTER.native.uikit.file;
+    const stage = swift.slice(swift.indexOf('public func dragonPaintImageStage('));
+    const clip = stage.indexOf('  if let curve = dragonRoundedPath(v, shape, inner: true) {\n    ctx.addPath(curve)\n    ctx.clip()\n  }\n');
+    expect(clip).toBeGreaterThan(stage.indexOf('ctx.clip(to: CGRect('));
+    expect(clip).toBeLessThan(stage.indexOf('.draw(in: CGRect('));
+    const kotlin = IMAGE_EMITTER.native['android-views'].file;
+    const at = kotlin.indexOf('fun dragonPaintImageStage(');
+    const k = kotlin.slice(at, kotlin.indexOf('\n}\n', at));
+    expect(k).toContain('val curve = dragonRoundedPath(v, shape, true)');
+    // Each draw (direct and through the layer's recording) clips to the curve between the rect clip and the bitmap.
+    expect(k.match(/clipRect\([^\n]+\)\n {4}if \(curve != null\) (canvas|inner)\.clipPath\(curve\)\n {4}\1\.drawBitmap\(image, null, dest, paint\)/g)?.length).toBe(2);
   });
 });
