@@ -732,6 +732,8 @@
     "shadow-inset-rtl": "border-radius on round, both, circle: hit testing through rounded corners is not modelled yet (PNT1)",
     "calib-shadow-blur": "border-radius on r4, r12, o12: hit testing through rounded corners is not modelled yet (PNT1)",
     "calib-shadow-blur-rtl": "border-radius on r4, r12, o12: hit testing through rounded corners is not modelled yet (PNT1)",
+    "text-justify-ahem": "s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "text-justify-ahem-rtl": "s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "transform-rotate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-scale": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-translate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",

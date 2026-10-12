@@ -4,7 +4,7 @@ public final class InteractionError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s585, detail))
+    super.init(message: jsConcat(S.s590, detail))
   }
 }
 
@@ -110,27 +110,27 @@ public func rtInteraction_checkInteractionTables(_ t: InteractionTables, _ state
   let n: Double = jsLength(t.parent)
   // ts: packages/layout/src/rt-interaction.ts:116
   if (n == 0.0) {
-    throw try InteractionError(S.s799)
+    throw try InteractionError(S.s808)
   }
   // ts: packages/layout/src/rt-interaction.ts:117
   if (((t.hoverValues < 1.0) || (t.activeValues < 1.0)) || (t.focusValues < 1.0)) {
-    throw try InteractionError(S.s519)
+    throw try InteractionError(S.s524)
   }
   // ts: packages/layout/src/rt-interaction.ts:118
   if (jsLength(t.combos) != ((t.hoverValues * t.activeValues) * t.focusValues)) {
-    throw try InteractionError(jsConcat(jsNumberToString(jsLength(t.combos)), S.s20, jsNumberToString(t.hoverValues), S.s91, jsNumberToString(t.activeValues), S.s91, jsNumberToString(t.focusValues)))
+    throw try InteractionError(jsConcat(jsNumberToString(jsLength(t.combos)), S.s20, jsNumberToString(t.hoverValues), S.s92, jsNumberToString(t.activeValues), S.s92, jsNumberToString(t.focusValues)))
   }
   let lengths: JsArray<Double> = JsArray<Double>([jsLength(t.focusable), jsLength(t.touchConsumesTap), jsLength(t.keyboardInput), jsLength(t.chainOf), jsLength(t.activeChainOf), jsLength(t.pointerFocusOf), jsLength(t.keyboardFocusOf), jsLength(t.forcedHoverOf), jsLength(t.forcedActiveOf), jsLength(t.forcedFocusOf), jsLength(t.forcedFocusVisibleOf)])
   // ts: packages/layout/src/rt-interaction.ts:120
   do {
-    let _a227 = lengths
-    var _i227 = 0
-    while _i227 < _a227.items.count {
-      let l: Double = _a227.items[_i227]
-      _i227 += 1
+    let _a228 = lengths
+    var _i228 = 0
+    while _i228 < _a228.items.count {
+      let l: Double = _a228.items[_i228]
+      _i228 += 1
       // ts: packages/layout/src/rt-interaction.ts:120
       if (l != n) {
-        throw try InteractionError(jsConcat(S.s398, jsNumberToString(l), S.s22, jsNumberToString(n), S.s21))
+        throw try InteractionError(jsConcat(S.s403, jsNumberToString(l), S.s22, jsNumberToString(n), S.s21))
       }
     }
   }
@@ -141,17 +141,17 @@ public func rtInteraction_checkInteractionTables(_ t: InteractionTables, _ state
       let p: Double = try jsUnwrap(jsAt(t.parent, i))
       // ts: packages/layout/src/rt-interaction.ts:123
       if ((i == 0.0) ? (p != -1.0) : (!((p >= 0.0) && (p < i)))) {
-        throw try InteractionError(jsConcat(S.s508, jsNumberToString(i), S.s34, jsNumberToString(p), S.s140))
+        throw try InteractionError(jsConcat(S.s513, jsNumberToString(i), S.s34, jsNumberToString(p), S.s145))
       }
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.chainOf, i)), 0.0, t.hoverValues, jsConcat(S.s448, jsNumberToString(i), S.s382))
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.activeChainOf, i)), 0.0, t.activeValues, jsConcat(S.s406, jsNumberToString(i), S.s382))
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.pointerFocusOf, i)), 0.0, t.focusValues, jsConcat(S.s711, jsNumberToString(i), S.s382))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.chainOf, i)), 0.0, t.hoverValues, jsConcat(S.s453, jsNumberToString(i), S.s387))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.activeChainOf, i)), 0.0, t.activeValues, jsConcat(S.s411, jsNumberToString(i), S.s387))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.pointerFocusOf, i)), 0.0, t.focusValues, jsConcat(S.s716, jsNumberToString(i), S.s387))
       let focusable: Bool = try jsUnwrap(jsAt(t.focusable, i))
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.keyboardFocusOf, i)), (focusable ? 0.0 : -1.0), (focusable ? t.focusValues : 0.0), jsConcat(S.s596, jsNumberToString(i), S.s382))
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedHoverOf, i)), -1.0, states, jsConcat(S.s549, jsNumberToString(i), S.s382))
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedActiveOf, i)), -1.0, states, jsConcat(S.s546, jsNumberToString(i), S.s382))
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedFocusOf, i)), -1.0, states, jsConcat(S.s547, jsNumberToString(i), S.s382))
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedFocusVisibleOf, i)), -1.0, states, jsConcat(S.s548, jsNumberToString(i), S.s382))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.keyboardFocusOf, i)), (focusable ? 0.0 : -1.0), (focusable ? t.focusValues : 0.0), jsConcat(S.s601, jsNumberToString(i), S.s387))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedHoverOf, i)), -1.0, states, jsConcat(S.s554, jsNumberToString(i), S.s387))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedActiveOf, i)), -1.0, states, jsConcat(S.s551, jsNumberToString(i), S.s387))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedFocusOf, i)), -1.0, states, jsConcat(S.s552, jsNumberToString(i), S.s387))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedFocusVisibleOf, i)), -1.0, states, jsConcat(S.s553, jsNumberToString(i), S.s387))
       i += 1.0
     }
   }
@@ -159,13 +159,13 @@ public func rtInteraction_checkInteractionTables(_ t: InteractionTables, _ state
   do {
     var c: Double = 0.0
     while (c < jsLength(t.combos)) {
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.combos, c)), -1.0, states, jsConcat(S.s460, jsNumberToString(c), S.s382))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.combos, c)), -1.0, states, jsConcat(S.s465, jsNumberToString(c), S.s387))
       c += 1.0
     }
   }
   // ts: packages/layout/src/rt-interaction.ts:135
   if try (jsUnwrap(jsAt(t.combos, 0.0)) != -1.0) {
-    throw try InteractionError(S.s788)
+    throw try InteractionError(S.s797)
   }
 }
 
@@ -173,7 +173,7 @@ public func rtInteraction_checkInteractionTables(_ t: InteractionTables, _ state
 public func rtInteraction_inRange(_ v: Double, _ lo: Double, _ hi: Double, _ what: JsString) throws -> Void {
   // ts: packages/layout/src/rt-interaction.ts:139
   if (!((jsIsInteger(v) && (v >= lo)) && (v < hi))) {
-    throw try InteractionError(jsConcat(what, S.s40, jsNumberToString(v), S.s101, jsNumberToString(lo), S.s99, jsNumberToString(hi), S.s93))
+    throw try InteractionError(jsConcat(what, S.s40, jsNumberToString(v), S.s106, jsNumberToString(lo), S.s104, jsNumberToString(hi), S.s95))
   }
 }
 
@@ -181,7 +181,7 @@ public func rtInteraction_inRange(_ v: Double, _ lo: Double, _ hi: Double, _ wha
 public func rtInteraction_element(_ t: InteractionTables, _ e: Double, _ what: JsString) throws -> Double {
   // ts: packages/layout/src/rt-interaction.ts:143
   if (!((jsIsInteger(e) && (e >= -1.0)) && (e < jsLength(t.parent)))) {
-    throw try InteractionError(jsConcat(what, S.s129, jsNumberToString(e)))
+    throw try InteractionError(jsConcat(what, S.s134, jsNumberToString(e)))
   }
   return e
 }
@@ -295,7 +295,7 @@ public func rtInteraction_keyboardFocused(_ t: InteractionTables, _ s: Interacti
   let f: Double = try rtInteraction_element(t, e, S.s_keyboardFocused)
   // ts: packages/layout/src/rt-interaction.ts:237
   if try ((f >= 0.0) && (!jsUnwrap(jsAt(t.focusable, f)))) {
-    throw try InteractionError(jsConcat(S.s598, jsNumberToString(f), S.s54))
+    throw try InteractionError(jsConcat(S.s603, jsNumberToString(f), S.s55))
   }
   return InteractionPointer(s.hover, s.active, f, (f >= 0.0), true, s.pointerIn, s.pressing, s.exitPending, s.forced, s.forcedElement)
 }
@@ -326,7 +326,7 @@ public func rtInteraction_remapped(_ t: InteractionTables, _ remap: JsArray<Doub
   }
   // ts: packages/layout/src/rt-interaction.ts:261
   if (e >= jsLength(remap)) {
-    throw try InteractionError(jsConcat(S.s723, jsNumberToString(e), S.s32))
+    throw try InteractionError(jsConcat(S.s729, jsNumberToString(e), S.s32))
   }
   return try rtInteraction_element(t, jsUnwrap(jsAt(remap, e)), S.s_remapPointer)
 }
@@ -340,7 +340,7 @@ public func rtInteraction_forcePseudo(_ t: InteractionTables, _ s: InteractionPo
   }
   // ts: packages/layout/src/rt-interaction.ts:269
   if (f < 0.0) {
-    throw try InteractionError(jsConcat(S.s545, kind, S.s70))
+    throw try InteractionError(jsConcat(S.s550, kind, S.s71))
   }
   return InteractionPointer(s.hover, s.active, s.focused, s.focusVisible, s.keyboard, s.pointerIn, s.pressing, s.exitPending, kind, f)
 }
@@ -419,7 +419,7 @@ public func rtInteraction_interactionCombo(_ t: InteractionTables, _ s: Interact
   }
   // ts: packages/layout/src/rt-interaction.ts:316
   if (f < 0.0) {
-    throw try InteractionError(jsConcat(S.s508, jsNumberToString(s.focused), S.s47))
+    throw try InteractionError(jsConcat(S.s513, jsNumberToString(s.focused), S.s47))
   }
   return ((((h * t.activeValues) + a) * t.focusValues) + f)
 }
