@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
-import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
+import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, fromCssPx, layout, inlineLeaves, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
@@ -17,8 +17,18 @@ import { applyTransformTwin } from './transform-capture.ts';
 
 export const BREAK_MISMATCH = 'break-mismatch';
 
-/** One line of a text node as the engine breaks it: UTF-16 [start, end), the shown code points, the absolute line rect and its snapped edges. */
-export type EngineLine = { readonly start: number; readonly end: number; readonly cps: readonly number[]; readonly rect: LayoutRect; readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } };
+/**
+ * One line of a text node as the engine breaks it: UTF-16 [start, end), the painted code points, the absolute line rect and its
+ * snapped edges, and the ellipsis that follows the text on a truncated line (TXT2-f): its absolute x in LU, code points and font.
+ */
+export type EngineLine = {
+  readonly start: number;
+  readonly end: number;
+  readonly cps: readonly number[];
+  readonly rect: LayoutRect;
+  readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+  readonly ellipsis: { readonly x: number; readonly cps: readonly number[]; readonly font: TextFont } | null;
+};
 export type EngineText = { readonly id: string; readonly container: string; readonly font: TextLeaf['font']; readonly lines: readonly EngineLine[] };
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
@@ -99,17 +109,22 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     const placed: readonly PlacedLine[] = placeLines(ctx, p, contentWidth(pId));
     const pieces = boxes.filter((b) => isLine(b) && b.parent === r.id);
     const own: EngineLine[] = [];
+    // TXT2-f: a truncated piece has two fragments on its line, its whole run and then its painted part (inline.ts collectFragments).
+    let k = 0;
     for (const line of placed) {
       const mine = line.pieces.find((q) => q.leaf === li);
       if (mine === undefined) continue;
-      const piece = pieces[own.length];
-      if (piece === undefined) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
+      const piece = pieces[k];
+      k += mine.truncated ? 2 : 1;
+      if (piece === undefined || k > pieces.length) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
       const a = abs.get(piece.id);
       const e = snapped.get(piece.id);
       if (a === undefined || e === undefined) throw new Error(`no absolute rect for ${piece.id}`);
-      own.push({ start: utf16(mine.start), end: utf16(mine.end), cps: scalars.slice(mine.start, mine.visibleEnd).map((ch) => ch.codePointAt(0) as number), rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
+      const el = line.ellipsis !== null && line.ellipsis.leaf === li ? line.ellipsis : null;
+      const ellipsis = el === null ? null : { x: a.x + el.x - mine.x, cps: [...el.text].map((ch) => ch.codePointAt(0) as number), font: el.font };
+      own.push({ start: utf16(mine.start), end: utf16(mine.end), cps: scalars.slice(mine.start, mine.paintEnd).map((ch) => ch.codePointAt(0) as number), rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, ellipsis });
     }
-    if (own.length !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${own.length} lines, its layout ${pieces.length}`);
+    if (k !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${k} fragments, its layout ${pieces.length}`);
     out.push({ id: r.id, container: pId, font: leaf.font, lines: own });
   }
   return out;
@@ -329,7 +344,8 @@ export function checkDumpBreaks(dump: NativeDump, v: BreakVector): BreakResult {
       problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: the dump has no text node for the break vector` });
       continue;
     }
-    const got = n.lines.map((l) => [l.start, l.end] as const);
+    // TXT2-f: the two fragments of a truncated text on one line (same offsets, same top) are one line break-wise.
+    const got = n.lines.filter((l, j) => j === 0 || !(l.start === n.lines[j - 1]?.start && l.end === n.lines[j - 1]?.end && l.deviceEdges.top === n.lines[j - 1]?.deviceEdges.top)).map((l) => [l.start, l.end] as const);
     compared += t.lines.length;
     if (!same(got as (readonly [number, number])[], t.lines)) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: device lines ${JSON.stringify(got)}, break vector ${JSON.stringify(t.lines)}` });
   }

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import type { LayoutBox, LayoutRect } from '@dragon/layout';
-import { AHEM_FONT_DATA, coveredIndex, LU_PER_PX, pieceGlyphs, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
+import { AHEM_FONT_DATA, coveredCodePoints, coveredIndex, ELLIPSIS, LU_PER_PX, pieceGlyphs, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from './chrome.ts';
@@ -246,8 +246,8 @@ export function ahemGlyphBoxes(): ReadonlyMap<number, FontBox | null> {
   };
   const offset = (g: number): number => (longLoca ? f.readUInt32BE(loca + 4 * g) : 2 * f.readUInt16BE(loca + 2 * g));
   const out = new Map<number, FontBox | null>();
-  for (let cp = 0; cp <= 0x200b; cp++) {
-    if (coveredIndex(cp) < 0) continue;
+  // TXT2-f: U+2026, the ellipsis text-overflow draws, beside the covered code points.
+  for (const cp of [...coveredCodePoints(), ELLIPSIS]) {
     const g = glyphOf(cp);
     const o = offset(g);
     const len = offset(g + 1) - o;
@@ -307,9 +307,10 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
       if (css.family !== 'Ahem') {
         // TXT1a-2: a real face's glyph boxes are HarfBuzz's extents of the shaped line (text-shaper-host.ts shapedInk), from its left.
         const x0 = line.rect.x / 64;
-        const ink = shapedInk(css.family, size, String.fromCodePoint(...line.cps));
-        const glyphs: GlyphBox[] = ink.flatMap((g) => (g === null ? [] : [{ left: x0 + g.left, right: x0 + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
-        out.push({ id: `${t.id}:line${j}`, glyphs });
+        const inkAt = (x: number, ink: ReturnType<typeof shapedInk>): GlyphBox[] => ink.flatMap((g) => (g === null ? [] : [{ left: x + g.left, right: x + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
+        const e = line.ellipsis;
+        const dots = e === null ? [] : inkAt(e.x / 64, shapedInk(css.family, platformFontSize(e.font.size), String.fromCodePoint(...e.cps)));
+        out.push({ id: `${t.id}:line${j}`, glyphs: [...inkAt(x0, shapedInk(css.family, size, String.fromCodePoint(...line.cps))), ...dots] });
         continue;
       }
       // The piece's code points: the leaf's code points before its UTF-16 start, then the shown ones.
@@ -324,6 +325,19 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
         const b = boxes.get(cp);
         const x = line.rect.x / 64 + (shaped.xs[n] as number);
         if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem, right: x + (b.xMax * size) / upem, top: baseline - (b.yMax * size) / upem, bottom: baseline - (b.yMin * size) / upem });
+      }
+      // TXT2-f: the ellipsis glyphs after the painted text, in the line's font, on the same baseline.
+      const e = line.ellipsis;
+      if (e !== null) {
+        const dots = String.fromCodePoint(...e.cps);
+        const eSize = platformFontSize(e.font.size);
+        const eShaped = pieceGlyphs(m, dots, e.font, 0, e.cps.length);
+        if (!eShaped.ok) throw new Error(`${t.id} line ${j} ellipsis: ${eShaped.reason}`);
+        for (const [n, cp] of e.cps.entries()) {
+          const b = boxes.get(cp);
+          const x = e.x / 64 + (eShaped.xs[n] as number);
+          if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * eSize) / upem, right: x + (b.xMax * eSize) / upem, top: baseline - (b.yMax * eSize) / upem, bottom: baseline - (b.yMin * eSize) / upem });
+        }
       }
       out.push({ id: `${t.id}:line${j}`, glyphs });
     }
