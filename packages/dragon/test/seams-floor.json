@@ -94,7 +94,9 @@
     "list-style-type",
     "list-style-position",
     "list-style-image",
-    "vertical-align"
+    "vertical-align",
+    "float",
+    "clear"
   ],
   "shorthands": [
     "margin",
@@ -296,6 +298,8 @@
     "list-style-type",
     "list-style-position",
     "list-style-image",
-    "vertical-align"
+    "vertical-align",
+    "float",
+    "clear"
   ]
 }

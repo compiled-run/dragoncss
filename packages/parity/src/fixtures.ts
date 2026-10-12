@@ -20,6 +20,7 @@ import { FONTS } from './fixture-groups/fonts.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
+import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
@@ -41,7 +42,6 @@ import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
-import { VERTICAL_ALIGN } from './fixture-groups/vertical-align.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 
@@ -117,6 +117,7 @@ export const GROUPS = {
   gradients: GRADIENTS,
   grid: GRID,
   'inherit-contexts': INHERIT_CONTEXTS,
+  'inert-layout': INERT_LAYOUT,
   inline: INLINE,
   interaction: INTERACTION,
   'list-items': LIST_ITEMS,
@@ -139,7 +140,6 @@ export const GROUPS = {
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
   values: VALUES,
-  'vertical-align': VERTICAL_ALIGN,
   'writing-mode': WRITING_MODE,
 } as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
 

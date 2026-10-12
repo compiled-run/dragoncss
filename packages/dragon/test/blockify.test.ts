@@ -33,8 +33,8 @@ function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], chi
   return { kind: 'element', id, tag, classes: classes.map((name) => staticClass({ owner: DOC, sheet: 's', name }, origin)), attributes: [], children, origin };
 }
 
-const FONT = 'body { font-family: Ahem; } .f { display: flex; } .g { display: grid; } .ct { display: contents; } .ab { position: absolute; } .fx { position: fixed; } .rel { position: relative; } .ib { display: inline-block; } .if { display: inline-flex; } .it { display: inline-table; }';
-const displayOf = (tree: (r: SourceRef) => TreeNode[], id: string, faults: CompilerFaults = NO_FAULTS): string => {
+const FONT = 'body { font-family: Ahem; } .f { display: flex; } .g { display: grid; } .ct { display: contents; } .ab { position: absolute; } .fx { position: fixed; } .rel { position: relative; } .ib { display: inline-block; } .if { display: inline-flex; } .it { display: inline-table; } .fl { float: left; } .fs { float: inline-start; } .fn { float: none; } .hid { display: none; }';
+const displayOf = (tree: (r: SourceRef) => TreeNode[], id: string, faults: CompilerFaults = NO_FAULTS, property: Longhand = 'display'): string => {
   const diagnostics: Diagnostic[] = [];
   const rules = parseStylesheet(FONT, { source: SRC, start: 0, end: FONT.length }, { id: 'sheet', owner: DOC, scope: 'document' }, 0, diagnostics);
   expect(diagnostics).toEqual([]);
@@ -53,7 +53,7 @@ const displayOf = (tree: (r: SourceRef) => TreeNode[], id: string, faults: Compi
     }
     return null;
   };
-  return valueToString(((find(root) as ResolvedElement).props.get('display') as ResolvedValue).value);
+  return valueToString(((find(root) as ResolvedElement).props.get(property) as ResolvedValue).value);
 };
 const codes = (tree: (r: SourceRef) => TreeNode[], faults: CompilerFaults = NO_FAULTS) => project(faults).compile(inputFor(FONT, tree)).diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message.split(' makes ')[0]}`);
 
@@ -191,8 +191,18 @@ describe('blockification in the resolver', () => {
     expect(flexChildren(NO_FAULTS)).toEqual([{ box: 's', display: 'block', children: [{ text: 's:text0' }] }]);
     expect(flexChildren({ ...NO_FAULTS, blockifySkipped: true })).toEqual([{ box: 'c:anon0', display: 'block', children: [{ inline: 's', children: [{ text: 's:text0' }] }] }]);
   });
+  it('a float is blockified anywhere, even under display: none, and an absolutely positioned box\'s float computes to none (CSS2 §9.7)', () => {
+    expect(displayOf((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', ['fl'])])], 's')).toBe('block');
+    expect(displayOf((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', ['fs', 'if'])])], 's')).toBe('flex');
+    expect(displayOf((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', ['fn'])])], 's')).toBe('inline');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['hid'], [el(r, 's', 'span', ['fl'])])], 's')).toBe('block');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['f'], [el(r, 's', 'span', ['fl'])])], 's', NO_FAULTS, 'float')).toBe('left');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['rel'], [el(r, 's', 'span', ['ab', 'fl'])])], 's', NO_FAULTS, 'float')).toBe('none');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['rel'], [el(r, 's', 'span', ['fx', 'fs'])])], 's', NO_FAULTS, 'float')).toBe('none');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['rel'], [el(r, 's', 'span', ['rel', 'fl'])])], 's', NO_FAULTS, 'float')).toBe('left');
+  });
   it('a parent that was not blockified first is an error, not a silent in-flow child', () => {
-    const props = (display: string) => new Map<Longhand, ResolvedValue>([['display', { value: parseValueText('display', display), origin: 'author', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue], ['position', { value: parseValueText('position', 'static'), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue]]);
+    const props = (display: string) => new Map<Longhand, ResolvedValue>([['display', { value: parseValueText('display', display), origin: 'author', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue], ['position', { value: parseValueText('position', 'static'), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue], ['float', { value: parseValueText('float', 'none'), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue]]);
     expect(() => blockify(props('inline'), props('flex'), NO_FAULTS)).toThrow('blockify: the parent was not blockified first');
     const parent = props('inline flex');
     blockify(parent, null, NO_FAULTS);

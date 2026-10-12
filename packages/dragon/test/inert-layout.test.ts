@@ -1,5 +1,5 @@
-// vertical-align (css/properties/inline.ts): Chrome 145's grammar (Blink VerticalAlign::ParseSingleValue), an item longhand that is
-// not inherited, and a lowering that hands the engine the value only on an inline box, the one box that reads it (CSS2 §10.8.1).
+// vertical-align (css/properties/inline.ts), float and clear (css/properties/float.ts): non-inherited item longhands. vertical-align
+// takes Chrome 145's grammar, and its lowering hands the engine the value only on an inline box, the one box that reads it (CSS2 §10.8.1).
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { initialValue, type ResolvedElement, type ResolvedValue } from '../src/analysis/resolve.ts';
@@ -34,6 +34,17 @@ function element(display: string, va: CssValue): ResolvedElement {
     children: [],
   };
 }
+
+describe('float and clear', () => {
+  it('are non-inherited item longhands whose initial value is none', () => {
+    for (const p of ['float', 'clear'] as const) {
+      expect(LONGHANDS, p).toContain(p);
+      expect(INHERITED.has(p), p).toBe(false);
+      expect(PROPERTY_ROLE[p], p).toBe('item');
+      expect(initialValue(p, referenceDataset()), p).toEqual({ kind: 'keyword', value: 'none' });
+    }
+  });
+});
 
 describe('vertical-align', () => {
   it('is a non-inherited item longhand whose initial value is baseline', () => {

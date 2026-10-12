@@ -1,20 +1,21 @@
-// Proves the vertical-align longhand migration of committed outputs is additive only (docs/decisions.md, "Adding engine fields and
-// CSS longhands"): every file that existed at the base commit either is unchanged or differs only by vertical-align at its neutral
-// value, and every file added since the base belongs to a fixture added since the base.
-// - Chrome captures (packages/parity/expected*/**.json): every computed object gains "vertical-align": "baseline" right after
-//   list-style-image (the last longhand before it). With the key removed the file is byte-identical to the base.
+// Proves the vertical-align, float and clear longhand migration of committed outputs is additive only (docs/decisions.md, "Adding
+// engine fields and CSS longhands"): every file that existed at the base commit either is unchanged or differs only by the three
+// longhands at their neutral values, and every file added since the base belongs to a fixture added since the base.
+// - Chrome captures (packages/parity/expected*/**.json): every computed object gains "vertical-align": "baseline", "float": "none"
+//   and "clear": "none", in that order right after list-style-image (the last longhand before them). With the keys removed the file
+//   is byte-identical to the base.
 // - Emitted CSS (packages/parity/emitted/**, expected-*/emitted/**): every rule outside @media (which writes only the longhands
-//   that differ) ends with "vertical-align: baseline;". With it removed the file is byte-identical to the base, except the header's
+//   that differ) ends with the three declarations. With them removed the file is byte-identical to the base, except the header's
 //   compilation digest.
-// - The UA datasets (packages/dragon/src/ua/*.generated.ts), compared as data: every computed row gains vertical-align (baseline, and
-//   sub and super on the sub and sup phrasing keys, whose UA rules set them); on those two keys vertical-align moves from
-//   phrasingKeyUnmodelled to phrasingKeyDeclared and phrasingKeyLonghands; every other table and entry is unchanged.
+// - The UA datasets (packages/dragon/src/ua/*.generated.ts), compared as data: every computed row gains the three values (with
+//   vertical-align sub and super on the sub and sup phrasing keys, whose UA rules set them); on those two keys vertical-align moves
+//   from phrasingKeyUnmodelled to phrasingKeyDeclared and phrasingKeyLonghands; every other table and entry is unchanged.
 // - Engine inputs (packages/layout/vectors/**, break-vectors/**) and Chrome's line breaks (expected-breaks/**): unchanged.
 // - The Chrome pixel manifest (expected-pixels/**/manifest.json) and the glyph pins (expected-glyphs/**): every base entry
 //   unchanged; only the new fixtures' cases added.
-// - Media-sweep band summaries (expected-media/**): valuesCompared counts one more value per element node.
+// - Media-sweep band summaries (expected-media/**): valuesCompared counts three more values per element node.
 // `--plant <name>` alters one file in memory before the check, which must then fail (PLANTS below).
-// Run with: node scripts/check-vertical-align-migration.ts <base-commit> [--plant <name>]
+// Run with: node scripts/check-inert-layout-migration.ts <base-commit> [--plant <name>]
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -24,7 +25,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const base = process.argv[2];
 if (base === undefined || base.startsWith('--')) {
-  console.error('usage: node scripts/check-vertical-align-migration.ts <base-commit> [--plant <name>]');
+  console.error('usage: node scripts/check-inert-layout-migration.ts <base-commit> [--plant <name>]');
   process.exit(2);
 }
 
@@ -41,11 +42,11 @@ type Migration = {
   readonly strip: (after: string, before: string, path: string) => Stripped | Promise<Stripped>;
 };
 
-const KEYS = ['vertical-align'] as const;
-const NEUTRAL: { readonly [k: string]: string } = { 'vertical-align': 'baseline' };
+const KEYS = ['vertical-align', 'float', 'clear'] as const;
+const NEUTRAL: { readonly [k: string]: string } = { 'vertical-align': 'baseline', float: 'none', clear: 'none' };
 /** How many longhands LONGHANDS held at the base, so how many computed values each element node compared. */
 const BASE_LONGHANDS = 94;
-/** The longhand vertical-align follows in LONGHANDS order. */
+/** The longhand the three new ones follow in LONGHANDS order. */
 const BEFORE = 'list-style-image';
 /** The phrasing keys whose Chrome UA rule sets vertical-align (html.css: sub and sup), with the value it sets. */
 const UA_VERTICAL_ALIGN: { readonly [key: string]: string } = { sub: 'sub', sup: 'super' };
@@ -63,7 +64,7 @@ function indentOf(text: string): number {
 /** The computed values of a captured element node: every longhand, so padding-left and box-sizing among them. */
 const isComputed = (v: Record<string, unknown>): boolean => typeof v['padding-left'] === 'string' && typeof v['box-sizing'] === 'string';
 
-/** Captures: each computed object holds vertical-align right after list-style-image at baseline; it is removed. */
+/** Captures: each computed object holds the three keys right after list-style-image at their neutral values; they are removed. */
 function stripCapture(after: string, before: string, path: string): Stripped {
   const json = JSON.parse(after) as unknown;
   let removed = 0;
@@ -102,7 +103,7 @@ const RULE = /^\.dg\d+ \{$/;
 const declaration = (k: string, v: string): string => `  ${k}: ${v};`;
 
 /**
- * Emitted CSS: every rule outside @media ends with exactly the vertical-align declaration; a rule inside @media writes only the longhands that
+ * Emitted CSS: every rule outside @media ends with exactly the three declarations; a rule inside @media writes only the longhands that
  * differ (MQ-a), so it gains none. The header keeps its form with any digest.
  */
 function stripEmitted(after: string, before: string, path: string): Stripped {
@@ -154,54 +155,57 @@ function stripUaData(now: Record<string, unknown>, was: UaModule, path: string):
     if (!isRecord(t)) throw new Error(`${path}: no table ${name}`);
     return t;
   };
-  const K = 'vertical-align';
-  // The UA value of a row of a table family: sub and super on the phrasing keys sub and sup, nothing anywhere else.
-  const uaValue = (family: string, key: string): string | undefined => (family === 'phrasingKey' ? UA_VERTICAL_ALIGN[key] : undefined);
-  // Every computed table (computed, and the element, replaced and phrasing keys' tables): every row gains the value.
+  // The UA value of a key on a row of a table family: vertical-align sub and super on the phrasing keys sub and sup, nothing else.
+  const uaValue = (family: string, key: string, k: string): string | undefined => (family === 'phrasingKey' && k === 'vertical-align' ? UA_VERTICAL_ALIGN[key] : undefined);
+  // Every computed table (computed, and the element, replaced and phrasing keys' tables): every row gains the values.
   const computedTables = Object.keys(now).filter((n) => /^(computed|[a-z]+KeyComputed)$/.test(n));
   if (!computedTables.includes('computed') || !computedTables.includes('phrasingKeyComputed')) throw new Error(`${path}: no computed or phrasingKeyComputed table`);
   for (const name of computedTables) {
     const family = name === 'computed' ? 'userAgent' : name.slice(0, -'Computed'.length);
     for (const [key, row] of Object.entries(table(name))) {
       if (!isRecord(row)) throw new Error(`${path}: ${name}.${key} is not a row`);
-      const want = uaValue(family, key) ?? NEUTRAL[K];
-      if (row[K] !== want) throw new Error(`${path}: ${name}.${key} ${K} is ${JSON.stringify(row[K])}, not ${String(want)}`);
-      delete row[K];
-      removed++;
+      for (const k of KEYS) {
+        const want = uaValue(family, key, k) ?? NEUTRAL[k];
+        if (row[k] !== want) throw new Error(`${path}: ${name}.${key} ${k} is ${JSON.stringify(row[k])}, not ${String(want)}`);
+        delete row[k];
+        removed++;
+      }
     }
   }
-  // Each family's Declared and Longhands tables gain vertical-align, and its Unmodelled table loses it, on exactly the keys whose
-  // UA rule sets it. The userAgent family's unmodelled table is userAgentUnmodelled.
+  // Each family's Declared and Longhands tables gain a key, and its Unmodelled table loses it, on exactly the rows whose UA rule
+  // sets it. The userAgent family's unmodelled table is userAgentUnmodelled; the element keys have none.
   for (const family of ['userAgent', 'elementKey', 'replacedKey', 'phrasingKey']) {
     const declared = table(`${family}Declared`);
     const longhands = table(`${family}Longhands`);
     const unmodelledName = family === 'elementKey' ? null : `${family}Unmodelled`;
     const unmodelled = unmodelledName === null ? null : table(unmodelledName);
     const wasUnmodelled = unmodelledName === null ? null : was[unmodelledName];
-    for (const [key, dirs] of Object.entries(declared)) {
-      if (!isRecord(dirs)) throw new Error(`${path}: ${family}Declared.${key} is not a row`);
-      const want = uaValue(family, key);
-      for (const dir of ['ltr', 'rtl']) {
-        const d = dirs[dir];
-        if (!isRecord(d)) throw new Error(`${path}: ${family}Declared.${key}.${dir} is not a row`);
-        if (d[K] !== want) throw new Error(`${path}: ${family}Declared.${key}.${dir} ${K} is ${JSON.stringify(d[K])}, expected ${JSON.stringify(want)}`);
-        if (want === undefined) continue;
-        delete d[K];
-        removed++;
-        // The base listed it as unmodelled; put it back so the table compares to the base.
-        const u = unmodelled === null ? undefined : unmodelled[key];
-        const wu = isRecord(wasUnmodelled) && isRecord(wasUnmodelled[key]) ? (wasUnmodelled[key] as Record<string, unknown>)[dir] : undefined;
-        if (!isRecord(u) || !isRecord(u[dir]) || !isRecord(wu) || wu[K] !== want) throw new Error(`${path}: ${unmodelledName ?? family}.${key}.${dir} did not list ${K}: ${want} at the base`);
-        (u[dir] as Record<string, unknown>)[K] = want;
+    for (const k of KEYS) {
+      for (const [key, dirs] of Object.entries(declared)) {
+        if (!isRecord(dirs)) throw new Error(`${path}: ${family}Declared.${key} is not a row`);
+        const want = uaValue(family, key, k);
+        for (const dir of ['ltr', 'rtl']) {
+          const d = dirs[dir];
+          if (!isRecord(d)) throw new Error(`${path}: ${family}Declared.${key}.${dir} is not a row`);
+          if (d[k] !== want) throw new Error(`${path}: ${family}Declared.${key}.${dir} ${k} is ${JSON.stringify(d[k])}, expected ${JSON.stringify(want)}`);
+          if (want === undefined) continue;
+          delete d[k];
+          removed++;
+          // The base listed it as unmodelled; put it back so the table compares to the base.
+          const u = unmodelled === null ? undefined : unmodelled[key];
+          const wu = isRecord(wasUnmodelled) && isRecord(wasUnmodelled[key]) ? (wasUnmodelled[key] as Record<string, unknown>)[dir] : undefined;
+          if (!isRecord(u) || !isRecord(u[dir]) || !isRecord(wu) || wu[k] !== want) throw new Error(`${path}: ${unmodelledName ?? family}.${key}.${dir} did not list ${k}: ${want} at the base`);
+          (u[dir] as Record<string, unknown>)[k] = want;
+        }
       }
-    }
-    for (const [key, list] of Object.entries(longhands)) {
-      if (!Array.isArray(list)) throw new Error(`${path}: ${family}Longhands.${key} is not a list`);
-      const has = list.includes(K);
-      if (has !== (uaValue(family, key) !== undefined)) throw new Error(`${path}: ${family}Longhands.${key} ${has ? 'lists' : 'lacks'} ${K}`);
-      if (has) {
-        list.splice(list.indexOf(K), 1);
-        removed++;
+      for (const [key, list] of Object.entries(longhands)) {
+        if (!Array.isArray(list)) throw new Error(`${path}: ${family}Longhands.${key} is not a list`);
+        const has = list.includes(k);
+        if (has !== (uaValue(family, key, k) !== undefined)) throw new Error(`${path}: ${family}Longhands.${key} ${has ? 'lists' : 'lacks'} ${k}`);
+        if (has) {
+          list.splice(list.indexOf(k), 1);
+          removed++;
+        }
       }
     }
   }
@@ -222,7 +226,7 @@ async function stripUa(after: string, before: string, path: string): Promise<Str
     const was = await importText(before, dir, 'before.ts');
     const removed = stripUaData(now, was, path);
     for (const name of new Set([...Object.keys(now), ...Object.keys(was)])) {
-      if (JSON.stringify(canonical(now[name])) !== JSON.stringify(canonical(was[name]))) throw new Error(`${path}: ${name} differs from the base beyond the vertical-align additions`);
+      if (JSON.stringify(canonical(now[name])) !== JSON.stringify(canonical(was[name]))) throw new Error(`${path}: ${name} differs from the base beyond the vertical-align, float and clear additions`);
     }
     return { text: before, removed };
   } finally {
@@ -272,9 +276,9 @@ const CAPTURE_ROOTS = readdirSync(join(ROOT, PARITY)).filter((d) => d.startsWith
 const EMITTED_ROOTS = [`${PARITY}/emitted`, ...CAPTURE_ROOTS.filter((r) => existsSync(join(ROOT, r, 'emitted'))).map((r) => `${r}/emitted`)];
 
 const MIGRATIONS: readonly Migration[] = [
-  { name: 'vertical-align computed values', roots: CAPTURE_ROOTS, extension: '.json', strip: stripCapture },
-  { name: 'vertical-align emitted declarations', roots: EMITTED_ROOTS, extension: '.css', strip: stripEmitted },
-  { name: 'vertical-align UA values', roots: ['packages/dragon/src/ua'], extension: '.generated.ts', strip: stripUa },
+  { name: 'vertical-align, float and clear computed values', roots: CAPTURE_ROOTS, extension: '.json', strip: stripCapture },
+  { name: 'vertical-align, float and clear emitted declarations', roots: EMITTED_ROOTS, extension: '.css', strip: stripEmitted },
+  { name: 'vertical-align, float and clear UA values', roots: ['packages/dragon/src/ua'], extension: '.generated.ts', strip: stripUa },
   { name: 'engine inputs, unchanged', roots: ['packages/layout/vectors', 'packages/layout/break-vectors'], extension: '.json', strip: unchanged },
   { name: 'Chrome line breaks, unchanged', roots: [`${PARITY}/expected-breaks`], extension: '.json', strip: unchanged },
   { name: 'Chrome pixel manifest, base cases unchanged', roots: [`${PARITY}/expected-pixels`], extension: 'manifest.json', strip: stripPixelManifest },
@@ -284,20 +288,21 @@ const MIGRATIONS: readonly Migration[] = [
 const C = 'darwin-arm64/margin-collapse-body.web.json';
 /** Planted faults, each of which the check must catch: [migration index, file suffix, how the text changes]. */
 const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) => string] } = {
-  'drop-key': [0, C, (t) => t.replace(/\n *"vertical-align": "baseline",?/, '')],
+  'drop-key': [0, C, (t) => t.replace(/\n *"vertical-align": "baseline",/, '')],
+  'wrong-float': [0, C, (t) => t.replace('"float": "none"', '"float": "left"')],
   'wrong-initial': [0, C, (t) => t.replace('"vertical-align": "baseline"', '"vertical-align": "middle"')],
-  'extra-key': [0, C, (t) => t.replace('"vertical-align": "baseline"', '"vertical-align": "baseline",\n        "float": "none"')],
+  'extra-key': [0, C, (t) => t.replace('"vertical-align": "baseline"', '"vertical-align": "baseline",\n        "position-anchor": "auto"')],
   'capture-box': [0, C, (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'emitted-value': [1, 'emitted/margin-collapse-body.css', (t) => t.replace('  width: auto;', '  width: 10px;')],
   'emitted-key': [1, 'emitted/margin-collapse-body.css', (t) => t.replace(declaration('vertical-align', 'baseline'), declaration('vertical-align', 'top'))],
   'emitted-extra': [1, 'emitted/margin-collapse-body.css', (t) => t.replace(declaration('vertical-align', 'baseline'), `${declaration('vertical-align', 'baseline')}\n${declaration('vertical-align', 'baseline')}`)],
   'emitted-media': [1, 'emitted/media-max-width.css', (t) => t.replace(/(@media [^\n]*\n\.dg\d+ \{\n)/, `$1${declaration('vertical-align', 'baseline')}\n`)],
   'ua-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace('"vertical-align": "baseline"', '"vertical-align": "middle"')],
-  'ua-declared-elsewhere': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace('  "p": { ltr: { "display": "block",', '  "p": { ltr: { "display": "block", "vertical-align": "baseline",')],
+  'ua-declared-elsewhere': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace('  "p": { ltr: { "display": "block",', '  "p": { ltr: { "display": "block", "clear": "none",')],
   'ua-phrasing-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(/(export const phrasingKeyComputed[\s\S]*?)"vertical-align": "super"/, '$1"vertical-align": "sub"')],
   'vector-output': [3, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'stray-file': [0, '', (t) => t],
-  'media-count': [0, 'expected-media/media-logic.json', (t) => t.replace(/"valuesCompared": (\d+)/, (_m, n: string) => `"valuesCompared": ${Number(n) + 95}`)],
+  'media-count': [0, 'expected-media/media-logic.json', (t) => t.replace(/"valuesCompared": (\d+)/, (_m, n: string) => `"valuesCompared": ${Number(n) + 97}`)],
   'glyph-pin': [6, 'bottom-scanlines.json', (t) => t.replace('"interaction-combo": [1,1]', '"interaction-combo": [1,2]')],
   'pixel-manifest': [5, 'darwin-arm64/manifest.json', (t) => t.replace(/"sha256":"[0-9a-f]/, (m) => `${m.slice(0, -1)}${m.endsWith('0') ? '1' : '0'}`)],
 };
@@ -387,6 +392,6 @@ for (const [index, m] of MIGRATIONS.entries()) {
 }
 if (plant !== null && !planted) throw new Error(`plant ${plantName as string} found no file to alter`);
 if (failures > 0) {
-  console.error(`check-vertical-align-migration: ${failures} failures`);
+  console.error(`check-inert-layout-migration: ${failures} failures`);
   process.exit(1);
 }
