@@ -108,7 +108,7 @@ describe('px lengths are clamped to the CSS length range after zoom (ClampToCSSL
     const big: TrackSize = { kind: 'breadth', breadth: px(1e9) };
     const g: GridContainerStyle = {
       templateColumns: [{ count: 1, sizes: [big, { kind: 'minmax', min: px(0), max: px(1e9) }] }], templateRows: [{ count: 1, sizes: [{ kind: 'fit-content', limit: px(1e9) }] }],
-      autoColumns: [big], autoRows: [{ kind: 'breadth', breadth: { kind: 'auto' } }], explicitColumnCount: 2, explicitRowCount: 1, autoFlow: 'row', dense: false, justifyItems: 'normal',
+      autoColumns: [big], autoRows: [{ kind: 'breadth', breadth: { kind: 'auto' } }], explicitColumnCount: 2, explicitRowCount: 1, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row', dense: false, justifyItems: 'normal',
     };
     for (const dpr of [1, 2]) {
       const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: dpr, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [box('g', { display: 'grid', grid: g })]) };

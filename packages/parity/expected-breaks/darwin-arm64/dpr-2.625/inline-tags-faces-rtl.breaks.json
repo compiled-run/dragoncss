@@ -1,0 +1,22 @@
+{
+  "case": "inline-tags-faces-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"r1:text0","data":"Waves ","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"b:text0","data":"bold","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"r2:text0","data":" and ","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"strong:text0","data":"strong words over the quiet harbour","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[12]},
+    {"id":"r3:text0","data":"Quiet ","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"em:text0","data":"emphasis","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r4:text0","data":" and ","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"i:text0","data":"idiom here","lines":1,"units":[0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"bi:text0","data":"bold italic","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r5:text0","data":" ends here","lines":1,"units":[0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r6:text0","data":"Lato ","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"lb:text0","data":"bold","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"r7:text0","data":" and ","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"ls:text0","data":"strong text","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"he:text0","data":"Heading emphasis","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

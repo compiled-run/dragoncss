@@ -293,7 +293,7 @@ describe('grid containers', () => {
   const gridInput = async (inGrid: boolean) => {
     const { box, neutralEnvironment, px } = await import('./helpers.ts');
     const AUTO = { kind: 'breadth' as const, breadth: { kind: 'auto' as const } };
-    const grid = { templateColumns: [], templateRows: [], autoColumns: [AUTO], autoRows: [AUTO], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
+    const grid = { templateColumns: [], templateRows: [], autoColumns: [AUTO], autoRows: [AUTO], explicitColumnCount: 0, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
     const cell = { column: { kind: 'definite' as const, start: 1, end: 2 }, row: { kind: 'definite' as const, start: 1, end: 2 }, justifySelf: 'auto' as const };
     const items = ['a', 'b'].map((id, k) => box(id, { height: px(20), order: 1 - k, ...(inGrid ? { gridItem: cell } : {}) }));
     const container = inGrid ? box('g', { display: 'grid', width: px(100), grid }, items) : box('g', { width: px(100) }, items);

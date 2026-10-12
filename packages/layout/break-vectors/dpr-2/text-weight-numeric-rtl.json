@@ -1,0 +1,25 @@
+{
+  "case": "text-weight-numeric-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"w1:text0","lines":[[0,10]]},
+    {"id":"w100:text0","lines":[[0,14]]},
+    {"id":"w250:text0","lines":[[0,11]]},
+    {"id":"w300:text0","lines":[[0,12]]},
+    {"id":"w350:text0","lines":[[0,14]]},
+    {"id":"w400:text0","lines":[[0,14]]},
+    {"id":"w450:text0","lines":[[0,14]]},
+    {"id":"w500:text0","lines":[[0,13]]},
+    {"id":"w550:text0","lines":[[0,19]]},
+    {"id":"w599:text0","lines":[[0,22]]},
+    {"id":"w600:text0","lines":[[0,15]]},
+    {"id":"w800:text0","lines":[[0,17]]},
+    {"id":"w1000:text0","lines":[[0,15]]},
+    {"id":"kni:text0","lines":[[0,14]]},
+    {"id":"kin:text0","lines":[[0,15]]},
+    {"id":"kb:text0","lines":[[0,12]]},
+    {"id":"l100:text0","lines":[[0,12]]},
+    {"id":"l599:text0","lines":[[0,20]]},
+    {"id":"l1000:text0","lines":[[0,13]]}
+  ]
+}

@@ -225,7 +225,6 @@ function compareCase(c: CorpusCase, ids: ReadonlyMap<string, string>, abs: Reado
 export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner: string; readonly pattern: RegExp }[] = [
   { id: 'inline-grid', owner: 'G-INL (after INL2): inline-level grid containers', pattern: /display: inline-grid|inline-level grid baseline/ },
   { id: 'baseline-alignment', owner: 'G3: baseline self-alignment', pattern: /grid-baseline|justify-(self|items): (last )?baseline|align-(self|items): last baseline/ },
-  { id: 'auto-repeat', owner: 'G2: repeat(auto-fill) and repeat(auto-fit)', pattern: /repeat\(auto-fill\) and repeat\(auto-fit\)/ },
   { id: 'abspos-item', owner: 'G4: absolutely positioned grid items', pattern: /grid-abspos/ },
   { id: 'subgrid', owner: 'G5: subgrid', pattern: /subgrid/ },
   { id: 'writing-mode', owner: 'G-WM: vertical writing modes', pattern: /writing-mode/ },
@@ -248,8 +247,9 @@ export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner:
 export const KNOWN_MISMATCHES: ReadonlyMap<string, string> = new Map<string, string>([]);
 
 /**
- * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's scope, with a corpus case that must catch it in item or
- * container boxes. fr-restart shows frRestartMissing only in getComputedStyle track sizes, which this test does not compare.
+ * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's and G2's scope, and G2's repeatEndNameMissed, with a corpus
+ * case that must catch it in item or container boxes. fr-restart shows frRestartMissing only in getComputedStyle track sizes,
+ * which this test does not compare.
  */
 export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | 'ignoreOrder'; readonly kase: string }[] = [
   { fault: 'denseAsSparse', kase: 'p-dense' },
@@ -274,6 +274,10 @@ export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | 'ignoreO
   { fault: 'percentNotReresolved', kase: 'pc-rows-indefinite' },
   { fault: 'distributionRounded', kase: 'a-jc-space-between-4' },
   { fault: 'centerFloors', kase: 'a-center-odd' },
+  // r-fill-frac's quotient 100px / 33.296875px truncates to exactly 3 in LayoutUnits, so a ceil shows only in r-fill-minmax.
+  { fault: 'autoFillCountCeil', kase: 'r-fill-minmax' },
+  { fault: 'autoFitNotCollapsed', kase: 'r-fit-center' },
+  { fault: 'repeatEndNameMissed', kase: 'r-fill-named' },
 ];
 
 /**

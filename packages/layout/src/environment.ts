@@ -20,6 +20,7 @@ import type {
   FlexBasisValue,
   FontSpec,
   GapValue,
+  GridAutoRepeat,
   GridContainerStyle,
   InsetValue,
   InlineChild,
@@ -310,7 +311,14 @@ function zoomGrid(g: GridContainerStyle, z: number): GridContainerStyle {
     templateRows: repeaters(g.templateRows),
     autoColumns: g.autoColumns.map((t) => zoomTrack(t, z)),
     autoRows: g.autoRows.map((t) => zoomTrack(t, z)),
+    autoRepeatColumns: zoomAutoRepeat(g.autoRepeatColumns, z),
+    autoRepeatRows: zoomAutoRepeat(g.autoRepeatRows, z),
   };
+}
+
+function zoomAutoRepeat(r: GridAutoRepeat | null, z: number): GridAutoRepeat | null {
+  if (r === null) return null;
+  return { type: r.type, index: r.index, sizes: r.sizes.map((t) => zoomTrack(t, z)), lineNames: r.lineNames };
 }
 
 function zoomTrack(t: TrackSize, z: number): TrackSize {
@@ -344,6 +352,8 @@ function gridNeedsEnvironment(g: GridContainerStyle | null): boolean {
   if (g === null) return false;
   for (const r of g.templateColumns) if (tracksOutOfRange(r.sizes)) return true;
   for (const r of g.templateRows) if (tracksOutOfRange(r.sizes)) return true;
+  if (g.autoRepeatColumns !== null && tracksOutOfRange(g.autoRepeatColumns.sizes)) return true;
+  if (g.autoRepeatRows !== null && tracksOutOfRange(g.autoRepeatRows.sizes)) return true;
   return tracksOutOfRange(g.autoColumns) || tracksOutOfRange(g.autoRows);
 }
 

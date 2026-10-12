@@ -62,6 +62,7 @@ async function chromeColumn(): Promise<ColumnCapture> {
       const n = byId.get(id) as NativeCase;
       const page = await openPage(b, n.case.authoredHtml, atDpr(n.case.environment, CHROME_DPR));
       try {
+        if (n.case.authoredPrepare !== null) await n.case.authoredPrepare(page);
         const cdp = await page.context().newCDPSession(page);
         const r = (await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string };
         const png = Buffer.from(r.data, 'base64');

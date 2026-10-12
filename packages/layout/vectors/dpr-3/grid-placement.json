@@ -445,6 +445,8 @@
          ],
          "explicitColumnCount": 3,
          "explicitRowCount": 0,
+         "autoRepeatColumns": null,
+         "autoRepeatRows": null,
          "autoFlow": "row",
          "dense": false,
          "justifyItems": "normal"
@@ -1668,6 +1670,8 @@
          ],
          "explicitColumnCount": 4,
          "explicitRowCount": 0,
+         "autoRepeatColumns": null,
+         "autoRepeatRows": null,
          "autoFlow": "row",
          "dense": true,
          "justifyItems": "normal"
@@ -2633,6 +2637,8 @@
          ],
          "explicitColumnCount": 0,
          "explicitRowCount": 2,
+         "autoRepeatColumns": null,
+         "autoRepeatRows": null,
          "autoFlow": "column",
          "dense": false,
          "justifyItems": "normal"
@@ -3482,6 +3488,8 @@
          ],
          "explicitColumnCount": 2,
          "explicitRowCount": 0,
+         "autoRepeatColumns": null,
+         "autoRepeatRows": null,
          "autoFlow": "row",
          "dense": false,
          "justifyItems": "normal"
@@ -4188,6 +4196,8 @@
          ],
          "explicitColumnCount": 3,
          "explicitRowCount": 3,
+         "autoRepeatColumns": null,
+         "autoRepeatRows": null,
          "autoFlow": "column",
          "dense": true,
          "justifyItems": "normal"

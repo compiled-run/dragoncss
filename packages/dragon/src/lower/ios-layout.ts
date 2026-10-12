@@ -334,14 +334,17 @@ export function textFontProblem(t: ResolvedText): string | null {
  */
 export type EngineFace = { readonly kind: 'face'; readonly id: string } | { readonly kind: 'refused'; readonly reason: string };
 
-/** The lowering mode: native targets lay out Ahem only; the engine lane also lays out the bundled static faces it resolves. */
-export type LowerMode = { readonly kind: 'native' } | { readonly kind: 'engine'; readonly faceOf: (address: string) => EngineFace };
+/**
+ * The lowering mode: native targets lay out Ahem and the real bundled faces the compiler resolved (TXT1a-2, faceOf refuses every
+ * other node); the engine lane also lays out the bundled static faces it resolves.
+ */
+export type LowerMode = { readonly kind: 'native' | 'engine'; readonly faceOf: (address: string) => EngineFace };
 
 /** The face family the engine reads: Ahem, or in engine mode the resolved bundled face; anything else is a lowering failure. */
 function lowerFamily(id: string, family: CssValue, mode: LowerMode): string {
   if (family.kind === 'family' && family.value === 'Ahem') return AHEM_FACE;
-  if (mode.kind === 'native') return fail(id, 'font-family', family, AHEM_EXPECTED);
   const face = mode.faceOf(id);
+  if (mode.kind === 'native' && face.kind === 'refused') return fail(id, 'font-family', family, AHEM_EXPECTED);
   if (face.kind === 'refused') throw new LoweringError(id, 'font-family', `font-family: ${valueToString(family)} on ${id}: ${face.reason}`);
   return face.id;
 }

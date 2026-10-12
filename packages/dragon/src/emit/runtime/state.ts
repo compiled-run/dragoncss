@@ -620,11 +620,15 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       case 'border-radius':
       case 'box-shadow':
+      case 'outline':
         // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       case 'background-layers':
         // BG2-a: a state record holds no gradient write; the layers are painted from the static program only.
         throw new StateEmitError(`${n.id}: background layers in a state program have no state-node write (BG2 writes them on the static program only)`);
+      case 'visibility':
+        // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
+        throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;
