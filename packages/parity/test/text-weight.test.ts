@@ -212,7 +212,8 @@ describe('BASE pins', () => {
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
-    const base = ids.filter((id) => !added.includes(id));
+    // TXT-W2's font-shorthand cases are its own too, as the digests below exclude them.
+    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-'));
     // BASE is batch #262 (master f88834ce3d plus #257, #238, #254, #260 and #104-#105, which land with this change), whose FIXTURES hold 766 layout cases.
     expect(base.length).toBe(766);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('9ed8160c7db04452c284f56fea08be80f8b3900d806881535604eccb9764b25e');

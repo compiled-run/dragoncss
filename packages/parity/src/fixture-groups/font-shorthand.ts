@@ -1,5 +1,5 @@
 // Fixture group font-shorthand (TXT-W2, T147 part 2, notes/T147J-txt-weight.md): the font shorthand (style, weight, size, line
-// height and family, with font: inherit) and font-synthesis over the reference font map's real faces. With font-synthesis off,
+// height and family, with font: inherit, also over Ahem) and font-synthesis over the reference font map's real faces. With font-synthesis off,
 // Chrome draws the base face unsynthesized, so native lays it out. The rejects are values Dragon refuses or Chrome does not parse.
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';
@@ -11,6 +11,10 @@ const MONO = 'NotoSansMono-Regular';
 export const FONT_SHORTHAND: readonly FixtureSpec[] = [
   layout('font-shorthand-faces', ['ltr', 'rtl']),
   layout('font-shorthand-synthesis', ['ltr', 'rtl']),
+  // font: inherit and em lengths over Ahem: the native proof of font-size and line-height inherit and <length-em> in a text block,
+  // ltr and rtl, which the real-face cases above cannot give (their face features defer to the engine lane, and only Ahem cases
+  // prove native rows).
+  layout('font-shorthand-inherit', ['ltr', 'rtl']),
   reject('reject-font-shorthand-small-caps', 'DRAGON_UNSUPPORTED_VALUE', 'small-caps', 'font: small-caps sets font-variant-caps'),
   reject('reject-font-shorthand-stretch', 'DRAGON_UNSUPPORTED_VALUE', 'condensed', 'font: condensed sets font-stretch'),
   reject('reject-font-shorthand-system', 'DRAGON_UNSUPPORTED_VALUE', 'caption', 'font: caption is a system font'),

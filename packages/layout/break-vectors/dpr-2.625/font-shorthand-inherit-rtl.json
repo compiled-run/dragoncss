@@ -1,0 +1,9 @@
+{
+  "case": "font-shorthand-inherit-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"h:text0","lines":[[0,4]]},
+    {"id":"s:text0","lines":[[0,4]]},
+    {"id":"e:text0","lines":[[0,5]]}
+  ]
+}
