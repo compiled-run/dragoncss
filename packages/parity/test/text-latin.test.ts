@@ -221,7 +221,11 @@ const NEW_IDS = [
 /** T133 (fixture-groups/inline-tags.ts): b, strong, em and i over real faces, appended after the TXT1a-2 cases. */
 const TAG_IDS = ['inline-tags-faces', 'inline-tags-faces-rtl',
   // TXT-W1 (fixture-groups/text-weight.ts), appended after them.
-  ...['numeric', 'relative', 'styles', 'nested-bold', 'nested-italic', 'contexts'].flatMap((n) => [`text-weight-${n}`, `text-weight-${n}-rtl`])];
+  ...['numeric', 'relative', 'styles', 'nested-bold', 'nested-italic', 'contexts'].flatMap((n) => [`text-weight-${n}`, `text-weight-${n}-rtl`]),
+  // TXT2-c (fixture-groups/white-space.ts): preserved white space in Lato, appended after them.
+  'white-space-lato'];
+/** TXT2-c's Ahem white-space cases: added after BASE, laid out natively, so no shaped case. */
+const WHITE_SPACE_AHEM_IDS = ['white-space-preserve', 'white-space-wrap'];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);
@@ -244,8 +248,9 @@ const probe = (id: string) => {
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   const BASE_LAYOUT_CASES = 753;
-  const ADDED = [...NEW_IDS, ...TAG_IDS];
-  it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases and the T133 tag cases', () => {
+  const SHAPED = [...NEW_IDS, ...TAG_IDS];
+  const ADDED = [...SHAPED, ...WHITE_SPACE_AHEM_IDS];
+  it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases, the T133 tag cases and the later groups', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     // BASE is master f88834ce3d plus #257, #238, #254 and #260 (batch #262, which lands this change), whose FIXTURES hold 753 layout cases.
     // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
@@ -257,7 +262,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   });
 
   it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
-    expect([...shapedCaseIds()].sort()).toEqual([...ADDED].sort());
+    expect([...shapedCaseIds()].sort()).toEqual([...SHAPED].sort());
   });
 
   it('compiles each new case with the reference map, captures it under its stated reference, and lists its expected faces', () => {
@@ -326,8 +331,8 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
         }
       }
     }
-    // The 10 real-face cases and T133's 2 are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively.
-    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1) * 4, (NEW_IDS.length - 1 + TAG_IDS.length) * 4]);
+    // The 10 real-face cases and T133's 2 are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively, TXT2-c's two Ahem white-space cases among them.
+    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1 + WHITE_SPACE_AHEM_IDS.length) * 4, (NEW_IDS.length - 1 + TAG_IDS.length) * 4]);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {

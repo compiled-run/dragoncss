@@ -22,6 +22,7 @@ import { fixtureInput } from '../src/cases.ts';
 import { layout } from '../src/fixture-groups/define.ts';
 import { FONT_FIXTURES, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { TEXT_WEIGHT } from '../src/fixture-groups/text-weight.ts';
+import { WHITE_SPACE } from '../src/fixture-groups/white-space.ts';
 import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-reference.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
@@ -200,8 +201,9 @@ describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
   // no git history): each is the sha256 of "<path>\t<sha256 of its content>" lines in path order, over every file but TXT-W1's own
   // (its text-weight cases and the fonts-weight-synthetic font fixture). Each digest was taken at BASE with git and equals this
-  // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic)/.test(p);
+  // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message. TXT2-c's white-space
+  // group landed after BASE: its own files are left out as TXT-W1's are (it adds files only, and changes none of BASE's).
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|white-space-)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -211,7 +213,9 @@ describe('BASE pins', () => {
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
-    const base = ids.filter((id) => !added.includes(id));
+    // TXT2-c's white-space layout cases landed after BASE.
+    const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
+    const base = ids.filter((id) => !added.includes(id) && !later.includes(id));
     // BASE is batch #262 (master f88834ce3d plus #257, #238, #254, #260 and #104-#105, which land with this change), whose FIXTURES hold 766 layout cases.
     expect(base.length).toBe(766);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('9ed8160c7db04452c284f56fea08be80f8b3900d806881535604eccb9764b25e');

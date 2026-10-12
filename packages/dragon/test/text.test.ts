@@ -149,14 +149,15 @@ describe('white-space is a shorthand over white-space-collapse and text-wrap-mod
       expect(explainOne(c, 'web', 'a', 'text-wrap-mode').value, decl).toBe(wrap);
     }
   });
-  it('pre, pre-wrap and pre-line set a collapse mode no profile supports: DRAGON_UNSUPPORTED_VALUE on the value', () => {
-    for (const v of ['pre', 'pre-wrap', 'pre-line']) {
-      const c = compile(`white-space: ${v};`);
+  // TXT2-c lays out the preserving modes (packages/parity/test/white-space.test.ts proves them against Chrome).
+  it('pre, pre-wrap, pre-line and break-spaces set both longhands and compile for web and ios', () => {
+    for (const [decl, collapse, wrap] of [['white-space: pre;', 'preserve', 'nowrap'], ['white-space: pre-wrap;', 'preserve', 'wrap'], ['white-space: pre-line;', 'preserve-breaks', 'wrap'], ['white-space: break-spaces;', 'break-spaces', 'wrap']] as const) {
+      const c = compile(decl);
       expectCatalogued(c.diagnostics);
-      const d = c.diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-      expect(d.length, v).toBeGreaterThan(0);
-      expect(d.every((x) => x.origin.kind === 'authored' && `${FONT} .a { white-space: ${v}; }`.slice(x.origin.span.start, x.origin.span.end) === v), v).toBe(true);
-      expect(c.outputs.ios.kind).toBe('blocked');
+      expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message), decl).toEqual([]);
+      expect(explainOne(c, 'web', 'a', 'white-space-collapse').value, decl).toBe(collapse);
+      expect(explainOne(c, 'web', 'a', 'text-wrap-mode').value, decl).toBe(wrap);
+      expect(c.outputs.ios.kind, decl).not.toBe('blocked');
     }
   });
   it('a value that sets white-space-trim is DRAGON_UNSUPPORTED_VALUE on its keyword', () => {
