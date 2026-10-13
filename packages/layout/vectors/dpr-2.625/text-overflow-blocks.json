@@ -665,7 +665,11 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "nowrap"
+             "textWrapMode": "nowrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             }
             }
            ]
           },
@@ -821,7 +825,11 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "nowrap"
+             "textWrapMode": "nowrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             }
             }
            ]
           }
@@ -1224,7 +1232,11 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "nowrap"
+             "textWrapMode": "nowrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             }
             }
            ]
           },
@@ -1380,7 +1392,11 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "nowrap"
+             "textWrapMode": "nowrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             }
             }
            ]
           }
@@ -1661,7 +1677,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "nowrap"
+           "textWrapMode": "nowrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -1816,7 +1836,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "nowrap"
+           "textWrapMode": "nowrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         }
