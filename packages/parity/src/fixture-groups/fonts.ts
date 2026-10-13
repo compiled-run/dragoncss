@@ -54,8 +54,7 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-fonts-map-invalid', INVALID_MAP],
   // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
   ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
-  // INL2a: an inline-flex box with real-font text, and the refusal of an atomic inline beside real-font text.
-  ['atomic-inline-lato', FONT_REFERENCE_MAP],
+  // INL2a: the refusal of an atomic inline beside real-font text.
   ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
 ]);
 
