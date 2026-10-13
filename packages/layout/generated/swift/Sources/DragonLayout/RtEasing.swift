@@ -379,7 +379,7 @@ public func rtEasing_evaluateEasing(_ e: Easing, _ x: Double, _ before: Bool, _ 
   let b: CubicBezier? = e.bezier
   // ts: packages/layout/src/rt-easing.ts:221
   if (b == nil) {
-    throw JsError(message: S.s493)
+    throw JsError(message: S.s492)
   }
   return try rtEasing_solveBezier(jsUnwrap(b), x, faults)
 }

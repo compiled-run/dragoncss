@@ -167,7 +167,7 @@ public func rtTransition_transitionValue(_ t: RunningTransition, _ range: JsStri
   }
   // ts: packages/layout/src/rt-transition.ts:96
   if try jsUnwrap(v).refused {
-    throw JsError(message: S.s404)
+    throw JsError(message: S.s403)
   }
   return try jsUnwrap(v).value
 }
@@ -266,11 +266,11 @@ public func rtTransition_runTransitionScript(_ states: JsArray<TransitionState>,
   let out: JsArray<TransitionReading> = JsArray<TransitionReading>([])
   // ts: packages/layout/src/rt-transition.ts:184
   do {
-    let _a235 = steps
-    var _i235 = 0
-    while _i235 < _a235.items.count {
-      let step: ScriptStep = _a235.items[_i235]
-      _i235 += 1
+    let _a236 = steps
+    var _i236 = 0
+    while _i236 < _a236.items.count {
+      let step: ScriptStep = _a236.items[_i236]
+      _i236 += 1
       // ts: packages/layout/src/rt-transition.ts:185
       if (step.kind == S.s_state) {
         let next: TransitionState = try rtTransition_stateAt(states, step.state)

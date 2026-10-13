@@ -46,7 +46,7 @@ public let platform_REFERENCE_PLATFORM: JsString = S.s_darwin_arm64
 public let platform_REFERENCE_LANGUAGE: JsString = S.s_en_US
 
 // ts: packages/layout/src/platform.ts:25
-public let platform_MEASURERS: JsStringMap<MeasurerEntry> = JsStringMap<MeasurerEntry>([(S.s_darwin_arm64, MeasurerEntry(S.s416, text_ahemMeasurer))])
+public let platform_MEASURERS: JsStringMap<MeasurerEntry> = JsStringMap<MeasurerEntry>([(S.s_darwin_arm64, MeasurerEntry(S.s415, text_ahemMeasurer))])
 
 // ts: packages/layout/src/platform.ts:30
 public func platform_measurerFor(_ platform: JsString) throws -> any U_MeasurerChoice_ok_MeasurerChoice_refused {
