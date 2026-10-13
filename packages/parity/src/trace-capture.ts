@@ -123,14 +123,28 @@ export const hoverMediaLags: { readonly at: string; readonly frames: number }[] 
  */
 export const touchPrefsUpdates: string[] = [];
 
-/** Runs in the page: the hover and pointer media touch emulation sets. */
-const touchMedia = (): { hover: boolean; coarse: boolean } => ({ hover: matchMedia('(hover: hover)').matches, coarse: matchMedia('(pointer: coarse)').matches });
+/** Runs in the page: the hover and pointer media touch emulation sets, and navigator.maxTouchPoints. */
+const touchMedia = (): { hover: boolean; coarse: boolean; maxTouchPoints: number } => ({ hover: matchMedia('(hover: hover)').matches, coarse: matchMedia('(pointer: coarse)').matches, maxTouchPoints: navigator.maxTouchPoints });
+
+/**
+ * Makes Chrome send the page new WebPreferences: Page.captureScreenshot with captureBeyondViewport sends them before it copies the
+ * surface and sends the original ones back after. A failed copy ("Unable to capture screenshot") still sent both, so it is not an
+ * error here; the caller confirms the update reached the page by navigator.maxTouchPoints, which Blink sets from it.
+ */
+export async function sendWebPreferencesUpdate(page: Page, cdp: CDPSession): Promise<void> {
+  await frames(page);
+  try {
+    await cdp.send('Page.captureScreenshot', { captureBeyondViewport: true });
+  } catch (e) {
+    if (!(e instanceof Error && e.message.includes('Unable to capture screenshot'))) throw e;
+  }
+}
 
 /**
  * Fails unless touch emulation keeps (hover: none) and (pointer: coarse) through a WebPreferences update. Playwright's headless
  * launch passes PLAYWRIGHT_POINTER_SETTINGS (chrome.ts), which Blink writes into the page settings past touch emulation on every
  * WebPreferences update, so the media turned back to hover and fine pointer in the middle of a touch step whenever Chrome sent one
- * (the regen failures "(hover: hover) matches under touch emulation"). Page.captureScreenshot with captureBeyondViewport sends one.
+ * (the regen failures "(hover: hover) matches under touch emulation"). sendWebPreferencesUpdate sends one.
  */
 export async function checkTouchEmulationHolds(browser: Browser): Promise<void> {
   const context = await browser.newContext({ viewport: { width: 100, height: 100 } });
@@ -140,8 +154,10 @@ export async function checkTouchEmulationHolds(browser: Browser): Promise<void> 
     const cdp = await context.newCDPSession(page);
     await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     const before = await page.evaluate(touchMedia);
-    await cdp.send('Page.captureScreenshot', { captureBeyondViewport: true });
+    await sendWebPreferencesUpdate(page, cdp);
     const after = await page.evaluate(touchMedia);
+    // Touch emulation sets maxTouchPoints to 1; a WebPreferences update sets it back to Chrome's own 0, past the emulation.
+    if (before.maxTouchPoints !== 1 || after.maxTouchPoints !== 0) throw new Error(`no WebPreferences update reached the check's page: navigator.maxTouchPoints ${before.maxTouchPoints} under touch emulation and ${after.maxTouchPoints} after the update, not 1 and 0`);
     for (const [when, m] of [['under touch emulation', before], ['after a WebPreferences update under touch emulation', after]] as const) {
       if (m.hover || !m.coarse) throw new Error(`${when}, Chrome reports ${m.hover ? '(hover: hover)' : '(hover: none)'} and ${m.coarse ? '(pointer: coarse)' : 'no (pointer: coarse)'}; touch emulation must give (hover: none) and (pointer: coarse) (is Chrome launched with ${PLAYWRIGHT_POINTER_SETTINGS}?)`);
     }
