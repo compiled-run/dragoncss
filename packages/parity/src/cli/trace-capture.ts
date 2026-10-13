@@ -6,7 +6,7 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { launchChrome } from '../chrome.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
-import { captureTraces, expectedTraceDir, expectedTracePath, traceCaptureJson, traceGroups } from '../trace-capture.ts';
+import { captureTraces, expectedTraceDir, expectedTracePath, hoverMediaLags, traceCaptureJson, traceGroups } from '../trace-capture.ts';
 
 if (process.argv.slice(2).some((a) => a !== '--')) throw new Error(`parity:trace-capture takes no arguments, got ${JSON.stringify(process.argv.slice(2))}`);
 requireReferencePlatform(hostPlatform());
@@ -27,3 +27,5 @@ try {
   await browser.close();
 }
 console.log(`parity:trace-capture: ${groups.length} groups, ${steps} steps into packages/parity/expected-traces`);
+// How often Chrome's hover media lagged the emulated context and the capture waited for it (trace-capture.ts awaitHoverMedia).
+console.log(`parity:trace-capture: hover media lagged the emulated context ${hoverMediaLags.length} times${hoverMediaLags.length === 0 ? '' : ` (${hoverMediaLags.map((l) => `${l.at} ${l.frames} frames`).join(', ')})`}`);
