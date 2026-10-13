@@ -84,3 +84,5 @@ export type { SvgBounds, SvgMatrix, SvgSegment, SvgShape, ViewBox } from './svg-
 export { objectBoundingBox, tightBounds, viewBoxTransform } from './svg-geometry.ts';
 export type { ScrollRange, ScrollRangeRefusal, ScrollRangesResult } from './overflow.ts';
 export { scrollRanges } from './overflow.ts';
+// TDEC-a: the decoration line geometry (css-text-decor-3/4), namespaced.
+export * as textDecoration from './text-decoration.ts';

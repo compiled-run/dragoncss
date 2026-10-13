@@ -202,7 +202,8 @@ describe('BASE pins', () => {
   // no git history): each is the sha256 of "<path>\t<sha256 of its content>" lines in path order, over every file but TXT-W1's own
   // (its text-weight cases and the fonts-weight-synthetic font fixture) and TXT-W2's (its font-shorthand cases). Each digest was taken at BASE with git and equals this
   // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-)/.test(p);
+  // TDEC-a2's text-decoration cases (the web-only lane's captures) are its own as well.
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
