@@ -76,7 +76,6 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/fonts/shaping/han_kerning.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/run_segmenter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result_spacing.cc`: Copyright 2016 The Chromium Authors
-- `third_party/blink/renderer/platform/fonts/shaping/shape_result_spacing.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result_view.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/shaping_line_breaker.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/skia/skia_text_metrics.cc`: Copyright 2016 The Chromium Authors
