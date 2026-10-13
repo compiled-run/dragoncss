@@ -327,19 +327,19 @@
         },
         "paddingTop": {
          "kind": "px",
-         "value": 22
+         "value": 16
         },
         "paddingRight": {
          "kind": "px",
-         "value": 22
+         "value": 16
         },
         "paddingBottom": {
          "kind": "px",
-         "value": 22
+         "value": 16
         },
         "paddingLeft": {
          "kind": "px",
-         "value": 22
+         "value": 16
         },
         "borderTopWidth": {
          "kind": "px",
@@ -371,11 +371,11 @@
         "alignContent": "normal",
         "rowGap": {
          "kind": "px",
-         "value": 34
+         "value": 26
         },
         "columnGap": {
          "kind": "px",
-         "value": 34
+         "value": 30
         },
         "textAlign": "start",
         "aspectRatio": {
@@ -415,11 +415,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 70
+           "value": 64
           },
           "height": {
            "kind": "px",
-           "value": 44
+           "value": 36
           },
           "minWidth": {
            "kind": "auto"
@@ -538,11 +538,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 83
+           "value": 75
           },
           "height": {
            "kind": "px",
-           "value": 51
+           "value": 43
           },
           "minWidth": {
            "kind": "auto"
@@ -661,11 +661,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 70
+           "value": 64
           },
           "height": {
            "kind": "px",
-           "value": 44
+           "value": 36
           },
           "minWidth": {
            "kind": "auto"
@@ -784,11 +784,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 70
+           "value": 64
           },
           "height": {
            "kind": "px",
-           "value": 44
+           "value": 36
           },
           "minWidth": {
            "kind": "auto"
@@ -907,11 +907,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 61
+           "value": 55
           },
           "height": {
            "kind": "px",
-           "value": 44
+           "value": 36
           },
           "minWidth": {
            "kind": "auto"
@@ -1030,11 +1030,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 70
+           "value": 64
           },
           "height": {
            "kind": "px",
-           "value": 44
+           "value": 36
           },
           "minWidth": {
            "kind": "auto"
@@ -1153,11 +1153,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 77
+           "value": 71
           },
           "height": {
            "kind": "px",
-           "value": 49
+           "value": 41
           },
           "minWidth": {
            "kind": "auto"
@@ -1276,11 +1276,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 70
+           "value": 64
           },
           "height": {
            "kind": "px",
-           "value": 44
+           "value": 36
           },
           "minWidth": {
            "kind": "auto"
@@ -1399,11 +1399,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 70
+           "value": 64
           },
           "height": {
            "kind": "px",
-           "value": 44
+           "value": 36
           },
           "minWidth": {
            "kind": "auto"
@@ -1522,11 +1522,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 70
+           "value": 64
           },
           "height": {
            "kind": "px",
-           "value": 44
+           "value": 36
           },
           "minWidth": {
            "kind": "auto"
@@ -1634,7 +1634,7 @@
    "x": 0,
    "y": 0,
    "width": 51200,
-   "height": 43392
+   "height": 26752
   },
   {
    "id": "body",
@@ -1642,7 +1642,7 @@
    "x": 0,
    "y": 0,
    "width": 51200,
-   "height": 43392
+   "height": 26752
   },
   {
    "id": "stage",
@@ -1650,87 +1650,87 @@
    "x": 0,
    "y": 0,
    "width": 51200,
-   "height": 43392
+   "height": 26752
   },
   {
    "id": "a1",
    "parent": "stage",
-   "x": 39424,
-   "y": 2816,
-   "width": 8960,
-   "height": 5632
+   "x": 40960,
+   "y": 2048,
+   "width": 8192,
+   "height": 4608
   },
   {
    "id": "a2",
    "parent": "stage",
-   "x": 24448,
-   "y": 2816,
-   "width": 10624,
-   "height": 6528
+   "x": 27520,
+   "y": 2048,
+   "width": 9600,
+   "height": 5504
   },
   {
    "id": "a3",
    "parent": "stage",
-   "x": 11136,
-   "y": 2816,
-   "width": 8960,
-   "height": 5632
+   "x": 15488,
+   "y": 2048,
+   "width": 8192,
+   "height": 4608
   },
   {
    "id": "a4",
    "parent": "stage",
-   "x": 39424,
-   "y": 13696,
-   "width": 8960,
-   "height": 5632
+   "x": 3456,
+   "y": 2048,
+   "width": 8192,
+   "height": 4608
   },
   {
    "id": "a5",
    "parent": "stage",
-   "x": 27264,
-   "y": 13696,
-   "width": 7808,
-   "height": 5632
+   "x": 42112,
+   "y": 10880,
+   "width": 7040,
+   "height": 4608
   },
   {
    "id": "t1",
    "parent": "stage",
-   "x": 13952,
-   "y": 13696,
-   "width": 8960,
-   "height": 5632
+   "x": 30080,
+   "y": 10880,
+   "width": 8192,
+   "height": 4608
   },
   {
    "id": "t2",
    "parent": "stage",
-   "x": 38528,
-   "y": 23680,
-   "width": 9856,
-   "height": 6272
+   "x": 17152,
+   "y": 10880,
+   "width": 9088,
+   "height": 5248
   },
   {
    "id": "t3",
    "parent": "stage",
-   "x": 24448,
-   "y": 23680,
-   "width": 9728,
-   "height": 6400
+   "x": 4352,
+   "y": 10880,
+   "width": 8960,
+   "height": 5376
   },
   {
    "id": "t4",
    "parent": "stage",
-   "x": 11136,
-   "y": 23680,
-   "width": 8960,
-   "height": 5632
+   "x": 40960,
+   "y": 19584,
+   "width": 8192,
+   "height": 4608
   },
   {
    "id": "t5",
    "parent": "stage",
-   "x": 38912,
-   "y": 34432,
-   "width": 9472,
-   "height": 6144
+   "x": 28416,
+   "y": 19584,
+   "width": 8704,
+   "height": 5120
   }
  ]
 }
