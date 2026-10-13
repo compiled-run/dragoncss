@@ -1,7 +1,8 @@
 // REPL-a Phase B (R6): a replaced image is Dragon-owned paint. The case code hands the PNG bytes to the box view, which decodes
 // them once (ImageIO on UIKit, BitmapFactory on Android) and, in the image stage after the border, draws the bitmap into the
 // engine's destination rect clipped to the drawn part of the content box (DragonTree.apply sets both after layout from the
-// translated paint.ts replacedPaint). The readback is the natural size, the fit and the destination rect.
+// translated paint.ts replacedPaint), and a rounded img also clipped to its padding-edge curve (the roundedPath hook, as Blink's
+// inner border radius clip). The readback is the natural size, the fit and the destination rect.
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT } from './types.ts';
 
@@ -32,12 +33,17 @@ public func dragonDecodeImage(_ base64: String, _ id: String) -> CGImage {
   return image
 }
 
-/// The image stage: the bitmap into the destination rect, clipped to the drawn part of the content box, in points.
+/// The image stage: the bitmap into the destination rect, clipped to the drawn part of the content box and, for a rounded img, to
+/// its padding-edge curve (its content box, since a rounded img has no padding), in points.
 public func dragonPaintImageStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
   guard let image = v.dragonImage, let d = v.dragonReplacedDest, let c = v.dragonReplacedDrawn else { return }
   let s = CGFloat(v.dragonScale)
   ctx.saveGState()
   ctx.clip(to: CGRect(x: CGFloat(c[0]) / s, y: CGFloat(c[1]) / s, width: CGFloat(c[2]) / s, height: CGFloat(c[3]) / s))
+  if let curve = dragonRoundedPath(v, shape, inner: true) {
+    ctx.addPath(curve)
+    ctx.clip()
+  }
   ctx.interpolationQuality = .high
   UIImage(cgImage: image).draw(in: CGRect(x: CGFloat(d[0] + dragonImagePlantDevicePx) / s, y: CGFloat(d[1]) / s, width: CGFloat(d[2]) / s, height: CGFloat(d[3]) / s))
   ctx.restoreGState()
@@ -101,7 +107,8 @@ fun dragonDecodeImage(base64: String, id: String): Bitmap {
 }
 
 /**
- * The image stage: the bitmap, filtered, into the destination rect, clipped to the drawn part of the content box, in device px.
+ * The image stage: the bitmap, filtered, into the destination rect, clipped to the drawn part of the content box and, for a rounded
+ * img, to its padding-edge curve, in device px.
  * On a hardware canvas it is drawn into a RenderNode with its own compositing layer over the drawn part (whole device px), which
  * the frame composites unscaled: a filtered bitmap drawn straight into the window's frame moved other boxes' edges by one colour
  * step on the Android emulator's renderer (#72's device run), and a layer keeps the filtered draw out of that render pass.
@@ -113,6 +120,8 @@ fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShap
   val x = d[0] + DRAGON_IMAGE_PLANT_DEVICE_PX
   val dest = RectF(x.toFloat(), d[1].toFloat(), (x + d[2]).toFloat(), (d[1] + d[3]).toFloat())
   val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+  // A rounded img: the padding-edge curve (its content box, since a rounded img has no padding), in the view's device px.
+  val curve = dragonRoundedPath(v, shape, true)
   val px = dragonCoveringPx(c)
   val l = px[0]
   val t = px[1]
@@ -124,6 +133,7 @@ fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShap
   if (!canvas.isHardwareAccelerated || !v.dragonImageLayer || r - l > canvas.maximumBitmapWidth || b - t > canvas.maximumBitmapHeight || !dragonWholePxTranslate(v)) {
     canvas.save()
     canvas.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
+    if (curve != null) canvas.clipPath(curve)
     canvas.drawBitmap(image, null, dest, paint)
     canvas.restore()
     return
@@ -138,6 +148,7 @@ fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShap
   try {
     inner.translate(-l.toFloat(), -t.toFloat())
     inner.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
+    if (curve != null) inner.clipPath(curve)
     inner.drawBitmap(image, null, dest, paint)
   } finally {
     node.endRecording()

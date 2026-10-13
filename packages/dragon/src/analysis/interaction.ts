@@ -484,6 +484,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // SVG-a1: the svg family paints only an <svg>'s shapes, never a box; native refuses svg until SVG-a2, whose shape hit test
+  // (pointer-events: visiblePainted) comes with it.
+  ['fill', all],
+  ['stroke', all],
+  ['stroke-width', all],
   // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
   ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
   ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],

@@ -5,10 +5,12 @@
 // analysis/paint-values/outline.ts refuses what that order cannot match without stacking (an overflow clip around the outline, a
 // positioned or transformed box in the case), and every other style. The device resolves the rings with the translated
 // paint-radius.ts outlineRings at its scale. An outline that paints nothing (style none, a zero width, a transparent colour) has no
-// write.
+// write, nor has the outline of a box that is not visible (visibility hidden or collapse, own or inherited): Chrome paints no outline
+// for it, while its visible descendants paint theirs. Visibility and outline are static writes only (emit/runtime/state.ts).
 import type { ResolvedValue } from '../../analysis/resolve.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import { OUTLINE_LONGHANDS } from '../../css/properties/outline.ts';
+import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from './colors.ts';
 import type { RadiusLengthValue } from './radius.ts';
 import { radiusLengths, roundsAnyCorner } from './radius.ts';
@@ -46,6 +48,9 @@ export const OUTLINE_LOWERING: PaintLowering<OutlineWrite> = {
   lower: ({ el }) => {
     if (el === null) return [];
     const address = el.element.address;
+    const visibility = el.props.get('visibility');
+    if (visibility === undefined) throw new ProgramError(`${address}: visibility did not resolve`);
+    if (!paintsOwn(visibilityOf(visibility.value))) return [];
     const style = el.props.get('outline-style')?.value;
     if (style === undefined || style.kind !== 'keyword') throw new ProgramError(`${address}: outline-style did not resolve`);
     if (style.value === 'none') return [];

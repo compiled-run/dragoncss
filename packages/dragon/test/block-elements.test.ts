@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { SUPPORTED_TAGS, UNSTYLED_TAGS } from '../src/analysis/elements.ts';
-import { REPLACED_TAGS, REPLACED_UA_KEYS } from '../src/analysis/elements/replaced.ts';
+import { REPLACED_TAGS, REPLACED_UA_KEYS, SVG_SHAPE_TAGS } from '../src/analysis/elements/replaced.ts';
 import { computed, replacedKeySpecs, userAgentContexts, userAgentDeclared, userAgentTextFonts } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { DOC, explainOne, inputFor, staticClass, text } from './helpers.ts';
 
@@ -20,9 +20,9 @@ const FONT = 'body { font-family: Ahem; }';
 
 describe('the element table', () => {
   it('is exactly the captured tags other than the unstyled probe element, plus the tags that resolve as it', () => {
-    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t) && !REPLACED_TAGS.includes(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
-    // REPL-a: the replaced tags read REPL-0's replaced keys instead.
-    expect(REPLACED_TAGS.map((t) => replacedKeySpecs[REPLACED_UA_KEYS[t] as keyof typeof replacedKeySpecs].tag)).toEqual([...REPLACED_TAGS]);
+    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t) && !REPLACED_TAGS.includes(t) && !SVG_SHAPE_TAGS.includes(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
+    // REPL-a: the replaced tags read REPL-0's replaced keys instead, and so do SVG-a1's shapes.
+    expect([...REPLACED_TAGS, ...SVG_SHAPE_TAGS].map((t) => replacedKeySpecs[REPLACED_UA_KEYS[t] as keyof typeof replacedKeySpecs].tag)).toEqual([...REPLACED_TAGS, ...SVG_SHAPE_TAGS]);
     expect([...UNSTYLED_TAGS].every((t) => SUPPORTED_TAGS.has(t) && !(t in computed))).toBe(true);
     expect(SUPPORTED_TAGS.has('pre')).toBe(false);
   });

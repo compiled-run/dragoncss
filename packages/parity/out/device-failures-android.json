@@ -1,190 +1,6 @@
 [
  {
   "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 72,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2,
-  "node": "edge:f1a:bottom",
-  "kind": "pixel",
-  "detail": "edge:f1a:bottom: edge at 5.000 device px, Chrome 3.000; exceeds 1 device px"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 2,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 768,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 2,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 2,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 2,
-  "node": "edge:f1a:bottom",
-  "kind": "pixel",
-  "detail": "edge:f1a:bottom: edge at 5.000 device px, Chrome 3.000; exceeds 1 device px"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 2,
-  "node": "interior:a6",
-  "kind": "pixel",
-  "detail": "interior:a6 at 56,268: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 2,
-  "node": "edge:a6:top",
-  "kind": "pixel",
-  "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 2,
-  "node": "edge:a6:right",
-  "kind": "pixel",
-  "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 2,
-  "node": "edge:a6:left",
-  "kind": "pixel",
-  "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 2,
-  "node": "interior:a6",
-  "kind": "pixel",
-  "detail": "interior:a6 at 748,268: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 2,
-  "node": "edge:a6:top",
-  "kind": "pixel",
-  "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 2,
-  "node": "edge:a6:right",
-  "kind": "pixel",
-  "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 2,
-  "node": "edge:a6:left",
-  "kind": "pixel",
-  "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container",
-  "dpr": 2,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 200,90: native [255,255,255,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2,
-  "node": "edge:a1:top",
-  "kind": "pixel",
-  "detail": "edge:a1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
   "case": "selectors-universal-root",
   "dpr": 2,
   "node": "interior:c1",
@@ -230,190 +46,6 @@
   "node": "outside:c2",
   "kind": "pixel",
   "detail": "outside:c2 at 31,51: native [0,0,255,255], Chrome [51,51,51,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2.625,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 94,28: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2.625,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2.625,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2.625,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 2.625,
-  "node": "edge:f1a:bottom",
-  "kind": "pixel",
-  "detail": "edge:f1a:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 2.625,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 1008,28: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 2.625,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 2.625,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 2.625,
-  "node": "edge:f1a:bottom",
-  "kind": "pixel",
-  "detail": "edge:f1a:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 2.625,
-  "node": "interior:a6",
-  "kind": "pixel",
-  "detail": "interior:a6 at 72,347: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 2.625,
-  "node": "edge:a6:top",
-  "kind": "pixel",
-  "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 2.625,
-  "node": "edge:a6:right",
-  "kind": "pixel",
-  "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 2.625,
-  "node": "edge:a6:left",
-  "kind": "pixel",
-  "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 2.625,
-  "node": "interior:a6",
-  "kind": "pixel",
-  "detail": "interior:a6 at 982,347: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 2.625,
-  "node": "edge:a6:top",
-  "kind": "pixel",
-  "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 2.625,
-  "node": "edge:a6:right",
-  "kind": "pixel",
-  "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 2.625,
-  "node": "edge:a6:left",
-  "kind": "pixel",
-  "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container",
-  "dpr": 2.625,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2.625,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 262,118: native [255,255,255,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2.625,
-  "node": "edge:a1:top",
-  "kind": "pixel",
-  "detail": "edge:a1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2.625,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2.625,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 2.625,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
  },
  {
   "lane": "device-pixels",
@@ -465,190 +97,6 @@
  },
  {
   "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 3,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 108,33: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 3,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 3,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 3,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block",
-  "dpr": 3,
-  "node": "edge:f1a:bottom",
-  "kind": "pixel",
-  "detail": "edge:f1a:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 3,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 1152,33: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 3,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 3,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-relative-block-rtl",
-  "dpr": 3,
-  "node": "edge:f1a:bottom",
-  "kind": "pixel",
-  "detail": "edge:f1a:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 3,
-  "node": "interior:a6",
-  "kind": "pixel",
-  "detail": "interior:a6 at 84,402: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 3,
-  "node": "edge:a6:top",
-  "kind": "pixel",
-  "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 3,
-  "node": "edge:a6:right",
-  "kind": "pixel",
-  "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block",
-  "dpr": 3,
-  "node": "edge:a6:left",
-  "kind": "pixel",
-  "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 3,
-  "node": "interior:a6",
-  "kind": "pixel",
-  "detail": "interior:a6 at 1122,402: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 3,
-  "node": "edge:a6:top",
-  "kind": "pixel",
-  "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 3,
-  "node": "edge:a6:right",
-  "kind": "pixel",
-  "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-static-block-rtl",
-  "dpr": 3,
-  "node": "edge:a6:left",
-  "kind": "pixel",
-  "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container",
-  "dpr": 3,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 3,
-  "node": "interior:a1",
-  "kind": "pixel",
-  "detail": "interior:a1 at 300,135: native [255,255,255,255], Chrome [204,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 3,
-  "node": "edge:a1:top",
-  "kind": "pixel",
-  "detail": "edge:a1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 3,
-  "node": "edge:a1:right",
-  "kind": "pixel",
-  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 3,
-  "node": "edge:a1:bottom",
-  "kind": "pixel",
-  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-scroll-container-rtl",
-  "dpr": 3,
-  "node": "edge:a1:left",
-  "kind": "pixel",
-  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
   "case": "selectors-universal-root",
   "dpr": 3,
   "node": "interior:c1",
@@ -686,5 +134,461 @@
   "node": "edge:c1:left:clear",
   "kind": "pixel",
   "detail": "edge:c1:left:clear at 26,75: native [0,0,255,255], Chrome [51,51,51,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f0",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f1",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f2",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f4",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f7",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f9",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f10",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f12",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f13",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f14",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f16",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f19",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@393x852~f21",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f0",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f1",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f2",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f4",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f7",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f9",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f10",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f12",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f13",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f14",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f16",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f19",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin@412x915~f21",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f0",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f1",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f2",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f4",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f7",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f9",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f10",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f12",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f13",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f14",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f16",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f19",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@393x852~f21",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1032x2237 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f0",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f1",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f2",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f4",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f7",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f9",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f10",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f12",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f13",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f14",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f16",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f19",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-layout-margin-rtl@412x915~f21",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "device-record",
+  "detail": "dragon-smoke: the stage 1080x2138 device px cannot hold the 1082x2402 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-timing-rtl@400x300~f2",
+  "dpr": 2.625,
+  "node": "t0",
+  "kind": "frame-chrome",
+  "detail": "t0: edge delta [0.095245361328125,0,0.38095964526849,0.1904761904761907] css px exceeds 1 device px at DPR 2.625"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-webkit-rtl@400x300~f3",
+  "dpr": 2.625,
+  "node": "w3",
+  "kind": "frame-chrome",
+  "detail": "w3: edge delta [0.095245361328125,0.1904761904761898,0.38095964526849,0] css px exceeds 1 device px at DPR 2.625"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-webkit-rtl@400x300~f49",
+  "dpr": 2.625,
+  "node": "w3",
+  "kind": "frame-chrome",
+  "detail": "w3: edge delta [0.095245361328125,0.1904761904761898,0.38095964526849,0] css px exceeds 1 device px at DPR 2.625"
+ },
+ {
+  "lane": "device-traces",
+  "case": "interaction-combo~trace",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "trace-mismatch",
+  "detail": "interaction-combo~trace@2.625: 92 lines for 92; 11 differ; first at trace 70 (after a move step): device \"70\\t0\\t-1\\t0,1,4\\t-\\t-1\\t-1\", reference \"70\\t0\\t-1\\t0,1,5\\t-\\t-1\\t-1\""
+ },
+ {
+  "lane": "device-traces",
+  "case": "interaction-combo-rtl~trace",
+  "dpr": 2.625,
+  "node": null,
+  "kind": "trace-mismatch",
+  "detail": "interaction-combo-rtl~trace@2.625: 92 lines for 92; 11 differ; first at trace 70 (after a move step): device \"70\\t0\\t-1\\t0,1,4\\t-\\t-1\\t-1\", reference \"70\\t0\\t-1\\t0,1,5\\t-\\t-1\\t-1\""
  }
 ]

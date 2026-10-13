@@ -64,7 +64,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // BG2's layer longhands, each with two values of its own syntax that paint no image.
       'background-image': ['none', 'none, none'], 'background-position-x': ['0%', 'right 4px'], 'background-position-y': ['0%', '25%'], 'background-size': ['auto', 'cover'], 'background-repeat': ['repeat', 'no-repeat'], 'background-attachment': ['scroll', 'scroll, scroll'], 'background-origin': ['padding-box', 'content-box'], 'background-clip': ['border-box', 'padding-box'],
       // T150a: visibility's two keywords that paint nothing.
-      visibility: ['hidden', 'collapse'] };
+      visibility: ['hidden', 'collapse'],
+      // SVG-a1: two stroke widths.
+      'stroke-width': ['2px', '5'] };
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const position = p === 'box-shadow' ? 'static' : 'relative';
@@ -86,6 +88,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       // CASC 2: css/chrome-number.ts writes registered @property numbers as Chrome 145 serialises them (six significant digits, %g; probed in casc-property); only that file.
       if (f.endsWith(join('src', 'css', 'chrome-number.ts'))) continue;
+      // SVG-a1: analysis/elements/svg-path.ts reproduces Chrome's float32 path-number arithmetic (svg.test.ts pins it); only that file.
+      if (f.endsWith(join('src', 'analysis', 'elements', 'svg-path.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });
