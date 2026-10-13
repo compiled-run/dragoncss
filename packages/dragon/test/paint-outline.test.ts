@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { androidProfile, createProjectWith, HIT_MODELLED, iosProfile, NO_FAULTS, nativeOutlinePending, nativePrograms } from '../src/internal.ts';
 import { OUTLINE_EMITTER } from '../src/emit/paint/outline.ts';
-import { contrastRatio, darkColor, insetOutsetTones, lightColor } from '../src/lower/paint/outline.ts';
+import { contrastRatio, darkColor, insetOutsetTones, lightColor } from '../src/css/color.ts';
 import { outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from '@dragon/layout';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
