@@ -23,6 +23,7 @@ export type UnsupportedCode =
   | 'inline-empty-line'
   | 'text-shaping-run'
   | 'intrinsic-size-keyword'
+  | 'atomic-beside-shaped-text'
   | 'letter-spacing'
   | 'text-overflow'
   | 'tab-stop'

@@ -383,7 +383,7 @@ public func block_blockLevelInlineSize(_ ctx: Ctx, _ box: LayoutBox, _ cbInline:
     }
     // ts: packages/layout/src/block.ts:415
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s519, jsConcat(k, S.s108))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s517, jsConcat(k, S.s108))
     }
     let minC: Double = try units_add(intrinsic_intrinsicContentInlineSize(ctx, box, S.s_min), hbp)
     // ts: packages/layout/src/block.ts:417

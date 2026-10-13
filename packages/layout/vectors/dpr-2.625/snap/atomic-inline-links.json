@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 3830
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 3830
+  },
+  {
+   "id": "disclosure",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 33600,
+   "height": 3830
+  },
+  {
+   "id": "terms",
+   "parent": "disclosure",
+   "x": 6620,
+   "y": 1478,
+   "width": 8400,
+   "height": 2352
+  },
+  {
+   "id": "terms:text0",
+   "parent": "terms",
+   "x": 0,
+   "y": 320,
+   "width": 8400,
+   "height": 1664
+  },
+  {
+   "id": "terms:text0:line0",
+   "parent": "terms:text0",
+   "x": 0,
+   "y": 0,
+   "width": 8400,
+   "height": 1664
+  },
+  {
+   "id": "privacy",
+   "parent": "disclosure",
+   "x": 16900,
+   "y": 1478,
+   "width": 10080,
+   "height": 2352
+  },
+  {
+   "id": "privacy:text0",
+   "parent": "privacy",
+   "x": 504,
+   "y": 320,
+   "width": 11760,
+   "height": 1664
+  },
+  {
+   "id": "privacy:text0:line0",
+   "parent": "privacy:text0",
+   "x": 0,
+   "y": 0,
+   "width": 11760,
+   "height": 1664
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 60,
+   "width": 1050,
+   "height": 60
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 60,
+   "width": 1050,
+   "height": 60
+  },
+  {
+   "id": "disclosure",
+   "left": 0,
+   "top": 0,
+   "right": 525,
+   "bottom": 60,
+   "width": 525,
+   "height": 60
+  },
+  {
+   "id": "terms",
+   "left": 103,
+   "top": 23,
+   "right": 235,
+   "bottom": 60,
+   "width": 132,
+   "height": 37
+  },
+  {
+   "id": "terms:text0",
+   "left": 103,
+   "top": 28,
+   "right": 235,
+   "bottom": 54,
+   "width": 132,
+   "height": 26
+  },
+  {
+   "id": "terms:text0:line0",
+   "left": 103,
+   "top": 28,
+   "right": 235,
+   "bottom": 54,
+   "width": 132,
+   "height": 26
+  },
+  {
+   "id": "privacy",
+   "left": 264,
+   "top": 23,
+   "right": 422,
+   "bottom": 60,
+   "width": 158,
+   "height": 37
+  },
+  {
+   "id": "privacy:text0",
+   "left": 272,
+   "top": 28,
+   "right": 456,
+   "bottom": 54,
+   "width": 184,
+   "height": 26
+  },
+  {
+   "id": "privacy:text0:line0",
+   "left": 272,
+   "top": 28,
+   "right": 456,
+   "bottom": 54,
+   "width": 184,
+   "height": 26
+  }
+ ]
+}

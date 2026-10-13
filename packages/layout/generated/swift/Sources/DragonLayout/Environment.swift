@@ -292,7 +292,7 @@ public func environment_resolveLetterSpacing(_ e: any U_CalcClamp_CalcInvert_Cal
   }
   // ts: packages/layout/src/environment.ts:278
   if try calc_calcHasPercent(((e as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_RootFontLength_ViewportLength) as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength)) {
-    try unsupported_unsupported(S.s_letter_spacing, env.node, S.s526, jsConcat(S.s422, env.node, S.s6))
+    try unsupported_unsupported(S.s_letter_spacing, env.node, S.s524, jsConcat(S.s422, env.node, S.s6))
   }
   return try Px(S.s_px, units_cssLengthFixed(environment_lengthDouble(LengthCalc(S.s_calc, ((e as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_RootFontLength_ViewportLength) as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength), S.s_all), env)))
 }
@@ -631,7 +631,7 @@ public func environment_fontLengths(_ font: FontSpec, _ env: Env) throws -> Font
 public func environment_refuseUnknownFace(_ m: TextMeasurer, _ font: FontSpec, _ env: Env) throws -> Void {
   // ts: packages/layout/src/environment.ts:493
   if try (!m.hasFace(font.family)) {
-    try unsupported_unsupported(S.s_text_glyph, env.node, S.s513, jsConcat(env.node, S.s83, font.family, S.s130))
+    try unsupported_unsupported(S.s_text_glyph, env.node, S.s512, jsConcat(env.node, S.s83, font.family, S.s130))
   }
 }
 
