@@ -11,7 +11,9 @@ import { BORDER_ANIMATION } from './animation-kinds/border.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
+import { FLOAT_ANIMATION } from './animation-kinds/float.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
+import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
 import { OUTLINE_ANIMATION } from './animation-kinds/outline.ts';
@@ -20,6 +22,7 @@ import { POINTER_ANIMATION } from './animation-kinds/pointer.ts';
 import { POSITION_ANIMATION } from './animation-kinds/position.ts';
 import { RADIUS_ANIMATION } from './animation-kinds/radius.ts';
 import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
+import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
@@ -36,7 +39,9 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...BOX_ANIMATION,
   ...EFFECTS_ANIMATION,
   ...FLEX_ANIMATION,
+  ...FLOAT_ANIMATION,
   ...GRID_ANIMATION,
+  ...INLINE_ANIMATION,
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,
   ...OUTLINE_ANIMATION,
@@ -45,6 +50,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...POSITION_ANIMATION,
   ...RADIUS_ANIMATION,
   ...SCROLLBAR_ANIMATION,
+  ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
   ...SVG_ANIMATION,
   ...TEXT_ANIMATION,

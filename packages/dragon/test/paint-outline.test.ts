@@ -205,6 +205,17 @@ describe('outline: lowering and emission', () => {
     const square = programs('.a { height: 20px; outline: 1px solid red; }');
     expect(square.uikit.nodes.find((n) => n.id === 'a')?.writes.find((x) => x.kind === 'outline')).toEqual(expect.objectContaining({ style: 'solid', width: 1, offset: 0, color: { r: 255, g: 0, b: 0, alpha: 255 }, radii: null }));
   });
+  it('a hidden or collapsed box writes no outline, and its visible child keeps its own; a child that inherits hidden writes none', () => {
+    for (const v of ['hidden', 'collapse']) {
+      const p = programs(`.a { height: 20px; outline: 2px solid red; visibility: ${v}; } .b { height: 5px; outline: 1px solid blue; visibility: visible; }`);
+      for (const b of ['uikit', 'android-views'] as const) {
+        expect(p[b].nodes.find((n) => n.id === 'a')?.writes.some((x) => x.kind === 'outline'), `${v} ${b}`).toBe(false);
+        expect(p[b].nodes.find((n) => n.id === 'b')?.writes.some((x) => x.kind === 'outline'), `${v} ${b}`).toBe(true);
+      }
+    }
+    const inherited = programs('.a { height: 20px; visibility: hidden; } .b { height: 5px; outline: 1px solid blue; }');
+    for (const b of ['uikit', 'android-views'] as const) expect(inherited[b].nodes.find((n) => n.id === 'b')?.writes.some((x) => x.kind === 'outline'), b).toBe(false);
+  });
   it('emits the runtime writer on both backends', () => {
     const p = programs('.a { height: 20px; outline: 3px solid rgb(1, 2, 3); outline-offset: -2px; } .b { outline: 1.5px double red; }');
     const line = (b: 'uikit' | 'android-views', id: string): string[] => {

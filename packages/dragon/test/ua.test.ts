@@ -188,7 +188,7 @@ describe('UA longhands of the element keys (ELB-2)', () => {
 describe('UA longhands of the phrasing keys (INL-U)', () => {
   it('pins the longhands a Chrome UA rule sets on br, strong, b, em, i, code, small, sub, sup and label', () => {
     expect(phrasingKeyLonghands).toEqual({
-      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size'], sup: ['font-size'], label: [],
+      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size', 'vertical-align'], sup: ['font-size', 'vertical-align'], label: [],
     });
     for (const key of Object.keys(phrasingKeyComputed) as (keyof typeof phrasingKeyComputed)[]) {
       for (const p of CAPTURED_LONGHANDS) expect(phrasingKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');

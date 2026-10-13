@@ -19,6 +19,7 @@ import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
+import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
@@ -34,9 +35,11 @@ import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
+import { SELECTION } from './fixture-groups/selection.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHADOW } from './fixture-groups/shadow.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
+import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
@@ -121,6 +124,7 @@ export const GROUPS = {
   fonts: FONTS,
   gradients: GRADIENTS,
   grid: GRID,
+  'inert-layout': INERT_LAYOUT,
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
   'inline-tags': INLINE_TAGS,
@@ -136,9 +140,11 @@ export const GROUPS = {
   radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
+  selection: SELECTION,
   selectors: SELECTORS,
   shadow: SHADOW,
   showcase: SHOWCASE,
+  'sizing-keywords': SIZING_KEYWORDS,
   'sizing-ratio': SIZING,
   states: STATES,
   svg: SVG,

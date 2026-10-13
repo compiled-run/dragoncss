@@ -1093,7 +1093,9 @@
         { "lines": "587-743", "symbol": "ComputeGridGeometry", "source": "located" },
         { "lines": "871-1101", "symbol": "GridLayoutAlgorithm::ContributionSizeForGridItem", "source": "located" },
         { "lines": "1551-1617", "symbol": "CompleteTrackSizingAlgorithm", "source": "located" },
-        { "lines": "2178-2353", "symbol": "PlaceGridItems", "source": "located" }
+        { "lines": "2178-2353", "symbol": "PlaceGridItems", "source": "located" },
+        { "lines": "2967-3040", "symbol": "GridLayoutAlgorithm::PlaceOutOfFlowItems", "source": "located" },
+        { "lines": "3102-3127", "symbol": "GridLayoutAlgorithm::ComputeOutOfFlowItemContainingRect", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" }
@@ -1108,9 +1110,17 @@
       "fileSha256": "0b031dc4989c610e4a0e9487289beee03c19a064a41d77f47539a259dc8a39c7",
       "headerSha256": "f0becbc6a99a89f1949bdbdac5e4f383c5c94c1c7a235ff46564eb41cd5c0ae7",
       "ranges": [
-        { "lines": "68-183", "symbol": "CalculateAutomaticRepetitions", "source": "located" }
+        { "lines": "68-183", "symbol": "CalculateAutomaticRepetitions", "source": "located" },
+        { "lines": "191-218", "symbol": "ComputeTrackSizesInRange", "source": "located" },
+        { "lines": "222-255", "symbol": "ComputeTrackOffsetInRange", "source": "located" },
+        { "lines": "258-293", "symbol": "TrackOffset", "source": "located" },
+        { "lines": "295-321", "symbol": "TrackStartOffset", "source": "located" },
+        { "lines": "323-344", "symbol": "TrackEndOffset", "source": "located" },
+        { "lines": "348-405", "symbol": "ComputeOutOfFlowOffsetAndSize", "source": "located" },
+        { "lines": "407-445", "symbol": "AlignmentOffsetForOutOfFlow", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "autoRepetitions", "use": "port" }
       ]
     },
@@ -1148,7 +1158,8 @@
       "ranges": [
         { "lines": "52-115", "symbol": "GridPlacement::RunAutoPlacementAlgorithm", "source": "located" },
         { "lines": "318-335", "symbol": "PlaceGridItemAtCursor", "source": "located" },
-        { "lines": "435-528", "symbol": "AutoPlacementCursor::MoveCursorToFitGridSpan", "source": "located" }
+        { "lines": "435-528", "symbol": "AutoPlacementCursor::MoveCursorToFitGridSpan", "source": "located" },
+        { "lines": "648-686", "symbol": "GridPlacement::ResolveOutOfFlowItemGridLines", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" }
@@ -1635,6 +1646,25 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/paint_property_tree_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "90ca34954c3df0c7d0482a0c375a76df84e4994d09b62f2eedc6d09bc70ec276",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "2541-2562", "symbol": "NeedsOverflowClipForReplacedContents", "source": "cited" },
+        { "lines": "2651-2670", "symbol": "NeedsInnerBorderRadiusClip", "source": "cited" },
+        { "lines": "2744-2770", "symbol": "AdjustRoundedClipForOverflowClipMargin", "source": "cited" },
+        { "lines": "2772-2815", "symbol": "UpdateInnerBorderRadiusClip", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/parity/src/paint-samples/replaced-geometry.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -3042,6 +3072,21 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeLists", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/parser/css_parser_fast_paths.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "e0d828e4ceaede9a989d17a38d26ee09048e974db4ce7511008cae2fe33a6213",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "1652-1659", "symbol": "CSSParserFastPaths::IsValidKeywordPropertyAndValue", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/properties/selection.ts", "symbol": "parseUserSelect", "use": "reference" }
       ]
     },
     {

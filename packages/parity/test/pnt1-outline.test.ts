@@ -8,68 +8,19 @@
 // outline-values must have outline points. In the plant's cases (device-run.ts PLANT_CASES), a model with the rings one device px to
 // the right (the outline-offset-1 raster plant) must fail.
 import { describe, expect, it } from 'vitest';
-import { outlineOffsetPx, outlineRings, outlineWidthPx } from '@dragon/layout';
-import type { NativeProgram } from 'dragon';
 import { nativePrograms } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { PLANT_CASES } from '../src/device-run.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { nativeCompile } from '../src/native-host.ts';
-import { outlineWrite } from '../src/paint-samples/outline.ts';
 import { casePoints, committedPixels } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
 import type { Box, Rgba } from './paint-model.ts';
-import { boxes, insideRounded, modelAt, over } from './paint-model.ts';
+import { boxes } from './paint-model.ts';
+import { outlineModelAt, outlineOrder, outlines } from './outline-model.ts';
 
 const OUTLINE_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).filter((f) => f.kind === 'layout');
-
-type Rings = { readonly box: Box; readonly rings: readonly number[]; readonly color: Rgba };
-
-/** The boxes in Blink's outline-phase order: each box after its descendants, siblings in tree order. */
-function outlineOrder(list: readonly Box[]): Box[] {
-  const ids = new Set(list.map((b) => b.node.id));
-  const children = new Map<string, Box[]>();
-  for (const b of list) if (b.node.parent !== null && ids.has(b.node.parent)) children.set(b.node.parent, [...(children.get(b.node.parent) ?? []), b]);
-  const out: Box[] = [];
-  const visit = (b: Box): void => {
-    for (const c of children.get(b.node.id) ?? []) visit(c);
-    out.push(b);
-  };
-  for (const b of list) if (b.node.parent === null || !ids.has(b.node.parent)) visit(b);
-  if (out.length !== list.length) throw new Error(`outline order holds ${out.length} of ${list.length} boxes`);
-  return out;
-}
-
-/** Every outline of a program at a DPR in outline-phase order, its rings shifted right by shift device px. */
-function outlines(p: NativeProgram, list: readonly Box[], dpr: number, shift: number): Rings[] {
-  const out: Rings[] = [];
-  for (const b of outlineOrder(list)) {
-    const w = outlineWrite({ program: p } as never, b.node.id);
-    if (w === null) continue;
-    const full = b.node.writes.find((x) => x.kind === 'outline');
-    if (full === undefined || full.kind !== 'outline') throw new Error(`${b.node.id}: no outline write`);
-    const radii = b.radii === null ? [0, 0, 0, 0, 0, 0, 0, 0] : b.radii.slice(0, 8);
-    const rings = outlineRings(b.l + shift, b.t, b.r + shift, b.b, radii, outlineWidthPx(w.width, dpr), outlineOffsetPx(w.offset, dpr), w.style === 'double');
-    out.push({ box: b, rings, color: [full.color.r, full.color.g, full.color.b, full.color.alpha] });
-  }
-  return out;
-}
-
-/** The model's colour at pixel (x, y): the boxes (modelAt), then every outline ring holding the pixel centre, in outline-phase order. */
-function outlineModelAt(list: readonly Box[], rings: readonly Rings[], x: number, y: number): Rgba {
-  let colour = modelAt(list, x, y);
-  const cx = x + 0.5;
-  const cy = y + 0.5;
-  for (const o of rings) {
-    const r = o.rings;
-    for (let k = 0; k + 24 <= r.length; k += 24) {
-      const v = (j: number): number => r[k + j] as number;
-      if (insideRounded(cx, cy, v(0), v(1), v(2), v(3), r.slice(k + 8, k + 16)) && !insideRounded(cx, cy, v(4), v(5), v(6), v(7), r.slice(k + 16, k + 24))) colour = over(colour, o.color);
-    }
-  }
-  return colour;
-}
 
 describe('PNT1 outline: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the four outline fixtures in both directions', () => {

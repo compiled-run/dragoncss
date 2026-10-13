@@ -19,8 +19,9 @@ import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
 import { checkTranslucent } from './analysis/paint-values/effects.ts';
+import { checkSelectable } from './analysis/selection.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
-import { inDomain, validateInput } from './analysis/input.ts';
+import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
@@ -354,23 +355,12 @@ function blocksTarget(d: Diagnostic, t: Target): boolean {
 /** The profile features of the svg property family (fill, stroke, stroke-width). */
 const SVG_PROFILE_FEATURE = /^(fill|stroke|stroke-width):/;
 
-/**
- * Tags and attributes are checked on every template node, including both arms of every branch. inside: the SVG content model the
- * nodes sit in (SVG-a1): an <svg> holds only <path>, <rect> and <circle>, a shape holds nothing, and a shape outside an <svg> is
- * not drawn by Chrome, so each is refused.
- */
-function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[], inside: 'html' | 'svg' | 'shape' = 'html'): void {
+/** Tags and attributes are checked on every template node, including both arms of every branch and every slot's children. */
+function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): void {
   for (const n of nodes) {
-    if (n.kind === 'text' && inside !== 'html' && n.text.trim() !== '') {
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `text inside an <svg> is not supported: SVG text waits for the SVG structure package SVG-b` }));
-    }
     if (n.kind === 'element') {
       if (!SUPPORTED_TAGS.has(n.tag)) {
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
-      } else if (inside !== 'html' && !(inside === 'svg' && isSvgShapeTag(n.tag))) {
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} inside ${inside === 'svg' ? 'an <svg>' : 'an SVG shape'} is not supported: an <svg> draws only <path>, <rect> and <circle> children until the SVG structure package SVG-b` }));
-      } else if (inside === 'html' && isSvgShapeTag(n.tag)) {
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} outside an <svg> is not supported: Chrome draws an SVG shape only inside an <svg>` }));
       }
       for (const a of n.attributes) {
         const refusal = attributeRefusal(n.tag, a.name);
@@ -387,14 +377,60 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[], i
           if (svg !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name}="${c.value}" on ${n.id} is not supported: ${svg}`, manual: 'Write the attribute with plain numbers (or px) and the commands M, L, H, V, C, S, Q, T and Z.' }));
         }
       }
-      checkTemplates(n.children, diagnostics, n.tag === 'svg' ? (inside === 'html' ? 'svg' : 'shape') : isSvgShapeTag(n.tag) ? 'shape' : inside);
+      checkTemplates(n.children, diagnostics);
     } else if (n.kind === 'branch') {
-      checkTemplates(n.then, diagnostics, inside);
-      checkTemplates(n.else, diagnostics, inside);
+      checkTemplates(n.then, diagnostics);
+      checkTemplates(n.else, diagnostics);
     } else if (n.kind === 'call') {
-      for (const s of n.slots) checkTemplates(s.children, diagnostics, inside);
+      for (const s of n.slots) checkTemplates(s.children, diagnostics);
     }
   }
+}
+
+type SvgContext = 'html' | 'svg' | 'shape';
+type SlotScope = ReadonlyMap<string, { readonly children: readonly TreeNode[]; readonly slots: SlotScope; readonly stack: readonly string[] }>;
+
+/**
+ * The SVG content model (SVG-a1), checked on the tree as link.ts expands it: a call's root sits where the call sits and a
+ * projection's slot children sit where the projection sits, so a component is checked in each context it is called in. An <svg>
+ * holds only <path>, <rect> and <circle>, a shape holds nothing, and a shape outside an <svg> is not drawn by Chrome, so each is
+ * refused. Both arms of every branch are walked; a component no call reaches renders nothing and is not walked. A call cycle is
+ * left to linkDocument (DRAGON_CALL_CYCLE).
+ */
+function checkSvgContent(valid: ValidInput, diagnostics: Diagnostic[]): void {
+  const reported = new Map<TreeNode, Set<SvgContext>>();
+  const refuse = (n: TreeNode, inside: SvgContext, message: string): void => {
+    const seen = reported.get(n) ?? new Set<SvgContext>();
+    if (seen.has(inside)) return;
+    seen.add(inside);
+    reported.set(n, seen);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message }));
+  };
+  const walk = (nodes: readonly TreeNode[], inside: SvgContext, slots: SlotScope, stack: readonly string[]): void => {
+    for (const n of nodes) {
+      if (n.kind === 'text') {
+        if (inside !== 'html' && n.text.trim() !== '') refuse(n, inside, `text inside an <svg> is not supported: SVG text waits for the SVG structure package SVG-b`);
+      } else if (n.kind === 'element') {
+        if (SUPPORTED_TAGS.has(n.tag) && inside !== 'html' && !(inside === 'svg' && isSvgShapeTag(n.tag))) {
+          refuse(n, inside, `<${n.tag}> ${n.id} inside ${inside === 'svg' ? 'an <svg>' : 'an SVG shape'} is not supported: an <svg> draws only <path>, <rect> and <circle> children until the SVG structure package SVG-b`);
+        } else if (inside === 'html' && isSvgShapeTag(n.tag)) {
+          refuse(n, inside, `<${n.tag}> ${n.id} outside an <svg> is not supported: Chrome draws an SVG shape only inside an <svg>`);
+        }
+        walk(n.children, n.tag === 'svg' ? (inside === 'html' ? 'svg' : 'shape') : isSvgShapeTag(n.tag) ? 'shape' : inside, slots, stack);
+      } else if (n.kind === 'branch') {
+        walk(n.then, inside, slots, stack);
+        walk(n.else, inside, slots, stack);
+      } else if (n.kind === 'call') {
+        const callee = valid.components.get(n.component);
+        if (callee === undefined || stack.includes(callee.id)) continue;
+        walk(callee.root, inside, new Map(n.slots.map((s) => [s.name, { children: s.children, slots, stack }])), [...stack, callee.id]);
+      } else {
+        const slot = slots.get(n.slot);
+        if (slot !== undefined) walk(slot.children, inside, slot.slots, slot.stack);
+      }
+    }
+  };
+  walk(valid.rootComponent.root, 'html', new Map(), [valid.rootComponent.id]);
 }
 
 const list = (values: readonly string[]): string => (values.length <= 1 ? values.join('') : `${values.slice(0, -1).join(', ')} or ${values[values.length - 1] as string}`);
@@ -832,6 +868,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    // T154: outside the parity lanes, native refuses an author user-select but none (P6c); the lanes run it to prove its web rows.
+    if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
@@ -1187,6 +1225,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
     }
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
+    checkSvgContent(valid, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
     // reports a rule for the targets of the bands it applies in, so a rule in no band blocks nothing.
     const bandList = bands === null ? [null] : bands.partition.bands;
@@ -1252,9 +1291,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
-      // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native, but a user's compile refuses them
-      // there until PNT1-opacity-b and a clip-chain view, so a document that uses one is lane-only on native and proves no native
-      // row (pipeline.ts).
+      // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
+      // but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and P6c, so a document that uses one is
+      // lane-only on native and proves no native row (pipeline.ts).
       if (options.interactionLanes) {
         const pending: Diagnostic[] = [];
         const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
@@ -1262,6 +1301,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) {
             if (r === null) continue;
             checkTranslucent(r, native, pending, new Set());
+            checkSelectable(r, native, pending, new Set());
             checkStackingClips(r, propagatedFrom(r), native, pending, new Set());
           }
         }

@@ -1,12 +1,14 @@
 // REPL-a: the paint rects of a case's replaced boxes at one DPR (absolute device px), from the engine as the device computes them
 // (dragon expected-dump.ts replacedGeometries), and the decoded image of each image write. Computed once per sample context.
 import type { ReplacedPaint, SnappedRect } from '@dragon/layout';
-import { snapEdges } from '@dragon/layout';
-import { programInput, replacedGeometries } from 'dragon';
+import { hasRoundedCorner, LU_PER_PX, NO_RADIUS_FAULTS, roundedShape, snapEdges } from '@dragon/layout';
+import { borderDevicePx, programInput, replacedGeometries } from 'dragon';
 import { expectedEngine } from '../native-host.ts';
 import { inflateSync } from 'node:zlib';
 import { decodePng } from '../../../dragon/src/images/png.ts';
 import type { RgbaImage } from '../native-compare.ts';
+import type { Arc } from './radius.ts';
+import { radiusFacts, rectArcs } from './radius.ts';
 import type { PaintSampleContext } from './types.ts';
 
 /**
@@ -19,6 +21,11 @@ export type ReplacedSamplesBox = {
   readonly later: readonly SnappedRect[];
   /** The later boxes that hide whatever is under them: an opaque background-color over the border box, and no clipping ancestor. */
   readonly cover: readonly SnappedRect[];
+  /**
+   * The rounded corners of a rounded img's image clip, its padding-edge curve (paint_property_tree_builder.cc
+   * UpdateInnerBorderRadiusClip; a rounded img has no padding), from the TS paint-radius.ts; empty for square corners.
+   */
+  readonly clip: readonly Arc[];
 };
 
 const cache = new WeakMap<PaintSampleContext, ReadonlyMap<string, ReplacedSamplesBox>>();
@@ -39,6 +46,7 @@ export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, Repl
   if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${ctx.dpr}`);
   const paints = replacedGeometries(engine, input, out.boxes);
   const snapped = snapEdges(out.boxes);
+  const borders = borderDevicePx(engine, input);
   const order = new Map(out.boxes.map((b, i) => [b.id, i]));
   const byId = new Map(ctx.program.nodes.map((n) => [n.id, n]));
   const clipped = (id: string | null): boolean => {
@@ -57,9 +65,22 @@ export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, Repl
     if (paint === undefined) continue;
     const w = n.writes.find((x) => x.kind === 'replaced-image');
     const image = w === undefined || w.kind !== 'replaced-image' ? null : decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d)));
-    const later = snapped.slice((order.get(n.id) as number) + 1);
-    boxes.set(n.id, { paint, image, later, cover: later.filter((r) => opaque(r.id)) });
+    const at = order.get(n.id) as number;
+    const later = snapped.slice(at + 1);
+    boxes.set(n.id, { paint, image, later, cover: later.filter((r) => opaque(r.id)), clip: imageClip(ctx, n.id, snapped[at] as SnappedRect, out.boxes[at] as { width: number; height: number }, borders.get(n.id) ?? [0, 0, 0, 0]) });
   }
   cache.set(ctx, boxes);
   return boxes;
+}
+
+/** The rounded corners of a replaced box's padding edge (device px), or none when its border box has no rounded corner. */
+function imageClip(ctx: PaintSampleContext, id: string, s: SnappedRect, layout: { readonly width: number; readonly height: number }, border: readonly [number, number, number, number]): readonly Arc[] {
+  const f = radiusFacts(ctx.program, id);
+  if (f === null) return [];
+  const r = roundedShape(s.left, s.top, s.right, s.bottom, layout.width / LU_PER_PX, layout.height / LU_PER_PX, border, f.lengths, ctx.dpr, NO_RADIUS_FAULTS);
+  if (!hasRoundedCorner(r.slice(0, 8))) return [];
+  const [bt, br, bb, bl] = border;
+  const l = s.left + bl;
+  const t = s.top + bt;
+  return rectArcs(l, t, Math.max(l, s.right - br), Math.max(t, s.bottom - bb), r.slice(8, 16));
 }

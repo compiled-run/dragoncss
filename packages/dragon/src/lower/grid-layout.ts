@@ -449,5 +449,39 @@ export function lowerGridItem(container: GridContainer, get: Get): GridItemStyle
   };
 }
 
+/**
+ * Blink GridPlacement::ResolveOutOfFlowItemGridLines before translation: the resolved lines of each side that is not auto (a span
+ * is not auto); an automatic position leaves both sides auto. The engine treats a line outside the implicit grid as auto.
+ */
+function outOfFlowAxis(axis: AxisLines, startProp: Longhand, endProp: Longhand, get: Get): GridSpan {
+  const span = resolveAxis(axis, startProp, endProp, get);
+  if (span.kind !== 'definite') return span;
+  const startAuto = positionOf(startProp, get(startProp)).kind === 'auto';
+  const endAuto = positionOf(endProp, get(endProp)).kind === 'auto';
+  if (startAuto) return { kind: 'end-line', line: span.end };
+  if (endAuto) return { kind: 'start-line', line: span.start };
+  return span;
+}
+
+const isAuto = (v: CssValue): boolean => v.kind === 'keyword' && v.value === 'auto';
+
+/**
+ * css-grid-2 §9.1: an absolutely positioned child's grid lines, which give its containing block, and its justify-self. Between
+ * two insets the box aligns by its own justify-self or align-self (css-position-3 §4.4), which the engine does not do yet.
+ */
+export function lowerOutOfFlowGridItem(container: GridContainer, get: Get): GridItemStyle {
+  const aligned = (p: Longhand): boolean => {
+    const v = get(p);
+    return !(v.kind === 'keyword' && (v.value === 'auto' || v.value === 'normal'));
+  };
+  if (!isAuto(get('left')) && !isAuto(get('right')) && aligned('justify-self')) refuse('justify-self', get('justify-self'), 'self-alignment between two insets is not supported yet');
+  if (!isAuto(get('top')) && !isAuto(get('bottom')) && aligned('align-self')) refuse('align-self', get('align-self'), 'self-alignment between two insets is not supported yet');
+  return {
+    column: outOfFlowAxis(container.columns, 'grid-column-start', 'grid-column-end', get),
+    row: outOfFlowAxis(container.rows, 'grid-row-start', 'grid-row-end', get),
+    justifySelf: selfAlign('justify-self', get('justify-self'), true),
+  };
+}
+
 /** The placement of an anonymous grid item: automatic in both axes, justify-self auto. */
 export const ANONYMOUS_GRID_ITEM: GridItemStyle = { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' };

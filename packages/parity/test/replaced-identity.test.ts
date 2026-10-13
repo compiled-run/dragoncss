@@ -18,8 +18,8 @@ import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
 // Later fixtures that hold replaced leaves by design are not earlier cases: OVFL's overflow-replaced (images in scroll containers)
-// and SVG-a1's svg fixtures.
-const LATER_WITH_REPLACED: readonly string[] = ['overflow-replaced', ...SVG.filter((f) => f.kind === 'layout').map((f) => f.id)];
+// and PNT1's radius-replaced (rounded images), and SVG-a1's svg fixtures.
+const LATER_WITH_REPLACED: readonly string[] = ['overflow-replaced', 'radius-replaced', ...SVG.filter((f) => f.kind === 'layout').map((f) => f.id)];
 const replacedIds = new Set([...REPLACED.map((f) => f.id), ...LATER_WITH_REPLACED]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !replacedIds.has(f.id));
 

@@ -89,6 +89,12 @@ export type LengthCalc = { readonly kind: 'calc'; readonly expr: CalcExpr; reado
 export type SizeValue = Px | Percent | Auto | LengthCalc;
 export type MinSizeValue = Px | Percent | Auto | LengthCalc;
 export type MaxSizeValue = Px | Percent | NoneValue | LengthCalc;
+/** css-sizing-3 §3.2 fit-content: min(max-content, max(min-content, the stretch size)). */
+export type FitContent = { readonly kind: 'fit-content' };
+/** css-sizing-3 §3.2: the intrinsic size keywords of an inline size, read only on a block-level box in block flow. */
+export type IntrinsicSizeKeyword = MinContent | MaxContent | FitContent;
+export type InlineSizeValue = SizeValue | IntrinsicSizeKeyword;
+export type MaxInlineSizeValue = MaxSizeValue | IntrinsicSizeKeyword;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -229,12 +235,16 @@ export type GridLine =
 /**
  * An item's lines in one axis (Blink GridLineResolver::ResolveGridPositionsFromStyle): resolved by the compiler as definite lines,
  * 0-based from the explicit grid's start line and negative before it, or an automatic position of span lines; or, in an axis with
- * an automatic repeater, whose explicit grid the engine sizes, the start and end positions the engine resolves.
+ * an automatic repeater, whose explicit grid the engine sizes, the start and end positions the engine resolves. An absolutely
+ * positioned child also takes start-line or end-line when only that side is not auto (css-grid-2 §9.1: an auto line is the
+ * padding edge); its auto span means both lines are auto, and its lines resolve as GridPlacement::ResolveOutOfFlowItemGridLines.
  */
 export type GridSpan =
   | { readonly kind: 'definite'; readonly start: number; readonly end: number }
   | { readonly kind: 'auto'; readonly span: number }
-  | { readonly kind: 'lines'; readonly start: GridLine; readonly end: GridLine };
+  | { readonly kind: 'lines'; readonly start: GridLine; readonly end: GridLine }
+  | { readonly kind: 'start-line'; readonly line: number }
+  | { readonly kind: 'end-line'; readonly line: number };
 /** css-align-3 §6.1 self positions in a grid container; normal and stretch stretch an auto size. */
 export type GridSelfAlign =
   | 'normal'
@@ -285,11 +295,11 @@ export type LayoutStyle = {
   readonly overflowY: Overflow;
   readonly direction: Direction;
   readonly boxSizing: BoxSizing;
-  readonly width: SizeValue;
+  readonly width: InlineSizeValue;
   readonly height: SizeValue;
-  readonly minWidth: MinSizeValue;
+  readonly minWidth: InlineSizeValue;
   readonly minHeight: MinSizeValue;
-  readonly maxWidth: MaxSizeValue;
+  readonly maxWidth: MaxInlineSizeValue;
   readonly maxHeight: MaxSizeValue;
   readonly marginTop: MarginValue;
   readonly marginRight: MarginValue;
@@ -320,7 +330,7 @@ export type LayoutStyle = {
   readonly verticalAlign: VerticalAlignValue;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
-  /** Written for the in-flow children of a grid container only; null otherwise. */
+  /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
 };
 

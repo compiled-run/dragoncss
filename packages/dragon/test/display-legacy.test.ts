@@ -32,9 +32,9 @@ describe('display: -webkit-box and -webkit-inline-box', () => {
       expectCatalogued(c.diagnostics);
     });
   }
-  it('the line-clamp pattern is refused for its display, and its two properties stay unsupported', () => {
+  it('the line-clamp pattern is refused for its display and -webkit-line-clamp, and -webkit-box-orient alone is inert (legacy-box.test.ts)', () => {
     const { c } = compile('.a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }');
-    expect(c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE', 'DRAGON_UNSUPPORTED_PROPERTY', 'DRAGON_UNSUPPORTED_PROPERTY']);
+    expect(c.diagnostics.map((d) => [d.code, d.message.split(' ')[0]])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'display:'], ['DRAGON_UNSUPPORTED_PROPERTY', '-webkit-line-clamp']]);
   });
   it('a var() that substitutes -webkit-box is refused with the same reason', () => {
     const { c } = compile('.a { --d: -webkit-box; display: var(--d); }');
