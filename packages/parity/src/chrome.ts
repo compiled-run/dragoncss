@@ -123,3 +123,4 @@ export async function openFrozenPage(browser: Browser, html: string, env: PageEn
   if (t !== 0) throw new Error(`the document timeline is not frozen at 0: ${String(t)}`);
   return page;
 }
+// proof round nonce 1 (scratch branch, never merged)
