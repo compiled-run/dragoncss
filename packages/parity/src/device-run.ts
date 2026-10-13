@@ -92,6 +92,12 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // (kid-*) vanish when the writer hides the box view itself.
   'visibility-ignored': ['visibility-basic'],
   'visibility-subtree': ['visibility-basic'],
+  // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
+  // are filled and stroked in distinct colours with strokes wide enough to sample.
+  'svg-stroke-first': ['svg-paint', 'svg-basic'],
+  'svg-even-odd': ['svg-basic'],
+  'svg-stroke-unscaled': ['svg-paint', 'svg-basic'],
+  'svg-paint-swapped': ['svg-paint', 'svg-basic'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -113,6 +119,10 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'image-offset-1': /^(image-flat:|edge:)/,
   'visibility-ignored': /^interior:hid-/,
   'visibility-subtree': /^interior:kid-/,
+  'svg-stroke-first': /^svg:/,
+  'svg-even-odd': /^svg:/,
+  'svg-stroke-unscaled': /^svg:/,
+  'svg-paint-swapped': /^svg:/,
 };
 /**
  * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason

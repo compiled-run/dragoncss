@@ -1,4 +1,5 @@
-// SVG-a1 (/tmp/specs/svg-a.md): an inline <svg> is a replaced box (elements/replaced.ts) whose content is its <path>, <rect> and
+// SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): an inline <svg> is a replaced box (elements/replaced.ts) whose
+// content is its <path>, <rect> and
 // <circle> children. This module holds what the compiler reads from their attributes: the geometry attributes, the presentation
 // attributes fill, stroke and stroke-width (and the svg's width and height), the viewBox, and the refusals of everything else.
 import { parse } from 'css-tree';
@@ -184,12 +185,24 @@ function paintOf(el: ResolvedElement, p: 'fill' | 'stroke'): SvgPaint {
   throw new Error(`${el.element.address}: ${p} did not resolve to a colour or none`);
 }
 
-/** The scene of a resolved <svg>; null for any other element. */
+/**
+ * Whether Chrome renders nothing for a shape (Blink's IsShapeEmpty): a rect with a zero width or height, a circle with a zero
+ * radius ("a value of zero disables rendering", SVG 2 §10.2, §10.3), or a path with no segments. It still has a box and a bbox.
+ */
+export function svgShapeEmpty(shape: SvgShape): boolean {
+  if (shape.kind === 'rect') return shape.width === 0 || shape.height === 0;
+  if (shape.kind === 'circle') return shape.r === 0;
+  return shape.segments.length === 0;
+}
+
+/** The scene of a resolved <svg>; null for any other element. A shape with display: none has no box and is left out. */
 export function svgSceneOf(el: ResolvedElement): SvgScene | null {
   if (el.element.tag !== SVG_TAG) return null;
   const shapes: SvgShapeScene[] = [];
   for (const c of el.children) {
     if (c.kind !== 'element' || !isSvgShapeTag(c.element.tag)) continue;
+    const display = (c.props.get('display') as ResolvedValue).value;
+    if (display.kind === 'keyword' && display.value === 'none') continue;
     const shape = shapeOf(c.element.tag, c.element.attributes);
     if (shape === null) throw new Error(`${c.element.address}: a refused shape reached the scene`);
     const sw = (c.props.get('stroke-width') as ResolvedValue).value;
