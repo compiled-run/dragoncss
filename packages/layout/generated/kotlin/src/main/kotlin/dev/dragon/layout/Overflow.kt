@@ -160,11 +160,11 @@ fun overflow_scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasurer,
     val containers: JsArray<ScrollMetrics> = jsArrayOf<ScrollMetrics>()
     // ts: packages/layout/src/overflow.ts:95
     run {
-      val _a114 = ix.order
-      var _i114 = 0
-      while (_i114 < _a114.size) {
-        val b: U_LayoutBox_ReplacedLeaf = _a114[_i114]
-        _i114++
+      val _a121 = ix.order
+      var _i121 = 0
+      while (_i121 < _a121.size) {
+        val b: U_LayoutBox_ReplacedLeaf = _a121[_i121]
+        _i121++
         // ts: packages/layout/src/overflow.ts:96
         if ((!box_isScrollContainer(b.style))) {
           continue
@@ -217,11 +217,11 @@ fun overflow_scrollRangesWithFaults(given: LayoutInput, measurer: TextMeasurer, 
   val refused: JsArray<ScrollRangeRefusal> = jsArrayOf<ScrollRangeRefusal>()
   // ts: packages/layout/src/overflow.ts:153
   run {
-    val _a115 = ix.order
-    var _i115 = 0
-    while (_i115 < _a115.size) {
-      val b: U_LayoutBox_ReplacedLeaf = _a115[_i115]
-      _i115++
+    val _a122 = ix.order
+    var _i122 = 0
+    while (_i122 < _a122.size) {
+      val b: U_LayoutBox_ReplacedLeaf = _a122[_i122]
+      _i122++
       // ts: packages/layout/src/overflow.ts:154
       if ((!box_isScrollContainer(b.style))) {
         continue
@@ -293,11 +293,11 @@ fun overflow_indexOf(ctx: Ctx, input: LayoutInput, abs: JsStringMap<LayoutRect>)
     }
     // ts: packages/layout/src/overflow.ts:201
     run {
-      val _a116 = (b as LayoutBox).children
-      var _i116 = 0
-      while (_i116 < _a116.size) {
-        val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a116[_i116]
-        _i116++
+      val _a123 = (b as LayoutBox).children
+      var _i123 = 0
+      while (_i123 < _a123.size) {
+        val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a123[_i123]
+        _i123++
         // ts: packages/layout/src/overflow.ts:202
         if ((!jsStrEq(k.kind, "box") && !jsStrEq((k as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
           continue
@@ -477,11 +477,11 @@ fun overflow_overflowOf(ix: Index, n: Node): OverflowRect {
   }
   // ts: packages/layout/src/overflow.ts:371
   run {
-    val _a117 = (b as LayoutBox).children
-    var _i117 = 0
-    while (_i117 < _a117.size) {
-      val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a117[_i117]
-      _i117++
+    val _a124 = (b as LayoutBox).children
+    var _i124 = 0
+    while (_i124 < _a124.size) {
+      val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a124[_i124]
+      _i124++
       // ts: packages/layout/src/overflow.ts:372
       if (((!jsStrEq(k.kind, "box") && !jsStrEq((k as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced")) || position_isOutOfFlow(ix.ctx, (k as U_LayoutBox_ReplacedLeaf)))) {
         continue
@@ -501,11 +501,11 @@ fun overflow_overflowOf(ix: Index, n: Node): OverflowRect {
   if ((oofs != null)) {
     // ts: packages/layout/src/overflow.ts:381
     run {
-      val _a118 = jsUnwrap(oofs)
-      var _i118 = 0
-      while (_i118 < _a118.size) {
-        val k: U_LayoutBox_ReplacedLeaf = _a118[_i118]
-        _i118++
+      val _a125 = jsUnwrap(oofs)
+      var _i125 = 0
+      while (_i125 < _a125.size) {
+        val k: U_LayoutBox_ReplacedLeaf = _a125[_i125]
+        _i125++
         val kn: Node = overflow_nodeOf(ix, k.id)
         overflow_addOverflow(c, overflow_shifted(overflow_propagated(ix, kn), units_sub(kn.rect.x, n.rect.x), units_sub(kn.rect.y, n.rect.y)))
       }
@@ -549,11 +549,11 @@ fun overflow_refuseLineLevelBoxes(box: LayoutBox): Unit {
   }
   // ts: packages/layout/src/overflow.ts:421
   run {
-    val _a119 = box.children
-    var _i119 = 0
-    while (_i119 < _a119.size) {
-      val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a119[_i119]
-      _i119++
+    val _a126 = box.children
+    var _i126 = 0
+    while (_i126 < _a126.size) {
+      val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a126[_i126]
+      _i126++
       // ts: packages/layout/src/overflow.ts:422
       if ((jsStrEq(k.kind, "box") || jsStrEq((k as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
         throw OverflowRefusal((k as U_LayoutBox_ReplacedLeaf).id, ("an atomic inline in the inline formatting context of " + box.id + ": its scrollable overflow is not decided here (R16, INL2)"))
@@ -577,11 +577,11 @@ fun overflow_addLines(ix: Index, n: Node, box: LayoutBox, c: Calc): Unit {
   val content: Double = units_clampNegativeToZero(units_sub(n.rect.width, box_sumEdges(n.border.left, n.border.right, n.padding.left, n.padding.right)))
   // ts: packages/layout/src/overflow.ts:434
   run {
-    val _a120 = inline_placeLines(ix.ctx, box, content)
-    var _i120 = 0
-    while (_i120 < _a120.size) {
-      val line: PlacedLine = _a120[_i120]
-      _i120++
+    val _a127 = inline_placeLines(ix.ctx, box, content)
+    var _i127 = 0
+    while (_i127 < _a127.size) {
+      val line: PlacedLine = _a127[_i127]
+      _i127++
       var first: Boolean = true
       var l: Double = units_ZERO
       var r: Double = units_ZERO
@@ -593,11 +593,11 @@ fun overflow_addLines(ix: Index, n: Node, box: LayoutBox, c: Calc): Unit {
       }
       // ts: packages/layout/src/overflow.ts:443
       run {
-        val _a121 = line.pieces
-        var _i121 = 0
-        while (_i121 < _a121.size) {
-          val p: LinePiece = _a121[_i121]
-          _i121++
+        val _a128 = line.pieces
+        var _i128 = 0
+        while (_i128 < _a128.size) {
+          val p: LinePiece = _a128[_i128]
+          _i128++
           take(p.x, p.width)
         }
       }
@@ -612,11 +612,11 @@ fun overflow_addLines(ix: Index, n: Node, box: LayoutBox, c: Calc): Unit {
       }
       // ts: packages/layout/src/overflow.ts:447
       run {
-        val _a122 = line.pieces
-        var _i122 = 0
-        while (_i122 < _a122.size) {
-          val p: LinePiece = _a122[_i122]
-          _i122++
+        val _a129 = line.pieces
+        var _i129 = 0
+        while (_i129 < _a129.size) {
+          val p: LinePiece = _a129[_i129]
+          _i129++
           overflow_addOverflow(c, OverflowRect(units_add(ox, p.x), units_add(oy, p.top), p.width, units_add(p.ascent, p.descent)))
         }
       }
@@ -726,11 +726,11 @@ fun overflow_readFlow(ix: Index, n: Node): Flow {
   var escapeTop: Strut = block_EMPTY_STRUT
   // ts: packages/layout/src/overflow.ts:557
   run {
-    val _a123 = (b as LayoutBox).children
-    var _i123 = 0
-    while (_i123 < _a123.size) {
-      val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a123[_i123]
-      _i123++
+    val _a130 = (b as LayoutBox).children
+    var _i130 = 0
+    while (_i130 < _a130.size) {
+      val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a130[_i130]
+      _i130++
       // ts: packages/layout/src/overflow.ts:558
       if (((!jsStrEq(k.kind, "box") && !jsStrEq((k as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced")) || position_isOutOfFlow(ix.ctx, (k as U_LayoutBox_ReplacedLeaf)))) {
         continue
@@ -832,11 +832,11 @@ fun overflow_viewportMetrics(ix: Index, input: LayoutInput, direction: String): 
   if ((oofs != null)) {
     // ts: packages/layout/src/overflow.ts:643
     run {
-      val _a124 = jsUnwrap(oofs)
-      var _i124 = 0
-      while (_i124 < _a124.size) {
-        val k: U_LayoutBox_ReplacedLeaf = _a124[_i124]
-        _i124++
+      val _a131 = jsUnwrap(oofs)
+      var _i131 = 0
+      while (_i131 < _a131.size) {
+        val k: U_LayoutBox_ReplacedLeaf = _a131[_i131]
+        _i131++
         val kn: Node = overflow_nodeOf(ix, k.id)
         overflow_addOverflow(c, overflow_shifted(overflow_propagated(ix, kn), kn.rect.x, kn.rect.y))
       }

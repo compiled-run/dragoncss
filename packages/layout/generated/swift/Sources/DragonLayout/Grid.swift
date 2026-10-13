@@ -740,7 +740,7 @@ public func grid_fixedValue(_ b: any U_Auto_Fr_MaxContent_MinContent_Percent_Px,
   if ((b.kind == S.s_px) || ((b as! any U_Auto_Fr_MaxContent_MinContent_Percent).kind == S.s_percent)) {
     return try grid_breadthValue((b as! any U_Percent_Px), available)
   }
-  throw JsError(message: jsConcat(S.s389, (b as! any U_Auto_Fr_MaxContent_MinContent).kind, S.s18))
+  throw JsError(message: jsConcat(S.s401, (b as! any U_Auto_Fr_MaxContent_MinContent).kind, S.s20))
 }
 
 // ts: packages/layout/src/grid.ts:406
@@ -800,7 +800,7 @@ public func grid_repeaterSize(_ sizes: JsArray<any U_TrackSize_breadth_TrackSize
       _i33 += 1
       // ts: packages/layout/src/grid.ts:452
       if try grid_definitionIntrinsic(t) {
-        throw JsError(message: S.s424)
+        throw JsError(message: S.s438)
       }
       let min: (any U_Percent_Px)? = try grid_fixedMinOf(t)
       let max: (any U_Percent_Px)? = try grid_fixedMaxOf(t)
@@ -924,7 +924,7 @@ public func grid_namedLinesOf(_ a: GridAxisTracks, _ id: Double, _ faults: GridF
   let auto: GridAutoRepeat? = a.auto
   // ts: packages/layout/src/grid.ts:527
   if (auto == nil) {
-    throw JsError(message: S.s395)
+    throw JsError(message: S.s407)
   }
   return try GridNamedLines(jsUnwrap(jsAt(jsUnwrap(auto).lineNames, id)), a.explicitCount, a.insertion, a.autoTotal, jsLength(jsUnwrap(auto).sizes), faults.repeatEndNameMissed)
 }
@@ -1088,7 +1088,7 @@ public func grid_resolveLinePosition(_ a: GridAxisTracks, _ pos: any U_GridLine_
     }
     return (last + 1.0)
   }
-  throw JsError(message: jsConcat(S.s389, (pos as! any U_GridLine_auto_GridLine_namedSpan_GridLine_span).kind, S.s81))
+  throw JsError(message: jsConcat(S.s401, (pos as! any U_GridLine_auto_GridLine_namedSpan_GridLine_span).kind, S.s85))
 }
 
 // ts: packages/layout/src/grid.ts:620
@@ -1120,7 +1120,7 @@ public func grid_resolveAgainstOpposite(_ a: GridAxisTracks, _ opposite: Double,
   if ((pos as! any U_GridLine_area_GridLine_line_GridLine_namedLine_GridLine_span).kind == S.s_span) {
     return (start ? (GridSpan_definite(S.s_definite, (opposite - (pos as! GridLine_span).n), opposite) as any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine) : (GridSpan_definite(S.s_definite, opposite, (opposite + (pos as! GridLine_span).n)) as any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine))
   }
-  throw JsError(message: S.s688)
+  throw JsError(message: S.s706)
 }
 
 // ts: packages/layout/src/grid.ts:641
@@ -1319,8 +1319,8 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
   }
   // ts: packages/layout/src/grid.ts:764
   do {
-    loop23: while true {
-      loop23_body: do {
+    loop25: while true {
+      loop25_body: do {
         try grid_updateItemsOverlappingMajorLine(list, c)
         nextMinor = c.current.minor
         // ts: packages/layout/src/grid.ts:767
@@ -1343,7 +1343,7 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
         }
         // ts: packages/layout/src/grid.ts:774
         if try (!fits()) {
-          break loop23_body
+          break loop25_body
         }
         var upcoming: Double = c.next
         // ts: packages/layout/src/grid.ts:776
@@ -1404,11 +1404,11 @@ public func grid_newCursor(_ list: GridPlacedList) throws -> GridCursor {
 public func grid_clampSpan(_ s: any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine) throws -> GridAxisPosition {
   // ts: packages/layout/src/grid.ts:814
   if (s.kind == S.s_lines) {
-    throw JsError(message: S.s566)
+    throw JsError(message: S.s582)
   }
   // ts: packages/layout/src/grid.ts:815
   if (((s as! any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_startLine).kind == S.s_start_line) || ((s as! any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine).kind == S.s_end_line)) {
-    throw JsError(message: jsConcat(S.s389, (s as! any U_GridSpan_endLine_GridSpan_startLine).kind, S.s80))
+    throw JsError(message: jsConcat(S.s401, (s as! any U_GridSpan_endLine_GridSpan_startLine).kind, S.s84))
   }
   // ts: packages/layout/src/grid.ts:816
   if ((s as! any U_GridSpan_auto_GridSpan_definite).kind == S.s_auto) {
@@ -1438,7 +1438,7 @@ public func grid_runPlacement(_ g: GridContainerStyle, _ boxes: JsArray<LayoutBo
       let gi: GridItemStyle? = b.style.gridItem
       // ts: packages/layout/src/grid.ts:837
       if (gi == nil) {
-        throw JsError(message: jsConcat(b.id, S.s46))
+        throw JsError(message: jsConcat(b.id, S.s50))
       }
       let c: GridAxisPosition = try grid_clampSpan(grid_itemSpan(columnTracks, jsUnwrap(gi).column, ctx.gridFaults))
       let r: GridAxisPosition = try grid_clampSpan(grid_itemSpan(rowTracks, jsUnwrap(gi).row, ctx.gridFaults))
@@ -2829,7 +2829,7 @@ public func grid_selfAlignOf(_ container: GridContainerStyle, _ box: LayoutBox, 
   let a: JsString = ((box.style.alignSelf == S.s_auto) ? containerStyle.alignItems : box.style.alignSelf)
   // ts: packages/layout/src/grid.ts:1607
   if (a == S.s_baseline) {
-    try unsupported_unsupported(S.s_grid_baseline, box.id, S.s486, S.s439)
+    try unsupported_unsupported(S.s_grid_baseline, box.id, S.s502, S.s455)
   }
   return a
 }
@@ -2995,7 +2995,7 @@ public func grid_contentContribution(_ ctx: Ctx, _ grid: GridState, _ item: Grid
 public func grid_contributionFor(_ ctx: Ctx, _ grid: GridState, _ c: GridCollection, _ type: JsString, _ item: GridItemData) throws -> Double {
   // ts: packages/layout/src/grid.ts:1770
   if (type == S.s_free_space) {
-    throw JsError(message: S.s564)
+    throw JsError(message: S.s580)
   }
   let s: LayoutStyle = item.box.style
   let columns: Bool = (c.axis == S.s_columns)
@@ -3128,7 +3128,7 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
   let g: GridContainerStyle? = s.grid
   // ts: packages/layout/src/grid.ts:1860
   if (g == nil) {
-    throw JsError(message: jsConcat(box.id, S.s47))
+    throw JsError(message: jsConcat(box.id, S.s51))
   }
   let inFlow: JsArray<LayoutBox> = JsArray<LayoutBox>([])
   let outOfFlow: JsArray<LayoutBox> = JsArray<LayoutBox>([])
@@ -3141,11 +3141,11 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
       _i73 += 1
       // ts: packages/layout/src/grid.ts:1864
       if ((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
-        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s52, box.id, S.s147))
+        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s56, box.id, S.s155))
       }
       // ts: packages/layout/src/grid.ts:1865
       if ((k as! any U_LayoutBox_ReplacedLeaf).kind == S.s_replaced) {
-        try unsupported_unsupported(S.s_grid_replaced, (k as! ReplacedLeaf).id, S.s487, S.s403)
+        try unsupported_unsupported(S.s_grid_replaced, (k as! ReplacedLeaf).id, S.s503, S.s416)
       }
       // ts: packages/layout/src/grid.ts:1866
       if ((k as! LayoutBox).kind != S.s_box) {
@@ -3275,7 +3275,7 @@ public func grid_outOfFlowEdge(_ ctx: Ctx, _ grid: GridState, _ box: LayoutBox, 
   let gi: GridItemStyle? = box.style.gridItem
   // ts: packages/layout/src/grid.ts:2002
   if (gi == nil) {
-    throw JsError(message: jsConcat(box.id, S.s43, grid.box.id, S.s94))
+    throw JsError(message: jsConcat(box.id, S.s46, grid.box.id, S.s99))
   }
   // ts: packages/layout/src/grid.ts:2003
   if (axis == S.s_columns) {
@@ -3292,11 +3292,11 @@ public func grid_checkInsetAlignment(_ box: LayoutBox) throws -> Void {
   let inline: JsString = try ((gi == nil) ? S.s_auto : jsUnwrap(gi).justifySelf)
   // ts: packages/layout/src/grid.ts:2016
   if ((((s.left.kind != S.s_auto) && (s.right.kind != S.s_auto)) && (inline != S.s_auto)) && (inline != S.s_normal)) {
-    try unsupported_unsupported(S.s_abspos_self_alignment, box.id, S.s488, jsConcat(S.s605, inline, S.s16))
+    try unsupported_unsupported(S.s_abspos_self_alignment, box.id, S.s504, jsConcat(S.s623, inline, S.s18))
   }
   // ts: packages/layout/src/grid.ts:2017
   if ((((s.top.kind != S.s_auto) && (s.bottom.kind != S.s_auto)) && (s.alignSelf != S.s_auto)) && (s.alignSelf != S.s_normal)) {
-    try unsupported_unsupported(S.s_abspos_self_alignment, box.id, S.s488, jsConcat(S.s420, s.alignSelf, S.s16))
+    try unsupported_unsupported(S.s_abspos_self_alignment, box.id, S.s504, jsConcat(S.s433, s.alignSelf, S.s18))
   }
 }
 
@@ -3374,7 +3374,7 @@ public func grid_outOfFlowLines(_ ctx: Ctx, _ span: any U_GridSpan_auto_GridSpan
   case S.s_end_line:
     return try GridLines(grid_NOT_FOUND, within(((span as! GridSpan_endLine).line + startOffset)))
   case S.s_lines:
-    throw JsError(message: S.s691)
+    throw JsError(message: S.s709)
   default:
     break
   }

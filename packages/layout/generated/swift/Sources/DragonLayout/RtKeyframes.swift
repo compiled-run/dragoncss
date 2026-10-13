@@ -63,7 +63,7 @@ public func rtKeyframes_keyframeAt(_ list: JsArray<PropertyKeyframe>, _ i: Doubl
   let k: PropertyKeyframe? = jsAt(list, i)
   // ts: packages/layout/src/rt-keyframes.ts:43
   if (k == nil) {
-    throw JsError(message: jsConcat(S.s611, jsNumberToString(i), S.s76))
+    throw JsError(message: jsConcat(S.s629, jsNumberToString(i), S.s80))
   }
   return try jsUnwrap(k)
 }
@@ -78,11 +78,11 @@ public func rtKeyframes_completeKeyframes(_ group: KeyframeGroup) throws -> JsAr
   }
   // ts: packages/layout/src/rt-keyframes.ts:52
   do {
-    let _a230 = group.keyframes
-    var _i230 = 0
-    while _i230 < _a230.items.count {
-      let k: PropertyKeyframe = _a230.items[_i230]
-      _i230 += 1
+    let _a237 = group.keyframes
+    var _i237 = 0
+    while _i237 < _a237.items.count {
+      let k: PropertyKeyframe = _a237.items[_i237]
+      _i237 += 1
       _ = jsPush(out, k)
     }
   }
@@ -160,11 +160,11 @@ public func rtKeyframes_sampleKeyframes(_ keyframes: JsArray<PropertyKeyframe>, 
   var result: InterpolatedValue? = nil
   // ts: packages/layout/src/rt-keyframes.ts:99
   do {
-    let _a231 = try rtKeyframes_keyframeSegments(keyframes)
-    var _i231 = 0
-    while _i231 < _a231.items.count {
-      let s: KeyframeSegment = _a231.items[_i231]
-      _i231 += 1
+    let _a238 = try rtKeyframes_keyframeSegments(keyframes)
+    var _i238 = 0
+    while _i238 < _a238.items.count {
+      let s: KeyframeSegment = _a238.items[_i238]
+      _i238 += 1
       // ts: packages/layout/src/rt-keyframes.ts:100
       if (!((fraction >= s.applyFrom) && (fraction < s.applyTo))) {
         continue
@@ -202,11 +202,11 @@ public func rtKeyframes_groupFromRule(_ rule: JsArray<RuleKeyframe>, _ defaultEa
     var next: Double = rtEasing_INFINITY
     // ts: packages/layout/src/rt-keyframes.ts:145
     do {
-      let _a232 = rule
-      var _i232 = 0
-      while _i232 < _a232.items.count {
-        let k: RuleKeyframe = _a232.items[_i232]
-        _i232 += 1
+      let _a239 = rule
+      var _i239 = 0
+      while _i239 < _a239.items.count {
+        let k: RuleKeyframe = _a239.items[_i239]
+        _i239 += 1
         // ts: packages/layout/src/rt-keyframes.ts:145
         if ((k.offset > last) && (k.offset < next)) {
           next = k.offset
@@ -215,11 +215,11 @@ public func rtKeyframes_groupFromRule(_ rule: JsArray<RuleKeyframe>, _ defaultEa
     }
     // ts: packages/layout/src/rt-keyframes.ts:146
     do {
-      let _a233 = rule
-      var _i233 = 0
-      while _i233 < _a233.items.count {
-        let k: RuleKeyframe = _a233.items[_i233]
-        _i233 += 1
+      let _a240 = rule
+      var _i240 = 0
+      while _i240 < _a240.items.count {
+        let k: RuleKeyframe = _a240.items[_i240]
+        _i240 += 1
         // ts: packages/layout/src/rt-keyframes.ts:146
         if (k.offset == next) {
           _ = jsPush(sorted, k)
@@ -228,18 +228,18 @@ public func rtKeyframes_groupFromRule(_ rule: JsArray<RuleKeyframe>, _ defaultEa
     }
     // ts: packages/layout/src/rt-keyframes.ts:147
     if (next == rtEasing_INFINITY) {
-      throw JsError(message: S.s613)
+      throw JsError(message: S.s631)
     }
     last = next
   }
   let easings: JsArray<Easing> = JsArray<Easing>([])
   // ts: packages/layout/src/rt-keyframes.ts:151
   do {
-    let _a234 = sorted
-    var _i234 = 0
-    while _i234 < _a234.items.count {
-      let k: RuleKeyframe = _a234.items[_i234]
-      _i234 += 1
+    let _a241 = sorted
+    var _i241 = 0
+    while _i241 < _a241.items.count {
+      let k: RuleKeyframe = _a241.items[_i241]
+      _i241 += 1
       _ = jsPush(easings, (k.hasEasing ? k.easing : defaultEasing))
     }
   }
@@ -282,7 +282,7 @@ public func rtKeyframes_ruleAt(_ list: JsArray<RuleKeyframe>, _ i: Double) throw
   let k: RuleKeyframe? = jsAt(list, i)
   // ts: packages/layout/src/rt-keyframes.ts:172
   if (k == nil) {
-    throw JsError(message: jsConcat(S.s752, jsNumberToString(i), S.s76))
+    throw JsError(message: jsConcat(S.s770, jsNumberToString(i), S.s80))
   }
   return try jsUnwrap(k)
 }
@@ -292,7 +292,7 @@ public func rtKeyframes_easingAt(_ list: JsArray<Easing>, _ i: Double) throws ->
   let e: Easing? = jsAt(list, i)
   // ts: packages/layout/src/rt-keyframes.ts:178
   if (e == nil) {
-    throw JsError(message: jsConcat(S.s612, jsNumberToString(i), S.s76))
+    throw JsError(message: jsConcat(S.s630, jsNumberToString(i), S.s80))
   }
   return try jsUnwrap(e)
 }
