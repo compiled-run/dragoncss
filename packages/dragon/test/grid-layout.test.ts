@@ -197,11 +197,23 @@ describe('grid lowering', () => {
     expect(item(m, 'p4').column).toEqual({ kind: 'auto', span: 1 });
   });
 
-  it('refuses what the engine does not lay out: baseline and safe self-alignment; a flexible minimum never reaches it', () => {
+  it('hands first baseline alignment in the block axis to the engine as baseline (GRID G3)', () => {
+    const m = boxes('.g { display: grid; align-items: first baseline; } .i { align-self: baseline; } .j { align-self: first baseline; }', (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i']), div(r, 'j', ['j']), div(r, 'k', [])])]);
+    expect(m.get('g')?.style.alignItems).toBe('baseline');
+    expect(['i', 'j', 'k'].map((id) => m.get(id)?.style.alignSelf)).toEqual(['baseline', 'baseline', 'auto']);
+  });
+
+  it('refuses what the engine does not lay out: inline-axis and last baseline and safe self-alignment; a flexible minimum never reaches it', () => {
     const refusal = (css: string): string[] => compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i'])])]).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.message}`);
     expect(refusal('.g { display: grid; grid-template-columns: repeat(auto-fill, 20px); }')).toEqual([]);
     expect(refusal('.g { display: grid; grid-template-rows: 5px repeat(auto-fit, [a] 1em 10%) [b]; }')).toEqual([]);
-    expect(refusal('.g { display: grid; } .i { justify-self: baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: baseline'))).toBe(true);
+    expect(refusal('.g { display: grid; } .i { justify-self: baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: baseline') && m.includes('inline axis'))).toBe(true);
+    // GRID G3: first baseline alignment in the block axis lays out; the inline axis and last baseline stay refused.
+    expect(refusal('.g { display: grid; align-items: baseline; } .i { align-self: first baseline; }')).toEqual([]);
+    expect(refusal('.g { display: grid; justify-items: first baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-items: baseline') && m.includes('inline axis'))).toBe(true);
+    expect(refusal('.g { display: grid; } .i { justify-self: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: last baseline'))).toBe(true);
+    expect(refusal('.g { display: grid; align-items: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('align-items: last baseline'))).toBe(true);
+    expect(refusal('.g { display: grid; } .i { align-self: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('align-self: last baseline'))).toBe(true);
     expect(refusal('.g { display: grid; justify-items: safe center; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-items: safe center'))).toBe(true);
     expect(refusal('.g { display: grid; grid-template-columns: 20px 30px; }')).toEqual([]);
     for (const p of ['height: 50%', 'min-height: 10%', 'max-height: calc(10px + 5%)']) {

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; width: 160px; grid-template-columns: repeat(4, auto); justify-content: start; column-gap: 2px; margin-bottom: 4px; align-items: baseline; }
+.f13 { font-size: 13px; }
+.f17 { font-size: 17px; }
+.f20 { font-size: 20px; }
+.f25 { font-size: 25px; }
+.pb7 { padding-bottom: 7px; }
+.pt15 { padding-top: 15px; }
+.mt { margin-top: 3.5px; }
+.mb { margin-bottom: 4px; }
+.mpct { margin-top: 10%; }
+.bt { border-top: 3px solid; }
+.box { width: 10px; height: 30px; }
+.box2 { width: 12px; height: 17.5px; }
+.half { width: 10px; height: 50%; }
+.minhalf { width: 10px; min-height: 50%; }
+.fixed { grid-template-rows: 50px; }
+.fixed2 { grid-template-rows: 40px 30px; row-gap: 3px; }
+.flexrow { height: 40px; grid-template-rows: 1fr; }
+.span2 { grid-row: span 2; }
+.col2 { grid-column: 2; }
+.ai-start { align-items: start; }
+.as-base { align-self: baseline; }
+.as-first { align-self: first baseline; }
+.as-start { align-self: start; }
+.as-end { align-self: end; }
+.as-stretch { align-self: stretch; }
+.am { margin-top: auto; }
+.inner { display: grid; grid-template-columns: auto auto; align-items: baseline; padding-top: 5px; }
+.innerflex { display: flex; align-items: baseline; padding-top: 2px; }
+.fx { display: flex; align-items: baseline; width: 200px; margin-bottom: 4px; }
+.fg { display: grid; grid-template-columns: auto auto; }
+.pt20 { padding-top: 20px; }
+.clip { overflow: hidden; height: 6px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r" class="g"><div data-dragon-id="r1">X</div><div data-dragon-id="r2" class="f20">X</div><div data-dragon-id="r3" class="f13">X</div><div data-dragon-id="r4" class="f17">XX</div></div>
+<div data-dragon-id="s" class="g"><div data-dragon-id="s1" class="f20 pb7">X</div><div data-dragon-id="s2" class="pt15">X</div><div data-dragon-id="s3" class="f13 mt bt">X</div><div data-dragon-id="s4" class="f17 mb mpct">X</div></div>
+<div data-dragon-id="y" class="g"><div data-dragon-id="y1" class="box"></div><div data-dragon-id="y2" class="box2"></div><div data-dragon-id="y3" class="f13">X</div><div data-dragon-id="y4" class="as-stretch">X</div></div>
+<div data-dragon-id="x" class="g fixed"><div data-dragon-id="x1">X</div><div data-dragon-id="x2" class="f25">X</div><div data-dragon-id="x3" class="half"></div><div data-dragon-id="x4" class="pt15">X</div></div>
+<div data-dragon-id="v" class="g fixed2"><div data-dragon-id="v1" class="f20">X</div><div data-dragon-id="v2">X</div><div data-dragon-id="v3" class="f13 pt15">X</div><div data-dragon-id="v4" class="box2"></div><div data-dragon-id="v5" class="f17">X</div><div data-dragon-id="v6" class="mt">X</div></div>
+<div data-dragon-id="p" class="g"><div data-dragon-id="p1" class="f25 span2">X</div><div data-dragon-id="p2">X</div><div data-dragon-id="p3" class="f13">X</div><div data-dragon-id="p4" class="col2 f20">X</div><div data-dragon-id="p5" class="span2 pt15">X</div><div data-dragon-id="p6">X</div></div>
+<div data-dragon-id="a" class="g ai-start"><div data-dragon-id="a1" class="as-base">X</div><div data-dragon-id="a2" class="as-first f20">X</div><div data-dragon-id="a3" class="f13">X</div><div data-dragon-id="a4" class="as-base f17 am">X</div></div>
+<div data-dragon-id="b" class="g"><div data-dragon-id="b1" class="as-start f20">X</div><div data-dragon-id="b2" class="as-end">X</div><div data-dragon-id="b3" class="f13">X</div><div data-dragon-id="b4" class="f17">X</div></div>
+<div data-dragon-id="o" class="g"><div data-dragon-id="o1">X</div><div data-dragon-id="o2" class="f20 clip">X</div><div data-dragon-id="o3" class="f13">X</div><div data-dragon-id="o4" class="clip pt15">X</div></div>
+<div data-dragon-id="h" class="g"><div data-dragon-id="h1" class="half"></div><div data-dragon-id="h2" class="f20">X</div><div data-dragon-id="h3" class="minhalf"></div><div data-dragon-id="h4" class="pt15">X</div></div>
+<div data-dragon-id="q" class="g flexrow"><div data-dragon-id="q1" class="half"></div><div data-dragon-id="q2" class="f20">X</div><div data-dragon-id="q3" class="box2"></div><div data-dragon-id="q4">X</div></div>
+<div data-dragon-id="n" class="g"><div data-dragon-id="n1" class="inner"><div data-dragon-id="n1a" class="f20">X</div><div data-dragon-id="n1b" class="f13 pt15">X</div></div><div data-dragon-id="n2" class="innerflex"><div data-dragon-id="n2a">X</div><div data-dragon-id="n2b" class="f25">X</div></div><div data-dragon-id="n3" class="f17">X</div><div data-dragon-id="n4" class="inner"><div data-dragon-id="n4a" class="box"></div><div data-dragon-id="n4b">X</div></div></div>
+<div data-dragon-id="c" class="fx"><div data-dragon-id="c1" class="fg"><div data-dragon-id="c1a" class="pt20 as-start">X</div><div data-dragon-id="c1b" class="f17 as-base">X</div></div><div data-dragon-id="c2">X</div><div data-dragon-id="c3" class="fg"><div data-dragon-id="c3a" class="pt20">X</div><div data-dragon-id="c3b" class="f17">X</div></div></div>
+</body>
+</html>

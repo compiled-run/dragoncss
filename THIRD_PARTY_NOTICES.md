@@ -37,6 +37,8 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
 - `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/grid/grid_baseline_accumulator.h`: Copyright 2025 The Chromium Authors
+- `third_party/blink/renderer/core/layout/grid/grid_item.cc`: Copyright 2021 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_layout_algorithm.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_layout_utils.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc`: Copyright 2022 The Chromium Authors
@@ -50,6 +52,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/list/layout_list_item.h`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/list/list_marker.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/logical_box_fragment.h`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.h`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/paint/background_image_geometry.cc`: Copyright 2014 The Chromium Authors
