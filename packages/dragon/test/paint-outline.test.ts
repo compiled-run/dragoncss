@@ -1,18 +1,19 @@
 // PNT1 outlines (css-ui-4 §3): the shorthand and the longhands with Chrome 145's parsing (hidden, auto and invert refused as Chrome
 // does, hairline and percentages invalid), the computed values (keyword widths to px, 0 for style none, the webref initial auto
 // colour as currentcolor, em offsets to px), the refusals, the native refusals (auto, a rounded outline in a style other than solid
-// or double, inline boxes, and what the root-view outline would paint out of Chrome's order), the 3D tones (Color::Dark and Light,
-// CalculateInsetOutsetColor), and the native write and its emission.
+// or double, a translucent dotted, dashed or 3D one, inline boxes, and what the root-view outline would paint out of Chrome's
+// order), the 3D tones (Color::Dark and Light, CalculateInsetOutsetColor), and the native write and its emission.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
-import { androidProfile, createProjectWith, HIT_MODELLED, iosProfile, NO_FAULTS, nativeOutlinePending, nativePrograms } from '../src/internal.ts';
+import { androidProfile, createProjectWith, HIT_MODELLED, iosProfile, laneOnlyNative, NO_FAULTS, nativeOutlinePending, nativePrograms } from '../src/internal.ts';
 import { OUTLINE_EMITTER } from '../src/emit/paint/outline.ts';
 import { contrastRatio, darkColor, insetOutsetTones, lightColor } from '../src/css/color.ts';
 import { outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from '@dragon/layout';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
+import type { DraftTree, FrontEndResult } from '../src/index.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
+import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not, spanTextOf } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/outline.css', revision: 'r1', hash: 'sha256:0' };
 const LONGHANDS = ['outline-color', 'outline-style', 'outline-width', 'outline-offset'];
@@ -206,6 +207,96 @@ describe('outline: the native targets draw every style but auto, the side painte
   });
 });
 
+describe('outline: a translucent dotted, dashed or 3D outline is refused on the native targets (device run 38470185768)', () => {
+  const both: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+  const BODY = 'body { margin: 0; color: rgb(10, 20, 30); font-size: 20px; } ';
+  const user = (input: FrontEndResult, t: Targets = both) => createProjectWith({ projectId: 'test', targets: t }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+  const lanes = (input: FrontEndResult) => createProjectWith({ projectId: 'test', targets: both }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: true }).compile(input);
+  const single = (css: string) => inputFor(`${BODY}${css}`, (r) => [div(r, 'a', ['a'])]);
+  const errors = (c: { diagnostics: readonly Diagnostic[] }) => c.diagnostics.filter((d) => d.severity === 'error');
+  const translucent = (c: { diagnostics: readonly Diagnostic[] }) => errors(c).filter((d) => d.message.includes('outline in the translucent colour'));
+  const targetsOf = (c: { diagnostics: readonly Diagnostic[] }) => translucent(c).map((d) => d.target).sort();
+  const message = (style: string, colour: string, t: string) => `a has a ${style} outline in the translucent colour ${colour}, which Blink paints through a transparency layer of the colour's alpha, and ${t} composites that layer with its own rounding, one off Chrome's Skia in a channel; ${t} draws ${style} outlines in opaque colours only (PNT1)`;
+  /** A box .a that gains class on in the open state, so a state's colour is reachable apart from the initial one. */
+  const stated = (css: string): FrontEndResult => {
+    const input = inputFor(`${BODY}${css}`, (r) => {
+      const d = div(r, 'a', ['a']);
+      const on = { value: [{ when: eq('open', true), value: { owner: DOC, sheet: 's', name: 'on' } }, { when: not(eq('open', true)), value: null }], origin: d.origin };
+      return [{ ...d, classes: [...d.classes, on] }];
+    });
+    const tree = input.tree as DraftTree;
+    const root = tree.components[0] as DraftTree['components'][number];
+    return { ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 'open', domain: [false, true], initial: false, origin: root.origin }] }] } };
+  };
+  it('each side-painter style in a translucent colour is refused on ios and android by name, at the colour; web compiles', () => {
+    for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset']) {
+      for (const [colour, shown] of [['rgba(200, 0, 0, 0.5)', 'rgba(200, 0, 0, 0.5)'], ['#0000ff88', 'rgba(0, 0, 255, 0.533)'], ['rgba(0, 0, 0, 0.99)', 'rgba(0, 0, 0, 0.99)']] as const) {
+        const input = single(`.a { height: 10px; outline: 3px ${style} ${colour}; outline-offset: 2px; }`);
+        const c = user(input);
+        const errs = translucent(c);
+        expect(errs.map((d) => [d.code, d.target, d.message]).sort(), `${style} ${colour}`).toEqual([
+          ['DRAGON_UNSUPPORTED_VALUE', 'android', message(style, shown, 'android')],
+          ['DRAGON_UNSUPPORTED_VALUE', 'ios', message(style, shown, 'ios')],
+        ]);
+        for (const d of errs) expect(spanTextOf(input, d), `${style} ${colour}`).toBe(`3px ${style} ${colour}`);
+        expect(errors(c), `${style} ${colour}`).toEqual(errs);
+        expectCatalogued(errs);
+        expect(errors(user(input, { web: {} })), `${style} ${colour} on web`).toEqual([]);
+      }
+    }
+    // A longhand colour is the span.
+    const longhand = single('.a { height: 10px; outline: 3px dashed; outline-color: rgba(1, 2, 3, 0.5); }');
+    for (const d of translucent(user(longhand))) expect(spanTextOf(longhand, d)).toBe('rgba(1, 2, 3, 0.5)');
+  });
+  it('currentcolor takes the translucency of color, and the refusal points at the color declaration', () => {
+    const input = single('.a { height: 10px; color: rgba(0, 90, 200, 0.6); outline: 6px ridge currentcolor; }');
+    expect(targetsOf(user(input))).toEqual(['android', 'ios']);
+    for (const d of translucent(user(input))) expect(spanTextOf(input, d)).toBe('rgba(0, 90, 200, 0.6)');
+    // An inherited translucent color reaches the outline too; the default outline-color is currentcolor.
+    const inherited = inputFor(`${BODY} .p { color: rgba(0, 0, 0, 0.3); } .a { height: 10px; outline: 2px dotted; }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);
+    expect(targetsOf(user(inherited))).toEqual(['android', 'ios']);
+  });
+  it('a state or an @media band that makes the colour translucent is refused too', () => {
+    const state = stated('.a { height: 10px; outline: 3px dashed red; } .a.on { outline-color: rgba(255, 0, 0, 0.5); }');
+    expect(targetsOf(user(state))).toEqual(['android', 'ios']);
+    for (const d of translucent(user(state))) expect(spanTextOf(state, d)).toBe('rgba(255, 0, 0, 0.5)');
+    // A state that turns a translucent solid outline inset, or makes currentcolor translucent.
+    expect(targetsOf(user(stated('.a { height: 10px; outline: 3px solid rgba(255, 0, 0, 0.5); } .a.on { outline-style: inset; }')))).toEqual(['android', 'ios']);
+    expect(targetsOf(user(stated('.a { height: 10px; color: red; outline: 3px groove; } .a.on { color: rgba(255, 0, 0, 0.5); }')))).toEqual(['android', 'ios']);
+    // MQ-R1: native switches @media bands at run time, so a band that is not the fold band's counts as much as the fold band.
+    for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
+      expect(targetsOf(user(single(`.a { height: 10px; outline: 3px dotted blue; } @media ${media} { .a { outline-color: rgba(0, 0, 255, 0.4); } }`))), media).toEqual(['android', 'ios']);
+    }
+    // A :hover state is refused on native in a user's compile anyway (SELD-R2); its translucent outline is named as well.
+    expect(targetsOf(user(single('.a { height: 10px; outline: 3px dashed red; } .a:hover { outline-color: rgba(255, 0, 0, 0.5); }')))).toEqual(['android', 'ios']);
+  });
+  it('opaque, transparent, solid, double, hidden and zero-width outlines compile on ios and android', () => {
+    for (const css of [
+      'outline: 3px dashed red', 'outline: 3px dotted rgba(255, 0, 0, 1)', 'outline: 4px ridge #00f', 'outline: 3px inset transparent', 'outline: 3px outset rgba(0, 0, 0, 0)',
+      'outline: 3px solid rgba(255, 0, 0, 0.5)', 'outline: 6px double rgba(0, 0, 255, 0.4)', 'outline: 3px dashed rgba(255, 0, 0, 0.5); visibility: hidden',
+      'outline: 0 groove rgba(255, 0, 0, 0.5)', 'outline: 3px none rgba(255, 0, 0, 0.5)', 'color: rgba(0, 0, 0, 0.5); outline: 3px solid',
+    ]) {
+      expect(errors(user(single(`.a { height: 10px; ${css}; }`))), css).toEqual([]);
+    }
+    // display: none generates no box, so its outline paints nothing.
+    expect(translucent(user(single('.a { display: none; outline: 3px dashed rgba(255, 0, 0, 0.5); }')))).toEqual([]);
+  });
+  it('the parity lanes compile it on native and mark the case lane-only, in every band and state; an opaque case stays a native proof', () => {
+    for (const css of [
+      '.a { height: 10px; outline: 3px dashed rgba(255, 0, 0, 0.5); }',
+      '.a { height: 10px; outline: 3px dashed red; } .a:hover { outline-color: rgba(255, 0, 0, 0.5); }',
+      '.a { height: 10px; outline: 3px dashed red; } @media (min-width: 600px) { .a { outline-color: rgba(255, 0, 0, 0.5); } }',
+      '.a { height: 10px; outline: 3px dashed red; } @media (max-width: 599px) { .a { outline-color: rgba(255, 0, 0, 0.5); } }',
+    ]) {
+      const c = lanes(single(css));
+      expect(translucent(c), css).toEqual([]);
+      expect([laneOnlyNative(c, 'ios'), laneOnlyNative(c, 'android')], css).toEqual([true, true]);
+    }
+    const opaque = lanes(single('.a { height: 10px; outline: 3px dashed red; }'));
+    expect([laneOnlyNative(opaque, 'ios'), laneOnlyNative(opaque, 'android')]).toEqual([false, false]);
+  });
+});
+
 describe("outline: the web output keeps Chrome's UA focus ring", () => {
   const webText = (css: string): string => {
     const c = compile(css);
@@ -230,8 +321,9 @@ describe("outline: the web output keeps Chrome's UA focus ring", () => {
 });
 
 describe('outline: lowering and emission', () => {
-  const programs = (css: string, body: Parameters<typeof inputFor>[1] = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]) => {
-    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; color: rgb(10, 20, 30); font-size: 20px; } ${css}`, body));
+  // lanes: compile as the parity lanes do, which lower a translucent dotted, dashed or 3D outline that a user's compile refuses.
+  const programs = (css: string, body: Parameters<typeof inputFor>[1] = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])], lanes = false) => {
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: lanes }).compile(inputFor(`body { margin: 0; color: rgb(10, 20, 30); font-size: 20px; } ${css}`, body));
     const p = nativePrograms(c, []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     return p.programs;
@@ -271,7 +363,7 @@ describe('outline: lowering and emission', () => {
       expect(line(b, 'a'), b).toEqual(['  dragonSetOutline(t, v1, "solid", 3.0, -2.0, DragonRGBA8(1, 2, 3, 255), DragonRGBA8(1, 2, 3, 255), DragonRGBA8(1, 2, 3, 255))']);
       expect(line(b, 'b'), b).toEqual(['  dragonSetOutline(t, v1, "double", 1.5, 0.0, DragonRGBA8(255, 0, 0, 255), DragonRGBA8(255, 0, 0, 255), DragonRGBA8(255, 0, 0, 255))']);
     }
-    const q = programs('.a { height: 20px; outline: 4px groove rgb(20, 40, 60); } .b { outline: 2px dashed rgba(255, 0, 0, 0.5); outline-offset: 1px; }');
+    const q = programs('.a { height: 20px; outline: 4px groove rgb(20, 40, 60); } .b { outline: 2px dashed rgba(255, 0, 0, 0.5); outline-offset: 1px; }', undefined, true);
     const at = (b: 'uikit' | 'android-views', id: string): string[] => {
       const n = q[b].nodes.find((x) => x.id === id);
       const w = n?.writes.find((x) => x.kind === 'outline');

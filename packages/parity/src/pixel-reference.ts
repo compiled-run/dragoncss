@@ -395,13 +395,13 @@ export function caseBoxes(p: NativeProgram, viewport: { readonly width: number; 
 }
 
 /**
- * The points the device pixel lanes compare: casePoints, without those a translucent group (an opacity write strictly between 0 and
- * 1) paints. Native refuses such a group (dragon analysis/paint-values/effects.ts, PNT1-opacity-b), and only a lane-only case reaches
+ * The points the device pixel lanes compare: casePoints, without those of a translucent paint native refuses (translucentPaintKept)
+ * and those a translucent group (an opacity write strictly between 0 and 1) paints. Native refuses such a group (dragon analysis/paint-values/effects.ts, PNT1-opacity-b), and only a lane-only case reaches
  * a device with one: its pixels are proven against Chrome on the host (pnt1-effects.test), and the platforms composite it with
  * their own rounding. A point is the group's when its rule names a node of the group's subtree or it lies in a snapped box of one.
  */
 export function devicePoints(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SamplePoint[] {
-  const points = casePoints(p, viewport, dpr);
+  const points = translucentPaintKept(p, casePoints(p, viewport, dpr));
   const groups = p.nodes.filter((n) => n.writes.some((w) => w.kind === 'opacity' && w.opacity > 0 && w.opacity < 1));
   if (groups.length === 0) return points;
   const children = new Map<string, string[]>();
@@ -421,6 +421,33 @@ export function devicePoints(p: NativeProgram, viewport: { readonly width: numbe
     const named = q.rule.slice(q.rule.indexOf(':') + 1);
     if (ids.some((id) => named === id || named.startsWith(`${id}:`))) return false;
     return !rects.some((r) => q.x + 1 > r.left && q.x < r.right && q.y + 1 > r.top && q.y < r.bottom);
+  });
+}
+
+/** The outline styles the native side painter draws (dragon lower/paint/outline.ts), each through a layer when translucent. */
+const SIDE_PAINTER_OUTLINES: readonly string[] = ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset'];
+const translucent = (alpha: number): boolean => alpha > 0 && alpha < 255;
+
+/**
+ * points without those a translucent paint native refuses would draw (dragon analysis/paint-values outline.ts and radius.ts, PNT1):
+ * a dotted, dashed or 3D outline's points (rules naming the node's outline) and every point naming a rounded double border's box.
+ * Only a lane-only case (outline-web, radius-double-web) reaches a device with one; its pixels are proven against Chrome on the host
+ * (pnt1-outline.test, pnt1-radius.test), and the platforms blend it with their own rounding.
+ */
+function translucentPaintKept(p: NativeProgram, points: SamplePoint[]): SamplePoint[] {
+  const outlines = new Set<string>();
+  const boxes = new Set<string>();
+  for (const n of p.nodes) {
+    for (const w of n.writes) if (w.kind === 'outline' && SIDE_PAINTER_OUTLINES.includes(w.style) && translucent(w.color.alpha)) outlines.add(n.id);
+    const styles = n.writes.find((w) => w.kind === 'border-styles');
+    const colors = n.writes.find((w) => w.kind === 'border-colors');
+    const rounded = n.writes.some((w) => w.kind === 'border-radius');
+    if (rounded && styles?.kind === 'border-styles' && styles.styles.every((st) => st === 'double') && colors?.kind === 'border-colors' && colors.colors.some((c) => translucent(c.alpha))) boxes.add(n.id);
+  }
+  if (outlines.size === 0 && boxes.size === 0) return points;
+  return points.filter((q) => {
+    const named = q.rule.slice(q.rule.indexOf(':') + 1);
+    return ![...boxes].some((id) => named === id || named.startsWith(`${id}:`)) && ![...outlines].some((id) => named.startsWith(`${id}:outline-`));
   });
 }
 

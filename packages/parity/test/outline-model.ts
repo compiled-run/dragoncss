@@ -71,7 +71,7 @@ const alpha8 = (a: number): number => Math.round(a * 255);
 /**
  * A transparency layer's opaque pixel composited onto an opaque colour at the layer's 8-bit alpha a, as Chrome's committed pixels
  * show it (a 256-scale interpolation, not the paint source-over of `over`): each channel (src * (a + 1) + dst * (255 - a)) >> 8.
- * Fitted to the translucent dashed and ridge outlines of outline-dashed and outline-3d (rgba alpha 0.5 and 0.6: every channel of
+ * Fitted to the translucent dashed and ridge outlines of outline-web (rgba alpha 0.5 and 0.6: every channel of
  * the colour, lighter and darker tones over the stage), where `over` rounds one high and separate per-term shifts one low.
  */
 function layerOver(dst: Rgba, src: Rgba, a: number): Rgba {

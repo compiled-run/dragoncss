@@ -21,6 +21,7 @@ import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
 import { checkTranslucent } from './analysis/paint-values/effects.ts';
 import { checkSelectable } from './analysis/selection.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
+import { checkTranslucentOutlines } from './analysis/paint-values/outline.ts';
 import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
@@ -30,7 +31,7 @@ import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './a
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
-import { refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
+import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -357,6 +358,12 @@ function blocksTarget(d: Diagnostic, t: Target): boolean {
 const SVG_PROFILE_FEATURE = /^(fill|stroke|stroke-width):/;
 
 /** Tags and attributes are checked on every template node, including both arms of every branch and every slot's children. */
+/** PNT1: the native refusals of translucent paint whose platform blend is not Skia's (a side-painter outline, a rounded double border). */
+function checkTranslucentPaint(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  checkTranslucentOutlines(root, targets, diagnostics, reported);
+  checkTranslucentRoundedDoubles(root, targets, diagnostics, reported);
+}
+
 function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): void {
   for (const n of nodes) {
     if (n.kind === 'element') {
@@ -876,6 +883,9 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    // PNT1: outside the parity lanes, native refuses a translucent side-painter outline and a translucent rounded double border; the
+    // lanes run them to prove their web rows.
+    if (!options.interactionLanes) checkTranslucentPaint(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, t, diagnostics, fonts);
@@ -1316,6 +1326,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
             checkSelectable(r, native, pending, new Set());
             checkStackingClips(r, propagatedFrom(r), native, pending, new Set());
           }
+        }
+        // Every band, since native switches bands at run time.
+        for (const c of bandCases.flatMap((b) => b.cases)) {
+          for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkTranslucentPaint(r, native, pending, new Set());
         }
         laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
       }
