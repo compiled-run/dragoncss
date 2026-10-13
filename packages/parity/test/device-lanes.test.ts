@@ -377,7 +377,8 @@ describe('device dump element lines (T058J3 E): an inline box fragment has no ow
       const v = validateNativeDump(perfectDump(target, dpr, c, caseReference(target, c, dpr), all));
       expect(v.ok || v.errors.slice(0, 3), c.case.id).toBe(true);
     }
-  });
+    // Every case of the corpus at one DPR: master's ios DPR 3 run takes about 105 s of the 120 s default on the CI runner.
+  }, 600_000);
 });
 
 // #72 landing device run: an image sample failure must name its rule as its node, like every other sample kind, or the
