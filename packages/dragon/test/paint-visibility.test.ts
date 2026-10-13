@@ -1,6 +1,7 @@
 // T150a visibility: the longhand (inherited, initial visible, computed as specified), the native refusals (an inline box whose
 // visibility differs from its block container's; a hidden body with its own background beside html's; a hidden box with a native
-// view of its own the paint gate does not reach; a visibility write in a state program; an interaction rule beside a hidden box, R13),
+// view of its own the paint gate does not reach, but not its box-shadow or outline, which get no write; a visibility write in a state
+// program; an interaction rule beside a hidden box, R13),
 // the lowering (one write per box that is not visible, with facts; none for a visible or anonymous box) and the emitted native code
 // (the stage gate, the text-leaf hook, the background that a hidden box turns off, the readback and the two plants).
 import { describe, expect, it } from 'vitest';
@@ -106,15 +107,37 @@ describe('visibility: native refusals', () => {
 
 describe('visibility: native views the paint gate does not reach', () => {
   const el = (tag: string, props: Record<string, string>) => ({ element: { tag } as never, props: new Map(Object.entries(props).map(([k, v]) => [k, { value: { kind: 'keyword', value: v } } as unknown as ResolvedValue])) as never });
-  it('names an iframe, a scroll container on either axis, a box-shadow and an outline; none for a plain box or their none values', () => {
+  it('names an iframe and a scroll container on either axis; none for a plain box, a box-shadow or an outline (they get no write)', () => {
     expect(ownViews(el('div', { 'overflow-x': 'visible', 'overflow-y': 'visible' }))).toEqual([]);
     expect(ownViews(el('div', { 'overflow-x': 'hidden', 'overflow-y': 'clip', 'box-shadow': 'none', 'outline-style': 'none' }))).toEqual([]);
     expect(ownViews(el('iframe', {}))).toEqual(['the web view of an iframe']);
     expect(ownViews(el('div', { 'overflow-x': 'hidden', 'overflow-y': 'auto' }))).toEqual(['the scroll view of a scroll container']);
     expect(ownViews(el('div', { 'overflow-x': 'scroll' }))).toEqual(['the scroll view of a scroll container']);
-    // box-shadow and outline-style are looked up by name (their families are filled by their own packages): any value but none.
-    expect(ownViews(el('div', { 'box-shadow': 'inset' }))).toEqual(['the companion view of a box-shadow']);
-    expect(ownViews(el('div', { 'outline-style': 'solid' }))).toEqual(['the outline view of an outline']);
+    expect(ownViews(el('div', { 'box-shadow': 'inset', 'outline-style': 'solid' }))).toEqual([]);
+    expect(ownViews(el('iframe', { 'overflow-y': 'scroll', 'box-shadow': 'inset', 'outline-style': 'solid' }))).toEqual(['the web view of an iframe', 'the scroll view of a scroll container']);
+  });
+  it('compiles a hidden or collapsed box with a box-shadow and an outline on ios and android, with neither write; its visible child keeps both', () => {
+    for (const v of ['hidden', 'collapse']) {
+      const css = `body { margin: 0; } .a { height: 20px; padding: 4px; outline: 2px solid red; box-shadow: 1px 2px 3px red, inset 0 0 2px 1px blue; visibility: ${v}; } .b { height: 5px; outline: 1px double blue; box-shadow: 0 0 0 3px green; visibility: visible; }`;
+      const c = compileInput(inputFor(css, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]), NATIVE);
+      expect(errors(c), v).toEqual([]);
+      const p = programs(inputFor(css, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]));
+      for (const b of ['uikit', 'android-views'] as const) {
+        const node = (id: string) => p[b].nodes.find((n) => n.id === id);
+        expect(node('a')?.writes.map((w) => w.kind).filter((k) => k === 'outline' || k === 'box-shadow' || k === 'visibility'), `${v} ${b}`).toEqual(['visibility']);
+        expect(node('a')?.facts['shadow'], `${v} ${b}`).toBeUndefined();
+        expect(node('b')?.writes.map((w) => w.kind).filter((k) => k === 'outline' || k === 'box-shadow' || k === 'visibility').sort(), `${v} ${b}`).toEqual(['box-shadow', 'outline']);
+      }
+    }
+  });
+  it('gives no box-shadow or outline write to a child that inherits hidden, and one again to its grandchild set visible', () => {
+    const css = 'body { margin: 0; } .a { height: 30px; visibility: hidden; } .b, .c { height: 10px; outline: 1px solid blue; box-shadow: 0 0 0 2px green; } .c { visibility: visible; }';
+    const p = programs(inputFor(css, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [div(r, 'c', ['c'])])])]));
+    for (const b of ['uikit', 'android-views'] as const) {
+      const kinds = (id: string) => p[b].nodes.find((n) => n.id === id)?.writes.map((w) => w.kind).filter((k) => k === 'outline' || k === 'box-shadow').sort();
+      expect(kinds('b'), b).toEqual([]);
+      expect(kinds('c'), b).toEqual(['box-shadow', 'outline']);
+    }
   });
   it('refuses a hidden scroll container at its visibility declaration on ios only, and a visible one or a hidden child of one not at all', () => {
     const c = compile('.a { height: 10px; overflow: auto; visibility: hidden; }');

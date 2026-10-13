@@ -156,6 +156,20 @@ describe('box-shadow: lowering and emission', () => {
     expect(b?.writes.some((w) => w.kind === 'box-shadow')).toBe(false);
   });
 
+  it('a hidden or collapsed box, own or inherited, gets no box-shadow write or facts on either backend; a visible descendant keeps its own', () => {
+    for (const v of ['hidden', 'collapse']) {
+      const p = programs(`.a { box-shadow: 0 0 0 4px red, inset 1px 1px blue; visibility: ${v}; } .b { box-shadow: 1px 1px green; visibility: visible; }`);
+      for (const b of ['uikit', 'android-views'] as const) {
+        const a = p[b].nodes.find((n) => n.id === 'a');
+        expect(a?.writes.some((w) => w.kind === 'box-shadow'), `${v} ${b}`).toBe(false);
+        expect(a?.facts['shadow'], `${v} ${b}`).toBeUndefined();
+        expect(p[b].nodes.find((n) => n.id === 'b')?.writes.some((w) => w.kind === 'box-shadow'), `${v} ${b}`).toBe(true);
+      }
+    }
+    const inherited = programs('.a { visibility: hidden; } .b { box-shadow: 1px 1px green; }');
+    for (const b of ['uikit', 'android-views'] as const) expect(inherited[b].nodes.find((n) => n.id === 'b')?.writes.some((w) => w.kind === 'box-shadow'), b).toBe(false);
+  });
+
   it('emits the runtime writer with the tree on both backends and expects the shadows as [inset, x, y, blur, spread, r, g, b, a]', () => {
     const p = programs('.a { box-shadow: 1px 2px 3px 4px rgba(1, 2, 3, 0.5), inset 0 0 5px red; }');
     const a = p.uikit.nodes.find((n) => n.id === 'a');
