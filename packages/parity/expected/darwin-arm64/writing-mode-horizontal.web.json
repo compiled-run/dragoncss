@@ -120,6 +120,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -233,6 +236,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -346,6 +352,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -459,6 +468,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -602,6 +614,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -745,6 +760,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -888,6 +906,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1031,6 +1052,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1164,6 +1188,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1307,6 +1334,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1440,6 +1470,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1573,6 +1606,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1686,6 +1722,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1799,6 +1838,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1912,6 +1954,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2025,6 +2070,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2168,6 +2216,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2311,6 +2362,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2424,6 +2478,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2537,6 +2594,9 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     }

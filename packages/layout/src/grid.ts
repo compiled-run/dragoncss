@@ -61,6 +61,7 @@ import {
   contentBox,
   inlineMinMax,
   isScrollContainer,
+  lengthWidth,
   resolveBorder,
   resolveInlineLength,
   resolveLength,
@@ -1673,7 +1674,7 @@ function itemInlineSize(ctx: Ctx, item: GridItemData, areaInline: LU, margins: G
   const pad = resolvePadding(s, areaInline);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
-  const specified = resolveInlineLength(s.width, areaInline);
+  const specified = resolveInlineLength(lengthWidth(item.box.id, s.width), areaInline);
   const available = sub(sub(areaInline, margins.inlineStart), margins.inlineEnd);
   let raw: LU;
   if (specified !== null) raw = borderBoxFromSpecified(specified, hbp, s.boxSizing);
@@ -1683,7 +1684,7 @@ function itemInlineSize(ctx: Ctx, item: GridItemData, areaInline: LU, margins: G
     const maxC = add(intrinsicContentInlineSize(ctx, item.box, 'max'), hbp);
     raw = minLu(maxC, maxLu(minC, clampNegativeToZero(available)));
   }
-  return constrain(raw, inlineMinMax(s, areaInline, hbp));
+  return constrain(raw, inlineMinMax(item.box.id, s, areaInline, hbp));
 }
 
 type GridItemLayout = { readonly frag: Frag; readonly margins: GridMargins };

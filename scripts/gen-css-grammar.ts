@@ -65,6 +65,8 @@ const SUBSET = [
   'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
   // T150a: visibility (css-display-3 §4), after lists, as LONGHANDS registers it.
   'visibility',
+  // vertical-align (CSS2 §10.8.1), then float and clear (CSS2 §9.5), as LONGHANDS registers them.
+  'vertical-align', 'float', 'clear',
 ] as const;
 
 /**
@@ -98,6 +100,14 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ListStyleType::ParseSingleValue (css/properties/longhands/longhands_custom.cc): none, a string or a counter-style name;
   // symbols() is parsed only in @counter-style, so webref's <symbols()> is dropped (pinned by packages/parity/test/list-style-parse.test.ts).
   'list-style-type': '<counter-style-name> | <string> | none',
+  // Blink VerticalAlign::ParseSingleValue (css/properties/longhands/longhands_custom.cc): one keyword or one <length-percentage>
+  // (the unitless quirk applies only in quirks mode). Blink keeps vertical-align a longhand, not css-inline-3's shorthand of
+  // alignment-baseline and baseline-shift. Pinned against Chrome by packages/parity/test/inert-layout-parse.test.ts.
+  // Blink's float and clear keywords (css_properties.json5): CSS2's, plus css-logical-1's inline-start and inline-end; none of
+  // css-page-floats-3's. Pinned against Chrome by packages/parity/test/inert-layout-parse.test.ts.
+  float: 'none | left | right | inline-start | inline-end',
+  clear: 'none | left | right | both | inline-start | inline-end',
+  'vertical-align': 'baseline | sub | super | text-top | text-bottom | middle | top | bottom | -webkit-baseline-middle | <length-percentage>',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',
