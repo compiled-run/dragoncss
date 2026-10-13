@@ -71,6 +71,8 @@ export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  // PNT1b: radius-double's border points sit in the gap between the two rings, which the plant fills with the border colour.
+  'double-solid': ['radius-double'],
   'radius-square': ['radius-basic'],
   // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
   'shadow-offset-1': ['calib-shadow-blur'],
@@ -103,6 +105,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  // One band from the border box to the padding edge paints the gap: the border points and the stripe pairs catch it.
+  'double-solid': /^(border:|radius:[^:]+:[a-z-]+-stripe)/,
   // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
   'radius-square': /^radius:/,
   // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.

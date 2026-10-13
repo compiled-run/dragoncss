@@ -260,3 +260,67 @@ export function outlineRings(left: number, top: number, right: number, bottom: n
   pushRing(out, left, top, right, bottom, radii, ox, oy, band, 0);
   return out;
 }
+
+// ---------------------------------------------------------------- rounded double borders (PNT1b)
+
+/** border_edge.cc GetDoubleBorderStripeWidth: roundf of a float third (outer stripe) or two thirds (inner stripe) of a device-px width. */
+export function doubleStripeWidth(width: number, inner: boolean): number {
+  return roundOf(inner ? f32(f32(width * 2) / 3) : f32(width / 3));
+}
+
+/**
+ * One rect of a border box inset by four device-px widths (top, right, bottom, left) and its radii: contoured_border_geometry.cc:219-255
+ * PixelSnappedContouredBorderWithOutsets with the negated widths (the snapped rect moved by whole device px, its size clamped at 0)
+ * and float_rounded_rect.cc:115-132 FloatRoundedRect::Radii::Outset of the outer radii (each positive component shrinks by its
+ * sides' widths, clamped at 0; no corner is reset). Pushes 4 + 8 numbers.
+ */
+function pushInset(rect: number[], radii: number[], left: number, top: number, right: number, bottom: number, outer: readonly number[], d: readonly number[]): void {
+  const dt = at(d, 0);
+  const dr = at(d, 1);
+  const db = at(d, 2);
+  const dl = at(d, 3);
+  rect.push(left + dl);
+  rect.push(top + dt);
+  rect.push(left + dl + maxOf(right - left - dl - dr, 0));
+  rect.push(top + dt + maxOf(bottom - top - dt - db, 0));
+  const dx = [dl, dr, dr, dl];
+  const dy = [dt, dt, db, db];
+  for (let k = 0; k < 4; k++) {
+    const x = at(outer, k);
+    radii.push(x > 0 ? sizeClamp(maxOf(f32(x - at(dx, k)), 0)) : x);
+  }
+  for (let k = 0; k < 4; k++) {
+    const y = at(outer, k + 4);
+    radii.push(y > 0 ? sizeClamp(maxOf(f32(y - at(dy, k)), 0)) : y);
+  }
+}
+
+/**
+ * The two rings of a rounded double border whose four sides are double (each at least 3 device px) in one colour: Blink 145's
+ * BoxBorderPainter::DrawDoubleBorder (box_border_painter.cc:1217-1253, PaintBorderFastPath's two DRRects, :1255-1313). The outer ring lies
+ * between the border box with its outer radii and the box inset by each side's outer stripe width; the inner ring between the box
+ * inset by each side's inner stripe width (DoubleStripeOutsets) and the padding edge (PixelSnappedContouredInnerBorder, its radii
+ * not constrained). Edges, widths (top, right, bottom, left) and radii in device px; 24 numbers per ring as outlineRings gives them:
+ * the outer rect, the inner rect, the outer radii (8) and the inner radii (8).
+ */
+export function borderDoubleRings(left: number, top: number, right: number, bottom: number, borders: readonly number[], radii: readonly number[]): number[] {
+  if (borders.length !== 4 || radii.length !== 8) throw new Error('paint-radius: a double border takes 4 widths and 8 radii');
+  const outerStripe: number[] = [];
+  const innerStripe: number[] = [];
+  for (let k = 0; k < 4; k++) {
+    outerStripe.push(doubleStripeWidth(at(borders, k), false));
+    innerStripe.push(doubleStripeWidth(at(borders, k), true));
+  }
+  const rects: number[] = [];
+  const shapes: number[] = [];
+  pushInset(rects, shapes, left, top, right, bottom, radii, [0, 0, 0, 0]);
+  pushInset(rects, shapes, left, top, right, bottom, radii, outerStripe);
+  pushInset(rects, shapes, left, top, right, bottom, radii, innerStripe);
+  pushInset(rects, shapes, left, top, right, bottom, radii, borders);
+  const out: number[] = [];
+  for (let ring = 0; ring < 2; ring++) {
+    for (let i = 0; i < 8; i++) out.push(at(rects, 8 * ring + i));
+    for (let i = 0; i < 16; i++) out.push(at(shapes, 16 * ring + i));
+  }
+  return out;
+}
