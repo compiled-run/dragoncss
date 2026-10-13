@@ -70,12 +70,14 @@ export function neutralAttribute(tag: string, name: string): NeutralAttribute | 
 /** null when the attribute is rendering-neutral on the tag; otherwise why it is refused, naming the package that owns its effect. */
 export function attributeRefusal(tag: string, name: string): string | null {
   if (neutralAttribute(tag, name) !== undefined) return null;
+  // TDEC-a: href on a makes it a hyperlink, whose a:any-link UA rule (color and underline) analysis/text-decoration.ts applies.
+  if (tag === 'a' && name === 'href') return null;
   if (Object.hasOwn(HANDLED_ATTRIBUTES, tag) && (HANDLED_ATTRIBUTES[tag] as readonly string[]).includes(name)) return null;
   // SVG-a1: the SVG tags' geometry and presentation attributes (analysis/elements/svg.ts), and the packages of the others.
   if (svgAttributeHandled(tag, name)) return null;
   const svgOwner = svgAttributeOwner(tag, name);
   if (svgOwner !== null) return `its rendering effect belongs to ${svgOwner}`;
-  const owner = (Object.hasOwn(OWNERS, name) ? OWNERS[name] : undefined) ?? ((name === 'rel' || name === 'target') ? 'the inline and link package INL1 (on a hyperlink it changes link behaviour)' : null);
+  const owner = (Object.hasOwn(OWNERS, name) ? OWNERS[name] : undefined) ?? ((name === 'rel' || name === 'target') ? 'the link package LINK-RT (on a hyperlink it changes link behaviour)' : null);
   return owner === null
     ? 'its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)'
     : `its rendering effect belongs to ${owner}`;

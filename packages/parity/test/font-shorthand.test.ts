@@ -24,6 +24,7 @@ import type { FontFaults } from '../../dragon/src/fonts/faults.ts';
 import { layoutCases } from '../src/dpr.ts';
 import { FONT_SHORTHAND } from '../src/fixture-groups/font-shorthand.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
+import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { repoPath } from '../src/paths.ts';
 
 const SOURCE = { uri: 'dragon-source://test/font.css', revision: 'r1', hash: 'sha256:0' };
@@ -145,10 +146,11 @@ describe('font-synthesis on native', () => {
 describe('the font-shorthand group', () => {
   // BASE is master af67457777 (#262, which landed TXT-W1). The pins are digests (PIN-DERIVE: CI checks out the head alone, so they
   // read no git history), each taken at BASE with git; a merge that moves BASE retakes them there and states why in its message.
-  /** sha256 of "<path>\t<sha256 of the capture without the font-synthesis keys>" lines in path order, over every capture but TXT-W2's own. */
+  /** sha256 of "<path>\t<sha256 of the capture without the keys added since>" lines in path order, over every capture but TXT-W2's own. */
   const BASE_CAPTURES = { files: 3164, digest: '212927bd75ad77ec1c87160f5dad064452cf959f9ee8ef38bfc9572d9f33fc45' };
-  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
-  it('every capture of BASE is unchanged but for the font-synthesis keys, which every node has', () => {
+  // TDEC-a adds the decoration longhands after TXT-W2; BASE has neither, so stripping both leaves BASE's digest.
+  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS];
+  it('every capture of BASE is unchanged but for the keys added since, which every node has', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
       .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/')))

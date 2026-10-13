@@ -13,10 +13,11 @@ import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
+import { applyAnyLink } from './text-decoration.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
@@ -243,6 +244,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
+    applyAnyLink(el, props, defaulted, environment.ua);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
@@ -258,6 +260,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeOverflowPair(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
+    computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeJustifyItems(props, parent === null ? null : parent.props);
     computeLists(props, faults);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {

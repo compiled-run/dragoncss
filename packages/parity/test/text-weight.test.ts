@@ -22,6 +22,7 @@ import { fixtureInput } from '../src/cases.ts';
 import { layout } from '../src/fixture-groups/define.ts';
 import { FONT_FIXTURES, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { TEXT_WEIGHT } from '../src/fixture-groups/text-weight.ts';
+import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-reference.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
@@ -222,8 +223,8 @@ describe('BASE pins', () => {
     const paths = files(dirs, (p) => !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(p));
     expect({ files: paths.length, digest: digest(paths, (p) => readFileSync(repoPath(p))) }).toEqual(BASE_OUTPUTS);
   });
-  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, then TXT-W2's font-synthesis longhands. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));

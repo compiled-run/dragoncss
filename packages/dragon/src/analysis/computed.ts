@@ -207,6 +207,27 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   computePaintValues(props, { em: own, rem: rootFontSize ?? own });
 }
 
+/** Inherited lengths whose value may be a calculation: their em and rem compute at the declaring element (css-values-4 §6). */
+const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset'];
+const EM_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(r?em)(?![\w-])/gi;
+
+/**
+ * css-values-4 §6: an em or rem inside a calculation in an inherited length computes to px at the element that declares it, so a
+ * descendant inherits the absolute length (calc(0.5em + 1px) under a 20px font is 11px on every descendant, whatever its own size).
+ */
+export function computeInheritedMathLengths(props: Map<Longhand, ResolvedValue>, em: number | null, rem: number | null): void {
+  if (em === null || rem === null) return;
+  for (const p of INHERITED_MATH_LENGTHS) {
+    const v = props.get(p) as ResolvedValue;
+    if (v.origin === 'inherited' || v.value.kind !== 'other' || v.value.type.startsWith(REFUSED_MATH_PREFIX)) continue;
+    const text = v.value.text.replace(EM_IN_MATH, (all, before: string, n: string, unit: string) => {
+      const px = lengthToPx(Number(n), unit.toLowerCase(), { em, rem });
+      return px === null || !Number.isFinite(px) || /e/i.test(String(px)) ? all : `${before}${String(px)}${CANONICAL_LENGTH_UNIT}`;
+    });
+    if (text !== v.value.text) props.set(p, { ...v, value: { ...v.value, text } });
+  }
+}
+
 /** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */
 export function computeGridLengths(props: Map<Longhand, ResolvedValue>, em: number | null, rem: number | null): void {
   if (em === null || rem === null) return;

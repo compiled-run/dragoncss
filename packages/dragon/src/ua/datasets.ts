@@ -29,6 +29,11 @@ export type UaDataset = {
   readonly userAgentTextFonts: { readonly [T in CapturedTag]: TextFontRow } & { readonly [K in PhrasingKey]?: TextFontRow };
   /** Chrome's minimum logical font size in px, which clamps an em font size under the keyword-sized root. */
   readonly minimumLogicalFontSize: number;
+  /**
+   * html.css:1501-1505, a:-webkit-any-link { color: -webkit-link; text-decoration: underline }, as captured on a[href] (an a whose
+   * href is unvisited: :visited never matches): the declared colour per direction and the decoration line.
+   */
+  readonly anyLink: { readonly color: { readonly ltr: string; readonly rtl: string }; readonly line: string };
   /** REPL-0: the replaced keys (iframe, img with a src), in tables of their own; uaRows reads them. */
   readonly replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [property: string]: string } };
   readonly replacedKeyLonghands: { readonly [K in ReplacedKey]: readonly string[] };
@@ -96,7 +101,10 @@ function withSpecifiedTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark)
     }
     return [tag, rule];
   });
-  return { ...ds, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'] };
+  const declared = ds.elementKeyDeclared['a[href]'];
+  const line = ds.userAgentUnmodelled['a[href]']?.ltr['text-decoration-line'];
+  if (declared.ltr['color'] === undefined || declared.rtl['color'] === undefined || line === undefined) throw new Error(`${ds.platform}: the a[href] capture has no color or text-decoration-line`);
+  return { ...ds, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line } };
 }
 
 const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, withSpecifiedTextFonts(darwinArm64)]]);
