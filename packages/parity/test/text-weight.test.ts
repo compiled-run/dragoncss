@@ -28,8 +28,8 @@ import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
 /** The outputs of BASE (inl1a-tags-v2 at 186dba301c, #105 caught up with master ef96e1c079), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 12612, digest: '0a71a5d48e2b1d86d0b2b9122c9ba0e8b235bc64b2e77fee4e3a27ed1ed990d0' };
-const BASE_CAPTURES = { files: 3218, digest: '5fd0d8662d286bd142c8319d0c27029dceac773cbc271c9e4c1f175cf3804c1f' };
+const BASE_OUTPUTS = { files: 12696, digest: 'ca036e35a853ace858c978b2478647b4e7a7cbec07885d183e7c5a5c14fa0e9f' };
+const BASE_CAPTURES = { files: 3242, digest: '33116b4d85216c1cc0c7f323e5d279a8c18b081d2b35b8b79d673de69a948780' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -215,9 +215,9 @@ describe('BASE pins', () => {
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
     // TXT-W2's font-shorthand cases are its own too, as the digests below exclude them.
     const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-'));
-    // BASE is master e69b540a71 plus batch #279 (#267, #269, #266, #268, #206, #277), whose FIXTURES hold 792 layout cases (retaken for #279's added cases).
-    expect(base.length).toBe(792);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('b0f743b1264632d8b47b46751b3a3350a7b2f608843ee0d9c1ed36abf3fefc91');
+    // BASE is master 52eeb3b0d5 plus batch #281 (#107, #108, #109, #276, #272, #278), whose FIXTURES hold 798 layout cases (retaken for #281's added cases).
+    expect(base.length).toBe(798);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('6a30aed09cedacfee4f7e5029285c4948aeae4292f570e7af047084b12c58618');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
