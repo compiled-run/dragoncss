@@ -1489,12 +1489,17 @@
       "fileSha256": "df610e882fc43bb756e031a1741f4516ab82a655b7cbd6f30e73946ccdaf4fa9",
       "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
       "ranges": [
+        { "lines": "80-95", "symbol": "BorderStyleHasUnmatchedColorsAtCorner", "source": "cited" },
+        { "lines": "116-134", "symbol": "BorderStylesRequireMiter", "source": "cited" },
         { "lines": "354-365", "symbol": "kStylePriority", "source": "cited" },
         { "lines": "369-374", "symbol": null, "source": "cited" },
         { "lines": "398-498", "symbol": "EnforceDotsAtEndpoints", "source": "cited" },
         { "lines": "500-559", "symbol": "DrawLineWithStyle", "source": "cited" },
         { "lines": "561-596", "symbol": "DrawDashedOrDottedBoxSide", "source": "cited" },
+        { "lines": "611-614", "symbol": "DarkenBoxSide", "source": "cited" },
+        { "lines": "616-641", "symbol": "CalculateInsetOutsetColor", "source": "cited" },
         { "lines": "647-752", "symbol": "DrawDoubleBoxSide", "source": "cited" },
+        { "lines": "752-822", "symbol": "DrawRidgeOrGrooveBoxSide", "source": "cited" },
         { "lines": "839-898", "symbol": "DrawSolidBoxSide", "source": "cited" },
         { "lines": "900-956", "symbol": "DrawLineForBoxSide", "source": "cited" },
         { "lines": "1145-1215", "symbol": "ComplexBorderInfo", "source": "cited" },
@@ -1504,10 +1509,12 @@
         { "lines": "1651-1680", "symbol": "ComputeMiter", "source": "cited" },
         { "lines": "1651-1694", "symbol": "ComputeMiter", "source": "cited" },
         { "lines": "1696-1751", "symbol": "PaintOneBorderSide", "source": "cited" },
-        { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" }
+        { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" },
+        { "lines": "2453-2463", "symbol": "ColorsMatchAtCorner", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": "checkRoundedElement", "use": "reference" },
+        { "file": "packages/dragon/src/lower/paint/outline.ts", "symbol": "insetOutsetTones", "use": "port" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
@@ -1598,10 +1605,13 @@
       "ranges": [
         { "lines": "74-80", "symbol": "AdjustedOutlineOffset", "source": "cited" },
         { "lines": "448-449", "symbol": null, "source": "cited" },
-        { "lines": "518-536", "symbol": "PaintDoubleOutline", "source": "cited" }
+        { "lines": "518-536", "symbol": "PaintDoubleOutline", "source": "cited" },
+        { "lines": "895-949", "symbol": "PaintOutlineRects", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" }
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": "outlinePaintOps", "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -2213,6 +2223,23 @@
         { "file": "packages/layout/src/units.ts", "symbol": "percentOf", "use": "reference" },
         { "file": "packages/layout/src/units.ts", "symbol": "pixelsAndPercentPlainOrder", "use": "reference" },
         { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/graphics/color.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2003, 2004, 2005, 2006, 2008 Apple Inc. All rights reserved.",
+      "fileSha256": "e780f6a8dd527830d896cd4e57bfa18db6510940f370450ebf7e7f9895a45afa",
+      "headerSha256": "d1f4d631a731a753eea39382845bb3ae1608640c0ff8f67861663964ced3e285",
+      "ranges": [
+        { "lines": "156-159", "symbol": "QuantizeTo8Bit", "source": "cited" },
+        { "lines": "1138-1182", "symbol": "Color::Light", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/paint/outline.ts", "symbol": "darkColor", "use": "port" },
+        { "file": "packages/dragon/src/lower/paint/outline.ts", "symbol": "lightColor", "use": "port" }
       ]
     },
     {
@@ -2861,6 +2888,22 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/color_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "0e7ce71427f0e903a9da0f082c34b0a87a0788dbc5cf9911d79a228d15ae8535",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "58-64", "symbol": "Linearize", "source": "cited" },
+        { "lines": "392-413", "symbol": "GetContrastRatio", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/paint/outline.ts", "symbol": "contrastRatio", "use": "port" }
       ]
     },
     {

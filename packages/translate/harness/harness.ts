@@ -74,7 +74,7 @@ import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
-import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
+import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -1497,6 +1497,11 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (name === 'paint:dash:borderPaintOps') {
     const faults: DashFaults = { phase1: flagAt(a, 8), gapUnfitted: flagAt(a, 9) };
     return `["ok",[${commaList(borderPaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), bitsList(a, 5), strList(a, 6), bitsList(a, 7), faults).map(borderOpJson))}]]`;
+  }
+  if (name === 'paint:dash:outlineNeedsSidePainter') return `["ok",${outlineNeedsSidePainter(str(item(a, 1, '$'), '$[1]')) ? 'true' : 'false'}]`;
+  if (name === 'paint:dash:outlinePaintOps') {
+    const faults: DashFaults = { phase1: flagAt(a, 11), gapUnfitted: flagAt(a, 12) };
+    return `["ok",[${commaList(outlinePaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), str(item(a, 6, '$'), '$[6]'), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10), faults).map(borderOpJson))}]]`;
   }
   // PNT2: paint-transform.ts.
   if (name === 'paint:transform:resolveTransformOrigin') {

@@ -49,7 +49,7 @@ export { hasRoundedCorner, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outl
 export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from './paint-shadow.ts';
 export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver } from './paint-shadow.ts';
 export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';
-export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';
+export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from './paint-dash.ts';
 export type { EnvLength, FontCalc, FontMetricLength, FontPercent, FontSpec, LineHeightCalc, LineHeightLength, RootFontLength, SafeAreaInsets, SafeAreaSide, TextFont, ViewportSize, ViewportUnitSizes } from './input.ts';
 export type { EnvironmentDependencies } from './environment.ts';
 export { environmentDependencies, resolveEnvironment } from './environment.ts';

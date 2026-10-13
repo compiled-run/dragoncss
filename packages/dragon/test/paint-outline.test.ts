@@ -1,11 +1,13 @@
 // PNT1 outlines (css-ui-4 §3): the shorthand and the longhands with Chrome 145's parsing (hidden, auto and invert refused as Chrome
 // does, hairline and percentages invalid), the computed values (keyword widths to px, 0 for style none, the webref initial auto
-// colour as currentcolor, em offsets to px), the refusals, the native refusals (other styles, inline boxes, and what the root-view
-// outline would paint out of Chrome's order), and the native write and its emission.
+// colour as currentcolor, em offsets to px), the refusals, the native refusals (auto, a rounded outline in a style other than solid
+// or double, inline boxes, and what the root-view outline would paint out of Chrome's order), the 3D tones (Color::Dark and Light,
+// CalculateInsetOutsetColor), and the native write and its emission.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { androidProfile, createProjectWith, HIT_MODELLED, iosProfile, NO_FAULTS, nativeOutlinePending, nativePrograms } from '../src/internal.ts';
 import { OUTLINE_EMITTER } from '../src/emit/paint/outline.ts';
+import { contrastRatio, darkColor, insetOutsetTones, lightColor } from '../src/lower/paint/outline.ts';
 import { outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from '@dragon/layout';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -81,23 +83,45 @@ describe('outline: parse and computed values (Chrome 145 getComputedStyle)', () 
   });
 });
 
-describe('outline: the native targets draw solid and double outlines', () => {
+describe('outline: the native targets draw every style but auto, the side painter styles on square corners', () => {
   const targets: Targets = { ios: { minimum: '15.0' }, web: {} };
   const tree = (css: string, body: Parameters<typeof inputFor>[1], t: Targets = targets) =>
     createProjectWith({ projectId: 'test', targets: t }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; color: rgb(10, 20, 30); font-size: 20px; } ${css}`, body));
   const errors = (c: { diagnostics: readonly Diagnostic[] }) => c.diagnostics.filter((d) => d.severity === 'error');
-  it('a dotted, dashed, 3D or auto outline is refused on ios at the style declaration and compiles for web', () => {
-    for (const css of ['outline: 2px dashed red', 'outline-style: dotted', 'outline: 3px groove', 'outline: auto 0']) {
-      const c = compile(`.a { height: 10px; ${css}; }`, targets);
-      const errs = errors(c);
-      expect(errs.map((d) => [d.code, d.target]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-      expect(errs[0]?.message, css).toMatch(/; ios draws solid and double outlines only \(PNT1\)$/);
+  const SUFFIX = '; ios draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)';
+  it('an auto outline is refused on ios at any width, by name, at the style declaration, and compiles for web', () => {
+    for (const css of ['outline: auto', 'outline: auto 0', 'outline: auto 4px red', 'outline-style: auto; border-radius: 3px']) {
+      const errs = errors(compile(`.a { height: 10px; ${css}; }`, targets));
+      expect(errs.map((d) => [d.code, d.target, d.message]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios', `a has outline-style auto, Chrome's focus ring, whose ring follows the descendants' outline rects${SUFFIX}`]]);
+      expect(errs[0]?.origin.kind, css).toBe('authored');
       expectCatalogued(errs);
+      expect(errors(compile(`.a { height: 10px; ${css}; }`)), css).toEqual([]);
+    }
+  });
+  it('a rounded dotted, dashed, groove, ridge, inset or outset outline is refused on ios, by name; web compiles', () => {
+    for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset']) {
+      for (const radius of ['border-radius: 4px', 'border-top-right-radius: 3px 5px', 'border-radius: 10%']) {
+        const css = `outline: 3px ${style} red; ${radius}`;
+        const errs = errors(compile(`.a { height: 10px; ${css}; }`, targets));
+        expect(errs.map((d) => [d.code, d.target, d.message]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios', `a has a ${style} outline on rounded corners, which Blink strokes along the rounded centre line (PNT1b)${SUFFIX}`]]);
+        expectCatalogued(errs);
+        expect(errors(compile(`.a { height: 10px; ${css}; }`)), css).toEqual([]);
+      }
+    }
+  });
+  it('a dotted, dashed, groove, ridge, inset or outset outline on square corners compiles on ios, a radius with a zero component included', () => {
+    for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset']) {
+      for (const extra of ['', 'outline-offset: -3px', 'border-radius: 0', 'border-top-left-radius: 6px 0']) {
+        const css = `outline: 3px ${style} red; ${extra}`;
+        expect(errors(compile(`.a { height: 10px; ${css}; }`, targets)), css).toEqual([]);
+      }
     }
   });
   it('an outline on an inline box is refused on ios (Blink outlines each line fragment)', () => {
     const c = compile('.a { display: inline; outline: 2px solid red; }', targets);
     expect(errors(c).map((d) => [d.target, d.message])).toEqual([['ios', expect.stringMatching(/^a has an outline on an inline box, which Blink draws around each line fragment; ios draws/)]]);
+    // A dashed one too: the inline refusal still applies once the style is drawn.
+    expect(errors(compile('.a { display: inline; outline: 2px dashed red; }', targets)).map((d) => d.target)).toEqual(['ios']);
     expectCatalogued(errors(c));
   });
   it('solid and double outlines compile everywhere, a negative offset on a box that clips its own overflow included', () => {
@@ -115,7 +139,7 @@ describe('outline: the native targets draw solid and double outlines', () => {
     for (const overflow of ['hidden', 'clip', 'auto']) {
       const c = tree(`.p { height: 20px; overflow: ${overflow}; } .b { height: 5px; outline: 2px solid red; }`, (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])]);
       const outline = errors(c).filter((d) => d.message.includes('outline'));
-      expect(outline.map((d) => [d.target, d.message]), overflow).toEqual([['ios', 'b has an outline inside the overflow clip of p, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context; ios draws solid and double outlines only (PNT1)']]);
+      expect(outline.map((d) => [d.target, d.message]), overflow).toEqual([['ios', `b has an outline inside the overflow clip of p, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context${SUFFIX}`]]);
       expect(outline[0]?.origin.kind, overflow).toBe('authored');
       expectCatalogued(outline);
     }
@@ -137,7 +161,7 @@ describe('outline: the native targets draw solid and double outlines', () => {
     for (const [css, what] of layers) {
       const c = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);
       const outline = errors(c).filter((d) => d.message.includes('outline'));
-      expect(outline.map((d) => [d.target, d.message]), css).toEqual([['ios', `b has an outline, and ${what}, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context; ios draws solid and double outlines only (PNT1)`]]);
+      expect(outline.map((d) => [d.target, d.message]), css).toEqual([['ios', `b has an outline, and ${what}, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context${SUFFIX}`]]);
       expectCatalogued(outline);
     }
     // A z-index on a static box outside a flex container makes no layer (CSS2 §9.9.1), so the outline stays in the root's flow.
@@ -153,13 +177,16 @@ describe('outline: the native targets draw solid and double outlines', () => {
     const c = tree('.b { height: 5px; outline: 2px solid red; } .q { position: relative; } .r { position: relative; }', (r) => [div(r, 'b', ['b']), div(r, 'q', ['q']), div(r, 'r', ['r'])], { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
     expect(errors(c).filter((d) => d.message.includes('outline')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
   });
-  it('native claims no row for an outline style it refuses wherever it paints, and a zero-width one still compiles there', () => {
-    for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset', 'auto']) expect(nativeOutlinePending(`outline-style:${style}`), style).toBe(true);
-    for (const style of ['solid', 'double', 'none', 'inherit']) expect(nativeOutlinePending(`outline-style:${style}`), style).toBe(false);
+  it('native claims no row for auto, which it refuses wherever it paints, and a zero-width one still compiles there', () => {
+    expect(nativeOutlinePending('outline-style:auto')).toBe(true);
+    for (const style of ['solid', 'double', 'dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset', 'none', 'inherit']) expect(nativeOutlinePending(`outline-style:${style}`), style).toBe(false);
     expect(nativeOutlinePending('border-top-style:dashed')).toBe(false);
-    // A zero-width dotted outline (outline-values proves its computed value) proves no paint, so no native row may claim the style.
+    expect(nativeOutlinePending('outline-style:autox')).toBe(false);
+    // An auto outline that paints nothing (display: contents) compiles but proves no paint, so no native row may claim the style.
     for (const r of [...iosProfile.rows, ...androidProfile.rows]) expect(nativeOutlinePending(r.feature), `${r.feature}@${r.context}`).toBe(false);
-    for (const css of ['outline: 0 dashed', 'outline: #abc 0 dotted', 'outline-width: 0; outline-style: groove']) expect(errors(compile(`.a { height: 10px; ${css}; }`, targets)), css).toEqual([]);
+    expect(errors(compile('.a { display: contents; outline: auto; }', targets)).filter((d) => d.message.includes('outline'))).toEqual([]);
+    // A zero-width outline in another style paints nothing either, and compiles, rounded or not.
+    for (const css of ['outline: #abc 0 dotted', 'outline-width: 0; outline-style: groove; border-radius: 4px']) expect(errors(compile(`.a { height: 10px; ${css}; }`, targets)), css).toEqual([]);
   });
 });
 
@@ -225,8 +252,28 @@ describe('outline: lowering and emission', () => {
       return OUTLINE_EMITTER.lines[b]('v1', n, w);
     };
     for (const b of ['uikit', 'android-views'] as const) {
-      expect(line(b, 'a'), b).toEqual(['  dragonSetOutline(t, v1, false, 3.0, -2.0, DragonRGBA8(1, 2, 3, 255))']);
-      expect(line(b, 'b'), b).toEqual(['  dragonSetOutline(t, v1, true, 1.5, 0.0, DragonRGBA8(255, 0, 0, 255))']);
+      expect(line(b, 'a'), b).toEqual(['  dragonSetOutline(t, v1, "solid", 3.0, -2.0, DragonRGBA8(1, 2, 3, 255), DragonRGBA8(1, 2, 3, 255), DragonRGBA8(1, 2, 3, 255))']);
+      expect(line(b, 'b'), b).toEqual(['  dragonSetOutline(t, v1, "double", 1.5, 0.0, DragonRGBA8(255, 0, 0, 255), DragonRGBA8(255, 0, 0, 255), DragonRGBA8(255, 0, 0, 255))']);
+    }
+    const q = programs('.a { height: 20px; outline: 4px groove rgb(20, 40, 60); } .b { outline: 2px dashed rgba(255, 0, 0, 0.5); outline-offset: 1px; }');
+    const at = (b: 'uikit' | 'android-views', id: string): string[] => {
+      const n = q[b].nodes.find((x) => x.id === id);
+      const w = n?.writes.find((x) => x.kind === 'outline');
+      if (n === undefined || w === undefined || w.kind !== 'outline') throw new Error(`${id}: no outline write`);
+      return OUTLINE_EMITTER.lines[b]('v1', n, w);
+    };
+    for (const b of ['uikit', 'android-views'] as const) {
+      // rgb(20, 40, 60) is dark: its darker tone is black, and it contrasts with black by less than 1.75, so its lighter one is Color::Light.
+      expect(at(b, 'a'), b).toEqual(['  dragonSetOutline(t, v1, "groove", 4.0, 0.0, DragonRGBA8(20, 40, 60, 255), DragonRGBA8(48, 96, 144, 255), DragonRGBA8(0, 0, 0, 255))']);
+      expect(at(b, 'b'), b).toEqual(['  dragonSetOutline(t, v1, "dashed", 2.0, 1.0, DragonRGBA8(255, 0, 0, 128), DragonRGBA8(255, 0, 0, 128), DragonRGBA8(255, 0, 0, 128))']);
+    }
+  });
+  it('a 3D style writes its tones, the other styles none', () => {
+    const p = programs('.a { height: 20px; outline: 4px inset rgb(200, 60, 60); } .b { height: 5px; outline: 2px dotted rgb(200, 60, 60); }');
+    for (const b of ['uikit', 'android-views'] as const) {
+      const w = (id: string) => p[b].nodes.find((n) => n.id === id)?.writes.find((x) => x.kind === 'outline');
+      expect(w('a'), b).toEqual(expect.objectContaining({ style: 'inset', tones: [{ r: 200, g: 60, b: 60, alpha: 255 }, darkColor({ r: 200, g: 60, b: 60, alpha: 255 })], radii: null }));
+      expect(w('b'), b).toEqual(expect.objectContaining({ style: 'dotted', tones: null }));
     }
   });
   it('the expected applied value is the TS outlineRings rects at the device scale, the radii those of the rounded box', () => {
@@ -242,6 +289,34 @@ describe('outline: lowering and emission', () => {
     expect(got).toEqual([...rings.slice(0, 8), ...rings.slice(24, 32)]);
     // Two bands of round(10 / 3) = 3 device px at either edge of the 10 device px ring, 2 device px out.
     expect(got).toEqual([-12, -12, 312, 52, -9, -9, 309, 49, -5, -5, 305, 45, -2, -2, 302, 42]);
+  });
+});
+
+describe("outline: the 3D tones (Blink 145's Color::Dark, Color::Light and CalculateInsetOutsetColor)", () => {
+  const c = (r: number, g: number, b: number, alpha = 255) => ({ r, g, b, alpha });
+  it("Color::Dark and Color::Light: white's darker is 171, black's lighter is 84, others scale by their largest channel", () => {
+    expect(darkColor(c(255, 255, 255))).toEqual(c(171, 171, 171));
+    expect(lightColor(c(0, 0, 0))).toEqual(c(84, 84, 84));
+    expect(darkColor(c(0, 0, 0))).toEqual(c(0, 0, 0));
+    expect(lightColor(c(255, 255, 255))).toEqual(c(255, 255, 255));
+    // v = 200/255: each channel times (v - 0.33) / v, then QuantizeTo8Bit (times the float below 256, truncated): red is v - 0.33 = 0.4543, 116; the alpha is kept.
+    expect(darkColor(c(200, 60, 60, 128))).toEqual(c(116, 34, 34, 128));
+    // v = 60/255, under 0.33: the darker tone is black.
+    expect(darkColor(c(20, 40, 60))).toEqual(c(0, 0, 0));
+    expect(lightColor(c(20, 40, 60))).toEqual(c(48, 96, 144));
+  });
+  it('CalculateInsetOutsetColor keeps a bright colour (red from 150 or green from 92) and lightens a dark one that barely contrasts with its darker tone', () => {
+    expect(insetOutsetTones(c(200, 60, 60))).toEqual([c(200, 60, 60), darkColor(c(200, 60, 60))]);
+    expect(insetOutsetTones(c(30, 150, 60))).toEqual([c(30, 150, 60), darkColor(c(30, 150, 60))]);
+    expect(insetOutsetTones(c(0, 0, 0))).toEqual([c(84, 84, 84), c(0, 0, 0)]);
+    expect(insetOutsetTones(c(255, 255, 255))).toEqual([c(255, 255, 255), c(171, 171, 171)]);
+    expect(insetOutsetTones(c(20, 40, 60))).toEqual([c(48, 96, 144), c(0, 0, 0)]);
+    // Dark but contrasting with its darker tone by at least 1.75: kept.
+    const blue = c(100, 80, 250);
+    expect(contrastRatio(blue, darkColor(blue))).toBeGreaterThanOrEqual(Math.fround(1.75));
+    expect(insetOutsetTones(blue)[0]).toEqual(blue);
+    expect(contrastRatio(c(0, 0, 0), c(255, 255, 255))).toBeCloseTo(21, 4);
+    expect(contrastRatio(c(255, 255, 255), c(0, 0, 0))).toBe(contrastRatio(c(0, 0, 0), c(255, 255, 255)));
   });
 });
 

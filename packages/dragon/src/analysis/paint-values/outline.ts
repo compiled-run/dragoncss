@@ -1,6 +1,7 @@
 // Computed outlines (css-ui-4 §3): outline-width computes to px (thin 1, medium 3, thick 5), and to 0 when outline-style is none, as
 // Chrome 145 serializes it; the webref initial auto of outline-color is Chrome's currentcolor. Lengths are already px here.
 import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
+import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -39,22 +40,36 @@ function refuse(el: ResolvedElement, what: string, why: string, manual: string, 
     const id = `${t}|outline-${what}|${el.element.address}`;
     if (reported.has(id)) continue;
     reported.add(id);
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: outlineOrigin(el), target: t, message: `${el.element.address} ${why}; ${t} draws solid and double outlines only (PNT1)`, manual, basis: 'computed-value' }));
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: outlineOrigin(el), target: t, message: `${el.element.address} ${why}; ${t} draws ${NATIVE_OUTLINES} (PNT1)`, manual, basis: 'computed-value' }));
   }
 }
 
+const NATIVE_OUTLINES = 'solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners';
+
+/** Whether the element rounds a corner: both components of a corner radius are positive (a percentage counts, as it may resolve so). */
+const rounds = (el: ResolvedElement): boolean =>
+  RADIUS_LONGHANDS.some((p) => {
+    const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
+    return c !== null && c[0].value > 0 && c[1].value > 0;
+  });
+
 /**
- * The native targets draw solid and double outlines (lower/paint/outline.ts). An outline in another style is refused there: dotted
- * and dashed take P6a's fitted side painter, groove, ridge, inset and outset its 3D colours, and auto is Chrome's focus ring. An
- * outline on an inline box is refused too: Blink outlines each of its line fragments. outline: none and a zero width paint nothing,
- * so they compile. The web target paints every outline itself.
+ * The native targets draw solid and double outlines as rings, and dotted, dashed, groove, ridge, inset and outset ones with Blink's
+ * side painter (lower/paint/outline.ts). Refused there: auto, Chrome's focus ring, whose shape takes in the descendants' outline
+ * rects (OutlineRects with kIncludeBlockInkOverflow) and whose ring is two anti-aliased strokes; a rounded outline in a style other
+ * than solid or double, which Blink strokes along the rounded centre line (BoxBorderPainter's curved sides, PNT1b); and an outline
+ * on an inline box, which Blink outlines per line fragment. outline: none and a zero width paint nothing, so they compile. The web
+ * target paints every outline itself.
  */
 const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
   const style = paintedOutlineStyle(el);
   if (style === null) return;
-  if (style !== 'solid' && style !== 'double') {
-    const why = style === 'auto' ? "has outline-style auto, Chrome's focus ring" : `has a ${style} outline, which needs P6a's border side painter`;
-    refuse(el, 'style', why, 'Use a solid or double outline, or outline: none.', targets, diagnostics, reported);
+  if (style === 'auto') {
+    refuse(el, 'style', "has outline-style auto, Chrome's focus ring, whose ring follows the descendants' outline rects", 'Use a solid outline, or outline: none.', targets, diagnostics, reported);
+    return;
+  }
+  if (style !== 'solid' && style !== 'double' && rounds(el)) {
+    refuse(el, 'style', `has a ${style} outline on rounded corners, which Blink strokes along the rounded centre line (PNT1b)`, `Use a solid or double outline on a rounded box, or square corners with a ${style} outline.`, targets, diagnostics, reported);
     return;
   }
   if (keywordOf(el, 'display') === 'inline') refuse(el, 'inline', 'has an outline on an inline box, which Blink draws around each line fragment', 'Outline a block or flex box, or give the element display: inline-block.', targets, diagnostics, reported);
@@ -81,7 +96,7 @@ const CLIPPING = ['hidden', 'clip', 'scroll', 'auto'];
 const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 'overflow-x')) || CLIPPING.includes(keywordOf(el, 'overflow-y'));
 
 /**
- * Where the native outline paints. Dragon draws every solid or double outline in the root view after all the case's content, each
+ * Where the native outline paints. Dragon draws every outline in the root view after all the case's content, each
  * box's descendants' outlines before its own: Chrome's order for the root stacking context's outline phase when every box paints in
  * that context's flow (Blink PaintLayerPainter paints a layer's outlines after its foreground). Two cases would differ, so the
  * native targets refuse them at the outline: an outline under an overflow clip or scroller (the root view is outside it, so the
@@ -95,7 +110,8 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
   const walk = (el: ResolvedElement, clip: ResolvedElement | null): void => {
     if (keywordOf(el, 'display') === 'none') return;
     const style = paintedOutlineStyle(el);
-    if (style === 'solid' || style === 'double') outlined.push({ el, clip });
+    // An outline refused by its style (checkOutline) is not placed: auto, and a rounded one in a style other than solid or double.
+    if (style !== null && style !== 'auto' && (style === 'solid' || style === 'double' || !rounds(el))) outlined.push({ el, clip });
     if (el !== root) boxes.push(el);
     const inner = el !== root && el !== propagated && clips(el) ? el : clip;
     for (const c of el.children) if (c.kind === 'element') walk(c, inner);
