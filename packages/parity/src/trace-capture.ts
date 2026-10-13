@@ -77,33 +77,6 @@ const readMatches = (): Matches => {
   return { hoverMedia: matchMedia('(hover: hover)').matches, hover: pick(':hover'), active: pick(':active'), focus: pick(':focus'), focusVisible: pick(':focus-visible') };
 };
 
-/**
- * How long Chrome's (hover: hover) may take to follow the emulated context before the capture fails closed. On loaded CI Macs the
- * media was seen to disagree with the context for a moment, right after Emulation.setTouchEmulationEnabled was acknowledged or one
- * or two touch steps after it, so a single read after frames() failed the whole capture at a random step. So every read waits,
- * frame by frame, for the media to agree; one that still disagrees after this long fails closed as before.
- */
-const HOVER_MEDIA_WAIT_MS = 2000;
-
-/** Runs in the page: the animation frames until (hover: hover) equals want, or -1 when it still differs after ms. */
-const awaitHoverMediaInPage = ([want, ms]: [boolean, number]): Promise<number> =>
-  new Promise((resolve) => {
-    const start = performance.now();
-    let waited = 0;
-    const check = (): void => {
-      if (matchMedia('(hover: hover)').matches === want) resolve(waited);
-      else if (performance.now() - start >= ms) resolve(-1);
-      else {
-        waited++;
-        requestAnimationFrame(check);
-      }
-    };
-    check();
-  });
-
-/** Every wait in this process where Chrome's hover media lagged the emulated context, for the capture's summary line. */
-export const hoverMediaLags: { readonly at: string; readonly frames: number }[] = [];
-
 const effectiveText = (m: Matches): string => JSON.stringify([m.hoverMedia ? m.hover : [], m.active, m.focus, m.focusVisible]);
 
 /**
@@ -159,16 +132,7 @@ class TraceDriver {
     if (c === this.context) return;
     await this.cdp.send('Emulation.setTouchEmulationEnabled', c === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
     this.context = c;
-    await this.awaitHoverMedia(`${c} context`);
     await frames(this.page);
-  }
-
-  /** Waits until Chrome's hover media follows the emulated context (R2): (hover: hover) without touch emulation, none with it. */
-  private async awaitHoverMedia(at: string): Promise<void> {
-    const want = this.context === 'mouse';
-    const waited = await this.page.evaluate(awaitHoverMediaInPage, [want, HOVER_MEDIA_WAIT_MS] as [boolean, number]);
-    if (waited < 0) throw new Error(`${at}: (hover: hover) ${want ? 'does not match without' : 'matches under'} touch emulation after ${HOVER_MEDIA_WAIT_MS} ms`);
-    if (waited > 0) hoverMediaLags.push({ at, frames: waited });
   }
 
   private async mouseEvent(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased', p: { x: number; y: number }): Promise<void> {
@@ -259,7 +223,6 @@ class TraceDriver {
     }
     if (isTouch(s.kind)) await this.page.waitForTimeout(TAP_SETTLE_MS);
     await frames(this.page);
-    await this.awaitHoverMedia(s.kind);
     const m = await this.matches();
     if (this.context === 'touch' && m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) matches under touch emulation`);
     if (this.context === 'mouse' && !m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) does not match without touch emulation`);
