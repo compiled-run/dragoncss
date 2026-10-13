@@ -308,7 +308,10 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     if (dual === null) throw new Error('no dual comparison');
     expect(dual.boxesEqual).toBe(dual.boxesCompared);
     expect(dual.channelsEqual).toBeLessThan(dual.channelsCompared);
-    expect(dual.problems.every((p) => /color/.test(p))).toBe(true);
+    // Every problem names a longhand whose value is a colour: a *-color longhand (master's test), and SVG-a1's fill and stroke, whose
+    // initial value is black, so the plant moves them too.
+    const colourCarrying = (p: string): boolean => /color/.test(p) || ['fill', 'stroke'].includes((/^[^:]+: ([a-z-]+) /.exec(p) ?? [])[1] ?? '');
+    expect(dual.problems.filter((p) => !colourCarrying(p))).toEqual([]);
   });
 
   it('planted fault: stateCollapse on a/trigger fails exactly the non-initial cases of instance a in both directions, and the initial cases pass', async () => {

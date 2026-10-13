@@ -5,7 +5,7 @@ import type { Browser, Page } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
 import { absoluteRects, layoutWithFaults, validateLayoutInput } from '@dragon/layout';
 import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, LayoutProjection, Origin, Scalar, TextTopologyEntry } from 'dragon';
-import { compiledCases, compiledFeatures, createProjectWith, engineLayoutProjection, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
+import { compiledCases, compiledFeatures, createProjectWith, engineLayoutProjection, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, svgScenes, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
@@ -14,6 +14,7 @@ import { INTERACTION_FORCED } from './fixture-groups/interaction.ts';
 import { prepareOf } from './forced-pseudo.ts';
 import type { Comparison } from './compare.ts';
 import { compareLayout } from './compare.ts';
+import { compareSvg } from './svg-compare.ts';
 import type { DualComparison } from './dual.ts';
 import { compareDual } from './dual.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
@@ -341,6 +342,12 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
         if (b.compared === 0) problems.push('breaks: no text node compared');
         for (const p of b.problems) problems.push(`breaks: ${p}`);
       }
+    }
+    // SVG-a1: the shapes' outline differential (svg-compare.ts) belongs to the layout lane.
+    const svgProblems = compareSvg(authored, svgScenes(compiled, c.assignment), absoluteRects(result.boxes), validated.input);
+    if (svgProblems.length > 0) {
+      comparison = { ...comparison, pass: false, problems: [...comparison.problems, ...svgProblems] };
+      problems.push(...svgProblems);
     }
     layoutStatus = comparison.pass && problems.length === 0 ? 'pass' : 'fail';
     if (layoutStatus === 'fail') reasons.push(`linux-dragon-layout: ${problems.join('; ')}`);

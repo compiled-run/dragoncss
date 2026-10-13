@@ -12,13 +12,14 @@ import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { emittedPath } from '../src/committed.ts';
 import { REPLACED } from '../src/fixture-groups/replaced.ts';
+import { SVG } from '../src/fixture-groups/svg.ts';
 import { environmentsOf, FIXTURES } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
 // Later fixtures that hold replaced leaves by design are not earlier cases: OVFL's overflow-replaced (images in scroll containers)
-// and PNT1's radius-replaced (rounded images).
-const LATER_WITH_REPLACED: readonly string[] = ['overflow-replaced', 'radius-replaced'];
+// and PNT1's radius-replaced (rounded images), and SVG-a1's svg fixtures.
+const LATER_WITH_REPLACED: readonly string[] = ['overflow-replaced', 'radius-replaced', ...SVG.filter((f) => f.kind === 'layout').map((f) => f.id)];
 const replacedIds = new Set([...REPLACED.map((f) => f.id), ...LATER_WITH_REPLACED]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !replacedIds.has(f.id));
 
@@ -48,6 +49,7 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('REPL-a identity: every case that predates the replaced package is unchanged', () => {
   it('covers every earlier layout fixture in each of its environments', () => {
     expect(earlier.length).toBeGreaterThan(200);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && REPLACED.some((r) => r.id === f.id)).length).toBe(6);
     expect(FIXTURES.filter((f) => f.kind === 'layout' && replacedIds.has(f.id)).length).toBe(6 + LATER_WITH_REPLACED.length);
   });
 

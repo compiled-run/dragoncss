@@ -11,6 +11,7 @@ import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/w
 import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
 import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
+import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 
 type WebrefEntry = {
   name: string;
@@ -69,6 +70,8 @@ const SUBSET = [
   'vertical-align', 'float', 'clear',
   // T154: user-select (css-ui-4 §6.1), after visibility, as LONGHANDS registers it.
   'user-select',
+  // SVG paint (SVG-a1), after GEN-b, last, as LONGHANDS registers them.
+  ...SVG_LONGHANDS,
 ] as const;
 
 /**
@@ -117,6 +120,12 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
     'contents | none',
     'inline-block | inline-table | inline-flex | inline-grid | -webkit-box | -webkit-inline-box | -webkit-flex | -webkit-inline-flex',
   ].join(' | '),
+  // Blink StrokeWidth::ParseSingleValue: one non-negative length, percentage or (SVG quirk) number; webref's list and
+  // <line-width> keywords do not parse in Chrome 145 (probed: "thin" and "2px, 3px" are invalid).
+  'stroke-width': '<length-percentage [0,∞]> | <number [0,∞]>',
+  // Blink ParsePaintStroke (fill and stroke): webref's <paint> has no <color>; Chrome 145 parses SVG 1.1's <paint>.
+  fill: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
+  stroke: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
