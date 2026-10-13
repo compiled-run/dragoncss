@@ -42,6 +42,12 @@ export type FontFaults = {
   readonly syntheticBoldThreshold700: boolean;
   /** Weights and oblique angles round to the nearest quarter unit instead of truncating toward zero. */
   readonly quarterUnitRounding: boolean;
+  /** The font shorthand leaves line-height alone when it has no "/ <line-height>" (instead of resetting it to normal). */
+  readonly lineHeightNotReset: boolean;
+  /** The font shorthand also resets the font-synthesis longhands (Chrome's does not). */
+  readonly synthesisResetByShorthand: boolean;
+  /** font: inherit (any CSS-wide keyword) sets every font longhand Dragon models but line-height. */
+  readonly inheritNotAllLonghands: boolean;
 };
 
 export const NO_FONT_FAULTS: FontFaults = {
@@ -65,6 +71,9 @@ export const NO_FONT_FAULTS: FontFaults = {
   obliqueAngleDropped: false,
   syntheticBoldThreshold700: false,
   quarterUnitRounding: false,
+  lineHeightNotReset: false,
+  synthesisResetByShorthand: false,
+  inheritNotAllLonghands: false,
 };
 
 export type FontFaultName = keyof FontFaults;
@@ -75,6 +84,8 @@ export const CAPTURE_FAULTS: readonly FontFaultName[] = [
   'metricsRoundHalfDown', 'xHeightFromOs2', 'chWith16_16', 'capHeightFromBounds', 'overridesIgnored',
 ];
 export const UNIT_FAULTS: readonly FontFaultName[] = ['remoteUrlAccepted', 'manifestOrderSensitive', 'skipUnreadableSrc', 'fenceDisabled'];
+/** The font shorthand faults (TXT-W2, css/shorthands/text.ts fontShorthand), each caught against Chrome by font-shorthand.test.ts. */
+export const SHORTHAND_FAULTS: readonly FontFaultName[] = ['lineHeightNotReset', 'synthesisResetByShorthand', 'inheritNotAllLonghands'];
 /** The computed font-weight and font-style faults (TXT-W1, fonts/weight.ts), each caught against Chrome by text-weight.test.ts. */
 export const WEIGHT_FAULTS: readonly FontFaultName[] = ['bolderBandEdge', 'lighterBandEdge', 'weightNotInherited', 'obliqueAngleDropped', 'syntheticBoldThreshold700', 'quarterUnitRounding'];
 

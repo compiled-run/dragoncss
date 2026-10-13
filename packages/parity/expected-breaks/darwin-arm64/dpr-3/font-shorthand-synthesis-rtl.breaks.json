@@ -1,0 +1,14 @@
+{
+  "case": "font-shorthand-synthesis-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","data":"Lato italic drawn upright","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"b:text0","data":"Weight only so upright","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"c:text0","data":"Mono bold drawn regular","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"d:text0","data":"Style only so regular","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"e:text0","data":"Weight none longhand","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"g:text0","data":"Style none longhand","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"h:text0","data":"The shorthand keeps synthesis off","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

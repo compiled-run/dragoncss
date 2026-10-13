@@ -14,7 +14,7 @@ import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } fr
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { textFontsOf, uaRows } from '../ua/datasets.ts';
-import type { TextFontValue } from '../fonts/weight.ts';
+import type { SynthesisAllowed, TextFontValue } from '../fonts/weight.ts';
 import { computeFontStyle, computeTextFont, fontStyleCssValue, INITIAL_TEXT_FONT } from '../fonts/weight.ts';
 import type { Span } from '../types.ts';
 import type { Candidate } from './cascade.ts';
@@ -252,6 +252,12 @@ export function computeFontStyleLonghands(tag: string, props: Map<Longhand, Reso
   if (font === null) throw new Error(`font-weight ${valueToString(w.value)} or font-style ${valueToString(st.value)} has no computed value`);
   if (!isRefusedMath(w.value)) props.set('font-weight', { ...w, value: { kind: 'number', value: font.weight } });
   if (!isRefusedMath(st.value)) props.set('font-style', { ...st, value: fontStyleCssValue(font.style) });
+}
+
+/** Whether Chrome may synthesize bold and oblique for an element (font-synthesis-weight and -style). */
+export function synthesisAllowedOf(props: ReadonlyMap<Longhand, ResolvedValue>): SynthesisAllowed {
+  const on = (p: Longhand): boolean => valueToString((props.get(p) as ResolvedValue).value) !== 'none';
+  return { weight: on('font-synthesis-weight'), style: on('font-synthesis-style') };
 }
 
 export const isRefusedMath = (v: CssValue): boolean => v.kind === 'other' && v.type.startsWith(REFUSED_MATH_PREFIX);

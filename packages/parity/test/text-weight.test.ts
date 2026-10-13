@@ -1,7 +1,7 @@
 // TXT-W1 (T147 part 1, notes/T147J-txt-weight.md) against the pinned Chrome: the font-weight and font-style grammar table and
 // bolder/lighter chains compute as Chrome computes them, the synthesis predicate says synthesized exactly where Chrome's pixels
 // change under font-synthesis, native refuses synthesized text, and each of the six plants is caught by one of these tests. The
-// pins check that BASE's outputs are unchanged but for the two computed keys.
+// pins check that BASE's outputs are unchanged but for the computed keys added since.
 import { createHash } from 'node:crypto';
 import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -199,9 +199,9 @@ describe('the native refusals', () => {
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
   // no git history): each is the sha256 of "<path>\t<sha256 of its content>" lines in path order, over every file but TXT-W1's own
-  // (its text-weight cases and the fonts-weight-synthetic font fixture). Each digest was taken at BASE with git and equals this
+  // (its text-weight cases and the fonts-weight-synthetic font fixture) and TXT-W2's (its font-shorthand cases). Each digest was taken at BASE with git and equals this
   // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic)/.test(p);
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -211,7 +211,8 @@ describe('BASE pins', () => {
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
-    const base = ids.filter((id) => !added.includes(id));
+    // TXT-W2's font-shorthand cases are its own too, as the digests below exclude them.
+    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-'));
     // BASE is master e69b540a71 plus batch #279 (#267, #269, #266, #268, #206, #277), whose FIXTURES hold 792 layout cases (retaken for #279's added cases).
     expect(base.length).toBe(792);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('b0f743b1264632d8b47b46751b3a3350a7b2f608843ee0d9c1ed36abf3fefc91');
@@ -221,7 +222,9 @@ describe('BASE pins', () => {
     const paths = files(dirs, (p) => !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(p));
     expect({ files: paths.length, digest: digest(paths, (p) => readFileSync(repoPath(p))) }).toEqual(BASE_OUTPUTS);
   });
-  it('every existing capture equals BASE once font-weight and font-style are removed from its computed values', () => {
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, then TXT-W2's font-synthesis longhands. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
+  it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));
     expect(paths.length).toBeGreaterThan(1500);
@@ -230,9 +233,8 @@ describe('BASE pins', () => {
       const c = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
       for (const n of c.nodes ?? []) {
         if (n.computed === null) continue;
-        if (n.computed['font-weight'] === undefined || n.computed['font-style'] === undefined) lacking.push(p);
-        delete n.computed['font-weight'];
-        delete n.computed['font-style'];
+        if (ADDED_KEYS.some((k) => n.computed?.[k] === undefined)) lacking.push(p);
+        for (const k of ADDED_KEYS) delete n.computed[k];
       }
       return JSON.stringify(c);
     };

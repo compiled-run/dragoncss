@@ -20,7 +20,7 @@ import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, svgPaintRefusal } from './elements/svg.ts';
-import { isRefusedMath, textFontOfProps } from './computed.ts';
+import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
@@ -454,13 +454,14 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
   walk(root, [], false, false);
 }
 
-/** The computed font-weight and font-style of an element that Chrome synthesizes over a single regular face (600 and up, slope 14 and up). */
+/** The computed font-weight and font-style Chrome synthesizes over a single regular face (600 and up, slope 14 and up), where font-synthesis allows it. */
 function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
   const out: { property: 'font-weight' | 'font-style'; text: string }[] = [];
   const font = textFontOfProps(el.props);
-  if (font.weight >= 600) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
+  const allowed = synthesisAllowedOf(el.props);
+  if (allowed.weight && font.weight >= 600) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
   const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
-  if (slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
+  if (allowed.style && slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
   return out;
 }
 
