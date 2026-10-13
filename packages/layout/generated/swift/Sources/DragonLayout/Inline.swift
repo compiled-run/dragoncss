@@ -330,7 +330,7 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _
       _i76 += 1
       // ts: packages/layout/src/inline.ts:125
       if try (!inline_isRtlSafe(t.text)) {
-        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s367, jsConcat(S.s793, box.id, S.s38))
+        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s367, jsConcat(S.s794, box.id, S.s38))
       }
     }
   }
@@ -457,7 +457,7 @@ public func inline_checkInlineBox(_ ctx: Ctx, _ b: InlineBox) throws -> Void {
   let va: any U_LengthCalc_Percent_Px_VerticalAlignKeywordValue = s.verticalAlign
   // ts: packages/layout/src/inline.ts:254
   if ((va.kind != S.s_keyword) || ((va as! VerticalAlignKeywordValue).value != S.s_baseline)) {
-    try unsupported_unsupported(S.s_vertical_align, b.id, S.s174, jsConcat(S.s834, b.id, S.s4))
+    try unsupported_unsupported(S.s_vertical_align, b.id, S.s174, jsConcat(S.s835, b.id, S.s4))
   }
   // ts: packages/layout/src/inline.ts:255
   if (s.position != S.s_static) {
@@ -612,7 +612,7 @@ public func inline_buildIfc(_ ctx: Ctx, _ box: LayoutBox) throws -> Ifc {
       }
       // ts: packages/layout/src/inline.ts:333
       if try ((first != nil) && (t.textWrapMode != jsUnwrap(first).textWrapMode)) {
-        try unsupported_unsupported(S.s_mixed_text_wrap_mode, t.id, S.s495, jsConcat(S.s794, box.id))
+        try unsupported_unsupported(S.s_mixed_text_wrap_mode, t.id, S.s495, jsConcat(S.s795, box.id))
       }
     }
   }
@@ -1676,7 +1676,7 @@ public func inline_alignOffset(_ ctx: Ctx, _ box: LayoutBox, _ free: Double) thr
   let align: JsString = box.style.textAlign
   // ts: packages/layout/src/inline.ts:994
   if (align == S.s_justify) {
-    try unsupported_unsupported(S.s_text_align, box.id, S.s493, S.s796)
+    try unsupported_unsupported(S.s_text_align, box.id, S.s493, S.s797)
   }
   let rtl: Bool = try (block_directionOf(ctx, box) == S.s_rtl)
   // ts: packages/layout/src/inline.ts:996
@@ -2104,7 +2104,7 @@ public func inline_shapedIntrinsicSize(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc,
       // ts: packages/layout/src/inline.ts:1254
       if try (((((lastChar != nil) && (jsUnwrap(lastChar).kind == S.s_char)) && (jsUnwrap(lastChar).cp == 173.0)) && (!b.forced)) && (!ctx.faults.softHyphenWidthMissing)) {
         let t: TextLeaf = try jsUnwrap(jsAt(ifc.leaves, jsUnwrap(lastChar).leaf))
-        let h: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s840, inline_fontOf(t.font))
+        let h: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s841, inline_fontOf(t.font))
         let hyphen: any U_MeasureResult_okFalse_MeasureResult_okTrue = try (h.ok ? (h as any U_MeasureResult_okFalse_MeasureResult_okTrue) : (ctx.measurer.measure(S.s110, inline_fontOf(t.font)) as any U_MeasureResult_okFalse_MeasureResult_okTrue))
         // ts: packages/layout/src/inline.ts:1258
         if (!hyphen.ok) {

@@ -24,7 +24,7 @@ public func ratio_ratioInline(_ s: LayoutStyle) throws -> Double {
   let r: any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio_Auto = s.aspectRatio
   // ts: packages/layout/src/ratio.ts:39
   if (r.kind == S.s_auto) {
-    throw JsError(message: S.s801)
+    throw JsError(message: S.s802)
   }
   return (r as! any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio).width
 }
@@ -34,7 +34,7 @@ public func ratio_ratioBlock(_ s: LayoutStyle) throws -> Double {
   let r: any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio_Auto = s.aspectRatio
   // ts: packages/layout/src/ratio.ts:45
   if (r.kind == S.s_auto) {
-    throw JsError(message: S.s801)
+    throw JsError(message: S.s802)
   }
   return (r as! any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio).height
 }
