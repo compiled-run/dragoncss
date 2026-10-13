@@ -140,6 +140,32 @@ function referenceMeasurer() {
   return m.measurer;
 }
 
+/**
+ * The first element floated in block flow, or null. Dragon lays out no float: the compiler accepts float only where it has no
+ * effect (a flex or grid item, an absolutely positioned box), and the support profile refuses it elsewhere as
+ * DRAGON_UNPROVEN_CONTEXT (reject-float-block). The corpus compiles with derived profiles, which skip that check, so it refuses here.
+ */
+function floatInFlow(root: Element): string | null {
+  const decl = (style: string, name: string): string | null => {
+    const m = new RegExp(`(?:^|;)\\s*${name}\\s*:\\s*([^;]+)`).exec(style);
+    return m === null ? null : (m[1] as string).trim();
+  };
+  const walk = (el: Element, parentLays: boolean): string | null => {
+    const float = decl(el.style, 'float');
+    const position = decl(el.style, 'position');
+    if (float !== null && float !== 'none' && !parentLays && position !== 'absolute' && position !== 'fixed') return `float: ${float} on ${el.id}`;
+    const display = decl(el.style, 'display') ?? '';
+    const lays = /^(inline-)?(flex|grid)$/.test(display);
+    for (const k of el.children) {
+      if (typeof k === 'string') continue;
+      const r = walk(k, lays);
+      if (r !== null) return r;
+    }
+    return null;
+  };
+  return walk(root, false);
+}
+
 /** A diagnostic code and its message head, as a refusal reason. */
 const refusal = (code: string, message: string): string => `${code}: ${message.replace(/ on [^ ]+$/, '').slice(0, 160)}`;
 
@@ -148,6 +174,11 @@ export function runGridCase(c: CorpusCase, gridFaults: GridFaults, envs: readonl
   const out = new Map<string, EnvOutcome>();
   if (c.after !== null) {
     for (const e of envs) out.set(e.name, { kind: 'refused', reasons: ['inline-level grid baseline beside text (G3)'] });
+    return { id: c.id, family: c.family, envs: out };
+  }
+  const floated = floatInFlow(parseCaseHtml(c.html));
+  if (floated !== null) {
+    for (const e of envs) out.set(e.name, { kind: 'refused', reasons: [`float is not supported in block flow (${floated})`] });
     return { id: c.id, family: c.family, envs: out };
   }
   const doc = caseDocument(c);

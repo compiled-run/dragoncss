@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { runShard } from './grid-corpus/shard.ts';
 
 /** Pinned from the run that introduced the test; a change in any count is a regression or a newly supported case to review. */
-const PINNED = { matched: 1504, known: [], refused: { 'baseline-alignment': 952, 'inline-grid': 808, 'sizing-keyword': 736 } };
+const PINNED = { matched: 1920, known: [], refused: { 'baseline-alignment': 1272, 'inline-grid': 808 } };
 
 describe('G-P differential test: random-04 and random-05 against Chrome 145', () => {
   it('every horizontal-tb environment matches exactly, is a pinned known mismatch, or is refused for an owned reason', () => {
