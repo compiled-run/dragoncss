@@ -58,6 +58,8 @@ export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
 export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
 export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
+export { applyTextTransform } from './analysis/text-transform.ts';
+export type { TextTransform } from './analysis/text-transform.ts';
 export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';

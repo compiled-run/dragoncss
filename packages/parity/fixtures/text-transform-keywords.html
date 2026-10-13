@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 120px; }
+.up { text-transform: uppercase; }
+.lo { text-transform: lowercase; }
+.cap { text-transform: capitalize; }
+.none { text-transform: none; }
+.row { display: flex; width: 300px; }
+.col { display: flex; flex-direction: column; width: 160px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="up" class="w up">hello world again</div>
+<div data-dragon-id="lo" class="w lo">HELLO World AGAIN</div>
+<div data-dragon-id="cap" class="w cap">hello world again and more</div>
+<div data-dragon-id="none" class="w none">mixed Case words</div>
+<div data-dragon-id="upper" class="up"><div data-dragon-id="reset" class="w none">kept as Written</div><div data-dragon-id="inherit" class="w">inherited words</div></div>
+<div data-dragon-id="nodes" class="w cap">ab<span data-dragon-id="s1">cd</span><span data-dragon-id="s2"> ef</span>gh</div>
+<div data-dragon-id="mixed" class="w">plain <span data-dragon-id="m1" class="up">loud</span> then <span data-dragon-id="m2" class="cap">title words</span></div>
+<div data-dragon-id="row" class="row cap"><div data-dragon-id="ra">flex item</div>anonymous item text</div>
+<div data-dragon-id="col" class="col up"><div data-dragon-id="ca">column item</div>anonymous column text</div>
+</body>
+</html>

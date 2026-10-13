@@ -15,10 +15,12 @@ import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
-import { presentationalHints } from './elements/replaced.ts';
+import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
+import type { TransformItem } from './text-transform.ts';
+import { textTransformOf, transformRun } from './text-transform.ts';
 import type { InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
@@ -339,29 +341,39 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     let run: (LinkedText | null)[] = [];
     // The white-space-collapse each text of the run takes from the element that holds it (textProps).
     let modes: string[] = [];
+    // TXT2-e: each text's transform, and the boxes that end its previous character, in tree order (text-transform.ts).
+    let transforms: TransformItem[] = [];
     const flush = (): void => {
-      // A context holding preserved text with inline boxes or <br>s is refused (computed-checks.ts); each text takes its own phase I.
-      const strings = run.map((t) => (t === null ? null : t.text));
+      // R7: Chrome transforms the DOM text before white-space processing, so the transform comes before the collapse. A context
+      // holding preserved text with inline boxes or <br>s is refused (computed-checks.ts); each text takes its own phase I.
+      const transformed = transformRun(transforms, faults);
+      const strings = run.map((t) => (t === null ? null : (transformed.get(t) as string)));
       const texts = modes.every((m) => m === 'collapse') ? collapseInlineContext(strings) : phaseOneContext(strings, modes, faults);
       run.forEach((t, i) => {
         if (t !== null) collapsed.set(t, texts[i] as string);
       });
       run = [];
       modes = [];
+      transforms = [];
     };
     const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>): void => {
       for (const kid of items) {
         if (kid.kind === 'text') {
           run.push(kid);
           modes.push(collapseModeOf(owner));
+          transforms.push({ kind: 'text', node: kid, transform: textTransformOf(owner) });
         } else if (displayOf(kid) === 'none') continue;
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') {
             run.push(null);
             modes.push('collapse');
           }
+          if (kid.element.tag === 'br' || isReplacedTag(kid.element.tag)) transforms.push({ kind: 'break' });
           gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
-        } else flush();
+        } else {
+          flush();
+          if (displayOf(kid).startsWith('inline-')) transforms.push({ kind: 'atomic' });
+        }
       }
     };
     gather(kids, props);

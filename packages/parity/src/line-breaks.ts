@@ -9,6 +9,8 @@ import { join } from 'node:path';
 import type { Page } from 'playwright';
 import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, fromCssPx, layout, inlineLeaves, leafFontOf, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
+import type { TextTransform } from 'dragon';
+import { applyTextTransform, NO_FAULTS } from 'dragon';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -171,7 +173,15 @@ export function readBreakVector(caseId: string, dpr: number): BreakVector | null
  * space). A soft wrap's space has a zero-width rect at the end of its line and another at the start of the next; the first counts,
  * as the engine counts the space into the line it ends.
  */
-export type ChromeBreakText = { readonly id: string; readonly data: string; readonly lines: number; readonly units: readonly number[]; readonly blank: readonly number[] };
+export type ChromeBreakText = {
+  readonly id: string;
+  readonly data: string;
+  readonly lines: number;
+  readonly units: readonly number[];
+  readonly blank: readonly number[];
+  /** TXT2-e: the computed text-transform of the node's parent when it is not none (Chrome renders data transformed). */
+  readonly transform?: string;
+};
 export type ChromeBreaks = { readonly case: string; readonly chrome: string; readonly dpr: number; readonly texts: readonly ChromeBreakText[] };
 
 export const expectedBreaksDir = (dpr: number, platform: string = REFERENCE_PLATFORM): string => repoPath(`packages/parity/expected-breaks/${platform}/${dprLabel(dpr)}`);
@@ -196,7 +206,7 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
   // PNT2: text in a transformed box is read on the transform twin, so each line keeps its untransformed rect.
   await applyTransformTwin(page, []);
   return page.evaluate(() => {
-    const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
+    const out: { id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[] = [];
     const isBlank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
     for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
       const id = el.getAttribute('data-dragon-id') as string;
@@ -237,7 +247,8 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
           units.push(best);
           if (pick.width === 0) blank.push(i);
         }
-        out.push({ id: textId, data: t.data, lines: lines.length, units, blank });
+        const transform = getComputedStyle(el).textTransform;
+        out.push(transform === 'none' ? { id: textId, data: t.data, lines: lines.length, units, blank } : { id: textId, data: t.data, lines: lines.length, units, blank, transform });
       }
     }
     return out;
@@ -284,15 +295,65 @@ export function alignUnits(dom: string, engine: string): number[] | null {
   return d === dom.length ? map : null;
 }
 
+const TRANSFORMS: ReadonlySet<string> = new Set(['uppercase', 'lowercase', 'capitalize']);
+
+/**
+ * TXT2-e: the text Chrome renders for a text node, as the build-time transform the engine text carries (the same
+ * applyTextTransform), with each rendered unit on the line of its DOM unit: a code point's rendered units take its DOM units' lines
+ * and blanks in order, the last DOM unit repeated when the mapping lengthens it (U+00DF uppercases to "SS"). Uppercase and lowercase
+ * map each code point independently of the text before the node (Final_Sigma looks only inside it), so they give one reading.
+ * Capitalize maps unit to unit but the first unit's case depends on the character before the node in its inline formatting context,
+ * which the capture does not record: the two readings are "a word starts at the node" (previous a space) and "it does not"
+ * (previous a letter), and every other unit must match exactly in both. No transform gives the DOM text itself; a transform outside
+ * the four keywords gives no reading (the alignment fails).
+ */
+export function renderedTexts(t: ChromeBreakText): ChromeBreakText[] {
+  const transform = t.transform;
+  if (transform === undefined || transform === 'none') return [t];
+  if (!TRANSFORMS.has(transform)) return [];
+  const faults = NO_FAULTS;
+  const previous = transform === 'capitalize' ? [' ', 'a'] : [' '];
+  const out: ChromeBreakText[] = [];
+  for (const p of previous) {
+    const whole = applyTextTransform(t.data, transform as TextTransform, p, faults);
+    const units: number[] = [];
+    const blank: number[] = [];
+    const blankDom = new Set(t.blank);
+    let d = 0;
+    let r = 0;
+    for (const cp of Array.from(t.data)) {
+      const n = cp.length;
+      const m = transform === 'capitalize' ? n : applyTextTransform(cp, transform as TextTransform, ' ', faults).length;
+      for (let j = 0; j < m; j++) {
+        const from = d + Math.min(j, n - 1);
+        units.push(t.units[from] as number);
+        if (blankDom.has(from)) blank.push(r + j);
+      }
+      d += n;
+      r += m;
+    }
+    // A mapping that is not per code point (none of the four keywords has one beyond Final_Sigma's same-length choice) is no reading.
+    if (r !== whole.length) continue;
+    out.push({ id: t.id, data: whole, lines: t.lines, units, blank });
+  }
+  return out;
+}
+
 /**
  * Chrome's lines in engine offsets. A mapped unit belongs to the line of its first rect; a unit without a rect continues the line
  * of the unit before it. A line starts at its smallest engine offset whose unit is not a white-space unit with a zero-width rect (a
  * hanging or collapsed space never starts a line: the engine starts a line at its first shown character; U+200B is not white space,
  * and a preserved U+000A starts its line) and ends after its largest engine offset.
  */
-export function chromeLines(t: ChromeBreakText, engineText: string): (readonly [number, number])[] | null {
-  const map = alignUnits(t.data, engineText);
-  if (map === null) return null;
+export function chromeLines(dom: ChromeBreakText, engineText: string): (readonly [number, number])[] | null {
+  for (const t of renderedTexts(dom)) {
+    const map = alignUnits(t.data, engineText);
+    if (map !== null) return linesOf(t, map, engineText);
+  }
+  return null;
+}
+
+function linesOf(t: ChromeBreakText, map: readonly number[], engineText: string): (readonly [number, number])[] {
   const blank = new Set(t.blank);
   const starts: (number | undefined)[] = [];
   const ends: (number | undefined)[] = [];
@@ -334,7 +395,7 @@ export function compareVectorWithChrome(v: BreakVector, chrome: ChromeBreaks, en
       continue;
     }
     const lines = chromeLines(c, text);
-    if (lines === null) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: the DOM text ${JSON.stringify(c.data)} does not collapse to the engine text ${JSON.stringify(text)}` });
+    if (lines === null) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: the DOM text ${JSON.stringify(c.data)}${c.transform === undefined ? '' : ` (text-transform: ${c.transform})`} does not collapse to the engine text ${JSON.stringify(text)}` });
     else if (!same(lines, t.lines)) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: engine lines ${JSON.stringify(t.lines)}, Chrome ${JSON.stringify(lines)}` });
   }
   // Chrome text the vector lacks: a mismatch when Chrome shows any of it (a unit with a rect of non-zero width). Text that only

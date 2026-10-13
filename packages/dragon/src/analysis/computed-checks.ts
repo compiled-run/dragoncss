@@ -30,6 +30,7 @@ import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
+import { checkTextTransform } from './text-transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
 /** A computed length or percentage of zero, as it serializes. */
@@ -701,6 +702,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
+  // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
+  checkTextTransform(root, targets, diagnostics, reported);
 }
 
 /** The largest device scale a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies below it. */

@@ -2462,6 +2462,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/text/capitalize.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "795f49feccb6a5b3c8caa7079917504add32d3720cd89fac13aff1e0a8768787",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "15-59", "symbol": "Capitalize", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/text-transform.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/analysis/text-transform.ts", "symbol": "capitalize", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/platform/text/character.h",
       "licence": "bsd-google",
       "noticeText": "header-bsd-1",

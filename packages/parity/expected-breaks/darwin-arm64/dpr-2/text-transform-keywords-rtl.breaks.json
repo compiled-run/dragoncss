@@ -1,0 +1,25 @@
+{
+  "case": "text-transform-keywords-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"up:text0","data":"hello world again","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[11],"transform":"uppercase"},
+    {"id":"lo:text0","data":"HELLO World AGAIN","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[11],"transform":"lowercase"},
+    {"id":"cap:text0","data":"hello world again and more","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2],"blank":[11,21],"transform":"capitalize"},
+    {"id":"none:text0","data":"mixed Case words","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[10]},
+    {"id":"reset:text0","data":"kept as Written","lines":2,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1],"blank":[7]},
+    {"id":"inherit:text0","data":"inherited words","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[9],"transform":"uppercase"},
+    {"id":"nodes:text0","data":"ab","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
+    {"id":"nodes:text1","data":"gh","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
+    {"id":"s1:text0","data":"cd","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
+    {"id":"s2:text0","data":" ef","lines":1,"units":[0,0,0],"blank":[],"transform":"capitalize"},
+    {"id":"mixed:text0","data":"plain ","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"mixed:text1","data":" then ","lines":1,"units":[0,0,0,0,0,0],"blank":[0]},
+    {"id":"m1:text0","data":"loud","lines":1,"units":[0,0,0,0],"blank":[],"transform":"uppercase"},
+    {"id":"m2:text0","data":"title words","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1],"blank":[5],"transform":"capitalize"},
+    {"id":"row:text0","data":"anonymous item text","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[],"transform":"capitalize"},
+    {"id":"ra:text0","data":"flex item","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[],"transform":"capitalize"},
+    {"id":"col:text0","data":"anonymous column text","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],"blank":[16],"transform":"uppercase"},
+    {"id":"ca:text0","data":"column item","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[],"transform":"uppercase"}
+  ]
+}
