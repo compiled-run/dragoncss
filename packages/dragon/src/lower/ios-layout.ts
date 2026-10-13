@@ -46,7 +46,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
-import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem } from './grid-layout.ts';
+import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -472,8 +472,8 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
   const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize });
   // css-grid-2 §5: a replaced element establishes no grid container; display: grid on one is not modelled.
   if (own.display === 'grid') throw new LoweringError(id, 'display', `display: grid on the replaced element ${id} is not supported`);
-  // css-grid-2 §8: an in-flow replaced child of a grid container is a grid item and carries its placement.
-  const gridItem = gridParent !== null && own.position !== 'absolute' ? gridStep(id, () => lowerGridItem(gridParent, raw)) : null;
+  // css-grid-2 §8 and §9: a replaced child of a grid container carries its placement (an absolutely positioned one, its lines).
+  const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, raw) : lowerGridItem(gridParent, raw)));
   const style: LayoutStyle = gridItem === null ? own : { ...own, gridItem };
   let natural: ReplacedLeaf['natural'] = { kind: 'none' };
   if (el.element.tag === 'img') {
@@ -511,9 +511,10 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
   // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible.
   const own: LayoutStyle = id === l.propagated ? { ...lowered, overflowX: 'visible', overflowY: 'visible' } : lowered;
-  // css-grid-2 §7 and §8: a grid container carries its tracks; each in-flow child of one carries its placement.
+  // css-grid-2 §7, §8 and §9: a grid container carries its tracks; each child of one carries its placement (an absolutely
+  // positioned one, the lines of its containing block).
   const grid = own.display === 'grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
-  const gridItem = gridParent !== null && own.position !== 'absolute' ? gridStep(id, () => lowerGridItem(gridParent, get)) : null;
+  const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, get) : lowerGridItem(gridParent, get)));
   const style: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
   const container = displayOf(el) === 'flex' || displayOf(el) === 'grid';
   const inline = kids.filter(isInlineLevel);

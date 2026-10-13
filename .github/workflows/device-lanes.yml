@@ -30,6 +30,8 @@ concurrency:
 env:
   # One device per runner: no other work shares its memory (device-run.ts memoryReserve).
   DRAGON_DEVICE_RESERVE_GIB: '0'
+  # The iPhone 17 run outgrew node's default ~2 GiB heap after its capture-trust pass (run 38294281738).
+  NODE_OPTIONS: --max-old-space-size=4096
 jobs:
   resolve:
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'devices'

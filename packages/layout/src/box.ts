@@ -15,8 +15,14 @@ export type StaticEdge = 'near' | 'center' | 'far';
 /** One axis of a static position (css-position-3 §4.1), relative to the parent's border box. */
 export type StaticAxis = { readonly offset: LU; readonly edge: StaticEdge };
 
-/** An absolutely positioned child with the static position its parent computed for it; laid out once its containing block is. */
-export type OutOfFlow = { readonly box: LayoutBox; readonly x: StaticAxis; readonly y: StaticAxis };
+/** A rectangle in LU relative to a parent's border box. */
+export type AreaRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
+
+/**
+ * An absolutely positioned child with the static position its parent computed for it; laid out once its containing block is.
+ * area: the grid area that is its containing block when its parent is a positioned grid container (css-grid-2 §9.1), else null.
+ */
+export type OutOfFlow = { readonly box: LayoutBox; readonly x: StaticAxis; readonly y: StaticAxis; readonly area: AreaRect | null };
 
 /**
  * baseline: the first baseline (css-align-3 §9.1) as an offset from the border-box top, or null when the box has none.

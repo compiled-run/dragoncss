@@ -5,5 +5,7 @@ export const RADIUS_OUT: readonly string[] = ['radius-basic', 'radius-basic-rtl'
   // PNT1-shadow's fixtures with rounded boxes, refused for their radius.
   'shadow-rounded', 'shadow-rounded-rtl', 'shadow-inset', 'shadow-inset-rtl', 'calib-shadow-blur', 'calib-shadow-blur-rtl',
   // PNT1 outline's rounded fixture, refused for its radius.
-  'outline-rounded', 'outline-rounded-rtl'];
+  'outline-rounded', 'outline-rounded-rtl',
+  // BG2 gradients' rounded fixtures, refused for their radius.
+  'gradient-rounded', 'gradient-rounded-rtl', 'gradient-north-star'];
 export const RADIUS_REASON = /^border-radius on .+: hit testing through rounded corners is not modelled yet \(PNT1\)$/;

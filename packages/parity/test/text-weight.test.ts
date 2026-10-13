@@ -27,8 +27,8 @@ import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
 /** The outputs of BASE (inl1a-tags-v2 at 186dba301c, #105 caught up with master ef96e1c079), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 12196, digest: '4c1a48fa2bf16876fafb835e58052616aba5e09e03847cf72c57fe85ad60f0ef' };
-const BASE_CAPTURES = { files: 3114, digest: '5144ddabbaca0c722d9a9da39eee0526d0246f685c27518f75386aaa68f5a43b' };
+const BASE_OUTPUTS = { files: 12260, digest: '7e86c50c032919eab232932131288a4386dd5329d0da2cc340250d6eea2f9682' };
+const BASE_CAPTURES = { files: 3130, digest: '9d7197ed7e25552a1ab2fedcd9fd7c4a99e1c95017ffa448b0d7885a5c575c17' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -212,9 +212,9 @@ describe('BASE pins', () => {
     // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
     const base = ids.filter((id) => !added.includes(id));
-    // BASE is batch #262 (master f88834ce3d plus #257, #238, #254, #260 and #104-#105, which land with this change), whose FIXTURES hold 766 layout cases.
-    expect(base.length).toBe(766);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('9ed8160c7db04452c284f56fea08be80f8b3900d806881535604eccb9764b25e');
+    // BASE is master af67457777 plus batch #265 (#259, #263, #264), whose FIXTURES hold 770 layout cases (retaken for #265's added cases).
+    expect(base.length).toBe(770);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('126c5b973d4560283eb17aa640b1b5ad9c31d62cb2d744df157088aa476859c4');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];

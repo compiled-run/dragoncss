@@ -10,7 +10,7 @@ import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts
 import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
 import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
-import { HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
+import { ANIM_LANE, HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
 import { traceScriptIds } from '../src/trace-lane.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
 import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
@@ -24,6 +24,7 @@ import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
 import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
+import { animSampleIds } from '../src/anim-samples.ts';
 
 const targets = nativeTargets();
 const sources = laneSources();
@@ -282,14 +283,16 @@ describe('committed out/lanes.json', () => {
       expect(vectors?.run?.digests).toEqual(host?.run?.digests);
       expect(vectors?.run?.suites).toEqual(host?.run?.suites);
       for (const l of t.lanes.filter((x) => x.where === 'device' && x.lane !== 'layout-vectors-device')) {
-        // Only device-pixels may be committed failing (P6 fixes paint); frames, applied and lines must pass.
-        if (l.lane === 'device-pixels') expect(['pass', 'fail'], `${t.target} ${l.lane}`).toContain(l.state);
+        // Only device-pixels (P6 fixes paint), device-anim and device-traces may be committed failing: their failures are per case in
+        // device-failures-<target>.json and demote exactly those profile rows (profile-rows.ts). Frames, applied, lines, states and hit must pass.
+        if (l.lane === 'device-pixels' || l.lane === ANIM_LANE || l.lane === TRACE_LANE) expect(['pass', 'fail'], `${t.target} ${l.lane}`).toContain(l.state);
         else expect(l.state, `${t.target} ${l.lane}`).toBe('pass');
         expect([...(l.device?.sets.map((s) => s.dpr) ?? [])].sort(), `${t.target} ${l.lane}`).toEqual(l.sets.map((s) => s.dpr).sort());
         // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every hit case (the layout cases but
         // those the hit lane refuses by name, hit-capture.ts hitCases) and compares only hit points (b), the other counts exactly 0.
         // SELD-R2: device-traces runs every interaction script and compares only trace lines (b).
-        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : ids.length;
+        // device-anim runs every frame sample (anim-samples.ts); the other device lanes run every device case (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : vectorCaseIds().length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(cases);

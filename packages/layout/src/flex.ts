@@ -347,7 +347,7 @@ function staticPosition(ctx: Ctx, container: LayoutBox, child: LayoutBox, axes: 
   const cross: FlowPosition = align === 'stretch' ? (axes.wrapReverse ? 'end' : 'start') : align === 'baseline' ? 'start' : align;
   const xAxis = axes.isRow ? staticAxis(main, content.left, content.width, axes.mainStartIsPhysical) : staticAxis(cross, content.left, content.width, axes.crossStartIsPhysical);
   const yAxis = axes.isRow ? staticAxis(cross, content.top, content.height, axes.crossStartIsPhysical) : staticAxis(main, content.top, content.height, axes.mainStartIsPhysical);
-  return { box: child, x: xAxis, y: yAxis };
+  return { box: child, x: xAxis, y: yAxis, area: null };
 }
 
 /** css-align-3 §9.3: a box with no baseline set synthesizes one from its border box: the line-under (bottom) edge. */

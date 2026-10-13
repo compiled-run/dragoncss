@@ -137,7 +137,7 @@ describe('legacy aliases parse as their property', () => {
     expect(parsed('margin-block-start: foo').diagnostics).toEqual([['DRAGON_CSS_INVALID_VALUE', '"foo" is not a valid value for margin-block-start (@webref/css grammar)']]);
   });
   it('aliases Chrome parses with legacy rules, and non-aliases, stay refused as unknown properties', () => {
-    for (const name of ['-webkit-perspective', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-orient', '-webkit-box-flex']) {
+    for (const name of ['-webkit-perspective', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-reflect', '-webkit-line-clamp']) {
       expect(parse(`${name}: none`).diagnostics.map((d) => d.code), name).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
     }
     // PNT1-radius: -webkit-border-radius is the radius family's own shorthand with Chrome's legacy two-value parsing, not an alias.

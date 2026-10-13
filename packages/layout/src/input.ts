@@ -229,12 +229,16 @@ export type GridLine =
 /**
  * An item's lines in one axis (Blink GridLineResolver::ResolveGridPositionsFromStyle): resolved by the compiler as definite lines,
  * 0-based from the explicit grid's start line and negative before it, or an automatic position of span lines; or, in an axis with
- * an automatic repeater, whose explicit grid the engine sizes, the start and end positions the engine resolves.
+ * an automatic repeater, whose explicit grid the engine sizes, the start and end positions the engine resolves. An absolutely
+ * positioned child also takes start-line or end-line when only that side is not auto (css-grid-2 §9.1: an auto line is the
+ * padding edge); its auto span means both lines are auto, and its lines resolve as GridPlacement::ResolveOutOfFlowItemGridLines.
  */
 export type GridSpan =
   | { readonly kind: 'definite'; readonly start: number; readonly end: number }
   | { readonly kind: 'auto'; readonly span: number }
-  | { readonly kind: 'lines'; readonly start: GridLine; readonly end: GridLine };
+  | { readonly kind: 'lines'; readonly start: GridLine; readonly end: GridLine }
+  | { readonly kind: 'start-line'; readonly line: number }
+  | { readonly kind: 'end-line'; readonly line: number };
 /** css-align-3 §6.1 self positions in a grid container; normal and stretch stretch an auto size. */
 export type GridSelfAlign =
   | 'normal'
@@ -320,7 +324,7 @@ export type LayoutStyle = {
   readonly verticalAlign: VerticalAlignValue;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
-  /** Written for the in-flow children of a grid container only; null otherwise. */
+  /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
 };
 
