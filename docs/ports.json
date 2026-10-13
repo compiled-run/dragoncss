@@ -1649,6 +1649,25 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/paint_property_tree_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "90ca34954c3df0c7d0482a0c375a76df84e4994d09b62f2eedc6d09bc70ec276",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "2541-2562", "symbol": "NeedsOverflowClipForReplacedContents", "source": "cited" },
+        { "lines": "2651-2670", "symbol": "NeedsInnerBorderRadiusClip", "source": "cited" },
+        { "lines": "2744-2770", "symbol": "AdjustRoundedClipForOverflowClipMargin", "source": "cited" },
+        { "lines": "2772-2815", "symbol": "UpdateInnerBorderRadiusClip", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/parity/src/paint-samples/replaced-geometry.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/style/border_edge.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",

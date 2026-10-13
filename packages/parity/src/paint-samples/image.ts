@@ -3,10 +3,12 @@
 // ceil(1 / scale) on every side, where a normalised filter reproduces the constant exactly. The module drops every base rule, of
 // any box, with a pixel on non-flat drawn image content, adds image-flat points on a grid over the drawn part, and adds edge scanlines
 // across each side of the destination rect that lies inside the content box (compared by position, as every edge rule is).
-// Non-flat content is not compared. No allowance is introduced.
+// Non-flat content is not compared. A rounded img's image is clipped to its padding-edge curve: image points and scanlines keep
+// clear inside it, and a base point clear outside it shows what is under the image. No allowance is introduced.
 import type { RgbaImage } from '../native-compare.ts';
 import { ALONG_POSITIONS, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
 import type { SamplePoint } from '../samples.ts';
+import { clearInside, clearOutside } from './radius.ts';
 import type { ReplacedSamplesBox } from './replaced-geometry.ts';
 import { replacedBoxes } from './replaced-geometry.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
@@ -39,6 +41,8 @@ export function coveredAt(b: ReplacedSamplesBox, x: number, y: number): boolean 
 export function dropsBaseAt(b: ReplacedSamplesBox, x: number, y: number): boolean {
   const d = b.paint.drawn;
   if (b.image === null || d === null || x < d.x || y < d.y || x >= d.x + d.width || y >= d.y + d.height) return false;
+  // Outside a rounded img's curve the pixel shows what is under the image (the radius module drops the pixels near the curve).
+  if (b.clip.some((a) => clearOutside(a, x, y, 0))) return false;
   return !coveredAt(b, x, y) && !flatWithin(b, x, y, false, false);
 }
 
@@ -47,6 +51,7 @@ function flatWithin(b: ReplacedSamplesBox, x: number, y: number, clampToImage: b
   const d = b.paint.drawn;
   if (img === null || d === null) return false;
   if (x < d.x || y < d.y || x >= d.x + d.width || y >= d.y + d.height) return false;
+  if (!clearOfCurve(b, x, y)) return false;
   // An image-flat point shows only the image: a later box, even a transparent one, may paint over it.
   if (underNoLaterBox && b.later.some((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) return false;
   const dest = b.paint.dest;
@@ -60,6 +65,11 @@ function flatWithin(b: ReplacedSamplesBox, x: number, y: number, clampToImage: b
   // The support must lie inside the image: an edge pixel's filter reads past it, which the platforms clamp differently.
   if (cx - rx < 0 || cy - ry < 0 || cx + rx >= img.width || cy + ry >= img.height) return false;
   return uniform(img, cx - rx, cy - ry, cx + rx, cy + ry);
+}
+
+/** Whether a pixel is clear inside a rounded img's curve (antialiased within SAMPLE_INSET_DEVICE_PX), or the img is square. */
+export function clearOfCurve(b: ReplacedSamplesBox, x: number, y: number): boolean {
+  return b.clip.every((a) => clearInside(a, x, y));
 }
 
 function uniform(img: RgbaImage, x0: number, y0: number, x1: number, y1: number): boolean {
@@ -135,7 +145,7 @@ export function imagePointsOf(boxes: ReadonlyMap<string, ReplacedSamplesBox>, si
           pts.push(s.horizontal ? [a, p] : [p, a]);
         }
         const inside = pts.slice(inset + 1);
-        return inside.every(([x, y]) => flatAtImageEdge(b, x, y)) && pts.every(([x, y]) => x >= 0 && y >= 0 && x < size.width && y < size.height) ? pts : null;
+        return inside.every(([x, y]) => flatAtImageEdge(b, x, y)) && pts.every(([x, y]) => x >= 0 && y >= 0 && x < size.width && y < size.height && clearOfCurve(b, x, y)) ? pts : null;
       }).find((l) => l !== null);
       if (line === undefined || line === null) continue;
       for (const [x, y] of line) out.push({ x, y, rule: `edge:${id}:image-${s.side}` });
