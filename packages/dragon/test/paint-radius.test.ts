@@ -198,6 +198,11 @@ describe('border-radius: refusals', () => {
       expectCatalogued(refused);
       expect(run(css, { web: {} }).refused, `${name} on web`).toEqual([]);
     }
+    // MQ-R1: native switches @media bands at run time, so a box rounded only in a band that is not the fold band's is refused too.
+    for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
+      const css = `.a { width: 40px; height: 30px; border: 6px double blue; animation: k 1s infinite; } @media ${media} { .a { border-radius: 10px; } } @keyframes k { to { border-top-color: red; } }`;
+      expect(summary(run(css).refused), media).toEqual(sides('an animation', ['border-top-color']));
+    }
     expect(run(`${box} .a { transition: border-top-color 1s; } .a.on { border-color: red; }`).refused[0]?.message).toBe("a transition of border-top-color on a: the box is a rounded double border, which ios draws as Blink's two rings only while its four sides are one colour, and the native animator changes each side's colour apart (animated rounded double borders are PNT1b)");
     // Not refused: a rounded solid border, a square double border, a transition no state starts, and color under four currentcolor sides
     // (the four sides stay one colour).

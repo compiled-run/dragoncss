@@ -173,11 +173,10 @@ const SIDE_COLORS: readonly Longhand[] = ['border-top-color', 'border-right-colo
  * (dragonAnimatedSides), so mid-animation the sides differ. An animation or transition of a border side's colour on a box that is a
  * rounded double border in any reachable state is refused, at its animation-name or transition-property (a transition only where a
  * reachable state changes the colour, as BG2c's refuseAnimatedGradients). roots are the resolved roots of the analysed cases, in
- * the analysis's order.
+ * the analysis's order; the caller runs it per @media band, with one reported set.
  */
-export function refuseAnimatedRoundedDoubles(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[]): void {
+export function refuseAnimatedRoundedDoubles(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string> = new Set()): void {
   if (nativeTargets.length === 0) return;
-  const reported = new Set<string>();
   const trees = analysis.cases.map((_, i) => {
     const byAddress = new Map<string, ResolvedElement>();
     const walk = (el: ResolvedElement): void => {

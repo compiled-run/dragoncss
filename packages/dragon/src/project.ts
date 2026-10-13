@@ -1298,10 +1298,17 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
       // MQ-R1: per-band transition and animation lists are refused on native until MQ-Rt, as on web until ANIM-mq.
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
-      // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused.
-      refuseAnimatedGradients(animation, cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), nativeTargets, diagnostics);
-      // PNT1b: a rounded double border draws as two rings only in one colour, and the animator feeds each side's colour apart.
-      refuseAnimatedRoundedDoubles(animation, cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), nativeTargets, diagnostics);
+      // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
+      // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. MQ-R1: native switches
+      // bands at run time, so every band's cases and animations are checked (each refusal once).
+      const gradientsReported = new Set<string>();
+      const doublesReported = new Set<string>();
+      bandCases.forEach((r, k) => {
+        const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
+        const a = bandAnimations[k] as AnimationAnalysis;
+        refuseAnimatedGradients(a, roots, nativeTargets, diagnostics, gradientsReported);
+        refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
+      });
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.

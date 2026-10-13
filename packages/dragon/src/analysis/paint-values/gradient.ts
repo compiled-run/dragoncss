@@ -837,11 +837,11 @@ const RASTER_COLORS: readonly Longhand[] = ['background-color', 'color', 'border
  * borders baked in, once per layout; the native animator patches those colours per frame without a layout, so the raster would
  * keep the first frame's colours over the animated ones. An animation or transition of one of them on a gradient box is refused,
  * at its animation-name or transition-property (a transition only where a reachable state changes the colour). roots are the
- * resolved roots of the analysed cases, in the analysis's order.
+ * resolved roots of the analysed cases, in the analysis's order; the caller
+ * runs it per @media band, with one reported set.
  */
-export function refuseAnimatedGradients(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[]): void {
+export function refuseAnimatedGradients(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string> = new Set()): void {
   if (nativeTargets.length === 0) return;
-  const reported = new Set<string>();
   const trees = analysis.cases.map((_, i) => {
     const byAddress = new Map<string, ResolvedElement>();
     const walk = (el: ResolvedElement): void => {
