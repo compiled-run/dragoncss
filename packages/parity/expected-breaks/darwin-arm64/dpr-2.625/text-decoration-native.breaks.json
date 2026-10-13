@@ -11,6 +11,6 @@
     {"id":"n6:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
     {"id":"n7:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
     {"id":"n7:text1","data":" XX","lines":1,"units":[0,0,0],"blank":[]},
-    {"id":"n7s:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+    {"id":"n7s:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]}
   ]
 }

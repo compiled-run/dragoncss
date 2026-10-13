@@ -1520,7 +1520,7 @@
           {
            "kind": "text",
            "id": "n7s:text0",
-           "text": "XX",
+           "text": "XX XX",
            "font": {
             "family": "Ahem",
             "size": 20,
@@ -1764,7 +1764,7 @@
    "parent": "n7",
    "x": 3840,
    "y": 640,
-   "width": 2560,
+   "width": 6400,
    "height": 1280
   },
   {
@@ -1772,7 +1772,7 @@
    "parent": "n7s",
    "x": 0,
    "y": 0,
-   "width": 2560,
+   "width": 6400,
    "height": 1280
   },
   {
@@ -1780,7 +1780,7 @@
    "parent": "n7",
    "x": 3840,
    "y": 640,
-   "width": 2560,
+   "width": 6400,
    "height": 1280
   },
   {
@@ -1788,13 +1788,13 @@
    "parent": "n7s:text0",
    "x": 0,
    "y": 0,
-   "width": 2560,
+   "width": 6400,
    "height": 1280
   },
   {
    "id": "n7:text1",
    "parent": "n7",
-   "x": 6400,
+   "x": 10240,
    "y": 640,
    "width": 3840,
    "height": 1280

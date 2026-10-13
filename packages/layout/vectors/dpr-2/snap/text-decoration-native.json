@@ -191,7 +191,7 @@
    "parent": "n7",
    "x": 7680,
    "y": 1280,
-   "width": 5120,
+   "width": 12800,
    "height": 2560
   },
   {
@@ -199,7 +199,7 @@
    "parent": "n7s",
    "x": 0,
    "y": 0,
-   "width": 5120,
+   "width": 12800,
    "height": 2560
   },
   {
@@ -207,7 +207,7 @@
    "parent": "n7",
    "x": 7680,
    "y": 1280,
-   "width": 5120,
+   "width": 12800,
    "height": 2560
   },
   {
@@ -215,13 +215,13 @@
    "parent": "n7s:text0",
    "x": 0,
    "y": 0,
-   "width": 5120,
+   "width": 12800,
    "height": 2560
   },
   {
    "id": "n7:text1",
    "parent": "n7",
-   "x": 12800,
+   "x": 20480,
    "y": 1280,
    "width": 7680,
    "height": 2560
@@ -447,52 +447,52 @@
    "id": "n7s",
    "left": 120,
    "top": 480,
-   "right": 200,
+   "right": 320,
    "bottom": 520,
-   "width": 80,
+   "width": 200,
    "height": 40
   },
   {
    "id": "n7s:line0",
    "left": 120,
    "top": 480,
-   "right": 200,
+   "right": 320,
    "bottom": 520,
-   "width": 80,
+   "width": 200,
    "height": 40
   },
   {
    "id": "n7s:text0",
    "left": 120,
    "top": 480,
-   "right": 200,
+   "right": 320,
    "bottom": 520,
-   "width": 80,
+   "width": 200,
    "height": 40
   },
   {
    "id": "n7s:text0:line0",
    "left": 120,
    "top": 480,
-   "right": 200,
+   "right": 320,
    "bottom": 520,
-   "width": 80,
+   "width": 200,
    "height": 40
   },
   {
    "id": "n7:text1",
-   "left": 200,
+   "left": 320,
    "top": 480,
-   "right": 320,
+   "right": 440,
    "bottom": 520,
    "width": 120,
    "height": 40
   },
   {
    "id": "n7:text1:line0",
-   "left": 200,
+   "left": 320,
    "top": 480,
-   "right": 320,
+   "right": 440,
    "bottom": 520,
    "width": 120,
    "height": 40
