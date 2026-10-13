@@ -9,7 +9,7 @@ import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } fro
 import { GRADIENT_CHANNEL_DELTA } from './allowances/gradient.ts';
 import { SHADOW_CHANNEL_DELTA } from './allowances/shadow.ts';
 import type { DumpEdges, DumpFrame, DumpLine, DumpNode, DumpSample, JsonValue, NativeDump } from './native-dump.ts';
-import { frameOf, REFERENCE_LANE } from './native-dump.ts';
+import { breakLineGroups, frameOf, REFERENCE_LANE } from './native-dump.ts';
 import type { SamplePoint, SampleRule } from './samples.ts';
 import { GLYPH_EDGE_RULE, isScanlineRule, ruleKind } from './samples.ts';
 
@@ -449,7 +449,7 @@ function changedValue(v: JsonValue): JsonValue {
 /**
  * A real dump with one planted fault, or null when the dump has nothing the fault applies to. The node is the first that qualifies
  * in dump order: an element for the edge faults, a node with applied values, a leaf node for missing-node, a text node with two
- * successive lines for break-shifted (the first of them ends one code unit early and the next starts there); channel-delta-1 moves the red
+ * break lines for break-shifted (the last fragment of one ends one code unit early and the next line starts there); channel-delta-1 moves the red
  * channel of the first sample check (c) passes by one; snap-disabled writes the unsnapped engine frames with truncated edges.
  */
 export function plantDumpFault(fault: DumpFault, dump: NativeDump, ctx: FaultContext): NativeDump | null {
@@ -501,11 +501,15 @@ export function plantDumpFault(fault: DumpFault, dump: NativeDump, ctx: FaultCon
       return JSON.stringify(planted.nodes) === JSON.stringify(dump.nodes) ? null : planted;
     }
     case 'break-shifted': {
-      // TXT2-f: a truncated line's two fragments share offsets, so the pair is two lines where the second starts at or after the first ends.
-      const pairAt = (n: DumpNode): number => n.lines.findIndex((l, j) => {
-        const next = n.lines[j + 1];
-        return l.start !== null && l.end !== null && next !== undefined && next.start !== null && l.end > l.start + 1 && next.start >= l.end;
-      });
+      // The pair spans two break lines (breakLineGroups): the last fragment of one and the first of the next, which starts at or after it ends.
+      const pairAt = (n: DumpNode): number => {
+        const last = breakLineGroups(n.lines).slice(0, -1).map((g) => g[g.length - 1] as number);
+        return last.find((j) => {
+          const l = n.lines[j] as DumpLine;
+          const next = n.lines[j + 1] as DumpLine;
+          return l.start !== null && l.end !== null && next.start !== null && l.end > l.start + 1 && next.start >= l.end;
+        }) ?? -1;
+      };
       const i = dump.nodes.findIndex((n) => pairAt(n) >= 0);
       if (i < 0) return null;
       const n = dump.nodes[i] as DumpNode;
