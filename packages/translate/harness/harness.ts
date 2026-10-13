@@ -797,7 +797,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'grid', 'inline'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -992,6 +992,7 @@ const FAULT_KEYS: readonly string[] = [
   'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
+  'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1052,6 +1053,12 @@ function decodeFaults(v: JsonValue): EngineFaults {
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
     overflowIgnoresPadding: b('overflowIgnoresPadding'),
+    inlineBlockFirstBaseline: b('inlineBlockFirstBaseline'),
+    overflowBaselineIgnored: b('overflowBaselineIgnored'),
+    inlineFlexLastBaseline: b('inlineFlexLastBaseline'),
+    atomicMarginExcluded: b('atomicMarginExcluded'),
+    noBreakAroundAtomic: b('noBreakAroundAtomic'),
+    atomicShrinkToFitIgnored: b('atomicShrinkToFitIgnored'),
     ellipsisInTextFont: b('ellipsisInTextFont'),
     noDotsFallback: b('noDotsFallback'),
     truncateChangesBlockSize: b('truncateChangesBlockSize'),

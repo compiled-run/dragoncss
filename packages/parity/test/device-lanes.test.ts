@@ -377,7 +377,7 @@ describe('device dump element lines (T058J3 E): an inline box fragment has no ow
       const v = validateNativeDump(perfectDump(target, dpr, c, caseReference(target, c, dpr), all));
       expect(v.ok || v.errors.slice(0, 3), c.case.id).toBe(true);
     }
-    // Every case of the corpus at one DPR: master's ios DPR 3 run takes about 105 s of the 120 s default on the CI runner.
+    // Every case of the corpus at one DPR: master's ios DPR 3 run takes about 105 s of the 120 s default on the CI runner, and 122 s with INL2a's cases.
   }, 600_000);
 });
 

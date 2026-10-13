@@ -197,6 +197,12 @@ export function phaseOneContext(runs: readonly (string | null)[], modes: readonl
 /** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
 const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
 
+/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box that stayed inline-level after blockification. */
+const isAtomicInline = (el: ResolvedElement): boolean => displayOf(el) === 'inline-block' || displayOf(el) === 'inline-flex';
+
+/** An atomic inline's run in collapseInlineContext: U+FFFC, which is not white space (Blink inline_items_builder.cc:1245-1251). */
+const ATOMIC_RUN = '\ufffc';
+
 const displayOf = (el: ResolvedElement): string => {
   const v = (el.props.get('display') as ResolvedValue).value;
   return v.kind === 'keyword' ? v.value : '';
@@ -338,7 +344,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // An inline formatting context is a maximal sequence of text, inline boxes and <br>s; display: none elements generate no box
     // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
-    let run: (LinkedText | null)[] = [];
+    // null is a <br>, and 'atomic' an atomic inline, which stays in the context as U+FFFC (INL-P f5-break-space-atomic).
+    let run: (LinkedText | null | 'atomic')[] = [];
     // The white-space-collapse each text of the run takes from the element that holds it (textProps).
     let modes: string[] = [];
     // TXT2-e: each text's transform, and the boxes that end its previous character, in tree order (text-transform.ts).
@@ -347,10 +354,10 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       // R7: Chrome transforms the DOM text before white-space processing, so the transform comes before the collapse. A context
       // holding preserved text with inline boxes or <br>s is refused (computed-checks.ts); each text takes its own phase I.
       const transformed = transformRun(transforms, faults);
-      const strings = run.map((t) => (t === null ? null : (transformed.get(t) as string)));
+      const strings = run.map((t) => (t === null ? null : t === 'atomic' ? ATOMIC_RUN : (transformed.get(t) as string)));
       const texts = modes.every((m) => m === 'collapse') ? collapseInlineContext(strings) : phaseOneContext(strings, modes, faults);
       run.forEach((t, i) => {
-        if (t !== null) collapsed.set(t, texts[i] as string);
+        if (t !== null && t !== 'atomic') collapsed.set(t, texts[i] as string);
       });
       run = [];
       modes = [];
@@ -370,6 +377,15 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
           }
           if (kid.element.tag === 'br' || isReplacedTag(kid.element.tag)) transforms.push({ kind: 'break' });
           gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
+        } else if (isAtomicInline(kid)) {
+          // Planted fault atomicCollapsesAsLineEnd: the atomic inline ends the context, so the white space around it goes.
+          if (faults.atomicCollapsesAsLineEnd) flush();
+          else {
+            // Its U+FFFC holds no white space, so it collapses alike in every mode.
+            run.push('atomic');
+            modes.push('collapse');
+          }
+          transforms.push({ kind: 'atomic' });
         } else {
           flush();
           if (displayOf(kid).startsWith('inline-')) transforms.push({ kind: 'atomic' });
