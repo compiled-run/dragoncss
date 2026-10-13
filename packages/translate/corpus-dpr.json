@@ -38,39 +38,41 @@
   "engineInline": 3000,
   "engineOverflow": 3000,
   "snapGenerated": 20000,
-  "snapVectors": 1812,
+  "snapVectors": 2127,
   "cases": {
-    "vectors-m2": 418,
-    "vectors-dpr": 2028,
-    "engine-dpr": 2028,
+    "vectors-m2": 523,
+    "vectors-dpr": 2343,
+    "engine-dpr": 2343,
     "units-m2": 120000,
-    "snap": 21812,
+    "snap": 22127,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000,
     "engine-inline": 3000,
-    "engine-overflow": 3000
+    "engine-overflow": 3000,
+    "text-latin": 100
   },
   "engineSplit": {
-    "ok": 2025,
+    "ok": 2340,
     "unsupported": 3,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "498c5d739de8cfa096405dc6100353b9c56a966986c344008cb5b9b897d240eb",
-    "vectors-dpr": "122fc57e41e5a68e4a34a306049b6bd5edf2921531044d3325a9a282f55a25eb",
-    "engine-dpr": "d20e5e7d2a2d626d9e82db8d8a1283c41fe4e02385026d973e7ffe6a128e20ed",
+    "vectors-m2": "47bbd5597ce8347088040d668011b70bb917cda7b6660f18aab3aa1cc81daeca",
+    "vectors-dpr": "21b673328575b30338d3487f1d92d850f79cf2aaf9639528ace2289e0767c6ca",
+    "engine-dpr": "952903b2d1d80d3eeaa926584a77dacc749fcbfb42081a3ece470e1eacc866af",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "744ad771e459ebf7749f45a9a73dd3142ee0770e9a380d03de97a66614c906f2",
+    "snap": "da31301fd6e03ba6b8ab7b97bc6566ab34196d0ee2c571ae93577126667c0432",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
     "calc-goldens": "5b907a08ccdf3da2a48ccec20f6dd999293c22a5fd4d9d4a1d47883746fe30e4",
-    "engine-calc": "222d763f82e9a8e1ff8bbb3c254696064c59e5a8fd331fc43583cbdd5627e6f3",
+    "engine-calc": "0fdbd05413fe53234fe29668f737620ada684aeb332e7a01df8661062c42ef10",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
     "engine-inline": "0794df4444de99c4cbc9eeb56b474376fd188d46e656d71d09b65e000e5f3ea8",
-    "engine-overflow": "8b510fc4f7852bcf607f8770e378f3c423c6c2650d87c05e7d2702f6c1cd4f83"
+    "engine-overflow": "8b510fc4f7852bcf607f8770e378f3c423c6c2650d87c05e7d2702f6c1cd4f83",
+    "text-latin": "6402f55ccf93029b81acfc8e6ce494ffb2a86d149793a207c327b4ab00662288"
   },
-  "digest": "38419e47228775f0a454629a036a958f14bdad8b161905175d7ad037ae40a615"
+  "digest": "fdea6df109aa5f80ffe2f6d649501518f509937c4e91ad966696d485caae2ce2"
 }
