@@ -31,7 +31,17 @@ function perfectDump(target: NativeTarget, dpr: number, n: NativeCase, ref: Case
     ...d,
     device: { ...d.device, platform: target },
     // An element's lines (an inline box's fragments) have no own text: a device writes 0 and 0 (T058J3 E).
-    nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: lines.get(x.id)?.[j]?.[0] ?? null, end: lines.get(x.id)?.[j]?.[1] ?? null } : { ...l, start: 0, end: 0 })) })),
+    nodes: d.nodes.map((x) => {
+      if (x.kind !== 'text') return { ...x, lines: x.lines.map((l) => ({ ...l, start: 0, end: 0 })) };
+      // TXT2-f: a truncated piece's two fragments (whole run, painted part) share a left, a top and the line's offsets, as a device writes them.
+      let k = -1;
+      const own = x.lines.map((l, j) => {
+        const prev = x.lines[j - 1];
+        if (prev === undefined || prev.deviceEdges.left !== l.deviceEdges.left || prev.deviceEdges.top !== l.deviceEdges.top) k++;
+        return { ...l, start: lines.get(x.id)?.[k]?.[0] ?? null, end: lines.get(x.id)?.[k]?.[1] ?? null };
+      });
+      return { ...x, lines: own };
+    }),
     pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: size.width, height: size.height, sha256: 'a'.repeat(64), samples: readSamples(ref.pixels, ref.points) },
   };
 }

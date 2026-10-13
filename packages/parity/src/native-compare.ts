@@ -447,7 +447,7 @@ function changedValue(v: JsonValue): JsonValue {
 /**
  * A real dump with one planted fault, or null when the dump has nothing the fault applies to. The node is the first that qualifies
  * in dump order: an element for the edge faults, a node with applied values, a leaf node for missing-node, a text node with two
- * lines for break-shifted (the first line ends one code unit early and the second starts there); channel-delta-1 moves the red
+ * successive lines for break-shifted (the first of them ends one code unit early and the next starts there); channel-delta-1 moves the red
  * channel of the first sample check (c) passes by one; snap-disabled writes the unsnapped engine frames with truncated edges.
  */
 export function plantDumpFault(fault: DumpFault, dump: NativeDump, ctx: FaultContext): NativeDump | null {
@@ -499,10 +499,16 @@ export function plantDumpFault(fault: DumpFault, dump: NativeDump, ctx: FaultCon
       return JSON.stringify(planted.nodes) === JSON.stringify(dump.nodes) ? null : planted;
     }
     case 'break-shifted': {
-      const i = dump.nodes.findIndex((n) => n.lines.length >= 2 && n.lines[0]?.end !== null && n.lines[1]?.start !== null && (n.lines[0]?.end ?? 0) > (n.lines[0]?.start ?? 0) + 1);
+      // TXT2-f: a truncated line's two fragments share offsets, so the pair is two lines where the second starts at or after the first ends.
+      const pairAt = (n: DumpNode): number => n.lines.findIndex((l, j) => {
+        const next = n.lines[j + 1];
+        return l.start !== null && l.end !== null && next !== undefined && next.start !== null && l.end > l.start + 1 && next.start >= l.end;
+      });
+      const i = dump.nodes.findIndex((n) => pairAt(n) >= 0);
       if (i < 0) return null;
       const n = dump.nodes[i] as DumpNode;
-      const lines = n.lines.map((l, j) => (j === 0 ? { ...l, end: (l.end as number) - 1 } : j === 1 ? { ...l, start: (l.start as number) - 1 } : l));
+      const at = pairAt(n);
+      const lines = n.lines.map((l, j) => (j === at ? { ...l, end: (l.end as number) - 1 } : j === at + 1 ? { ...l, start: (l.start as number) - 1 } : l));
       return { ...dump, nodes: dump.nodes.map((x, j) => (j === i ? { ...x, lines } : x)) };
     }
   }
