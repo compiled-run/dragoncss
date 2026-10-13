@@ -74,7 +74,9 @@ export const OUTLINE_LOWERING: PaintLowering<OutlineWrite> = {
     if (color.alpha === 0) return [];
     const lengths = radiusLengths(el.props, address);
     const radii = roundsAnyCorner(lengths) ? lengths : null;
-    if (radii !== null && style.value !== 'solid' && style.value !== 'double') throw new ProgramError(`${address}: a rounded ${style.value} outline has no native paint technique`);
+    // The side painter styles: a corner with either component positive is rounded for Blink (Radii::IsZero is both zero), and
+    // analysis/paint-values/outline.ts refuses it.
+    if (style.value !== 'solid' && style.value !== 'double' && lengths.some((l) => l.value > 0)) throw new ProgramError(`${address}: a rounded ${style.value} outline has no native paint technique`);
     return [{ kind: 'outline', style: style.value as OutlineStyle, width, offset, color, tones: THREE_D.includes(style.value) ? insetOutsetTones(color) : null, radii }];
   },
 };

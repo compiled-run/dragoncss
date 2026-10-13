@@ -109,9 +109,25 @@ describe('outline: the native targets draw every style but auto, the side painte
       }
     }
   });
-  it('a dotted, dashed, groove, ridge, inset or outset outline on square corners compiles on ios, a radius with a zero component included', () => {
+  it('a corner with one zero component is rounded for Blink (Radii::IsZero is both zero), so it is refused on ios and android; web compiles', () => {
+    const both: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+    for (const style of ['dotted', 'dashed', 'groove', 'ridge']) {
+      for (const radius of ['border-top-left-radius: 6px 0', 'border-bottom-right-radius: 0 4px', 'border-radius: 10% 0']) {
+        const css = `outline: 3px ${style} red; ${radius}`;
+        const errs = errors(compile(`.a { height: 20px; ${css}; }`, both));
+        const want = `a has a ${style} outline on rounded corners, which Blink strokes along the rounded centre line (PNT1b)`;
+        expect(errs.map((d) => [d.code, d.target, d.message]).sort(), css).toEqual([
+          ['DRAGON_UNSUPPORTED_VALUE', 'android', `${want}; android draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)`],
+          ['DRAGON_UNSUPPORTED_VALUE', 'ios', `${want}${SUFFIX}`],
+        ]);
+        expectCatalogued(errs);
+        expect(errors(compile(`.a { height: 20px; ${css}; }`)), css).toEqual([]);
+      }
+    }
+  });
+  it('a dotted, dashed, groove, ridge, inset or outset outline on square corners compiles on ios, a zero radius included', () => {
     for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset']) {
-      for (const extra of ['', 'outline-offset: -3px', 'border-radius: 0', 'border-top-left-radius: 6px 0']) {
+      for (const extra of ['', 'outline-offset: -3px', 'border-radius: 0', 'border-top-left-radius: 0 0']) {
         const css = `outline: 3px ${style} red; ${extra}`;
         expect(errors(compile(`.a { height: 10px; ${css}; }`, targets)), css).toEqual([]);
       }

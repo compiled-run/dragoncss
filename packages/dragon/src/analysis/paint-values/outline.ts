@@ -46,11 +46,16 @@ function refuse(el: ResolvedElement, what: string, why: string, manual: string, 
 
 const NATIVE_OUTLINES = 'solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners';
 
-/** Whether the element rounds a corner: both components of a corner radius are positive (a percentage counts, as it may resolve so). */
+/**
+ * Whether the side painter would meet a rounded corner: either component of a corner radius is positive (a percentage counts, as it
+ * may resolve so). Blink's FloatRoundedRect::Radii::IsZero is SizeF::IsZero (both components zero), so a corner such as 6px 0 is on
+ * the rounded path: the outline's outset grows its positive component, and the sides beside it (every side, for groove and ridge)
+ * take DrawCurvedBoxSide or DrawCurvedDashedDottedBoxSide.
+ */
 const rounds = (el: ResolvedElement): boolean =>
   RADIUS_LONGHANDS.some((p) => {
     const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
-    return c !== null && c[0].value > 0 && c[1].value > 0;
+    return c !== null && (c[0].value > 0 || c[1].value > 0);
   });
 
 /**
