@@ -29,8 +29,8 @@ import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
 /** The outputs of BASE (batch2's regenerated head 768a8ebdf7: batch #281 at dde476247f plus #274's and #271's groups), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 12792, digest: 'ca4423c5e64d55ace5530b9cc11b5d054f9bcd3f7a32f9b2259d382b192028bc' };
-const BASE_CAPTURES = { files: 3266, digest: '30aac7c732d2edea6bdc01d1cc34c9e49f27e356d1a180159221253762d1ef5e' };
+const BASE_OUTPUTS = { files: 12920, digest: '0f5d887ec91038a3a31f4279f49e52ac406eca122f63884c04469102e76bc582' };
+const BASE_CAPTURES = { files: 3298, digest: '34c8836ed1a5ec02111da9daadce219cacf0776f135234b02f28353e849d6e0a' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -219,9 +219,9 @@ describe('BASE pins', () => {
     // text-justify cases landed after BASE.
     const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-'));
-    // BASE is batch2's regenerated head 5849e096aa (batch #281 plus #274's and #271's groups), whose FIXTURES hold 804 BASE layout cases.
-    expect(base.length).toBe(804);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('9c576d440095afb34f33822b398d3d882f3bd4938d0b9d6e14c76947f2dde9c7');
+    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275), whose FIXTURES hold 812 BASE layout cases.
+    expect(base.length).toBe(812);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('4ec4d1c8c6ed017b3adece116b54e6f74d77241bb0a49f5e652e7488399d3a27');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
