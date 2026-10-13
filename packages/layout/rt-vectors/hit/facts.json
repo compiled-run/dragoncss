@@ -691,6 +691,8 @@
     "grid-auto-repeat-rtl": "a is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)",
     "grid-abspos": "g is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)",
     "grid-abspos-rtl": "g is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)",
+    "grid-baseline": "r is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)",
+    "grid-baseline-rtl": "r is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)",
     "inline-mixed-sizes": "m1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-mixed-sizes-rtl": "m1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-empty-boxes": "e1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
