@@ -568,7 +568,7 @@
         {
          "kind": "text",
          "id": "a2:text0",
-         "text": "Truncated text that runs past the box",
+         "text": "Truncated text that runs over the box",
          "font": {
           "family": "Ahem",
           "size": 10,

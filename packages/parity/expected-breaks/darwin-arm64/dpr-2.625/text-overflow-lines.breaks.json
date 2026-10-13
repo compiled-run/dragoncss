@@ -4,7 +4,7 @@
   "dpr": 2.625,
   "texts": [
     {"id":"a1:text0","data":"XX XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
-    {"id":"a2:text0","data":"Truncated text that runs past the box","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a2:text0","data":"Truncated text that runs over the box","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
     {"id":"a3:text0","data":"XX XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
     {"id":"a4:text0","data":"XX XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
     {"id":"a5:text0","data":"XXX XXX XXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
