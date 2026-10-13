@@ -12,7 +12,7 @@ export const WHITE_SPACE: readonly FixtureSpec[] = [
   layout('white-space-wrap'),
   layout('white-space-lato'),
   reject('reject-white-space-control', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="a" class="a">XX&#12;XX</div>', 'U+000C in '),
-  reject('reject-white-space-rtl', 'DRAGON_UNSUPPORTED_BIDI', 'XX  XX', null),
+  reject('reject-white-space-bidi', 'DRAGON_UNSUPPORTED_BIDI', 'XX  XX', null),
 ];
 
 /** data-dragon-id to postScriptName: the face Chrome must draw each listed element's text with, in both documents. */
