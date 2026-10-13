@@ -3,7 +3,7 @@
 // solid outlines (offsets, a thin and a negative one, one over a later flow sibling, a parent's over its child's), double ones
 // (the thirds, the width-2 solid fallback), outlines that follow the border radius (rounded, round, elliptical, one-corner and
 // bordered boxes, positive and negative offsets), dashed and dotted ones on square corners (fitted gaps, offsets, a translucent one,
-// a 1px dot, over a border) and groove, ridge, inset and outset ones (Color::Dark and Light, a dark colour's lighter tone, white,
+// a 1px dot, over solid borders) and groove, ridge, inset and outset ones (Color::Dark and Light, a dark colour's lighter tone, white,
 // black, currentcolor, a translucent ridge, a 1px groove that paints solid), in both environment directions. A system colour and a
 // viewport unit are refused. The native-only refusals (auto, a rounded outline in a style other than solid or double, inline boxes,
 // an outline under an overflow clip or in a case with a positioned or transformed box) are proven by

@@ -70,15 +70,15 @@ const alpha8 = (a: number): number => Math.round(a * 255);
 
 /**
  * A transparency layer's opaque pixel composited onto an opaque colour at the layer's 8-bit alpha a, as Chrome's committed pixels
- * show it (Skia's legacy S32A_Blend row blit, not the paint source-over of `over`): each channel src * (a + 1) >> 8 plus
- * dst * (255 - a) >> 8. Observed on the translucent dashed and ridge outlines of outline-dashed and outline-3d (rgba alpha 0.5 and
- * 0.6), where `over` is one high on every channel the two roundings differ.
+ * show it (a 256-scale interpolation, not the paint source-over of `over`): each channel (src * (a + 1) + dst * (255 - a)) >> 8.
+ * Fitted to the translucent dashed and ridge outlines of outline-dashed and outline-3d (rgba alpha 0.5 and 0.6: every channel of
+ * the colour, lighter and darker tones over the stage), where `over` rounds one high and separate per-term shifts one low.
  */
 function layerOver(dst: Rgba, src: Rgba, a: number): Rgba {
   if (src[3] !== 255 || dst[3] !== 255) throw new Error('outline ops: a layer composite of a translucent pixel is not modelled');
   if (a === 255) return src;
   if (a === 0) return dst;
-  const ch = (s: number, d: number): number => ((s * (a + 1)) >> 8) + ((d * (255 - a)) >> 8);
+  const ch = (s: number, d: number): number => (s * (a + 1) + d * (255 - a)) >> 8;
   return [ch(src[0], dst[0]), ch(src[1], dst[1]), ch(src[2], dst[2]), 255];
 }
 
