@@ -1152,8 +1152,8 @@ function boundingOf(rects: readonly Rect[]): Rect {
 
 /** A fragment for id holding its per-line rects as <id>:line<j> children, placed at its bounding rect. */
 function fragmentOf(id: string, rects: readonly Rect[], origin: Point, bounding: Rect): Placed {
-  const children: Placed[] = rects.map((p, j): Placed => ({ frag: { id: `${id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [], outOfFlow: [] }, x: sub(p.x, bounding.x), y: sub(p.y, bounding.y) }));
-  const frag: Frag = { id, width: bounding.width, height: bounding.height, baseline: null, children, outOfFlow: [] };
+  const children: Placed[] = rects.map((p, j): Placed => ({ frag: { id: `${id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [], outOfFlow: [], inflow: null }, x: sub(p.x, bounding.x), y: sub(p.y, bounding.y) }));
+  const frag: Frag = { id, width: bounding.width, height: bounding.height, baseline: null, children, outOfFlow: [], inflow: null };
   return { frag, x: add(origin.x, bounding.x), y: add(origin.y, bounding.y) };
 }
 
@@ -1195,7 +1195,7 @@ function collectFragments(ifc: Ifc, lines: readonly PlacedLine[], origin: Point,
       for (let j = 0; j < line.breaks.length; j++) {
         if ((line.breaks[j] as number) !== ri) continue;
         const r = line.breakRects[j] as Rect;
-        out.placed.set(br.id, { frag: { id: br.id, width: r.width, height: r.height, baseline: null, children: [], outOfFlow: [] }, x: add(origin.x, r.x), y: add(origin.y, r.y) });
+        out.placed.set(br.id, { frag: { id: br.id, width: r.width, height: r.height, baseline: null, children: [], outOfFlow: [], inflow: null }, x: add(origin.x, r.x), y: add(origin.y, r.y) });
       }
     }
     if (!out.placed.has(br.id)) throw new Error(`${br.id} is on no line`);

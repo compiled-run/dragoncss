@@ -110,18 +110,35 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     expect(p.kind === 'ok' ? p.containers[0]?.scrollRect.width : null).toBe(lu(310));
   });
 
-  it('a grid container is refused, whether it scrolls or sits in a scroll container or the viewport, never measured as a block', () => {
-    const g = (style: Partial<LayoutStyle>): LayoutBox => {
-      const item = box('a', { height: px(150), gridItem: { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' } });
-      const grid = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], autoRows: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], explicitColumnCount: 0, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
-      return box('g', { display: 'grid', grid, ...style }, [item]);
-    };
-    for (const i of [input([g(sc('auto'))]), input([box('s', sc('auto'), [g({})])]), input([g({})])]) {
-      expect(validateLayoutInput(JSON.parse(JSON.stringify(i))).ok).toBe(true);
-      expect(layout(i, ahemMeasurer).kind).toBe('ok');
-      const r = scrollMetrics(i, ahemMeasurer, 'ltr');
-      expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['g', expect.stringContaining('a grid container')]);
-    }
+  // G-OVF (Blink GridLayoutAlgorithm::LayoutInternal SetInflowBounds): a grid scroll container's inflow bounds are its tracks, not its items.
+  const gridOf = (style: Partial<LayoutStyle>, items: readonly Partial<LayoutStyle>[], track: number | null): LayoutBox => {
+    const size = track === null ? { kind: 'breadth' as const, breadth: { kind: 'auto' as const } } : { kind: 'breadth' as const, breadth: px(track) };
+    const grid = { templateColumns: [], templateRows: [], autoColumns: [size], autoRows: [size], explicitColumnCount: 0, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
+    const item = { column: { kind: 'auto' as const, span: 1 }, row: { kind: 'auto' as const, span: 1 }, justifySelf: 'start' as const };
+    return box('g', { display: 'grid', grid, ...style }, items.map((k, n) => box(`a${n}`, { alignSelf: 'start', gridItem: item, ...k })));
+  };
+
+  it('a grid scroll container scrolls its tracks and end padding, not its items: a 200px track with a 30px item scrolls 220', () => {
+    expect(size(input([gridOf(sc('auto', pad(10)), [{ width: px(30), height: px(30) }], 200)]), 'g')).toEqual([lu(220), lu(220), lu(120), lu(120)]);
+  });
+
+  it("a grid item's margins do not reach the inflow bounds, as they do in block flow", () => {
+    expect(size(input([gridOf(sc('auto', pad(10)), [{ width: px(30), height: px(30), marginRight: px(500), marginBottom: px(500) }], 200)]), 'g')).toEqual([lu(220), lu(220), lu(120), lu(120)]);
+  });
+
+  it('an item past its track adds its border box but no end padding', () => {
+    expect(size(input([gridOf(sc('auto', pad(10)), [{ width: px(400), height: px(30) }], 200)]), 'g')).toEqual([lu(410), lu(220), lu(120), lu(120)]);
+  });
+
+  it('in rtl the tracks extend to the left', () => {
+    const m = metrics(input([gridOf(sc('auto', { direction: 'rtl' }), [{ width: px(30), height: px(30) }], 300)])).containers[0];
+    expect(m?.scrollRect.x).toBe(lu(-200));
+    expect(m?.scrollRect.width).toBe(lu(300));
+  });
+
+  it('a grid that does not scroll adds its items to the scroll container around it', () => {
+    expect(size(input([box('s', sc('auto'), [gridOf({}, [{ width: px(30), height: px(150) }], null)])]), 's')).toEqual([lu(100), lu(150), lu(100), lu(100)]);
+    expect(validateLayoutInput(JSON.parse(JSON.stringify(input([gridOf(sc('auto'), [{}], null)])))).ok).toBe(true);
   });
 
   it('a relative offset with a percentage top inside a scroll container is refused, not guessed', () => {
