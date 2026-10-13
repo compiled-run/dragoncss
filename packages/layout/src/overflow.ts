@@ -15,6 +15,7 @@ import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layoutMeasurer, layoutWithFaults, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
 import { placeLines } from './inline.ts';
+import { isAtomicInline } from './inline-box.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
 
@@ -407,9 +408,9 @@ function propagated(ix: Index, n: Node): OverflowRect {
  */
 export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline', 'pieces', 'boxes', 'boxRects', 'breaks', 'breakRects'];
 
-/** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box or <br> child. */
+/** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box, <br> or atomic inline child. */
 function hasInlineContent(box: LayoutBox): boolean {
-  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br');
+  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || (k.kind === 'box' && isAtomicInline(k)));
 }
 
 /**
