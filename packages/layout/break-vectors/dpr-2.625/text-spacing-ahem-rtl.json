@@ -1,0 +1,19 @@
+{
+  "case": "text-spacing-ahem-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"px1:text0","lines":[[0,6]]},
+    {"id":"em05:text0","lines":[[0,6]]},
+    {"id":"em3:text0","lines":[[0,4]]},
+    {"id":"neg:text0","lines":[[0,7]]},
+    {"id":"frac:text0","lines":[[0,10]]},
+    {"id":"fit65:text0","lines":[[0,5]]},
+    {"id":"fit64:text0","lines":[[0,3],[3,5]]},
+    {"id":"norm:text0","lines":[[0,5]]},
+    {"id":"zero:text0","lines":[[0,5]]},
+    {"id":"mixed:text0","lines":[[0,3]]},
+    {"id":"spaced:text0","lines":[[0,3]]},
+    {"id":"mixed:text1","lines":[[0,3]]},
+    {"id":"narrow:text0","lines":[[0,8],[8,16],[16,17]]}
+  ]
+}

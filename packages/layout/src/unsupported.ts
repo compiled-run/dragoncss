@@ -21,7 +21,9 @@ export type UnsupportedCode =
   | 'vertical-align'
   | 'inline-box-position'
   | 'inline-empty-line'
-  | 'text-shaping-run';
+  | 'text-shaping-run'
+  | 'intrinsic-size-keyword'
+  | 'letter-spacing';
 
 /** The refusals a TextMeasurer returns: a code point with no glyph, or text outside the measurer's scripts (R4, notes/T056-txt1a-spec.md). */
 export type TextRefusalCode = 'text-glyph' | 'text-script';

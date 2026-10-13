@@ -41,8 +41,9 @@ describe('element keys (ELB-2)', () => {
     expect(light.userAgentUnmodelled['span']).toEqual({ ltr: {}, rtl: {} });
     expect(light.userAgentForced['input']?.ltr).toEqual({ display: 'inline-block', 'overflow-x': 'clip', 'overflow-y': 'clip' });
     expect(light.userAgentForced['button']?.ltr).toEqual({ display: 'inline-block' });
+    // TDEC-a: a[href]'s text-decoration-line is a longhand now, applied from the capture by datasets.ts anyLink.
     for (const [key, dirs] of Object.entries(light.userAgentUnmodelled)) {
-      for (const p of Object.keys(dirs.ltr)) expect((LONGHANDS as readonly string[]).includes(p), `${key} ${p}`).toBe(false);
+      for (const p of Object.keys(dirs.ltr)) expect((LONGHANDS as readonly string[]).includes(p) && !(key === 'a[href]' && p === 'text-decoration-line'), `${key} ${p}`).toBe(false);
     }
     for (const [key, dirs] of Object.entries(light.userAgentForced)) {
       for (const p of Object.keys(dirs.ltr)) expect((LONGHANDS as readonly string[]).includes(p), `${key} ${p}`).toBe(true);
@@ -79,7 +80,8 @@ describe('the dark UA dataset (ELB-2)', () => {
 
 // REPL-0: the replaced keys (iframe, img with a data: src) in tables of their own after the element-key tables.
 describe('replaced keys (REPL-0)', () => {
-  const REPLACED = ['iframe', 'img[src]'];
+  // SVG-a1 added svg and its shapes (SVG-namespace elements) to these tables.
+  const REPLACED = ['iframe', 'img[src]', 'svg', 'path', 'rect', 'circle'];
   it('are captured in tables of their own, light and dark; the element-key tables do not list them', () => {
     for (const ds of [light, dark]) {
       for (const table of [ds.replacedKeySpecs, ds.replacedKeyComputed, ds.replacedKeyLonghands, ds.replacedKeyDeclared, ds.replacedKeyContexts, ds.replacedKeyTextFonts, ds.replacedKeyUnmodelled, ds.replacedKeyForced]) {
@@ -88,6 +90,11 @@ describe('replaced keys (REPL-0)', () => {
       for (const table of [ds.elementKeySpecs, ds.userAgentUnmodelled, ds.userAgentForced, ds.computed]) for (const k of REPLACED) expect(k in table, k).toBe(false);
     }
     expect(light.replacedKeySpecs['img[src]'].attributes['src']).toMatch(/^data:image\/png;base64,/);
+  });
+  it('pin the UA values Chrome gives an inline svg and its shapes (SVG-a1)', () => {
+    expect(light.replacedKeyDeclared.svg.ltr).toEqual({ 'overflow-x': 'hidden', 'overflow-y': 'hidden' });
+    for (const k of ['path', 'rect', 'circle'] as const) expect(light.replacedKeyDeclared[k].ltr, k).toEqual({ 'transform-origin': '0px 0px' });
+    expect([light.replacedKeyComputed.path['fill'], light.replacedKeyComputed.path['stroke'], light.replacedKeyComputed.path['stroke-width']]).toEqual(['rgb(0, 0, 0)', 'none', '1px']);
   });
   it('pin the UA values Chrome gives an iframe and a loaded img', () => {
     const inset = Object.fromEntries(['top', 'right', 'bottom', 'left'].flatMap((s) => [[`border-${s}-style`, 'inset'], [`border-${s}-width`, '2px']]));

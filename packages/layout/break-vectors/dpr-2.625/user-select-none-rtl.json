@@ -1,0 +1,15 @@
+{
+  "case": "user-select-none-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"b:text0","lines":[[0,2]]},
+    {"id":"kid:text0","lines":[[0,3]]},
+    {"id":"inh:text0","lines":[[0,2]]},
+    {"id":"w:text0","lines":[[0,4]]},
+    {"id":"up:text0","lines":[[0,3]]},
+    {"id":"v:text0","lines":[[0,2]]},
+    {"id":"f1:text0","lines":[[0,4]]},
+    {"id":"f2:text0","lines":[[0,1]]},
+    {"id":"abs:text0","lines":[[0,1]]}
+  ]
+}

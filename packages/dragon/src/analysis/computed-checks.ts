@@ -8,7 +8,7 @@ import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf } from '../css/values.ts';
-import type { FamilyKeyContext } from '../css/values.ts';
+import type { CssValue, FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
@@ -19,7 +19,9 @@ import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
-import { isRefusedMath, textFontOfProps } from './computed.ts';
+import { isSvgShapeTag, svgPaintRefusal } from './elements/svg.ts';
+import { analyzeDecorations } from './text-decoration.ts';
+import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
@@ -453,13 +455,14 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
   walk(root, [], false, false);
 }
 
-/** The computed font-weight and font-style of an element that Chrome synthesizes over a single regular face (600 and up, slope 14 and up). */
+/** The computed font-weight and font-style Chrome synthesizes over a single regular face (600 and up, slope 14 and up), where font-synthesis allows it. */
 function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
   const out: { property: 'font-weight' | 'font-style'; text: string }[] = [];
   const font = textFontOfProps(el.props);
-  if (font.weight >= 600) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
+  const allowed = synthesisAllowedOf(el.props);
+  if (allowed.weight && font.weight >= 600) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
   const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
-  if (slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
+  if (allowed.style && slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
   return out;
 }
 
@@ -535,10 +538,55 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
   }
 }
 
+/**
+ * SVG-a1: an <svg> with a viewBox and an auto width or height is sized from the viewBox ratio and the available width, which the
+ * engine does not do for a replaced box without a natural size yet (package SVG-ratio). A shape's geometry comes from its
+ * attributes only: a CSS width, height or transform on it, which Chrome would apply as a geometry property, is refused, and so is
+ * a percentage stroke-width (relative to the viewport diagonal).
+ */
+function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string): void => {
+    for (const t of targets) {
+      const id = `${t}|svg-${what}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const tag = el.element.tag;
+  for (const p of ['fill', 'stroke'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const why = svgPaintRefusal(p, v.value);
+    if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} a colour or none.`);
+  }
+  const sw = el.props.get('stroke-width') as ResolvedValue;
+  if (sw.value.kind === 'percentage') {
+    refuse('stroke-width', sw.declaration === null ? el.element.node.origin : authored(sw.declaration.valueSpan), `stroke-width: ${valueToString(sw.value)} on <${tag}> ${el.element.address} is unsupported: a percentage stroke-width is relative to the viewport diagonal, which is not built yet (package SVG-units)`, 'Give stroke-width in px or as a number.');
+  }
+  if (tag === 'svg') {
+    const auto = (['width', 'height'] as const).filter((p) => keywordOf(el.props.get(p) as ResolvedValue) === 'auto');
+    if (el.element.attributes.has('viewBox') && auto.length > 0) {
+      refuse('ratio', el.element.node.origin, `<svg> ${el.element.address} has a viewBox and ${auto.join(' and ')} auto: sizing from the viewBox ratio is not built yet (package SVG-ratio)`, `Give <svg> ${el.element.address} a width and a height, as attributes or in CSS.`);
+    }
+    return;
+  }
+  for (const p of ['width', 'height', 'transform'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (v.declaration === null) continue;
+    refuse(p, authored(v.declaration.valueSpan), `${p}: ${v.declaration.text} on <${tag}> ${el.element.address} is not supported: a shape's geometry comes from its attributes until the SVG structure package SVG-b`, `Remove the declaration, or set the ${p === 'transform' ? 'geometry' : p} attribute.`);
+  }
+}
+
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, faults: GenBFaults = GEN_B_FAULTS): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
+    // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes only the SVG checks.
+    if (isSvgShapeTag(el.element.tag)) {
+      checkSvg(el, targets, diagnostics, reported);
+      return;
+    }
+    if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
@@ -565,5 +613,118 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkTransformContexts(root, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
+  checkDecorations(root, targets, diagnostics, reported, realFaceAt);
+}
+
+/** The largest device scale a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies below it. */
+const NATIVE_DPR_MAX = 4;
+/** The largest skip-ink dilation the decoration capture proves: every captured skip-ink auto line is at most this thick. */
+const SKIP_INK_PROVEN_THICKNESS = 13;
+
+/**
+ * TDEC-d: whether a skip-ink auto line's thickness stays within SKIP_INK_PROVEN_THICKNESS zoomed px at every device scale up to
+ * NATIVE_DPR_MAX, so the device's dilation by the thickness (text_painter.cc:555-563, layout text-decoration.ts skipInkClips) is
+ * the one the captures prove. auto is size / 10 of the decorating box's font; a px length or a percentage rounds half up after zoom (roundf, +0.5 at
+ * most). boxSize is css px.
+ */
+export function skipInkThicknessProven(thickness: CssValue, boxSize: number): boolean {
+  const auto = thickness.kind === 'keyword' && thickness.value === 'auto';
+  const perPx = auto ? boxSize / 10 : thickness.kind === 'length' && thickness.unit === 'px' ? thickness.value : thickness.kind === 'percentage' ? (thickness.value * boxSize) / 100 : Number.NaN;
+  if (!Number.isFinite(perPx)) return false;
+  return perPx * NATIVE_DPR_MAX + (auto ? 0 : 0.5) <= SKIP_INK_PROVEN_THICKNESS;
+}
+
+/** Whether the device takes a thickness or underline offset: auto, a px length or a percentage (lower/paint/text-decoration.ts). */
+const nativeDecorationLength = (v: CssValue): boolean => (v.kind === 'keyword' && v.value === 'auto') || (v.kind === 'length' && v.unit === 'px' && Number.isFinite(v.value)) || (v.kind === 'percentage' && Number.isFinite(v.value));
+
+/**
+ * TDEC-a: web draws every accepted decoration. TDEC-b: ios and android draw solid decorations (the value table refuses every other
+ * style on every target) and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
+ * auto, px or a percentage; a decorated text that is not visible; an overline with skip-ink auto, or an underline with skip-ink auto
+ * on a real face or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
+ * decorated element in a formatting context no Chrome case proves propagation for is refused on every target.
+ */
+function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
+  const { applied, unproven } = analyzeDecorations(root);
+  const byAddress = new Map<string, { readonly text: ResolvedText; readonly containerSize: number; readonly visibility: string }>();
+  const sizeOf = (props: ReadonlyMap<Longhand, ResolvedValue>): number => {
+    const v = props.get('font-size')?.value;
+    return v !== undefined && v.kind === 'length' && v.unit === 'px' ? v.value : Number.NaN;
+  };
+  // A block decorating box draws with its text's container strut: the nearest ancestor that is not an inline box.
+  const index = (el: ResolvedElement, containerSize: number): void => {
+    const inline = el !== root && valueToString((el.props.get('display') as ResolvedValue).value) === 'inline';
+    const here = inline ? containerSize : sizeOf(el.props);
+    for (const c of el.children) {
+      // A text's visibility is its parent element's (an inherited property).
+      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
+      else index(c, here);
+    }
+  };
+  index(root, sizeOf(root.props));
+  const inlineAt = new Set<string>();
+  const inlines = (el: ResolvedElement): void => {
+    if (el !== root && valueToString((el.props.get('display') as ResolvedValue).value) === 'inline') inlineAt.add(el.element.address);
+    for (const c of el.children) if (c.kind === 'element') inlines(c);
+  };
+  inlines(root);
+  for (const [address, list] of applied) {
+    const hit = byAddress.get(address);
+    if (hit === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
+    const { text, containerSize, visibility } = hit;
+    const reasons: string[] = [];
+    let intercepts = false;
+    if (visibility !== 'visible') reasons.push(`it is ${visibility}, and its decoration views do not follow visibility`);
+    for (const d of list) {
+      if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
+      if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
+      if (d.skipInk !== 'auto') continue;
+      // TDEC-d clips Ahem glyphs only, for an underline (the capture's skip-ink probe), as thick as a capture proves.
+      if (d.lines.includes('overline') || (d.lines.includes('underline') && (realFaceAt(address) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
+    }
+    if (intercepts) reasons.push('skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from ' + list.filter((d) => d.skipInk === 'auto').map((d) => d.box).join(', ') + ', which the intercepts of TDEC-d clip');
+    if (reasons.length === 0) continue;
+    const what = list.map((d) => `${d.lines.join(' ')} from ${d.box}`).join(', ');
+    for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+      const id = `${t}|decoration|${address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: text.node.node.origin,
+        target: t,
+        message: `text ${address} draws text-decoration (${what}) that ${t} does not draw: ${reasons.join('; ')}`,
+        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines and real faces come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
+        basis: 'computed-value',
+      }));
+    }
+  }
+  for (const u of unproven) {
+    for (const t of targets) {
+      const id = `${t}|decoration-context|${u.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', {
+        origin: originOfElement(root, u.address),
+        target: t,
+        message: `${u.address} sits inside the decorated box ${u.box} in a formatting context for which no Chrome case proves how text-decoration propagates (css-text-decor-3 §2.1)`,
+        manual: `Set text-decoration: none on ${u.box}, or move ${u.address} out of it.`,
+      }));
+    }
+  }
+}
+
+/** The origin of the element at an address in a resolved tree. */
+function originOfElement(root: ResolvedElement, address: string): ResolvedElement['element']['node']['origin'] {
+  const find = (el: ResolvedElement): ResolvedElement | null => {
+    if (el.element.address === address) return el;
+    for (const c of el.children) if (c.kind === 'element') {
+      const hit = find(c);
+      if (hit !== null) return hit;
+    }
+    return null;
+  };
+  const hit = find(root);
+  if (hit === null) throw new Error(`no element ${address}`);
+  return hit.element.node.origin;
 }
 

@@ -7,8 +7,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
-import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, fromCssPx, layout, inlineLeaves, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
+import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
+import { absoluteRects, fromCssPx, layout, inlineLeaves, leafFontOf, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -19,7 +19,8 @@ export const BREAK_MISMATCH = 'break-mismatch';
 
 /** One line of a text node as the engine breaks it: UTF-16 [start, end), the shown code points, the absolute line rect and its snapped edges. */
 export type EngineLine = { readonly start: number; readonly end: number; readonly cps: readonly number[]; readonly rect: LayoutRect; readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } };
-export type EngineText = { readonly id: string; readonly container: string; readonly font: TextLeaf['font']; readonly lines: readonly EngineLine[] };
+/** font is the leaf's font; textFont is the font the measurer reads for it, with its resolved letter-spacing (inline.ts leafFontOf). */
+export type EngineText = { readonly id: string; readonly container: string; readonly font: TextLeaf['font']; readonly textFont: TextFont; readonly lines: readonly EngineLine[] };
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
 
@@ -110,7 +111,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
       own.push({ start: utf16(mine.start), end: utf16(mine.end), cps: scalars.slice(mine.start, mine.visibleEnd).map((ch) => ch.codePointAt(0) as number), rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
     }
     if (own.length !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${own.length} lines, its layout ${pieces.length}`);
-    out.push({ id: r.id, container: pId, font: leaf.font, lines: own });
+    out.push({ id: r.id, container: pId, font: leaf.font, textFont: leafFontOf(leaf), lines: own });
   }
   return out;
 }

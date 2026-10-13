@@ -5,6 +5,7 @@ import type { Longhand } from '../../css/properties.ts';
 import type { RadiusComponent } from '../../css/properties/radius.ts';
 import { cornerComponents, cornerValue, RADIUS_LONGHANDS, RADIUS_PAIR } from '../../css/properties/radius.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx } from '../../css/units.ts';
+import { valueToString } from '../computed.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { isReplacedTag } from '../elements/replaced.ts';
 import type { ResolvedElement } from '../resolve.ts';
@@ -22,6 +23,35 @@ function computeComponent(c: RadiusComponent, ctx: PaintValueContext): RadiusCom
 const BORDER_STYLE_LONGHANDS: readonly Longhand[] = ['border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style'];
 const UNROUNDED_STYLES: ReadonlySet<string> = new Set(['dotted', 'dashed', 'double', 'groove', 'ridge', 'inset', 'outset']);
 
+const PADDING_LONGHANDS: readonly Longhand[] = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
+
+/**
+ * Why a rounded replaced element is refused on a native target, or null. An img under the UA's overflow: clip clips its image to
+ * the padding-edge curve (paint_property_tree_builder.cc UpdateInnerBorderRadiusClip: PixelSnappedContouredInnerBorder, then
+ * AdjustRoundedClipForOverflowClipMargin to the content box), which the image stage draws through the roundedPath hook. Refused:
+ * an iframe (the web view is not clipped round yet), an img with padding (Chrome moves the curve to the content box with
+ * OutsetWithCornerCorrection, which Dragon does not compute), and an img whose overflow is not clip on both axes (Chrome then
+ * builds no rounded clip: NeedsInnerBorderRadiusClip needs the overflow clip along both axes).
+ */
+function unroundedReplaced(el: ResolvedElement, tag: string, t: string): { readonly message: string; readonly manual: string } | null {
+  const at = `<${tag}> ${el.element.address}`;
+  if (tag !== 'img') {
+    return { message: `${at} rounds its corners, but ${t} draws a web view square (a rounded iframe is not supported yet)`, manual: 'Round a wrapper element with overflow: hidden around the frame instead.' };
+  }
+  const padded = PADDING_LONGHANDS.find((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return !((v.kind === 'length' || v.kind === 'percentage') && v.value === 0);
+  });
+  if (padded !== undefined) {
+    return { message: `${at} rounds its corners and has ${padded}: ${valueToString((el.props.get(padded) as ResolvedValue).value)}; ${t} clips a rounded image only at its padding edge (a rounded img with padding is not supported yet)`, manual: 'Remove the padding of the rounded img, or round a wrapper element around it.' };
+  }
+  const overflow = (['overflow-x', 'overflow-y'] as const).map((p) => el.props.get(p) as ResolvedValue).find((v) => !(v.value.kind === 'keyword' && v.value.value === 'clip'));
+  if (overflow !== undefined) {
+    return { message: `${at} rounds its corners with overflow: ${valueToString(overflow.value)}, under which Chrome does not clip the image round; ${t} supports a rounded img only under overflow: clip on both axes (the img default)`, manual: 'Leave overflow at its default on the rounded img.' };
+  }
+  return null;
+}
+
 /** Why a rounded element is refused on a native target, with its fix, or null: what PNT1 does not draw round. */
 function unrounded(el: ResolvedElement, t: string): { readonly message: string; readonly manual: string } | null {
   const tag = el.element.tag;
@@ -29,10 +59,7 @@ function unrounded(el: ResolvedElement, t: string): { readonly message: string; 
   if (tag === 'html' || tag === 'body') {
     return { message: `<${tag}> ${el.element.address} rounds its corners, but its background propagates to the canvas, which ${t} does not paint round`, manual: 'Round a wrapper element inside body instead of html or body.' };
   }
-  // Blink clips replaced content to the rounded content box; the image and web-view stages draw it square.
-  if (isReplacedTag(tag)) {
-    return { message: `<${tag}> ${el.element.address} rounds its corners, but ${t} draws replaced content square (rounded replaced content is not supported yet)`, manual: 'Round a wrapper element with overflow: hidden around the image or frame instead.' };
-  }
+  if (isReplacedTag(tag)) return unroundedReplaced(el, tag, t);
   const styled = BORDER_STYLE_LONGHANDS.map((p) => el.props.get(p) as ResolvedValue).find((v, i) => {
     const width = (el.props.get((BORDER_STYLE_LONGHANDS[i] as string).replace('-style', '-width') as Longhand) as ResolvedValue | undefined)?.value;
     return v.value.kind === 'keyword' && UNROUNDED_STYLES.has(v.value.value) && !(width !== undefined && width.kind === 'length' && width.value === 0);
@@ -43,7 +70,7 @@ function unrounded(el: ResolvedElement, t: string): { readonly message: string; 
 
 /**
  * A rounded element the native targets cannot draw as Chrome does is refused there at its radius declaration: html and body
- * (their background paints the canvas), replaced elements (their content is clipped round), and a border with a dashed, dotted,
+ * (their background paints the canvas), the replaced elements unroundedReplaced names, and a border with a dashed, dotted,
  * double or 3D side (Blink strokes those along the rounded centre line, box_border_painter.cc; PNT1b adds them). The web target
  * draws all of them itself.
  */

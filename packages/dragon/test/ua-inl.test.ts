@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { LONGHANDS } from '../src/css/properties.ts';
 import * as dark from '../src/ua/chrome-145.darwin-arm64.dark.generated.ts';
 import * as light from '../src/ua/chrome-145.darwin-arm64.generated.ts';
-import { phrasingDataFor, TEXT_FONT_LONGHANDS } from '../src/ua/datasets.ts';
+import { phrasingDataFor, UNCAPTURED_LONGHANDS } from '../src/ua/datasets.ts';
 
 const PHRASING = ['br', 'strong', 'b', 'em', 'i', 'code', 'small', 'sub', 'sup', 'label'] as const;
 const FAMILIES = ['Ahem', 'monospace'];
@@ -36,7 +36,7 @@ describe('phrasing keys (INL-U)', () => {
   });
   it('cover every longhand, with the computed values Chrome gives each key under the medium root', () => {
     for (const k of PHRASING) {
-      for (const p of LONGHANDS.filter((q) => !(TEXT_FONT_LONGHANDS as readonly string[]).includes(q))) expect(light.phrasingKeyComputed[k][p], `${k} ${p}`).toBeTypeOf('string');
+      for (const p of LONGHANDS.filter((q) => !(UNCAPTURED_LONGHANDS as readonly string[]).includes(q))) expect(light.phrasingKeyComputed[k][p], `${k} ${p}`).toBeTypeOf('string');
       expect(light.phrasingKeyComputed[k].display, k).toBe('inline');
     }
     expect(light.phrasingKeyComputed.code['font-family']).toBe('monospace');
@@ -45,13 +45,13 @@ describe('phrasing keys (INL-U)', () => {
   });
   it('pin the UA longhands, declared values, text fonts, unmodelled and forced properties, and contexts', () => {
     expect(light.phrasingKeyLonghands).toEqual({
-      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size'], sup: ['font-size'], label: [],
+      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size', 'vertical-align'], sup: ['font-size', 'vertical-align'], label: [],
     });
     const both = (row: Record<string, string>) => ({ ltr: row, rtl: row });
     expect(light.phrasingKeyDeclared).toEqual({
       br: both({}), strong: both({}), b: both({}), em: both({}), i: both({}),
       code: both({ 'font-family': 'monospace' }),
-      small: both({ 'font-size': 'smaller' }), sub: both({ 'font-size': 'smaller' }), sup: both({ 'font-size': 'smaller' }),
+      small: both({ 'font-size': 'smaller' }), sub: both({ 'font-size': 'smaller', 'vertical-align': 'sub' }), sup: both({ 'font-size': 'smaller', 'vertical-align': 'super' }),
       label: both({}),
     });
     expect(light.phrasingKeyTextFonts).toEqual({
@@ -60,7 +60,7 @@ describe('phrasing keys (INL-U)', () => {
     });
     expect(light.phrasingKeyUnmodelled).toEqual({
       br: both({}), strong: both({}), b: both({}), em: both({}), i: both({}), code: both({}), small: both({}),
-      sub: both({ 'vertical-align': 'sub' }), sup: both({ 'vertical-align': 'super' }), label: both({ cursor: 'default' }),
+      sub: both({}), sup: both({}), label: both({ cursor: 'default' }),
     });
     for (const k of PHRASING) {
       expect(light.phrasingKeyForced[k], k).toEqual(both({}));

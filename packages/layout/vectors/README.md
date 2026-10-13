@@ -337,7 +337,11 @@ Input:
        "kind": "normal"
       },
       "whiteSpaceCollapse": "collapse",
-      "textWrapMode": "wrap"
+      "textWrapMode": "wrap",
+      "letterSpacing": {
+       "kind": "px",
+       "value": 0
+      }
      }
     ]
    }

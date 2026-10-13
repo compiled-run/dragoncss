@@ -18,6 +18,7 @@ import { BOX_ALIASES } from './aliases/box.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
+import { SELECTION_ALIASES } from './aliases/selection.ts';
 import { TRANSFORM_ALIASES } from './aliases/transform.ts';
 
 /** Each family's aliases, one line per family, sorted by family id (test/registry-claims.test.ts). */
@@ -27,6 +28,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   flex: FLEX_ALIASES,
   logical: LOGICAL_ALIASES,
   radius: RADIUS_ALIASES,
+  selection: SELECTION_ALIASES,
   transform: TRANSFORM_ALIASES,
 };
 

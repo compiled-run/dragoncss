@@ -11,6 +11,7 @@ import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/w
 import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
 import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
+import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 
 type WebrefEntry = {
   name: string;
@@ -39,7 +40,7 @@ const SUBSET = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap', ...LEGACY_BOX_PROPERTIES,
-  'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
+  'font', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'text-decoration', 'text-decoration-line', 'text-decoration-style', 'text-decoration-color', 'text-decoration-thickness', 'text-underline-offset', 'text-underline-position', 'text-decoration-skip-ink', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
 
@@ -65,6 +66,14 @@ const SUBSET = [
   'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
   // T150a: visibility (css-display-3 §4), after lists, as LONGHANDS registers it.
   'visibility',
+  // vertical-align (CSS2 §10.8.1), then float and clear (CSS2 §9.5), as LONGHANDS registers them.
+  'vertical-align', 'float', 'clear',
+  // T154: user-select (css-ui-4 §6.1), after visibility, as LONGHANDS registers it.
+  'user-select',
+  // SVG paint (SVG-a1), after GEN-b, last, as LONGHANDS registers them.
+  ...SVG_LONGHANDS,
+  // TXT2-b: letter-spacing (css-text-3 §8.2), after visibility, as LONGHANDS registers it.
+  'letter-spacing',
 ] as const;
 
 /**
@@ -98,6 +107,14 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ListStyleType::ParseSingleValue (css/properties/longhands/longhands_custom.cc): none, a string or a counter-style name;
   // symbols() is parsed only in @counter-style, so webref's <symbols()> is dropped (pinned by packages/parity/test/list-style-parse.test.ts).
   'list-style-type': '<counter-style-name> | <string> | none',
+  // Blink VerticalAlign::ParseSingleValue (css/properties/longhands/longhands_custom.cc): one keyword or one <length-percentage>
+  // (the unitless quirk applies only in quirks mode). Blink keeps vertical-align a longhand, not css-inline-3's shorthand of
+  // alignment-baseline and baseline-shift. Pinned against Chrome by packages/parity/test/inert-layout-parse.test.ts.
+  // Blink's float and clear keywords (css_properties.json5): CSS2's, plus css-logical-1's inline-start and inline-end; none of
+  // css-page-floats-3's. Pinned against Chrome by packages/parity/test/inert-layout-parse.test.ts.
+  float: 'none | left | right | inline-start | inline-end',
+  clear: 'none | left | right | both | inline-start | inline-end',
+  'vertical-align': 'baseline | sub | super | text-top | text-bottom | middle | top | bottom | -webkit-baseline-middle | <length-percentage>',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',
@@ -105,6 +122,12 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
     'contents | none',
     'inline-block | inline-table | inline-flex | inline-grid | -webkit-box | -webkit-inline-box | -webkit-flex | -webkit-inline-flex',
   ].join(' | '),
+  // Blink StrokeWidth::ParseSingleValue: one non-negative length, percentage or (SVG quirk) number; webref's list and
+  // <line-width> keywords do not parse in Chrome 145 (probed: "thin" and "2px, 3px" are invalid).
+  'stroke-width': '<length-percentage [0,∞]> | <number [0,∞]>',
+  // Blink ParsePaintStroke (fill and stroke): webref's <paint> has no <color>; Chrome 145 parses SVG 1.1's <paint>.
+  fill: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
+  stroke: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

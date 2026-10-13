@@ -195,9 +195,16 @@ function inlineChildren(box: LayoutBox): InlineChild[] {
   return out;
 }
 
-/** A font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts). */
+/** A font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts), unspaced. */
 function fontOf(f: FontSpec): TextFont {
-  return { family: f.family, size: f.size };
+  return { family: f.family, size: f.size, letterSpacing: 0 };
+}
+
+/** A text leaf's font as the measurer reads it: its font with its letter-spacing in px, which the environment pass resolved. */
+export function leafFontOf(t: TextLeaf): TextFont {
+  const ls = t.letterSpacing;
+  if (ls.kind !== 'px') throw new Error(`${t.id}: a ${ls.kind} letter-spacing reached layout; the environment pass resolves it`);
+  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value };
 }
 
 /** A line height after the environment pass, which resolves percentages and calculations to px. */
@@ -325,7 +332,11 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   for (const t of flat.leaves) if (t.font.family !== AHEM_FACE_ID) shaped = true;
   if (shaped) checkShapedText(ctx, box, flat.leaves, items);
   for (const t of flat.leaves) {
-    const m = ctx.measurer.measure(t.text, fontOf(t.font));
+    // The generated hyphen at a soft hyphen break is shaped as its own item; how Blink spaces it is not measured yet.
+    if (leafFontOf(t).letterSpacing !== 0) {
+      for (const ch of t.text) if ((ch.codePointAt(0) as number) === 0xad) unsupported('letter-spacing', t.id, 'css-text-3 §8.2', `${t.id} has letter-spacing and a soft hyphen`);
+    }
+    const m = ctx.measurer.measure(t.text, leafFontOf(t));
     if (!m.ok) {
       if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
       unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
@@ -393,7 +404,9 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
     if (it.kind !== 'char' || it.leaf === last) continue;
     const prev = last < 0 ? null : (leaves[last] as TextLeaf);
     const t = leaves[it.leaf] as TextLeaf;
-    if (prev !== null && prev.font.family === t.font.family && prev.font.size === t.font.size) {
+    // ShouldBreakShapingBeforeText (inline_node.cc) breaks the run where the Font differs, and FontDescription's == compares letter
+    // spacing, so a span with other spacing is its own run.
+    if (prev !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && leafFontOf(prev).letterSpacing === leafFontOf(t).letterSpacing) {
       unsupported('text-shaping-run', t.id, 'css-text-3 §7.3 (boundary shaping)', `${prev.id} and ${t.id} are adjacent text in one face and size, which Blink shapes as one run`);
     }
     last = it.leaf;
@@ -750,7 +763,7 @@ function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     let text = '';
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) text += (ifc.items[i++] as Item).ch;
     const t = ifc.leaves[it.leaf] as TextLeaf;
-    const m = ctx.measurer.measure(text, fontOf(t.font));
+    const m = ctx.measurer.measure(text, leafFontOf(t));
     if (!m.ok) {
       if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
       unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
@@ -777,7 +790,7 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     let last = first;
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === first.leaf) last = ifc.items[i++] as Item;
     const t = ifc.leaves[first.leaf] as TextLeaf;
-    const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, fontOf(t.font));
+    const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, leafFontOf(t));
     if (!m.ok) {
       if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
       unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
@@ -888,7 +901,7 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       const first = i;
       while (i < ifc.items.length && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) i++;
       const t = ifc.leaves[it.leaf] as TextLeaf;
-      const s = ctx.measurer.shaped(t.text, fontOf(t.font));
+      const s = ctx.measurer.shaped(t.text, leafFontOf(t));
       if (!s.ok) {
         if (s.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', s.reason);
         unsupported('text-glyph', t.id, 'css-fonts-4 §5', s.reason);

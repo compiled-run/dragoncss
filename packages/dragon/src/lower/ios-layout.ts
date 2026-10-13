@@ -13,6 +13,7 @@ import type {
   FontSpec,
   GapValue,
   InlineChild,
+  InlineSizeValue,
   InsetValue,
   JustifyContent,
   LayoutBox,
@@ -25,6 +26,7 @@ import type {
   LineStrut,
   MarginValue,
   Overflow,
+  MaxInlineSizeValue,
   MaxSizeValue,
   PaddingValue,
   Position,
@@ -32,6 +34,8 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  VerticalAlignKeyword,
+  VerticalAlignValue,
 } from '@dragon/layout';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
@@ -111,6 +115,22 @@ function maxSize(id: string, get: Get, p: Longhand, l: Lowering): MaxSizeValue {
   if (v.kind === 'keyword' && v.value === 'none') return { kind: 'none' };
   const lp = lengthPercentage(id, get, p, 'non-negative', l);
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | none') : lp;
+}
+
+// css-sizing-3 §3.2: width, min-width and max-width also take min-content, max-content and fit-content; the engine reads them on a
+// block-level box in block flow and refuses them elsewhere.
+const INTRINSIC_SIZE_KEYWORDS = ['min-content', 'max-content', 'fit-content'] as const;
+
+function inlineSize(id: string, get: Get, p: Longhand, l: Lowering): InlineSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && (INTRINSIC_SIZE_KEYWORDS as readonly string[]).includes(v.value)) return { kind: v.value as (typeof INTRINSIC_SIZE_KEYWORDS)[number] };
+  return size(id, get, p, l);
+}
+
+function maxInlineSize(id: string, get: Get, p: Longhand, l: Lowering): MaxInlineSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && (INTRINSIC_SIZE_KEYWORDS as readonly string[]).includes(v.value)) return { kind: v.value as (typeof INTRINSIC_SIZE_KEYWORDS)[number] };
+  return maxSize(id, get, p, l);
 }
 
 function padding(id: string, get: Get, p: Longhand, l: Lowering): PaddingValue {
@@ -241,6 +261,17 @@ export function viewportOverflow(root: ResolvedElement, faults: CompilerFaults):
   return { source: null, overflowX: 'auto', overflowY: 'auto', direction };
 }
 
+const VERTICAL_ALIGN_KEYWORDS: readonly VerticalAlignKeyword[] = ['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom'];
+
+// CSS2 §10.8.1: only inline-level boxes read vertical-align, so every other box takes baseline, whatever it computes to.
+function verticalAlign(id: string, get: Get, l: Lowering): VerticalAlignValue {
+  if (keywordOf(get('display')) !== 'inline') return { kind: 'keyword', value: 'baseline' };
+  const v = get('vertical-align');
+  if (v.kind === 'keyword') return { kind: 'keyword', value: keyword(id, get, 'vertical-align', VERTICAL_ALIGN_KEYWORDS) };
+  const lp = lengthPercentage(id, get, 'vertical-align', 'all', l);
+  return lp === null ? fail(id, 'vertical-align', v, `${VERTICAL_ALIGN_KEYWORDS.join(' | ')} | px | % | a viewport length | a calculation`) : lp;
+}
+
 // css-align-3 §4.2: first baseline is baseline; last baseline has no layout mapping.
 function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[]): T {
   const v = get(p);
@@ -263,11 +294,11 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     overflowY: keyword<Overflow>(id, get, 'overflow-y', OVERFLOW_VALUES),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
-    width: size(id, get, 'width', l),
+    width: inlineSize(id, get, 'width', l),
     height: size(id, get, 'height', l),
-    minWidth: size(id, get, 'min-width', l),
+    minWidth: inlineSize(id, get, 'min-width', l),
     minHeight: size(id, get, 'min-height', l),
-    maxWidth: maxSize(id, get, 'max-width', l),
+    maxWidth: maxInlineSize(id, get, 'max-width', l),
     maxHeight: maxSize(id, get, 'max-height', l),
     marginTop: margin(id, get, 'margin-top', l),
     marginRight: margin(id, get, 'margin-right', l),
@@ -299,8 +330,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
     aspectRatio: aspectRatio(id, get),
-    // CSS2 §10.8.1: vertical-align is not a Dragon longhand; every box takes its initial value, which only inline boxes read.
-    verticalAlign: { kind: 'keyword', value: 'baseline' },
+    verticalAlign: verticalAlign(id, get, l),
     grid: null,
     gridItem: null,
   };
@@ -372,7 +402,14 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   if (collapse.kind !== 'keyword' || collapse.value !== 'collapse') fail(id, 'white-space-collapse', collapse, 'collapse');
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode };
+  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerLetterSpacing(id, get('letter-spacing')) };
+}
+
+/** css-text-3 §8.2: a computed letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
+function lowerLetterSpacing(id: string, v: CssValue): Px {
+  if (v.kind === 'keyword' && v.value === 'normal') return { kind: 'px', value: 0 };
+  if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
+  return fail(id, 'letter-spacing', v, 'normal | px');
 }
 
 /**
@@ -419,7 +456,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const id = c.element.address;
   const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');

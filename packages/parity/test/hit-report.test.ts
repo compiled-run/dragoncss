@@ -10,7 +10,7 @@ import type { NativeCase } from '../src/native-host.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { hitCaseIds, nativeTargets } from '../src/targets.ts';
-import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
+import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
@@ -18,12 +18,12 @@ import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts'
 const cases = hitCases();
 
 describe('the host hit lane', () => {
-  // The hit lane leaves out the union of five refusals (hit-refusals.ts, hit-refusals-radius.ts, hit-refusals-grid.ts); taking any alone would bring the others' cases back.
+  // The hit lane leaves out the union of six refusals (hit-refusals.ts, hit-refusals-radius.ts, hit-refusals-grid.ts); taking any alone would bring the others' cases back.
   const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
-  it('leaves out exactly the union of the transform cases, the PNT1 stacking cases, the PNT1 radius fixtures, the INL1a inline-box and <br> fixtures, the GRID fixtures and the T150a visibility fixtures, each with a named reason', () => {
+  it('leaves out exactly the union of the transform cases, the PNT1 stacking cases, the PNT1 radius fixtures, the INL1a inline-box and <br> fixtures, the GRID fixtures, the T150a visibility fixtures and the svg fixtures, each with a named reason', () => {
     const hit = new Set(cases.map((n) => n.case.id));
     const out = nativeCases().filter((n) => !hit.has(n.case.id));
-    const union = new Set([...transformed(), ...STACKING_OUT, ...RADIUS_OUT, ...INLINE_OUT, ...GRID_OUT, ...VISIBILITY_OUT]);
+    const union = new Set([...transformed(), ...STACKING_OUT, ...RADIUS_OUT, ...INLINE_OUT, ...GRID_OUT, ...VISIBILITY_OUT, ...SVG_OUT]);
     expect(out.map((n) => n.case.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => union.has(id)));
     for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(INLINE_REASON);
     for (const n of out.filter((x) => GRID_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(GRID_REASON);
@@ -43,7 +43,7 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, PNT1 radius, INL1a inline, GRID and T150a visibility cases with their own reasons', () => {
+  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, PNT1 radius, INL1a inline, GRID, T150a visibility and svg cases (SVG-a2 lifts it) with their own reasons', () => {
     const refused = hitRefusedCases();
     const moved = new Set(transformed());
     expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
@@ -54,6 +54,7 @@ describe('the host hit lane', () => {
     for (const r of refused) {
       if (moved.has(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
+      else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
       else if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
       else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);

@@ -7,5 +7,7 @@ export const GRID_OUT: readonly string[] = [
   'grid-aspect-ratio', 'grid-aspect-ratio-rtl', 'grid-self-values', 'grid-self-values-rtl', 'grid-place', 'grid-place-rtl',
   'grid-template-shorthands', 'grid-template-shorthands-rtl', 'grid-auto-repeat', 'grid-auto-repeat-rtl',
   'grid-abspos', 'grid-abspos-rtl', 'grid-baseline', 'grid-baseline-rtl', 'overflow-grid', 'overflow-grid-rtl',
+  // #266's vertical-align-inert and sizing-keywords-block each hold a grid container.
+  'vertical-align-inert', 'vertical-align-inert-rtl', 'sizing-keywords-block', 'sizing-keywords-block-rtl',
 ];
 export const GRID_REASON = /(^|: )\S+ is a grid container, which the hit table does not model yet \(GRID: atomic grid items in order-modified document order; no Chrome hit capture\)$/;

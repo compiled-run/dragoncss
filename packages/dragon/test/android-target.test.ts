@@ -48,12 +48,12 @@ describe('the android output', () => {
     expect(c.targets.android).toBe('checked');
     expect(c.outputs.android.kind).toBe('analysis-only');
   });
-  it('.a { width: min-content }, which ios has not proven, blocks android with DRAGON_UNSUPPORTED_VALUE (fails closed)', () => {
-    const c = createProject({ projectId: 'test', targets: { android: { minSdk: 31 } } }).compile(inputFor('.a { width: min-content }', (r) => [div(r, 'a', ['a'])]));
+  it('.a { width: stretch }, which ios has not proven, blocks android with DRAGON_UNSUPPORTED_VALUE (fails closed)', () => {
+    const c = createProject({ projectId: 'test', targets: { android: { minSdk: 31 } } }).compile(inputFor('.a { width: stretch }', (r) => [div(r, 'a', ['a'])]));
     expect(c.targets.android).toBe('blocked');
     if (c.outputs.android.kind !== 'blocked') throw new Error(c.outputs.android.kind);
     expect(c.outputs.android.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android']]);
-    expect(c.outputs.android.diagnostics[0]?.profile).toMatchObject({ target: 'android', feature: 'width:min-content', status: 'unsupported' });
+    expect(c.outputs.android.diagnostics[0]?.profile).toMatchObject({ target: 'android', feature: 'width:stretch', status: 'unsupported' });
   });
   it('with ios and android a declaration is proven on both, and one the android profile lacks blocks only android', () => {
     const input = inputFor('.a { width: 50px }', (r) => [div(r, 'a', ['a'])]);
@@ -87,12 +87,12 @@ describe('the android output', () => {
 
 describe('querySupport with the android normalized target', () => {
   it('possibilities accept { kind: "android", minSdk } and answer from the android profile, as ios does', () => {
-    for (const css of ['width: 1px', 'width: min-content']) {
+    for (const css of ['width: 1px', 'width: stretch']) {
       const ios = querySupport({ kind: 'possibilities', target: { kind: 'ios', minimum: '15.0' }, css });
       expect(JSON.stringify(querySupport({ kind: 'possibilities', target: { kind: 'android', minSdk: 31 }, css })), css).toBe(JSON.stringify(ios).replace(/\bios\b/g, 'android'));
     }
     expect(querySupport({ kind: 'possibilities', target: { kind: 'android', minSdk: 31 }, css: 'width: 1px' }).kind).toBe('needs-context');
-    expect(querySupport({ kind: 'possibilities', target: { kind: 'android', minSdk: 31 }, css: 'width: min-content' })).toMatchObject({ kind: 'unsupported', declaration: 'width: min-content' });
+    expect(querySupport({ kind: 'possibilities', target: { kind: 'android', minSdk: 31 }, css: 'width: stretch' })).toMatchObject({ kind: 'unsupported', declaration: 'width: stretch' });
     for (const bad of [{ kind: 'android' }, { kind: 'android', minSdk: 28 }, { kind: 'android', minSdk: 31.5 }, { kind: 'android', minSdk: 31, x: 1 }]) {
       expect(querySupport({ kind: 'possibilities', target: bad as never, css: 'width: 1px' }).kind).toBe('invalid-query');
     }

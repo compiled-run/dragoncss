@@ -30,13 +30,13 @@ export { opacityAlpha8, replacedPaint } from './paint.ts';
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';
-export { AHEM_FONT_DATA, ahemMeasurerWith, coveredCodePoints, coveredIndex, fontDataMeasurer } from './text.ts';
+export { AHEM_FONT_DATA, ahemMeasurerWith, coveredCodePoints, coveredIndex, fontDataMeasurer, letterSpacingAfter } from './text.ts';
 export { resolvedInput, zoomInput } from './layout.ts';
 export type { Edges } from './box.ts';
 export { resolveBorder } from './box.ts';
-export { platformFontSize, snapEdge, zoomFontSize } from './units.ts';
+export { platformFontSize, snapEdge, textRunLayoutUnit, zoomFontSize } from './units.ts';
 export type { LinePiece, PlacedLine } from './inline.ts';
-export { inlineBoxes, inlineBreaks, inlineLeaves, placeLines } from './inline.ts';
+export { inlineBoxes, inlineBreaks, inlineLeaves, leafFontOf, placeLines } from './inline.ts';
 export type { Ctx } from './block.ts';
 export { resolvePadding } from './box.ts';
 export type { DprPlatformRule, DprPlatformRuleNode } from './platform-rules.ts';
@@ -80,5 +80,9 @@ export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp
 export { serializeTransform } from './rt-interpolate.ts';
 export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
 export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';
+export type { SvgBounds, SvgMatrix, SvgSegment, SvgShape, ViewBox } from './svg-geometry.ts';
+export { objectBoundingBox, tightBounds, viewBoxTransform } from './svg-geometry.ts';
 export type { ScrollRange, ScrollRangeRefusal, ScrollRangesResult } from './overflow.ts';
 export { scrollRanges } from './overflow.ts';
+// TDEC-a: the decoration line geometry (css-text-decor-3/4), namespaced.
+export * as textDecoration from './text-decoration.ts';
