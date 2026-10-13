@@ -40,7 +40,7 @@ const SUBSET = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap', ...LEGACY_BOX_PROPERTIES,
-  'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
+  'font', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'text-decoration', 'text-decoration-line', 'text-decoration-style', 'text-decoration-color', 'text-decoration-thickness', 'text-underline-offset', 'text-underline-position', 'text-decoration-skip-ink', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
 
@@ -72,6 +72,8 @@ const SUBSET = [
   'user-select',
   // SVG paint (SVG-a1), after GEN-b, last, as LONGHANDS registers them.
   ...SVG_LONGHANDS,
+  // TXT2-b: letter-spacing (css-text-3 §8.2), after visibility, as LONGHANDS registers it.
+  'letter-spacing',
 ] as const;
 
 /**

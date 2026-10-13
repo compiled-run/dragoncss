@@ -1,7 +1,7 @@
 // TXT-W1 (T147 part 1, notes/T147J-txt-weight.md) against the pinned Chrome: the font-weight and font-style grammar table and
 // bolder/lighter chains compute as Chrome computes them, the synthesis predicate says synthesized exactly where Chrome's pixels
 // change under font-synthesis, native refuses synthesized text, and each of the six plants is caught by one of these tests. The
-// pins check that BASE's outputs are unchanged but for the two computed keys.
+// pins check that BASE's outputs are unchanged but for the computed keys added since.
 import { createHash } from 'node:crypto';
 import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -22,13 +22,14 @@ import { fixtureInput } from '../src/cases.ts';
 import { layout } from '../src/fixture-groups/define.ts';
 import { FONT_FIXTURES, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { TEXT_WEIGHT } from '../src/fixture-groups/text-weight.ts';
+import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-reference.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
 /** The outputs of BASE (inl1a-tags-v2 at 186dba301c, #105 caught up with master ef96e1c079), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 12612, digest: '0a71a5d48e2b1d86d0b2b9122c9ba0e8b235bc64b2e77fee4e3a27ed1ed990d0' };
-const BASE_CAPTURES = { files: 3218, digest: '5fd0d8662d286bd142c8319d0c27029dceac773cbc271c9e4c1f175cf3804c1f' };
+const BASE_OUTPUTS = { files: 12696, digest: 'ca036e35a853ace858c978b2478647b4e7a7cbec07885d183e7c5a5c14fa0e9f' };
+const BASE_CAPTURES = { files: 3242, digest: '33116b4d85216c1cc0c7f323e5d279a8c18b081d2b35b8b79d673de69a948780' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -199,9 +200,10 @@ describe('the native refusals', () => {
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
   // no git history): each is the sha256 of "<path>\t<sha256 of its content>" lines in path order, over every file but TXT-W1's own
-  // (its text-weight cases and the fonts-weight-synthetic font fixture). Each digest was taken at BASE with git and equals this
+  // (its text-weight cases and the fonts-weight-synthetic font fixture) and TXT-W2's (its font-shorthand cases). Each digest was taken at BASE with git and equals this
   // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic)/.test(p);
+  // TDEC-a2's text-decoration cases (the web-only lane's captures) are its own as well.
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -211,17 +213,20 @@ describe('BASE pins', () => {
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
-    const base = ids.filter((id) => !added.includes(id));
-    // BASE is master e69b540a71 plus batch #279 (#267, #269, #266, #268, #206, #277), whose FIXTURES hold 792 layout cases (retaken for #279's added cases).
-    expect(base.length).toBe(792);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('b0f743b1264632d8b47b46751b3a3350a7b2f608843ee0d9c1ed36abf3fefc91');
+    // TXT-W2's font-shorthand cases are its own too, as the digests below exclude them.
+    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-'));
+    // BASE is master 52eeb3b0d5 plus batch #281 (#107, #108, #109, #276, #272, #278), whose FIXTURES hold 798 layout cases (retaken for #281's added cases).
+    expect(base.length).toBe(798);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('6a30aed09cedacfee4f7e5029285c4948aeae4292f570e7af047084b12c58618');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
     const paths = files(dirs, (p) => !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(p));
     expect({ files: paths.length, digest: digest(paths, (p) => readFileSync(repoPath(p))) }).toEqual(BASE_OUTPUTS);
   });
-  it('every existing capture equals BASE once font-weight and font-style are removed from its computed values', () => {
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing'];
+  it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));
     expect(paths.length).toBeGreaterThan(1500);
@@ -230,9 +235,8 @@ describe('BASE pins', () => {
       const c = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
       for (const n of c.nodes ?? []) {
         if (n.computed === null) continue;
-        if (n.computed['font-weight'] === undefined || n.computed['font-style'] === undefined) lacking.push(p);
-        delete n.computed['font-weight'];
-        delete n.computed['font-style'];
+        if (ADDED_KEYS.some((k) => n.computed?.[k] === undefined)) lacking.push(p);
+        for (const k of ADDED_KEYS) delete n.computed[k];
       }
       return JSON.stringify(c);
     };

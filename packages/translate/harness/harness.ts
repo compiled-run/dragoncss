@@ -844,7 +844,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 }
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode'], path);
+  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing'], path);
   lit(field(o, 'whiteSpaceCollapse', path), ['collapse'], `${path}.whiteSpaceCollapse`);
   return {
     kind: 'text',
@@ -854,6 +854,7 @@ function decodeText(o: JsonObj, path: string): TextLeaf {
     lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
     whiteSpaceCollapse: 'collapse',
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
+    letterSpacing: calcExpr(field(o, 'letterSpacing', path), `${path}.letterSpacing`),
   };
 }
 
@@ -986,7 +987,7 @@ const FAULT_KEYS: readonly string[] = [
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
-  'metricRoundingSwapped', 'latinCheckSkipped',
+  'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
 ];
 
@@ -1041,6 +1042,9 @@ function decodeFaults(v: JsonValue): EngineFaults {
     softHyphenWidthMissing: b('softHyphenWidthMissing'),
     metricRoundingSwapped: b('metricRoundingSwapped'),
     latinCheckSkipped: b('latinCheckSkipped'),
+    trailingSpacingDropped: b('trailingSpacingDropped'),
+    spacingPerCodePoint: b('spacingPerCodePoint'),
+    ligaturesKept: b('ligaturesKept'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
@@ -1171,6 +1175,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   const sf: ShapingFaults = {
     advanceNot16_16: faults.advanceNot16_16, doubleAccumulation: faults.doubleAccumulation, noReshapeAtBreak: faults.noReshapeAtBreak, kerningDropped: faults.kerningDropped,
     wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
+    trailingSpacingDropped: faults.trailingSpacingDropped, spacingPerCodePoint: faults.spacingPerCodePoint, ligaturesKept: faults.ligaturesKept,
   };
   const faceOf = (family: string): ReplayFace => {
     const f = s.faces.get(family);
@@ -1180,7 +1185,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   const itemFor = (text: string, font: TextFont): ShapedItem => {
     const f = s.faces.get(font.family);
     if (f === undefined) return { ok: false, code: 'text-glyph', reason: `no bundled face ${font.family}` };
-    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, faults: sf });
+    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, letterSpacing: font.letterSpacing, faults: sf });
     if (!made.ok) return { ok: false, code: 'text-glyph', reason: made.reason };
     const result = shapeItem(made.item);
     if (result.missing >= 0) return { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };
@@ -1263,6 +1268,9 @@ function shapingPlantOf(f: EngineFaults): string {
   if (f.softHyphenWidthMissing) return 'softHyphenWidthMissing';
   if (f.metricRoundingSwapped) return 'metricRoundingSwapped';
   if (f.latinCheckSkipped) return 'latinCheckSkipped';
+  if (f.trailingSpacingDropped) return 'trailingSpacingDropped';
+  if (f.spacingPerCodePoint) return 'spacingPerCodePoint';
+  if (f.ligaturesKept) return 'ligaturesKept';
   return '';
 }
 

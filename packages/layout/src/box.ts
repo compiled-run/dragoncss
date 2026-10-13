@@ -27,6 +27,8 @@ export type OutOfFlow = { readonly box: LayoutBox; readonly x: StaticAxis; reado
 /**
  * baseline: the first baseline (css-align-3 §9.1) as an offset from the border-box top, or null when the box has none.
  * outOfFlow: the box's absolutely positioned children, in document order.
+ * inflow: a grid scroll container's inflow bounds in its border box (Blink GridLayoutAlgorithm::LayoutInternal SetInflowBounds: the grid's tracks,
+ * not where its items are placed); null for every other box, whose inflow bounds overflow.ts takes from its children.
  */
 export type Frag = {
   readonly id: string;
@@ -35,6 +37,7 @@ export type Frag = {
   readonly baseline: LU | null;
   readonly children: readonly Placed[];
   readonly outOfFlow: readonly OutOfFlow[];
+  readonly inflow: AreaRect | null;
 };
 export type Placed = { readonly frag: Frag; readonly x: LU; readonly y: LU };
 

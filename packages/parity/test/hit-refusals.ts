@@ -5,6 +5,10 @@
 export const INLINE_OUT: readonly string[] = [
   'inline-mixed-sizes', 'inline-mixed-sizes-rtl', 'inline-empty-boxes', 'inline-empty-boxes-rtl', 'inline-br', 'inline-br-rtl', 'inline-box-boundaries',
   'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
+  // #266's float-clear-inert holds an inline box.
+  'float-clear-inert', 'float-clear-inert-rtl',
+  // TXT2-b's text-spacing-ahem holds an inline box.
+  'text-spacing-ahem', 'text-spacing-ahem-rtl',
 ];
 export const INLINE_REASON = /is (an inline box|a <br>), which the hit table does not model yet/;
 export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;

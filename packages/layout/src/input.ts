@@ -338,7 +338,11 @@ export type LayoutStyle = {
  * The font a measurer reads: the face and the computed font size in zoomed px. family names the bundled face (text.ts
  * AHEM_FACE_ID for the bundled Ahem, else sha256:<hex> of its bytes, as the font manifest names a face).
  */
-export type TextFont = { readonly family: string; readonly size: number };
+/**
+ * A text item's font as the measurer reads it: the face, the computed size and the used letter-spacing in px (css-text-3 §8.2,
+ * 0 for normal), which Blink keeps in the FontDescription and adds after every cluster (ShapeResult::ApplySpacing).
+ */
+export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number };
 
 /**
  * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
@@ -364,6 +368,11 @@ export type TextLeaf = {
   readonly lineHeight: LineHeightValue;
   readonly whiteSpaceCollapse: WhiteSpaceCollapse;
   readonly textWrapMode: TextWrapMode;
+  /**
+   * css-text-3 §8.2 letter-spacing as a length expression in CSS px at zoom 1 (normal is px 0); the environment pass resolves it
+   * to zoomed px (Blink StyleBuilderConverter::ConvertSpacing, a Length::Fixed), which layout reads.
+   */
+  readonly letterSpacing: CalcExpr;
 };
 
 /** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */

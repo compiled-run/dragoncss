@@ -77,7 +77,6 @@ function unknownPadding(root: LayoutBox): ReadonlySet<string> {
 function overflowOf(b: LayoutNode, unknown: ReadonlySet<string>): void {
   if (b.kind === 'replaced') return;
   if (unknown.has(b.id)) throw new Undecided(b.id, 'a percentage padding against a grid area: its basis is not decided here');
-  if (b.style.display === 'grid') throw new Undecided(b.id, 'a grid container: its scrollable overflow (with its grid area) is not decided here');
   lineLevel(b);
   for (const k of b.children) if (isNode(k) && !outOfFlow(k)) propagated(k, unknown);
   for (const k of oofsOf(b)) propagated(k, unknown);
