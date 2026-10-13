@@ -67,6 +67,8 @@ const SUBSET = [
   'visibility',
   // vertical-align (CSS2 §10.8.1), then float and clear (CSS2 §9.5), as LONGHANDS registers them.
   'vertical-align', 'float', 'clear',
+  // T154: user-select (css-ui-4 §6.1), after visibility, as LONGHANDS registers it.
+  'user-select',
 ] as const;
 
 /**
