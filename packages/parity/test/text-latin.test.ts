@@ -257,17 +257,17 @@ const probe = (id: string) => {
 };
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
-  const BASE_LAYOUT_CASES = 779;
+  const BASE_LAYOUT_CASES = 789;
   const SHAPED = [...NEW_IDS, ...TAG_IDS];
   const ADDED = [...SHAPED, ...WHITE_SPACE_AHEM_IDS];
   it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases, the T133 tag cases and the later groups', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is master e69b540a71 plus batch #279 (#267, #269, #266, #268, #206, #277), whose FIXTURES hold 779 layout cases (retaken for #279's added cases).
+    // BASE is batch2's regenerated head 5849e096aa (batch #281 plus #274's and #271's groups), whose FIXTURES hold 789 BASE layout cases.
     // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
     const later = [...JUSTIFY_NATIVE_IDS, ...JUSTIFY_SHAPED_IDS];
     const base = ids.filter((id) => !ADDED.includes(id) && !AHEM_ADDED.includes(id) && !later.includes(id));
     expect(base.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('a90e466f33b4723f3c3f02de10a9dc6d4733ed3c49a50a5c57a36f7f79f95813');
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('a6d98de8c072afd3c2412a3b4a0323e9a18560ec05b80cc6802e2cd2976553bd');
     expect(ids.filter((id) => ADDED.includes(id)).sort()).toEqual([...ADDED].sort());
     expect(ids.filter((id) => AHEM_ADDED.includes(id))).toEqual(AHEM_ADDED);
     expect(ids.filter((id) => later.includes(id)).sort()).toEqual([...later].sort());

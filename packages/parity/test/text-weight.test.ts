@@ -28,9 +28,9 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** The outputs of BASE (inl1a-tags-v2 at 186dba301c, #105 caught up with master ef96e1c079), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 12612, digest: '0a71a5d48e2b1d86d0b2b9122c9ba0e8b235bc64b2e77fee4e3a27ed1ed990d0' };
-const BASE_CAPTURES = { files: 3218, digest: '5fd0d8662d286bd142c8319d0c27029dceac773cbc271c9e4c1f175cf3804c1f' };
+/** The outputs of BASE (batch2's regenerated head 5849e096aa), as digests the BASE pins recompute. */
+const BASE_OUTPUTS = { files: 12792, digest: '0d291d85febe51d733ee25be996c5c4a1afde0c8875043550331414c75f79356' };
+const BASE_CAPTURES = { files: 3266, digest: 'd9cfccc2275c6e79a9ae0f57ca24bde8915340db8dc07942088a313a30d876ee' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -219,9 +219,9 @@ describe('BASE pins', () => {
     // text-justify cases landed after BASE.
     const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-'));
-    // BASE is master e69b540a71 plus batch #279 (#267, #269, #266, #268, #206, #277), whose FIXTURES hold 792 layout cases (retaken for #279's added cases).
-    expect(base.length).toBe(792);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('b0f743b1264632d8b47b46751b3a3350a7b2f608843ee0d9c1ed36abf3fefc91');
+    // BASE is batch2's regenerated head 5849e096aa (batch #281 plus #274's and #271's groups), whose FIXTURES hold 804 BASE layout cases.
+    expect(base.length).toBe(804);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('9c576d440095afb34f33822b398d3d882f3bd4938d0b9d6e14c76947f2dde9c7');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
