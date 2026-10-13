@@ -22,11 +22,13 @@ export const BREAK_MISMATCH = 'break-mismatch';
 /**
  * One line of a text node as the engine breaks it: UTF-16 [start, end), the painted code points, the absolute line rect and its
  * snapped edges, and the ellipsis that follows the text on a truncated line (TXT2-f): its absolute x in LU, code points and font.
+ * shifts: on a justified line, per code point of cps, the px its glyphs move right by the expansions before it (LinePiece.shifts).
  */
 export type EngineLine = {
   readonly start: number;
   readonly end: number;
   readonly cps: readonly number[];
+  readonly shifts: readonly number[];
   readonly rect: LayoutRect;
   readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
   readonly ellipsis: { readonly x: number; readonly cps: readonly number[]; readonly font: TextFont } | null;
@@ -132,7 +134,9 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
       const el = line.ellipsis !== null && line.ellipsis.leaf === li ? line.ellipsis : null;
       const ellipsis = el === null ? null : { x: a.x + el.x - first.x, cps: [...el.text].map((ch) => ch.codePointAt(0) as number), font: el.font };
       const cps = mine.flatMap((q) => scalars.slice(q.start, q.paintEnd).map((ch) => ch.codePointAt(0) as number));
-      own.push({ start: utf16(first.start), end: utf16(last.end), cps, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, ellipsis });
+      // Only a line of collapsed text is justified, and it has one piece per leaf; preserved pieces have no shifts.
+      const shifts = mine.flatMap((q) => q.shifts);
+      own.push({ start: utf16(first.start), end: utf16(last.end), cps, shifts, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, ellipsis });
     }
     if (used !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${used} fragments, its layout ${pieces.length}`);
     out.push({ id: r.id, container: pId, font: leaf.font, textFont: leafFontOf(leaf), lines: own });

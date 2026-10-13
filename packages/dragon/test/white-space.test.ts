@@ -74,3 +74,15 @@ describe('preserved text beside the other text lanes', () => {
     expect(refused(`${truncating}white-space: nowrap; }`)).toEqual([]);
   });
 });
+
+describe('text-align: justify beside the other text lanes (TXT2 with TXT2-b and TXT2-c)', () => {
+  const justify = (decl: string, needle: string) => errorsOf(`.a { width: 30px; text-align: justify; ${decl} }`, 'XX XX XX XX').filter((e) => e.message.includes(needle)).map((e) => e.code);
+  it('refuses justify with letter-spacing, and leaves letter-spacing: 0 alone', () => {
+    expect(justify('letter-spacing: 1px;', 'with letter-spacing')).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(justify('letter-spacing: 0;', 'with letter-spacing')).toEqual([]);
+  });
+  it('refuses justify over wrapping preserved white space, and leaves pre, which never wraps, alone', () => {
+    expect(justify('white-space: pre-wrap;', 'wrapping preserved white space')).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(justify('white-space: pre;', 'wrapping preserved white space')).toEqual([]);
+  });
+});

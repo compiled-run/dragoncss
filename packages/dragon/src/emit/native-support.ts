@@ -784,7 +784,9 @@ public final class DragonTree {
       // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
       // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
       // advance / unitsPerEm, summed in float as textAdvanceAt does.
-      func glyphRun(_ text: JsString, _ font: TextFont, _ from: Double, _ to: Double, _ x: Double, _ what: String) throws -> (glyphs: [CGGlyph], xs: [Double]) {
+      func glyphRun(_ text: JsString, _ font: TextFont, _ from: Double, _ to: Double, _ x: Double, _ shifts: [Double], _ what: String) throws -> (glyphs: [CGGlyph], xs: [Double]) {
+        // A justified line (text-align: justify) moves each glyph right by its code point's shift, the expansions before it.
+        func shift(_ c: Int) -> Double { return shifts.isEmpty ? 0 : shifts[c] }
         var glyphs: [CGGlyph] = []
         var xs: [Double] = []
         if from >= to { return (glyphs, xs) }
@@ -793,17 +795,17 @@ public final class DragonTree {
           guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) \(what): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
           for (j, gid) in g.glyphs.items.enumerated() {
             glyphs.append(CGGlyph(dragonCheckedInt(gid, "\(id) glyph id")))
-            xs.append(x + g.xs.items[j])
+            xs.append(x + g.xs.items[j] + shift(dragonCheckedInt(g.chars.items[j], "\(id) glyph code point")))
           }
         } else {
           let runSize = try units_platformFontSize(font.size)
           // Letter spacing follows each glyph as the engine adds it (text.ts letterSpacingAfter, 16.16).
           let spacing16 = try units_textRunLayoutUnit(font.letterSpacing)
           var pen: Float = 0
-          for sc in Array(text.description.unicodeScalars)[Int(from)..<Int(to)] {
+          for (n, sc) in Array(text.description.unicodeScalars)[Int(from)..<Int(to)].enumerated() {
             let gid = bridge.glyph(Int(sc.value))
             glyphs.append(CGGlyph(gid))
-            xs.append(x + Double(pen))
+            xs.append(x + Double(pen) + shift(n))
             let spacing = try text_letterSpacingAfter(Double(sc.value), spacing16)
             pen = pen + Float(runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm) + Float(spacing / 65536)
           }
@@ -835,11 +837,11 @@ public final class DragonTree {
           let xLU = a.x - e[0] * lu
           let painted = n == widths.count - 1
           let paintEnd = painted ? piece.paintEnd : piece.start
-          let run = try glyphRun(leaves[li].text, leafFont, piece.start, paintEnd, xLU / lu, "line \(k)")
+          let run = try glyphRun(leaves[li].text, leafFont, piece.start, paintEnd, xLU / lu, piece.shifts.items, "line \(k)")
           var dots: (glyphs: [CGGlyph], xs: [Double]) = ([], [])
           var dotsSize: Double = 0
           if painted, let el = ellipsis {
-            dots = try glyphRun(el.text, el.font, 0, Double(el.text.description.unicodeScalars.count), (xLU + el.x - piece.x) / lu, "ellipsis")
+            dots = try glyphRun(el.text, el.font, 0, Double(el.text.description.unicodeScalars.count), (xLU + el.x - piece.x) / lu, [], "ellipsis")
             dotsSize = try units_platformFontSize(el.font.size)
           }
           let shown = Array(scalars[Int(piece.start)..<Int(paintEnd)])
@@ -1755,12 +1757,14 @@ class DragonTree(val context: Context) {
       // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
       // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
       // advance / unitsPerEm, summed in float as textAdvanceAt does.
-      fun glyphRun(text: String, font: TextFont, from: Double, to: Double, x: Double, what: String): Pair<IntArray, DoubleArray> {
+      fun glyphRun(text: String, font: TextFont, from: Double, to: Double, x: Double, shifts: List<Double>, what: String): Pair<IntArray, DoubleArray> {
+        // A justified line (text-align: justify) moves each glyph right by its code point's shift, the expansions before it.
+        fun shift(c: Int): Double = if (shifts.isEmpty()) 0.0 else shifts[c]
         if (from >= to) return Pair(IntArray(0), DoubleArray(0))
         if (bridge.shaped) {
           val pg = shaping_pieceGlyphs(measurer, text, font, from, to)
           val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " " + what + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
-          return Pair(IntArray(g.glyphs.size) { dragonCheckedInt(g.glyphs[it], id + " glyph id") }, DoubleArray(g.xs.size) { x + g.xs[it] })
+          return Pair(IntArray(g.glyphs.size) { dragonCheckedInt(g.glyphs[it], id + " glyph id") }, DoubleArray(g.xs.size) { x + g.xs[it] + shift(dragonCheckedInt(g.chars[it], id + " glyph code point")) })
         }
         val runSize = units_platformFontSize(font.size)
         val cps = text.codePoints().toArray().copyOfRange(from.toInt(), to.toInt())
@@ -1772,7 +1776,7 @@ class DragonTree(val context: Context) {
         for ((n, cp) in cps.withIndex()) {
           val gid = bridge.glyph(cp)
           glyphs[n] = gid
-          xs[n] = x + pen.toDouble()
+          xs[n] = x + pen.toDouble() + shift(n)
           pen = pen + (runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + (text_letterSpacingAfter(cp.toDouble(), spacing16) / 65536).toFloat()
         }
         return Pair(glyphs, xs)
@@ -1806,11 +1810,11 @@ class DragonTree(val context: Context) {
           val paintEnd = if (painted) piece.paintEnd else piece.start
           val from = utf16(piece.start.toInt())
           val text = leafText.substring(from, utf16(paintEnd.toInt()))
-          val run = glyphRun(leafText, leafFont, piece.start, paintEnd, xLU / lu, "line " + k)
+          val run = glyphRun(leafText, leafFont, piece.start, paintEnd, xLU / lu, piece.shifts, "line " + k)
           var dots = Pair(IntArray(0), DoubleArray(0))
           var dotsSize = 0.0
           if (painted && ellipsis != null) {
-            dots = glyphRun(ellipsis.text, ellipsis.font, 0.0, ellipsis.text.codePointCount(0, ellipsis.text.length).toDouble(), (xLU + ellipsis.x - piece.x) / lu, "ellipsis")
+            dots = glyphRun(ellipsis.text, ellipsis.font, 0.0, ellipsis.text.codePointCount(0, ellipsis.text.length).toDouble(), (xLU + ellipsis.x - piece.x) / lu, emptyList(), "ellipsis")
             dotsSize = units_platformFontSize(ellipsis.font.size)
           }
           // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.

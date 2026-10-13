@@ -33,7 +33,7 @@ describe('TXT2-f: line truncation (line_truncator.cc TruncateLine)', () => {
   it('cuts an overflowing nowrap line at a character, not a word, and puts U+2026 after it', () => {
     const b = box('a', TRUNCATE, [nowrap('t', 'XX XX XX XX')]);
     const [line] = placeLines(ctx(), b, fromCssPx(55));
-    expect(line?.pieces).toEqual([{ leaf: 0, start: 0, visibleEnd: 11, end: 11, x: 0, width: 11 * G, top: 0, ascent: 512, descent: 128, paintEnd: 4, truncated: true, truncatedWidth: 4 * G }]);
+    expect(line?.pieces).toEqual([{ leaf: 0, start: 0, visibleEnd: 11, end: 11, x: 0, width: 11 * G, top: 0, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: true, truncatedWidth: 4 * G }]);
     expect(line?.ellipsis).toEqual({ leaf: 0, text: '…', font: { family: 'Ahem', size: 10, letterSpacing: 0 }, x: 4 * G, width: G, top: 0, ascent: 512, descent: 128 });
   });
 
@@ -117,6 +117,15 @@ describe('TXT2-f: line truncation (line_truncator.cc TruncateLine)', () => {
     const cut = run(box('root', {}, [box('a', TRUNCATE, [pre('XX  XX XX')])]));
     expect(cut.kind === 'unsupported' && cut.unsupported.code).toBe('text-overflow');
     expect(run(box('root', {}, [box('a', TRUNCATE, [pre('XX  X')])])).kind).toBe('ok');
+  });
+
+  it('refuses text-align: justify on a line with letter-spacing (TXT2 with TXT2-b), and on a wrapped preserved line (TXT2 with TXT2-c)', () => {
+    const spaced = run(box('root', {}, [box('a', { width: px(60), textAlign: 'justify' }, [text('t', 'XX XX XX XX', { letterSpacing: px(1) })])]));
+    expect(spaced.kind === 'unsupported' && spaced.unsupported.code).toBe('text-align');
+    const wrapped = run(box('root', {}, [box('a', { width: px(60), textAlign: 'justify' }, [text('t', 'XX XX XX XX', { whiteSpaceCollapse: 'preserve' })])]));
+    expect(wrapped.kind === 'unsupported' && wrapped.unsupported.code).toBe('text-align');
+    const plain = run(box('root', {}, [box('a', { width: px(60), textAlign: 'justify' }, [text('t', 'XX XX XX XX')])]));
+    expect(plain.kind).toBe('ok');
   });
 
   it('refuses letter-spacing on preserved text (TXT2-b with TXT2-c)', () => {

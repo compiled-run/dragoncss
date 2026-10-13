@@ -287,6 +287,14 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     }
     const texts = run.flatMap((it) => (it.kind === 'text' ? [it.text] : []));
     for (const t of texts) checkPreservedText(el, t, refuse);
+    // TXT2 with TXT2-b and TXT2-c: Blink justifies with letter spacing in one ShapeResultSpacing pass, and justifies a wrapped preserved
+    // line around its preserved spaces; no Chrome case covers either yet.
+    if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') {
+      const spaced = texts.find((t) => keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal');
+      if (spaced !== undefined) refuse(el, 'justify-letter-spacing', `text-align: justify on ${el.element.address} with letter-spacing on ${spaced.node.address} is not laid out yet`, `Remove the letter-spacing that reaches ${spaced.node.address}, or use another text-align on ${el.element.address}.`);
+      const preserved = texts.find((t) => keywordOf(t.props.get('white-space-collapse') as ResolvedValue) !== 'collapse' && keywordOf(t.props.get('text-wrap-mode') as ResolvedValue) === 'wrap');
+      if (preserved !== undefined) refuse(el, 'justify-white-space', `text-align: justify on ${el.element.address} with wrapping preserved white space in ${preserved.node.address} is not laid out yet`, `Remove the white-space declaration that reaches ${preserved.node.address}, or use another text-align on ${el.element.address}.`);
+    }
     const wrapOf = (t: ResolvedText): string => keywordOf(t.props.get('text-wrap-mode') as ResolvedValue);
     const first = texts[0];
     const other = first === undefined ? undefined : texts.find((t) => wrapOf(t) !== wrapOf(first));

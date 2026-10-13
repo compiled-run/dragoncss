@@ -1072,6 +1072,37 @@ export function subView(view: LineView, start: number, end: number): LineView {
   return { segments: out };
 }
 
+/**
+ * css-text-3 §7.3 (Blink JustifyResults, justification_utils.cc 203-253; ShapeResult::ApplySpacingOrExpansion, shape_result.cc
+ * 986-1038): the SnappedWidth of an item result after justification. CreateShapeResult makes each part of the view a run;
+ * each character's expansion (16.16, expansions[offset - base], zero outside the array) is added to the advance of its cluster's
+ * last glyph; a run's width is its exact 16.16 sum, and the result's width the float sum of its runs.
+ */
+export function justifiedViewWidth(item: ShapeItem, view: LineView, base: number, expansions: readonly number[]): LU {
+  let width = 0;
+  for (const seg of view.segments) {
+    for (const run of seg.result.runs) {
+      const runEnd = run.start + run.numChars;
+      const s = seg.start > run.start ? seg.start : run.start;
+      const e = seg.end < runEnd ? seg.end : runEnd;
+      if (e <= s) continue;
+      const advances: number[] = [];
+      for (let k = 0; k < run.glyphs.length; k++) {
+        const g = run.glyphs[k] as ShapingGlyph;
+        const c = run.start + g.ci;
+        if (c < s || c >= e) continue;
+        const next = run.glyphs[k + 1];
+        const clusterEnd = next === undefined || next.ci !== g.ci;
+        const at = c - base;
+        const extra = clusterEnd && at >= 0 && at < expansions.length ? (expansions[at] as number) : 0;
+        advances.push(g.advance + extra);
+      }
+      width = accumulate(width, sumAdvances(advances, item.faults, false), item.faults);
+    }
+  }
+  return snapWidth(width, item.faults);
+}
+
 /** ShapeResultView::SnappedWidth. */
 export function viewSnappedWidth(item: ShapeItem, view: LineView): LU {
   return snapWidth(viewWidth(view.segments, item.faults), item.faults);
@@ -1639,6 +1670,13 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
   return { measurer, item, line };
 }
 
+/** The code point index of a UTF-16 offset of an item's units (utf16Units): the code points that start before it. */
+function codePointOfOffset(units: readonly number[], offset: number): number {
+  let k = 0;
+  for (let i = 0; i < offset && i < units.length; i++) if ((units[i] as number) >= 0) k++;
+  return k;
+}
+
 /** A code point index as the UTF-16 offset of an item's units (utf16Units). */
 function offsetOfCodePoint(units: readonly number[], codePoint: number): number {
   let k = 0;
@@ -1652,16 +1690,17 @@ function offsetOfCodePoint(units: readonly number[], codePoint: number): number 
 
 /**
  * A line piece as a device draws it: the glyph ids of the shaped item whose clusters fall in the piece, left to right, and each
- * glyph's pen x in px from the piece's left, its HarfBuzz 16.16 advances summed exactly as the cached positions sum them.
+ * glyph's pen x in px from the piece's left, its HarfBuzz 16.16 advances summed exactly as the cached positions sum them, and the
+ * code point of its cluster, counted from the piece's start (a justified line shifts each glyph by its code point's LinePiece shift).
  */
-export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[] } | { readonly ok: false; readonly reason: string };
+export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[]; readonly chars: readonly number[] } | { readonly ok: false; readonly reason: string };
 
 /**
  * The glyphs of code points [start, end) of text as the measurer shapes it (TextMeasurer.shaped): the whole item's shaping, not
  * ShapeLine's reshaping at line edges, and no glyph x or y offsets. Both are exact for Ahem; the real-face slice adds them.
  */
 export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFont, startIn: number, endIn: number): PieceGlyphs {
-  if (endIn <= startIn) return { ok: true, glyphs: [], xs: [] };
+  if (endIn <= startIn) return { ok: true, glyphs: [], xs: [], chars: [] };
   // A preserved U+000A (TXT2-c) ends a text item: the piece is shaped in the text between the line feeds that holds it (without
   // one, the whole text and its offsets).
   let k = 0;
@@ -1684,6 +1723,7 @@ export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFo
   const to = offsetOfCodePoint(s.item.units, end);
   const glyphs: number[] = [];
   const xs: number[] = [];
+  const chars: number[] = [];
   let pen = 0;
   for (const run of s.result.runs) {
     for (const g of run.glyphs) {
@@ -1691,10 +1731,11 @@ export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFo
       if (at < from || at >= to) continue;
       glyphs.push(g.glyph);
       xs.push(pen / 65536);
+      chars.push(codePointOfOffset(s.item.units, at) - start);
       pen = pen + g.advance;
     }
   }
-  return { ok: true, glyphs, xs };
+  return { ok: true, glyphs, xs, chars };
 }
 
 /** R2: the measurer over bundled faces and the host's HarfBuzz. */

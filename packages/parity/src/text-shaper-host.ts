@@ -226,7 +226,7 @@ export function referenceShapedMeasurer(faults: EngineFaults = NO_ENGINE_FAULTS,
 }
 
 /** One shaped glyph's ink as a host reads it: its pen offset from the run start and its HarfBuzz extents, in px. */
-export type ShapedInk = { readonly x: number; readonly y: number; readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } | null;
+export type ShapedInk = { readonly x: number; readonly y: number; readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly cluster: number } | null;
 
 /**
  * The ink of a run of text in a registered face at an instance size, left to right: HarfBuzz shapes it as the engine does (Latin,
@@ -247,7 +247,7 @@ export function shapedInk(face: string, size: number, text: string, letterSpacin
     const x = pen + (g[i + 4] as number) / 65536;
     const y = (g[i + 5] as number) / 65536;
     const e = hb().glyphExtents(font, g[i] as number);
-    out.push(e === undefined || e[2] === 0 || e[3] === 0 ? null : { x, y, left: x + e[0] / 65536, right: x + (e[0] + e[2]) / 65536, top: y + e[1] / 65536, bottom: y + (e[1] + e[3]) / 65536 });
+    out.push(e === undefined || e[2] === 0 || e[3] === 0 ? null : { x, y, left: x + e[0] / 65536, right: x + (e[0] + e[2]) / 65536, top: y + e[1] / 65536, bottom: y + (e[1] + e[3]) / 65536, cluster: g[i + 1] as number });
     const lastOfCluster = i + 7 >= g.length || g[i + 8] !== g[i + 1];
     const advance = (g[i + 2] as number) + (lastOfCluster ? letterSpacingAfter(text.charCodeAt(g[i + 1] as number), spacing16) : 0);
     pen = Math.fround(pen + Math.fround(advance / 65536));

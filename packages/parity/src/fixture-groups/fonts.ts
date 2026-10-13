@@ -13,6 +13,7 @@ import { TEXT_CALIBRATION } from './text-calibration.ts';
 import { INLINE_TAGS } from './inline-tags.ts';
 import { TEXT_WEIGHT } from './text-weight.ts';
 import { FONT_SHORTHAND } from './font-shorthand.ts';
+import { TEXT_JUSTIFY } from './text-justify.ts';
 import { TEXT_LATIN } from './text-latin.ts';
 import { TEXT_SPACING } from './text-spacing.ts';
 import { WHITE_SPACE } from './white-space.ts';
@@ -64,7 +65,7 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
   // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
-  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */
