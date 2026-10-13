@@ -789,19 +789,22 @@ public final class DragonTree {
         var glyphs: [CGGlyph] = []
         var xs: [Double] = []
         if bridge.shaped {
-          let pg = try shaping_pieceGlyphs(measurer, leaves[li].text, try inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
+          let pg = try shaping_pieceGlyphs(measurer, leaves[li].text, try inline_leafFontOf(leaves[li]), piece.start, piece.visibleEnd)
           guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) line \(k): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
           for (j, gid) in g.glyphs.items.enumerated() {
             glyphs.append(CGGlyph(dragonCheckedInt(gid, "\(id) glyph id")))
             xs.append(xLU / lu + g.xs.items[j])
           }
         } else {
+          // Letter spacing follows each glyph as the engine adds it (text.ts letterSpacingAfter, 16.16).
+          let spacing16 = try units_textRunLayoutUnit(try inline_leafFontOf(leaves[li]).letterSpacing)
           var pen: Float = 0
           for sc in shown {
             let gid = bridge.glyph(Int(sc.value))
             glyphs.append(CGGlyph(gid))
             xs.append(xLU / lu + Double(pen))
-            pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
+            let spacing = try text_letterSpacingAfter(Double(sc.value), spacing16)
+            pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm) + Float(spacing / 65536)
           }
         }
         geometryCps.append(shown.map { Double($0.value) })
@@ -1414,7 +1417,7 @@ import dev.dragon.layout.InlineBox
 import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
 import dev.dragon.layout.inline_buildIfc
-import dev.dragon.layout.inline_fontOf
+import dev.dragon.layout.inline_leafFontOf
 import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.layout_absoluteRects
@@ -1425,10 +1428,12 @@ import dev.dragon.layout.ScrollRangesResult_ok
 import dev.dragon.layout.ScrollRangesResult_refused
 import dev.dragon.layout.shaping_pieceGlyphs
 import dev.dragon.layout.snap_snapEdges
+import dev.dragon.layout.text_letterSpacingAfter
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
 import dev.dragon.layout.units_platformFontSize
 import dev.dragon.layout.units_snapEdge
+import dev.dragon.layout.units_textRunLayoutUnit
 
 /** One compiled case in the app: its identity, the engine input as typed constructor calls, and the view-building function. */
 class DragonCase(
@@ -1722,7 +1727,7 @@ class DragonTree(val context: Context) {
         val glyphs: IntArray
         val xs: DoubleArray
         if (bridge.shaped) {
-          val pg = shaping_pieceGlyphs(measurer, leafText, inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
+          val pg = shaping_pieceGlyphs(measurer, leafText, inline_leafFontOf(leaves[li]), piece.start, piece.visibleEnd)
           val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " line " + k + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
           glyphs = IntArray(g.glyphs.size) { dragonCheckedInt(g.glyphs[it], id + " glyph id") }
           xs = DoubleArray(g.xs.size) { xLU / lu + g.xs[it] }
@@ -1730,12 +1735,14 @@ class DragonTree(val context: Context) {
           val cps = text.codePoints().toArray()
           glyphs = IntArray(cps.size)
           xs = DoubleArray(cps.size)
+          // Letter spacing follows each glyph as the engine adds it (text.ts letterSpacingAfter, 16.16).
+          val spacing16 = units_textRunLayoutUnit(inline_leafFontOf(leaves[li]).letterSpacing)
           var pen = 0f
           for ((n, cp) in cps.withIndex()) {
             val gid = bridge.glyph(cp)
             glyphs[n] = gid
             xs[n] = xLU / lu + pen.toDouble()
-            pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
+            pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + (text_letterSpacingAfter(cp.toDouble(), spacing16) / 65536).toFloat()
           }
         }
         geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
@@ -2304,7 +2311,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   };
   const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);
   const inline = (c: import('@dragon/layout').InlineChild): string => {
-    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`;
+    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)})`;
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };

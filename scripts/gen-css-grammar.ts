@@ -72,6 +72,8 @@ const SUBSET = [
   'user-select',
   // SVG paint (SVG-a1), after GEN-b, last, as LONGHANDS registers them.
   ...SVG_LONGHANDS,
+  // TXT2-b: letter-spacing (css-text-3 §8.2), after visibility, as LONGHANDS registers it.
+  'letter-spacing',
 ] as const;
 
 /**

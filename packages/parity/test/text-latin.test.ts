@@ -63,9 +63,9 @@ const changedBy = (faults: EngineFaults): string[] => {
   return all.filter((v) => JSON.stringify(boxesOf(layoutWithFaults(v.input, m, faults))) !== JSON.stringify(v.output)).map((v) => v.file);
 };
 /** T082's committed Chrome widths of Ahem nowrap runs: X repeated 1 to N times at each size. */
-const ahemRuns = (): { font: { family: 'Ahem'; size: number }; text: string; lu: number }[] => {
+const ahemRuns = (): { font: { family: 'Ahem'; size: number; letterSpacing: number }; text: string; lu: number }[] => {
   const cap = JSON.parse(readFileSync(repoPath('docs/research/text-spike/metric-rounding/captures/ahem-advances.json'), 'utf8')) as { widthsLayoutUnits: Record<string, number[]> };
-  return Object.entries(cap.widthsLayoutUnits).flatMap(([size, widths]) => widths.map((lu, i) => ({ font: { family: 'Ahem' as const, size: Number(size) }, text: 'X'.repeat(i + 1), lu })));
+  return Object.entries(cap.widthsLayoutUnits).flatMap(([size, widths]) => widths.map((lu, i) => ({ font: { family: 'Ahem' as const, size: Number(size), letterSpacing: 0 }, text: 'X'.repeat(i + 1), lu })));
 };
 /** The table tags of a TrueType file's table directory. */
 const tableTags = (bytes: Uint8Array): string[] => {
@@ -109,7 +109,7 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
     let ahemMisses = 0;
     for (const [size, widths] of Object.entries(cap.widthsLayoutUnits)) {
       widths.forEach((lu, i) => {
-        const font = { family: 'Ahem' as const, size: Number(size) };
+        const font = { family: 'Ahem' as const, size: Number(size), letterSpacing: 0 };
         const text = 'X'.repeat(i + 1);
         const s = shaped.measure(text, font);
         const a = reference.measurer.measure(text, font);
@@ -123,9 +123,9 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
 
   it('refuses a face the host was never given, and a feature list that is not whole records', () => {
     const m = referenceShapedMeasurer();
-    const r = m.measure('X', { family: 'sha256:0000' as 'Ahem', size: 16 });
+    const r = m.measure('X', { family: 'sha256:0000' as 'Ahem', size: 16, letterSpacing: 0 });
     expect(r.ok).toBe(false);
-    expect(() => m.metrics({ family: 'sha256:0000' as 'Ahem', size: 16 })).toThrow(/no bundled face/);
+    expect(() => m.metrics({ family: 'sha256:0000' as 'Ahem', size: 16, letterSpacing: 0 })).toThrow(/no bundled face/);
     expect(() => hostShaper.shape(AHEM_FACE_ID, 16, 'X', 0, 1, 'Latn', false, 'en-US', [1, 2, 3])).toThrow(/whole records/);
   });
 
@@ -193,12 +193,12 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
       const skipped: EngineFaults = { ...NO_ENGINE_FAULTS, latinCheckSkipped: true };
       const shaped = layoutWithFaults(input, referenceShapedMeasurer(skipped), skipped);
       expect(shaped.kind === 'unsupported' && shaped.unsupported.code, foreign).toBe('line-break');
-      expect(referenceShapedMeasurer(skipped).measure(foreign, { family: 'Ahem', size: 16 }).ok, foreign).toBe(true);
+      expect(referenceShapedMeasurer(skipped).measure(foreign, { family: 'Ahem', size: 16, letterSpacing: 0 }).ok, foreign).toBe(true);
     }
     const m = referenceShapedMeasurer();
-    expect(m.measure('Xé X', { family: 'Ahem', size: 16 }).ok).toBe(true);
-    expect(m.measure('\u03a9', { family: 'Ahem', size: 16 })).toEqual({ ok: false, code: 'text-script', reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
-    expect(m.measureRange('X\u03a9', 0, 1, { family: 'Ahem', size: 16 })).toMatchObject({ ok: false, code: 'text-script' });
+    expect(m.measure('Xé X', { family: 'Ahem', size: 16, letterSpacing: 0 }).ok).toBe(true);
+    expect(m.measure('\u03a9', { family: 'Ahem', size: 16, letterSpacing: 0 })).toEqual({ ok: false, code: 'text-script', reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
+    expect(m.measureRange('X\u03a9', 0, 1, { family: 'Ahem', size: 16, letterSpacing: 0 })).toMatchObject({ ok: false, code: 'text-script' });
   });
 
   it('pins latinCheckSkipped inert on every committed vector, which is all Latin, Common and Inherited text', () => {
@@ -223,7 +223,10 @@ const TAG_IDS = ['inline-tags-faces', 'inline-tags-faces-rtl',
   // TXT-W1 (fixture-groups/text-weight.ts), appended after them.
   ...['numeric', 'relative', 'styles', 'nested-bold', 'nested-italic', 'contexts'].flatMap((n) => [`text-weight-${n}`, `text-weight-${n}-rtl`]),
   // TXT-W2 (fixture-groups/font-shorthand.ts), appended after them.
-  ...['faces', 'synthesis'].flatMap((n) => [`font-shorthand-${n}`, `font-shorthand-${n}-rtl`])];
+  ...['faces', 'synthesis'].flatMap((n) => [`font-shorthand-${n}`, `font-shorthand-${n}-rtl`]),
+  // TXT2-b (fixture-groups/text-spacing.ts): the Lato and Dragon Sans letter-spacing case; its Ahem case lowers natively, a BASE-like case.
+  'text-spacing-lato', 'text-spacing-lato-rtl'];
+
 /** TXT-W2's Ahem case (font: inherit over Ahem): captured under the reference map with its group, but unshaped, so it lowers natively. */
 const AHEM_ADDED = ['font-shorthand-inherit', 'font-shorthand-inherit-rtl'];
 

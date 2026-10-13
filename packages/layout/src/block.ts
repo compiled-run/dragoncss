@@ -128,6 +128,12 @@ export type EngineFaults = {
   readonly metricRoundingSwapped: boolean;
   /** Text outside Latin, Common and Inherited is shaped instead of refused (R4). */
   readonly latinCheckSkipped: boolean;
+  /** TXT2-b: no letter spacing after the last cluster of a shaped item (ShapeResult::ApplySpacing). */
+  readonly trailingSpacingDropped: boolean;
+  /** TXT2-b: letter spacing after every code point of a shaped cluster instead of once per cluster. */
+  readonly spacingPerCodePoint: boolean;
+  /** TXT2-b: HarfBuzz keeps liga, clig and calt under nonzero letter spacing (font_features.cc). */
+  readonly ligaturesKept: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -186,6 +192,9 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   softHyphenWidthMissing: false,
   metricRoundingSwapped: false,
   latinCheckSkipped: false,
+  trailingSpacingDropped: false,
+  spacingPerCodePoint: false,
+  ligaturesKept: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,

@@ -126,12 +126,12 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
   const fonts = new Map<string, TextFont>();
   const inline = (k: InlineChild): void => {
     if (k.kind === 'inline') {
-      fonts.set(k.id, { family: k.font.family, size: k.font.size });
+      fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0 });
       for (const x of k.children) inline(x);
     }
   };
   const walk = (b: LayoutBox): void => {
-    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size });
+    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0 });
     for (const k of b.children) {
       if (k.kind === 'box') walk(k);
       // A replaced leaf (REPL-a) holds no text, so it has no decoration font.
@@ -162,7 +162,7 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
   for (const t of p.texts) {
     const list = analysis.applied.get(t.id) ?? [];
     if (list.length === 0) continue;
-    const textFont = p.metricsOf(t.font);
+    const textFont = p.metricsOf(t.textFont);
     const ink = inkOf?.get(t.id);
     for (const d of list) {
       // A block's decoration uses the root inline box of the text's line (its IFC root's strut); an inline box's, its own font.
@@ -182,11 +182,11 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
             if (t.font.family === 'Ahem') {
               // TDEC-d for Ahem: each glyph's ink box at its pen x (the line's shaped glyphs), clipped out dilated by the thickness.
               const shown = String.fromCodePoint(...line.cps);
-              const g = pieceGlyphs(p.measurer, shown, t.font, 0, line.cps.length);
+              const g = pieceGlyphs(p.measurer, shown, t.textFont, 0, line.cps.length);
               if (!g.ok || g.xs.length !== line.cps.length) throw new Error(`${c.id}: ${t.id} has no glyph per code point: ${g.ok ? g.xs.length : g.reason}`);
               clips = td.skipInkClips(r, td.ahemLineInk(line.cps, g.xs.map((x) => input.left + x), t.font.size, baseline), faults);
             } else {
-              const glyphs = shapedInk(t.font.family, t.font.size, String.fromCodePoint(...line.cps)).flatMap((g) => (g === null ? [] : [{ top: baseline - g.top, bottom: baseline - g.bottom }]));
+              const glyphs = shapedInk(t.font.family, t.font.size, String.fromCodePoint(...line.cps), t.textFont.letterSpacing).flatMap((g) => (g === null ? [] : [{ top: baseline - g.top, bottom: baseline - g.bottom }]));
               if (!td.skipInkClear(r, glyphs)) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} ${r.line} at DPR ${dpr}: a glyph's ink crosses the skip-ink band (TDEC-d)` };
             }
           }

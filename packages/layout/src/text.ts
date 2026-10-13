@@ -3,7 +3,10 @@ import type { TextFont } from './input.ts';
 import type { ShapedItem } from './shaping.ts';
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
-import { cachedRangeWidth, fontMetricPx, glyphBoundsMetricPx, platformFontSize, roundFontMetricHalfUpToWholePx, roundFontMetricToWholePx, textAdvanceAt, ZERO } from './units.ts';
+import {
+  cachedRangeWidth, fontMetricPx, fromPxCeil, glyphAdvance16, glyphBoundsMetricPx, inlineToFloat, inlineToLayoutUnitCeil, platformFontSize, roundFontMetricHalfUpToWholePx,
+  roundFontMetricToWholePx, sub, textAdvanceAt, textRunLayoutUnit, ZERO,
+} from './units.ts';
 
 export type FontMetrics = { readonly ascent: LU; readonly descent: LU; readonly lineGap: LU };
 
@@ -107,6 +110,62 @@ function emAdvance(data: FontData, cp: number): number {
   return Number.isInteger(em) && em >= 0 ? em : -1;
 }
 
+/**
+ * Character::TreatAsZeroWidthSpace (character.h): form feed, carriage return, U+FFFC, ZWNJ, ZWJ and the Default_Ignorable_Code_Point
+ * characters (Unicode 16.0.0 DerivedCoreProperties). Letter spacing is not added after them (ShapeResultSpacing::ComputeSpacing).
+ */
+export function treatAsZeroWidthSpace(cp: number): boolean {
+  if (cp === 0x0c || cp === 0x0d || cp === 0xfffc || cp === 0xad || cp === 0x34f || cp === 0x61c || cp === 0x3164 || cp === 0xfeff || cp === 0xffa0) return true;
+  if ((cp >= 0x115f && cp <= 0x1160) || (cp >= 0x17b4 && cp <= 0x17b5) || (cp >= 0x180b && cp <= 0x180f) || (cp >= 0x200b && cp <= 0x200f)) return true;
+  if ((cp >= 0x202a && cp <= 0x202e) || (cp >= 0x2060 && cp <= 0x206f) || (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0xfff0 && cp <= 0xfff8)) return true;
+  return (cp >= 0x1bca0 && cp <= 0x1bca3) || (cp >= 0x1d173 && cp <= 0x1d17a) || (cp >= 0xe0000 && cp <= 0xe0fff);
+}
+
+/**
+ * The letter spacing ShapeResultSpacing::ComputeSpacing adds after a cluster whose text starts with cp, as 16.16 (TextRunLayoutUnit):
+ * the spacing, or none after a zero-width space. Cursive scripts are outside the shaping core's Latin scope, so they never reach it.
+ */
+export function letterSpacingAfter(cp: number, spacing16: number): number {
+  return spacing16 === 0 || treatAsZeroWidthSpace(cp) ? 0 : spacing16;
+}
+
+/**
+ * Ahem text with letter spacing, as Blink measures it after ShapeResult::ApplySpacing: each glyph's 16.16 HarfBuzz advance plus the
+ * spacing after it, summed exactly: the sums before code points start and end and over the whole text, and the first code point
+ * that is not an Ahem glyph (bad), or -1.
+ */
+type SpacedSums = { readonly before: number; readonly through: number; readonly total: number; readonly bad: number };
+
+function spacedSums(data: FontData, text: string, size: number, spacing16: number, start: number, end: number): SpacedSums {
+  let k = 0;
+  let before = 0;
+  let through = 0;
+  let total = 0;
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) as number;
+    const em = emAdvance(data, cp);
+    if (em < 0) return { before: 0, through: 0, total: 0, bad: cp };
+    if (k === start) before = total;
+    if (k === end) through = total;
+    total = total + glyphAdvance16(em * data.unitsPerEm, size, data.unitsPerEm) + letterSpacingAfter(cp, spacing16);
+    k++;
+  }
+  if (start >= k) before = total;
+  if (end >= k) through = total;
+  return { before, through, total, bad: -1 };
+}
+
+/** ShapeResult::CachedPositionForOffset of an Ahem item with spacing: the ceiled sum before a character, FromFloatCeil(width) at the end. */
+function spacedPosition(sum: number, atEnd: boolean): LU {
+  return atEnd ? fromPxCeil(inlineToFloat(sum)) : inlineToLayoutUnitCeil(sum);
+}
+
+function codePointCount(text: string): number {
+  let n = 0;
+  for (const ch of text) if ((ch.codePointAt(0) as number) >= 0) n++;
+  return n;
+}
+
 /** The two macOS font rules the Ahem measurer applies (platform-rules.ts); each can be switched off by a planted fault. */
 export type AhemRuleFaults = { readonly metricHalfUp: boolean; readonly untruncatedFontSize: boolean };
 
@@ -127,6 +186,12 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
     // css-fonts-4 §5: every covered glyph advances its whole-em advance; anything else is not an Ahem glyph.
     measure(text: string, font: TextFont): MeasureResult {
       if (font.family !== AHEM_FACE_ID) return { ok: false, code: 'text-glyph', reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
+      const spacing16 = textRunLayoutUnit(font.letterSpacing);
+      if (spacing16 !== 0) {
+        const sums = spacedSums(data, text, instanceSize(font.size), spacing16, 0, 0);
+        if (sums.bad >= 0) return { ok: false, code: 'text-glyph', reason: `U+${sums.bad.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
+        return { ok: true, measure: { width: fromPxCeil(inlineToFloat(sums.total)) } };
+      }
       let glyphs = 0;
       for (const ch of text) {
         const cp = ch.codePointAt(0) as number;
@@ -139,6 +204,13 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
     // Blink shapes the whole item; a character's cached position is the ceiled advance sum before it (units.ts cachedRangeWidth).
     measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
       if (font.family !== AHEM_FACE_ID) return { ok: false, code: 'text-glyph', reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
+      const spacing16 = textRunLayoutUnit(font.letterSpacing);
+      if (spacing16 !== 0) {
+        const sums = spacedSums(data, text, instanceSize(font.size), spacing16, start, end);
+        if (sums.bad >= 0) return { ok: false, code: 'text-glyph', reason: `U+${sums.bad.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
+        const n = codePointCount(text);
+        return { ok: true, measure: { width: sub(spacedPosition(sums.through, end >= n), spacedPosition(sums.before, start >= n)) } };
+      }
       let k = 0;
       let before = 0;
       let through = 0;

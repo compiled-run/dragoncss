@@ -13,7 +13,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
@@ -255,6 +255,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       }
     }
     computeLengths(props, parentFontSize, rootFontSize);
+    computeLetterSpacing(props, faults.zeroNotNormal);
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     blockify(props, parent === null ? null : parent.props, faults);
     computeOverflowPair(props);
