@@ -3,7 +3,7 @@
 // at UAX #14 opportunities as Blink's break iterator applies them (linebreak.ts) and at every <br>, fitted with Blink's fit test
 // (linefit.ts), and each line box is sized from the strut and every inline box on it, aligned at their baselines (CSS2 §10.8.1).
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
-import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf } from './input.ts';
+import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, floorToWholePx, fromFloatRound, fromRaw, lineHeightFromNumber, max, min, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
@@ -27,12 +27,14 @@ const SPACE = 0x20;
 const ZWSP = 0x200b;
 const HYPHEN_MINUS = 0x2d;
 const SOLIDUS = 0x2f;
+const LINE_FEED = 0x0a;
 
 /**
- * One item of the formatting context in tree order: a code point of a leaf, the open or close tag of an inline box, or a <br>.
- * box is the innermost inline box holding the item (-1 for the root), or for a tag the box it opens or closes.
+ * One item of the formatting context in tree order: a code point of a leaf, the open or close tag of an inline box, a <br>, or a
+ * preserved U+000A of a leaf (nl, a forced break, css-text-3 §4.1.1). box is the innermost inline box holding the item (-1 for the
+ * root), or for a tag the box it opens or closes.
  */
-type Item = { readonly kind: 'char' | 'open' | 'close' | 'br'; readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number; readonly box: number; readonly br: number };
+type Item = { readonly kind: 'char' | 'open' | 'close' | 'br' | 'nl'; readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number; readonly box: number; readonly br: number };
 
 /** The ascent and descent a box or the strut adds around the baseline with its half-leadings (CSS2 §10.8.1), and its font's A and D. */
 type BoxMetrics = { readonly above: LU; readonly below: LU; readonly ascent: LU; readonly descent: LU };
@@ -59,13 +61,21 @@ export type Ifc = {
   readonly shaped: boolean;
   /** For real-font text: the char items a line may start at (soft wrap opportunities), ascending. */
   readonly opportunityItems: readonly number[];
+  /** The white-space-collapse of every leaf (one per context) and whether its lines wrap (text-wrap-mode). */
+  readonly mode: WhiteSpaceCollapse;
+  readonly wrap: boolean;
+  /**
+   * pre-wrap: the char items after the preserved spaces that start a paragraph, where Blink inserts a break opportunity and starts a
+   * text item of its own (InlineItemsBuilder::InsertBreakOpportunityAfterLeadingPreservedSpaces), ascending.
+   */
+  readonly fragmentStarts: readonly number[];
 };
 
 /**
  * One text result of a real-font line: the char items [from, to) of one leaf, its inline size, and its inline size without a
  * trailing space that hangs at the line end (visibleTo is where that space starts, else to).
  */
-type ShapedPiece = { readonly from: number; readonly to: number; readonly visibleTo: number; readonly width: LU; readonly visibleWidth: LU };
+type ShapedPiece = { readonly from: number; readonly to: number; readonly visibleTo: number; readonly width: LU; readonly visibleWidth: LU; readonly hangs: boolean };
 
 /**
  * A line: items [start, end); the characters before visibleEnd show, and the ones after it (spaces) hang. A real-font line also
@@ -294,7 +304,11 @@ function flatten(ctx: Ctx, kids: readonly InlineChild[], parent: number, out: Fl
       const leaf = out.leaves.length;
       out.leaves.push(k);
       let at = 0;
-      for (const ch of k.text) out.items.push({ kind: 'char', leaf, at: at++, ch, cp: ch.codePointAt(0) as number, box: parent, br: -1 });
+      const preserved = k.whiteSpaceCollapse !== 'collapse';
+      for (const ch of k.text) {
+        const cp = ch.codePointAt(0) as number;
+        out.items.push({ kind: preserved && cp === LINE_FEED ? 'nl' : 'char', leaf, at: at++, ch, cp, box: parent, br: -1 });
+      }
     } else if (k.kind === 'br') {
       const br = out.brs.length;
       out.brs.push(k);
@@ -323,7 +337,7 @@ function within(boxParent: readonly number[], inner: number, b: number): boolean
 
 /** Whether an item is content that shows or ends a line: a character that does not hang, or a <br>. */
 function isContent(it: Item): boolean {
-  return it.kind === 'br' || (it.kind === 'char' && !isHangingSpace(it.cp));
+  return it.kind === 'br' || it.kind === 'nl' || (it.kind === 'char' && !isHangingSpace(it.cp));
 }
 
 /** The first (or, with last, the last) index of an item that is content of box b, or -1. */
@@ -346,11 +360,15 @@ function tagIndex(items: readonly Item[], b: number, kind: 'open' | 'close'): nu
 
 /** Flattens the formatting context into items and resolves its boxes' metrics. */
 export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
+  const kids = inlineChildren(box);
+  checkPreservedBesideInline(box, kids);
   const flat: Flat = { leaves: [], boxes: [], boxParent: [], brs: [], items: [] };
-  flatten(ctx, inlineChildren(box), -1, flat);
+  flatten(ctx, kids, -1, flat);
   const items = flat.items;
-  if (directionOf(ctx, box) === 'rtl') checkRtlText(box, flat.leaves, items);
   const first = flat.leaves[0];
+  const mode: WhiteSpaceCollapse = first === undefined ? 'collapse' : first.whiteSpaceCollapse;
+  if (mode !== 'collapse') checkPreservedText(ctx, box, flat, mode);
+  if (directionOf(ctx, box) === 'rtl') checkRtlText(box, flat.leaves, items);
   let shaped = false;
   for (const t of flat.leaves) if (t.font.family !== AHEM_FACE_ID) shaped = true;
   if (shaped) checkShapedText(ctx, box, flat.leaves, items);
@@ -359,10 +377,13 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (leafFontOf(t).letterSpacing !== 0) {
       for (const ch of t.text) if ((ch.codePointAt(0) as number) === 0xad) unsupported('letter-spacing', t.id, 'css-text-3 §8.2', `${t.id} has letter-spacing and a soft hyphen`);
     }
-    const m = ctx.measurer.measure(t.text, leafFontOf(t));
-    if (!m.ok) {
-      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
-      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    for (const segment of lineFeedSegments(t)) {
+      if (segment === '') continue;
+      const m = ctx.measurer.measure(segment, leafFontOf(t));
+      if (!m.ok) {
+        if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+        unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+      }
     }
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
@@ -371,7 +392,8 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   const strut = box.strut;
   if (strut === null) throw new Error(`${box.id} has inline content and no strut; validateLayoutInput rejects this input`);
   const starts: number[] = [];
-  const boundaries = boundariesOf(ctx, box, items, first === undefined || first.textWrapMode === 'wrap', shaped, starts);
+  const wrap = first === undefined || first.textWrapMode === 'wrap';
+  const boundaries = boundariesOf(ctx, box, items, wrap, shaped, mode, starts);
   return {
     leaves: flat.leaves,
     boxes: flat.boxes,
@@ -387,7 +409,69 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     closeAt: flat.boxes.map((_, b) => tagIndex(items, b, 'close')),
     shaped,
     opportunityItems: [...starts].sort((x, y) => x - y),
+    mode,
+    wrap,
+    fragmentStarts: mode === 'preserve' && wrap ? leadingSpaceEnds(items) : [],
   };
+}
+
+/** A leaf's text split at its preserved U+000A (the whole text for collapse text): what the measurer shapes, one text item each. */
+function lineFeedSegments(t: TextLeaf): string[] {
+  if (t.whiteSpaceCollapse === 'collapse') return [t.text];
+  const out: string[] = [];
+  let seg = '';
+  for (const ch of t.text) {
+    if (ch === '\n') {
+      out.push(seg);
+      seg = '';
+    } else seg += ch;
+  }
+  out.push(seg);
+  return out;
+}
+
+/**
+ * TXT2-c scope (notes/T149-txt2-spec.md R3): preserved text is laid out alone in its formatting context (no inline boxes, <br>s or
+ * text of another white-space-collapse), left to right, with no tab (tab-size is TXT2-c3) and no control character but U+000A; and
+ * break-spaces only in Ahem.
+ */
+function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpaceCollapse): void {
+  if (flat.boxes.length > 0 || flat.brs.length > 0) unsupported('mixed-white-space', box.id, 'css-text-4 §4.1.1', `white-space-collapse: ${mode} text beside inline boxes or <br>s in ${box.id}`);
+  for (const t of flat.leaves) {
+    if (t.whiteSpaceCollapse !== mode) unsupported('mixed-white-space', t.id, 'css-text-4 §4.1.1', `text runs with different white-space-collapse in one formatting context of ${box.id}`);
+    if (mode === 'break-spaces' && t.font.family !== AHEM_FACE_ID) unsupported('line-break', t.id, 'css-text-4 §5.1', `white-space-collapse: break-spaces in the real face of ${t.id} (TXT2-c2)`);
+    // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
+    if (leafFontOf(t).letterSpacing !== 0) unsupported('letter-spacing', t.id, 'css-text-3 §8.2', `${t.id} has letter-spacing and white-space-collapse: ${mode}`);
+    for (const ch of t.text) {
+      const cp = ch.codePointAt(0) as number;
+      if (cp === 0x09) unsupported('tab-stop', t.id, 'css-text-3 §4.2', `a preserved tab in ${t.id}; tab stops are TXT2-c3`);
+      if ((cp < 0x20 && cp !== LINE_FEED) || cp === 0x7f) unsupported('preserved-control', t.id, 'css-text-3 §4.1.2', `the preserved control character U+${cp.toString(16).toUpperCase()} in ${t.id}`);
+    }
+  }
+  if (directionOf(ctx, box) === 'rtl') unsupported('bidi-neutral', box.id, 'UAX #9 L1', `preserved white space in the rtl paragraph of ${box.id} takes the paragraph direction`);
+}
+
+/** Preserved text beside an inline box or a <br> is refused before the boxes are checked, as the compiler refuses it (computed-checks.ts). */
+function checkPreservedBesideInline(box: LayoutBox, kids: readonly InlineChild[]): void {
+  let inline = false;
+  for (const k of kids) if (k.kind !== 'text') inline = true;
+  if (!inline) return;
+  const leaves = inlineLeaves(box);
+  for (const t of leaves) if (t.whiteSpaceCollapse !== 'collapse') unsupported('mixed-white-space', t.id, 'css-text-4 §4.1.1', `white-space-collapse: ${t.whiteSpaceCollapse} text beside inline boxes or <br>s in ${box.id}`);
+}
+
+/** The char items that end the run of spaces starting a paragraph (the context start, or after a preserved U+000A) and precede a non-space. */
+function leadingSpaceEnds(items: readonly Item[]): number[] {
+  const out: number[] = [];
+  let i = 0;
+  while (i < items.length) {
+    let j = i;
+    while (j < items.length && (items[j] as Item).kind === 'char' && (items[j] as Item).cp === SPACE) j++;
+    if (j > i && j < items.length && (items[j] as Item).kind === 'char') out.push(j);
+    while (j < items.length && (items[j] as Item).kind !== 'nl') j++;
+    i = j + 1;
+  }
+  return out;
 }
 
 /**
@@ -444,8 +528,8 @@ function afterCloses(items: readonly Item[], i: number): number {
 }
 
 /** Adds the soft boundaries of one run of text (the item indices of its characters) to out. */
-function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, out: Boundary[], starts: number[]): void {
-  for (const p of opportunities(ctx, box, run.map((i) => (items[i] as Item).cp), wrap, shaped)) {
+function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, out: Boundary[], starts: number[]): void {
+  for (const p of opportunities(ctx, box, run.map((i) => (items[i] as Item).cp), wrap, shaped, mode)) {
     out.push({ at: afterCloses(items, run[p - 1] as number), forced: false });
     starts.push(run[p] as number);
   }
@@ -458,24 +542,24 @@ function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run
  * opportunity between two characters becomes a boundary after the close tags that follow the first (Blink moves a break before a
  * close tag after it) and before any open tag. A <br> forces a boundary after it and the close tags that follow it.
  */
-function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, starts: number[]): Boundary[] {
+function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, starts: number[]): Boundary[] {
   const out: Boundary[] = [];
   let run: number[] = [];
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Item;
     if (it.kind === 'char') run.push(i);
-    else if (it.kind === 'br' && !ctx.faults.brIgnored) {
-      addSoftBoundaries(ctx, box, items, run, wrap, shaped, out, starts);
+    else if ((it.kind === 'br' && !ctx.faults.brIgnored) || it.kind === 'nl') {
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts);
       run = [];
       out.push({ at: afterCloses(items, i), forced: true });
     } else if (ctx.faults.breakAtBoxBoundary && wrap && run.length > 0 && (it.kind === 'open' || it.kind === 'close')) {
       // Planted fault breakAtBoxBoundary: a soft wrap opportunity at every box boundary inside text.
-      addSoftBoundaries(ctx, box, items, run, wrap, shaped, out, starts);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts);
       run = [];
       out.push({ at: it.kind === 'open' ? i : afterCloses(items, i), forced: false });
     }
   }
-  addSoftBoundaries(ctx, box, items, run, wrap, shaped, out, starts);
+  addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts);
   // One boundary per place, in item order; a forced one wins over a soft one at the same place.
   const ordered = [...out].sort((x, y) => (x.at !== y.at ? x.at - y.at : x.forced === y.forced ? 0 : x.forced ? -1 : 1));
   const sorted: Boundary[] = [];
@@ -489,7 +573,7 @@ function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: bo
 }
 
 /** The soft wrap opportunities of one run of text: code point positions where a line may start (ahemOpportunities). */
-function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: boolean, shaped: boolean): number[] {
+function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse): number[] {
   const out: number[] = [];
   if (cps.length === 0) return out;
   if (ctx.faults.spaceOnlyBreaks) {
@@ -502,7 +586,20 @@ function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: b
     return out;
   }
   const faults: LineBreakFaults = { breakAfterSolidus: ctx.faults.breakAfterSolidus, noHyphenDigitBreak: ctx.faults.noHyphenDigitBreak };
-  return shaped ? latinOpportunities(box, cps, wrap, faults) : ahemOpportunities(box, cps, wrap, faults);
+  const base = shaped ? latinOpportunities(box, cps, wrap, faults) : ahemOpportunities(box, cps, wrap, faults);
+  return wrap && mode === 'break-spaces' ? withEverySpace(cps, base) : base;
+}
+
+/** break-spaces (Blink BreakSpaceType::kAfterEverySpace, line_breaker.cc SetCurrentStyleForce): an opportunity after every space too. */
+function withEverySpace(cps: readonly number[], base: readonly number[]): number[] {
+  const out: number[] = [];
+  let k = 0;
+  for (let i = 1; i < cps.length; i++) {
+    while (k < base.length && (base[k] as number) < i) k++;
+    const listed = k < base.length && (base[k] as number) === i;
+    if (listed || (cps[i - 1] as number) === SPACE) out.push(i);
+  }
+  return out;
 }
 
 /**
@@ -784,7 +881,14 @@ function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
       continue;
     }
     let text = '';
-    while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) text += (ifc.items[i++] as Item).ch;
+    let afterSpace = false;
+    // Planted fault preservedSpaceCollapsed: a run of preserved spaces advances as one space.
+    const collapseSpaces = ctx.faults.preservedSpaceCollapsed && ifc.mode !== 'collapse';
+    while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) {
+      const ch = (ifc.items[i++] as Item).ch;
+      if (!(collapseSpaces && ch === ' ' && afterSpace)) text += ch;
+      afterSpace = ch === ' ';
+    }
     const t = ifc.leaves[it.leaf] as TextLeaf;
     const m = ctx.measurer.measure(text, leafFontOf(t));
     if (!m.ok) {
@@ -813,7 +917,8 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     let last = first;
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === first.leaf) last = ifc.items[i++] as Item;
     const t = ifc.leaves[first.leaf] as TextLeaf;
-    const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, leafFontOf(t));
+    const seg = segmentAt(t, first.at);
+    const m = ctx.measurer.measureRange(seg.text, first.at - seg.start, last.at + 1 - seg.start, leafFontOf(t));
     if (!m.ok) {
       if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
       unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
@@ -823,10 +928,53 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
   return total;
 }
 
-/** Whether items [start, end) hold a character or a <br>: a line without either is empty and makes no line box (Blink IsEmptyLine). */
+type LineFeedSegment = { readonly text: string; readonly start: number };
+
+/** The text between the preserved U+000A of a leaf that holds code point at, and the code point it starts at (the whole text for collapse text). */
+function segmentAt(t: TextLeaf, at: number): LineFeedSegment {
+  if (t.whiteSpaceCollapse === 'collapse') return { text: t.text, start: 0 };
+  let start = 0;
+  let k = 0;
+  let text = '';
+  for (const ch of t.text) {
+    if (ch === '\n') {
+      if (k >= at) return { text, start };
+      start = k + 1;
+      text = '';
+    } else text += ch;
+    k++;
+  }
+  return { text, start };
+}
+
+/** Whether items [start, end) hold a character, a <br> or a preserved U+000A: a line without any is empty and makes no line box (Blink IsEmptyLine). */
 function hasContent(ifc: Ifc, start: number, end: number): boolean {
-  for (let i = start; i < end; i++) if ((ifc.items[i] as Item).kind === 'char' || (ifc.items[i] as Item).kind === 'br') return true;
+  for (let i = start; i < end; i++) {
+    const k = (ifc.items[i] as Item).kind;
+    if (k === 'char' || k === 'br' || k === 'nl') return true;
+  }
   return false;
+}
+
+/** The end of the characters in items [start, end): after the last char item (spaces included), or start. */
+function contentEndOf(ifc: Ifc, start: number, end: number): number {
+  for (let i = end - 1; i >= start; i--) if ((ifc.items[i] as Item).kind === 'char') return i + 1;
+  return start;
+}
+
+/**
+ * Whether spaces at the end of a line hang (css-text-3 §4.1.3): collapsible spaces and pre-wrap's preserved spaces do (Blink
+ * HandleTrailingSpaces, only for text that wraps); pre's and break-spaces spaces never do (planted faults trailingPreWrapNotHanging and breakSpacesHanging).
+ */
+function spacesHang(ctx: Ctx, ifc: Ifc): boolean {
+  if (ifc.mode === 'preserve') return ifc.wrap && !ctx.faults.trailingPreWrapNotHanging;
+  if (ifc.mode === 'break-spaces') return ctx.faults.breakSpacesHanging;
+  return true;
+}
+
+/** The end of what the fit test measures of items [start, end): without the spaces that hang. */
+function fitEndOf(ctx: Ctx, ifc: Ifc, start: number, end: number): number {
+  return spacesHang(ctx, ifc) ? visibleEndOf(ifc, start, end) : contentEndOf(ifc, start, end);
 }
 
 /** The boundaries, then the end of the items as a final forced one. */
@@ -868,7 +1016,7 @@ function breakLines(ctx: Ctx, ifc: Ifc, available: LU): Line[] {
     k++;
     while (!forced && k < ends.length) {
       const next = ends[k] as Boundary;
-      if (!fitsAvailable(toPx(width(ctx, ifc, start, visibleEndOf(ifc, start, next.at))), add(available, slack), fit)) break;
+      if (!fitsAvailable(toPx(width(ctx, ifc, start, fitEndOf(ctx, ifc, start, next.at))), add(available, slack), fit)) break;
       end = next.at;
       forced = next.forced;
       k++;
@@ -891,7 +1039,7 @@ function nextCharAfter(ifc: Ifc, i: number): number {
   for (let j = i + 1; j < ifc.items.length; j++) {
     const it = ifc.items[j] as Item;
     if (it.kind === 'char') return j;
-    if (it.kind === 'br') return -1;
+    if (it.kind === 'br' || it.kind === 'nl') return -1;
   }
   return -1;
 }
@@ -900,9 +1048,14 @@ function prevCharBefore(ifc: Ifc, i: number): number {
   for (let j = i - 1; j >= 0; j--) {
     const it = ifc.items[j] as Item;
     if (it.kind === 'char') return j;
-    if (it.kind === 'br') return -1;
+    if (it.kind === 'br' || it.kind === 'nl') return -1;
   }
   return -1;
+}
+
+function fragmentStartAt(ifc: Ifc, i: number): boolean {
+  for (const f of ifc.fragmentStarts) if (f === i) return true;
+  return false;
 }
 
 function opportunityAt(ifc: Ifc, i: number): boolean {
@@ -922,9 +1075,11 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
     const it = ifc.items[i] as Item;
     if (it.kind === 'char') {
       const first = i;
-      while (i < ifc.items.length && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) i++;
+      // One text item per leaf, or per run of a leaf between its preserved U+000A and its leading-space breaks (InlineItemsBuilder).
+      let text = '';
+      while (i < ifc.items.length && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf && (i === first || !fragmentStartAt(ifc, i))) text += (ifc.items[i++] as Item).ch;
       const t = ifc.leaves[it.leaf] as TextLeaf;
-      const s = ctx.measurer.shaped(t.text, leafFontOf(t));
+      const s = ctx.measurer.shaped(text, leafFontOf(t));
       if (!s.ok) {
         if (s.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', s.reason);
         unsupported('text-glyph', t.id, 'css-fonts-4 §5', s.reason);
@@ -935,7 +1090,7 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       // CanBreakAfter: an opportunity before the next char; none before a <br> (UAX #14 LB6); the end of the text is one.
       const next = nextCharAfter(ifc, i - 1);
       let atEnd = next >= 0 ? opportunityAt(ifc, next) : true;
-      if (next < 0) for (let j = i; j < ifc.items.length && (ifc.items[j] as Item).kind !== 'char'; j++) if ((ifc.items[j] as Item).kind === 'br') atEnd = false;
+      if (next < 0) for (let j = i; j < ifc.items.length && (ifc.items[j] as Item).kind !== 'char'; j++) if ((ifc.items[j] as Item).kind === 'br' || (ifc.items[j] as Item).kind === 'nl') atEnd = false;
       items.push({ kind: 'text', item: s.item, result: s.result, opportunities: opps, atEnd, offset });
       firstItem.push(first);
       offset = offset + (i - first);
@@ -974,7 +1129,7 @@ function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Li
   }
   const s = shapedItemsOf(ctx, ifc);
   const wrap = firstLeaf === undefined || firstLeaf.textWrapMode === 'wrap';
-  const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon);
+  const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.mode === 'preserve');
   if (!r.ok) unsupported('line-break', box.id, 'css-text-3 §5', r.reason);
   const lines: Line[] = [];
   let start = 0;
@@ -1000,8 +1155,10 @@ function piecesOf(ifc: Ifc, s: ShapedItems, bl: BrokenLine): ShapedPiece[] {
     const from = (s.firstItem[res.index] as number) + res.start;
     const to = (s.firstItem[res.index] as number) + res.end;
     const visibleWidth = bl.visibleWidths[k] as LU;
+    // pre-wrap's hanging spaces are a result of their own, which shows nothing of its width (breakItemLines).
+    const own = ifc.mode === 'preserve' && visibleWidth === ZERO && res.width !== ZERO;
     const hangs = visibleWidth !== res.width && (ifc.items[to - 1] as Item).cp === SPACE;
-    out.push({ from, to, visibleTo: hangs ? to - 1 : to, width: res.width, visibleWidth });
+    out.push({ from, to, visibleTo: own ? to : hangs ? to - 1 : to, width: res.width, visibleWidth, hangs: own });
   }
   return out;
 }
@@ -1088,6 +1245,12 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
   const out: PlacedLine[] = [];
   let top = ZERO;
   for (const line of lines) {
+    if (ifc.mode !== 'collapse') {
+      const placed = placePreservedLine(ctx, box, ifc, line, available, top);
+      out.push(placed);
+      top = add(top, placed.height);
+      continue;
+    }
     const offset = alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, line, line.start, line.visibleEnd)));
     const on: number[] = [];
     for (let b = 0; b < ifc.boxes.length; b++) if (boxOnLine(ifc, b, line.start, line.end)) on.push(b);
@@ -1196,6 +1359,104 @@ function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: r
   return { pieces: out, ellipsis: { leaf: (pieces[r.ellipsized] as LinePiece).leaf, text: r.text, font: r.font, x: r.x, width: r.width, top: sub(baseline, m.ascent), ascent: m.ascent, descent: m.descent } };
 }
 
+/**
+ * One text fragment of a line of preserved text: char items [from, to), of which [from, visibleTo) show; or a preserved U+000A (nl,
+ * no width). A fragment that hangs (pre-wrap spaces at a soft wrap, or at a forced break where the line would not fit with them) has
+ * its own fragment and adds nothing to the width text-align distributes (css-text-3 §4.1.3).
+ */
+type PreservedFragment = { readonly from: number; readonly to: number; readonly visibleTo: number; readonly width: LU; readonly hangs: boolean };
+
+/**
+ * The fragments of a line of preserved text, as Blink's line breaker makes them: a text item ends at each preserved U+000A (its own
+ * control item) and, in pre-wrap, after a paragraph's leading spaces; pre-wrap spaces that hang are a result of their own
+ * (HandleTrailingSpaces); at a forced break or the end they hang only when the line does not fit with them (conditionally).
+ * preserve-breaks spaces are collapsible, so a hanging one stays in its fragment without showing, as collapse text's does.
+ */
+function preservedFragments(ctx: Ctx, ifc: Ifc, line: Line, available: LU): PreservedFragment[] {
+  const out: PreservedFragment[] = [];
+  if (ifc.shaped) {
+    for (const p of line.pieces) out.push({ from: p.from, to: p.to, visibleTo: p.visibleTo, width: p.hangs ? p.width : p.visibleWidth, hangs: p.hangs });
+    for (let i = line.start; i < line.end; i++) if ((ifc.items[i] as Item).kind === 'nl') out.push({ from: i, to: i + 1, visibleTo: i, width: ZERO, hangs: false });
+    return out.sort((a, b) => a.from - b.from);
+  }
+  const contentEnd = contentEndOf(ifc, line.start, line.end);
+  let hangFrom = contentEnd;
+  if (spacesHang(ctx, ifc)) {
+    const visible = visibleEndOf(ifc, line.start, line.end);
+    const last = ifc.items[line.end - 1] as Item;
+    const forced = line.end === ifc.items.length || last.kind === 'nl';
+    const conditional = ifc.mode === 'preserve' && forced;
+    if (!(conditional && fitsAvailable(toPx(width(ctx, ifc, line.start, contentEnd)), available, { noEpsilon: ctx.faults.fitWithoutEpsilon, breakInsideWord: false }))) hangFrom = visible;
+  }
+  const ownHang = ifc.mode !== 'preserve-breaks';
+  let i = line.start;
+  while (i < line.end) {
+    const it = ifc.items[i] as Item;
+    if (it.kind === 'nl') {
+      out.push({ from: i, to: i + 1, visibleTo: i, width: ZERO, hangs: false });
+      i++;
+      continue;
+    }
+    const from = i;
+    const hangs = ownHang && i >= hangFrom;
+    i++;
+    while (i < line.end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf && !fragmentStartAt(ifc, i) && !(ownHang && i === hangFrom)) i++;
+    const visibleTo = hangs ? i : i < hangFrom ? i : hangFrom > from ? hangFrom : from;
+    out.push({ from, to: i, visibleTo, width: width(ctx, ifc, from, hangs ? i : visibleTo), hangs });
+  }
+  return out;
+}
+
+/**
+ * Real-font fragments of one leaf on a line as one piece: the lanes compare real-font text with Chrome's client rects joined where
+ * one starts at the end of the one before it on its line (text-latin-run.ts joinHyphenRects), so a line's adjacent fragments are one.
+ */
+function joinedFragments(ifc: Ifc, frags: readonly PreservedFragment[]): PreservedFragment[] {
+  const out: PreservedFragment[] = [];
+  let k = 0;
+  while (k < frags.length) {
+    const first = frags[k] as PreservedFragment;
+    const leaf = (ifc.items[first.from] as Item).leaf;
+    let width = ZERO;
+    let visibleTo = first.from;
+    let to = first.to;
+    while (k < frags.length && (ifc.items[(frags[k] as PreservedFragment).from] as Item).leaf === leaf) {
+      const f = frags[k] as PreservedFragment;
+      width = add(width, f.width);
+      if (f.visibleTo > f.from) visibleTo = f.visibleTo;
+      to = f.to;
+      k++;
+    }
+    out.push({ from: first.from, to, visibleTo, width, hangs: false });
+  }
+  return out;
+}
+
+/** A line box of preserved text (left to right, no inline boxes, checkPreservedText): its fragments placed one after another. */
+function placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, line: Line, available: LU, top: LU): PlacedLine {
+  const own = preservedFragments(ctx, ifc, line, available);
+  let shown = ZERO;
+  for (const f of own) if (!f.hangs) shown = add(shown, f.width);
+  const frags = ifc.shaped ? joinedFragments(ifc, own) : own;
+  let x = alignOffset(ctx, box, sub(available, shown));
+  const above = ifc.strut.above;
+  const baseline = add(top, above);
+  const height = add(above, ifc.strut.below);
+  const pieces: LinePiece[] = [];
+  for (const f of frags) {
+    const first = ifc.items[f.from] as Item;
+    const t = ifc.leaves[first.leaf] as TextLeaf;
+    const m = fontMetricsOf(ctx, t.id, t.font);
+    const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
+    const visibleEnd = first.at + (f.visibleTo - f.from);
+    pieces.push({ leaf: first.leaf, start: first.at, visibleEnd, end: first.at + (f.to - f.from), x, width: f.width, top: pieceTop, ascent: m.ascent, descent: m.descent, paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO });
+    x = add(x, f.width);
+  }
+  // TXT2-c with TXT2-f: Blink truncates a preserved line by its own items (control items, hanging spaces), which no Chrome case covers yet.
+  if (truncates(ctx, box) && shown > add(available, fromRaw(1))) unsupported('text-overflow', box.id, 'css-overflow-4 §3.1', `the preserved white space of ${box.id} overflows a truncated line`);
+  return { top, height, baseline, pieces, boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null };
+}
+
 /** firstBaseline: the first line box's baseline from the content-box top (CSS2 §10.8.1), or null with no line boxes. */
 export type InlineResult = { readonly height: LU; readonly placed: readonly Placed[]; readonly firstBaseline: LU | null; readonly lines: number };
 
@@ -1286,7 +1547,8 @@ function collectFragments(ctx: Ctx, ifc: Ifc, lines: readonly PlacedLine[], orig
         if (p.truncated) rects.push({ x: p.x, y: p.top, width: p.truncatedWidth, height: add(p.ascent, p.descent) });
       }
     }
-    if (rects.length > 0) out.placed.set(t.id, fragmentOf(t.id, rects, origin, unionOf(rects)));
+    // A preserved U+000A's rect is empty, and Chrome's bounding rect of a Range skips empty rects (gfx::RectF::Union).
+    if (rects.length > 0) out.placed.set(t.id, fragmentOf(t.id, rects, origin, t.whiteSpaceCollapse === 'collapse' ? unionOf(rects) : boundingOf(rects)));
   });
   ifc.boxes.forEach((b, bi) => {
     const rects: Rect[] = [];
@@ -1342,11 +1604,21 @@ export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max
   let start = 0;
   for (const b of endsOf(ifc)) {
     if (kind === 'max' && !b.forced) continue;
-    const visible = visibleEndOf(ifc, start, b.at);
+    const visible = intrinsicEndOf(ctx, ifc, start, b.at, kind);
     widest = max(widest, kind === 'max' ? width(ctx, ifc, start, visible) : cachedWidth(ctx, ifc, start, visible));
     start = b.at;
   }
   return widest;
+}
+
+/**
+ * The end of what an intrinsic size measures of items [start, end): without the spaces that hang. At max-content a line ends only at
+ * a forced break or the end, where pre-wrap spaces hang only if they do not fit, which they always do at an unlimited width.
+ */
+function intrinsicEndOf(ctx: Ctx, ifc: Ifc, start: number, end: number, kind: 'min' | 'max'): number {
+  if (ifc.mode === 'collapse' || ifc.mode === 'preserve-breaks') return visibleEndOf(ifc, start, end);
+  if (kind === 'max') return contentEndOf(ifc, start, end);
+  return fitEndOf(ctx, ifc, start, end);
 }
 
 /** LayoutUnit::NearlyMax: the max-content available width (LineBreakerMode::kMaxContent). */
@@ -1361,12 +1633,14 @@ function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | '
   let widest = ZERO;
   if (kind === 'max') {
     const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW));
-    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, line, line.start, line.visibleEnd));
+    // At max-content preserved spaces at the end of a line count, as on the Ahem path (intrinsicEndOf): LineBreaker at an unlimited
+    // width keeps pre and break-spaces spaces, and pre-wrap's trailing spaces fit there, so none hangs.
+    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, line, line.start, intrinsicEndOf(ctx, ifc, line.start, line.end, 'max')));
     return widest;
   }
   let start = 0;
   for (const b of endsOf(ifc)) {
-    const visible = visibleEndOf(ifc, start, b.at);
+    const visible = intrinsicEndOf(ctx, ifc, start, b.at, 'min');
     let w = cachedWidth(ctx, ifc, start, visible);
     const lastChar = visible > start ? (ifc.items[visible - 1] as Item) : null;
     if (lastChar !== null && lastChar.kind === 'char' && lastChar.cp === 0xad && !b.forced && !ctx.faults.softHyphenWidthMissing) {

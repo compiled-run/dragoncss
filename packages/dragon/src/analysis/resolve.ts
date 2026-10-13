@@ -137,6 +137,61 @@ export function collapseInlineContext(runs: readonly (string | null)[]): (string
   return runs.map((t, run) => (t === null ? null : out.filter((c) => c.run === run).map((c) => c.ch).join('')));
 }
 
+/** The computed white-space-collapse keyword of an element's props. */
+function collapseModeOf(props: ReadonlyMap<Longhand, ResolvedValue>): string {
+  const v = (props.get('white-space-collapse') as ResolvedValue).value;
+  return v.kind === 'keyword' ? v.value : '';
+}
+
+/**
+ * Phase I of one text whose white-space-collapse is not collapse (css-text-4 §4.1.1; Blink InlineItemsBuilder::AppendText): preserve
+ * and break-spaces keep the text as authored (AppendPreserveWhitespace; each U+000A is a forced break the engine reads); preserve-breaks
+ * (AppendPreserveNewline) keeps each U+000A, collapses every other white space sequence to one space, and removes the spaces on
+ * either side of each U+000A and at the text's start and end (AppendForcedBreakCollapseWhitespace). The compiler refuses tabs and
+ * other control characters in preserved text (computed-checks.ts).
+ */
+export function phaseOne(text: string, mode: string, faults: CompilerFaults): string {
+  return phaseOneContext([text], [mode], faults)[0] as string;
+}
+
+/**
+ * Phase I over one inline formatting context's texts (null for a <br>), each with its white-space-collapse. preserve-breaks runs
+ * over the whole context, as Blink's InlineItemsBuilder carries its collapsing state from one text item to the next: a space at the
+ * end of one text and the start of the next is one space, wherever the text nodes split (a framework expression, a display: none
+ * element). A context that mixes modes, or holds <br>s beside preserved text, is refused (computed-checks.ts, the engine), so each
+ * of its texts takes its own phase I.
+ */
+export function phaseOneContext(runs: readonly (string | null)[], modes: readonly string[], faults: CompilerFaults): (string | null)[] {
+  const together = runs.every((t, i) => t !== null && modes[i] === 'preserve-breaks');
+  // preserve and break-spaces keep their text as authored.
+  if (!together) return runs.map((t, i) => (t === null || modes[i] !== 'preserve-breaks' ? t : (phaseOneContext([t], ['preserve-breaks'], faults)[0] as string)));
+  type C = { ch: string; run: number };
+  const chars: C[] = [];
+  runs.forEach((t, run) => {
+    for (const ch of t as string) chars.push({ ch, run });
+  });
+  const out: C[] = [];
+  let k = 0;
+  while (k < chars.length) {
+    const c = chars[k] as C;
+    if (c.ch !== ' ' && c.ch !== '\t') {
+      out.push(c);
+      k++;
+      continue;
+    }
+    let e = k;
+    while (e < chars.length && ((chars[e] as C).ch === ' ' || (chars[e] as C).ch === '\t')) e++;
+    const before = out[out.length - 1];
+    const after = chars[e];
+    const atStart = before === undefined || before.ch === '\n';
+    const atNewline = after !== undefined && after.ch === '\n';
+    // Planted fault preLineKeepsSpaceBeforeNewline: the space before a preserved U+000A stays.
+    if (!atStart && after !== undefined && (!atNewline || faults.preLineKeepsSpaceBeforeNewline)) out.push({ ch: ' ', run: c.run });
+    k = e;
+  }
+  return runs.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
+}
+
 /** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
 const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
 
@@ -282,24 +337,34 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
     let run: (LinkedText | null)[] = [];
+    // The white-space-collapse each text of the run takes from the element that holds it (textProps).
+    let modes: string[] = [];
     const flush = (): void => {
-      const texts = collapseInlineContext(run.map((t) => (t === null ? null : t.text)));
+      // A context holding preserved text with inline boxes or <br>s is refused (computed-checks.ts); each text takes its own phase I.
+      const strings = run.map((t) => (t === null ? null : t.text));
+      const texts = modes.every((m) => m === 'collapse') ? collapseInlineContext(strings) : phaseOneContext(strings, modes, faults);
       run.forEach((t, i) => {
         if (t !== null) collapsed.set(t, texts[i] as string);
       });
       run = [];
+      modes = [];
     };
-    const gather = (items: readonly (ResolvedElement | LinkedText)[]): void => {
+    const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>): void => {
       for (const kid of items) {
-        if (kid.kind === 'text') run.push(kid);
-        else if (displayOf(kid) === 'none') continue;
+        if (kid.kind === 'text') {
+          run.push(kid);
+          modes.push(collapseModeOf(owner));
+        } else if (displayOf(kid) === 'none') continue;
         else if (isInlineBox(kid)) {
-          if (kid.element.tag === 'br') run.push(null);
-          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[]);
+          if (kid.element.tag === 'br') {
+            run.push(null);
+            modes.push('collapse');
+          }
+          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
         } else flush();
       }
     };
-    gather(kids);
+    gather(kids, props);
     flush();
     const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
       for (const kid of items) {

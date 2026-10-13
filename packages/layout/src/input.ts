@@ -356,8 +356,11 @@ export type TextFont = { readonly family: string; readonly size: number; readonl
  */
 export type FontSpec = { readonly family: string; readonly size: number; readonly specifiedSize: CalcExpr; readonly absoluteSize: boolean };
 
-/** css-text-4 §3.1 white-space-collapse: only collapse is supported; the compiler has already applied phase I collapsing. */
-export type WhiteSpaceCollapse = 'collapse';
+/**
+ * css-text-4 §3.1 white-space-collapse; the compiler has already applied phase I (resolve.ts). collapse text arrives collapsed;
+ * preserve and break-spaces text arrives as authored, and preserve-breaks text with its spaces collapsed, each U+000A a forced break.
+ */
+export type WhiteSpaceCollapse = 'collapse' | 'preserve' | 'preserve-breaks' | 'break-spaces';
 /** css-text-4 §5.1 text-wrap-mode. */
 export type TextWrapMode = 'wrap' | 'nowrap';
 
@@ -365,7 +368,7 @@ export type TextWrapMode = 'wrap' | 'nowrap';
 export type TextLeaf = {
   readonly kind: 'text';
   readonly id: string;
-  /** Text after white-space phase I collapsing (css-text-3 §4.1.1): no tabs, segment breaks or doubled spaces. */
+  /** Text after white-space phase I (css-text-3 §4.1.1): collapse text holds no tabs, segment breaks or doubled spaces. */
   readonly text: string;
   readonly font: FontSpec;
   readonly lineHeight: LineHeightValue;

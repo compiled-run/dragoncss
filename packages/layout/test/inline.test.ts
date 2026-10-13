@@ -150,9 +150,9 @@ describe('the validator rejects text the compiler did not prepare', () => {
       [text('t0', 'XX '), text('t1', ' YY')],
     ]) expect(codes(block(30, leaves)), JSON.stringify(leaves.map((l) => l.text))).toEqual(['uncollapsed-text']);
   });
-  it('rejects white-space-collapse values other than collapse', () => {
+  it('rejects white-space-collapse values the engine does not lay out', () => {
     const bad = JSON.parse(JSON.stringify(block(30, [text('t', 'XX')]))) as { children: { children: Record<string, unknown>[] }[] };
-    (bad.children[0]?.children[0] as Record<string, unknown>)['whiteSpaceCollapse'] = 'preserve';
+    (bad.children[0]?.children[0] as Record<string, unknown>)['whiteSpaceCollapse'] = 'preserve-spaces';
     expect(codes(bad as unknown as LayoutBox)).toEqual(['bad-value']);
   });
 });

@@ -111,4 +111,16 @@ describe('TXT2-f: line truncation (line_truncator.cc TruncateLine)', () => {
     const fits = run(box('root', {}, [box('a', TRUNCATE, [spaced('XXXX')])]));
     expect(fits.kind).toBe('ok');
   });
+
+  it('refuses preserved white space on an overflowing truncated line (TXT2-c with TXT2-f), and leaves one that fits alone', () => {
+    const pre = (value: string) => text('t', value, { textWrapMode: 'nowrap', whiteSpaceCollapse: 'preserve', font: ahemFont(10) });
+    const cut = run(box('root', {}, [box('a', TRUNCATE, [pre('XX  XX XX')])]));
+    expect(cut.kind === 'unsupported' && cut.unsupported.code).toBe('text-overflow');
+    expect(run(box('root', {}, [box('a', TRUNCATE, [pre('XX  X')])])).kind).toBe('ok');
+  });
+
+  it('refuses letter-spacing on preserved text (TXT2-b with TXT2-c)', () => {
+    const r = run(box('root', {}, [box('a', { width: px(200) }, [text('t', 'XX  XX', { whiteSpaceCollapse: 'preserve', letterSpacing: px(1) })])]));
+    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('letter-spacing');
+  });
 });

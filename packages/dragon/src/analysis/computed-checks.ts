@@ -210,6 +210,11 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
       else if (it.kind === 'text') (paragraphs[paragraphs.length - 1] as ResolvedText[]).push(it.text);
     }
     for (const texts of paragraphs) {
+      // TXT2-c: Chrome splits preserved spaces and line feeds into fragments of their own at the paragraph level (UAX #9 L1).
+      for (const t of texts) {
+        const mode = keywordOf(t.props.get('white-space-collapse') as ResolvedValue);
+        if (mode !== 'collapse') report(t, `${t.node.address} keeps its white space (white-space-collapse: ${mode}) in the rtl block ${el.element.address}, whose preserved spaces and line feeds take the paragraph direction (UAX #9 L1)`);
+      }
       for (const t of texts) if (!RTL_SAFE.test(t.text)) report(t, `text ${JSON.stringify(t.text)} of ${t.node.address} holds a character other than A-Z, a-z, space and U+200B in the rtl block ${el.element.address}`);
       // The white space (spaces and U+200B) that ends the paragraph, walked back across its texts.
       let zwsp: ResolvedText | null = null;
@@ -280,6 +285,7 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       refuse(el, 'white-space', `white-space-collapse: ${keywordOf(preserved.text.props.get('white-space-collapse') as ResolvedValue)} on ${preserved.text.node.address} in an inline formatting context of ${el.element.address} with inline boxes or <br>s (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${el.element.address}.`);
     }
     const texts = run.flatMap((it) => (it.kind === 'text' ? [it.text] : []));
+    for (const t of texts) checkPreservedText(el, t, refuse);
     const wrapOf = (t: ResolvedText): string => keywordOf(t.props.get('text-wrap-mode') as ResolvedValue);
     const first = texts[0];
     const other = first === undefined ? undefined : texts.find((t) => wrapOf(t) !== wrapOf(first));
@@ -319,6 +325,10 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
   if (spaced) {
     refuse(targets, 'letter-spacing', `${at} truncates text with letter-spacing, which Dragon does not lay out yet`, `Remove letter-spacing from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
   }
+  // TXT2-c with TXT2-f: Blink truncates preserved text by its own items (control items, hanging spaces), which no Chrome case covers yet.
+  if (runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))) {
+    refuse(targets, 'white-space', `${at} truncates text whose white space is preserved, which Dragon does not lay out yet`, `Remove the white-space declaration (keep nowrap) from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
+  }
   const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c));
   if (blockChild !== undefined) {
     refuse(targets, 'anonymous-block', `${at} holds text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, whose anonymous block lines Chrome truncates and Dragon does not`, `Wrap the text of ${el.element.address} in its own block, and give that block the text-overflow.`);
@@ -340,6 +350,27 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
       refuse(native, 'paint', `${at}: the inline box <${it.el.element.tag}> ${it.el.element.address} has a colour, visibility or font face other than the block's, and the native runtime draws the ellipsis with the text it follows, not in the block's style`, `Give <${it.el.element.tag}> ${it.el.element.address} the colour, visibility and font face of ${el.element.address}.`);
     }
   }
+}
+
+// TXT2-c (notes/T149-txt2-spec.md R3, R16): text whose white-space-collapse is not collapse keeps its white space, and the engine
+// lays out spaces and U+000A only. A tab needs tab stops (tab-size, TXT2-c3), and CR, FF and the other C0 controls become control
+// items Dragon does not model. Preserved text that is only white space beside block boxes would make an anonymous line box Chrome
+// keeps and Dragon's capture labels apart, so all-white-space preserved text is refused until Chrome cases cover it.
+function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: ResolvedElement, what: string, message: string, manual: string) => void): void {
+  const mode = keywordOf(t.props.get('white-space-collapse') as ResolvedValue);
+  if (mode === 'collapse') return;
+  const manual = `Remove the white-space declaration that reaches ${t.node.address}, or remove the character.`;
+  // preserve-breaks collapses a tab like a space (phase I), so only the modes that keep it need tab stops.
+  if (mode !== 'preserve-breaks' && t.text.includes('\t')) refuse(el, 'tab-stop', `a tab in ${t.node.address}, whose white-space-collapse is ${mode}: tab stops (tab-size, css-text-3 §4.2) are not laid out yet`, manual);
+  for (const ch of t.text) {
+    const cp = ch.codePointAt(0) as number;
+    if (cp === 0x0a || cp === 0x09 || !((cp < 0x20) || cp === 0x7f)) continue;
+    refuse(el, 'preserved-control', `U+${cp.toString(16).toUpperCase().padStart(4, '0')} in ${t.node.address}, whose white-space-collapse is ${mode}: preserved control characters (css-text-3 §4.1.2) are not laid out`, manual);
+    break;
+  }
+  // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
+  if (keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal') refuse(el, 'letter-spacing', `letter-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the letter-spacing or the white-space declaration that reaches ${t.node.address}.`);
+  if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
 
 // CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text in a block container would take its static position inside
