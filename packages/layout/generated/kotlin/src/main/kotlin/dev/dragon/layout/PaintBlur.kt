@@ -363,17 +363,7 @@ fun paintBlur_scanLine(plan: PlanGauss, src: JsArray<Double>, faults: BlurFaults
   }
   // ts: packages/layout/src/paint-blur.ts:272
   run {
-    val _a165 = b0.cells
-    var _i165 = 0
-    while (_i165 < _a165.size) {
-      val c: PaintBlur_Cell = _a165[_i165]
-      _i165++
-      c.v = 0.0
-    }
-  }
-  // ts: packages/layout/src/paint-blur.ts:273
-  run {
-    val _a166 = b1.cells
+    val _a166 = b0.cells
     var _i166 = 0
     while (_i166 < _a166.size) {
       val c: PaintBlur_Cell = _a166[_i166]
@@ -381,13 +371,23 @@ fun paintBlur_scanLine(plan: PlanGauss, src: JsArray<Double>, faults: BlurFaults
       c.v = 0.0
     }
   }
-  // ts: packages/layout/src/paint-blur.ts:274
+  // ts: packages/layout/src/paint-blur.ts:273
   run {
-    val _a167 = b2.cells
+    val _a167 = b1.cells
     var _i167 = 0
     while (_i167 < _a167.size) {
       val c: PaintBlur_Cell = _a167[_i167]
       _i167++
+      c.v = 0.0
+    }
+  }
+  // ts: packages/layout/src/paint-blur.ts:274
+  run {
+    val _a168 = b2.cells
+    var _i168 = 0
+    while (_i168 < _a168.size) {
+      val c: PaintBlur_Cell = _a168[_i168]
+      _i168++
       c.v = 0.0
     }
   }
@@ -553,11 +553,11 @@ fun paintBlur_gaussFactors(sigma: Double): JsArray<Double> {
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/paint-blur.ts:392
   run {
-    val _a168 = paintBlur_gaussFilter(sigma)
-    var _i168 = 0
-    while (_i168 < _a168.size) {
-      val d: Double = _a168[_i168]
-      _i168++
+    val _a169 = paintBlur_gaussFilter(sigma)
+    var _i169 = 0
+    while (_i169 < _a169.size) {
+      val d: Double = _a169[_i169]
+      _i169++
       jsPush(out, paintBlur_wrap16(rtEasing_roundOf((d * paintBlur_TWO_POW_16))))
     }
   }
