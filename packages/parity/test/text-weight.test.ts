@@ -28,9 +28,9 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** The outputs of BASE (batch2's regenerated head 5849e096aa), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 12792, digest: '0d291d85febe51d733ee25be996c5c4a1afde0c8875043550331414c75f79356' };
-const BASE_CAPTURES = { files: 3266, digest: 'd9cfccc2275c6e79a9ae0f57ca24bde8915340db8dc07942088a313a30d876ee' };
+/** The outputs of BASE (batch2's regenerated head 768a8ebdf7: batch #281 at dde476247f plus #274's and #271's groups), as digests the BASE pins recompute. */
+const BASE_OUTPUTS = { files: 12792, digest: 'ca4423c5e64d55ace5530b9cc11b5d054f9bcd3f7a32f9b2259d382b192028bc' };
+const BASE_CAPTURES = { files: 3266, digest: '30aac7c732d2edea6bdc01d1cc34c9e49f27e356d1a180159221253762d1ef5e' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
