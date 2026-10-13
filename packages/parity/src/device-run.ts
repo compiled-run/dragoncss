@@ -82,6 +82,9 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'order-swap': ['stacking-basic'],
   // PNT1: outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
+  // outline-dashed's dashes and round dots move along each side when the gap is not fitted; outline-3d's ring points swap colours.
+  'outline-dash-unfitted': ['outline-dashed'],
+  'outline-tones-swapped': ['outline-3d'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
@@ -115,6 +118,9 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'order-swap': /^interior:/,
   // A shifted ring moves its band and its outer edge: the outline points catch it.
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
+  // An unfitted gap moves the dashes and dots the outline points sit on; swapped tones change a 3D ring point's colour.
+  'outline-dash-unfitted': /^(border|edge):[^:]+:outline-/,
+  'outline-tones-swapped': /^border:[^:]+:outline-/,
   // A transform moves every pixel of the box, so any colour rule may catch it.
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,

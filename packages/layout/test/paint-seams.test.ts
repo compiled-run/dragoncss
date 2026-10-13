@@ -31,7 +31,8 @@ describe('EMS: engine paint seams', () => {
   });
   it('index.ts exports the paint seam with one line, and each filled seam with its own lines', () => {
     const lines = readFileSync(join(layout, 'src/index.ts'), 'utf8').split('\n').filter((l) => l.includes("'./paint"));
-    // REPL-a adds the replacedPaint root and its result type beside the seam's BoxShape; PNT1 adds opacityAlpha8 to its line.
+    // REPL-a adds the replacedPaint root and its result type beside the seam's BoxShape; PNT1 adds opacityAlpha8 to its line, and
+    // the outline styles add outlineNeedsSidePainter and outlinePaintOps to paint-dash's.
     expect(lines).toEqual([
       "export type { ReplacedPaint } from './paint.ts';",
       "export { opacityAlpha8, replacedPaint } from './paint.ts';",
@@ -41,7 +42,7 @@ describe('EMS: engine paint seams', () => {
       "export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from './paint-shadow.ts';",
       "export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver } from './paint-shadow.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
-      "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';",
+      "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from './paint-dash.ts';",
       "export type { OriginPoint, TransformOrigin } from './paint-transform.ts';",
       "export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';",
       "export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';",

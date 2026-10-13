@@ -36,12 +36,12 @@ export const PROFILE_NOTES = {
 export type ProfileNote = keyof typeof PROFILE_NOTES;
 
 /**
- * PNT1 outline: the native targets draw solid and double outlines only, and refuse every other painted style by name
- * (analysis/paint-values/outline.ts checkOutline). A zero-width outline in such a style paints nothing and compiles, but that proves
- * no paint, so a native target claims no row for these styles and the value check leaves them to checkOutline.
+ * PNT1 outline: the native targets draw every outline style but auto, Chrome's focus ring, which they refuse by name wherever it
+ * paints, at any width (analysis/paint-values/outline.ts checkOutline). An auto outline that paints nothing (display: contents)
+ * compiles, but that proves no paint, so a native target claims no row for auto and the value check leaves it to checkOutline.
  */
 export function nativeOutlinePending(feature: string): boolean {
-  return /^outline-style:(dotted|dashed|groove|ridge|inset|outset|auto)$/.test(feature);
+  return feature === 'outline-style:auto';
 }
 
 /** The note a target's row for a feature carries, or null: web overflow auto and scroll depend on the scrollbar environment (R3). */
