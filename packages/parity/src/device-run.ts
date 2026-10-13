@@ -72,6 +72,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
   'radius-square': ['radius-basic'],
+  // PNT1b: radius-double's border points sit in the gap between the two rings, which the plant fills with the border colour.
+  'double-solid': ['radius-double'],
   // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
   'shadow-offset-1': ['calib-shadow-blur'],
   // PNT1: opacity-basic's translucent boxes paint opaque when the writer ignores the alpha; stacking-basic samples the interiors of
@@ -99,6 +101,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-gap-unfitted': /^(border:|edge:)/,
   // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
   'radius-square': /^radius:/,
+  // One band from the border box to the padding edge paints the gap: the border points and the stripe pairs catch it.
+  'double-solid': /^(border:|radius:[^:]+:[a-z-]+-stripe)/,
   // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.
   'shadow-offset-1': /^shadow:/,
   'alpha-ignored': /^interior:/,

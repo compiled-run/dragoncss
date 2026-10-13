@@ -1504,11 +1504,16 @@
         { "lines": "1651-1680", "symbol": "ComputeMiter", "source": "cited" },
         { "lines": "1651-1694", "symbol": "ComputeMiter", "source": "cited" },
         { "lines": "1696-1751", "symbol": "PaintOneBorderSide", "source": "cited" },
-        { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" }
+        { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" },
+        { "lines": "1217-1253", "symbol": "DrawDoubleBorder", "source": "cited" },
+        { "lines": "1255-1313", "symbol": "PaintBorderFastPath", "source": "cited" },
+        { "lines": "1795-1829", "symbol": "DrawCurvedDashedDottedBoxSide", "source": "cited" },
+        { "lines": "2435-2443", "symbol": "DoubleStripeOutsets", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": "checkRoundedElement", "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "borderDoubleRings", "use": "port" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
       ]
@@ -1578,9 +1583,11 @@
       "ranges": [
         { "lines": "207-231", "symbol": "PixelSnappedContouredInnerBorder", "source": "cited" },
         { "lines": "187-193", "symbol": "ContouredBorder", "source": "located" },
-        { "lines": "178-185", "symbol": "PixelSnappedContouredBorder", "source": "located" }
+        { "lines": "178-185", "symbol": "PixelSnappedContouredBorder", "source": "located" },
+        { "lines": "219-255", "symbol": "PixelSnappedContouredBorderWithOutsets", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "pushInset", "use": "port" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": "innerBorderRect", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
@@ -1679,6 +1686,7 @@
         { "lines": "1-93", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "doubleStripeWidth", "use": "port" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
       ]
     },
@@ -2169,6 +2177,7 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "outsetRadii", "use": "port" },
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "pushInset", "use": "port" },
         { "file": "packages/layout/src/paint-shadow.ts", "symbol": "adjustedRadius", "use": "port" },
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
       ]

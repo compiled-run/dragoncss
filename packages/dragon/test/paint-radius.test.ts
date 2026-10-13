@@ -8,6 +8,7 @@ import type { Targets } from '../src/types.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
+import { BORDER_EMITTER } from '../src/emit/paint/border.ts';
 import { IMAGE_EMITTER } from '../src/emit/paint/image.ts';
 import { RADIUS_EMITTER } from '../src/emit/paint/radius.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
@@ -109,14 +110,48 @@ describe('border-radius: refusals', () => {
     }
   });
 
-  it('a rounded box with a dashed, dotted or double border side is refused for ios and android at the radius declaration (PNT1b), and not for web', () => {
-    for (const style of ['dashed', 'dotted', 'double']) {
-      const { c, input } = compile(`.a { width: 40px; height: 20px; border: 2px ${style} blue; border-radius: 6px; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+  it('a rounded box with a dashed, dotted or 3D border side is refused for ios and android at the radius declaration (PNT1b), naming why, and not for web', () => {
+    const why: { readonly [style: string]: string } = {
+      dashed: "(Blink strokes the rounded centre line with Skia's dash path effect, fitted to the whole path's length, which Dragon does not port)",
+      dotted: "(Blink strokes the rounded centre line with Skia's dash path effect and round caps, fitted to the whole path's length, which Dragon does not port)",
+      groove: '(Blink draws its two shades along the rounded corners, which Dragon does not port)',
+      outset: '(Blink draws its two shades along the rounded corners, which Dragon does not port)',
+    };
+    for (const [style, says] of Object.entries(why)) {
+      // A dashed or dotted side next to four double sides is still refused by its own name.
+      const { c, input } = compile(`.a { width: 40px; height: 20px; border: 6px double blue; border-left-style: ${style}; border-radius: 6px; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
       const refused = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
       expect(refused.map((d) => d.target).sort(), style).toEqual(['android', 'ios']);
       for (const d of refused) {
         expect(spanTextOf(input, d)).toBe('6px');
-        expect(d.message).toContain(`rounded ${style} borders are PNT1b`);
+        expect(d.message).toBe(`a rounds its corners and has a ${style} border side; rounded ${style} borders are PNT1b, which ${d.target} does not draw yet ${says}`);
+      }
+      expectCatalogued(refused);
+    }
+  });
+
+  it('a rounded double border compiles on every target when its four sides are double in one width and colour, whatever the colour syntax', () => {
+    for (const css of ['.a { width: 60px; height: 40px; border: 6px double blue; border-radius: 10px; }', '.a { width: 60px; height: 40px; border: 1px double #ff000080; border-radius: 50%; }', '.a { width: 60px; height: 40px; border: 9px double red; border-top-color: #f00; border-left-color: rgb(255 0 0); border-radius: 4px 20px; }']) {
+      const { c } = compile(css, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+      expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE'), css).toEqual([]);
+    }
+  });
+
+  it('any other rounded double border is refused for ios and android at the radius declaration, and not for web', () => {
+    const cases = [
+      ['one double side', '.a { border: 6px solid blue; border-top-style: double; border-radius: 6px; }'],
+      ['a zero-width side', '.a { border: 6px double blue; border-left-width: 0; border-radius: 6px; }'],
+      ['a hidden side', '.a { border: 6px double blue; border-bottom-style: none; border-radius: 6px; }'],
+      ['two widths', '.a { border: 6px double blue; border-right-width: 9px; border-radius: 6px; }'],
+      ['two colours', '.a { border: 6px double blue; border-top-color: red; border-radius: 6px; }'],
+    ] as const;
+    for (const [name, css] of cases) {
+      const { c, input } = compile(css, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+      const refused = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
+      expect(refused.map((d) => d.target).sort(), name).toEqual(['android', 'ios']);
+      for (const d of refused) {
+        expect(spanTextOf(input, d), name).toBe('6px');
+        expect(d.message, name).toBe(`a rounds its corners and has a double border side, but not four double sides of one width and colour; rounded double borders are drawn only as four such sides, which ${d.target} draws as Blink's two rings (other rounded double borders are PNT1b)`);
       }
       expectCatalogued(refused);
     }
@@ -225,6 +260,38 @@ describe('border-radius: lowering and emission', () => {
     expect(k).toContain('val curve = dragonRoundedPath(v, shape, true)');
     // Each draw (direct and through the layer's recording) clips to the curve between the rect clip and the bitmap.
     expect(k.match(/clipRect\([^\n]+\)\n {4}if \(curve != null\) (canvas|inner)\.clipPath\(curve\)\n {4}\1\.drawBitmap\(image, null, dest, paint\)/g)?.length).toBe(2);
+  });
+
+  it('both border stages draw four double sides as the two rings of borderDoubleRings, and a double side under 3 device px as solid', () => {
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const file = BORDER_EMITTER.native[backend].file ?? '';
+      const stage = file.slice(file.indexOf(backend === 'uikit' ? 'public func dragonPaintBorderStage(' : 'fun dragonPaintBorderStage('));
+      // The double rings come first; every other rounded border reaches the ring painter with its effective styles.
+      const double = stage.indexOf(backend === 'uikit' ? 'if dragonDrawRoundedDouble(v, ctx, shape, Array(r[0..<8])) { return }' : 'if (dragonDrawRoundedDouble(v, canvas, shape, r.copyOfRange(0, 8))) return');
+      expect(double, backend).toBeGreaterThan(0);
+      expect(stage.indexOf('dragonEffectiveBorderStyle(v.dragonBorderStyles['), backend).toBeGreaterThan(double);
+      expect(stage.indexOf('dragonDrawRoundedBorders('), backend).toBeGreaterThan(stage.indexOf('dragonEffectiveBorderStyle(v.dragonBorderStyles['));
+      const fn = file.slice(file.indexOf(backend === 'uikit' ? 'public func dragonDrawRoundedDouble(' : 'fun dragonDrawRoundedDouble('));
+      expect(fn, backend).toContain('paintRadius_borderDoubleRings(e[0], e[1], e[2], e[3], JsArray(shape.borders');
+      // Ring one is the border box less the outer stripe rect, ring two the inner stripe rect less the padding edge (24 values each).
+      expect(fn, backend).toMatch(/\[\[0, 8, 4, 16\], \[24, 32, 28, 40\]\]|arrayOf\(intArrayOf\(0, 8, 4, 16\), intArrayOf\(24, 32, 28, 40\)\)/);
+      expect(fn, backend).toContain('a rounded double border that is not four double sides in one colour is PNT1b');
+    }
+    expect(BORDER_EMITTER.native.uikit.file).toContain('return style == "double" && devicePx < 3 ? "solid" : style');
+    expect(BORDER_EMITTER.native['android-views'].file).toContain('if (style == "double" && devicePx < 3.0) "solid" else style');
+  });
+
+  it('the double-solid plant swaps exactly its one flag line on each backend, which then fills the border box to the padding edge', () => {
+    const plant = BORDER_EMITTER.plants.find((p) => p.name === 'double-solid');
+    if (plant === undefined) throw new Error('no double-solid plant');
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const file = BORDER_EMITTER.native[backend].file ?? '';
+      const [from, to] = plant.replace[backend];
+      expect(file.split(from).length - 1, backend).toBe(1);
+      expect(file, backend).not.toContain(to);
+    }
+    expect(BORDER_EMITTER.native.uikit.file).toContain('let fills = dragonDoublePlantSolid ? [[0, 8, 28, 40]] :');
+    expect(BORDER_EMITTER.native['android-views'].file).toContain('val fills = if (DRAGON_DOUBLE_PLANT_SOLID) arrayOf(intArrayOf(0, 8, 28, 40)) else');
   });
 
   it('on Android API 31 and 32 an img\'s empty clip view gets no hardware layer or DST_OUT mask, and loses one an earlier layout gave it', () => {
