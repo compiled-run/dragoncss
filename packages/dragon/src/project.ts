@@ -30,6 +30,7 @@ import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './a
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
+import { refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -1299,6 +1300,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
       // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused.
       refuseAnimatedGradients(animation, cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), nativeTargets, diagnostics);
+      // PNT1b: a rounded double border draws as two rings only in one colour, and the animator feeds each side's colour apart.
+      refuseAnimatedRoundedDoubles(animation, cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), nativeTargets, diagnostics);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.

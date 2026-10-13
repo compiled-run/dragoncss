@@ -11,7 +11,8 @@ import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { BORDER_EMITTER } from '../src/emit/paint/border.ts';
 import { IMAGE_EMITTER } from '../src/emit/paint/image.ts';
 import { RADIUS_EMITTER } from '../src/emit/paint/radius.ts';
-import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
+import type { DraftTree, FrontEndResult } from '../src/index.ts';
+import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not, spanTextOf } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/radius.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -27,6 +28,18 @@ const spanOf = (css: string, d: Diagnostic): string => (d.origin.kind === 'autho
 function compile(css: string, targets: Targets = { ios: { minimum: '15.0' }, web: {} }) {
   const input = inputFor(`body { margin: 0; font-size: 20px; } ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]);
   return { input, c: createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input) };
+}
+
+/** A box .a that gains class on in the open state, as animations.test.ts states it, so a transition has a state pair to start it. */
+function stated(css: string): FrontEndResult {
+  const input = inputFor(css, (r) => {
+    const d = div(r, 'a', ['a']);
+    const on = { value: [{ when: eq('open', true), value: { owner: DOC, sheet: 's', name: 'on' } }, { when: not(eq('open', true)), value: null }], origin: d.origin };
+    return [{ ...d, classes: [...d.classes, on] }];
+  });
+  const tree = input.tree as DraftTree;
+  const root = tree.components[0] as DraftTree['components'][number];
+  return { ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 'open', domain: [false, true], initial: false, origin: root.origin }] }] } };
 }
 
 const CORNERS = ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'];
@@ -155,6 +168,43 @@ describe('border-radius: refusals', () => {
       }
       expectCatalogued(refused);
     }
+  });
+
+  it('an animation or transition of a border side colour on a rounded double border is refused for ios and android, per side or shorthand', () => {
+    // The native animator feeds each side's colour apart (dragonAnimatedSides), and the two rings are one colour (dragonDrawRoundedDouble).
+    const run = (css: string, targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }) => {
+      const input = stated(`body { margin: 0; } ${css}`);
+      const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+      return { input, c, refused: c.diagnostics.filter((d) => d.message.includes('the native animator changes each side')) };
+    };
+    const summary = (ds: readonly Diagnostic[]): string[] => ds.map((d) => `${d.target} ${d.message.split(':')[0]}`).sort();
+    const box = '.a { width: 40px; height: 30px; border: 6px double blue; border-radius: 10px; }';
+    const sides = (what: string, ps: readonly string[]): string[] => ps.flatMap((p) => [`android ${what} of ${p} on a`, `ios ${what} of ${p} on a`]).sort();
+    const all = ['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
+    const cases: [string, string, string, string[]][] = [
+      ['a transition of one side', `${box} .a { transition: border-top-color 1s; } .a.on { border-color: red; }`, 'border-top-color 1s', sides('a transition', ['border-top-color'])],
+      ['a transition of the shorthand', `${box} .a { transition: border-color 1s; } .a.on { border-color: red; }`, 'border-color 1s', sides('a transition', all)],
+      ['a transition of all', `${box} .a { transition: all 1s; } .a.on { border-left-color: red; border-top-color: red; border-right-color: red; border-bottom-color: red; }`, 'all 1s', sides('a transition', all)],
+      ['@keyframes of one side', `${box} .a { animation: k 1s infinite; } @keyframes k { to { border-top-color: red; } }`, 'k 1s infinite', sides('an animation', ['border-top-color'])],
+      ['@keyframes of the shorthand', `${box} .a { animation: k 1s infinite; } @keyframes k { to { border-color: red; } }`, 'k 1s infinite', sides('an animation', all)],
+    ];
+    for (const [name, css, span, expected] of cases) {
+      const { input, refused } = run(css);
+      expect(summary(refused), name).toEqual(expected);
+      for (const d of refused) {
+        expect(d.code, name).toBe('DRAGON_UNSUPPORTED_VALUE');
+        expect(spanTextOf(input, d), name).toBe(span);
+      }
+      expectCatalogued(refused);
+      expect(run(css, { web: {} }).refused, `${name} on web`).toEqual([]);
+    }
+    expect(run(`${box} .a { transition: border-top-color 1s; } .a.on { border-color: red; }`).refused[0]?.message).toBe("a transition of border-top-color on a: the box is a rounded double border, which ios draws as Blink's two rings only while its four sides are one colour, and the native animator changes each side's colour apart (animated rounded double borders are PNT1b)");
+    // Not refused: a rounded solid border, a square double border, a transition no state starts, and color under four currentcolor sides
+    // (the four sides stay one colour).
+    expect(run('.a { width: 40px; height: 30px; border: 6px solid blue; border-radius: 10px; transition: border-top-color 1s; } .a.on { border-color: red; }').refused).toEqual([]);
+    expect(run('.a { width: 40px; height: 30px; border: 6px double blue; transition: border-top-color 1s; } .a.on { border-color: red; }').refused).toEqual([]);
+    expect(run(`${box} .a { transition: border-top-color 1s; } .a.on { width: 30px; }`).refused).toEqual([]);
+    expect(run('.a { width: 40px; height: 30px; color: blue; border: 6px double; border-radius: 10px; animation: k 1s infinite; } @keyframes k { to { color: red; } }').c.diagnostics).toEqual([]);
   });
 
   it('a rounded html, body or iframe, and a rounded img with padding or another overflow, are refused for ios and android at the radius declaration, and not for web', () => {

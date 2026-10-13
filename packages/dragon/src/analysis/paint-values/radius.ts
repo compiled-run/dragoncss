@@ -9,6 +9,8 @@ import { valueToString } from '../computed.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { isReplacedTag } from '../elements/replaced.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import type { AnimationAnalysis } from '../animations.ts';
+import type { Diagnostic } from '../../types.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
@@ -73,6 +75,31 @@ function unroundedReplaced(el: ResolvedElement, tag: string, t: string): { reado
   return null;
 }
 
+type SideValue = (part: 'style' | 'width' | 'color', k: number) => ResolvedValue['value'];
+
+/** A side's computed border style, width or colour (k: top, right, bottom, left). */
+const sideOf = (el: ResolvedElement): SideValue => (part, k) => (el.props.get(`border-${SIDES[k] as string}-${part}` as Longhand) as ResolvedValue).value;
+
+/** Whether a side paints: a style other than none or hidden, and a width above 0. */
+const visibleSide = (side: SideValue) => (k: number): boolean => {
+  const style = side('style', k);
+  const width = side('width', k);
+  return !(style.kind === 'keyword' && HIDDEN_STYLES.has(style.value)) && !(width.kind === 'length' && width.value === 0);
+};
+
+/** Whether all four sides are visible double in one computed width and one colour: Blink's PaintBorderFastPath two rings. */
+function fourUniformDoubles(el: ResolvedElement): boolean {
+  const side = sideOf(el);
+  const visible = visibleSide(side);
+  const uniform = (part: 'width' | 'color'): boolean => [1, 2, 3].every((k) => sideKey(side(part, k)) === sideKey(side(part, 0)));
+  return [0, 1, 2, 3].every((k) => visible(k) && sideKey(side('style', k)) === 'double') && uniform('width') && uniform('color');
+}
+
+/** Whether any corner of the element has both radius components above 0. */
+function roundsCorners(el: ResolvedElement): boolean {
+  return RADIUS_LONGHANDS.map((p) => cornerComponents((el.props.get(p) as ResolvedValue).value)).some((c) => c !== null && c[0].value > 0 && c[1].value > 0);
+}
+
 /** Why a rounded element is refused on a native target, with its fix, or null: what PNT1 does not draw round. */
 function unrounded(el: ResolvedElement, t: string): { readonly message: string; readonly manual: string } | null {
   const tag = el.element.tag;
@@ -81,12 +108,8 @@ function unrounded(el: ResolvedElement, t: string): { readonly message: string; 
     return { message: `<${tag}> ${el.element.address} rounds its corners, but its background propagates to the canvas, which ${t} does not paint round`, manual: 'Round a wrapper element inside body instead of html or body.' };
   }
   if (isReplacedTag(tag)) return unroundedReplaced(el, tag, t);
-  const side = (part: 'style' | 'width' | 'color', k: number): ResolvedValue['value'] => (el.props.get(`border-${SIDES[k] as string}-${part}` as Longhand) as ResolvedValue).value;
-  const visible = (k: number): boolean => {
-    const style = side('style', k);
-    const width = side('width', k);
-    return !(style.kind === 'keyword' && HIDDEN_STYLES.has(style.value)) && !(width.kind === 'length' && width.value === 0);
-  };
+  const side = sideOf(el);
+  const visible = visibleSide(side);
   for (let k = 0; k < 4; k++) {
     const style = side('style', k);
     if (!visible(k) || style.kind !== 'keyword' || !UNROUNDED_STYLES.has(style.value)) continue;
@@ -96,9 +119,7 @@ function unrounded(el: ResolvedElement, t: string): { readonly message: string; 
   // Blink paints a rounded double border as two rings only when its four sides are double in one colour (PaintBorderFastPath);
   // equal widths keep every side double, or every side solid, at each device scale (BorderEdge::EffectiveStyle).
   const doubled = [0, 1, 2, 3].filter((k) => visible(k) && sideKey(side('style', k)) === 'double');
-  if (doubled.length === 0) return null;
-  const uniform = (part: 'style' | 'width' | 'color'): boolean => [1, 2, 3].every((k) => sideKey(side(part, k)) === sideKey(side(part, 0)));
-  if (doubled.length === 4 && uniform('width') && uniform('color')) return null;
+  if (doubled.length === 0 || fourUniformDoubles(el)) return null;
   return { message: `${el.element.address} rounds its corners and has a double border side, but not four double sides of one width and colour; rounded double borders are drawn only as four such sides, which ${t} draws as Blink's two rings (other rounded double borders are PNT1b)`, manual: 'Give every side of the rounded box the same double border, or use solid borders.' };
 }
 
@@ -110,8 +131,7 @@ function unrounded(el: ResolvedElement, t: string): { readonly message: string; 
  * web target draws all of them itself.
  */
 const checkRoundedElement: PaintCheck = (el, targets, diagnostics, reported) => {
-  const lengths = RADIUS_LONGHANDS.map((p) => cornerComponents((el.props.get(p) as ResolvedValue).value));
-  if (!lengths.some((c) => c !== null && c[0].value > 0 && c[1].value > 0)) return;
+  if (!roundsCorners(el)) return;
   const source = RADIUS_LONGHANDS.map((p) => el.props.get(p) as ResolvedValue).find((v) => v.declaration !== null);
   if (source === undefined || source.declaration === null) return;
   const span = source.declaration.valueSpan;
@@ -143,3 +163,57 @@ export const RADIUS_VALUES: PaintValues = {
     }
   },
 };
+
+/** The per-side colours the native animator feeds the border stage one side at a time (dragonAnimatedSides). */
+const SIDE_COLORS: readonly Longhand[] = ['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
+
+/**
+ * PNT1b on the native targets: the border stage draws a rounded double border as Blink's two rings only while its four sides are
+ * one colour (dragonDrawRoundedDouble, which traps on any other), and the native animator feeds each side's colour apart
+ * (dragonAnimatedSides), so mid-animation the sides differ. An animation or transition of a border side's colour on a box that is a
+ * rounded double border in any reachable state is refused, at its animation-name or transition-property (a transition only where a
+ * reachable state changes the colour, as BG2c's refuseAnimatedGradients). roots are the resolved roots of the analysed cases, in
+ * the analysis's order.
+ */
+export function refuseAnimatedRoundedDoubles(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[]): void {
+  if (nativeTargets.length === 0) return;
+  const reported = new Set<string>();
+  const trees = analysis.cases.map((_, i) => {
+    const byAddress = new Map<string, ResolvedElement>();
+    const walk = (el: ResolvedElement): void => {
+      byAddress.set(el.element.address, el);
+      for (const k of el.children) if (k.kind === 'element') walk(k);
+    };
+    const root = roots[i];
+    if (root !== undefined) walk(root);
+    return byAddress;
+  });
+  const changes = (address: string, p: Longhand): boolean => new Set(trees.map((t) => JSON.stringify(t.get(address)?.props.get(p)?.value ?? null))).size > 1;
+  const roundedDouble = (address: string): boolean => trees.some((t) => {
+    const el = t.get(address);
+    return el !== undefined && !isReplacedTag(el.element.tag) && roundsCorners(el) && fourUniformDoubles(el);
+  });
+  analysis.cases.forEach((c, i) => {
+    const byAddress = trees[i] as Map<string, ResolvedElement>;
+    for (const ea of c.elements.values()) {
+      const el = byAddress.get(ea.address);
+      if (el === undefined) continue;
+      const animated = [...new Set(ea.animations.flatMap((a) => (a.name === 'none' || !a.hasKeyframes ? [] : (analysis.keyframes.get(a.name)?.blocks ?? []).flatMap((b) => b.values.map((v) => v.property)))))].filter((p) => SIDE_COLORS.includes(p as Longhand));
+      const transitioned = SIDE_COLORS.filter((p) => {
+        const l = ea.listings.get(p);
+        return l !== undefined && l.mode === 'listed' && l.delay + l.duration > 0 && changes(ea.address, p);
+      });
+      if ((animated.length === 0 && transitioned.length === 0) || !roundedDouble(ea.address)) continue;
+      for (const [p, what, longhand] of [...animated.map((x) => [x, 'an animation', 'animation-name'] as const), ...transitioned.map((x) => [x, 'a transition', 'transition-property'] as const)]) {
+        const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
+        const origin = d === undefined ? el.element.node.origin : authored(d.valueSpan);
+        for (const t of nativeTargets) {
+          const id = `${t}|${ea.address}|${p}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${what} of ${p} on ${ea.address}: the box is a rounded double border, which ${t} draws as Blink's two rings only while its four sides are one colour, and the native animator changes each side's colour apart (animated rounded double borders are PNT1b)`, manual: `Animate ${p} on a box without a rounded double border, or remove the ${longhand === 'animation-name' ? 'animation' : 'transition'}.` }));
+        }
+      }
+    }
+  });
+}
