@@ -175,7 +175,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -290,7 +294,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -405,7 +413,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -520,7 +532,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -635,7 +651,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -750,7 +770,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -873,7 +897,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -988,7 +1016,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -1103,7 +1135,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -1218,7 +1254,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -1333,7 +1373,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -1448,7 +1492,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -1571,7 +1619,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -1686,7 +1738,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -1801,7 +1857,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -1916,7 +1976,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -2031,7 +2095,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -2146,7 +2214,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -2269,7 +2341,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -2384,7 +2460,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -2499,7 +2579,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -2614,7 +2698,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -2729,7 +2817,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -2844,7 +2936,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -2967,7 +3063,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -3082,7 +3182,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -3197,7 +3301,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -3312,7 +3420,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -3427,7 +3539,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -3542,7 +3658,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -3665,7 +3785,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -3780,7 +3904,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -3895,7 +4023,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -4010,7 +4142,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -4125,7 +4261,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -4240,7 +4380,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -4363,7 +4507,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -4478,7 +4626,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -4593,7 +4745,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -4708,7 +4864,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -4823,7 +4983,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -4938,7 +5102,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -5061,7 +5229,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -5176,7 +5348,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -5291,7 +5467,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -5406,7 +5586,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -5521,7 +5705,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -5636,7 +5824,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -5759,7 +5951,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -5874,7 +6070,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -5989,7 +6189,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -6104,7 +6308,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -6219,7 +6427,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -6334,7 +6546,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
@@ -6457,7 +6673,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -6572,7 +6792,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -6687,7 +6911,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -6802,7 +7030,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -6917,7 +7149,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     },
     {
@@ -7032,7 +7268,11 @@
       "visibility": "visible",
       "vertical-align": "baseline",
       "float": "none",
-      "clear": "none"
+      "clear": "none",
+      "user-select": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px"
      }
     }
    ]
