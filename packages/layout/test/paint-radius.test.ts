@@ -61,7 +61,7 @@ describe('paint-radius vectors', () => {
     const v = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'paint-vectors', 'radius', 'vectors.json'), 'utf8')) as { feature: string; lines: string[] };
     expect(v.feature).toBe('radius');
     const names = new Set(v.lines.map((l) => (JSON.parse(l) as string[])[0]));
-    expect([...names].sort()).toEqual(['paint:radius:constrainCornerRadii', 'paint:radius:hasRoundedCorner', 'paint:radius:innerCornerRadii', 'paint:radius:outlineOffsetPx', 'paint:radius:outlineRings', 'paint:radius:outlineWidthPx', 'paint:radius:radiiRenderable', 'paint:radius:radiusComponent', 'paint:radius:resolveCornerRadii', 'paint:radius:roundedShape']);
+    expect([...names].sort()).toEqual(['paint:radius:borderDoubleRings', 'paint:radius:constrainCornerRadii', 'paint:radius:doubleStripeWidth', 'paint:radius:hasRoundedCorner', 'paint:radius:innerCornerRadii', 'paint:radius:outlineOffsetPx', 'paint:radius:outlineRings', 'paint:radius:outlineWidthPx', 'paint:radius:radiiRenderable', 'paint:radius:radiusComponent', 'paint:radius:resolveCornerRadii', 'paint:radius:roundedShape']);
     expect(v.lines.length).toBeGreaterThanOrEqual(90);
   });
 });
