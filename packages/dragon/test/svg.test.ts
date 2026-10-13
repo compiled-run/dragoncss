@@ -126,6 +126,24 @@ describe('the svg model in a compile', () => {
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
     expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1 })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
+  it('refuses on native, and compiles for web, a shape Chrome fades or hides and an <svg> Chrome does not clip: native draws every shape opaque and clips to the box', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '40']])];
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false));
+    expect(refused('')).toEqual([]);
+    expect(refused('circle { opacity: 1; visibility: visible; } svg { overflow: hidden; }')).toEqual([]);
+    for (const [css, message] of [
+      ['circle { opacity: 0; }', 'opacity: 0 on <circle> c is not supported on native: a shape is drawn opaque there until the SVG structure package SVG-b'],
+      ['circle { opacity: 50%; }', 'opacity: 0.5 on <circle> c is not supported on native: a shape is drawn opaque there until the SVG structure package SVG-b'],
+      ['svg { visibility: hidden; }', 'visibility: hidden on <circle> c is not supported on native: a shape is drawn there even where Chrome hides it, until the SVG structure package SVG-b'],
+    ] as const) {
+      const e = refused(css);
+      // 50% also takes the translucent-opacity refusal (PNT1-opacity-b), which any box gets.
+      expect(e.filter((m) => m.includes(' on <circle> c ')).sort(), css).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${message}`, `DRAGON_UNSUPPORTED_VALUE ios ${message}`]);
+    }
+    const overflow = refused('svg { overflow: visible; }');
+    expect(overflow.filter((m) => m.includes('on <svg> s is not supported on native: Chrome paints its shapes past the box')).sort()).toEqual(['android', 'ios'].flatMap((t) => ['overflow-x'].map((p) => `DRAGON_UNSUPPORTED_VALUE ${t} ${p}: visible on <svg> s is not supported on native: Chrome paints its shapes past the box, and native clips them to it until the SVG structure package SVG-b`)));
+    expect(overflow.every((m) => !m.startsWith('DRAGON_UNSUPPORTED_VALUE web') && !m.startsWith('DRAGON_UNSUPPORTED_VALUE *'))).toBe(true);
+  });
   it("draws no shape Chrome renders nothing for: a zero-size rect or circle, an empty path, and a shape with display: none", () => {
     expect([svgShapeEmpty({ kind: 'rect', x: 4, y: 2, width: 0, height: 10 }), svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 3, height: 0 }), svgShapeEmpty({ kind: 'circle', cx: 1, cy: 1, r: 0 }), svgShapeEmpty({ kind: 'path', segments: [] })]).toEqual([true, true, true, true]);
     expect([svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 1, height: 1 }), svgShapeEmpty({ kind: 'circle', cx: 0, cy: 0, r: 1 })]).toEqual([false, false]);

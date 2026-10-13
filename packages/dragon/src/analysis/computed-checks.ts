@@ -543,8 +543,8 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
  * a percentage stroke-width (relative to the viewport diagonal).
  */
 function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string): void => {
-    for (const t of targets) {
+  const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string, on: readonly string[] = targets): void => {
+    for (const t of on) {
       const id = `${t}|svg-${what}|${el.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
@@ -552,6 +552,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     }
   };
   const tag = el.element.tag;
+  const native = targets.filter((t) => t !== 'web');
   for (const p of ['fill', 'stroke'] as const) {
     const v = el.props.get(p) as ResolvedValue;
     const why = svgPaintRefusal(p, v.value);
@@ -566,7 +567,23 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     if (el.element.attributes.has('viewBox') && auto.length > 0) {
       refuse('ratio', el.element.node.origin, `<svg> ${el.element.address} has a viewBox and ${auto.join(' and ')} auto: sizing from the viewBox ratio is not built yet (package SVG-ratio)`, `Give <svg> ${el.element.address} a width and a height, as attributes or in CSS.`);
     }
+    // SVG-a2: native clips the shapes to the svg's box (emit/paint/image.ts), as Chrome does at the UA's overflow: hidden only.
+    for (const p of ['overflow-x', 'overflow-y'] as const) {
+      const v = el.props.get(p) as ResolvedValue;
+      if (keywordOf(v) === 'hidden') continue;
+      refuse('overflow', v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <svg> ${el.element.address} is not supported on native: Chrome paints its shapes past the box, and native clips them to it until the SVG structure package SVG-b`, `Leave overflow on <svg> ${el.element.address} at hidden.`, native);
+    }
     return;
+  }
+  // SVG-a2: native draws a shape opaque and visible (lower/paint/image.ts carries geometry and paints only), so a shape Chrome
+  // fades or hides is refused there.
+  const opacity = el.props.get('opacity') as ResolvedValue;
+  if (!(opacity.value.kind === 'number' && opacity.value.value === 1) && !(opacity.value.kind === 'percentage' && opacity.value.value === 100)) {
+    refuse('opacity', opacity.declaration === null ? el.element.node.origin : authored(opacity.declaration.valueSpan), `opacity: ${valueToString(opacity.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn opaque there until the SVG structure package SVG-b`, `Set opacity on the <svg>, or leave it at 1 on <${tag}> ${el.element.address}.`, native);
+  }
+  const visibility = el.props.get('visibility') as ResolvedValue;
+  if (keywordOf(visibility) !== 'visible') {
+    refuse('visibility', visibility.declaration === null ? el.element.node.origin : authored(visibility.declaration.valueSpan), `visibility: ${valueToString(visibility.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn there even where Chrome hides it, until the SVG structure package SVG-b`, `Remove the shape, or give it display: none.`, native);
   }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;
