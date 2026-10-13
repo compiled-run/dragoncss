@@ -3,10 +3,9 @@
 // check on Dragon's web output after every touch step (SELD-R2 R2, R14). Files of groups that no longer exist are removed.
 // Run with: pnpm run parity:trace-capture
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { launchChrome } from '../chrome.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
-import { captureTraces, expectedTraceDir, expectedTracePath, hoverMediaLags, traceCaptureJson, traceGroups } from '../trace-capture.ts';
+import { captureTraces, expectedTraceDir, expectedTracePath, hoverMediaLags, launchTraceChrome, traceCaptureJson, traceGroups } from '../trace-capture.ts';
 
 if (process.argv.slice(2).some((a) => a !== '--')) throw new Error(`parity:trace-capture takes no arguments, got ${JSON.stringify(process.argv.slice(2))}`);
 requireReferencePlatform(hostPlatform());
@@ -15,7 +14,8 @@ mkdirSync(dir, { recursive: true });
 const groups = traceGroups();
 const keep = new Set(groups.map((g) => expectedTracePath(g.id).slice(dir.length + 1)));
 for (const f of readdirSync(dir)) if (f.endsWith('.trace.json') && !keep.has(f)) rmSync(`${dir}/${f}`);
-const browser = await launchChrome();
+const browser = await launchTraceChrome();
+console.log('parity:trace-capture: touch emulation keeps (hover: none) and (pointer: coarse) through a WebPreferences update');
 let steps = 0;
 try {
   // Each group's pages in their own contexts (captureTraces), CHROME_PAGES groups at a time.
