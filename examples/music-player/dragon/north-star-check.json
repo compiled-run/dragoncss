@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 197,
-  "errors": 192,
+  "diagnostics": 193,
+  "errors": 188,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -156,8 +156,8 @@
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 5,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 5,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 39,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 39,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 37,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 37,
    "DRAGON_UNSUPPORTED_VALUE [web]": 4
   },
   "perTarget": {
@@ -183,7 +183,7 @@
      "DRAGON_UNSUPPORTED_FONT": 25,
      "DRAGON_UNSUPPORTED_PROPERTY": 10,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 39
+     "DRAGON_UNSUPPORTED_VALUE": 37
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -200,7 +200,7 @@
      "DRAGON_UNSUPPORTED_FONT": 25,
      "DRAGON_UNSUPPORTED_PROPERTY": 10,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 39
+     "DRAGON_UNSUPPORTED_VALUE": 37
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -304,7 +304,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 69,
    "B-unwrapped": 69,
-   "C-context": 145
+   "C-context": 141
   }
  },
  "features": {
@@ -7562,70 +7562,6 @@
     "text": "YouTube Terms"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/terms-link:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|src@examples/music-player/tree/src/pages/index.tsrx:Google Privacy|text page/privacy-link:text0 draws text-decoration (underline from page/privacy-link); android draws decorations from TDEC-b",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/pages/index.tsrx",
-    "text": "Google Privacy"
-   },
-   "message": "text page/privacy-link:text0 draws text-decoration (underline from page/privacy-link); android draws decorations from TDEC-b",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|src@examples/music-player/tree/src/pages/index.tsrx:YouTube Terms|text page/terms-link:text0 draws text-decoration (underline from page/terms-link); android draws decorations from TDEC-b",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/pages/index.tsrx",
-    "text": "YouTube Terms"
-   },
-   "message": "text page/terms-link:text0 draws text-decoration (underline from page/terms-link); android draws decorations from TDEC-b",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|src@examples/music-player/tree/src/pages/index.tsrx:Google Privacy|text page/privacy-link:text0 draws text-decoration (underline from page/privacy-link); ios draws decorations from TDEC-b",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/pages/index.tsrx",
-    "text": "Google Privacy"
-   },
-   "message": "text page/privacy-link:text0 draws text-decoration (underline from page/privacy-link); ios draws decorations from TDEC-b",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|src@examples/music-player/tree/src/pages/index.tsrx:YouTube Terms|text page/terms-link:text0 draws text-decoration (underline from page/terms-link); ios draws decorations from TDEC-b",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/pages/index.tsrx",
-    "text": "YouTube Terms"
-   },
-   "message": "text page/terms-link:text0 draws text-decoration (underline from page/terms-link); ios draws decorations from TDEC-b",
    "viaRelated": false,
    "passes": [
     "C-context"
