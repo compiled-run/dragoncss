@@ -45,8 +45,11 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/grid/grid_track_collection.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_track_sizing_algorithm.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/inline_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/inline_node.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/justification_utils.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/line_truncator.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
@@ -81,7 +84,10 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/geometry/calculation_value.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/contoured_rect.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/physical_size.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/platform/text/capitalize.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/platform/text/character_property_data.h`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/platform/text/justification_opportunity.cc`: Copyright 2025 The Chromium Authors
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors
 - `ui/gfx/geometry/quad_f.cc`: Copyright 2012 The Chromium Authors

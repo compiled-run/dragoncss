@@ -298,8 +298,16 @@
       "sizing-keywords-block-rtl": [17,28],
       "sizing-keywords-contribution": [10,14],
       "sizing-keywords-contribution-rtl": [8,14],
+      "text-justify-ahem": [13,20],
+      "text-justify-ahem-rtl": [15,20],
+      "text-overflow-lines": [7,16],
+      "text-overflow-fonts": [6,6],
+      "text-overflow-blocks": [3,6],
       "text-spacing-ahem": [9,16],
       "text-spacing-ahem-rtl": [9,16],
+      "text-transform-keywords": [18,27],
+      "text-transform-keywords-rtl": [15,27],
+      "text-transform-text": [6,11],
       "transform-nested": [0,1],
       "transform-text": [0,3],
       "visibility-flex": [2,2],
@@ -307,7 +315,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [17,22],
+      "white-space-wrap": [14,29]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -607,8 +617,16 @@
       "sizing-keywords-block-rtl": [21,28],
       "sizing-keywords-contribution": [11,14],
       "sizing-keywords-contribution-rtl": [11,14],
+      "text-justify-ahem": [13,20],
+      "text-justify-ahem-rtl": [15,20],
+      "text-overflow-lines": [15,16],
+      "text-overflow-fonts": [6,6],
+      "text-overflow-blocks": [3,6],
       "text-spacing-ahem": [10,16],
       "text-spacing-ahem-rtl": [11,16],
+      "text-transform-keywords": [18,27],
+      "text-transform-keywords-rtl": [15,27],
+      "text-transform-text": [6,11],
       "transform-nested": [0,1],
       "transform-text": [0,3],
       "visibility-flex": [2,2],
@@ -616,7 +634,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [17,22],
+      "white-space-wrap": [14,29]
     }
   },
   "android": {
@@ -918,8 +938,16 @@
       "sizing-keywords-block-rtl": [17,28],
       "sizing-keywords-contribution": [10,14],
       "sizing-keywords-contribution-rtl": [8,14],
+      "text-justify-ahem": [13,20],
+      "text-justify-ahem-rtl": [15,20],
+      "text-overflow-lines": [7,16],
+      "text-overflow-fonts": [6,6],
+      "text-overflow-blocks": [3,6],
       "text-spacing-ahem": [9,16],
       "text-spacing-ahem-rtl": [9,16],
+      "text-transform-keywords": [18,27],
+      "text-transform-keywords-rtl": [15,27],
+      "text-transform-text": [6,11],
       "transform-nested": [0,1],
       "transform-text": [0,3],
       "visibility-flex": [2,2],
@@ -927,7 +955,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [17,22],
+      "white-space-wrap": [14,29]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -1227,8 +1257,16 @@
       "sizing-keywords-block-rtl": [21,28],
       "sizing-keywords-contribution": [11,14],
       "sizing-keywords-contribution-rtl": [11,14],
+      "text-justify-ahem": [13,20],
+      "text-justify-ahem-rtl": [15,20],
+      "text-overflow-lines": [15,16],
+      "text-overflow-fonts": [6,6],
+      "text-overflow-blocks": [3,6],
       "text-spacing-ahem": [10,16],
       "text-spacing-ahem-rtl": [11,16],
+      "text-transform-keywords": [18,27],
+      "text-transform-keywords-rtl": [15,27],
+      "text-transform-text": [6,11],
       "transform-nested": [0,1],
       "transform-text": [0,3],
       "visibility-flex": [2,2],
@@ -1236,7 +1274,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [17,22],
+      "white-space-wrap": [14,29]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -1536,8 +1576,16 @@
       "sizing-keywords-block-rtl": [18,28],
       "sizing-keywords-contribution": [10,14],
       "sizing-keywords-contribution-rtl": [10,14],
+      "text-justify-ahem": [13,20],
+      "text-justify-ahem-rtl": [15,20],
+      "text-overflow-lines": [8,16],
+      "text-overflow-fonts": [6,6],
+      "text-overflow-blocks": [3,6],
       "text-spacing-ahem": [9,16],
       "text-spacing-ahem-rtl": [11,16],
+      "text-transform-keywords": [18,27],
+      "text-transform-keywords-rtl": [15,27],
+      "text-transform-text": [6,11],
       "transform-nested": [0,1],
       "transform-text": [0,3],
       "visibility-flex": [2,2],
@@ -1545,7 +1593,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [17,22],
+      "white-space-wrap": [15,29]
     }
   }
 }

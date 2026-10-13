@@ -51,8 +51,10 @@ import type {
   SafeAreaSide,
   SizeValue,
   TextAlign,
+  TextOverflow,
   TextLeaf,
   TextWrapMode,
+  WhiteSpaceCollapse,
   VerticalAlignKeyword,
   VerticalAlignValue,
   ViewportLength,
@@ -640,7 +642,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -838,6 +840,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
+    textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -845,14 +848,13 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
   obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing'], path);
-  lit(field(o, 'whiteSpaceCollapse', path), ['collapse'], `${path}.whiteSpaceCollapse`);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
     text: str(field(o, 'text', path), `${path}.text`),
     font: fontSpec(field(o, 'font', path), `${path}.font`),
     lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
-    whiteSpaceCollapse: 'collapse',
+    whiteSpaceCollapse: lit(field(o, 'whiteSpaceCollapse', path), ['collapse', 'preserve', 'preserve-breaks', 'break-spaces'], `${path}.whiteSpaceCollapse`) as WhiteSpaceCollapse,
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
     letterSpacing: calcExpr(field(o, 'letterSpacing', path), `${path}.letterSpacing`),
   };
@@ -988,7 +990,8 @@ const FAULT_KEYS: readonly string[] = [
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
   'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
-  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
+  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
+  'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1049,6 +1052,12 @@ function decodeFaults(v: JsonValue): EngineFaults {
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
     overflowIgnoresPadding: b('overflowIgnoresPadding'),
+    ellipsisInTextFont: b('ellipsisInTextFont'),
+    noDotsFallback: b('noDotsFallback'),
+    truncateChangesBlockSize: b('truncateChangesBlockSize'),
+    preservedSpaceCollapsed: b('preservedSpaceCollapsed'),
+    trailingPreWrapNotHanging: b('trailingPreWrapNotHanging'),
+    breakSpacesHanging: b('breakSpacesHanging'),
   };
 }
 
@@ -1100,10 +1109,11 @@ function numbers(v: JsonValue, path: string): number[] {
 }
 
 function fontData(v: JsonValue, path: string): FontData {
-  const o = obj(v, ['unitsPerEm', 'ascent', 'descent', 'lineGap', 'advances', 'xHeight', 'capHeight', 'zeroAdvance'], path);
+  const o = obj(v, ['unitsPerEm', 'ascent', 'descent', 'lineGap', 'advances', 'xHeight', 'capHeight', 'zeroAdvance', 'ellipsisAdvance'], path);
   return {
     unitsPerEm: numField(o, 'unitsPerEm', path), ascent: numField(o, 'ascent', path), descent: numField(o, 'descent', path), lineGap: numField(o, 'lineGap', path),
     advances: numbers(field(o, 'advances', path), `${path}.advances`), xHeight: numField(o, 'xHeight', path), capHeight: numField(o, 'capHeight', path), zeroAdvance: numField(o, 'zeroAdvance', path),
+    ellipsisAdvance: numField(o, 'ellipsisAdvance', path),
   };
 }
 

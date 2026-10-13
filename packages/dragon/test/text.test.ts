@@ -149,14 +149,15 @@ describe('white-space is a shorthand over white-space-collapse and text-wrap-mod
       expect(explainOne(c, 'web', 'a', 'text-wrap-mode').value, decl).toBe(wrap);
     }
   });
-  it('pre, pre-wrap and pre-line set a collapse mode no profile supports: DRAGON_UNSUPPORTED_VALUE on the value', () => {
-    for (const v of ['pre', 'pre-wrap', 'pre-line']) {
-      const c = compile(`white-space: ${v};`);
+  // TXT2-c lays out the preserving modes (packages/parity/test/white-space.test.ts proves them against Chrome).
+  it('pre, pre-wrap, pre-line and break-spaces set both longhands and compile for web and ios', () => {
+    for (const [decl, collapse, wrap] of [['white-space: pre;', 'preserve', 'nowrap'], ['white-space: pre-wrap;', 'preserve', 'wrap'], ['white-space: pre-line;', 'preserve-breaks', 'wrap'], ['white-space: break-spaces;', 'break-spaces', 'wrap']] as const) {
+      const c = compile(decl);
       expectCatalogued(c.diagnostics);
-      const d = c.diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-      expect(d.length, v).toBeGreaterThan(0);
-      expect(d.every((x) => x.origin.kind === 'authored' && `${FONT} .a { white-space: ${v}; }`.slice(x.origin.span.start, x.origin.span.end) === v), v).toBe(true);
-      expect(c.outputs.ios.kind).toBe('blocked');
+      expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message), decl).toEqual([]);
+      expect(explainOne(c, 'web', 'a', 'white-space-collapse').value, decl).toBe(collapse);
+      expect(explainOne(c, 'web', 'a', 'text-wrap-mode').value, decl).toBe(wrap);
+      expect(c.outputs.ios.kind, decl).not.toBe('blocked');
     }
   });
   it('a value that sets white-space-trim is DRAGON_UNSUPPORTED_VALUE on its keyword', () => {
@@ -164,5 +165,19 @@ describe('white-space is a shorthand over white-space-collapse and text-wrap-mod
     expect(c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
     const d = c.diagnostics[0] as Diagnostic;
     expect(d.origin.kind === 'authored' && `${FONT} .a { white-space: collapse discard-before; }`.slice(d.origin.span.start, d.origin.span.end)).toBe('discard-before');
+  });
+});
+
+describe('text-overflow: ellipsis with letter-spacing (TXT2-f with TXT2-b)', () => {
+  const both = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } });
+  const compile = (decl: string) => both().compile(inputFor(`${FONT} .a { width: 30px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; ${decl} }`, (r) => [div(r, 'a', ['a'], [text(r, 't', 'XX XX XX')])]));
+  const refused = (c: ReturnType<typeof compile>) => c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('truncates text with letter-spacing')).map((d) => d.target).sort();
+  it('is refused on every target when the truncated text is spaced, since no Chrome comparison covers it yet', () => {
+    const c = compile('letter-spacing: 1px;');
+    expectCatalogued(c.diagnostics);
+    expect(refused(c)).toEqual(['android', 'ios', 'web']);
+  });
+  it('leaves letter-spacing: 0, which computes to normal, alone', () => {
+    expect(refused(compile('letter-spacing: 0;'))).toEqual([]);
   });
 });

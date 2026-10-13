@@ -137,7 +137,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -267,7 +269,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -397,7 +401,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -527,7 +533,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -657,7 +665,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -803,7 +813,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -949,7 +961,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -1095,7 +1109,9 @@
         "fill": "rgb(30, 90, 200)",
         "stroke": "rgb(200, 40, 40)",
         "stroke-width": "2px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1225,7 +1241,9 @@
         "fill": "rgb(30, 90, 200)",
         "stroke": "rgb(200, 40, 40)",
         "stroke-width": "2px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -1371,7 +1389,9 @@
         "fill": "rgb(30, 90, 200)",
         "stroke": "rgb(200, 40, 40)",
         "stroke-width": "2px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [

@@ -151,8 +151,8 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
 describe('line items (R16: a new PlacedLine item kind is never skipped)', () => {
   const unhandled = (line: object): string[] => Object.keys(line).filter((k) => !PLACED_LINE_FIELDS.includes(k));
   it('addLines accounts for every PlacedLine field; a stub item kind is caught', () => {
-    expectTypeOf<keyof PlacedLine>().toEqualTypeOf<'top' | 'height' | 'baseline' | 'pieces' | 'boxes' | 'boxRects' | 'breaks' | 'breakRects'>();
-    const line: PlacedLine = { top: ZERO, height: ZERO, baseline: ZERO, pieces: [], boxes: [], boxRects: [], breaks: [], breakRects: [] };
+    expectTypeOf<keyof PlacedLine>().toEqualTypeOf<'top' | 'height' | 'baseline' | 'pieces' | 'boxes' | 'boxRects' | 'breaks' | 'breakRects' | 'ellipsis'>();
+    const line: PlacedLine = { top: ZERO, height: ZERO, baseline: ZERO, pieces: [], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null };
     expect(unhandled(line)).toEqual([]);
     expect(unhandled({ ...line, atomics: [] })).toEqual(['atomics']);
   });

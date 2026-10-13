@@ -137,7 +137,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -267,7 +269,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -397,7 +401,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "1px"
+        "letter-spacing": "1px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -547,7 +553,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "1px"
+        "letter-spacing": "1px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -697,7 +705,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "3px"
+        "letter-spacing": "3px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -847,7 +857,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "-2px"
+        "letter-spacing": "-2px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -997,7 +1009,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "0.7px"
+        "letter-spacing": "0.7px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1147,7 +1161,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "3px"
+        "letter-spacing": "3px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1297,7 +1313,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "3px"
+        "letter-spacing": "3px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1457,7 +1475,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1607,7 +1627,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1757,7 +1779,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1927,7 +1951,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "4px"
+        "letter-spacing": "4px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -2087,7 +2113,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "2px"
+        "letter-spacing": "2px",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
