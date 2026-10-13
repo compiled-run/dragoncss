@@ -219,9 +219,9 @@ describe('BASE pins', () => {
     // text-justify cases landed after BASE.
     const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-'));
-    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275), whose FIXTURES hold 812 BASE layout cases.
-    expect(base.length).toBe(812);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('4ec4d1c8c6ed017b3adece116b54e6f74d77241bb0a49f5e652e7488399d3a27');
+    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's and #280's groups, whose FIXTURES hold 826 BASE layout cases.
+    expect(base.length).toBe(826);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('c658b16ff27578eb3600b8c8d645566e9e1bdfe48b00c8682efc46327143fe84');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
