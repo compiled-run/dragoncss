@@ -130,8 +130,10 @@ describe('border-radius: refusals', () => {
       ['iframe', 'iframe', '.i { width: 20px; height: 20px; border-radius: 8px; }', 'draws a web view square (a rounded iframe is not supported yet)'],
       ['img padding', 'img', '.i { width: 20px; height: 20px; padding: 0 0 2px; border-radius: 8px; }', 'has padding-bottom: 2px; ios clips a rounded image only at its padding edge'],
       ['img padding %', 'img', '.i { width: 20px; height: 20px; padding-left: 1%; border-radius: 8px; }', 'has padding-left: 1%;'],
-      ['img overflow visible', 'img', '.i { width: 20px; height: 20px; overflow: visible; border-radius: 8px; }', 'rounds its corners with overflow: visible, under which Chrome does not clip the image round'],
-      ['img overflow-y hidden', 'img', '.i { width: 20px; height: 20px; overflow-y: hidden; border-radius: 8px; }', 'rounds its corners with overflow: hidden, under which Chrome does not clip the image round'],
+      ['img overflow visible', 'img', '.i { width: 20px; height: 20px; overflow: visible; border-radius: 8px; }', 'rounds its corners with overflow: visible, under which Chrome does not clip the image round; ios supports a rounded img only under overflow: clip (the img default) or hidden on both axes'],
+      ['img overflow-y visible', 'img', '.i { width: 20px; height: 20px; overflow-y: visible; border-radius: 8px; }', 'rounds its corners with overflow: visible, under which Chrome does not clip the image round'],
+      ['img overflow scroll', 'img', '.i { width: 20px; height: 20px; overflow: scroll; border-radius: 8px; }', 'rounds its corners with overflow: scroll, which Dragon has not proven on a rounded img against Chrome yet'],
+      ['img overflow-x visible, y hidden', 'img', '.i { width: 20px; height: 20px; overflow-x: visible; overflow-y: hidden; border-radius: 8px; }', 'rounds its corners with overflow: auto, which Dragon has not proven on a rounded img against Chrome yet'],
     ] as const;
     for (const [name, tag, css, says] of cases) {
       const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'i', ['i']), tag, attributes: [] } as never]);
@@ -146,9 +148,11 @@ describe('border-radius: refusals', () => {
     }
   });
 
-  it('a rounded img with no padding under its default overflow: clip compiles on every target, with and without a border', () => {
+  it('a rounded img with no padding under its default overflow: clip, or under hidden, compiles on every target, with and without a border', () => {
     const targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
-    for (const css of ['.i { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }', '.i { width: 20px; height: 12px; border: 2px solid red; border-radius: 4px 8px 0 6px / 2px 6px 0 9px; object-fit: contain; }', '.i { width: 20px; height: 20px; padding: 0; overflow: clip; border-radius: 3px; }']) {
+    // Chrome clips an img under hidden as under clip (LayoutObject::IsScrollContainer is false for a replaced element); overflow-y:
+    // hidden alone computes overflow-x: clip to hidden (StyleAdjuster::AdjustOverflow).
+    for (const css of ['.i { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }', '.i { width: 20px; height: 12px; border: 2px solid red; border-radius: 4px 8px 0 6px / 2px 6px 0 9px; object-fit: contain; }', '.i { width: 20px; height: 20px; padding: 0; overflow: clip; border-radius: 3px; }', '.i { width: 20px; height: 20px; overflow: hidden; border: 3px solid red; border-radius: 50%; }', '.i { width: 20px; height: 20px; overflow-y: hidden; border-radius: 4px; }']) {
       const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'i', ['i']), tag: 'img', attributes: [] } as never]);
       const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
       expect(c.diagnostics.filter((d) => d.message.includes('rounds its corners')), css).toEqual([]);
@@ -221,5 +225,25 @@ describe('border-radius: lowering and emission', () => {
     expect(k).toContain('val curve = dragonRoundedPath(v, shape, true)');
     // Each draw (direct and through the layer's recording) clips to the curve between the rect clip and the bitmap.
     expect(k.match(/clipRect\([^\n]+\)\n {4}if \(curve != null\) (canvas|inner)\.clipPath\(curve\)\n {4}\1\.drawBitmap\(image, null, dest, paint\)/g)?.length).toBe(2);
+  });
+
+  it('on Android API 31 and 32 an img\'s empty clip view gets no hardware layer or DST_OUT mask, and loses one an earlier layout gave it', () => {
+    const kotlin = RADIUS_EMITTER.native['android-views'].file ?? '';
+    const at = kotlin.indexOf('fun dragonAfterLayoutRadius(');
+    const hook = kotlin.slice(at, kotlin.indexOf('\n}\n', at));
+    // The img case takes the branch that clears the layer and the overlay, before either is made.
+    const skip = hook.indexOf('if (inner == null || (Build.VERSION.SDK_INT < 33 && dragonHostsNoChildren(v, c))) {');
+    expect(skip).toBeGreaterThan(0);
+    const cleared = hook.slice(skip, hook.indexOf('    return\n', skip));
+    expect(cleared).toContain('c.overlay.clear()');
+    expect(cleared).toContain('c.setLayerType(View.LAYER_TYPE_NONE, null)');
+    expect(hook.indexOf('c.setLayerType(View.LAYER_TYPE_HARDWARE, null)')).toBeGreaterThan(skip);
+    // Only a box that draws an image counts, and an img clip view that somehow hosts children fails loudly instead of going unmasked.
+    const helper = kotlin.slice(kotlin.indexOf('fun dragonHostsNoChildren('), kotlin.indexOf('\n}\n', kotlin.indexOf('fun dragonHostsNoChildren(')));
+    expect(helper).toContain('if (v.dragonImage == null) return false');
+    expect(helper).toContain('if (c.childCount != 0) throw IllegalStateException(');
+    // API 33 and up keeps the outline clip for every box, and UIKit is unchanged.
+    expect(hook).toContain('if (Build.VERSION.SDK_INT >= 33) {');
+    expect(RADIUS_EMITTER.native.uikit.file).not.toContain('dragonHostsNoChildren');
   });
 });

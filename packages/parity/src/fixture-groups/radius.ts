@@ -4,7 +4,7 @@
 // longhands (var(), inherit, initial, unset), and rounded img (circular, elliptical and per-corner radii, with and without a
 // border, object-fit cover, contain and fill: the image clipped to the padding-edge curve), in both environment directions. A
 // calculation and a viewport unit in a radius are refused. A rounded dashed, dotted or double border (PNT1b), a rounded html, body
-// or iframe, and a rounded img with padding or with an overflow other than clip are refused on the native targets only, so
+// or iframe, and a rounded img with padding or with an overflow other than clip or hidden are refused on the native targets only, so
 // packages/dragon/test/paint-radius.test.ts proves those refusals (a reject fixture blocks the web output too).
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';

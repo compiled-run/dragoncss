@@ -23,6 +23,9 @@ function computeComponent(c: RadiusComponent, ctx: PaintValueContext): RadiusCom
 const BORDER_STYLE_LONGHANDS: readonly Longhand[] = ['border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style'];
 const UNROUNDED_STYLES: ReadonlySet<string> = new Set(['dotted', 'dashed', 'double', 'groove', 'ridge', 'inset', 'outset']);
 
+/** The overflow values under which Chrome clips a rounded img to its padding-edge curve and Dragon draws it with a plain clip view. */
+const CLIPPED_IMG_OVERFLOW: ReadonlySet<string> = new Set(['clip', 'hidden']);
+
 const PADDING_LONGHANDS: readonly Longhand[] = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
 
 /**
@@ -30,8 +33,11 @@ const PADDING_LONGHANDS: readonly Longhand[] = ['padding-top', 'padding-right', 
  * the padding-edge curve (paint_property_tree_builder.cc UpdateInnerBorderRadiusClip: PixelSnappedContouredInnerBorder, then
  * AdjustRoundedClipForOverflowClipMargin to the content box), which the image stage draws through the roundedPath hook. Refused:
  * an iframe (the web view is not clipped round yet), an img with padding (Chrome moves the curve to the content box with
- * OutsetWithCornerCorrection, which Dragon does not compute), and an img whose overflow is not clip on both axes (Chrome then
- * builds no rounded clip: NeedsInnerBorderRadiusClip needs the overflow clip along both axes).
+ * OutsetWithCornerCorrection, which Dragon does not compute), and an img whose overflow is not clip or hidden on both axes. Chrome
+ * clips an img the same under hidden as under clip (LayoutObject::IsScrollContainer is false for a replaced element, so
+ * ComputeOverflowClipAxes gives both axes and ShouldApplyOverflowClipMargin treats every non-visible overflow as clip); visible on
+ * an axis builds no rounded clip (NeedsInnerBorderRadiusClip needs the overflow clip along both axes). Auto and scroll, which Chrome
+ * also draws as clip on an img, are not proven against Chrome yet.
  */
 function unroundedReplaced(el: ResolvedElement, tag: string, t: string): { readonly message: string; readonly manual: string } | null {
   const at = `<${tag}> ${el.element.address}`;
@@ -45,9 +51,11 @@ function unroundedReplaced(el: ResolvedElement, tag: string, t: string): { reado
   if (padded !== undefined) {
     return { message: `${at} rounds its corners and has ${padded}: ${valueToString((el.props.get(padded) as ResolvedValue).value)}; ${t} clips a rounded image only at its padding edge (a rounded img with padding is not supported yet)`, manual: 'Remove the padding of the rounded img, or round a wrapper element around it.' };
   }
-  const overflow = (['overflow-x', 'overflow-y'] as const).map((p) => el.props.get(p) as ResolvedValue).find((v) => !(v.value.kind === 'keyword' && v.value.value === 'clip'));
+  const overflow = (['overflow-x', 'overflow-y'] as const).map((p) => el.props.get(p) as ResolvedValue).find((v) => !(v.value.kind === 'keyword' && CLIPPED_IMG_OVERFLOW.has(v.value.value)));
   if (overflow !== undefined) {
-    return { message: `${at} rounds its corners with overflow: ${valueToString(overflow.value)}, under which Chrome does not clip the image round; ${t} supports a rounded img only under overflow: clip on both axes (the img default)`, manual: 'Leave overflow at its default on the rounded img.' };
+    const value = valueToString(overflow.value);
+    const why = value === 'visible' ? 'under which Chrome does not clip the image round' : 'which Dragon has not proven on a rounded img against Chrome yet';
+    return { message: `${at} rounds its corners with overflow: ${value}, ${why}; ${t} supports a rounded img only under overflow: clip (the img default) or hidden on both axes`, manual: 'Leave overflow at its default on the rounded img, or set it to hidden.' };
   }
   return null;
 }
