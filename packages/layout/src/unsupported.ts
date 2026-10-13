@@ -14,7 +14,6 @@ export type UnsupportedCode =
   | 'flex-intrinsic-wrap-column'
   | 'replaced-out-of-flow'
   | 'line-break'
-  | 'grid-baseline'
   | 'abspos-self-alignment'
   | 'grid-replaced'
   | 'mixed-text-wrap-mode'

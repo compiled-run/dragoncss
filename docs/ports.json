@@ -1102,6 +1102,36 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_baseline_accumulator.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 The Chromium Authors",
+      "fileSha256": "503c0e0a9203e83ebb7b12407b9334f620d36026486f909aea8f2cdfb0911e41",
+      "headerSha256": "796ca6a44d553d78da8bb82d1b905ef505d75c2968a9c872aa06077059a534f8",
+      "ranges": [
+        { "lines": "24-183", "symbol": "GridBaselineAccumulator", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "placeItems", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_item.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2021 The Chromium Authors",
+      "fileSha256": "955f383d03217accb7635ce0336286d18b6f20b35e06ff76810b7b4a1880734e",
+      "headerSha256": "40ecbf467cce38f1e17971fdcdfe424a7eaa7178173604fc79e6715eb35f11a8",
+      "ranges": [
+        { "lines": "254-309", "symbol": "GridItemData::SetAlignmentFallback", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "computeRowBaselines", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/grid/grid_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1113,8 +1143,13 @@
         { "lines": "180-190", "symbol": "GridLayoutAlgorithm::LayoutInternal", "source": "cited" },
         { "lines": "270-326", "symbol": "GridLayoutAlgorithm::ComputeMinMaxSizes", "source": "located" },
         { "lines": "587-743", "symbol": "ComputeGridGeometry", "source": "located" },
+        { "lines": "790-807", "symbol": "Baseline", "source": "located" },
+        { "lines": "830-839", "symbol": "GetLogicalBaseline", "source": "located" },
         { "lines": "871-1101", "symbol": "GridLayoutAlgorithm::ContributionSizeForGridItem", "source": "located" },
+        { "lines": "1180-1280", "symbol": "GridLayoutAlgorithm::ComputeGridItemBaselines", "source": "cited" },
         { "lines": "1551-1617", "symbol": "CompleteTrackSizingAlgorithm", "source": "located" },
+        { "lines": "1692-1742", "symbol": "GridLayoutAlgorithm::ComputeBaselineAlignment", "source": "located" },
+        { "lines": "1744-1750", "symbol": "GridLayoutAlgorithm::CompleteFinalBaselineAlignment", "source": "located" },
         { "lines": "2178-2353", "symbol": "PlaceGridItems", "source": "located" },
         { "lines": "2967-3040", "symbol": "GridLayoutAlgorithm::PlaceOutOfFlowItems", "source": "located" },
         { "lines": "3102-3127", "symbol": "GridLayoutAlgorithm::ComputeOutOfFlowItemContainingRect", "source": "located" }
@@ -1425,6 +1460,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/grid.ts", "symbol": "alignmentOffset", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/logical_box_fragment.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "6c5f7813cd870aa0c9aa168dac029a3e7756032be99b9e6db947cac8d0a31100",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "33-59", "symbol": "LogicalBoxFragment::FirstBaselineOrSynthesize", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "firstBaselineOrSynthesize", "use": "port" }
       ]
     },
     {

@@ -5,7 +5,7 @@ import type { GridAutoRepeat, GridContainerStyle, GridItemStyle, GridLine, Layou
 import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { ceilToInt, divLu, equalShare, floorToInt, frLeftover, frShareToLu, intDiv, intMod, rawOverFloat, setFlexFactor } from '../src/units.ts';
-import { anon, box, neutralEnvironment, span, text } from './helpers.ts';
+import { ahemFont, anon, box, neutralEnvironment, span, text } from './helpers.ts';
 
 const fr = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'fr', value } });
 const px = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'px', value } });
@@ -323,5 +323,77 @@ describe('grid engine cases pinned to the Chrome 145 corpus (docs/research/grid-
       const b = m.get(id);
       return b === undefined ? null : [b.x - g.x, b.y - g.y, b.width, b.height];
     })).toEqual([[0, 0, 3840, 320], [0, 640, 2560, 320], [3840, 0, 1280, 320], [2560, 640, 1280, 320], [0, 1280, 3840, 320]]);
+  });
+});
+
+describe('first baseline self-alignment in the block axis (GRID G3, Blink ComputeGridItemBaselines and the baseline shim)', () => {
+  const two: GridContainerStyle = gridStyle({ templateColumns: [{ count: 2, sizes: [AUTO] }], explicitColumnCount: 2 });
+  /** An item holding one Ahem X: its line box is the font size, its baseline 0.8 of it below the content top. */
+  const glyph = (id: string, size: number, over: Parameters<typeof box>[1] = {}): LayoutBox => box(id, over, [text(`${id}:t`, 'X', { font: ahemFont(size) })]);
+  const yh = (m: ReturnType<typeof boxesOf>, ids: readonly string[]): number[][] => {
+    const g = m.get('g');
+    if (g === undefined) throw new Error('no grid box');
+    return ids.map((id) => {
+      const b = m.get(id);
+      if (b === undefined) throw new Error(`no box ${id}`);
+      return [b.y - g.y, b.height];
+    });
+  };
+
+  it('aligns the baselines of a row and grows the auto row by the shim (b-row-shim: 20px with 7px padding below, 10px with 15px above)', () => {
+    const items = [glyph('a', 20, { paddingBottom: { kind: 'px', value: 7 } }), glyph('b', 10, { paddingTop: { kind: 'px', value: 15 } })];
+    const g = box('g', { display: 'grid', width: { kind: 'px', value: 100 }, alignItems: 'baseline', grid: two }, items.map((b) => ({ ...b, style: { ...b.style, gridItem: autoItem } })));
+    const m = boxesOf(g);
+    // Track baseline 23px (15 + 8): a moves down 7px, and its 27px plus the 7px shim make the row 34px.
+    expect(yh(m, ['a', 'b'])).toEqual([[448, 1728], [0, 1600]]);
+    expect(m.get('g')?.height).toBe(2176);
+  });
+
+  it('counts the block-start margin in the track baseline and places the item by the baseline offset alone (AlignmentOffset)', () => {
+    const items = [glyph('a', 10, { marginTop: { kind: 'px', value: 3 }, alignSelf: 'baseline' }), glyph('b', 20, { alignSelf: 'baseline' })];
+    // a's margin-box baseline is 3 + 8 = 11px, b's 16px: a's border box starts 16 - 8 = 8px down; the row is b's 20px.
+    const m = boxesOf(grid(two, items));
+    expect(yh(m, ['a', 'b'])).toEqual([[512, 640], [0, 1280]]);
+    expect(m.get('g')?.height).toBe(1280);
+  });
+
+  it('synthesizes the baseline of an item with none at its border-box bottom (b-synthesized)', () => {
+    const items = [box('a', { alignSelf: 'baseline', height: { kind: 'px', value: 30 } }), glyph('b', 10, { alignSelf: 'baseline' })];
+    expect(yh(boxesOf(grid(two, items)), ['a', 'b'])).toEqual([[0, 1920], [1408, 640]]);
+  });
+
+  it('falls back to start for an item with no baseline whose percentage height depends on its auto row (SetAlignmentFallback)', () => {
+    const items = [box('a', { alignSelf: 'baseline', height: { kind: 'percent', value: 50 } }), glyph('b', 20, { alignSelf: 'baseline' })];
+    // a takes no part: no shim grows the row past b's 20px, and a sits at the row start with half of it.
+    expect(yh(boxesOf(grid(two, items)), ['a', 'b'])).toEqual([[0, 640], [0, 1280]]);
+    // In a fixed row a's height does not depend on the row's sizing, so it aligns by its synthesized baseline (25px).
+    const fixed = gridStyle({ templateColumns: [{ count: 2, sizes: [AUTO] }], explicitColumnCount: 2, templateRows: [{ count: 1, sizes: [px(50)] }], explicitRowCount: 1 });
+    expect(yh(boxesOf(grid(fixed, items)), ['a', 'b'])).toEqual([[0, 1600], [576, 1280]]);
+  });
+
+  it('an item spanning two rows joins the baseline group of its first row', () => {
+    const items = [
+      glyph('a', 20, { alignSelf: 'baseline', gridItem: { ...autoItem, row: { kind: 'auto', span: 2 } } }),
+      glyph('b', 10, { alignSelf: 'baseline' }),
+      glyph('c', 10, { alignSelf: 'baseline', gridItem: { ...autoItem, column: { kind: 'definite', start: 1, end: 2 }, row: { kind: 'definite', start: 1, end: 2 } } }),
+    ];
+    // Row 1 shares a's 16px baseline with b, which the 8px shim makes 18px; c is alone in the 10px row 2.
+    expect(yh(boxesOf(grid(two, items)), ['a', 'b', 'c'])).toEqual([[0, 1280], [512, 640], [1152, 640]]);
+  });
+
+  it('auto margins win over baseline alignment in the block axis', () => {
+    const items = [glyph('a', 10, { alignSelf: 'baseline', marginTop: { kind: 'auto' } }), glyph('b', 20, { alignSelf: 'baseline' })];
+    // a is end-aligned by its auto margin, not lowered to b's baseline.
+    expect(yh(boxesOf(grid(two, items)), ['a', 'b'])).toEqual([[640, 640], [0, 1280]]);
+  });
+
+  it("gives the grid the first row set's major baseline as its first baseline, ahead of the first item in row-major order", () => {
+    const items = [glyph('a', 10, { alignSelf: 'start', paddingTop: { kind: 'px', value: 30 } }), glyph('b', 20, { alignSelf: 'baseline' })];
+    const row = box('f', { display: 'flex', alignItems: 'baseline', width: { kind: 'px', value: 300 } }, [grid(two, items), glyph('x', 10)]);
+    const r = layout(input(box('root', {}, [row])), ahemMeasurer);
+    if (r.kind !== 'ok') throw new Error(r.unsupported.code);
+    const abs = absoluteRects(r.boxes);
+    // The grid's baseline is b's 16px, not a's 38px: x (baseline 8px) sits 8px down.
+    expect((abs.get('x')?.y ?? 0) - (abs.get('f')?.y ?? 0)).toBe(512);
   });
 });
