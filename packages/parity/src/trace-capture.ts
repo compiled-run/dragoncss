@@ -104,6 +104,26 @@ const awaitHoverMediaInPage = ([want, ms]: [boolean, number]): Promise<number> =
 /** Every wait in this process where Chrome's hover media lagged the emulated context, for the capture's summary line. */
 export const hoverMediaLags: { readonly at: string; readonly frames: number }[] = [];
 
+/** DIAGNOSTIC: every driver's recent events, process-wide, with wall-clock times. */
+export const diagLog: string[] = [];
+const dlog = (who: string, text: string): void => {
+  diagLog.push(`${new Date().toISOString()} ${who} ${text}`);
+  if (diagLog.length > 400) diagLog.splice(0, diagLog.length - 400);
+};
+const probeInPage = (): Record<string, unknown> => {
+  const q = (m: string): boolean => matchMedia(m).matches;
+  const w = window as unknown as { __diag?: unknown[] };
+  return { now: new Date().toISOString(), hover: q('(hover: hover)'), hoverNone: q('(hover: none)'), anyHover: q('(any-hover: hover)'), coarse: q('(pointer: coarse)'), fine: q('(pointer: fine)'), anyCoarse: q('(any-pointer: coarse)'), mtp: navigator.maxTouchPoints, ontouch: 'ontouchstart' in window, focus: document.hasFocus(), vis: document.visibilityState, href: location.href, ids: document.querySelectorAll('[data-dragon-id]').length, log: (w.__diag ?? []).slice(-40) };
+};
+const installInPage = (): void => {
+  const w = window as unknown as { __diag?: unknown[] };
+  if (w.__diag !== undefined) return;
+  const log: unknown[] = [];
+  w.__diag = log;
+  for (const m of ['(hover: hover)', '(pointer: coarse)', '(any-hover: hover)']) matchMedia(m).addEventListener('change', (e) => log.push([new Date().toISOString(), m, e.matches]));
+  for (const k of ['contextmenu', 'visibilitychange', 'pagehide', 'pageshow', 'blur', 'focus', 'touchstart', 'touchend', 'touchcancel', 'mousedown', 'mouseup', 'click', 'pointercancel']) window.addEventListener(k, (e) => log.push([new Date().toISOString(), k, (e as PointerEvent).pointerType ?? '', (e.target as Element | null)?.getAttribute?.('data-dragon-id') ?? String(e.target)]), true);
+};
+
 const effectiveText = (m: Matches): string => JSON.stringify([m.hoverMedia ? m.hover : [], m.active, m.focus, m.focusVisible]);
 
 /**
@@ -122,6 +142,7 @@ class TraceDriver {
   readonly page: Page;
   private readonly cdp: CDPSession;
   private readonly root: number;
+  name = '?';
 
   private constructor(page: Page, cdp: CDPSession, root: number) {
     this.page = page;
@@ -129,16 +150,35 @@ class TraceDriver {
     this.root = root;
   }
 
-  static async open(browser: Browser, html: string, env: NativeCase['case']['environment']): Promise<TraceDriver> {
+  private async send(method: string, params: Record<string, unknown>): Promise<unknown> {
+    dlog(this.name, `> ${method} ${JSON.stringify(params)}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = await (this.cdp as any).send(method, params);
+    dlog(this.name, `< ${method}`);
+    return r;
+  }
+
+  static async open(browser: Browser, html: string, env: NativeCase['case']['environment'], name = '?'): Promise<TraceDriver> {
     const page = await openPage(browser, html, env);
     try {
+      page.on('crash', () => dlog(name, 'PAGE CRASH'));
+      page.on('close', () => dlog(name, 'page close'));
+      page.on('framenavigated', (f) => dlog(name, `framenavigated ${f.url()} main=${f === page.mainFrame()}`));
+      page.on('frameattached', () => dlog(name, 'frameattached'));
+      page.on('console', (m) => dlog(name, `console ${m.text()}`));
+      await page.evaluate(installInPage);
       const cdp = await page.context().newCDPSession(page);
+      for (const ev of ['Inspector.detached', 'Inspector.targetCrashed', 'Inspector.targetReloadedAfterCrash']) cdp.on(ev as 'Inspector.detached', (p: unknown) => dlog(name, `EVENT ${ev} ${JSON.stringify(p)}`));
+      cdp.on('close' as 'Inspector.detached', () => dlog(name, 'CDP SESSION CLOSED'));
       await cdp.send('DOM.enable');
       await cdp.send('CSS.enable');
       await cdp.send('Emulation.setEmitTouchEventsForMouse', { enabled: false });
       await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
       const { root } = await cdp.send('DOM.getDocument', { depth: 0 });
-      return new TraceDriver(page, cdp, root.nodeId);
+      const d = new TraceDriver(page, cdp, root.nodeId);
+      d.name = name;
+      dlog(name, 'opened');
+      return d;
     } catch (e) {
       await page.context().close();
       throw e;
@@ -157,7 +197,7 @@ class TraceDriver {
 
   private async setContext(c: TraceContext): Promise<void> {
     if (c === this.context) return;
-    await this.cdp.send('Emulation.setTouchEmulationEnabled', c === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
+    await this.send('Emulation.setTouchEmulationEnabled', c === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
     this.context = c;
     await this.awaitHoverMedia(`${c} context`);
     await frames(this.page);
@@ -167,17 +207,43 @@ class TraceDriver {
   private async awaitHoverMedia(at: string): Promise<void> {
     const want = this.context === 'mouse';
     const waited = await this.page.evaluate(awaitHoverMediaInPage, [want, HOVER_MEDIA_WAIT_MS] as [boolean, number]);
-    if (waited < 0) throw new Error(`${at}: (hover: hover) ${want ? 'does not match without' : 'matches under'} touch emulation after ${HOVER_MEDIA_WAIT_MS} ms`);
-    if (waited > 0) hoverMediaLags.push({ at, frames: waited });
+    if (waited < 0) throw new Error(`${at}: (hover: hover) ${want ? 'does not match without' : 'matches under'} touch emulation after ${HOVER_MEDIA_WAIT_MS} ms\nDIAG ${await this.diagnose()}`);
+    if (waited > 0) hoverMediaLags.push({ at: `${this.name} ${at}`, frames: waited });
+  }
+
+  /** DIAGNOSTIC: the page's media and emulation state, whether the session answers, and whether re-sending emulation fixes it. */
+  private async diagnose(): Promise<string> {
+    const out: Record<string, unknown> = { driver: this.name, context: this.context };
+    const tryDo = async (k: string, f: () => Promise<unknown>): Promise<void> => {
+      try {
+        out[k] = await f();
+      } catch (e) {
+        out[k] = `THREW ${e instanceof Error ? e.message : String(e)}`;
+      }
+    };
+    await tryDo('page', () => this.page.evaluate(probeInPage));
+    await tryDo('cdpAlive', () => this.cdp.send('Runtime.evaluate', { expression: 'matchMedia("(hover: hover)").matches', returnByValue: true }));
+    await tryDo('resend', () => this.cdp.send('Emulation.setTouchEmulationEnabled', this.context === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false }));
+    await tryDo('afterResend', async () => { await frames(this.page); return this.page.evaluate(probeInPage); });
+    await tryDo('freshSession', async () => {
+      const s2 = await this.page.context().newCDPSession(this.page);
+      await s2.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      await frames(this.page);
+      const r = await this.page.evaluate(probeInPage);
+      await s2.detach();
+      return r;
+    });
+    out.log = diagLog.slice(-160);
+    return JSON.stringify(out, null, 1);
   }
 
   private async mouseEvent(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased', p: { x: number; y: number }): Promise<void> {
     const pressed = type === 'mousePressed' || (type === 'mouseMoved' && this.pressAt !== null);
-    await this.cdp.send('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, button: type === 'mouseMoved' ? 'none' : 'left', buttons: pressed ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
+    await this.send('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, button: type === 'mouseMoved' ? 'none' : 'left', buttons: pressed ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
   }
 
   private async touchEvent(type: 'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel', p: { x: number; y: number } | null): Promise<void> {
-    await this.cdp.send('Input.dispatchTouchEvent', { type, touchPoints: p === null ? [] : [{ x: p.x, y: p.y, radiusX: 0, radiusY: 0, id: 0 }] });
+    await this.send('Input.dispatchTouchEvent', { type, touchPoints: p === null ? [] : [{ x: p.x, y: p.y, radiusX: 0, radiusY: 0, id: 0 }] });
   }
 
   /** Forces each address's pseudo-classes (on a reference page, which takes no input) and returns the nodes forced. */
@@ -185,7 +251,7 @@ class TraceDriver {
     const nodes: number[] = [];
     for (const [address, pseudos] of entries) {
       const nodeId = await this.nodeOf(address);
-      await this.cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [...pseudos] });
+      await this.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [...pseudos] });
       nodes.push(nodeId);
     }
     await frames(this.page);
@@ -193,7 +259,7 @@ class TraceDriver {
   }
 
   async unforce(nodes: readonly number[]): Promise<void> {
-    for (const nodeId of nodes) await this.cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
+    for (const nodeId of nodes) await this.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
   }
 
   async matches(): Promise<Matches> {
@@ -247,8 +313,8 @@ class TraceDriver {
       case 'key': {
         // A keydown without ctrl, alt or meta turns focus-visible on for the focused element (P9); Shift moves nothing.
         const key = s.modified ? { key: 'Control', code: 'ControlLeft', windowsVirtualKeyCode: 17, modifiers: 2 } : { key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16, modifiers: 8 };
-        await this.cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...key });
-        await this.cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...key, modifiers: 0 });
+        await this.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...key });
+        await this.send('Input.dispatchKeyEvent', { type: 'keyUp', ...key, modifiers: 0 });
         break;
       }
       case 'force':
@@ -268,7 +334,7 @@ class TraceDriver {
 
   private async force(s: InteractionStep & { kind: 'force' }): Promise<void> {
     if (this.forcedNode !== null) {
-      await this.cdp.send('CSS.forcePseudoState', { nodeId: this.forcedNode, forcedPseudoClasses: [] });
+      await this.send('CSS.forcePseudoState', { nodeId: this.forcedNode, forcedPseudoClasses: [] });
       this.forcedNode = null;
     }
     if (s.pseudo === 'none') {
@@ -307,7 +373,7 @@ class TraceDriver {
       await this.page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     }
     const nodeId = await this.nodeOf(s.address);
-    await this.cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [s.pseudo] });
+    await this.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [s.pseudo] });
     this.forcedNode = nodeId;
   }
 }
@@ -370,16 +436,17 @@ async function captureRun(browser: Browser, g: InteractionGroup, d: TraceDerivat
   const candidates = (d.inputs[app] as InteractionLevelInput).partition.candidates.hover;
   const drivers: TraceDriver[] = [];
   try {
-    const authored = await TraceDriver.open(browser, n.case.authoredHtml, env);
+    const authored = await TraceDriver.open(browser, n.case.authoredHtml, env, `${g.id}/authored`);
     drivers.push(authored);
     const html = webOutputHtml(g, n);
-    const output = await TraceDriver.open(browser, html, env);
+    const output = await TraceDriver.open(browser, html, env, `${g.id}/output`);
     drivers.push(output);
-    const reference = await TraceDriver.open(browser, html, env);
+    const reference = await TraceDriver.open(browser, html, env, `${g.id}/reference`);
     drivers.push(reference);
     const out: ChromeTraceStep[] = [];
     for (const [i, s] of d.steps.entries()) {
       try {
+        dlog(g.id, `step ${i} ${JSON.stringify(s)}`);
         const r = await authored.step(s);
         await output.step(s);
         const style = isTouch(s.kind) ? await styleCheck(output, reference, candidates) : null;
@@ -390,7 +457,10 @@ async function captureRun(browser: Browser, g: InteractionGroup, d: TraceDerivat
     }
     return out;
   } finally {
-    for (const dr of drivers) await dr.close();
+    for (const dr of drivers) {
+      dlog(dr.name, 'closing');
+      await dr.close();
+    }
   }
 }
 
