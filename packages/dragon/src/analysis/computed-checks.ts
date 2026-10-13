@@ -8,7 +8,7 @@ import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf } from '../css/values.ts';
-import type { FamilyKeyContext } from '../css/values.ts';
+import type { CssValue, FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
@@ -613,26 +613,77 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkTransformContexts(root, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
-  checkDecorations(root, targets, diagnostics, reported);
+  checkDecorations(root, targets, diagnostics, reported, realFaceAt);
 }
 
+/** The largest device scale a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies below it. */
+const NATIVE_DPR_MAX = 4;
+/** The largest skip-ink dilation the decoration capture proves: every captured skip-ink auto line is at most this thick. */
+const SKIP_INK_PROVEN_THICKNESS = 13;
+
 /**
- * TDEC-a: web draws every accepted decoration; ios and android refuse decorated text until TDEC-b draws it. A child of a decorated
- * element in a formatting context no Chrome case proves propagation for is refused on every target.
+ * TDEC-d: whether a skip-ink auto line's thickness stays within SKIP_INK_PROVEN_THICKNESS zoomed px at every device scale up to
+ * NATIVE_DPR_MAX, so the device's dilation by the thickness (text_painter.cc:555-563, layout text-decoration.ts skipInkClips) is
+ * the one the captures prove. auto is size / 10 of the decorating box's font; a px length or a percentage rounds half up after zoom (roundf, +0.5 at
+ * most). boxSize is css px.
  */
-function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+export function skipInkThicknessProven(thickness: CssValue, boxSize: number): boolean {
+  const auto = thickness.kind === 'keyword' && thickness.value === 'auto';
+  const perPx = auto ? boxSize / 10 : thickness.kind === 'length' && thickness.unit === 'px' ? thickness.value : thickness.kind === 'percentage' ? (thickness.value * boxSize) / 100 : Number.NaN;
+  if (!Number.isFinite(perPx)) return false;
+  return perPx * NATIVE_DPR_MAX + (auto ? 0 : 0.5) <= SKIP_INK_PROVEN_THICKNESS;
+}
+
+/** Whether the device takes a thickness or underline offset: auto, a px length or a percentage (lower/paint/text-decoration.ts). */
+const nativeDecorationLength = (v: CssValue): boolean => (v.kind === 'keyword' && v.value === 'auto') || (v.kind === 'length' && v.unit === 'px' && Number.isFinite(v.value)) || (v.kind === 'percentage' && Number.isFinite(v.value));
+
+/**
+ * TDEC-a: web draws every accepted decoration. TDEC-b: ios and android draw solid decorations (the value table refuses every other
+ * style on every target) and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
+ * auto, px or a percentage; a decorated text that is not visible; an overline with skip-ink auto, or an underline with skip-ink auto
+ * on a real face or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
+ * decorated element in a formatting context no Chrome case proves propagation for is refused on every target.
+ */
+function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   const { applied, unproven } = analyzeDecorations(root);
-  const byAddress = new Map<string, ResolvedText>();
-  const index = (el: ResolvedElement): void => {
+  const byAddress = new Map<string, { readonly text: ResolvedText; readonly containerSize: number; readonly visibility: string }>();
+  const sizeOf = (props: ReadonlyMap<Longhand, ResolvedValue>): number => {
+    const v = props.get('font-size')?.value;
+    return v !== undefined && v.kind === 'length' && v.unit === 'px' ? v.value : Number.NaN;
+  };
+  // A block decorating box draws with its text's container strut: the nearest ancestor that is not an inline box.
+  const index = (el: ResolvedElement, containerSize: number): void => {
+    const inline = el !== root && valueToString((el.props.get('display') as ResolvedValue).value) === 'inline';
+    const here = inline ? containerSize : sizeOf(el.props);
     for (const c of el.children) {
-      if (c.kind === 'text') byAddress.set(c.node.address, c);
-      else index(c);
+      // A text's visibility is its parent element's (an inherited property).
+      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
+      else index(c, here);
     }
   };
-  index(root);
+  index(root, sizeOf(root.props));
+  const inlineAt = new Set<string>();
+  const inlines = (el: ResolvedElement): void => {
+    if (el !== root && valueToString((el.props.get('display') as ResolvedValue).value) === 'inline') inlineAt.add(el.element.address);
+    for (const c of el.children) if (c.kind === 'element') inlines(c);
+  };
+  inlines(root);
   for (const [address, list] of applied) {
-    const text = byAddress.get(address);
-    if (text === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
+    const hit = byAddress.get(address);
+    if (hit === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
+    const { text, containerSize, visibility } = hit;
+    const reasons: string[] = [];
+    let intercepts = false;
+    if (visibility !== 'visible') reasons.push(`it is ${visibility}, and its decoration views do not follow visibility`);
+    for (const d of list) {
+      if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
+      if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
+      if (d.skipInk !== 'auto') continue;
+      // TDEC-d clips Ahem glyphs only, for an underline (the capture's skip-ink probe), as thick as a capture proves.
+      if (d.lines.includes('overline') || (d.lines.includes('underline') && (realFaceAt(address) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
+    }
+    if (intercepts) reasons.push('skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from ' + list.filter((d) => d.skipInk === 'auto').map((d) => d.box).join(', ') + ', which the intercepts of TDEC-d clip');
+    if (reasons.length === 0) continue;
     const what = list.map((d) => `${d.lines.join(' ')} from ${d.box}`).join(', ');
     for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
       const id = `${t}|decoration|${address}`;
@@ -641,8 +692,8 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
         origin: text.node.node.origin,
         target: t,
-        message: `text ${address} draws text-decoration (${what}); ${t} draws decorations from TDEC-b`,
-        manual: `Set text-decoration: none on the decorating box, or build for web; native decorations come with TDEC-b.`,
+        message: `text ${address} draws text-decoration (${what}) that ${t} does not draw: ${reasons.join('; ')}`,
+        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines and real faces come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
         basis: 'computed-value',
       }));
     }

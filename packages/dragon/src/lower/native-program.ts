@@ -7,6 +7,7 @@ import type { FontSpec, InlineChild, LayoutBox, LayoutNode, TextLeaf } from '@dr
 import { rootFontSizeOf } from './ios-layout.ts';
 import type { AnimationAnalysis } from '../analysis/animations.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
+import { analyzeDecorations } from '../analysis/text-decoration.ts';
 import { canonicalJson } from '../digest.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
@@ -133,6 +134,8 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     }
   };
   walk(resolved);
+  // TDEC-b: the decorations each text leaf draws, which the text-decoration module writes on the leaf's container box.
+  const decorations = analyzeDecorations(resolved).applied;
   const out: NodePaint[] = [];
   const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8, ancestorMoves: boolean): void => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
@@ -141,7 +144,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
-    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves });
+    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, decorations });
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: clipsChildren(b), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;

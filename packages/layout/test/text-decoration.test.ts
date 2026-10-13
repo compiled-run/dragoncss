@@ -1,8 +1,8 @@
 // TDEC-a geometry (src/text-decoration.ts) in zoomed px: Blink's thickness, offsets and snapping, Skia's antifilldot8 coverage and
-// the ARGB32 blend, and the conservative skip-ink proof. The Chrome comparison is packages/parity/test/text-decoration.test.ts;
+// the ARGB32 blend, the conservative skip-ink proof and the Ahem skip-ink clips (TDEC-d). The Chrome comparison is packages/parity/test/text-decoration.test.ts;
 // the values here are cases it measured.
 import { describe, expect, it } from 'vitest';
-import { blendOver, columnAlpha, decorationRects, decorationThickness, lineThroughOffset, NO_DECORATION_FAULTS, overlineOffset, skipInkClear, underlineOffset } from '../src/text-decoration.ts';
+import { ahemInkEm, ahemLineInk, blendOver, columnAlpha, columnClipped, decorationRects, decorationThickness, lineThroughOffset, NO_DECORATION_FAULTS, overlineOffset, skipInkClear, skipInkClips, underlineOffset } from '../src/text-decoration.ts';
 import type { DecorationFont, DecorationInput } from '../src/text-decoration.ts';
 
 const LATO16: DecorationFont = { floatAscent: 16, ascent: 16, size: 16, underlineThickness: 1.6 };
@@ -65,5 +65,37 @@ describe('the skip-ink bounds proof (text_painter.cc:555-563)', () => {
     expect(skipInkClear(r, [{ top: 4, bottom: 19.6 }])).toBe(false);
     expect(skipInkClear(r, [{ top: 20.0, bottom: 25 }])).toBe(false);
     expect(skipInkClear(r, [{ top: 20.2, bottom: 25 }])).toBe(true);
+  });
+});
+
+describe('the Ahem skip-ink clips (TDEC-d, text_painter.cc ClipDecorationsStripe)', () => {
+  // The text-decoration-ahem-auto probe at DPR 1: Ahem 20px "XX XX" on a 40px line, so the text top is 10 and the baseline 26.
+  const AHEM20: DecorationFont = { floatAscent: 16, ascent: 16, size: 20, underlineThickness: 2 };
+  const rect = () => {
+    const [r] = decorationRects({ lines: ['underline'], thickness: { kind: 'auto' }, underlineOffset: { kind: 'auto' }, font: AHEM20, textFont: AHEM20, left: 0, width: 100, textTop: 10, decoratingTop: 10 }, F);
+    if (r === undefined) throw new Error('no rect');
+    return r;
+  };
+  it('Ahem ink: none for the space and U+200B, the descent only for p, the em box for the rest', () => {
+    expect(ahemInkEm(0x20)).toEqual([]);
+    expect(ahemInkEm(0x200b)).toEqual([]);
+    expect(ahemInkEm(0x70)).toEqual([0, 1, 0, -0.2]);
+    expect(ahemInkEm(0x58)).toEqual([0, 1, 0.8, -0.2]);
+    expect(ahemLineInk([0x58, 0x20, 0x70], [0, 20, 40], 20, 26)).toEqual([{ left: 0, right: 20, top: 10, bottom: 30 }, { left: 40, right: 60, top: 26, bottom: 30 }]);
+  });
+  it('clips each crossing glyph dilated by the thickness, rounded floor(v + 0.5): the probe draws columns 42 to 57 only', () => {
+    const r = rect();
+    expect([r.y, r.thickness]).toEqual([27, 2]);
+    const ink = ahemLineInk([0x58, 0x58, 0x20, 0x58, 0x58], [0, 20, 40, 60, 80], 20, 26);
+    const clips = skipInkClips(r, ink, F);
+    expect(clips).toEqual([-2, 22, 18, 42, 58, 82, 78, 102]);
+    const drawn = [...Array(100).keys()].filter((x) => !columnClipped(x, clips));
+    expect(drawn).toEqual([...Array(16).keys()].map((i) => 42 + i));
+    expect(skipInkClips(r, ink, { ...F, skipInkUndilated: true })).toEqual([0, 20, 20, 40, 60, 80, 80, 100]);
+  });
+  it('clips only glyphs whose ink crosses the band, the rect inset by 0.5 px vertically', () => {
+    const r = rect();
+    expect(skipInkClips(r, [{ left: 0, right: 10, top: 0, bottom: 27.5 }, { left: 10.4, right: 20, top: 28.5, bottom: 40 }], F)).toEqual([]);
+    expect(skipInkClips(r, [{ left: 0.4, right: 10.6, top: 0, bottom: 27.6 }], F)).toEqual([-2, 13]);
   });
 });

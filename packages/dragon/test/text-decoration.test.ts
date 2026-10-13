@@ -175,9 +175,9 @@ describe('the targets', () => {
     expect(css).toContain('color: inherit;');
     expect(css).toMatch(/color: (rgb\(9, 9, 9\)|#090909);/);
   });
-  it('web accepts decorated text; ios refuses it naming TDEC-b; undecorated text compiles on ios', () => {
-    const c = project().compile(inputFor('body { font-family: Ahem; } .u { text-decoration: underline; }', (r) => [el(r, 'u', 'div', ['u'], [text(r, 't', 'XX')]), el(r, 'p', 'div', [], [text(r, 'q', 'XX')])]));
-    expect(c.diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message}`)).toEqual(['DRAGON_UNSUPPORTED_VALUE ios text u:text0 draws text-decoration (underline from u); ios draws decorations from TDEC-b']);
+  it('web accepts decorated text; ios refuses an Ahem overline with skip-ink auto, naming TDEC-d (TDEC-b and the Ahem underline slice of TDEC-d draw the rest); undecorated text compiles on ios', () => {
+    const c = project().compile(inputFor('body { font-family: Ahem; } .u { text-decoration: overline; }', (r) => [el(r, 'u', 'div', ['u'], [text(r, 't', 'XX')]), el(r, 'p', 'div', [], [text(r, 'q', 'XX')])]));
+    expect(c.diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message}`)).toEqual(['DRAGON_UNSUPPORTED_VALUE ios text u:text0 draws text-decoration (overline from u) that ios does not draw: skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from u, which the intercepts of TDEC-d clip']);
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('blocked');
   });
