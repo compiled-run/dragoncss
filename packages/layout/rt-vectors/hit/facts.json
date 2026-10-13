@@ -760,6 +760,8 @@
     "svg-paint-rtl": "<svg> s1, s2, s3: hit testing an svg's shapes comes with SVG-a2",
     "svg-flex": "<svg> s1, s2: hit testing an svg's shapes comes with SVG-a2",
     "svg-flex-rtl": "<svg> s1, s2: hit testing an svg's shapes comes with SVG-a2",
+    "text-decoration-native": "n7s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "text-decoration-native-rtl": "n7s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-spacing-ahem": "spaced is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-spacing-ahem-rtl": "spaced is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "transform-rotate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
