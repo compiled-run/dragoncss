@@ -3,10 +3,12 @@
 // ceil(1 / scale) on every side, where a normalised filter reproduces the constant exactly. The module drops every base rule, of
 // any box, with a pixel on non-flat drawn image content, adds image-flat points on a grid over the drawn part, and adds edge scanlines
 // across each side of the destination rect that lies inside the content box (compared by position, as every edge rule is).
-// Non-flat content is not compared. No allowance is introduced.
+// Non-flat content is not compared. A rounded img's image is clipped to its padding-edge curve: image points and scanlines keep
+// clear inside it, and a base point clear outside it shows what is under the image. No allowance is introduced.
 import type { RgbaImage } from '../native-compare.ts';
 import { ALONG_POSITIONS, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
 import type { SamplePoint } from '../samples.ts';
+import { clearInside, clearOutside } from './radius.ts';
 import type { ReplacedSamplesBox } from './replaced-geometry.ts';
 import { replacedBoxes } from './replaced-geometry.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
@@ -39,6 +41,8 @@ export function coveredAt(b: ReplacedSamplesBox, x: number, y: number): boolean 
 export function dropsBaseAt(b: ReplacedSamplesBox, x: number, y: number): boolean {
   const d = b.paint.drawn;
   if (b.image === null || d === null || x < d.x || y < d.y || x >= d.x + d.width || y >= d.y + d.height) return false;
+  // Outside a rounded img's curve the pixel shows what is under the image (the radius module drops the pixels near the curve).
+  if (b.clip.some((a) => clearOutside(a, x, y, 0))) return false;
   return !coveredAt(b, x, y) && !flatWithin(b, x, y, false, false);
 }
 
@@ -47,6 +51,7 @@ function flatWithin(b: ReplacedSamplesBox, x: number, y: number, clampToImage: b
   const d = b.paint.drawn;
   if (img === null || d === null) return false;
   if (x < d.x || y < d.y || x >= d.x + d.width || y >= d.y + d.height) return false;
+  if (!clearOfCurve(b, x, y)) return false;
   // An image-flat point shows only the image: a later box, even a transparent one, may paint over it.
   if (underNoLaterBox && b.later.some((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) return false;
   const dest = b.paint.dest;
@@ -62,6 +67,11 @@ function flatWithin(b: ReplacedSamplesBox, x: number, y: number, clampToImage: b
   return uniform(img, cx - rx, cy - ry, cx + rx, cy + ry);
 }
 
+/** Whether a pixel is clear inside a rounded img's curve (antialiased within SAMPLE_INSET_DEVICE_PX), or the img is square. */
+export function clearOfCurve(b: ReplacedSamplesBox, x: number, y: number): boolean {
+  return b.clip.every((a) => clearInside(a, x, y));
+}
+
 function uniform(img: RgbaImage, x0: number, y0: number, x1: number, y1: number): boolean {
   const at = (x: number, y: number): number => (y * img.width + x) * 4;
   const first = at(x0, y0);
@@ -74,17 +84,34 @@ function uniform(img: RgbaImage, x0: number, y0: number, x1: number, y1: number)
   return true;
 }
 
+/**
+ * SVG-a1: the replaced boxes with neither an image nor a foreign view, whose content the device does not draw (an <svg>, whose
+ * shapes wait for SVG-a2): every base rule with a pixel inside one is dropped, as Chrome draws the shapes there.
+ */
+function undrawnReplaced(ctx: PaintSampleContext): readonly { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number }[] {
+  const byId = new Map(ctx.program.nodes.map((n) => [n.id, n]));
+  const ids = new Set<string>();
+  const walk = (b: { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] }): void => {
+    if (b.kind === 'replaced' && !(byId.get(b.id)?.writes ?? []).some((w) => w.kind === 'replaced-image' || w.kind === 'foreign-view')) ids.add(b.id);
+    for (const c of b.children ?? []) walk(c as { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] });
+  };
+  walk(ctx.program.root as unknown as { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] });
+  return ctx.boxes.filter((b) => ids.has(b.id));
+}
+
 /** The base rules, of any box, that touch a pixel inside a drawn image where the source is not flat and no opaque later box hides it. */
 const dropped = new WeakMap<PaintSampleContext, ReadonlySet<string>>();
 function droppedRules(ctx: PaintSampleContext): ReadonlySet<string> {
   const hit = dropped.get(ctx);
   if (hit !== undefined) return hit;
   const images = [...replacedBoxes(ctx).values()].filter((b) => b.image !== null && b.paint.drawn !== null);
+  const undrawn = undrawnReplaced(ctx);
   const out = new Set<string>();
   for (const p of ctx.base) {
     for (const b of images) {
       if (dropsBaseAt(b, p.x, p.y)) out.add(p.rule);
     }
+    if (undrawn.some((b) => p.x >= b.left && p.x < b.right && p.y >= b.top && p.y < b.bottom)) out.add(p.rule);
   }
   dropped.set(ctx, out);
   return out;
@@ -135,7 +162,7 @@ export function imagePointsOf(boxes: ReadonlyMap<string, ReplacedSamplesBox>, si
           pts.push(s.horizontal ? [a, p] : [p, a]);
         }
         const inside = pts.slice(inset + 1);
-        return inside.every(([x, y]) => flatAtImageEdge(b, x, y)) && pts.every(([x, y]) => x >= 0 && y >= 0 && x < size.width && y < size.height) ? pts : null;
+        return inside.every(([x, y]) => flatAtImageEdge(b, x, y)) && pts.every(([x, y]) => x >= 0 && y >= 0 && x < size.width && y < size.height && clearOfCurve(b, x, y)) ? pts : null;
       }).find((l) => l !== null);
       if (line === undefined || line === null) continue;
       for (const [x, y] of line) out.push({ x, y, rule: `edge:${id}:image-${s.side}` });
