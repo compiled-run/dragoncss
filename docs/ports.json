@@ -2172,10 +2172,13 @@
       "fileSha256": "0b32d984a5caf43d9b6da82810c254ff4e73802cbcda9242836d430620f7de33",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
+        { "lines": "34-117", "symbol": null, "source": "cited" },
         { "lines": "119-152", "symbol": "ShapeResultSpacing::ComputeSpacing", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/shaping.ts", "symbol": "spacingAfterGlyph", "use": "port" }
+        { "file": "packages/layout/src/inline.ts", "symbol": "justifyLine", "use": "port" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": "spacingAfterGlyph", "use": "port" },
+        { "file": "packages/layout/test/justify.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -3350,22 +3353,6 @@
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "justifyLine", "use": "port" },
         { "file": "packages/layout/src/shaping.ts", "symbol": "justifiedViewWidth", "use": "port" },
-        { "file": "packages/layout/test/justify.test.ts", "symbol": null, "use": "reference" }
-      ]
-    },
-    {
-      "upstream": "third_party/blink/renderer/platform/fonts/shaping/shape_result_spacing.cc",
-      "licence": "bsd-chromium",
-      "noticeText": "chromium-bsd",
-      "licencePhrase": "Use of this source code is governed by a BSD-style license",
-      "copyright": "Copyright 2016 The Chromium Authors",
-      "fileSha256": "0b32d984a5caf43d9b6da82810c254ff4e73802cbcda9242836d430620f7de33",
-      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
-      "ranges": [
-        { "lines": "34-117", "symbol": null, "source": "cited" }
-      ],
-      "dragon": [
-        { "file": "packages/layout/src/inline.ts", "symbol": "justifyLine", "use": "port" },
         { "file": "packages/layout/test/justify.test.ts", "symbol": null, "use": "reference" }
       ]
     },
