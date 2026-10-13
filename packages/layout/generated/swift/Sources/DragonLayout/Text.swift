@@ -316,13 +316,13 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
   return TextMeasurer({ (font: TextFont) throws -> FontMetrics in
     // ts: packages/layout/src/text.ts:192
     if (font.family != text_AHEM_FACE_ID) {
-      throw JsError(message: jsConcat(S.s862, font.family))
+      throw JsError(message: jsConcat(S.s870, font.family))
     }
     return try FontMetrics(round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.ascent)), round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.descent)), ((data.lineGap == 0.0) ? units_ZERO : round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.lineGap))))
 }, { (text: JsString, font: TextFont) throws -> any U_MeasureResult_okFalse_MeasureResult_okTrue in
     // ts: packages/layout/src/text.ts:201
     if (font.family != text_AHEM_FACE_ID) {
-      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s862, font.family))
+      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s870, font.family))
     }
     let spacing16: Double = try units_textRunLayoutUnit(font.letterSpacing)
     // ts: packages/layout/src/text.ts:203
@@ -330,7 +330,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
       let sums: SpacedSums = try text_spacedSums(data, text, instanceSize(font.size), spacing16, 0.0, 0.0)
       // ts: packages/layout/src/text.ts:205
       if (sums.bad >= 0.0) {
-        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s386, jsToUpperCase(jsToStringRadix16(sums.bad)), S.s61))
+        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s387, jsToUpperCase(jsToStringRadix16(sums.bad)), S.s62))
       }
       return try MeasureResult_okTrue(true, TextMeasure(units_fromPxCeil(units_inlineToFloat(sums.total))))
     }
@@ -346,7 +346,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:212
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s386, jsToUpperCase(jsToStringRadix16(cp)), S.s61))
+          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s387, jsToUpperCase(jsToStringRadix16(cp)), S.s62))
         }
         glyphs += advance
       }
@@ -355,7 +355,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
 }, { (text: JsString, start: Double, end: Double, font: TextFont) throws -> any U_MeasureResult_okFalse_MeasureResult_okTrue in
     // ts: packages/layout/src/text.ts:219
     if (font.family != text_AHEM_FACE_ID) {
-      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s862, font.family))
+      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s870, font.family))
     }
     let spacing16: Double = try units_textRunLayoutUnit(font.letterSpacing)
     // ts: packages/layout/src/text.ts:221
@@ -363,7 +363,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
       let sums: SpacedSums = try text_spacedSums(data, text, instanceSize(font.size), spacing16, start, end)
       // ts: packages/layout/src/text.ts:223
       if (sums.bad >= 0.0) {
-        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s386, jsToUpperCase(jsToStringRadix16(sums.bad)), S.s61))
+        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s387, jsToUpperCase(jsToStringRadix16(sums.bad)), S.s62))
       }
       let n: Double = try text_codePointCount(text)
       return try MeasureResult_okTrue(true, TextMeasure(units_sub(text_spacedPosition(sums.through, (end >= n)), text_spacedPosition(sums.before, (start >= n)))))
@@ -382,7 +382,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:233
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s386, jsToUpperCase(jsToStringRadix16(cp)), S.s61))
+          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s387, jsToUpperCase(jsToStringRadix16(cp)), S.s62))
         }
         // ts: packages/layout/src/text.ts:234
         if (k < start) {
@@ -399,11 +399,11 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
 }, { (font: TextFont) throws -> FontLengths in
     // ts: packages/layout/src/text.ts:241
     if (font.family != text_AHEM_FACE_ID) {
-      throw JsError(message: jsConcat(S.s862, font.family))
+      throw JsError(message: jsConcat(S.s870, font.family))
     }
     return try text_fontMetricLengths(data, instanceSize(font.size))
 }, { (text: JsString, font: TextFont) throws -> any U_ShapedItem_okFalse_ShapedItem_okTrue in
-    return ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s861, font.family, S.s166))
+    return ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s869, font.family, S.s167))
 }, { (family: JsString) throws -> Bool in
     return (family == text_AHEM_FACE_ID)
 })

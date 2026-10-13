@@ -456,7 +456,7 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _
       _i76 += 1
       // ts: packages/layout/src/inline.ts:192
       if try (!inline_isRtlSafe(t.text)) {
-        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s390, jsConcat(S.s838, box.id, S.s43))
+        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s391, jsConcat(S.s846, box.id, S.s44))
       }
     }
   }
@@ -472,7 +472,7 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _
       if (it.kind == S.s_br) {
         // ts: packages/layout/src/inline.ts:200
         if (zwsp >= 0.0) {
-          try unsupported_unsupported(S.s_bidi_neutral, jsUnwrap(jsAt(leaves, zwsp)).id, S.s389, jsConcat(S.s387, box.id, S.s110))
+          try unsupported_unsupported(S.s_bidi_neutral, jsUnwrap(jsAt(leaves, zwsp)).id, S.s390, jsConcat(S.s388, box.id, S.s111))
         }
         continue
       }
@@ -497,7 +497,7 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _
   }
   // ts: packages/layout/src/inline.ts:211
   if (zwsp >= 0.0) {
-    try unsupported_unsupported(S.s_bidi_neutral, jsUnwrap(jsAt(leaves, zwsp)).id, S.s389, jsConcat(S.s388, box.id, S.s110))
+    try unsupported_unsupported(S.s_bidi_neutral, jsUnwrap(jsAt(leaves, zwsp)).id, S.s390, jsConcat(S.s389, box.id, S.s111))
   }
 }
 
@@ -538,7 +538,7 @@ public func inline_inlineChildren(_ box: LayoutBox) throws -> JsArray<any U_Inli
       _i79 += 1
       // ts: packages/layout/src/inline.ts:259
       if ((c.kind == S.s_box) || ((c as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_replaced)) {
-        throw JsError(message: jsConcat(box.id, S.s80))
+        throw JsError(message: jsConcat(box.id, S.s81))
       }
       _ = jsPush(out, (c as! any U_InlineBox_LineBreak_TextLeaf))
     }
@@ -556,7 +556,7 @@ public func inline_leafFontOf(_ t: TextLeaf) throws -> TextFont {
   let ls: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = t.letterSpacing
   // ts: packages/layout/src/inline.ts:273
   if (ls.kind != S.s_px) {
-    throw JsError(message: jsConcat(t.id, S.s150, (ls as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_RootFontLength_ViewportLength).kind, S.s78))
+    throw JsError(message: jsConcat(t.id, S.s151, (ls as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_RootFontLength_ViewportLength).kind, S.s79))
   }
   return TextFont(t.font.family, t.font.size, (ls as! Px).value)
 }
@@ -565,7 +565,7 @@ public func inline_leafFontOf(_ t: TextLeaf) throws -> TextFont {
 public func inline_resolvedLineHeight(_ id: JsString, _ lh: any U_LineHeightCalc_NormalValue_NumberValue_Percent_Px) throws -> any U_NormalValue_NumberValue_Px {
   // ts: packages/layout/src/inline.ts:279
   if ((lh.kind == S.s_percent) || ((lh as! any U_LineHeightCalc_NormalValue_NumberValue_Px).kind == S.s_calc)) {
-    throw JsError(message: jsConcat(id, S.s150, (lh as! any U_LineHeightCalc_Percent).kind, S.s79))
+    throw JsError(message: jsConcat(id, S.s151, (lh as! any U_LineHeightCalc_Percent).kind, S.s80))
   }
   return (lh as! any U_NormalValue_NumberValue_Px)
 }
@@ -586,7 +586,7 @@ public func inline_metricsOf(_ ctx: Ctx, _ id: JsString, _ font: FontSpec, _ lin
 public func inline_fontMetricsOf(_ ctx: Ctx, _ id: JsString, _ font: FontSpec) throws -> FontMetrics {
   // ts: packages/layout/src/inline.ts:301
   if try (!ctx.measurer.hasFace(font.family)) {
-    try unsupported_unsupported(S.s_text_glyph, id, S.s512, jsConcat(id, S.s82, font.family, S.s129))
+    try unsupported_unsupported(S.s_text_glyph, id, S.s513, jsConcat(id, S.s83, font.family, S.s130))
   }
   return try ctx.measurer.metrics(inline_fontOf(font))
 }
@@ -613,16 +613,16 @@ public func inline_checkInlineBox(_ ctx: Ctx, _ b: InlineBox) throws -> Void {
   let decorated: Bool = try ((((((((((!inline_zeroEdge(s.marginLeft)) || (!inline_zeroEdge(s.marginRight))) || (!inline_zeroEdge((s.paddingTop as! any U_Auto_LengthCalc_Percent_Px)))) || (!inline_zeroEdge((s.paddingRight as! any U_Auto_LengthCalc_Percent_Px)))) || (!inline_zeroEdge((s.paddingBottom as! any U_Auto_LengthCalc_Percent_Px)))) || (!inline_zeroEdge((s.paddingLeft as! any U_Auto_LengthCalc_Percent_Px)))) || (bor.top != 0.0)) || (bor.right != 0.0)) || (bor.bottom != 0.0)) || (bor.left != 0.0))
   // ts: packages/layout/src/inline.ts:326
   if decorated {
-    try unsupported_unsupported(S.s_inline_box_decoration, b.id, S.s196, jsConcat(S.s622, b.id, S.s27))
+    try unsupported_unsupported(S.s_inline_box_decoration, b.id, S.s197, jsConcat(S.s624, b.id, S.s28))
   }
   let va: any U_LengthCalc_Percent_Px_VerticalAlignKeywordValue = s.verticalAlign
   // ts: packages/layout/src/inline.ts:328
   if ((va.kind != S.s_keyword) || ((va as! VerticalAlignKeywordValue).value != S.s_baseline)) {
-    try unsupported_unsupported(S.s_vertical_align, b.id, S.s197, jsConcat(S.s893, b.id, S.s4))
+    try unsupported_unsupported(S.s_vertical_align, b.id, S.s198, jsConcat(S.s901, b.id, S.s4))
   }
   // ts: packages/layout/src/inline.ts:329
   if (s.position != S.s_static) {
-    try unsupported_unsupported(S.s_inline_box_position, b.id, S.s200, jsConcat(S.s412, s.position, S.s46, b.id))
+    try unsupported_unsupported(S.s_inline_box_position, b.id, S.s201, jsConcat(S.s413, s.position, S.s47, b.id))
   }
 }
 
@@ -726,7 +726,7 @@ public func inline_tagIndex(_ items: JsArray<Inline_Item>, _ b: Double, _ kind: 
       i += 1.0
     }
   }
-  throw JsError(message: jsConcat(S.s696, kind, S.s102, jsNumberToString(b)))
+  throw JsError(message: jsConcat(S.s699, kind, S.s103, jsNumberToString(b)))
 }
 
 // ts: packages/layout/src/inline.ts:396
@@ -782,7 +782,7 @@ public func inline_buildIfc(_ ctx: Ctx, _ box: LayoutBox) throws -> Ifc {
             _i84 += 1
             // ts: packages/layout/src/inline.ts:412
             if try (jsUnwrap(jsCodePointAt0(ch)) == 173.0) {
-              try unsupported_unsupported(S.s_letter_spacing, t.id, S.s525, jsConcat(t.id, S.s29))
+              try unsupported_unsupported(S.s_letter_spacing, t.id, S.s526, jsConcat(t.id, S.s30))
             }
           }
         }
@@ -803,22 +803,22 @@ public func inline_buildIfc(_ ctx: Ctx, _ box: LayoutBox) throws -> Ifc {
           if (!m.ok) {
             // ts: packages/layout/src/inline.ts:418
             if ((m as! MeasureResult_okFalse).code == S.s_text_script) {
-              try unsupported_unsupported(S.s_text_script, t.id, S.s720, (m as! MeasureResult_okFalse).reason)
+              try unsupported_unsupported(S.s_text_script, t.id, S.s723, (m as! MeasureResult_okFalse).reason)
             }
-            try unsupported_unsupported(S.s_text_glyph, t.id, S.s512, (m as! MeasureResult_okFalse).reason)
+            try unsupported_unsupported(S.s_text_glyph, t.id, S.s513, (m as! MeasureResult_okFalse).reason)
           }
         }
       }
       // ts: packages/layout/src/inline.ts:422
       if try ((first != nil) && (t.textWrapMode != jsUnwrap(first).textWrapMode)) {
-        try unsupported_unsupported(S.s_mixed_text_wrap_mode, t.id, S.s527, jsConcat(S.s839, box.id))
+        try unsupported_unsupported(S.s_mixed_text_wrap_mode, t.id, S.s528, jsConcat(S.s847, box.id))
       }
     }
   }
   let strut: LineStrut? = box.strut
   // ts: packages/layout/src/inline.ts:427
   if (strut == nil) {
-    throw JsError(message: jsConcat(box.id, S.s28))
+    throw JsError(message: jsConcat(box.id, S.s29))
   }
   let starts: JsArray<Double> = JsArray<Double>([])
   let wrap: Bool = try ((first == nil) || (jsUnwrap(first).textWrapMode == S.s_wrap))
@@ -870,7 +870,7 @@ public func inline_lineFeedSegments(_ t: TextLeaf) throws -> JsArray<JsString> {
 public func inline_checkPreservedText(_ ctx: Ctx, _ box: LayoutBox, _ flat: Flat, _ mode: JsString) throws -> Void {
   // ts: packages/layout/src/inline.ts:473
   if ((jsLength(flat.boxes) > 0.0) || (jsLength(flat.brs) > 0.0)) {
-    try unsupported_unsupported(S.s_mixed_white_space, box.id, S.s526, jsConcat(S.s896, mode, S.s104, box.id))
+    try unsupported_unsupported(S.s_mixed_white_space, box.id, S.s527, jsConcat(S.s904, mode, S.s105, box.id))
   }
   // ts: packages/layout/src/inline.ts:474
   do {
@@ -881,15 +881,15 @@ public func inline_checkPreservedText(_ ctx: Ctx, _ box: LayoutBox, _ flat: Flat
       _i87 += 1
       // ts: packages/layout/src/inline.ts:475
       if (t.whiteSpaceCollapse != mode) {
-        try unsupported_unsupported(S.s_mixed_white_space, t.id, S.s526, jsConcat(S.s840, box.id))
+        try unsupported_unsupported(S.s_mixed_white_space, t.id, S.s527, jsConcat(S.s848, box.id))
       }
       // ts: packages/layout/src/inline.ts:476
       if ((mode == S.s_break_spaces) && (t.font.family != text_AHEM_FACE_ID)) {
-        try unsupported_unsupported(S.s_line_break, t.id, S.s527, jsConcat(S.s897, t.id, S.s5))
+        try unsupported_unsupported(S.s_line_break, t.id, S.s528, jsConcat(S.s905, t.id, S.s5))
       }
       // ts: packages/layout/src/inline.ts:478
       if try (inline_leafFontOf(t).letterSpacing != 0.0) {
-        try unsupported_unsupported(S.s_letter_spacing, t.id, S.s525, jsConcat(t.id, S.s30, mode))
+        try unsupported_unsupported(S.s_letter_spacing, t.id, S.s526, jsConcat(t.id, S.s31, mode))
       }
       // ts: packages/layout/src/inline.ts:479
       do {
@@ -901,11 +901,11 @@ public func inline_checkPreservedText(_ ctx: Ctx, _ box: LayoutBox, _ flat: Flat
           let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
           // ts: packages/layout/src/inline.ts:481
           if (cp == 9.0) {
-            try unsupported_unsupported(S.s_tab_stop, t.id, S.s520, jsConcat(S.s423, t.id, S.s167))
+            try unsupported_unsupported(S.s_tab_stop, t.id, S.s521, jsConcat(S.s424, t.id, S.s168))
           }
           // ts: packages/layout/src/inline.ts:482
           if (((cp < 32.0) && (cp != inline_LINE_FEED)) || (cp == 127.0)) {
-            try unsupported_unsupported(S.s_preserved_control, t.id, S.s519, jsConcat(S.s865, jsToUpperCase(jsToStringRadix16(cp)), S.s45, t.id))
+            try unsupported_unsupported(S.s_preserved_control, t.id, S.s520, jsConcat(S.s873, jsToUpperCase(jsToStringRadix16(cp)), S.s46, t.id))
           }
         }
       }
@@ -913,7 +913,7 @@ public func inline_checkPreservedText(_ ctx: Ctx, _ box: LayoutBox, _ flat: Flat
   }
   // ts: packages/layout/src/inline.ts:485
   if try (block_directionOf(ctx, box) == S.s_rtl) {
-    try unsupported_unsupported(S.s_bidi_neutral, box.id, S.s389, jsConcat(S.s767, box.id, S.s103))
+    try unsupported_unsupported(S.s_bidi_neutral, box.id, S.s390, jsConcat(S.s774, box.id, S.s104))
   }
 }
 
@@ -947,7 +947,7 @@ public func inline_checkPreservedBesideInline(_ box: LayoutBox, _ kids: JsArray<
       _i90 += 1
       // ts: packages/layout/src/inline.ts:494
       if (t.whiteSpaceCollapse != S.s_collapse) {
-        try unsupported_unsupported(S.s_mixed_white_space, t.id, S.s526, jsConcat(S.s896, t.whiteSpaceCollapse, S.s104, box.id))
+        try unsupported_unsupported(S.s_mixed_white_space, t.id, S.s527, jsConcat(S.s904, t.whiteSpaceCollapse, S.s105, box.id))
       }
     }
   }
@@ -992,10 +992,10 @@ public func inline_latinScopeRefusal(_ text: JsString) throws -> JsString {
       if (sc == scriptData_USCRIPT_LATIN) {
         continue
       }
-      let at: JsString = try jsConcat(S.s386, jsToUpperCase(jsToStringRadix16(cp)))
+      let at: JsString = try jsConcat(S.s387, jsToUpperCase(jsToStringRadix16(cp)))
       // ts: packages/layout/src/inline.ts:521
       if ((sc != scriptData_USCRIPT_COMMON) && (sc != scriptData_USCRIPT_INHERITED)) {
-        return jsConcat(at, S.s71)
+        return jsConcat(at, S.s72)
       }
       let ext: JsArray<Double> = try scriptData_scriptExtensions(cp)
       var latin: Bool = false
@@ -1015,7 +1015,7 @@ public func inline_latinScopeRefusal(_ text: JsString) throws -> JsString {
       let plain: Bool = try ((jsLength(ext) == 1.0) && ((jsUnwrap(jsAt(ext, 0.0)) == scriptData_USCRIPT_COMMON) || (jsUnwrap(jsAt(ext, 0.0)) == scriptData_USCRIPT_INHERITED)))
       // ts: packages/layout/src/inline.ts:526
       if ((!latin) && (!plain)) {
-        return jsConcat(at, S.s48)
+        return jsConcat(at, S.s49)
       }
     }
   }
@@ -1036,7 +1036,7 @@ public func inline_checkShapedText(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArr
         let r: JsString = try inline_latinScopeRefusal(t.text)
         // ts: packages/layout/src/inline.ts:539
         if (r != S.s0) {
-          try unsupported_unsupported(S.s_text_script, t.id, S.s720, jsConcat(r, S.s165))
+          try unsupported_unsupported(S.s_text_script, t.id, S.s723, jsConcat(r, S.s166))
         }
       }
     }
@@ -1061,7 +1061,7 @@ public func inline_checkShapedText(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArr
       let t: TextLeaf = try jsUnwrap(jsAt(leaves, it.leaf))
       // ts: packages/layout/src/inline.ts:550
       if try ((((prev != nil) && (jsUnwrap(prev).font.family == t.font.family)) && (jsUnwrap(prev).font.size == t.font.size)) && (inline_leafFontOf(jsUnwrap(prev)).letterSpacing == inline_leafFontOf(t).letterSpacing)) {
-        try unsupported_unsupported(S.s_text_shaping_run, t.id, S.s524, jsConcat(jsUnwrap(prev).id, S.s11, t.id, S.s12))
+        try unsupported_unsupported(S.s_text_shaping_run, t.id, S.s525, jsConcat(jsUnwrap(prev).id, S.s11, t.id, S.s12))
       }
       last = it.leaf
     }
@@ -1210,7 +1210,7 @@ public func inline_ahemOpportunities(_ box: LayoutBox, _ cps: JsArray<Double>, _
       _i97 += 1
       // ts: packages/layout/src/inline.ts:649
       if try (text_coveredIndex(cp) < 0.0) {
-        try unsupported_unsupported(S.s_line_break, box.id, S.s521, jsConcat(S.s386, jsToUpperCase(jsToStringRadix16(cp)), S.s75))
+        try unsupported_unsupported(S.s_line_break, box.id, S.s522, jsConcat(S.s387, jsToUpperCase(jsToStringRadix16(cp)), S.s76))
       }
     }
   }
@@ -1528,7 +1528,7 @@ public func inline_latinOpportunities(_ box: LayoutBox, _ cps: JsArray<Double>, 
       _i99 += 1
       // ts: packages/layout/src/inline.ts:852
       if try (inline_latinBreakClass(cp) < 0.0) {
-        try unsupported_unsupported(S.s_line_break, box.id, S.s521, jsConcat(S.s386, jsToUpperCase(jsToStringRadix16(cp)), S.s75))
+        try unsupported_unsupported(S.s_line_break, box.id, S.s522, jsConcat(S.s387, jsToUpperCase(jsToStringRadix16(cp)), S.s76))
       }
     }
   }
@@ -1647,9 +1647,9 @@ public func inline_width(_ ctx: Ctx, _ ifc: Ifc, _ start: Double, _ end: Double)
     if (!m.ok) {
       // ts: packages/layout/src/inline.ts:929
       if ((m as! MeasureResult_okFalse).code == S.s_text_script) {
-        try unsupported_unsupported(S.s_text_script, t.id, S.s720, (m as! MeasureResult_okFalse).reason)
+        try unsupported_unsupported(S.s_text_script, t.id, S.s723, (m as! MeasureResult_okFalse).reason)
       }
-      try unsupported_unsupported(S.s_text_glyph, t.id, S.s512, (m as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_glyph, t.id, S.s513, (m as! MeasureResult_okFalse).reason)
     }
     try total = units_add(total, (m as! MeasureResult_okTrue).measure.width)
   }
@@ -1680,9 +1680,9 @@ public func inline_cachedWidth(_ ctx: Ctx, _ ifc: Ifc, _ start: Double, _ end: D
     if (!m.ok) {
       // ts: packages/layout/src/inline.ts:957
       if ((m as! MeasureResult_okFalse).code == S.s_text_script) {
-        try unsupported_unsupported(S.s_text_script, t.id, S.s720, (m as! MeasureResult_okFalse).reason)
+        try unsupported_unsupported(S.s_text_script, t.id, S.s723, (m as! MeasureResult_okFalse).reason)
       }
-      try unsupported_unsupported(S.s_text_glyph, t.id, S.s512, (m as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_glyph, t.id, S.s513, (m as! MeasureResult_okFalse).reason)
     }
     try total = units_add(total, (m as! MeasureResult_okTrue).measure.width)
   }
@@ -1818,7 +1818,7 @@ public func inline_breakLines(_ ctx: Ctx, _ ifc: Ifc, _ available: Double) throw
           let it: Inline_Item = try jsUnwrap(jsAt(ifc.items, i))
           // ts: packages/layout/src/inline.ts:1044
           if (it.kind == S.s_open) {
-            try unsupported_unsupported(S.s_inline_empty_line, jsUnwrap(jsAt(ifc.boxes, it.box)).id, S.s199, jsConcat(S.s622, jsUnwrap(jsAt(ifc.boxes, it.box)).id, S.s100))
+            try unsupported_unsupported(S.s_inline_empty_line, jsUnwrap(jsAt(ifc.boxes, it.box)).id, S.s200, jsConcat(S.s624, jsUnwrap(jsAt(ifc.boxes, it.box)).id, S.s101))
           }
           i += 1.0
         }
@@ -1953,13 +1953,13 @@ public func inline_shapedItemsOf(_ ctx: Ctx, _ ifc: Ifc) throws -> ShapedItems {
       if (!s.ok) {
         // ts: packages/layout/src/inline.ts:1118
         if ((s as! ShapedItem_okFalse).code == S.s_text_script) {
-          try unsupported_unsupported(S.s_text_script, t.id, S.s720, (s as! ShapedItem_okFalse).reason)
+          try unsupported_unsupported(S.s_text_script, t.id, S.s723, (s as! ShapedItem_okFalse).reason)
         }
-        try unsupported_unsupported(S.s_text_glyph, t.id, S.s512, (s as! ShapedItem_okFalse).reason)
+        try unsupported_unsupported(S.s_text_glyph, t.id, S.s513, (s as! ShapedItem_okFalse).reason)
       }
       // ts: packages/layout/src/inline.ts:1121
       if ((s as! ShapedItem_okTrue).result.end != (i - first)) {
-        try unsupported_unsupported(S.s_text_glyph, t.id, S.s512, jsConcat(t.id, S.s44))
+        try unsupported_unsupported(S.s_text_glyph, t.id, S.s513, jsConcat(t.id, S.s45))
       }
       let opps: JsArray<Double> = JsArray<Double>([])
       // ts: packages/layout/src/inline.ts:1123
@@ -2037,7 +2037,7 @@ public func inline_breakShapedLines(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ 
   let r: any U_BrokenLines_okFalse_BrokenLines_okTrue = try shaping_breakItemLines(s.items, units_add(available, slack), wrap, inline_needsAccurateEnd(ctx, box), (!ctx.faults.fitWithoutEpsilon), (ifc.mode == S.s_preserve))
   // ts: packages/layout/src/inline.ts:1167
   if (!r.ok) {
-    try unsupported_unsupported(S.s_line_break, box.id, S.s521, (r as! BrokenLines_okFalse).reason)
+    try unsupported_unsupported(S.s_line_break, box.id, S.s522, (r as! BrokenLines_okFalse).reason)
   }
   let lines: JsArray<Inline_Line> = JsArray<Inline_Line>([])
   var start: Double = 0.0
@@ -2064,7 +2064,7 @@ public func inline_breakShapedLines(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ 
       let it: Inline_Item = try jsUnwrap(jsAt(ifc.items, i))
       // ts: packages/layout/src/inline.ts:1178
       if (it.kind == S.s_open) {
-        try unsupported_unsupported(S.s_inline_empty_line, jsUnwrap(jsAt(ifc.boxes, it.box)).id, S.s199, jsConcat(S.s622, jsUnwrap(jsAt(ifc.boxes, it.box)).id, S.s100))
+        try unsupported_unsupported(S.s_inline_empty_line, jsUnwrap(jsAt(ifc.boxes, it.box)).id, S.s200, jsConcat(S.s624, jsUnwrap(jsAt(ifc.boxes, it.box)).id, S.s101))
       }
       i += 1.0
     }
@@ -2127,7 +2127,7 @@ public func inline_spanWidth(_ ctx: Ctx, _ ifc: Ifc, _ line: Inline_Line, _ star
       } else if (end >= p.visibleTo) {
         try total = units_add(total, p.visibleWidth)
       } else {
-        throw JsError(message: jsConcat(S.s428, jsNumberToString(start), S.s124, jsNumberToString(end), S.s116, jsNumberToString(p.from), S.s124, jsNumberToString(p.to), S.s114))
+        throw JsError(message: jsConcat(S.s429, jsNumberToString(start), S.s125, jsNumberToString(end), S.s117, jsNumberToString(p.from), S.s125, jsNumberToString(p.to), S.s115))
       }
     }
   }
@@ -2190,7 +2190,7 @@ public func inline_justifyLine(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ line:
       let it: Inline_Item = try jsUnwrap(jsAt(ifc.items, i))
       // ts: packages/layout/src/inline.ts:1266
       if try ((it.kind == S.s_char) && (inline_leafFontOf(jsUnwrap(jsAt(ifc.leaves, it.leaf))).letterSpacing != 0.0)) {
-        try unsupported_unsupported(S.s_text_align, box.id, S.s523, jsConcat(S.s847, jsUnwrap(jsAt(ifc.leaves, it.leaf)).id, S.s119))
+        try unsupported_unsupported(S.s_text_align, box.id, S.s524, jsConcat(S.s855, jsUnwrap(jsAt(ifc.leaves, it.leaf)).id, S.s120))
       }
       i += 1.0
     }
@@ -2202,7 +2202,7 @@ public func inline_justifyLine(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ line:
       let it: Inline_Item = try jsUnwrap(jsAt(ifc.items, i))
       // ts: packages/layout/src/inline.ts:1272
       if try ((it.kind == S.s_char) && inline_maybeCjkIdeographOrSymbol(it.cp)) {
-        try unsupported_unsupported(S.s_text_align, box.id, S.s523, jsConcat(S.s844, jsToUpperCase(jsToStringRadix16(it.cp)), S.s125))
+        try unsupported_unsupported(S.s_text_align, box.id, S.s524, jsConcat(S.s852, jsToUpperCase(jsToStringRadix16(it.cp)), S.s126))
       }
       i += 1.0
     }
@@ -2227,7 +2227,7 @@ public func inline_justifyLine(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ line:
         final = i
         // ts: packages/layout/src/inline.ts:1282
         if ((it.cp == inline_TAB) || (it.cp == inline_LINE_FEED)) {
-          try unsupported_unsupported(S.s_text_align, box.id, S.s523, S.s845)
+          try unsupported_unsupported(S.s_text_align, box.id, S.s524, S.s853)
         }
         // ts: packages/layout/src/inline.ts:1283
         if try inline_treatAsSpace(it.cp) {
@@ -2243,11 +2243,11 @@ public func inline_justifyLine(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ line:
   }
   // ts: packages/layout/src/inline.ts:1288
   if try (inline_treatAsSpace(jsUnwrap(jsAt(ifc.items, first)).cp) || inline_treatAsSpace(jsUnwrap(jsAt(ifc.items, final)).cp)) {
-    try unsupported_unsupported(S.s_text_align, box.id, S.s523, S.s846)
+    try unsupported_unsupported(S.s_text_align, box.id, S.s524, S.s854)
   }
   // ts: packages/layout/src/inline.ts:1289
   if try (jsUnwrap(jsAt(ifc.items, final)).cp == inline_SOFT_HYPHEN) {
-    try unsupported_unsupported(S.s_text_align, box.id, S.s523, S.s843)
+    try unsupported_unsupported(S.s_text_align, box.id, S.s524, S.s851)
   }
   // ts: packages/layout/src/inline.ts:1290
   if (count == 0.0) {
@@ -2293,7 +2293,7 @@ public func inline_ahemJustifiedRuns(_ box: LayoutBox, _ ifc: Ifc, _ line: Inlin
     let em: Double = try units_floatToInlineRaw(units_platformFontSize(t.font.size))
     // ts: packages/layout/src/inline.ts:1322
     if (!jsIsInteger(em)) {
-      try unsupported_unsupported(S.s_text_align, box.id, S.s523, jsConcat(S.s842, t.id, S.s113, jsNumberToString(units_platformFontSize(t.font.size)), S.s771))
+      try unsupported_unsupported(S.s_text_align, box.id, S.s524, jsConcat(S.s850, t.id, S.s114, jsNumberToString(units_platformFontSize(t.font.size)), S.s778))
     }
     var raw: Double = 0.0
     // ts: packages/layout/src/inline.ts:1324
@@ -2302,7 +2302,7 @@ public func inline_ahemJustifiedRuns(_ box: LayoutBox, _ ifc: Ifc, _ line: Inlin
       let units: Double? = ((k < 0.0) ? (nil as Double?) : (jsAt(text_AHEM_FONT_DATA.advances, k) as Double?))
       // ts: packages/layout/src/inline.ts:1327
       if (units == nil) {
-        try unsupported_unsupported(S.s_text_glyph, t.id, S.s512, jsConcat(S.s386, jsToUpperCase(jsToStringRadix16(jsUnwrap(jsAt(ifc.items, i)).cp)), S.s62))
+        try unsupported_unsupported(S.s_text_glyph, t.id, S.s513, jsConcat(S.s387, jsToUpperCase(jsToStringRadix16(jsUnwrap(jsAt(ifc.items, i)).cp)), S.s63))
       }
       try raw = ((raw + ((jsUnwrap(units) / text_AHEM_FONT_DATA.unitsPerEm) * em)) + jsUnwrap(jsAt(expansions, (i - line.start))))
       i += 1.0
@@ -2324,11 +2324,11 @@ public func inline_shapedJustifiedRuns(_ line: Inline_Line, _ expansions: JsArra
       _i107 += 1
       // ts: packages/layout/src/inline.ts:1340
       if ((p.from < line.start) || (p.visibleTo > line.visibleEnd)) {
-        throw JsError(message: jsConcat(S.s871, jsNumberToString(p.from), S.s124, jsNumberToString(p.to), S.s120))
+        throw JsError(message: jsConcat(S.s879, jsNumberToString(p.from), S.s125, jsNumberToString(p.to), S.s121))
       }
       // ts: packages/layout/src/inline.ts:1341
       if (p.view == nil) {
-        throw JsError(message: jsConcat(S.s871, jsNumberToString(p.from), S.s124, jsNumberToString(p.to), S.s117))
+        throw JsError(message: jsConcat(S.s879, jsNumberToString(p.from), S.s125, jsNumberToString(p.to), S.s118))
       }
       let view: LineView = try ((p.visibleTo < p.to) ? shaping_subView(jsUnwrap(p.view), p.offset, (p.offset + (p.visibleTo - p.from))) : jsUnwrap(p.view))
       let own: JsArray<Double> = JsArray<Double>([])
@@ -2362,7 +2362,7 @@ public func inline_justifiedSpan(_ j: Justified, _ start: Double, _ end: Double)
       }
       // ts: packages/layout/src/inline.ts:1355
       if (end < r.to) {
-        throw JsError(message: jsConcat(S.s428, jsNumberToString(start), S.s124, jsNumberToString(end), S.s115, jsNumberToString(r.from), S.s124, jsNumberToString(r.to), S.s114))
+        throw JsError(message: jsConcat(S.s429, jsNumberToString(start), S.s125, jsNumberToString(end), S.s116, jsNumberToString(r.from), S.s125, jsNumberToString(r.to), S.s115))
       }
       try total = units_add(total, r.width)
     }
@@ -2474,7 +2474,7 @@ public func inline_placeIfcLines(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ ava
           let lastItem: Inline_Item? = jsAt(ifc.items, (unjustified.end - 1.0))
           // ts: packages/layout/src/inline.ts:1444
           if try ((((box.style.textAlign == S.s_justify) && (n != (jsLength(broken) - 1.0))) && (!unjustified.forced)) && ((lastItem == nil) || (jsUnwrap(lastItem).kind != S.s_nl))) {
-            try unsupported_unsupported(S.s_text_align, box.id, S.s523, jsConcat(S.s848, box.id, S.s65))
+            try unsupported_unsupported(S.s_text_align, box.id, S.s524, jsConcat(S.s856, box.id, S.s66))
           }
           let placed: PlacedLine = try inline_placePreservedLine(ctx, box, ifc, unjustified, available, top)
           _ = jsPush(out, placed)
@@ -2600,7 +2600,7 @@ public func inline_truncates(_ ctx: Ctx, _ box: LayoutBox) throws -> Bool {
   }
   // ts: packages/layout/src/inline.ts:1527
   if try (block_directionOf(ctx, box) == S.s_rtl) {
-    try unsupported_unsupported(S.s_text_overflow, box.id, S.s515, jsConcat(S.s852, box.id, S.s67))
+    try unsupported_unsupported(S.s_text_overflow, box.id, S.s516, jsConcat(S.s860, box.id, S.s68))
   }
   return true
 }
@@ -2620,14 +2620,14 @@ public func inline_truncatePieces(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ av
       _i111 += 1
       // ts: packages/layout/src/inline.ts:1540
       if try (jsUnwrap(jsAt(ifc.firstContent, b)) < 0.0) {
-        try unsupported_unsupported(S.s_text_overflow, jsUnwrap(jsAt(ifc.boxes, b)).id, S.s515, jsConcat(S.s857, jsUnwrap(jsAt(ifc.boxes, b)).id, S.s68, box.id))
+        try unsupported_unsupported(S.s_text_overflow, jsUnwrap(jsAt(ifc.boxes, b)).id, S.s516, jsConcat(S.s865, jsUnwrap(jsAt(ifc.boxes, b)).id, S.s69, box.id))
       }
     }
   }
   let strut: LineStrut? = box.strut
   // ts: packages/layout/src/inline.ts:1543
   if (strut == nil) {
-    throw JsError(message: jsConcat(box.id, S.s151))
+    throw JsError(message: jsConcat(box.id, S.s152))
   }
   let sources: JsArray<TruncSource> = JsArray<TruncSource>([])
   // ts: packages/layout/src/inline.ts:1545
@@ -2641,7 +2641,7 @@ public func inline_truncatePieces(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ av
       let font: TextFont = try inline_leafFontOf(t)
       // ts: packages/layout/src/inline.ts:1549
       if (font.letterSpacing != 0.0) {
-        try unsupported_unsupported(S.s_text_overflow, t.id, S.s515, jsConcat(t.id, S.s31, box.id))
+        try unsupported_unsupported(S.s_text_overflow, t.id, S.s516, jsConcat(t.id, S.s32, box.id))
       }
       _ = jsPush(sources, TruncSource(t.text, font, p.start, p.visibleEnd, p.x, p.width))
     }
@@ -2800,7 +2800,7 @@ public func inline_placePreservedLine(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, 
   }
   // ts: packages/layout/src/inline.ts:1657
   if try (inline_truncates(ctx, box) && (shown > units_add(available, units_fromRaw(1.0)))) {
-    try unsupported_unsupported(S.s_text_overflow, box.id, S.s515, jsConcat(S.s866, box.id, S.s90))
+    try unsupported_unsupported(S.s_text_overflow, box.id, S.s516, jsConcat(S.s874, box.id, S.s91))
   }
   return PlacedLine(top, height, baseline, pieces, JsArray<Double>([]), JsArray<Rect>([]), JsArray<Double>([]), JsArray<Rect>([]), nil)
 }
@@ -2830,7 +2830,7 @@ public func inline_boundingOf(_ rects: JsArray<Rect>) throws -> Rect {
 // ts: packages/layout/src/inline.ts:1680
 public func inline_fragmentOf(_ id: JsString, _ rects: JsArray<Rect>, _ origin: Point, _ bounding: Rect) throws -> Placed {
   let children: JsArray<Placed> = try jsMapI(rects, { (p: Rect, j: Double) throws -> Placed in
-    return try Placed(Frag(jsConcat(id, S.s162, jsNumberToString(j)), p.width, p.height, nil, JsArray<Placed>([]), JsArray<OutOfFlow>([]), nil), units_sub(p.x, bounding.x), units_sub(p.y, bounding.y))
+    return try Placed(Frag(jsConcat(id, S.s163, jsNumberToString(j)), p.width, p.height, nil, JsArray<Placed>([]), JsArray<OutOfFlow>([]), nil), units_sub(p.x, bounding.x), units_sub(p.y, bounding.y))
 })
   let frag: Frag = Frag(id, bounding.width, bounding.height, nil, children, JsArray<OutOfFlow>([]), nil)
   return try Placed(frag, units_add(origin.x, bounding.x), units_add(origin.y, bounding.y))
@@ -3006,7 +3006,7 @@ public func inline_collectFragments(_ ctx: Ctx, _ ifc: Ifc, _ lines: JsArray<Pla
     }
     // ts: packages/layout/src/inline.ts:1757
     if ((jsLength(rects) == 0.0) && (jsLength(lines) > 0.0)) {
-      throw JsError(message: jsConcat(b.id, S.s69))
+      throw JsError(message: jsConcat(b.id, S.s70))
     }
     // ts: packages/layout/src/inline.ts:1758
     if (jsLength(rects) == 0.0) {
@@ -3041,7 +3041,7 @@ public func inline_collectFragments(_ ctx: Ctx, _ ifc: Ifc, _ lines: JsArray<Pla
     }
     // ts: packages/layout/src/inline.ts:1769
     if (!out.placed.has(br.id)) {
-      throw JsError(message: jsConcat(br.id, S.s69))
+      throw JsError(message: jsConcat(br.id, S.s70))
     }
 })
 }
@@ -3154,11 +3154,11 @@ public func inline_shapedIntrinsicSize(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc,
       // ts: packages/layout/src/inline.ts:1847
       if try (((((lastChar != nil) && (jsUnwrap(lastChar).kind == S.s_char)) && (jsUnwrap(lastChar).cp == 173.0)) && (!b.forced)) && (!ctx.faults.softHyphenWidthMissing)) {
         let t: TextLeaf = try jsUnwrap(jsAt(ifc.leaves, jsUnwrap(lastChar).leaf))
-        let h: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s902, inline_fontOf(t.font))
-        let hyphen: any U_MeasureResult_okFalse_MeasureResult_okTrue = try (h.ok ? (h as any U_MeasureResult_okFalse_MeasureResult_okTrue) : (ctx.measurer.measure(S.s130, inline_fontOf(t.font)) as any U_MeasureResult_okFalse_MeasureResult_okTrue))
+        let h: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s910, inline_fontOf(t.font))
+        let hyphen: any U_MeasureResult_okFalse_MeasureResult_okTrue = try (h.ok ? (h as any U_MeasureResult_okFalse_MeasureResult_okTrue) : (ctx.measurer.measure(S.s131, inline_fontOf(t.font)) as any U_MeasureResult_okFalse_MeasureResult_okTrue))
         // ts: packages/layout/src/inline.ts:1851
         if (!hyphen.ok) {
-          try unsupported_unsupported(S.s_text_glyph, t.id, S.s522, (hyphen as! MeasureResult_okFalse).reason)
+          try unsupported_unsupported(S.s_text_glyph, t.id, S.s523, (hyphen as! MeasureResult_okFalse).reason)
         }
         try w = units_add(w, (hyphen as! MeasureResult_okTrue).measure.width)
       }
