@@ -660,7 +660,7 @@ public final class DragonTree {
       if z.position.description != "absolute" { return nil }
       var at = zParent[id]
       while let a = at, let st = zStyles[a], st.position.description == "static" { at = zParent[a] }
-      guard let a = at else { return units_fromCssPx(zoomed.viewport.width) }
+      guard let a = at else { return try units_fromCssPx(zoomed.viewport.width) }
       guard let st = zStyles[a], let r = rects[a] else { fatalError("dragon: the containing block \(a) of \(id) is not placed") }
       let bor = try box_resolveBorder(st, zoomed.devicePixelRatio)
       return r.width - bor.left - bor.right
