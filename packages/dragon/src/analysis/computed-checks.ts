@@ -579,7 +579,8 @@ const SKIP_INK_PROVEN_THICKNESS = 13;
  * TDEC-d: whether a skip-ink auto line's thickness stays within SKIP_INK_PROVEN_THICKNESS zoomed px at every device scale up to
  * NATIVE_DPR_MAX, so the device's dilation by the thickness (text_painter.cc:555-563, layout text-decoration.ts skipInkClips) is
  * the one the captures prove. auto is size / 10 of the decorating box's font; a px length or a percentage rounds half up after zoom (roundf, +0.5 at
- * most). boxSize is css px.
+ * most). boxSize is css px. A device above NATIVE_DPR_MAX still dilates as Chrome does: skipInkClips clamps the dilation at
+ * kDecorationClipMaxDilation (13 px, text_painter.cc:44), which text-decoration-ahem-skip's 6px line captures at DPR 3.
  */
 export function skipInkThicknessProven(thickness: CssValue, boxSize: number): boolean {
   const auto = thickness.kind === 'keyword' && thickness.value === 'auto';

@@ -43,6 +43,10 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   font('text-decoration-ahem', FONT_REFERENCE_MAP, { a1: 'Ahem', a2: 'Ahem', a3: 'Ahem' }),
   // The skip-ink probe: Ahem's glyph boxes cross an auto underline, so the engine refuses it (skip-ink-intercepts, TDEC-d).
   font('text-decoration-ahem-auto', FONT_REFERENCE_MAP, { a: 'Ahem' }),
+  // TDEC-d at other sizes and lengths: Ahem auto underlines at 15, 13 and 25px (15px is 39.375 at DPR 2.625, which Chrome draws at
+  // 39.37), px and percent thicknesses, px and percent offsets, and a 6px line whose dilation passes kDecorationClipMaxDilation (13
+  // device px) at DPR 3.
+  font('text-decoration-ahem-skip', FONT_REFERENCE_MAP, Object.fromEntries(['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'].map((id) => [id, 'Ahem']))),
 ];
 
 /** An invalid map: a pinned entry with no faces. */

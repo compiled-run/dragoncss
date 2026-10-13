@@ -1740,7 +1740,8 @@
       "fileSha256": "bc42c995f0007acd9ad25d0d406911770f34025f5d83e5fb5638e8553e330a6e",
       "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
       "ranges": [
-        { "lines": "555-563", "symbol": null, "source": "cited" }
+        { "lines": "44-44", "symbol": "kDecorationClipMaxDilation", "source": "located" },
+        { "lines": "555-583", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "skipInkThicknessProven", "use": "reference" },

@@ -229,6 +229,8 @@ export const CHANNEL_DELTA_BY_KIND: { readonly [K in SampleRule]: number } = {
   gradient: GRADIENT_CHANNEL_DELTA,
   // REPL-a (R8): flat image content is compared strictly, with no allowance.
   'image-flat': GATE_CHANNEL_DELTA,
+  // TDEC-b: the rows of a text decoration are whole device rows of one colour, compared strictly.
+  decoration: GATE_CHANNEL_DELTA,
 };
 
 /**
