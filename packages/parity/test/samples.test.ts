@@ -12,7 +12,7 @@ const I = SAMPLE_INSET_DEVICE_PX;
 const clearOf = (v: number, e: number): boolean => v >= e + I || v + 1 <= e - I;
 
 describe('sample generator', () => {
-  it('the six rules, in order, shared by both targets', () => {
+  it('the sample rules, in order, shared by both targets', () => {
     // REPL-a appends image-flat (R8): points on flat image content, added by the image paint module.
     // TDEC-b appends decoration: points on and beside the rows of text decorations, added by the text-decoration paint module.
     expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient', 'image-flat', 'decoration']);

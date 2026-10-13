@@ -6,7 +6,7 @@
 // gap-ink: a clipped column is a skip-ink gap, an ink column lies inside a glyph box) and on the row just above and just below the
 // rect where that row is clear of the glyph edges (states above and below). An under or overline paints beneath the glyphs it crosses, a line-through over them, so the ink
 // points prove the paint order; the rows and the rows beside them prove the snapped rows; a gap proves the skip-ink clip. A base
-// colour point within SAMPLE_INSET_DEVICE_PX of a rect's edge is suppressed, as is a base scanline that comes that near one.
+// colour point inside a rect or within SAMPLE_INSET_DEVICE_PX of its edge is suppressed, as is a base scanline that comes that near one.
 import { textDecoration as td } from '@dragon/layout';
 import { glyphLines } from '../pixel-reference.ts';
 import type { GlyphBox, SamplePoint } from '../samples.ts';
@@ -43,14 +43,17 @@ function nearRectEdge(x: number, y: number, r: td.DecorationRect, inset: number)
   return (inBand(y, r.top, bottom) && (nearEdge(x, r.left) || nearEdge(x, right))) || (inBand(x, r.left, right) && (nearEdge(y, r.top) || nearEdge(y, bottom)));
 }
 
-/** Whether a pixel is near an edge of any decoration rect of the case. */
+/** Whether the pixel [x, x + 1) x [y, y + 1) lies inside a rect (its rows and columns, whatever its colour). */
+const insideRect = (x: number, y: number, r: td.DecorationRect): boolean => x + 1 > r.left && x < r.right && y + 1 > r.top && y < r.top + r.height;
+
+/** Whether a pixel is inside, or near an edge of, any decoration rect of the case. */
 export function nearDecoration(ctx: PaintSampleContext, x: number, y: number): boolean {
-  return placed(ctx).rects.some((r) => nearRectEdge(x, y, r, SAMPLE_INSET_DEVICE_PX));
+  return placed(ctx).rects.some((r) => insideRect(x, y, r) || nearRectEdge(x, y, r, SAMPLE_INSET_DEVICE_PX));
 }
 
 const near = new WeakMap<PaintSampleContext, ReadonlySet<string>>();
 
-/** The base edge scanlines that come near a decoration rect (edge rules are judged per scanline, so the whole scanline goes). */
+/** The base edge scanlines that enter or come near a decoration rect (edge rules are judged per scanline, so the whole scanline goes). */
 function scanlinesNearDecorations(ctx: PaintSampleContext): ReadonlySet<string> {
   const hit = near.get(ctx);
   if (hit !== undefined) return hit;

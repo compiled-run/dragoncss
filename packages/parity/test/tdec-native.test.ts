@@ -5,7 +5,8 @@
 // (blendOver). Every decoration point must equal Chrome exactly, so the rows, the paint order, the skip-ink gaps and the
 // transparent line are proven before any device runs. Each raster plant of the module (device-run.ts PLANT_CASES) has a model
 // that must fail at every device DPR: decoration-above-text paints the under and overlines after the glyphs, decoration-snap-css-px
-// moves each rect's top to a whole css px, decoration-alpha-ignored paints each line opaque.
+// moves each rect's top to a whole css px (Swift's and Kotlin's rounding), decoration-alpha-ignored paints each line opaque. Each
+// decorated text needs a row point, and each visible one a point that its lines' absence would change.
 import { describe, expect, it } from 'vitest';
 import { textDecoration as td } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
@@ -31,10 +32,20 @@ const INK: td.Rgba = { r: 0, g: 0, b: 0, a: 255 };
 
 const insideGlyph = (x: number, y: number, glyphs: readonly GlyphBox[]): boolean => glyphs.some((g) => x >= g.left && x + 1 <= g.right && y >= g.top && y + 1 <= g.bottom);
 
-/** The rects as a plant places them. */
-function plantedRects(rects: readonly PlacedDecoration[], dpr: number, plant: Plant): PlacedDecoration[] {
+/** Swift's rounded() (half away from zero; the rect tops are positive) and Kotlin's kotlin.math.round (half to even). */
+const ROUNDINGS = {
+  uikit: (v: number): number => Math.round(v),
+  'android-views': (v: number): number => {
+    const f = Math.floor(v);
+    const d = v - f;
+    return d > 0.5 || (d === 0.5 && f % 2 !== 0) ? f + 1 : f;
+  },
+} as const;
+
+/** The rects as a plant places them (round is the target's rounding, for the css px snap). */
+function plantedRects(rects: readonly PlacedDecoration[], dpr: number, plant: Plant, round: (v: number) => number): PlacedDecoration[] {
   return rects.map((r) => {
-    if (plant === 'decoration-snap-css-px') return { ...r, top: Math.floor(Math.round(r.top / dpr) * dpr) };
+    if (plant === 'decoration-snap-css-px') return { ...r, top: Math.floor(round(r.top / dpr) * dpr) };
     if (plant === 'decoration-alpha-ignored') return { ...r, color: { ...r.color, a: 255 } };
     return r;
   });
@@ -71,12 +82,17 @@ describe('TDEC-b: text-decoration-native\'s decoration points equal the committe
       const problems: string[] = [];
       const states = new Set<string>();
       for (const dpr of DPRS) {
-        const chrome = committedPixels(c.id, dpr);
-        if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
         const rects = placedDecorations(p, c.environment.viewport, dpr);
         const glyphs = glyphLines(p, c.environment.viewport, dpr).flatMap((l) => l.glyphs);
-        const caught = new Map<string, number>(PLANTS.map((x) => [x, 0]));
+        const caught = new Map<string, number>(PLANTS.flatMap((x) => Object.keys(ROUNDINGS).map((t) => [`${x} ${t}`, 0] as const)));
         const points = casePoints(p, c.environment.viewport, dpr).filter((q) => q.rule.startsWith('decoration:'));
+        // Every decorated text has a point on its line's own rows clear of the glyphs, so a line hidden under the glyphs fails here.
+        const texts = [...new Set(rects.map((r) => r.text))];
+        for (const t of texts) expect(points.some((q) => q.rule.startsWith(`decoration:${t}:`) && q.rule.endsWith(':row')), `${t} has a row point @${dpr}`).toBe(true);
+        // Every visible decorated text's points see its lines: the model without that text's rects disagrees with Chrome somewhere.
+        const seen = new Map<string, number>(texts.map((t) => [t, 0]));
+        const chrome = committedPixels(c.id, dpr);
+        if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
         for (const q of points) {
           states.add(q.rule.slice(q.rule.lastIndexOf(':') + 1));
           const i = (q.y * chrome.width + q.x) * 4;
@@ -84,10 +100,14 @@ describe('TDEC-b: text-decoration-native\'s decoration points equal the committe
           const differs = (m: td.Rgba): boolean => got[0] !== m.r || got[1] !== m.g || got[2] !== m.b;
           const want = modelAt(rects, glyphs, q.x, q.y, null);
           if (differs(want)) problems.push(`${q.rule} at ${q.x},${q.y} @${dpr}: Chrome ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
-          for (const plant of PLANTS) if (differs(modelAt(plantedRects(rects, dpr, plant), glyphs, q.x, q.y, plant))) caught.set(plant, (caught.get(plant) ?? 0) + 1);
+          for (const plant of PLANTS) {
+            for (const [t, round] of Object.entries(ROUNDINGS)) if (differs(modelAt(plantedRects(rects, dpr, plant, round), glyphs, q.x, q.y, plant))) caught.set(`${plant} ${t}`, (caught.get(`${plant} ${t}`) ?? 0) + 1);
+          }
+          for (const t of texts) if (differs(modelAt(rects.filter((r) => r.text !== t), glyphs, q.x, q.y, null))) seen.set(t, (seen.get(t) ?? 0) + 1);
         }
         expect(points.length, `decoration points @${dpr}`).toBeGreaterThan(0);
-        for (const plant of PLANTS) expect(caught.get(plant), `${plant} @${dpr}`).toBeGreaterThan(0);
+        for (const [key, n] of caught) expect(n, `${key} @${dpr}`).toBeGreaterThan(0);
+        for (const t of texts) if (rects.some((r) => r.text === t && r.color.a > 0)) expect(seen.get(t), `${t}'s lines seen @${dpr}`).toBeGreaterThan(0);
       }
       expect(problems).toEqual([]);
       // Rows beside and inside the lines, under and over glyphs (the paint order), and skip-ink gaps.
