@@ -8,7 +8,8 @@ import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
 import { SELECTION_LONGHANDS } from '../src/css/properties/selection.ts';
-import { VISIBILITY_LONGHANDS } from '../src/css/properties/visibility.ts';
+import { FLOAT_LONGHANDS } from '../src/css/properties/float.ts';
+import { SVG_LONGHANDS } from '../src/css/properties/svg.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Targets } from '../src/types.ts';
 import { div, expectCatalogued, explainOne, inputFor, text } from './helpers.ts';
@@ -31,10 +32,11 @@ function compile(css: string, targets: Targets = { web: {} }) {
 const errors = (c: ReturnType<typeof compile>): Diagnostic[] => c.diagnostics.filter((d) => d.severity === 'error');
 
 describe('user-select: registry and parse', () => {
-  it('is the last longhand, after visibility, inherited, with no layout or paint aspect, initial auto', () => {
+  it('follows the float family and precedes the svg family, inherited, with no layout or paint aspect, initial auto', () => {
     expect([...SELECTION_LONGHANDS]).toEqual(['user-select']);
-    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('user-select');
-    expect(LONGHANDS[LONGHANDS.indexOf('user-select') - 1]).toBe(VISIBILITY_LONGHANDS[VISIBILITY_LONGHANDS.length - 1]);
+    // FAMILIES runs visibility, inline, float, selection, svg (properties.ts).
+    expect(LONGHANDS[LONGHANDS.indexOf('user-select') - 1]).toBe(FLOAT_LONGHANDS[FLOAT_LONGHANDS.length - 1]);
+    expect(LONGHANDS[LONGHANDS.indexOf('user-select') + 1]).toBe(SVG_LONGHANDS[0]);
     expect(INHERITED.has('user-select')).toBe(true);
     expect(PROPERTY_ASPECTS['user-select']).toEqual({ layout: false, paint: false });
     expect(grammar['user-select']?.initial).toBe('auto');
