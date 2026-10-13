@@ -166,3 +166,17 @@ describe('white-space is a shorthand over white-space-collapse and text-wrap-mod
     expect(d.origin.kind === 'authored' && `${FONT} .a { white-space: collapse discard-before; }`.slice(d.origin.span.start, d.origin.span.end)).toBe('discard-before');
   });
 });
+
+describe('text-overflow: ellipsis with letter-spacing (TXT2-f with TXT2-b)', () => {
+  const both = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } });
+  const compile = (decl: string) => both().compile(inputFor(`${FONT} .a { width: 30px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; ${decl} }`, (r) => [div(r, 'a', ['a'], [text(r, 't', 'XX XX XX')])]));
+  const refused = (c: ReturnType<typeof compile>) => c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('truncates text with letter-spacing')).map((d) => d.target).sort();
+  it('is refused on every target when the truncated text is spaced, since no Chrome comparison covers it yet', () => {
+    const c = compile('letter-spacing: 1px;');
+    expectCatalogued(c.diagnostics);
+    expect(refused(c)).toEqual(['android', 'ios', 'web']);
+  });
+  it('leaves letter-spacing: 0, which computes to normal, alone', () => {
+    expect(refused(compile('letter-spacing: 0;'))).toEqual([]);
+  });
+});

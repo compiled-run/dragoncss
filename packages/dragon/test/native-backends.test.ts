@@ -120,9 +120,10 @@ describe('the LayoutStyle constructor arguments', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p.programs['android-views'])]).map((f) => f.text).join('\n');
-    // INL1a: verticalAlign follows aspectRatio (input.ts order), always baseline from the compiler; then GRID's grid and gridItem, nil off a grid.
-    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), nil, nil)';
-    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), null, null)';
+    // INL1a: verticalAlign follows aspectRatio (input.ts order), always baseline from the compiler; then TXT2-f's textOverflow, and
+    // GRID's grid and gridItem, nil off a grid.
+    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), JsString("clip"), nil, nil)';
+    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), "clip", null, null)';
     expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0)${swiftAlign}`);
     expect(swift).toContain(`AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0)${swiftAlign}`);
     expect(swift).toContain(`JsString("start"), Auto(JsString("auto"))${swiftAlign}`);

@@ -51,6 +51,7 @@ import type {
   SafeAreaSide,
   SizeValue,
   TextAlign,
+  TextOverflow,
   TextLeaf,
   TextWrapMode,
   VerticalAlignKeyword,
@@ -640,7 +641,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -838,6 +839,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
+    textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -988,7 +990,7 @@ const FAULT_KEYS: readonly string[] = [
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
   'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
-  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
+  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1049,6 +1051,9 @@ function decodeFaults(v: JsonValue): EngineFaults {
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
     overflowIgnoresPadding: b('overflowIgnoresPadding'),
+    ellipsisInTextFont: b('ellipsisInTextFont'),
+    noDotsFallback: b('noDotsFallback'),
+    truncateChangesBlockSize: b('truncateChangesBlockSize'),
   };
 }
 
@@ -1100,10 +1105,11 @@ function numbers(v: JsonValue, path: string): number[] {
 }
 
 function fontData(v: JsonValue, path: string): FontData {
-  const o = obj(v, ['unitsPerEm', 'ascent', 'descent', 'lineGap', 'advances', 'xHeight', 'capHeight', 'zeroAdvance'], path);
+  const o = obj(v, ['unitsPerEm', 'ascent', 'descent', 'lineGap', 'advances', 'xHeight', 'capHeight', 'zeroAdvance', 'ellipsisAdvance'], path);
   return {
     unitsPerEm: numField(o, 'unitsPerEm', path), ascent: numField(o, 'ascent', path), descent: numField(o, 'descent', path), lineGap: numField(o, 'lineGap', path),
     advances: numbers(field(o, 'advances', path), `${path}.advances`), xHeight: numField(o, 'xHeight', path), capHeight: numField(o, 'capHeight', path), zeroAdvance: numField(o, 'zeroAdvance', path),
+    ellipsisAdvance: numField(o, 'ellipsisAdvance', path),
   };
 }
 

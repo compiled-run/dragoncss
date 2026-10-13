@@ -97,7 +97,8 @@ function tables(bytes: Uint8Array): Map<string, { readonly offset: number; reado
 
 /**
  * The FontData a device host reads from the bundled bytes (text.ts FontData): head unitsPerEm, hhea ascender, descender and
- * lineGap, glyph x's glyf yMax, OS/2 sCapHeight and the advance of glyph 0. The shaped measurer reads no per-code-point advances.
+ * lineGap, glyph x's glyf yMax, OS/2 sCapHeight, the advance of glyph 0 and of U+2026's glyph (-1 without one). The shaped
+ * measurer reads no per-code-point advances.
  */
 export function fontDataOf(id: string): FontData {
   const f = hostFace(id);
@@ -118,6 +119,7 @@ export function fontDataOf(id: string): FontData {
   const x = hb().nominalGlyph(unitFont, 0x78);
   const zero = hb().nominalGlyph(unitFont, 0x30);
   if (x === 0 || zero === 0) throw new Error(`face ${id} maps no glyph to x or 0`);
+  const ellipsis = hb().nominalGlyph(unitFont, 0x2026);
   const extents = hb().glyphExtents(unitFont, x);
   if (extents === undefined) throw new Error(`face ${id}: glyph x has no extents`);
   if (extents[1] % 65536 !== 0) throw new Error(`face ${id}: glyph x's top ${extents[1]} is not a whole font unit`);
@@ -130,6 +132,7 @@ export function fontDataOf(id: string): FontData {
     xHeight: extents[1] / 65536,
     capHeight: d.getInt16(os2 + 88),
     zeroAdvance: hb().glyphUnits(unitFont, zero),
+    ellipsisAdvance: ellipsis === 0 ? -1 : hb().glyphUnits(unitFont, ellipsis),
   };
 }
 

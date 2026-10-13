@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.t { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 55px; margin-bottom: 2px; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100px; margin-bottom: 2px; }
+.fit { width: 110px; }
+.visible { overflow: visible; }
+.clip { overflow: clip; }
+.narrow { width: 15px; }
+.wrap { white-space: normal; }
+.pad { padding: 3px 7px 2px 5px; border: 1px solid #000; }
+.half { width: 47.5px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a1" class="t">XX XX XX XX</div>
+<div data-dragon-id="a2" class="truncate">Truncated text that runs past the box</div>
+<div data-dragon-id="a3" class="t fit">XX XX XX XX</div>
+<div data-dragon-id="a4" class="t visible">XX XX XX XX</div>
+<div data-dragon-id="a5" class="t">XXX XXX XXX</div>
+<div data-dragon-id="a6" class="t wrap">XXXXXXXXXXXX XX</div>
+<div data-dragon-id="a7" class="t narrow">XXXX</div>
+<div data-dragon-id="a8" class="t clip">XX XX XX XX</div>
+<div data-dragon-id="a9" class="t">XXXXXXXX<br data-dragon-id="a9b1">XX<br data-dragon-id="a9b2">XXXXXXX</div>
+<div data-dragon-id="a10" class="t pad">XXXXXXXX</div>
+<div data-dragon-id="a11" class="t half">pXpXpXpXpX</div>
+<div data-dragon-id="a12" class="t">XXXXX</div>
+<div data-dragon-id="a13" class="t">XXXXXX</div>
+</body>
+</html>

@@ -32,6 +32,8 @@ import { checkTransformContexts, elementWillChange } from './paint-values/transf
 import { opacityOf } from '../css/properties/effects.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
+/** A computed length or percentage of zero, as it serializes. */
+const isZeroLength = (v: ResolvedValue['value']): boolean => ['0', '0px', '0%'].includes(valueToString(v));
 
 /** UAX #9: in an rtl paragraph only these keep logical order (strong L letters, space, U+200B not at the end). */
 const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
@@ -283,6 +285,59 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     const other = first === undefined ? undefined : texts.find((t) => wrapOf(t) !== wrapOf(first));
     if (first !== undefined && other !== undefined) {
       refuse(el, 'mixed-wrap', `text-wrap-mode ${wrapOf(first)} (${first.node.address}) and ${wrapOf(other)} (${other.node.address}) in one inline formatting context of ${el.element.address} (css-text-4 §5.1), which Dragon does not lay out`, `Give all the text of ${el.element.address} the same white-space.`);
+    }
+  }
+}
+
+// TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
+// (LayoutBlockFlow::ShouldTruncateOverflowingText), which the engine does left to right in the block's own inline formatting
+// context. Refused for every target: rtl, and inline content beside block children (Chrome truncates the anonymous blocks'
+// lines, which the engine lays out with initial styles). Refused on native: an inline box whose colour, visibility or face differs
+// from the block's, since the native view draws the ellipsis with the text it follows while Chrome paints it in the block's style.
+function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const value = el.props.get('text-overflow') as ResolvedValue;
+  // A flex or grid container's text is an anonymous item, which Chrome does not truncate (its parent is no block container).
+  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid'].includes(displayKeyword(el))) return;
+  if (['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) return;
+  const runs = inlineContexts(el, () => {});
+  if (runs.length === 0) return;
+  const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
+  const refuse = (on: readonly string[], what: string, message: string, manual: string): void => {
+    for (const t of on) {
+      const id = `${t}|text-overflow-${what}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const at = `text-overflow: ellipsis on ${el.element.address}`;
+  if (keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl') {
+    refuse(targets, 'rtl', `${at} truncates rtl lines, which Dragon lays out left to right only`, `Remove text-overflow: ellipsis from ${el.element.address}, or make it ltr.`);
+  }
+  // TXT2-b with TXT2-f: how Chrome spaces the ellipsis and cuts spaced text (OffsetToFit) has no Chrome comparison yet.
+  const spaced = keywordOf(el.props.get('letter-spacing') as ResolvedValue) !== 'normal' || runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('letter-spacing') as ResolvedValue) !== 'normal'));
+  if (spaced) {
+    refuse(targets, 'letter-spacing', `${at} truncates text with letter-spacing, which Dragon does not lay out yet`, `Remove letter-spacing from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
+  }
+  const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c));
+  if (blockChild !== undefined) {
+    refuse(targets, 'anonymous-block', `${at} holds text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, whose anonymous block lines Chrome truncates and Dragon does not`, `Wrap the text of ${el.element.address} in its own block, and give that block the text-overflow.`);
+  }
+  // The style the ellipsis takes from its block and the native view from its text: font size is drawn per run, the rest is not.
+  const styleOf = (e: ResolvedElement): string => JSON.stringify([usedColors(e).color, ...(['visibility', 'font-family', 'font-weight', 'font-style'] as const).map((p) => valueToString((e.props.get(p) as ResolvedValue).value))]);
+  const own = styleOf(el);
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  for (const run of runs) {
+    for (const it of run) {
+      if (it.kind !== 'open') continue;
+      // The engine reports an inline box on a truncated line as Chrome reports a culled one (inline.ts boxLineRects); padding or an
+      // inline margin gives the box a fragment of its own, whose rects that model does not cover.
+      const edges = (['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'margin-left', 'margin-right'] as const).filter((p) => !isZeroLength((it.el.props.get(p) as ResolvedValue).value));
+      if (edges.length > 0) {
+        refuse(native, 'box-fragment', `${at}: the inline box <${it.el.element.tag}> ${it.el.element.address} has ${edges.join(', ')}, so Chrome gives it a box fragment of its own on a truncated line, which Dragon does not lay out`, `Remove ${edges.join(', ')} from <${it.el.element.tag}> ${it.el.element.address}.`);
+      }
+      if (styleOf(it.el) === own) continue;
+      refuse(native, 'paint', `${at}: the inline box <${it.el.element.tag}> ${it.el.element.address} has a colour, visibility or font face other than the block's, and the native runtime draws the ellipsis with the text it follows, not in the block's style`, `Give <${it.el.element.tag}> ${it.el.element.address} the colour, visibility and font face of ${el.element.address}.`);
     }
   }
 }
@@ -600,6 +655,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported);
+      checkTextOverflow(el, propagated, targets, diagnostics, reported);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);

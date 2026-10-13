@@ -20,6 +20,8 @@ import { breakItemLines } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
 import { unsupported } from './unsupported.ts';
+import type { TruncSource } from './truncate.ts';
+import { truncateLine } from './truncate.ts';
 
 const SPACE = 0x20;
 const ZWSP = 0x200b;
@@ -75,6 +77,8 @@ type Line = { readonly start: number; readonly end: number; readonly visibleEnd:
  * What one leaf shows on one line. Code points [start, visibleEnd) of the leaf show; [start, end) adds the leaf's own spaces that
  * hang at the line end. x is the line-left offset from the content-box left after text-align and width the advance, top the top
  * of the leaf's content area (its baseline minus its ascent) from the content-box top, ascent and descent the leaf font's.
+ * text-overflow (truncate.ts): code points [start, paintEnd) are painted (visibleEnd unless the line is truncated); a truncated
+ * piece also has a fragment of inline size truncatedWidth at x, beside its hidden full one.
  */
 export type LinePiece = {
   readonly leaf: number;
@@ -86,10 +90,28 @@ export type LinePiece = {
   readonly top: LU;
   readonly ascent: LU;
   readonly descent: LU;
+  readonly paintEnd: number;
+  readonly truncated: boolean;
+  readonly truncatedWidth: LU;
+};
+
+/**
+ * The ellipsis of a truncated line (line_truncator.cc PlaceEllipsisNextTo): its text in the line's font, painted in the block's
+ * colour, at x (from the content-box left) after the piece of leaf; top is its content-area top from the content-box top.
+ */
+export type LineEllipsis = {
+  readonly leaf: number;
+  readonly text: string;
+  readonly font: TextFont;
+  readonly x: LU;
+  readonly width: LU;
+  readonly top: LU;
+  readonly ascent: LU;
+  readonly descent: LU;
 };
 
 /** A rectangle in LU from the content-box top-left. */
-type Rect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
+export type Rect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
 /**
  * One line box: its top and height and its baseline, all from the content-box top, the leaf pieces on it in order (their leaf
@@ -104,6 +126,7 @@ export type PlacedLine = {
   readonly boxRects: readonly Rect[];
   readonly breaks: readonly number[];
   readonly breakRects: readonly Rect[];
+  readonly ellipsis: LineEllipsis | null;
 };
 
 /** UAX #9: in an rtl paragraph these code points keep logical order without reordering (strong L letters, space, U+200B). */
@@ -1097,8 +1120,10 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       const m = fontMetricsOf(ctx, t.id, t.font);
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
       const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
-      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: spanWidth(ctx, ifc, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });
+      const visibleEnd = it.at + (i - from);
+      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd, end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: spanWidth(ctx, ifc, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent, paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO });
     }
+    const cut = truncates(ctx, box) ? truncatePieces(ctx, box, ifc, available, on, baseline, spanWidth(ctx, ifc, line, line.start, line.visibleEnd), pieces) : null;
     // A <br>'s content area is its parent box's (Blink places the control item with the parent's text top and height).
     const breaks: number[] = [];
     const breakRects: Rect[] = [];
@@ -1126,10 +1151,49 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       }
       boxRects.push({ x: left, y: sub(baseline, bm.ascent), width: sub(right, left), height: add(bm.ascent, bm.descent) });
     }
-    out.push({ top, height, baseline, pieces, boxes: on, boxRects, breaks, breakRects });
+    out.push({ top, height, baseline, pieces: cut === null ? pieces : cut.pieces, boxes: on, boxRects, breaks, breakRects, ellipsis: cut === null ? null : cut.ellipsis });
     top = add(top, height);
   }
   return out;
+}
+
+/** Whether a block container truncates its overflowing lines (LayoutBlockFlow::ShouldTruncateOverflowingText): overflow not visible. */
+function truncates(ctx: Ctx, box: LayoutBox): boolean {
+  if (box.style.textOverflow !== 'ellipsis' || (box.style.overflowX === 'visible' && box.style.overflowY === 'visible')) return false;
+  if (directionOf(ctx, box) === 'rtl') unsupported('text-overflow', box.id, 'css-overflow-4 §3.1', `text-overflow: ellipsis in the rtl block ${box.id} is not yet proven against Chrome`);
+  return true;
+}
+
+/**
+ * InlineLayoutAlgorithm::CreateLine: a line that overflows (LineBreaker::HandleOverflow; wider than the available width plus one
+ * LayoutUnit) is truncated (truncate.ts): its pieces with their painted ranges and its ellipsis; null for a line that fits.
+ */
+type Truncated = { readonly pieces: readonly LinePiece[]; readonly ellipsis: LineEllipsis | null };
+
+function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: readonly number[], baseline: LU, lineWidth: LU, pieces: readonly LinePiece[]): Truncated | null {
+  if (lineWidth <= add(available, fromRaw(1)) || pieces.length === 0) return null;
+  for (const b of on) {
+    if ((ifc.firstContent[b] as number) < 0) unsupported('text-overflow', (ifc.boxes[b] as InlineBox).id, 'css-overflow-4 §3.1', `the empty inline box ${(ifc.boxes[b] as InlineBox).id} is on a truncated line of ${box.id}`);
+  }
+  const strut = box.strut;
+  if (strut === null) throw new Error(`${box.id}: a line without a strut`);
+  const sources: TruncSource[] = [];
+  for (const p of pieces) {
+    const t = ifc.leaves[p.leaf] as TextLeaf;
+    const font = leafFontOf(t);
+    // How Blink spaces the ellipsis and cuts spaced text at OffsetToFit is not proven against Chrome yet.
+    if (font.letterSpacing !== 0) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has letter-spacing on a truncated line of ${box.id}`);
+    sources.push({ text: t.text, font, start: p.start, end: p.visibleEnd, x: p.x, width: p.width });
+  }
+  const r = truncateLine(ctx, box.id, available, fontOf(strut.font), sources, ifc.shaped);
+  const out: LinePiece[] = [];
+  for (let k = 0; k < pieces.length; k++) {
+    const p = pieces[k] as LinePiece;
+    out.push({ leaf: p.leaf, start: p.start, visibleEnd: p.visibleEnd, end: p.end, x: p.x, width: p.width, top: p.top, ascent: p.ascent, descent: p.descent, paintEnd: r.paintEnds[k] as number, truncated: r.truncated[k] as boolean, truncatedWidth: r.truncatedWidths[k] as LU });
+  }
+  if (r.ellipsized < 0) return { pieces: out, ellipsis: null };
+  const m = ctx.measurer.metrics(r.font);
+  return { pieces: out, ellipsis: { leaf: (pieces[r.ellipsized] as LinePiece).leaf, text: r.text, font: r.font, x: r.x, width: r.width, top: sub(baseline, m.ascent), ascent: m.ascent, descent: m.descent } };
 }
 
 /** firstBaseline: the first line box's baseline from the content-box top (CSS2 §10.8.1), or null with no line boxes. */
@@ -1177,15 +1241,56 @@ function unionOf(rects: readonly Rect[]): Rect {
 type Fragments = { readonly placed: Map<string, Placed> };
 
 /** Adds each leaf's, box's and <br>'s fragment of the lines to out, keyed by id. */
-function collectFragments(ifc: Ifc, lines: readonly PlacedLine[], origin: Point, startX: LU, out: Fragments): void {
+/** The innermost inline box of a leaf (its first character's), or -1 for the root. */
+function leafBox(ifc: Ifc, li: number): number {
+  for (const it of ifc.items) if (it.kind === 'char' && it.leaf === li) return it.box;
+  return -1;
+}
+
+/**
+ * Inline box b's fragments on a line ("<box>:line<j>"): its line rect, or none when it is not on the line. TXT2-f: on a truncated
+ * line a box holding a truncated text or the text the ellipsis follows reports what a culled inline does
+ * (LayoutInline::CollectLineBoxRects): one rect per text item it holds in line order, each text's whole run, its truncated part
+ * and the ellipsis after it. The compiler refuses on native the inline boxes Chrome gives a box fragment of their own there.
+ */
+export function boxLineRects(ctx: Ctx, ifc: Ifc, line: PlacedLine, b: number): Rect[] {
+  const out: Rect[] = [];
+  let own: Rect | null = null;
+  for (let j = 0; j < line.boxes.length; j++) if ((line.boxes[j] as number) === b) own = line.boxRects[j] as Rect;
+  if (own === null) return out;
+  const e = line.ellipsis;
+  let cut = false;
+  for (const p of line.pieces) if (within(ifc.boxParent, leafBox(ifc, p.leaf), b) && (p.truncated || (e !== null && e.leaf === p.leaf))) cut = true;
+  if (!cut) {
+    out.push(own);
+    return out;
+  }
+  for (const p of line.pieces) {
+    if (!within(ifc.boxParent, leafBox(ifc, p.leaf), b)) continue;
+    if (!(p.truncated && ctx.faults.truncateChangesBlockSize)) out.push({ x: p.x, y: p.top, width: p.width, height: add(p.ascent, p.descent) });
+    if (p.truncated) out.push({ x: p.x, y: p.top, width: p.truncatedWidth, height: add(p.ascent, p.descent) });
+    if (e !== null && e.leaf === p.leaf) out.push({ x: e.x, y: e.top, width: e.width, height: add(e.ascent, e.descent) });
+  }
+  return out;
+}
+
+function collectFragments(ctx: Ctx, ifc: Ifc, lines: readonly PlacedLine[], origin: Point, startX: LU, out: Fragments): void {
   ifc.leaves.forEach((t, li) => {
     const rects: Rect[] = [];
-    for (const line of lines) for (const p of line.pieces) if (p.leaf === li) rects.push({ x: p.x, y: p.top, width: p.width, height: add(p.ascent, p.descent) });
+    for (const line of lines) {
+      for (const p of line.pieces) {
+        if (p.leaf !== li) continue;
+        // A truncated piece keeps its full fragment, hidden for paint, before its truncated one (LineTruncator::TruncateLine); planted
+        // fault truncateChangesBlockSize keeps only the truncated one.
+        if (!(p.truncated && ctx.faults.truncateChangesBlockSize)) rects.push({ x: p.x, y: p.top, width: p.width, height: add(p.ascent, p.descent) });
+        if (p.truncated) rects.push({ x: p.x, y: p.top, width: p.truncatedWidth, height: add(p.ascent, p.descent) });
+      }
+    }
     if (rects.length > 0) out.placed.set(t.id, fragmentOf(t.id, rects, origin, unionOf(rects)));
   });
   ifc.boxes.forEach((b, bi) => {
     const rects: Rect[] = [];
-    for (const line of lines) for (let j = 0; j < line.boxes.length; j++) if ((line.boxes[j] as number) === bi) rects.push(line.boxRects[j] as Rect);
+    for (const line of lines) for (const r of boxLineRects(ctx, ifc, line, bi)) rects.push(r);
     if (rects.length === 0 && lines.length > 0) throw new Error(`${b.id} is on no line`);
     if (rects.length === 0) rects.push({ x: startX, y: ZERO, width: ZERO, height: ZERO });
     out.placed.set(b.id, fragmentOf(b.id, rects, origin, boundingOf(rects)));
@@ -1220,7 +1325,7 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
   const ifc = buildIfc(ctx, box);
   const lines = placeIfcLines(ctx, box, ifc, available);
   const fragments: Fragments = { placed: new Map() };
-  collectFragments(ifc, lines, origin, directionOf(ctx, box) === 'rtl' ? available : ZERO, fragments);
+  collectFragments(ctx, ifc, lines, origin, directionOf(ctx, box) === 'rtl' ? available : ZERO, fragments);
   const placed: Placed[] = [];
   placeFragments(inlineChildren(box), fragments, placed);
   const last = lines[lines.length - 1];

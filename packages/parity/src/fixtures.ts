@@ -47,6 +47,7 @@ import { SVG } from './fixture-groups/svg.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
@@ -155,6 +156,7 @@ export const GROUPS = {
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
   'text-latin': TEXT_LATIN,
+  'text-overflow': TEXT_OVERFLOW,
   'text-spacing': TEXT_SPACING,
   'text-weight': TEXT_WEIGHT,
   transforms: TRANSFORMS,

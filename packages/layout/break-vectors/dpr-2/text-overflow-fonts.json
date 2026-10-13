@@ -1,0 +1,14 @@
+{
+  "case": "text-overflow-fonts",
+  "dpr": 2,
+  "texts": [
+    {"id":"f1s:text0","lines":[[0,20]]},
+    {"id":"f2:text0","lines":[[0,2]]},
+    {"id":"f2s:text0","lines":[[0,4]]},
+    {"id":"f3:text0","lines":[[0,4]]},
+    {"id":"f3s:text0","lines":[[0,4]]},
+    {"id":"f3:text1","lines":[[0,2]]},
+    {"id":"f4:text0","lines":[[0,1]]},
+    {"id":"f4s:text0","lines":[[0,16]]}
+  ]
+}

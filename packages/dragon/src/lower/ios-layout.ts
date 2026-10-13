@@ -32,6 +32,7 @@ import type {
   Position,
   SizeValue,
   TextAlign,
+  TextOverflow,
   TextLeaf,
   TextWrapMode,
   VerticalAlignKeyword,
@@ -331,6 +332,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
     aspectRatio: aspectRatio(id, get),
     verticalAlign: verticalAlign(id, get, l),
+    textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
     grid: null,
     gridItem: null,
   };

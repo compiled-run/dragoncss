@@ -177,6 +177,8 @@ export type AlignContent =
   | 'start'
   | 'end';
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
+export type TextOverflow = 'clip' | 'ellipsis';
 /** CSS2 §10.8.1 vertical-align keywords. */
 export type VerticalAlignKeyword = 'baseline' | 'sub' | 'super' | 'text-top' | 'text-bottom' | 'middle' | 'top' | 'bottom';
 /** A vertical-align keyword value. */
@@ -328,6 +330,7 @@ export type LayoutStyle = {
   readonly textAlign: TextAlign;
   readonly aspectRatio: AspectRatioValue;
   readonly verticalAlign: VerticalAlignValue;
+  readonly textOverflow: TextOverflow;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
