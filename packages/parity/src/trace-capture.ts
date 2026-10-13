@@ -117,6 +117,12 @@ const awaitHoverMediaInPage = ([want, ms]: [boolean, number]): Promise<number> =
 /** Every wait in this process where Chrome's hover media lagged the emulated context, for the capture's summary line. */
 export const hoverMediaLags: { readonly at: string; readonly frames: number }[] = [];
 
+/**
+ * Every touch step in this process after which navigator.maxTouchPoints was 0: Chrome had sent the page new WebPreferences, which
+ * set it from the embedder past touch emulation (as Playwright's --blink-settings did the hover media), for the capture's summary.
+ */
+export const touchPrefsUpdates: string[] = [];
+
 /** Runs in the page: the hover and pointer media touch emulation sets. */
 const touchMedia = (): { hover: boolean; coarse: boolean } => ({ hover: matchMedia('(hover: hover)').matches, coarse: matchMedia('(pointer: coarse)').matches });
 
@@ -316,6 +322,7 @@ class TraceDriver {
     await frames(this.page);
     await this.awaitHoverMedia(s.kind);
     const m = await this.matches();
+    if (this.context === 'touch' && (await this.page.evaluate(() => navigator.maxTouchPoints)) === 0) touchPrefsUpdates.push(where);
     if (this.context === 'touch' && m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) matches under touch emulation`);
     if (this.context === 'mouse' && !m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) does not match without touch emulation`);
     return { context: this.context, matches: m };
