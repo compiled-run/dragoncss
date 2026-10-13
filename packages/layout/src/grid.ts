@@ -150,7 +150,7 @@ export type GridFaults = {
   readonly absposAutoLineContentEdge: boolean;
   /** absposStaticAlignIgnored: an abspos static position ignores justify-self and align-self in its area. */
   readonly absposStaticAlignIgnored: boolean;
-  /** baselineShimMissing: a baseline-aligned item's row contribution leaves out its baseline shim. */
+  /** baselineShimIgnored: a baseline-aligned item's row contribution leaves out its baseline shim. */
   readonly baselineShimIgnored: boolean;
   /** baselineSynthesizedAtTop: an item with no baseline synthesizes it at its border-box top instead of its bottom edge. */
   readonly baselineSynthesizedAtTop: boolean;
