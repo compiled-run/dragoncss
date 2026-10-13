@@ -68,6 +68,20 @@ export function outlines(p: NativeProgram, list: readonly Box[], dpr: number, sh
 
 const alpha8 = (a: number): number => Math.round(a * 255);
 
+/**
+ * A transparency layer's opaque pixel composited onto an opaque colour at the layer's 8-bit alpha a, as Chrome's committed pixels
+ * show it (Skia's legacy S32A_Blend row blit, not the paint source-over of `over`): each channel src * (a + 1) >> 8 plus
+ * dst * (255 - a) >> 8. Observed on the translucent dashed and ridge outlines of outline-dashed and outline-3d (rgba alpha 0.5 and
+ * 0.6), where `over` is one high on every channel the two roundings differ.
+ */
+function layerOver(dst: Rgba, src: Rgba, a: number): Rgba {
+  if (src[3] !== 255 || dst[3] !== 255) throw new Error('outline ops: a layer composite of a translucent pixel is not modelled');
+  if (a === 255) return src;
+  if (a === 0) return dst;
+  const ch = (s: number, d: number): number => ((s * (a + 1)) >> 8) + ((d * (255 - a)) >> 8);
+  return [ch(src[0], dst[0]), ch(src[1], dst[1]), ch(src[2], dst[2]), 255];
+}
+
 /** The colour of a pixel centre under the side painter's operations, painted over colour. */
 export function opsOver(colour: Rgba, ops: readonly BorderOp[], palette: readonly Rgba[], cx: number, cy: number): Rgba {
   // Each frame: the root (an opaque colour) or a transparency layer (null while nothing has painted there) with its alpha.
@@ -81,7 +95,7 @@ export function opsOver(colour: Rgba, ops: readonly BorderOp[], palette: readonl
       frames.pop();
       const parent = frames[frames.length - 1];
       if (parent === undefined || parent.c === null) throw new Error('outline ops: a layer composited onto nothing');
-      if (f.c !== null) parent.c = over(parent.c, [f.c[0], f.c[1], f.c[2], alpha8(f.alpha)]);
+      if (f.c !== null) parent.c = layerOver(parent.c, f.c, alpha8(f.alpha));
     } else if (o.op === 'save') clips.push(clips[clips.length - 1] as boolean);
     else if (o.op === 'restore') {
       clips.pop();
