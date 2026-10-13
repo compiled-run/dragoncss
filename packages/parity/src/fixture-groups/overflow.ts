@@ -36,6 +36,10 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // OVFL-B: auto and scroll containers with a painted background, ltr only. The rtl twins of the fixtures above paint none, since
   // native refuses a background on a scroll container whose overflow may extend past its start (rtl or reversed flex).
   layout('overflow-background', ['ltr']),
+  // G-OVF: grid scroll containers, whose inflow bounds are their tracks (Blink GridLayoutAlgorithm::LayoutInternal SetInflowBounds), not their
+  // items: items past their tracks, item margins, content alignment past the start, implicit tracks, abspos children, and a
+  // non-scrolling grid inside a scroll container.
+  both('overflow-grid'),
   // OVFL-p: a percentage relative offset inside a scroll container is refused on native targets (overflow.ts does not decide it).
   reject('reject-overflow-percent-relative', 'DRAGON_UNPROVEN_CONTEXT', '10%', 'position: relative with a percentage top on k inside the scroll container sc'),
 ];

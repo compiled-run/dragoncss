@@ -195,6 +195,13 @@ fun dragonRoundedPathRadius(v: DragonBoxView, shape: DragonBoxShape, inner: Bool
   return dragonRRectPath(RectF(px[3].toFloat(), px[0].toFloat(), maxOf(w - px[1], px[3]).toFloat(), maxOf(h - px[2], px[0]).toFloat()), r, 8)
 }
 
+/** Whether a clip view can never host children: the box draws an image (an img), which the compiler never gives children. */
+fun dragonHostsNoChildren(v: DragonBoxView, c: DragonClipView): Boolean {
+  if (v.dragonImage == null) return false
+  if (c.childCount != 0) throw IllegalStateException("dragon: " + v.dragonId + ": an img's clip view hosts " + c.childCount + " children")
+  return true
+}
+
 /** API 31 and 32: masks a clip view's children outside a path (DST_OUT over the inverse path, in the view's hardware layer). */
 class DragonRoundedClipMask(private val path: Path) : Drawable() {
   private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT) }
@@ -209,7 +216,8 @@ class DragonRoundedClipMask(private val path: Path) : Drawable() {
 /**
  * After every layout: the device scale, the resolved radii on the shape, the background (native or rounded, background module),
  * and the overflow clip (the padding-edge path in the clip view's coordinates): the clip view's outline on API 33 and up, where
- * Outline clips to any path; an overlay mask in a hardware layer on API 31 and 32.
+ * Outline clips to any path; an overlay mask in a hardware layer on API 31 and 32. An img's clip view hosts no children (its image
+ * is drawn by the box view, clipped to the curve by the image stage), so on API 31 and 32 it gets no layer or mask.
  */
 fun dragonAfterLayoutRadius(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
   if (v.dragonRadiusLengths.isEmpty()) return
@@ -219,7 +227,7 @@ fun dragonAfterLayoutRadius(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
   dragonSyncBackground(v)
   val c = v.dragonClipView ?: return
   val inner = dragonRoundedPath(v, shape, true)
-  if (inner == null) {
+  if (inner == null || (Build.VERSION.SDK_INT < 33 && dragonHostsNoChildren(v, c))) {
     c.clipToOutline = false
     c.outlineProvider = ViewOutlineProvider.BACKGROUND
     c.overlay.clear()

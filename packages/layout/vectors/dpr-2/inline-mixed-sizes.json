@@ -143,6 +143,7 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
     "grid": null,
     "gridItem": null
    },
@@ -263,6 +264,7 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
       "grid": null,
       "gridItem": null
      },
@@ -384,6 +386,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -421,7 +424,11 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -537,6 +544,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -572,7 +580,11 @@
             "value": 1.5
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -594,7 +606,11 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "br",
@@ -631,7 +647,11 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -751,6 +771,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -788,7 +809,11 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -904,6 +929,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -939,7 +965,11 @@
             "value": 1.5
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -961,7 +991,11 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "br",
@@ -998,7 +1032,11 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -1118,6 +1156,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -1155,7 +1194,11 @@
           "value": 12
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -1271,6 +1314,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1306,7 +1350,11 @@
             "value": 12
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -1328,7 +1376,11 @@
           "value": 12
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "br",
@@ -1365,7 +1417,11 @@
           "value": 12
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -1485,6 +1541,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -1520,7 +1577,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -1636,6 +1697,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1669,7 +1731,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -1690,7 +1756,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "br",
@@ -1725,7 +1795,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -1845,6 +1919,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -1882,7 +1957,11 @@
           "value": 40
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -1998,6 +2077,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -2033,7 +2113,11 @@
             "value": 40
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -2055,7 +2139,11 @@
           "value": 40
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "br",
@@ -2092,7 +2180,11 @@
           "value": 40
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -2212,6 +2304,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2249,7 +2342,11 @@
           "value": 10
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -2365,6 +2462,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -2400,7 +2498,11 @@
             "value": 30
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -2422,7 +2524,11 @@
           "value": 10
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "br",
@@ -2459,7 +2565,11 @@
           "value": 10
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -2579,6 +2689,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2616,7 +2727,11 @@
           "value": 20
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -2732,6 +2847,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -2767,7 +2883,11 @@
             "value": 5
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -2789,7 +2909,11 @@
           "value": 20
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -2909,6 +3033,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2946,7 +3071,11 @@
           "value": 15
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -3062,6 +3191,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -3097,7 +3227,11 @@
             "value": 15
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -3136,7 +3270,11 @@
           "value": 15
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -3256,6 +3394,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -3293,7 +3432,11 @@
           "value": 1.3
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -3409,6 +3552,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -3444,7 +3588,11 @@
             "value": 1.3
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -3466,7 +3614,11 @@
           "value": 1.3
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "br",
@@ -3503,7 +3655,11 @@
           "value": 1.3
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -3623,6 +3779,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -3660,7 +3817,11 @@
           "value": 23.3
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -3776,6 +3937,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -3811,7 +3973,11 @@
             "value": 7.7
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -3833,7 +3999,11 @@
           "value": 23.3
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -3953,6 +4123,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -3990,7 +4161,11 @@
           "value": 1.2
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -4106,6 +4281,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -4141,7 +4317,11 @@
             "value": 1.2
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           },
           {
            "kind": "inline",
@@ -4257,6 +4437,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": null
            },
@@ -4292,7 +4473,11 @@
               "value": 3
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             }
             }
            ]
           },
@@ -4314,7 +4499,11 @@
             "value": 1.2
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -4336,7 +4525,11 @@
           "value": 1.2
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -4456,6 +4649,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -4493,7 +4687,11 @@
           "value": 1.2
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -4609,6 +4807,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -4644,7 +4843,11 @@
             "value": 1.2
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -4666,7 +4869,11 @@
           "value": 1.2
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -4786,6 +4993,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -4823,7 +5031,11 @@
           "value": 0.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -4939,6 +5151,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -4974,7 +5187,11 @@
             "value": 0.5
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -4996,7 +5213,11 @@
           "value": 0.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -5116,6 +5337,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -5151,7 +5373,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -5267,6 +5493,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -5300,7 +5527,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -5418,6 +5649,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -5451,7 +5683,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         }
@@ -5573,6 +5809,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -5608,7 +5845,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -5724,6 +5965,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -5757,7 +5999,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           },
           {
            "kind": "inline",
@@ -5873,6 +6119,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": null
            },
@@ -5906,7 +6153,11 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             }
             }
            ]
           }
@@ -6030,6 +6281,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -6065,7 +6317,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -6181,6 +6437,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -6214,7 +6471,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -6332,6 +6593,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -6365,7 +6627,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         }
@@ -6487,6 +6753,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -6522,7 +6789,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         },
         {
          "kind": "inline",
@@ -6638,6 +6909,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -6671,7 +6943,11 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           }
           }
          ]
         },
@@ -6692,7 +6968,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       }

@@ -1,0 +1,13 @@
+{
+  "case": "text-overflow-blocks",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"c1:text0","data":"Hi","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c2:text0","data":"XXXXXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"d1:text0","data":"XXXXXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"d2:text0","data":"XXXXXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"g:text0","data":"XXXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"g1:text0","data":"XXXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

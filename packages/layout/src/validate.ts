@@ -172,6 +172,7 @@ export const styleSchema = obj({
     percent: { value: anyNum },
     ...calc,
   }),
+  textOverflow: lit('clip', 'ellipsis'),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -188,8 +189,9 @@ export const textLeafSchema = obj({
   text: str,
   font: fontSpecSchema,
   lineHeight: lineHeightSchema,
-  whiteSpaceCollapse: lit('collapse'),
+  whiteSpaceCollapse: lit('collapse', 'preserve', 'preserve-breaks', 'break-spaces'),
   textWrapMode: lit('wrap', 'nowrap'),
+  letterSpacing: calcExpr,
 });
 
 /** A replaced leaf (input.ts ReplacedLeaf); its style is checked as a box style. */
@@ -839,6 +841,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   columnGap: { kind: 'normal' },
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
+  textOverflow: 'clip',
   grid: null,
 };
 
@@ -881,7 +884,16 @@ function checkInlineContent(box: Record<string, unknown>, children: readonly unk
   inlineTexts(children, runs);
   const texts = runs.filter((t): t is Record<string, unknown> => t !== null && t['kind'] === 'text');
   const strings = texts.map((t) => t['text']).filter((t): t is string => typeof t === 'string');
-  if (strings.length !== texts.length || !texts.every((t) => t['whiteSpaceCollapse'] === 'collapse')) return;
+  if (strings.length !== texts.length) return;
+  // preserve-breaks text arrives collapsed between its preserved U+000A over the whole formatting context, joined across its leaves
+  // (resolve.ts phaseOneContext); preserved text is never empty.
+  const preserved = texts.filter((t) => t['whiteSpaceCollapse'] !== 'collapse');
+  const breaks = preserved.filter((t) => t['whiteSpaceCollapse'] === 'preserve-breaks').map((t) => t['text'] as string).join('');
+  const badPreserved = preserved.some((t) => t['text'] === '') || breaks.split('\n').some((g) => /[\t\r\f]| {2}/.test(g) || g.startsWith(' ') || g.endsWith(' '));
+  if (badPreserved) {
+    errors.push({ path: `${path}.children`, code: 'uncollapsed-text', message: 'preserved text is never empty, and preserve-breaks text must arrive collapsed between its line feeds: no tabs, doubled spaces or spaces at a line feed or an edge' });
+  }
+  if (preserved.length > 0) return;
   // The text between line breaks, each piece joined across leaves and inline boxes.
   const segments: string[] = [''];
   for (const t of runs) {

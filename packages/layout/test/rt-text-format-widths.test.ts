@@ -86,12 +86,12 @@ function fontData(id: string): FontData {
   for (let i = 0; i < d.getUint16(4); i++) tables.set(b.toString('latin1', 12 + i * 16, 16 + i * 16), d.getUint32(12 + i * 16 + 8));
   const head = tables.get('head') as number;
   const hhea = tables.get('hhea') as number;
-  return { unitsPerEm: d.getUint16(head + 18), ascent: d.getInt16(hhea + 4), descent: -d.getInt16(hhea + 6), lineGap: d.getInt16(hhea + 8), advances: [], xHeight: 0, capHeight: 0, zeroAdvance: 0 };
+  return { unitsPerEm: d.getUint16(head + 18), ascent: d.getInt16(hhea + 4), descent: -d.getInt16(hhea + 6), lineGap: d.getInt16(hhea + 8), advances: [], xHeight: 0, capHeight: 0, zeroAdvance: 0, ellipsisAdvance: -1 };
 }
 
 const shaper = new WasmShaper();
 const faces = new Map<string, ShapedFace>(FAMILIES.map((id) => [id, { id, data: fontData(id), hanKerning: NO_HAN_KERNING }]));
-const faceFont = (id: string, size: number): TextFont => ({ family: id, size }) as unknown as TextFont;
+const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0 }) as unknown as TextFont;
 const sha = (id: string): string => (oracle.faces[id] as { sha256: string }).sha256;
 
 /** DT-2's width memo in front of the measurer, keyed by widthMemoKey. */

@@ -128,6 +128,12 @@ export type EngineFaults = {
   readonly metricRoundingSwapped: boolean;
   /** Text outside Latin, Common and Inherited is shaped instead of refused (R4). */
   readonly latinCheckSkipped: boolean;
+  /** TXT2-b: no letter spacing after the last cluster of a shaped item (ShapeResult::ApplySpacing). */
+  readonly trailingSpacingDropped: boolean;
+  /** TXT2-b: letter spacing after every code point of a shaped cluster instead of once per cluster. */
+  readonly spacingPerCodePoint: boolean;
+  /** TXT2-b: HarfBuzz keeps liga, clig and calt under nonzero letter spacing (font_features.cc). */
+  readonly ligaturesKept: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -148,6 +154,18 @@ export type EngineFaults = {
   readonly noBreakAroundAtomic: boolean;
   /** An atomic inline with an auto width fills the available width instead of shrinking to fit (CSS2 §10.3.9). */
   readonly atomicShrinkToFitIgnored: boolean;
+  /** text-overflow: the ellipsis is shaped in the truncated text's font instead of the line's (the block's) font. */
+  readonly ellipsisInTextFont: boolean;
+  /** text-overflow: a font without U+2026 draws one '.' instead of "..." (line_truncator.cc ComputeEllipsisText). */
+  readonly noDotsFallback: boolean;
+  /** text-overflow: a truncated text keeps only its truncated fragment, so its size shrinks to what is drawn. */
+  readonly truncateChangesBlockSize: boolean;
+  /** TXT2-c: a run of preserved spaces advances as one space. */
+  readonly preservedSpaceCollapsed: boolean;
+  /** TXT2-c: pre-wrap spaces before a soft wrap opportunity count toward the fit instead of hanging. */
+  readonly trailingPreWrapNotHanging: boolean;
+  /** TXT2-c: break-spaces spaces before a soft wrap opportunity hang, as pre-wrap spaces do. */
+  readonly breakSpacesHanging: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -198,6 +216,9 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   softHyphenWidthMissing: false,
   metricRoundingSwapped: false,
   latinCheckSkipped: false,
+  trailingSpacingDropped: false,
+  spacingPerCodePoint: false,
+  ligaturesKept: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,
@@ -208,6 +229,12 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   atomicMarginExcluded: false,
   noBreakAroundAtomic: false,
   atomicShrinkToFitIgnored: false,
+  ellipsisInTextFont: false,
+  noDotsFallback: false,
+  truncateChangesBlockSize: false,
+  preservedSpaceCollapsed: false,
+  trailingPreWrapNotHanging: false,
+  breakSpacesHanging: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
@@ -306,7 +333,7 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow, inflow: null };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: box.id };
   }
 
@@ -323,7 +350,7 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
     const outOfFlow = gridOutOfFlow(ctx, box, r.outOfFlow, a.borderBoxWidth, height, pad, bor);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow };
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow, inflow: isScrollContainer(s) ? r.inflow : null };
     // A grid container's last baseline is not modelled: an inline-block whose last line box would come from it is refused, as for flex.
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: box.id };
   }
@@ -349,11 +376,11 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const baseline = clampScrollBaseline(box, r.baseline, height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
-    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex };
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex };
   }
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
   const escapeBottom = bottomAdjoins && (height === add(intrinsic, vbp) || ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;
-  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex };
+  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex };
 }
 
 export type BlockLevelResult = {

@@ -337,4 +337,10 @@ describe('INL2a refusals and validation', () => {
     expect(at({ width: { kind: 'fit-content' } })).toBe('intrinsic-size-keyword');
     expect(at({ verticalAlign: { kind: 'keyword', value: 'baseline' } })).toBe('ok');
   });
+  it('refuses an atomic inline beside preserved white space (mixed-white-space), and on a justified or truncating line (text-align, text-overflow)', () => {
+    expect(codeOf(box('root', {}, [box('c', {}, [text('t', 'a b', { whiteSpaceCollapse: 'preserve' }), ib('a')])]))).toBe('mixed-white-space');
+    expect(codeOf(box('root', {}, [box('c', { textAlign: 'justify', width: px(30) }, [text('t', 'a b c d'), ib('a')])]))).toBe('text-align');
+    expect(codeOf(box('root', {}, [box('c', { textOverflow: 'ellipsis', overflowX: 'hidden', overflowY: 'hidden', width: px(30) }, [text('t', 'a b c d'), ib('a')])]))).toBe('text-overflow');
+    expect(codeOf(box('root', {}, [box('c', { width: px(30) }, [text('t', 'a b c d'), ib('a')])]))).toBe('ok');
+  });
 });

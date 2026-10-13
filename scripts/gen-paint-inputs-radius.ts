@@ -96,5 +96,13 @@ for (const radii of [[0, 0, 0, 0, 0, 0, 0, 0], ...RAW]) {
     }
   }
 }
+// Rounded double borders (PNT1b): stripe widths from 3 to 40 device px, and the rings of uniform and per-side widths on square,
+// rounded and small boxes (a stripe or padding rect clamped at size 0 included).
+for (let w = 3; w <= 40; w++) for (const inner of [0, 1]) out.push(line('doubleStripeWidth', [w, inner]));
+for (const radii of [[0, 0, 0, 0, 0, 0, 0, 0], ...RAW]) {
+  for (const [l, t, rr, b] of [[10, 20, 106, 84], [3, 3, 14, 12]] as const) {
+    for (const borders of [[3, 3, 3, 3], [6, 6, 6, 6], [8, 4, 5, 13], [7, 7, 7, 7], [31, 31, 31, 31]]) out.push(line('borderDoubleRings', [l, t, rr, b, ...borders, ...radii]));
+  }
+}
 writeFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'layout', 'paint-vectors', 'radius', 'inputs.jsonl'), `${out.join('\n')}\n`);
 console.log(`radius inputs: ${out.length} cases`);

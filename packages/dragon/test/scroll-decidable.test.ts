@@ -18,7 +18,7 @@ const DIV: LayoutStyle = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal', alignItems: 'normal',
   alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: { kind: 'auto' },
-  verticalAlign: { kind: 'keyword', value: 'baseline' }, grid: null, gridItem: null,
+  verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', grid: null, gridItem: null,
 };
 type Child = LayoutBox | ReplacedLeaf | InlineChild;
 const AHEM: FontSpec = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true };
@@ -30,7 +30,7 @@ const box = (id: string, style: Partial<LayoutStyle>, children: Child[] = []): L
 });
 const span = (id: string, children: InlineChild[]): InlineBox => ({ kind: 'inline', id, style: { ...DIV, display: 'inline' }, font: AHEM, lineHeight: { kind: 'normal' }, children });
 const br = (id: string): LineBreak => ({ kind: 'br', id, font: AHEM, lineHeight: { kind: 'normal' } });
-const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
+const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } });
 const VIEW = { width: 400, height: 300 };
 
 const input = (children: LayoutBox[]): LayoutInput => ({
@@ -64,6 +64,8 @@ const KIDS: Record<string, Kid> = {
   nestedScroll: (id) => box(id, sc('auto', { width: px(50), height: px(20) }), [leaf(`${id}t`, 'XX'), br(`${id}b`)]),
   flexSpan: (id) => box(id, { display: 'flex' }, [box(`${id}i`, {}, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])])]),
   grid: (id) => box(id, { display: 'grid', grid: GRID }),
+  // G-OVF: a grid scroll container, its items past its tracks.
+  gridScroll: (id) => box(id, sc('auto', { display: 'grid', grid: GRID, height: px(20) }), [box(`${id}i`, { height: px(90), gridItem: ITEM })]),
   // A percentage padding against a grid area: a scrolling grid item, an abspos child of a positioned grid, and the near miss of
   // an abspos child of a static grid (its containing block is an ancestor's padding box).
   gridItemPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}i`, sc('auto', { paddingLeft: pct(10), gridItem: ITEM }), [box(`${id}k`, { paddingTop: pct(5), height: px(90) })])]),
@@ -124,10 +126,10 @@ describe('OVFL-B: undecidedScrollContainers against the engine', () => {
     expect(reasons([leaf('t', 'XX'), br('b'), leaf('v', 'YY')])).toEqual(['c b: a <br> in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL1a)']);
     expect(reasons([leaf('t', 'XX'), box('k', { display: 'flex', width: px(10), height: px(10) })])).toEqual(['c k: an atomic inline in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL2)']);
     expect(reasons([box('p', { height: pct(50) }, [box('k', { height: px(10), marginBottom: px(5) })])])).toEqual(['c p: a percentage height on a box whose end margins may collapse through it: its basis is not decided here']);
-    expect(reasons([box('g', { display: 'grid', grid: GRID })])).toEqual(['c g: a grid container: its scrollable overflow (with its grid area) is not decided here']);
+    // G-OVF: a grid's scrollable overflow is decided (its tracks are a grid scroll container's inflow bounds).
+    expect(reasons([box('g', { display: 'grid', grid: GRID })])).toEqual([]);
     expect(reasons([box('p', {}, [leaf('t', 'XX')]), box('q', { height: px(10) })])).toEqual([]);
     expect(reasons([box('g', { display: 'grid', grid: GRID, position: 'relative' }, [box('a', sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }))])])).toEqual([
-      'c g: a grid container: its scrollable overflow (with its grid area) is not decided here',
       'a a: a percentage padding against a grid area: its basis is not decided here',
     ]);
   });

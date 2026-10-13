@@ -1,5 +1,6 @@
-// pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1|glyph-offset-y-1|dash-phase-1|dash-gap-unfitted|
-// transform-origin-ignored|translate-percent-of-parent|image-offset-1|radius-square|outline-offset-1|single-run-baseline]
+// pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1|glyph-offset-y-1|dash-phase-1|dash-gap-unfitted|double-solid|
+// transform-origin-ignored|translate-percent-of-parent|image-offset-1|radius-square|outline-offset-1|outline-dash-unfitted|outline-tones-swapped|
+// single-run-baseline]
 // (notes/T015-p4-review-p5-plan.md section 4 items 1 and 5; T093 ruling A and addendum). Without --plant: provisions and verifies
 // the device matrix, one device at a time: boots it headless (emulators by serial), runs the app once, and prints the model, OS and
 // build, the scale from the device profile and from the app, the window and stage in device px, the root's window offset and the

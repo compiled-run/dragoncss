@@ -4,7 +4,7 @@
 // native capture with Chrome's pixels at the same points.
 
 /** The rule kinds, in the order the generator emits them per box. Both native targets bind this list. */
-export const SAMPLE_RULES = ['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient', 'image-flat'] as const;
+export const SAMPLE_RULES = ['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient', 'image-flat', 'svg'] as const;
 export type SampleRule = (typeof SAMPLE_RULES)[number];
 
 /** Sample geometry, not a tolerance: how far a colour point stays from any edge or arc (T002 section 6). */

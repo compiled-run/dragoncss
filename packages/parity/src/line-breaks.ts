@@ -7,8 +7,10 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
-import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, fromCssPx, layout, inlineLeaves, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
+import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
+import { absoluteRects, fromCssPx, layout, inlineLeaves, leafFontOf, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
+import type { TextTransform } from 'dragon';
+import { applyTextTransform, NO_FAULTS } from 'dragon';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -17,9 +19,22 @@ import { applyTransformTwin } from './transform-capture.ts';
 
 export const BREAK_MISMATCH = 'break-mismatch';
 
-/** One line of a text node as the engine breaks it: UTF-16 [start, end), the shown code points, the absolute line rect and its snapped edges. */
-export type EngineLine = { readonly start: number; readonly end: number; readonly cps: readonly number[]; readonly rect: LayoutRect; readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } };
-export type EngineText = { readonly id: string; readonly container: string; readonly font: TextLeaf['font']; readonly lines: readonly EngineLine[] };
+/**
+ * One line of a text node as the engine breaks it: UTF-16 [start, end), the painted code points, the absolute line rect and its
+ * snapped edges, and the ellipsis that follows the text on a truncated line (TXT2-f): its absolute x in LU, code points and font.
+ * shifts: on a justified line, per code point of cps, the px its glyphs move right by the expansions before it (LinePiece.shifts).
+ */
+export type EngineLine = {
+  readonly start: number;
+  readonly end: number;
+  readonly cps: readonly number[];
+  readonly shifts: readonly number[];
+  readonly rect: LayoutRect;
+  readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+  readonly ellipsis: { readonly x: number; readonly cps: readonly number[]; readonly font: TextFont } | null;
+};
+/** font is the leaf's font; textFont is the font the measurer reads for it, with its resolved letter-spacing (inline.ts leafFontOf). */
+export type EngineText = { readonly id: string; readonly container: string; readonly font: TextLeaf['font']; readonly textFont: TextFont; readonly lines: readonly EngineLine[] };
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
 
@@ -99,18 +114,32 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     const placed: readonly PlacedLine[] = placeLines(ctx, p, contentWidth(pId));
     const pieces = boxes.filter((b) => isLine(b) && b.parent === r.id);
     const own: EngineLine[] = [];
+    // A leaf of preserved text (TXT2-c) can have several pieces on one line (its text, hanging spaces, line feeds): one line here,
+    // from its first piece's start to its last piece's end, at its first piece's rect. TXT2-f: a truncated piece has two fragments
+    // on its line, its whole run and then its painted part (inline.ts collectFragments).
+    let used = 0;
     for (const line of placed) {
-      const mine = line.pieces.find((q) => q.leaf === li);
-      if (mine === undefined) continue;
-      const piece = pieces[own.length];
-      if (piece === undefined) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
+      const mine = line.pieces.filter((q) => q.leaf === li);
+      const first = mine[0];
+      const last = mine[mine.length - 1];
+      if (first === undefined || last === undefined) continue;
+      const piece = pieces[used];
+      let n = 0;
+      for (const q of mine) n += q.truncated ? 2 : 1;
+      if (piece === undefined || used + n > pieces.length) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
+      used += n;
       const a = abs.get(piece.id);
       const e = snapped.get(piece.id);
       if (a === undefined || e === undefined) throw new Error(`no absolute rect for ${piece.id}`);
-      own.push({ start: utf16(mine.start), end: utf16(mine.end), cps: scalars.slice(mine.start, mine.visibleEnd).map((ch) => ch.codePointAt(0) as number), rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
+      const el = line.ellipsis !== null && line.ellipsis.leaf === li ? line.ellipsis : null;
+      const ellipsis = el === null ? null : { x: a.x + el.x - first.x, cps: [...el.text].map((ch) => ch.codePointAt(0) as number), font: el.font };
+      const cps = mine.flatMap((q) => scalars.slice(q.start, q.paintEnd).map((ch) => ch.codePointAt(0) as number));
+      // Only a line of collapsed text is justified, and it has one piece per leaf; preserved pieces have no shifts.
+      const shifts = mine.flatMap((q) => q.shifts);
+      own.push({ start: utf16(first.start), end: utf16(last.end), cps, shifts, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, ellipsis });
     }
-    if (own.length !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${own.length} lines, its layout ${pieces.length}`);
-    out.push({ id: r.id, container: pId, font: leaf.font, lines: own });
+    if (used !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${used} fragments, its layout ${pieces.length}`);
+    out.push({ id: r.id, container: pId, font: leaf.font, textFont: leafFontOf(leaf), lines: own });
   }
   return out;
 }
@@ -148,7 +177,15 @@ export function readBreakVector(caseId: string, dpr: number): BreakVector | null
  * space). A soft wrap's space has a zero-width rect at the end of its line and another at the start of the next; the first counts,
  * as the engine counts the space into the line it ends.
  */
-export type ChromeBreakText = { readonly id: string; readonly data: string; readonly lines: number; readonly units: readonly number[]; readonly blank: readonly number[] };
+export type ChromeBreakText = {
+  readonly id: string;
+  readonly data: string;
+  readonly lines: number;
+  readonly units: readonly number[];
+  readonly blank: readonly number[];
+  /** TXT2-e: the computed text-transform of the node's parent when it is not none (Chrome renders data transformed). */
+  readonly transform?: string;
+};
 export type ChromeBreaks = { readonly case: string; readonly chrome: string; readonly dpr: number; readonly texts: readonly ChromeBreakText[] };
 
 export const expectedBreaksDir = (dpr: number, platform: string = REFERENCE_PLATFORM): string => repoPath(`packages/parity/expected-breaks/${platform}/${dprLabel(dpr)}`);
@@ -173,7 +210,7 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
   // PNT2: text in a transformed box is read on the transform twin, so each line keeps its untransformed rect.
   await applyTransformTwin(page, []);
   return page.evaluate(() => {
-    const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
+    const out: { id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[] = [];
     const isBlank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
     for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
       const id = el.getAttribute('data-dragon-id') as string;
@@ -214,7 +251,8 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
           units.push(best);
           if (pick.width === 0) blank.push(i);
         }
-        out.push({ id: textId, data: t.data, lines: lines.length, units, blank });
+        const transform = getComputedStyle(el).textTransform;
+        out.push(transform === 'none' ? { id: textId, data: t.data, lines: lines.length, units, blank } : { id: textId, data: t.data, lines: lines.length, units, blank, transform });
       }
     }
     return out;
@@ -230,9 +268,18 @@ const WHITE = /[ \t\n\r\f]/;
  */
 export function alignUnits(dom: string, engine: string): number[] | null {
   const map = new Array<number>(dom.length).fill(-1);
+  // Preserved text (TXT2-c, preserve and break-spaces) reaches the engine as authored.
+  if (dom === engine) return map.map((_, i) => i);
   let d = 0;
   for (let e = 0; e < engine.length; e++) {
     const ch = engine[e] as string;
+    if (ch === '\n') {
+      // preserve-breaks keeps each U+000A and removes the white space around it.
+      while (d < dom.length && WHITE.test(dom[d] as string) && dom[d] !== '\n') d++;
+      if (d >= dom.length || dom[d] !== '\n') return null;
+      map[d++] = e;
+      continue;
+    }
     if (ch === ' ') {
       while (d < dom.length && !WHITE.test(dom[d] as string)) {
         if (dom[d] !== engine[e]) return null;
@@ -252,15 +299,65 @@ export function alignUnits(dom: string, engine: string): number[] | null {
   return d === dom.length ? map : null;
 }
 
+const TRANSFORMS: ReadonlySet<string> = new Set(['uppercase', 'lowercase', 'capitalize']);
+
+/**
+ * TXT2-e: the text Chrome renders for a text node, as the build-time transform the engine text carries (the same
+ * applyTextTransform), with each rendered unit on the line of its DOM unit: a code point's rendered units take its DOM units' lines
+ * and blanks in order, the last DOM unit repeated when the mapping lengthens it (U+00DF uppercases to "SS"). Uppercase and lowercase
+ * map each code point independently of the text before the node (Final_Sigma looks only inside it), so they give one reading.
+ * Capitalize maps unit to unit but the first unit's case depends on the character before the node in its inline formatting context,
+ * which the capture does not record: the two readings are "a word starts at the node" (previous a space) and "it does not"
+ * (previous a letter), and every other unit must match exactly in both. No transform gives the DOM text itself; a transform outside
+ * the four keywords gives no reading (the alignment fails).
+ */
+export function renderedTexts(t: ChromeBreakText): ChromeBreakText[] {
+  const transform = t.transform;
+  if (transform === undefined || transform === 'none') return [t];
+  if (!TRANSFORMS.has(transform)) return [];
+  const faults = NO_FAULTS;
+  const previous = transform === 'capitalize' ? [' ', 'a'] : [' '];
+  const out: ChromeBreakText[] = [];
+  for (const p of previous) {
+    const whole = applyTextTransform(t.data, transform as TextTransform, p, faults);
+    const units: number[] = [];
+    const blank: number[] = [];
+    const blankDom = new Set(t.blank);
+    let d = 0;
+    let r = 0;
+    for (const cp of Array.from(t.data)) {
+      const n = cp.length;
+      const m = transform === 'capitalize' ? n : applyTextTransform(cp, transform as TextTransform, ' ', faults).length;
+      for (let j = 0; j < m; j++) {
+        const from = d + Math.min(j, n - 1);
+        units.push(t.units[from] as number);
+        if (blankDom.has(from)) blank.push(r + j);
+      }
+      d += n;
+      r += m;
+    }
+    // A mapping that is not per code point (none of the four keywords has one beyond Final_Sigma's same-length choice) is no reading.
+    if (r !== whole.length) continue;
+    out.push({ id: t.id, data: whole, lines: t.lines, units, blank });
+  }
+  return out;
+}
+
 /**
  * Chrome's lines in engine offsets. A mapped unit belongs to the line of its first rect; a unit without a rect continues the line
  * of the unit before it. A line starts at its smallest engine offset whose unit is not a white-space unit with a zero-width rect (a
- * hanging or collapsed space never starts a line: the engine starts a line at its first shown character; U+200B is not white space)
- * and ends after its largest engine offset.
+ * hanging or collapsed space never starts a line: the engine starts a line at its first shown character; U+200B is not white space,
+ * and a preserved U+000A starts its line) and ends after its largest engine offset.
  */
-export function chromeLines(t: ChromeBreakText, engineText: string): (readonly [number, number])[] | null {
-  const map = alignUnits(t.data, engineText);
-  if (map === null) return null;
+export function chromeLines(dom: ChromeBreakText, engineText: string): (readonly [number, number])[] | null {
+  for (const t of renderedTexts(dom)) {
+    const map = alignUnits(t.data, engineText);
+    if (map !== null) return linesOf(t, map, engineText);
+  }
+  return null;
+}
+
+function linesOf(t: ChromeBreakText, map: readonly number[], engineText: string): (readonly [number, number])[] {
   const blank = new Set(t.blank);
   const starts: (number | undefined)[] = [];
   const ends: (number | undefined)[] = [];
@@ -270,7 +367,9 @@ export function chromeLines(t: ChromeBreakText, engineText: string): (readonly [
     const e = map[d] as number;
     if (e < 0 || current < 0) return;
     ends[current] = Math.max(ends[current] ?? e + 1, e + 1);
-    if (line >= 0 && !(blank.has(d) && WHITE.test(t.data[d] as string))) starts[current] = Math.min(starts[current] ?? e, e);
+    // A preserved U+000A (TXT2-c) has a zero-width rect and still starts the line it alone is on.
+    const shown = !(blank.has(d) && WHITE.test(t.data[d] as string)) || engineText[e] === '\n';
+    if (line >= 0 && shown) starts[current] = Math.min(starts[current] ?? e, e);
   });
   const out: (readonly [number, number])[] = [];
   for (let j = 0; j < t.lines; j++) {
@@ -300,7 +399,7 @@ export function compareVectorWithChrome(v: BreakVector, chrome: ChromeBreaks, en
       continue;
     }
     const lines = chromeLines(c, text);
-    if (lines === null) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: the DOM text ${JSON.stringify(c.data)} does not collapse to the engine text ${JSON.stringify(text)}` });
+    if (lines === null) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: the DOM text ${JSON.stringify(c.data)}${c.transform === undefined ? '' : ` (text-transform: ${c.transform})`} does not collapse to the engine text ${JSON.stringify(text)}` });
     else if (!same(lines, t.lines)) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: engine lines ${JSON.stringify(t.lines)}, Chrome ${JSON.stringify(lines)}` });
   }
   // Chrome text the vector lacks: a mismatch when Chrome shows any of it (a unit with a rect of non-zero width). Text that only
@@ -329,7 +428,8 @@ export function checkDumpBreaks(dump: NativeDump, v: BreakVector): BreakResult {
       problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: the dump has no text node for the break vector` });
       continue;
     }
-    const got = n.lines.map((l) => [l.start, l.end] as const);
+    // TXT2-f: the two fragments of a truncated text on one line (same offsets, same top) are one line break-wise.
+    const got = n.lines.filter((l, j) => j === 0 || !(l.start === n.lines[j - 1]?.start && l.end === n.lines[j - 1]?.end && l.deviceEdges.top === n.lines[j - 1]?.deviceEdges.top)).map((l) => [l.start, l.end] as const);
     compared += t.lines.length;
     if (!same(got as (readonly [number, number])[], t.lines)) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: device lines ${JSON.stringify(got)}, break vector ${JSON.stringify(t.lines)}` });
   }
@@ -428,8 +528,9 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
     let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
     var lines: [String] = []
     for line in placed {
-      guard let piece = line.pieces.items.first(where: { Int($0.leaf) == li }) else { continue }
-      lines.append("[\(utf16(Int(piece.start))),\(utf16(Int(piece.end)))]")
+      let mine = line.pieces.items.filter { Int($0.leaf) == li }
+      guard let first = mine.first, let last = mine.last else { continue }
+      lines.append("[\(utf16(Int(first.start))),\(utf16(Int(last.end)))]")
     }
     out.append("\(id)\t[\(lines.joined(separator: ","))]")
   }
@@ -525,8 +626,9 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
     val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
     val lines = ArrayList<String>()
     for (line in placed) {
-      val piece = line.pieces.firstOrNull { it.leaf.toInt() == li } ?: continue
-      lines.add("[" + utf16(piece.start.toInt()) + "," + utf16(piece.end.toInt()) + "]")
+      val mine = line.pieces.filter { it.leaf.toInt() == li }
+      if (mine.isEmpty()) continue
+      lines.add("[" + utf16(mine.first().start.toInt()) + "," + utf16(mine.last().end.toInt()) + "]")
     }
     out.add(id + "\t[" + lines.joinToString(",") + "]")
   }

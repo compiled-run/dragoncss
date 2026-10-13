@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 46464
+   "height": 51072
   },
   {
    "id": "body",
@@ -16,7 +16,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 46464
+   "height": 51072
   },
   {
    "id": "row",
@@ -24,7 +24,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 46464
+   "height": 51072
   },
   {
    "id": "avatar",
@@ -91,9 +91,17 @@
    "height": 9600
   },
   {
+   "id": "hidden",
+   "parent": "row",
+   "x": 44928,
+   "y": 34944,
+   "width": 14208,
+   "height": 14208
+  },
+  {
    "id": "tall",
    "parent": "row",
-   "x": 43008,
+   "x": 26496,
    "y": 34944,
    "width": 16128,
    "height": 9216
@@ -105,27 +113,27 @@
    "left": 0,
    "top": 0,
    "right": 1200,
-   "bottom": 726,
+   "bottom": 798,
    "width": 1200,
-   "height": 726
+   "height": 798
   },
   {
    "id": "body",
    "left": 0,
    "top": 0,
    "right": 1200,
-   "bottom": 726,
+   "bottom": 798,
    "width": 1200,
-   "height": 726
+   "height": 798
   },
   {
    "id": "row",
    "left": 0,
    "top": 0,
    "right": 1200,
-   "bottom": 726,
+   "bottom": 798,
    "width": 1200,
-   "height": 726
+   "height": 798
   },
   {
    "id": "avatar",
@@ -200,10 +208,19 @@
    "height": 150
   },
   {
-   "id": "tall",
-   "left": 672,
+   "id": "hidden",
+   "left": 702,
    "top": 546,
    "right": 924,
+   "bottom": 768,
+   "width": 222,
+   "height": 222
+  },
+  {
+   "id": "tall",
+   "left": 414,
+   "top": 546,
+   "right": 666,
    "bottom": 690,
    "width": 252,
    "height": 144

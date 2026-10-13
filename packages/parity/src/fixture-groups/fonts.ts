@@ -12,7 +12,11 @@ import { layout, reject } from './define.ts';
 import { TEXT_CALIBRATION } from './text-calibration.ts';
 import { INLINE_TAGS } from './inline-tags.ts';
 import { TEXT_WEIGHT } from './text-weight.ts';
+import { FONT_SHORTHAND } from './font-shorthand.ts';
+import { TEXT_JUSTIFY } from './text-justify.ts';
 import { TEXT_LATIN } from './text-latin.ts';
+import { TEXT_SPACING } from './text-spacing.ts';
+import { WHITE_SPACE } from './white-space.ts';
 
 /** A web-only fonts fixture: its font map (null: none), and the face Chrome must render each element's text with in both documents. */
 export type FontFixture = {
@@ -34,6 +38,14 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   font('fonts-tags', FONT_REFERENCE_MAP, { regular: 'Lato-Regular', em: 'Lato-Regular', i: 'Lato-Regular', b: 'Lato-Bold', bi: 'Lato-Bold' }),
   // TXT-W1: synthesized text, which native refuses (DRAGON_SYNTHETIC_FONT_STYLE); Chrome draws the base face, emboldened or skewed.
   font('fonts-weight-synthetic', FONT_REFERENCE_MAP, { lit: 'Lato-Regular', lo20: 'Lato-Regular', lbi: 'Lato-Bold', mb: 'NotoSansMono-Regular', m600: 'NotoSansMono-Regular', mi: 'NotoSansMono-Regular' }),
+  // TDEC-a: decorated text, drawn on web only until TDEC-b; decoration-capture.ts proves the decoration pixels against Chrome.
+  font('text-decoration-lines', FONT_REFERENCE_MAP, Object.fromEntries([...['l1', 'l2', 'l3', 'l4', 't1', 't2', 't3', 'o1', 'o2', 'o3', 'o4', 'o5', 'o6', 'c1', 'c2', 's1'].map((id) => [id, 'Lato-Regular']), ['i1', 'Inter-Regular'], ['i2', 'Inter-Bold']])),
+  font('text-decoration-boxes', FONT_REFERENCE_MAP, Object.fromEntries(['b1a', 'b1b', 'b2a', 'b2b', 'b2c', 'b3a', 'b3b', 'b4a', 'b4b', 'b5c', 'b5b'].map((id) => [id, 'Lato-Regular']))),
+  font('text-decoration-wrap', FONT_REFERENCE_MAP, { w: 'Lato-Regular' }),
+  font('text-decoration-north-star', FONT_REFERENCE_MAP, { yt: 'Lato-Regular', gp: 'Lato-Regular' }),
+  font('text-decoration-ahem', FONT_REFERENCE_MAP, { a1: 'Ahem', a2: 'Ahem', a3: 'Ahem' }),
+  // The skip-ink probe: Ahem's glyph boxes cross an auto underline, so the engine refuses it (skip-ink-intercepts, TDEC-d).
+  font('text-decoration-ahem-auto', FONT_REFERENCE_MAP, { a: 'Ahem' }),
 ];
 
 /** An invalid map: a pinned entry with no faces. */
@@ -53,7 +65,7 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
   // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
-  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
   // INL2a: the refusal of an atomic inline beside real-font text.
   ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
 ]);

@@ -214,6 +214,11 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(run(`@keyframes s { from { background-color: red; } to { background-color: blue; } } ${gradient} .b { height: 10px; animation: s 1s infinite; }`)).toEqual([]);
     expect(run(`@keyframes f { from { opacity: 0; } to { opacity: 1; } } ${gradient} .a { animation: f 1s infinite; }`)).toEqual([]);
     expect(run(`${gradient} .a { transition: background-color 1s; }`, { web: {} })).toEqual([]);
+    // MQ-R1: native switches @media bands at run time, so a gradient only in a band that is not the fold band's is refused too.
+    for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
+      const css = `@keyframes s { from { background-color: red; } to { background-color: blue; } } .a { width: 40px; height: 20px; animation: s 1s infinite; } @media ${media} { .a { background: linear-gradient(110deg, red, blue) white; } }`;
+      expect(run(css), media).toEqual(['android an animation of background-color on a', 'ios an animation of background-color on a']);
+    }
   });
   it('R6(b): refuses a translucent stack under opacity below 1 on ios and android, and compiles an opaque one (BG2c)', () => {
     const translucent = (rule: string): string[] => compile(rule).filter((m) => m.includes('not opaque over every pixel')).map((m) => m.split(' ').slice(0, 2).join(' '));

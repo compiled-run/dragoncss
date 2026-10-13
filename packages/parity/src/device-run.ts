@@ -71,6 +71,8 @@ export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  // PNT1b: radius-double's border points sit in the gap between the two rings, which the plant fills with the border colour.
+  'double-solid': ['radius-double'],
   'radius-square': ['radius-basic'],
   // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
   'shadow-offset-1': ['calib-shadow-blur'],
@@ -80,6 +82,9 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'order-swap': ['stacking-basic'],
   // PNT1: outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
+  // outline-dashed's dashes and round dots move along each side when the gap is not fitted; outline-3d's ring points swap colours.
+  'outline-dash-unfitted': ['outline-dashed'],
+  'outline-tones-swapped': ['outline-3d'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
@@ -92,11 +97,19 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // (kid-*) vanish when the writer hides the box view itself.
   'visibility-ignored': ['visibility-basic'],
   'visibility-subtree': ['visibility-basic'],
+  // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
+  // are filled and stroked in distinct colours with strokes wide enough to sample.
+  'svg-stroke-first': ['svg-paint', 'svg-basic'],
+  'svg-even-odd': ['svg-basic'],
+  'svg-stroke-unscaled': ['svg-paint', 'svg-basic'],
+  'svg-paint-swapped': ['svg-paint', 'svg-basic'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  // One band from the border box to the padding edge paints the gap: the border points and the stripe pairs catch it.
+  'double-solid': /^(border:|radius:[^:]+:[a-z-]+-stripe)/,
   // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
   'radius-square': /^radius:/,
   // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.
@@ -105,6 +118,9 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'order-swap': /^interior:/,
   // A shifted ring moves its band and its outer edge: the outline points catch it.
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
+  // An unfitted gap moves the dashes and dots the outline points sit on; swapped tones change a 3D ring point's colour.
+  'outline-dash-unfitted': /^(border|edge):[^:]+:outline-/,
+  'outline-tones-swapped': /^border:[^:]+:outline-/,
   // A transform moves every pixel of the box, so any colour rule may catch it.
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
@@ -113,6 +129,10 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'image-offset-1': /^(image-flat:|edge:)/,
   'visibility-ignored': /^interior:hid-/,
   'visibility-subtree': /^interior:kid-/,
+  'svg-stroke-first': /^svg:/,
+  'svg-even-odd': /^svg:/,
+  'svg-stroke-unscaled': /^svg:/,
+  'svg-paint-swapped': /^svg:/,
 };
 /**
  * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason

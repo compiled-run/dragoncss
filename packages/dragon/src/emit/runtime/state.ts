@@ -616,7 +616,8 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
         throw new StateEmitError(`${n.id}: a scroll container in a state program is not supported yet (OVFL-B scroll views under SELD-R states)`);
       case 'replaced-image':
       case 'foreign-view':
-        // REPL-a draws an image or hosts a web view from its own paint stage; the state runtime does not rebuild either yet.
+      case 'svg-shapes':
+        // REPL-a draws an image or hosts a web view, and SVG-a2 an svg's shapes, from its own paint stage; the state runtime does not rebuild them yet.
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       case 'border-radius':
       case 'box-shadow':
@@ -626,6 +627,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'background-layers':
         // BG2-a: a state record holds no gradient write; the layers are painted from the static program only.
         throw new StateEmitError(`${n.id}: background layers in a state program have no state-node write (BG2 writes them on the static program only)`);
+      case 'text-decoration':
+        // TDEC-b draws decorations from the static program only; the state runtime has no decoration writer yet.
+        throw new StateEmitError(`${n.id}: text decorations in a state program have no state-node write (TDEC-b draws them on the static program only)`);
       case 'visibility':
         // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
         throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);

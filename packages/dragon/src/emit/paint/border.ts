@@ -2,6 +2,8 @@
 // through the after-layout hook; styles and colours are written by the case code through the view's public setters. A box with a
 // visible dashed or dotted side, or only solid visible sides, is drawn from the translated paint-dash.ts operations (Blink 145's
 // side painter in device px, which joins same-colour sides without a miter); a box with a visible double side keeps the band painter.
+// A rounded box whose four sides are double in one colour is drawn as Blink's two rings (paint-radius.ts borderDoubleRings); a double
+// side under 3 device px is solid (BorderEdge::EffectiveStyle).
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT, rgbaLit } from './types.ts';
 
@@ -22,11 +24,58 @@ public let dragonDashFaults = DashFaults(false, false)
 public func dragonPaintBorderStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
   if let outer = dragonRoundedPath(v, shape, inner: false), let inner = dragonRoundedPath(v, shape, inner: true) {
     let r = dragonRadiusShape(v, shape) ?? [Double](repeating: 0, count: 16)
-    dragonDrawRoundedBorders(ctx, v.bounds, outer, inner, r[8..<16].map { CGFloat($0 / v.dragonScale) }, v.dragonBorderWidths.map { CGFloat($0) }, v.dragonBorderStyles, v.dragonBorderColors)
+    if dragonDrawRoundedDouble(v, ctx, shape, Array(r[0..<8])) { return }
+    let styles = (0..<4).map { dragonEffectiveBorderStyle(v.dragonBorderStyles[$0], shape.borders[$0]) }
+    dragonDrawRoundedBorders(ctx, v.bounds, outer, inner, r[8..<16].map { CGFloat($0 / v.dragonScale) }, v.dragonBorderWidths.map { CGFloat($0) }, styles, v.dragonBorderColors)
     return
   }
   if dragonDrawBorderOps(ctx, shape, CGFloat(v.dragonScale), v.dragonBorderStyles, v.dragonBorderColors, v.dragonId) { return }
   dragonDrawBorders(ctx, v.bounds, v.dragonBorderWidths.map { CGFloat($0) }, v.dragonBorderStyles, v.dragonBorderColors)
+}
+
+/// The planted rounded-double fault: false, except in the double-solid raster plant build, which fills both rings as one solid band.
+public let dragonDoublePlantSolid: Bool = false
+
+/// BorderEdge::EffectiveStyle: a double side under 3 device px paints solid.
+public func dragonEffectiveBorderStyle(_ style: String, _ devicePx: Double) -> String {
+  return style == "double" && devicePx < 3 ? "solid" : style
+}
+
+/// A rounded box whose four sides are double (each at least 3 device px) in one colour: Blink's PaintBorderFastPath draws two rings
+/// (DrawDoubleBorder), from the translated paint-radius.ts borderDoubleRings, each filled even-odd. False when the box is not that
+/// case; a visible double side of 3 device px or more in any other rounded border is refused at compile time (PNT1b), so it is a fault.
+public func dragonDrawRoundedDouble(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape, _ radii: [Double]) -> Bool {
+  let styles = (0..<4).map { dragonEffectiveBorderStyle(v.dragonBorderStyles[$0], shape.borders[$0]) }
+  if !styles.contains("double") { return false }
+  let c = v.dragonBorderColors
+  if !(styles.allSatisfy { $0 == "double" } && c.allSatisfy { $0 == c[0] }) {
+    fatalError("dragon: \(v.dragonId): a rounded double border that is not four double sides in one colour is PNT1b, which the compiler refuses")
+  }
+  if c[0].a == 0 { return true }
+  let e = shape.edges
+  let rings: [Double]
+  do {
+    rings = try paintRadius_borderDoubleRings(e[0], e[1], e[2], e[3], JsArray(shape.borders), JsArray(radii)).items
+  } catch {
+    fatalError("dragon: \(v.dragonId): paint-radius borderDoubleRings failed: \(error)")
+  }
+  if rings.count != 48 { fatalError("dragon: \(v.dragonId): \(rings.count) double border ring values, not 48") }
+  let s = v.dragonScale
+  let rect = { (i: Int) -> CGRect in CGRect(x: CGFloat((rings[i] - e[0]) / s), y: CGFloat((rings[i + 1] - e[1]) / s), width: CGFloat((rings[i + 2] - rings[i]) / s), height: CGFloat((rings[i + 3] - rings[i + 1]) / s)) }
+  // Each fill is (outer rect, outer radii, inner rect, inner radii) offsets; the plant fills the border box to the padding edge as
+  // one solid band, where Chrome leaves the gap between the rings.
+  let fills = dragonDoublePlantSolid ? [[0, 8, 28, 40]] : [[0, 8, 4, 16], [24, 32, 28, 40]]
+  ctx.saveGState()
+  ctx.setFillColor(dragonUIColor(c[0]).cgColor)
+  for f in fills {
+    let path = CGMutablePath()
+    path.addPath(dragonRRectPath(rect(f[0]), Array(rings[f[1]..<(f[1] + 8)]), s))
+    path.addPath(dragonRRectPath(rect(f[2]), Array(rings[f[3]..<(f[3] + 8)]), s))
+    ctx.addPath(path)
+    ctx.fillPath(using: .evenOdd)
+  }
+  ctx.restoreGState()
+  return true
 }
 
 /// Blink BoxBorderPainter FindIntersection: where line p1-p2 meets line d1-d2; p2 when they are parallel.
@@ -68,8 +117,9 @@ public func dragonBorderEdgeQuad(_ k: Int, _ o: CGRect, _ i: CGRect, _ ir: [CGFl
 
 /// Rounded solid borders (PNT1): the ring between the border-box and padding-edge paths, filled even-odd; four sides of one colour
 /// fill it once (Blink's FillDRRect), otherwise each side fills its part of the ring clipped to its Blink edge quad (the corner
-/// diagonals, carried to the chords of the rounded inner corners). Rounded dashed, dotted and double sides are refused at compile
-/// time (PNT1b), so meeting one here is a fault.
+/// diagonals, carried to the chords of the rounded inner corners). Styles arrive effective (a double side under 3 device px is solid;
+/// four wider double sides were drawn by dragonDrawRoundedDouble); rounded dashed, dotted and 3D sides are refused at compile time
+/// (PNT1b), so meeting one here is a fault.
 public func dragonDrawRoundedBorders(_ ctx: CGContext, _ o: CGRect, _ outer: CGPath, _ inner: CGPath, _ ir: [CGFloat], _ w: [CGFloat], _ styles: [String], _ colors: [DragonRGBA8]) {
   if ir.count != 8 { fatalError("dragon: \(ir.count) inner radii, not 8") }
   var visible: [Int] = []
@@ -247,6 +297,7 @@ import dev.dragon.layout.DashFaults
 import dev.dragon.layout.JsArray
 import dev.dragon.layout.paintDash_borderNeedsSidePainter
 import dev.dragon.layout.paintDash_borderPaintOps
+import dev.dragon.layout.paintRadius_borderDoubleRings
 import kotlin.math.roundToInt
 
 /** The planted dash faults: none, except in the dash-phase-1 and dash-gap-unfitted raster plant builds (P6a). */
@@ -262,11 +313,54 @@ fun dragonPaintBorderStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxSha
   val inner = dragonRoundedPath(v, shape, true)
   if (outer != null && inner != null) {
     val r = dragonRadiusShape(v, shape) ?: DoubleArray(16)
-    dragonDrawRoundedBorders(canvas, v.width.toFloat(), v.height.toFloat(), outer, inner, FloatArray(8) { r[8 + it].toFloat() }, v.dragonBorderWidths, v.dragonBorderStyles, v.dragonBorderColors)
+    if (dragonDrawRoundedDouble(v, canvas, shape, r.copyOfRange(0, 8))) return
+    val styles = Array(4) { dragonEffectiveBorderStyle(v.dragonBorderStyles[it], shape.borders[it]) }
+    dragonDrawRoundedBorders(canvas, v.width.toFloat(), v.height.toFloat(), outer, inner, FloatArray(8) { r[8 + it].toFloat() }, v.dragonBorderWidths, styles, v.dragonBorderColors)
     return
   }
   if (dragonDrawBorderOps(canvas, shape, v.dragonBorderStyles, v.dragonBorderColors, v.dragonId)) return
   dragonDrawBorders(canvas, v.width.toFloat(), v.height.toFloat(), v.dragonBorderWidths, v.dragonBorderStyles, v.dragonBorderColors)
+}
+
+/** The planted rounded-double fault: false, except in the double-solid raster plant build, which fills both rings as one solid band. */
+const val DRAGON_DOUBLE_PLANT_SOLID = false
+
+/** BorderEdge::EffectiveStyle: a double side under 3 device px paints solid. */
+fun dragonEffectiveBorderStyle(style: String, devicePx: Double): String = if (style == "double" && devicePx < 3.0) "solid" else style
+
+/**
+ * A rounded box whose four sides are double (each at least 3 device px) in one colour: Blink's PaintBorderFastPath draws two rings
+ * (DrawDoubleBorder), from the translated paint-radius.ts borderDoubleRings, each filled even-odd. False when the box is not that
+ * case; a visible double side of 3 device px or more in any other rounded border is refused at compile time (PNT1b), so it is a fault.
+ */
+fun dragonDrawRoundedDouble(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape, radii: DoubleArray): Boolean {
+  val styles = Array(4) { dragonEffectiveBorderStyle(v.dragonBorderStyles[it], shape.borders[it]) }
+  if (styles.none { it == "double" }) return false
+  val c = v.dragonBorderColors
+  if (!(styles.all { it == "double" } && c.all { it.r == c[0].r && it.g == c[0].g && it.b == c[0].b && it.a == c[0].a })) {
+    throw IllegalStateException("dragon: " + v.dragonId + ": a rounded double border that is not four double sides in one colour is PNT1b, which the compiler refuses")
+  }
+  if (c[0].a == 0) return true
+  val e = shape.edges
+  val rings = paintRadius_borderDoubleRings(e[0], e[1], e[2], e[3], JsArray(shape.borders.toMutableList()), JsArray(radii.toMutableList()))
+  if (rings.size != 48) throw IllegalStateException("dragon: " + v.dragonId + ": " + rings.size + " double border ring values, not 48")
+  fun rect(i: Int): RectF = RectF((rings[i] - e[0]).toFloat(), (rings[i + 1] - e[1]).toFloat(), (rings[i + 2] - e[0]).toFloat(), (rings[i + 3] - e[1]).toFloat())
+  fun radiiAt(i: Int): DoubleArray = DoubleArray(8) { rings[i + it] }
+  // Each fill is (outer rect, outer radii, inner rect, inner radii) offsets; the plant fills the border box to the padding edge as
+  // one solid band, where Chrome leaves the gap between the rings.
+  val fills = if (DRAGON_DOUBLE_PLANT_SOLID) arrayOf(intArrayOf(0, 8, 28, 40)) else arrayOf(intArrayOf(0, 8, 4, 16), intArrayOf(24, 32, 28, 40))
+  val paint = Paint()
+  paint.isAntiAlias = true
+  paint.style = Paint.Style.FILL
+  paint.color = dragonArgb(c[0])
+  for (f in fills) {
+    val path = Path()
+    path.fillType = Path.FillType.EVEN_ODD
+    path.addPath(dragonRRectPath(rect(f[0]), radiiAt(f[1]), 0))
+    path.addPath(dragonRRectPath(rect(f[2]), radiiAt(f[3]), 0))
+    canvas.drawPath(path, paint)
+  }
+  return true
 }
 
 /** Blink BoxBorderPainter FindIntersection: where line p1-p2 meets line d1-d2 (x, y pairs); p2 when they are parallel. */
@@ -315,8 +409,9 @@ fun dragonBorderEdgeQuad(k: Int, w: Float, h: Float, t: Float, r: Float, b: Floa
 /**
  * Rounded solid borders (PNT1): the ring between the border-box and padding-edge paths, filled even-odd; four sides of one colour
  * fill it once (Blink's FillDRRect), otherwise each side fills its part of the ring clipped to its Blink edge quad (the corner
- * diagonals, carried to the chords of the rounded inner corners). Rounded dashed, dotted and double sides are refused at compile
- * time (PNT1b), so meeting one here is a fault.
+ * diagonals, carried to the chords of the rounded inner corners). Styles arrive effective (a double side under 3 device px is solid;
+ * four wider double sides were drawn by dragonDrawRoundedDouble); rounded dashed, dotted and 3D sides are refused at compile time
+ * (PNT1b), so meeting one here is a fault.
  */
 fun dragonDrawRoundedBorders(canvas: Canvas, w: Float, h: Float, outer: Path, inner: Path, ir: FloatArray, widths: IntArray, styles: Array<String>, colors: Array<DragonRGBA8>) {
   if (ir.size != 8) throw IllegalStateException("dragon: " + ir.size + " inner radii, not 8")
@@ -470,7 +565,7 @@ fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styl
 }
 `;
 
-export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'border-colors', 'dash-phase-1' | 'dash-gap-unfitted'> = {
+export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'border-colors', 'dash-phase-1' | 'dash-gap-unfitted' | 'double-solid'> = {
   name: 'border',
   kinds: ['border-widths', 'border-styles', 'border-colors'],
   lines: {
@@ -513,5 +608,6 @@ export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'b
   plants: [
     { name: 'dash-phase-1', replace: { uikit: ['DashFaults(false, false)', 'DashFaults(true, false)'], 'android-views': ['DashFaults(false, false)', 'DashFaults(true, false)'] } },
     { name: 'dash-gap-unfitted', replace: { uikit: ['DashFaults(false, false)', 'DashFaults(false, true)'], 'android-views': ['DashFaults(false, false)', 'DashFaults(false, true)'] } },
+    { name: 'double-solid', replace: { uikit: ['public let dragonDoublePlantSolid: Bool = false\n', 'public let dragonDoublePlantSolid: Bool = true\n'], 'android-views': ['const val DRAGON_DOUBLE_PLANT_SOLID = false\n', 'const val DRAGON_DOUBLE_PLANT_SOLID = true\n'] } },
   ],
 };
