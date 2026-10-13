@@ -21,7 +21,12 @@ import { OUTLINE_ASPECTS, OUTLINE_CONTAINER, OUTLINE_INHERITED, OUTLINE_LONGHAND
 import { TRANSFORM_ASPECTS, TRANSFORM_CONTAINER, TRANSFORM_INHERITED, TRANSFORM_LONGHANDS, TRANSFORM_SHORTHANDS, TRANSFORM_TEXT_ROLE } from './properties/transform.ts';
 import { BACKGROUND_LAYERS_ASPECTS, BACKGROUND_LAYERS_CONTAINER, BACKGROUND_LAYERS_INHERITED, BACKGROUND_LAYERS_LONGHANDS, BACKGROUND_LAYERS_SHORTHANDS, BACKGROUND_LAYERS_TEXT_ROLE } from './properties/background-layers.ts';
 import { LISTS_ASPECTS, LISTS_CONTAINER, LISTS_INHERITED, LISTS_LONGHANDS, LISTS_SHORTHANDS, LISTS_TEXT_ROLE } from './properties/lists.ts';
+import { FLOAT_ASPECTS, FLOAT_CONTAINER, FLOAT_INHERITED, FLOAT_LONGHANDS, FLOAT_SHORTHANDS, FLOAT_TEXT_ROLE } from './properties/float.ts';
+import { INLINE_ASPECTS, INLINE_CONTAINER, INLINE_INHERITED, INLINE_LONGHANDS, INLINE_SHORTHANDS, INLINE_TEXT_ROLE } from './properties/inline.ts';
+import { SVG_ASPECTS, SVG_CONTAINER, SVG_INHERITED, SVG_LONGHANDS, SVG_SHORTHANDS, SVG_TEXT_ROLE } from './properties/svg.ts';
 import { SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_INHERITED, SCROLLBAR_LONGHANDS, SCROLLBAR_SHORTHANDS, SCROLLBAR_TEXT_ROLE } from './properties/scrollbar.ts';
+import { SELECTION_ASPECTS, SELECTION_CONTAINER, SELECTION_INHERITED, SELECTION_LONGHANDS, SELECTION_SHORTHANDS, SELECTION_TEXT_ROLE } from './properties/selection.ts';
+import { TEXT_SPACING_ASPECTS, TEXT_SPACING_CONTAINER, TEXT_SPACING_INHERITED, TEXT_SPACING_LONGHANDS, TEXT_SPACING_SHORTHANDS, TEXT_SPACING_TEXT_ROLE } from './properties/text-spacing.ts';
 import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
 
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
@@ -74,6 +79,16 @@ const FAMILIES = [
   family('lists', LISTS_LONGHANDS, LISTS_SHORTHANDS, LISTS_INHERITED, LISTS_ASPECTS, LISTS_CONTAINER, LISTS_TEXT_ROLE),
   // T150a (css-display-3 §4): visibility, after lists.
   family('visibility', VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_INHERITED, VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_TEXT_ROLE),
+  // vertical-align (CSS2 §10.8.1), after the lists family.
+  family('inline', INLINE_LONGHANDS, INLINE_SHORTHANDS, INLINE_INHERITED, INLINE_ASPECTS, INLINE_CONTAINER, INLINE_TEXT_ROLE),
+  // float and clear (CSS2 §9.5), after the inline family.
+  family('float', FLOAT_LONGHANDS, FLOAT_SHORTHANDS, FLOAT_INHERITED, FLOAT_ASPECTS, FLOAT_CONTAINER, FLOAT_TEXT_ROLE),
+  // T154 (css-ui-4 §6.1): user-select, after visibility.
+  family('selection', SELECTION_LONGHANDS, SELECTION_SHORTHANDS, SELECTION_INHERITED, SELECTION_ASPECTS, SELECTION_CONTAINER, SELECTION_TEXT_ROLE),
+  // SVG-a1: the paint of inline SVG shapes.
+  family('svg', SVG_LONGHANDS, SVG_SHORTHANDS, SVG_INHERITED, SVG_ASPECTS, SVG_CONTAINER, SVG_TEXT_ROLE),
+  // TXT2-b (css-text-3 §8.2): letter-spacing, after visibility.
+  family('text-spacing', TEXT_SPACING_LONGHANDS, TEXT_SPACING_SHORTHANDS, TEXT_SPACING_INHERITED, TEXT_SPACING_ASPECTS, TEXT_SPACING_CONTAINER, TEXT_SPACING_TEXT_ROLE),
 ] as const;
 
 export type Longhand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<infer L, string> ? L : never) : never;
@@ -101,7 +116,7 @@ if (new Set(LONGHANDS).size !== LONGHANDS.length || new Set(SHORTHANDS).size !==
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
  * so the lowering reads only the text node.
  */
-export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction'] as const satisfies readonly Longhand[];
+export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction', 'letter-spacing'] as const satisfies readonly Longhand[];
 
 export type TextLonghand = (typeof TEXT_LONGHANDS)[number];
 

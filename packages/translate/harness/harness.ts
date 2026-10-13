@@ -18,6 +18,7 @@ import type {
   FontSpec,
   GapValue,
   InlineBox,
+  InlineSizeValue,
   InlineChild,
   GridAutoRepeat,
   GridContainerStyle,
@@ -41,6 +42,7 @@ import type {
   ObjectFit,
   ObjectPositionValue,
   ReplacedLeaf,
+  MaxInlineSizeValue,
   MaxSizeValue,
   MinSizeValue,
   Overflow,
@@ -541,6 +543,26 @@ function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+/** width and min-width: a SizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
+function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
+  const k = kindOf(v, path);
+  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return sizeValue(v, path);
+  obj(v, ['kind'], path);
+  if (k === 'min-content') return { kind: 'min-content' };
+  if (k === 'max-content') return { kind: 'max-content' };
+  return { kind: 'fit-content' };
+}
+
+/** max-width: a MaxSizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
+function maxInlineSizeValue(v: JsonValue, path: string): MaxInlineSizeValue {
+  const k = kindOf(v, path);
+  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return maxSizeValue(v, path);
+  obj(v, ['kind'], path);
+  if (k === 'min-content') return { kind: 'min-content' };
+  if (k === 'max-content') return { kind: 'max-content' };
+  return { kind: 'fit-content' };
+}
+
 function paddingValue(v: JsonValue, path: string): PaddingValue {
   const k = kindOf(v, path);
   if (k === 'calc') return lengthCalc(v, path);
@@ -711,6 +733,8 @@ function gridSpan(v: JsonValue, path: string): GridSpan {
     const o = obj(v, ['kind', 'start', 'end'], path);
     return { kind: 'lines', start: gridLine(field(o, 'start', path), `${path}.start`), end: gridLine(field(o, 'end', path), `${path}.end`) };
   }
+  if (k === 'start-line') return { kind: 'start-line', line: numField(obj(v, ['kind', 'line'], path), 'line', path) };
+  if (k === 'end-line') return { kind: 'end-line', line: numField(obj(v, ['kind', 'line'], path), 'line', path) };
   return fail(`${path}: unknown kind ${k}`);
 }
 
@@ -781,11 +805,11 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     overflowY: lit(f('overflowY'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowY')) as Overflow,
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
-    width: sizeValue(f('width'), p('width')),
+    width: inlineSizeValue(f('width'), p('width')),
     height: sizeValue(f('height'), p('height')),
-    minWidth: sizeValue(f('minWidth'), p('minWidth')) as MinSizeValue,
+    minWidth: inlineSizeValue(f('minWidth'), p('minWidth')),
     minHeight: sizeValue(f('minHeight'), p('minHeight')) as MinSizeValue,
-    maxWidth: maxSizeValue(f('maxWidth'), p('maxWidth')),
+    maxWidth: maxInlineSizeValue(f('maxWidth'), p('maxWidth')),
     maxHeight: maxSizeValue(f('maxHeight'), p('maxHeight')),
     marginTop: sizeValue(f('marginTop'), p('marginTop')) as MarginValue,
     marginRight: sizeValue(f('marginRight'), p('marginRight')) as MarginValue,
@@ -820,7 +844,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 }
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode'], path);
+  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing'], path);
   lit(field(o, 'whiteSpaceCollapse', path), ['collapse'], `${path}.whiteSpaceCollapse`);
   return {
     kind: 'text',
@@ -830,6 +854,7 @@ function decodeText(o: JsonObj, path: string): TextLeaf {
     lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
     whiteSpaceCollapse: 'collapse',
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
+    letterSpacing: calcExpr(field(o, 'letterSpacing', path), `${path}.letterSpacing`),
   };
 }
 
@@ -962,7 +987,7 @@ const FAULT_KEYS: readonly string[] = [
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
-  'metricRoundingSwapped', 'latinCheckSkipped',
+  'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
 ];
 
@@ -1017,6 +1042,9 @@ function decodeFaults(v: JsonValue): EngineFaults {
     softHyphenWidthMissing: b('softHyphenWidthMissing'),
     metricRoundingSwapped: b('metricRoundingSwapped'),
     latinCheckSkipped: b('latinCheckSkipped'),
+    trailingSpacingDropped: b('trailingSpacingDropped'),
+    spacingPerCodePoint: b('spacingPerCodePoint'),
+    ligaturesKept: b('ligaturesKept'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
@@ -1147,6 +1175,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   const sf: ShapingFaults = {
     advanceNot16_16: faults.advanceNot16_16, doubleAccumulation: faults.doubleAccumulation, noReshapeAtBreak: faults.noReshapeAtBreak, kerningDropped: faults.kerningDropped,
     wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
+    trailingSpacingDropped: faults.trailingSpacingDropped, spacingPerCodePoint: faults.spacingPerCodePoint, ligaturesKept: faults.ligaturesKept,
   };
   const faceOf = (family: string): ReplayFace => {
     const f = s.faces.get(family);
@@ -1156,7 +1185,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   const itemFor = (text: string, font: TextFont): ShapedItem => {
     const f = s.faces.get(font.family);
     if (f === undefined) return { ok: false, code: 'text-glyph', reason: `no bundled face ${font.family}` };
-    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, faults: sf });
+    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, letterSpacing: font.letterSpacing, faults: sf });
     if (!made.ok) return { ok: false, code: 'text-glyph', reason: made.reason };
     const result = shapeItem(made.item);
     if (result.missing >= 0) return { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };
@@ -1239,6 +1268,9 @@ function shapingPlantOf(f: EngineFaults): string {
   if (f.softHyphenWidthMissing) return 'softHyphenWidthMissing';
   if (f.metricRoundingSwapped) return 'metricRoundingSwapped';
   if (f.latinCheckSkipped) return 'latinCheckSkipped';
+  if (f.trailingSpacingDropped) return 'trailingSpacingDropped';
+  if (f.spacingPerCodePoint) return 'spacingPerCodePoint';
+  if (f.ligaturesKept) return 'ligaturesKept';
   return '';
 }
 

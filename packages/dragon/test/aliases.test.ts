@@ -40,6 +40,7 @@ const asAlias = (p: Parsed, alias: string, property: string): Parsed => ({
 /** Values for each standard property: a typical value, a multi-token value where the grammar has one, and an invalid value. */
 const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'box-sizing': ['border-box', 'content-box'],
+  'user-select': ['none', 'TEXT', 'all', 'contain'],
   'align-content': ['center', 'space-between', 'first baseline'],
   'align-items': ['flex-end', 'last baseline', 'safe center'],
   'align-self': ['auto', 'stretch', 'baseline'],
@@ -108,7 +109,7 @@ const COMMON = ['inherit', 'initial', 'unset', 'revert', 'var(--x)', 'var(--x, 1
 
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(64);
+    expect(ALIASES.length).toBe(65);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
@@ -137,7 +138,7 @@ describe('legacy aliases parse as their property', () => {
     expect(parsed('margin-block-start: foo').diagnostics).toEqual([['DRAGON_CSS_INVALID_VALUE', '"foo" is not a valid value for margin-block-start (@webref/css grammar)']]);
   });
   it('aliases Chrome parses with legacy rules, and non-aliases, stay refused as unknown properties', () => {
-    for (const name of ['-webkit-perspective', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-orient', '-webkit-box-flex']) {
+    for (const name of ['-webkit-perspective', '-webkit-writing-mode', '-webkit-box-reflect', '-webkit-line-clamp']) {
       expect(parse(`${name}: none`).diagnostics.map((d) => d.code), name).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
     }
     // PNT1-radius: -webkit-border-radius is the radius family's own shorthand with Chrome's legacy two-value parsing, not an alias.

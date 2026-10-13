@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.sc { display: grid; overflow: auto; width: 60px; height: 40px; padding: 5px 7px 9px 3px; border: 2px solid #000; margin-bottom: 4px; }
+.scroll { overflow: scroll; }
+.hidden { overflow: hidden; }
+.tracks { grid-template-columns: 50px 30px; grid-template-rows: 30px 25px; gap: 4px 6px; }
+.small { grid-template-columns: 20px; grid-template-rows: 10px; }
+.wide { width: 90px; height: 70px; justify-self: start; align-self: start; }
+.m > div { margin: 6px 11px 13px 4px; }
+.center { justify-content: center; align-content: center; }
+.end { justify-content: end; align-content: end; }
+.between { justify-content: space-between; align-content: space-around; }
+.fits { grid-template-columns: 10px 10px; grid-template-rows: 10px; }
+.auto { grid-auto-flow: column; grid-auto-columns: 25px; }
+.pos { position: relative; }
+.abs { position: absolute; left: 70px; top: 60px; width: 10px; height: 10px; background-color: #c00; }
+.area { position: absolute; grid-column: 2; grid-row: 2; inset: 0; background-color: #c00; }
+.nested { overflow: auto; width: 60px; height: 40px; padding: 4px; border: 2px solid #000; margin-bottom: 4px; }
+.inner { display: grid; grid-template-columns: 40px 40px; grid-template-rows: 30px; width: 30px; }
+.c { background-color: #ccc; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="g1" class="sc tracks"><div data-dragon-id="g1a" class="c"></div><div data-dragon-id="g1b" class="c"></div><div data-dragon-id="g1c" class="c"></div></div>
+<div data-dragon-id="g2" class="sc scroll small"><div data-dragon-id="g2a" class="c wide"></div></div>
+<div data-dragon-id="g3" class="sc tracks m"><div data-dragon-id="g3a" class="c"></div><div data-dragon-id="g3b" class="c"></div><div data-dragon-id="g3c" class="c"></div><div data-dragon-id="g3d" class="c"></div></div>
+<div data-dragon-id="g4" class="sc tracks center"><div data-dragon-id="g4a" class="c"></div><div data-dragon-id="g4b" class="c"></div></div>
+<div data-dragon-id="g5" class="sc tracks end"><div data-dragon-id="g5a" class="c"></div></div>
+<div data-dragon-id="g6" class="sc fits between"><div data-dragon-id="g6a" class="c"></div><div data-dragon-id="g6b" class="c"></div></div>
+<div data-dragon-id="g7" class="sc auto"><div data-dragon-id="g7a" class="c"></div><div data-dragon-id="g7b" class="c"></div><div data-dragon-id="g7c" class="c"></div></div>
+<div data-dragon-id="g8" class="sc hidden tracks"><div data-dragon-id="g8a" class="c"></div></div>
+<div data-dragon-id="g9" class="sc small pos"><div data-dragon-id="g9a" class="c"></div><div data-dragon-id="g9b" class="abs"></div></div>
+<div data-dragon-id="g10" class="sc tracks pos"><div data-dragon-id="g10a" class="area"></div></div>
+<div data-dragon-id="g11" class="sc"></div>
+<div data-dragon-id="n1" class="nested"><div data-dragon-id="n1a" class="inner"><div data-dragon-id="n1b" class="c"></div><div data-dragon-id="n1c" class="c"></div></div></div>
+</body>
+</html>

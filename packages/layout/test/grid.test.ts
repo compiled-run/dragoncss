@@ -126,7 +126,7 @@ describe('the validator\'s grid rules, each with a planted input', () => {
   });
   it('rejects text directly in a grid container and an anonymous item that is not auto-placed', () => {
     const textIn = input(box('root', {}, [grid(gridStyle({}), [])]));
-    (textIn.root.children[0] as unknown as { children: unknown[] }).children = [{ kind: 'text', id: 't', text: 'X', font: { family: 'Ahem', size: 10 }, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' }];
+    (textIn.root.children[0] as unknown as { children: unknown[] }).children = [{ kind: 'text', id: 't', text: 'X', font: { family: 'Ahem', size: 10 }, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } }];
     expect(codes(textIn)).toContain('text-in-flex $.root.children[0].children');
     const anonymous = mutate((r) => {
       const a = r.children[0]?.children[0] as { boxType: string; style: Record<string, unknown> };
@@ -163,6 +163,23 @@ describe('the validator\'s grid rules, each with a planted input', () => {
       Object.assign(s0.style, over);
       expect(codes(placed), JSON.stringify(Object.keys(over))).toContain('grid-shape $.root.children[0].children[0].style.grid');
     }
+  });
+  it('places an absolutely positioned child like an in-flow one, and takes a single line only on it (css-grid-2 §9.1)', () => {
+    const abs = (gi: GridItemStyle | null): unknown => {
+      const v = input(box('root', {}, [grid(gridStyle({}), [box('a', {})])]));
+      const a = (v.root.children[0] as unknown as { children: { style: Record<string, unknown> }[] }).children[0] as { style: Record<string, unknown> };
+      a.style['position'] = 'absolute';
+      a.style['gridItem'] = gi;
+      return v;
+    };
+    expect(codes(abs({ ...autoItem, column: { kind: 'start-line', line: 1 }, row: { kind: 'end-line', line: -2 } }))).toEqual([]);
+    expect(codes(abs(null))).toContain('grid-shape $.root.children[0].children[0].style.gridItem');
+    expect(codes(abs({ ...autoItem, column: { kind: 'start-line', line: 10000000 } }))).toContain('grid-shape $.root.children[0].children[0].style.gridItem.column');
+    expect(codes(abs({ ...autoItem, row: { kind: 'end-line', line: -10000000 } }))).toContain('grid-shape $.root.children[0].children[0].style.gridItem.row');
+    const inFlow = mutate((r) => {
+      (r.children[0]?.children[0] as { style: Record<string, unknown> }).style['gridItem'] = { ...autoItem, column: { kind: 'start-line', line: 0 } };
+    });
+    expect(codes(inFlow)).toContain('grid-shape $.root.children[0].children[0].style.gridItem.column');
   });
   it('judges an anonymous item by its values, not by the order of its keys', () => {
     const reordered = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', {}, [text('g:text0', 'X')])])]));
@@ -254,6 +271,46 @@ describe('grid engine cases pinned to the Chrome 145 corpus (docs/research/grid-
   it('s-stretch-remainder: auto auto auto stretched over 100px gives 2133, 2133, 2134 (the remainder goes to the last set)', () => {
     const m = boxesOf(grid(gridStyle({ templateColumns: [{ count: 1, sizes: [AUTO] }, { count: 1, sizes: [AUTO] }, { count: 1, sizes: [AUTO] }], explicitColumnCount: 3 }), ['a', 'b', 'c'].map((id) => box(id, { height: { kind: 'px', value: 10 } }))));
     expect(['a', 'b', 'c'].map((id) => m.get(id)?.width)).toEqual([2133, 2133, 2134]);
+  });
+  const inset0 = { top: { kind: 'px', value: 0 }, right: { kind: 'px', value: 0 }, bottom: { kind: 'px', value: 0 }, left: { kind: 'px', value: 0 } } as const;
+  const absItem = (id: string, column: GridItemStyle['column'], over: Parameters<typeof box>[1] = inset0): LayoutBox => box(id, { position: 'absolute', ...over, gridItem: { ...autoItem, column } });
+  it('ab-mid-range: an abspos line inside a set of three 1fr tracks takes the remainder unit first (GR17: 2134, not 2133)', () => {
+    const g = grid(gridStyle({ templateColumns: [{ count: 3, sizes: [fr(1)] }], explicitColumnCount: 3 }), [absItem('i0', { kind: 'definite', start: 1, end: 2 }), absItem('i1', { kind: 'definite', start: 2, end: 3 })]);
+    const m = boxesOf({ ...g, style: { ...g.style, position: 'relative', height: { kind: 'px', value: 20 } } });
+    expect(['i0', 'i1'].map((id) => [m.get(id)?.x, m.get(id)?.width])).toEqual([[2134, 2133], [4267, 2133]]);
+  });
+  it('ab-auto-lines: an auto line, and a line beyond the grid, is the padding edge', () => {
+    const g = grid(gridStyle({ templateColumns: [{ count: 2, sizes: [px(30)] }], explicitColumnCount: 2 }), [box('i', { height: { kind: 'px', value: 10 } }), absItem('a', { kind: 'start-line', line: 1 }), absItem('b', { kind: 'definite', start: -8, end: 1 })], 200);
+    const m = boxesOf({ ...g, style: { ...g.style, position: 'relative', paddingLeft: { kind: 'px', value: 4 }, paddingRight: { kind: 'px', value: 6 } } });
+    // Columns start at the 4px padding: line 1 is at 34px; the padding box runs from 0 to 210px.
+    expect([m.get('a')?.x, m.get('a')?.width, m.get('b')?.x, m.get('b')?.width]).toEqual([2176, 11264, 0, 2176]);
+  });
+  it('a static grid is no containing block: the static position aligns in its content box by justify-self and align-self', () => {
+    const g = grid(gridStyle({ justifyItems: 'center' }), [box('a', { position: 'absolute', width: { kind: 'px', value: 10 }, height: { kind: 'px', value: 4 }, alignSelf: 'end', gridItem: { ...autoItem, column: { kind: 'definite', start: 1, end: 2 } } })], 100);
+    const m = boxesOf({ ...g, style: { ...g.style, height: { kind: 'px', value: 20 }, paddingLeft: { kind: 'px', value: 2 } } });
+    expect([m.get('a')?.x, m.get('a')?.y]).toEqual([(2 + 45) * 64, 16 * 64]);
+  });
+  it('refuses self-alignment between two insets, which position.ts does not do (css-position-3 §4.4)', () => {
+    const g = grid(gridStyle({}), [absItem('a', { kind: 'auto', span: 1 }, { ...inset0, width: { kind: 'px', value: 10 }, alignSelf: 'center' })]);
+    const r = layout(input(box('root', {}, [{ ...g, style: { ...g.style, position: 'relative' } }])), ahemMeasurer);
+    expect(r.kind === 'unsupported' ? `${r.unsupported.code} ${r.unsupported.nodeId}` : 'ok').toBe('abspos-self-alignment a');
+  });
+  it('resolves an abspos child\'s lines in an automatic repeater with the grid\'s own resolver, then drops its auto sides (G2 with G4)', () => {
+    // repeat(auto-fill, [a] 25px [b]) over 100px: four columns, a on lines 0-3 and b on lines 1-4 (Blink ResolveOutOfFlowItemGridLines).
+    const named: GridAutoRepeat = { type: 'auto-fill', index: 0, sizes: [px(25)], lineNames: [{ explicit: [], repeat: [], implicit: [] }, { explicit: [], repeat: [0], implicit: [] }, { explicit: [], repeat: [1], implicit: [] }] };
+    const kids = [
+      absItem('a', at({ kind: 'named-line', n: 2, name: 1 }, { kind: 'named-line', n: 3, name: 2 }).column),
+      absItem('b', at({ kind: 'auto' }, { kind: 'line', n: -2 }).column),
+      absItem('c', at({ kind: 'line', n: 2 }, { kind: 'auto' }).column),
+      absItem('d', at({ kind: 'span', n: 2 }, { kind: 'auto' }).column),
+    ];
+    const g = box('g', { display: 'grid', position: 'relative', width: { kind: 'px', value: 100 }, height: { kind: 'px', value: 20 }, grid: gridStyle({ autoRepeatColumns: named }) }, kids);
+    // a: lines 1 to 3; b: the padding edge to line 3; c: line 1 to the padding edge; d: span 2 / auto has no definite line.
+    expect(inGrid(g, ['a', 'b', 'c', 'd']).map((r) => (r === null ? null : [r[0], r[2]]))).toEqual([[1600, 3200], [0, 4800], [1600, 4800], [0, 6400]]);
+    // With repeat(auto-fit) and one in-flow item, columns 2-4 collapse: line 1 is past the first gap and the last line snaps back over it.
+    const fit = (type: 'auto-fill' | 'auto-fit'): LayoutBox => box('g', { display: 'grid', position: 'relative', width: { kind: 'px', value: 200 }, columnGap: { kind: 'px', value: 4 }, grid: gridStyle({ autoRepeatColumns: fillOf(type, [px(30)]) }) }, [h10('i0'), absItem('e', at({ kind: 'line', n: 2 }, { kind: 'auto' }).column), absItem('f', at({ kind: 'line', n: -1 }, { kind: 'auto' }).column)]);
+    expect(inGrid(fit('auto-fit'), ['e', 'f']).map((r) => (r === null ? null : [r[0], r[2]]))).toEqual([[2176, 10624], [1920, 10880]]);
+    expect(inGrid(fit('auto-fill'), ['e', 'f']).map((r) => (r === null ? null : [r[0], r[2]]))).toEqual([[2176, 10624], [12800, 0]]);
   });
   it('p-dense: dense packing fills the hole before an earlier item', () => {
     const colSpan = (n: number): GridItemStyle => ({ ...autoItem, column: { kind: 'auto', span: n } });

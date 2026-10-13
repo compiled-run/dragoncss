@@ -13,9 +13,10 @@ import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { presentationalHints } from './elements/replaced.ts';
+import { svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { InteractionState } from './match.ts';
@@ -209,6 +210,12 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const useInherit = kw === 'inherit' || currentColorOnColor || ((kw === 'unset' || kw === 'revert' || kw === 'revert-layer') && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
+      } else if (w === undefined && hints.has(p)) {
+        // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
+        // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
+        const value = hints.get(p) as CssValue;
+        const stand = svgHintDeclaration(el, p, value);
+        props.set(p, stand === null ? { value, origin: 'presentational-hint', span: null, ...none } : { value, origin: 'presentational-hint', span: stand.span, declaration: stand, declared: value, losing: [] });
       } else if (inherited && parent === null && p === 'direction') {
         // docs/api.md §7: the environment direction is the root's base direction; the harness gives both renderings the same one.
         props.set(p, { value: { kind: 'keyword', value: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction }, origin: 'environment', span: null, ...none });
@@ -218,8 +225,6 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       } else if (inherited) {
         props.set(p, parent === null ? (userAgentValue(tag, p, environment.ua) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
         defaulted.add(p);
-      } else if (w === undefined && hints.has(p as 'width')) {
-        props.set(p, { value: hints.get(p as 'width') as CssValue, origin: 'presentational-hint', span: null, ...none });
       } else {
         props.set(p, defaultFor(p));
         defaulted.add(p);
@@ -250,6 +255,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       }
     }
     computeLengths(props, parentFontSize, rootFontSize);
+    computeLetterSpacing(props, faults.zeroNotNormal);
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     blockify(props, parent === null ? null : parent.props, faults);
     computeOverflowPair(props);

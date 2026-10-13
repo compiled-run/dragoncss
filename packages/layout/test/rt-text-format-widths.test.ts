@@ -91,7 +91,7 @@ function fontData(id: string): FontData {
 
 const shaper = new WasmShaper();
 const faces = new Map<string, ShapedFace>(FAMILIES.map((id) => [id, { id, data: fontData(id), hanKerning: NO_HAN_KERNING }]));
-const faceFont = (id: string, size: number): TextFont => ({ family: id, size }) as unknown as TextFont;
+const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0 }) as unknown as TextFont;
 const sha = (id: string): string => (oracle.faces[id] as { sha256: string }).sha256;
 
 /** DT-2's width memo in front of the measurer, keyed by widthMemoKey. */

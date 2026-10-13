@@ -1,5 +1,5 @@
 // Shared box-model resolution: padding, border, margins, box-sizing and min/max (CSS2 §8, §10.4, §10.7; css-sizing-3).
-import type { BorderWidthValue, BoxSizing, LayoutBox, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, Percent, Px, SizeValue } from './input.ts';
+import type { BorderWidthValue, BoxSizing, InlineSizeValue, LayoutBox, LayoutStyle, LengthCalc, MarginValue, MaxInlineSizeValue, MaxSizeValue, MinSizeValue, Percent, Px, SizeValue } from './input.ts';
 import type { EngineFaults } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { calcHasPercent, resolveCalc } from './calc.ts';
@@ -15,12 +15,20 @@ export type StaticEdge = 'near' | 'center' | 'far';
 /** One axis of a static position (css-position-3 §4.1), relative to the parent's border box. */
 export type StaticAxis = { readonly offset: LU; readonly edge: StaticEdge };
 
-/** An absolutely positioned child with the static position its parent computed for it; laid out once its containing block is. */
-export type OutOfFlow = { readonly box: LayoutBox; readonly x: StaticAxis; readonly y: StaticAxis };
+/** A rectangle in LU relative to a parent's border box. */
+export type AreaRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
+
+/**
+ * An absolutely positioned child with the static position its parent computed for it; laid out once its containing block is.
+ * area: the grid area that is its containing block when its parent is a positioned grid container (css-grid-2 §9.1), else null.
+ */
+export type OutOfFlow = { readonly box: LayoutBox; readonly x: StaticAxis; readonly y: StaticAxis; readonly area: AreaRect | null };
 
 /**
  * baseline: the first baseline (css-align-3 §9.1) as an offset from the border-box top, or null when the box has none.
  * outOfFlow: the box's absolutely positioned children, in document order.
+ * inflow: a grid scroll container's inflow bounds in its border box (Blink GridLayoutAlgorithm::LayoutInternal SetInflowBounds: the grid's tracks,
+ * not where its items are placed); null for every other box, whose inflow bounds overflow.ts takes from its children.
  */
 export type Frag = {
   readonly id: string;
@@ -29,6 +37,7 @@ export type Frag = {
   readonly baseline: LU | null;
   readonly children: readonly Placed[];
   readonly outOfFlow: readonly OutOfFlow[];
+  readonly inflow: AreaRect | null;
 };
 export type Placed = { readonly frag: Frag; readonly x: LU; readonly y: LU };
 
@@ -167,14 +176,43 @@ export function constrain(value: LU, mm: MinMax): LU {
 }
 
 /** inlineMinMax with no planted engine faults: the form external callers (the native hosts) use. */
-export function inlineMinMax(style: LayoutStyle, cbInline: LU, borderPadding: LU): MinMax {
-  return inlineMinMaxWith(style, cbInline, borderPadding, NO_ENGINE_FAULTS);
+export function inlineMinMax(nodeId: string, style: LayoutStyle, cbInline: LU, borderPadding: LU): MinMax {
+  return inlineMinMaxOf(nodeId, style, cbInline, borderPadding, NO_ENGINE_FAULTS);
+}
+
+/**
+ * css-sizing-3 §3.2: min-content, max-content and fit-content as an inline size are read only by a block-level box in block
+ * flow (blockLevelInlineSize) and by its intrinsic contribution; every other reader takes the length through these and refuses
+ * a keyword.
+ */
+export function lengthWidth(nodeId: string, v: InlineSizeValue): SizeValue {
+  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content') return refuseKeyword(nodeId, 'width', v.kind);
+  return v;
+}
+
+export function lengthMinWidth(nodeId: string, v: InlineSizeValue): MinSizeValue {
+  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content') return refuseKeyword(nodeId, 'min-width', v.kind);
+  return v;
+}
+
+export function lengthMaxWidth(nodeId: string, v: MaxInlineSizeValue): MaxSizeValue {
+  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content') return refuseKeyword(nodeId, 'max-width', v.kind);
+  return v;
+}
+
+function refuseKeyword(nodeId: string, prop: string, keyword: string): never {
+  return unsupported('intrinsic-size-keyword', nodeId, 'css-sizing-3 §3.2', `${prop}: ${keyword} outside a block-level box in block flow`);
+}
+
+/** inlineMinMaxWith for a node whose min-width and max-width are lengths; a keyword is refused. */
+export function inlineMinMaxOf(nodeId: string, style: LayoutStyle, cbInline: LU, borderPadding: LU, faults: EngineFaults): MinMax {
+  return inlineMinMaxWith(style, lengthMinWidth(nodeId, style.minWidth), lengthMaxWidth(nodeId, style.maxWidth), cbInline, borderPadding, faults);
 }
 
 // CSS2 §10.4 min-width/max-width in border-box terms; min-width auto is 0 outside flex items.
-export function inlineMinMaxWith(style: LayoutStyle, cbInline: LU, borderPadding: LU, faults: EngineFaults): MinMax {
-  const lo = resolveInlineLengthWith(style.minWidth, cbInline, faults);
-  const hi = resolveMaxInlineLengthWith(style.maxWidth, cbInline, faults);
+export function inlineMinMaxWith(style: LayoutStyle, minWidth: MinSizeValue, maxWidth: MaxSizeValue, cbInline: LU, borderPadding: LU, faults: EngineFaults): MinMax {
+  const lo = resolveInlineLengthWith(minWidth, cbInline, faults);
+  const hi = resolveMaxInlineLengthWith(maxWidth, cbInline, faults);
   return {
     min: lo === null ? borderPadding : borderBoxFromSpecified(lo, borderPadding, style.boxSizing),
     max: hi === null ? null : borderBoxFromSpecified(hi, borderPadding, style.boxSizing),

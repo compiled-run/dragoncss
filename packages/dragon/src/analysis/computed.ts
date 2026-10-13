@@ -64,7 +64,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   let v: CssValue;
   const only = children[0];
   const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
-  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
+  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property) || property === 'fill' || property === 'stroke';
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
   else if (color !== null && color.ok) v = color.kind === 'keyword' ? { kind: 'keyword', value: color.keyword } : { kind: 'color', value: color.value, syntax: color.syntax };
@@ -226,6 +226,16 @@ export function computeInheritedMathLengths(props: Map<Longhand, ResolvedValue>,
     });
     if (text !== v.value.text) props.set(p, { ...v, value: { ...v.value, text } });
   }
+}
+
+/**
+ * css-text-3 §8.2 as Chrome 145 computes letter-spacing (longhands_custom.cc LetterSpacing::CSSValueFromComputedStyleInternal): a
+ * zero length computes to normal. Planted fault zeroNotNormal keeps the zero length.
+ */
+export function computeLetterSpacing(props: Map<Longhand, ResolvedValue>, zeroNotNormal: boolean): void {
+  const v = props.get('letter-spacing') as ResolvedValue;
+  if (zeroNotNormal || (v.value.kind !== 'length' && v.value.kind !== 'number') || v.value.value !== 0) return;
+  props.set('letter-spacing', { ...v, value: { kind: 'keyword', value: 'normal' } });
 }
 
 /** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */

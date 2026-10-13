@@ -1,8 +1,8 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Direction, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
+import type { Auto, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, max, min, sub, ZERO } from './units.ts';
-import type { Edges, Frag, HeightBasis, MarginResolved, OutOfFlow, Placed, Point } from './box.ts';
+import type { Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMaxWith,
   borderBoxFromSpecified,
@@ -11,6 +11,9 @@ import {
   inlineMinMaxWith,
   INDEFINITE,
   isScrollContainer,
+  lengthMaxWidth,
+  lengthMinWidth,
+  lengthWidth,
   resolveBorder,
   resolveInlineLengthWith,
   resolveMarginWith,
@@ -20,12 +23,14 @@ import {
 } from './box.ts';
 import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
-import { layoutGridContainer } from './grid.ts';
+import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
 import { layoutInline } from './inline.ts';
+import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import type { TextMeasurer } from './text.ts';
+import { unsupported } from './unsupported.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
 export type EngineFaults = {
@@ -123,6 +128,12 @@ export type EngineFaults = {
   readonly metricRoundingSwapped: boolean;
   /** Text outside Latin, Common and Inherited is shaped instead of refused (R4). */
   readonly latinCheckSkipped: boolean;
+  /** TXT2-b: no letter spacing after the last cluster of a shaped item (ShapeResult::ApplySpacing). */
+  readonly trailingSpacingDropped: boolean;
+  /** TXT2-b: letter spacing after every code point of a shaped cluster instead of once per cluster. */
+  readonly spacingPerCodePoint: boolean;
+  /** TXT2-b: HarfBuzz keeps liga, clig and calt under nonzero letter spacing (font_features.cc). */
+  readonly ligaturesKept: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -181,6 +192,9 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   softHyphenWidthMissing: false,
   metricRoundingSwapped: false,
   latinCheckSkipped: false,
+  trailingSpacingDropped: false,
+  spacingPerCodePoint: false,
+  ligaturesKept: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,
@@ -279,7 +293,7 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow, inflow: null };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
 
@@ -295,7 +309,8 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       },
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
+    const outOfFlow = gridOutOfFlow(ctx, box, r.outOfFlow, a.borderBoxWidth, height, pad, bor);
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow, inflow: isScrollContainer(s) ? r.inflow : null };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
 
@@ -320,11 +335,11 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const baseline = clampScrollBaseline(box, r.baseline, height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
-    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough };
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough };
   }
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
   const escapeBottom = bottomAdjoins && (height === add(intrinsic, vbp) || ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;
-  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: r.escapeTop, escapeBottom, collapseThrough };
+  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: r.escapeTop, escapeBottom, collapseThrough };
 }
 
 export type BlockLevelResult = {
@@ -358,6 +373,9 @@ export type InlineContainer = {
   readonly newFormattingContext: boolean;
 };
 
+const AUTO: Auto = { kind: 'auto' };
+const NONE: NoneValue = { kind: 'none' };
+
 // CSS2 §10.3.3: block-level, non-replaced width and horizontal margins in normal flow. The containing block's direction decides
 // which margin is the start margin; when over-constrained the end margin is ignored (margin-left in rtl). Every step is Blink's
 // LayoutUnit arithmetic in Blink's order, so a saturated sum lands where Chrome's does (block_layout_algorithm.cc and
@@ -370,10 +388,27 @@ export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbD
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const m = inlineMargins(ctx, s, cbInline, cbDirection, container);
-  const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
   const stretched = max(hbp, sub(sub(m.available, m.start.value), m.end.value));
-  const raw = specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
-  const width = specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
+  // css-sizing-3 §3.2: min-content and max-content are the box's own content sizes plus its border and padding, fit-content is
+  // min(max-content, max(min-content, the stretch size)); width, min-width and max-width resolve them alike (Blink
+  // ResolveInlineLengthInternal, length_utils.cc at 145.0.7632.6).
+  const keyword = (k: string): LU | null => {
+    if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
+    if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
+    const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
+    if (k === 'min-content') return minC;
+    const maxC = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
+    if (k === 'max-content') return maxC;
+    return min(maxC, max(minC, stretched));
+  };
+  const keywordWidth = keyword(s.width.kind);
+  const keywordMin = keyword(s.minWidth.kind);
+  const keywordMax = keyword(s.maxWidth.kind);
+  const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
+  const raw = keywordWidth !== null ? keywordWidth : specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
+  const mm: MinMax = { min: keywordMin !== null ? keywordMin : lengths.min, max: keywordMax !== null ? keywordMax : lengths.max };
+  const width = keywordWidth === null && specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, mm), hbp);
   return placeWithMargins(m, container, width);
 }
 
@@ -508,6 +543,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         box: kid,
         x: rtl ? { offset: add(a.origin.x, a.contentWidth), edge: 'far' } : { offset: a.origin.x, edge: 'near' },
         y: { offset: add(a.origin.y, sy), edge: 'near' },
+        area: null,
       });
       continue;
     }

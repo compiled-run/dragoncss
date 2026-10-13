@@ -301,20 +301,20 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
     const css = sizes.get(t.id);
     if (css === undefined) throw new Error(`no text leaf ${t.id}`);
     const size = platformFontSize(zoomFontSize(css.size, dpr));
-    const metrics = m.metrics(t.font);
+    const metrics = m.metrics(t.textFont);
     for (const [j, line] of t.lines.entries()) {
       const baseline = line.snapped.top + metrics.ascent / 64;
       if (css.family !== 'Ahem') {
         // TXT1a-2: a real face's glyph boxes are HarfBuzz's extents of the shaped line (text-shaper-host.ts shapedInk), from its left.
         const x0 = line.rect.x / 64;
-        const ink = shapedInk(css.family, size, String.fromCodePoint(...line.cps));
+        const ink = shapedInk(css.family, size, String.fromCodePoint(...line.cps), t.textFont.letterSpacing);
         const glyphs: GlyphBox[] = ink.flatMap((g) => (g === null ? [] : [{ left: x0 + g.left, right: x0 + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
         out.push({ id: `${t.id}:line${j}`, glyphs });
         continue;
       }
       // The piece's code points: the leaf's code points before its UTF-16 start, then the shown ones.
       const start = [...css.text.slice(0, line.start)].length;
-      const shaped = pieceGlyphs(m, css.text, t.font, start, start + line.cps.length);
+      const shaped = pieceGlyphs(m, css.text, t.textFont, start, start + line.cps.length);
       if (!shaped.ok) throw new Error(`${t.id} line ${j}: ${shaped.reason}`);
       // Ahem shapes one glyph per code point, so each glyph's box is its code point's.
       if (shaped.xs.length !== line.cps.length) throw new Error(`${t.id} line ${j}: ${shaped.xs.length} glyphs for ${line.cps.length} code points`);

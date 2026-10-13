@@ -6,7 +6,7 @@ import type { AnimItem, AnimLonghand } from '../src/css/properties/animation.ts'
 import { ANIM_INITIAL, ANIMATION_LIST_PROPERTIES, animationRefusal, parseAnimationDeclaration, parseAnimationValue, TRANSITION_LIST_PROPERTIES } from '../src/css/properties/animation.ts';
 import type { Diagnostic, DraftTree, FrontEndResult, SourceRef, TreeNode } from '../src/index.ts';
 import { fontPx } from '../src/analysis/animations.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, iosProfile, NO_FAULTS, statusOf, webProfile } from '../src/internal.ts';
 import { div, DOC, eq, inputFor, not } from './helpers.ts';
 
 const CHROME: readonly (readonly [string, string, readonly string[] | null])[] = [
@@ -265,9 +265,13 @@ describe('animation analysis', () => {
   it('gates every animation declaration and @keyframes per target in the animation context until a frame lane proves it', () => {
     const ds = compile('.a { transition: color 1s; } .b { animation: k 1s; } @keyframes k { to { color: rgb(1, 2, 3) } }', 'enforce');
     expect(ds.every((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.target !== null && d.profile?.context === 'animation')).toBe(true);
-    // The web frame lanes (chrome-dual, PR 3a) prove these features; ios has no device-anim row until 3b.
-    expect([...new Set(ds.map((d) => d.target))].sort()).toEqual(['ios']);
-    expect(ds.map((d) => d.profile?.feature).filter((f, i, a) => a.indexOf(f) === i).sort()).toEqual(['animatable:color', 'animation-name:<custom-ident>', 'at-rule:@keyframes', 'transition-property:<custom-ident>']);
+    // The web frame lanes (chrome-dual) prove these features; ios gets a device-anim row only once its recorded device-anim
+    // lane passes the cases proving it. So each target is gated on exactly the features its committed profile has no row for.
+    const features = ['animatable:color', 'animation-name:<custom-ident>', 'at-rule:@keyframes', 'transition-property:<custom-ident>'];
+    for (const [target, profile] of [['web', webProfile], ['ios', iosProfile]] as const) {
+      const gated = ds.filter((d) => d.target === target).map((d) => d.profile?.feature).filter((f, i, a) => a.indexOf(f) === i).sort();
+      expect(gated, target).toEqual(features.filter((f) => statusOf(profile, f, 'animation') === 'unsupported'));
+    }
   });
 });
 
@@ -306,8 +310,10 @@ describe('var() in transition and animation values (ANIM-v)', () => {
 
   it('gates a var() value under var() features until a frame lane proves them', () => {
     const ds = compile('.a { --t: color 1s; transition: var(--t); }', 'enforce');
-    const features = [...new Set(ds.filter((d) => d.profile?.context === 'animation').map((d) => d.profile?.feature))].sort();
-    expect(features).toContain('transition-property:var()');
+    const gated = (target: 'web' | 'ios'): boolean => ds.some((d) => d.target === target && d.profile?.context === 'animation' && d.profile.feature === 'transition-property:var()');
+    for (const [target, profile] of [['web', webProfile], ['ios', iosProfile]] as const) {
+      expect(gated(target), target).toBe(statusOf(profile, 'transition-property:var()', 'animation') === 'unsupported');
+    }
   });
 });
 
