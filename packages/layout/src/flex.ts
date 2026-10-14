@@ -294,7 +294,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
       // A replaced item takes its flexed main size and its cross size as they are: it has no content to lay out.
       const placedSize: ReplacedSize = isRow ? { inline: mainBorderBox, block: crossSize } : { inline: crossSize, block: mainBorderBox };
       const r: ContentsResult = node.kind === 'replaced'
-        ? { frag: replacedFrag(node, placedSize), escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: '' }
+        ? { frag: replacedFrag(node, placedSize), escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: '', lastBaselineScroll: '' }
         : layoutContents(ctx, node, {
           cbInline: a.contentWidth,
           borderBoxWidth: isRow ? mainBorderBox : crossSize,
@@ -421,6 +421,8 @@ function effectiveAlign(ctx: Ctx, container: LayoutBox, item: LayoutNode, axes: 
       return 'center';
     case 'baseline':
       return 'baseline';
+    case 'last baseline':
+      return unsupported('flex-baseline', item.id, 'css-align-3 §9.3', 'last baseline self-alignment in a flex container (not yet supported)');
   }
 }
 

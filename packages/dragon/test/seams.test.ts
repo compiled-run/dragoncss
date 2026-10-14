@@ -117,10 +117,13 @@ describe('E2 seams: FIXTURES', () => {
   // OVFL retargeted reject-overflow-single-axis to clip and removed reject-overflow-body and reject-overflow-scroll (now layout
   // fixtures in the overflow group); GRID G1a retargeted reject-display-grid (display: grid is proven in block flow); every
   // other milestone-1 spec is unchanged. Before G1a all specs hashed to a336142203f67ef5287bfd48a891f5c542ebeb581f5ac720964e1563c1269389.
-  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects and the retargeted reject-display-grid and reject-white-space-pre', async () => {
+  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects, the retargeted reject-display-grid and reject-white-space-pre, and the code of reject-last-baseline', async () => {
     const m1 = (await load()).slice(0, MILESTONE_1_IDS.length);
     // TXT2-c retargeted reject-white-space-pre to a tab (white-space: pre is laid out); with it the others hashed to 7725fc41….
-    expect(sha(m1.filter((f) => f.id !== 'reject-display-grid' && f.id !== 'reject-white-space-pre'))).toBe('56415fd44380b3c962827750b801ffe49193c9915a6f5dfe8ae69023306f5559');
+    // GRID G3b proves last baseline in grid containers, so reject-last-baseline (a flex container) expects an unproven context; with
+    // its old code the others hashed to 56415fd4….
+    expect(sha(m1.filter((f) => f.id !== 'reject-display-grid' && f.id !== 'reject-white-space-pre' && f.id !== 'reject-last-baseline'))).toBe('69d403ab911619532ddaf698a87f0e3783be0909939b28d1587d700714a410d5');
+    expect(m1.find((f) => f.id === 'reject-last-baseline')).toEqual({ id: 'reject-last-baseline', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNPROVEN_CONTEXT', spanText: 'last baseline', messagePrefix: null } });
     expect(m1.find((f) => f.id === 'reject-white-space-pre')).toEqual({ id: 'reject-white-space-pre', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNSUPPORTED_VALUE', spanText: '<div data-dragon-id="a" class="a">XX\tXX</div>', messagePrefix: 'a tab in ' } });
     expect(m1.find((f) => f.id === 'reject-display-grid')).toEqual({ id: 'reject-display-grid', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNPROVEN_CONTEXT', spanText: 'grid', messagePrefix: 'display:grid on grid is used in the flex-column/ltr context, which is not proven' } });
   });

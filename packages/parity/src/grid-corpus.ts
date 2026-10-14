@@ -262,8 +262,9 @@ function compareCase(c: CorpusCase, ids: ReadonlyMap<string, string>, abs: Reado
 export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner: string; readonly pattern: RegExp }[] = [
   // G-INL lays out an inline-grid on its line; in rtl the compiler refuses one at a paragraph edge, which UAX #9 would reorder.
   { id: 'bidi-atomic', owner: 'INL2 bidi: UAX #9 resolution of an atomic inline at a paragraph edge in rtl', pattern: /DRAGON_UNSUPPORTED_BIDI: atomic inline \S+ in the rtl block \S+ has no letter on its (start|end) side/ },
-  // G3 lays out first baseline alignment in the block axis; inline-axis and last baseline alignment stay refused by the compiler.
-  { id: 'baseline-alignment', owner: 'G3 follow-up: inline-axis and last baseline self-alignment', pattern: /justify-(self|items): (last )?baseline|align-(self|items): last baseline/ },
+  // G3 and G3b lay out first and last baseline alignment in both axes; the engine refuses only a grid item's last baseline that a
+  // flex or grid container or a scroll container inside it would decide (grid.ts lastBaselineOf). No corpus case reaches it.
+  { id: 'last-baseline-source', owner: 'G3b follow-up: the last baseline of a flex, grid or scroll container as a grid item\'s last baseline', pattern: /^LayoutUnsupported grid-last-baseline: the last baseline of (flex or grid|scroll) container \S+ would give the last baseline of grid item \S+ \(not yet supported\)$/ },
   { id: 'subgrid', owner: 'G5: subgrid', pattern: /subgrid/ },
   { id: 'writing-mode', owner: 'G-WM: vertical writing modes', pattern: /writing-mode/ },
   { id: 'sizing-keyword', owner: 'SIZE: min-content, max-content and fit-content as width', pattern: /width: (min-content|max-content|fit-content)/ },
@@ -284,7 +285,7 @@ export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner:
 export const KNOWN_MISMATCHES: ReadonlyMap<string, string> = new Map<string, string>([]);
 
 /**
- * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's, G2's and G4's scope, G2's repeatEndNameMissed and G3's
+ * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's, G2's and G4's scope, G2's repeatEndNameMissed, G3's and G3b's
  * baseline plants, and the engine plants ignoreOrder and G-INL's inlineGridLastItemBaseline, with a corpus case that must catch it
  * in item or container boxes. fr-restart shows frRestartMissing only in getComputedStyle track sizes, which this test does not
  * compare.
@@ -323,6 +324,9 @@ export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | GridEngi
   { fault: 'absposStaticAlignIgnored', kase: 'ab-align' },
   { fault: 'baselineShimIgnored', kase: 'b-row-shim' },
   { fault: 'baselineSynthesizedAtTop', kase: 'b-synthesized' },
+  // justify-self: baseline in rtl, where the synthesized baseline is each item's left edge and the column shim depends on its width.
+  { fault: 'inlineBaselineAtInlineStart', kase: 'rnd-0016' },
+  { fault: 'lastBaselineAsFirst', kase: 'b-last' },
   // An inline-grid whose last item's baseline is not its first baseline, so the plant moves it on its line.
   { fault: 'inlineGridLastItemBaseline', kase: 'rnd-0091' },
 ];

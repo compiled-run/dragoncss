@@ -397,3 +397,80 @@ describe('first baseline self-alignment in the block axis (GRID G3, Blink Comput
     expect((abs.get('x')?.y ?? 0) - (abs.get('f')?.y ?? 0)).toBe(512);
   });
 });
+
+describe('baseline self-alignment in the inline axis and last baseline alignment (GRID G3b)', () => {
+  const glyph = (id: string, size: number, over: Parameters<typeof box>[1] = {}, content = 'X'): LayoutBox => box(id, over, [text(`${id}:t`, content, { font: ahemFont(size) })]);
+  const rects = (m: ReturnType<typeof boxesOf>, ids: readonly string[]): number[][] => {
+    const g = m.get('g');
+    if (g === undefined) throw new Error('no grid box');
+    return ids.map((id) => {
+      const b = m.get(id);
+      if (b === undefined) throw new Error(`no box ${id}`);
+      return [b.x - g.x, b.y - g.y, b.width, b.height];
+    });
+  };
+  const column60 = gridStyle({ templateColumns: [{ count: 1, sizes: [px(60)] }], explicitColumnCount: 1 });
+  const items = (justifySelf: 'baseline' | 'last baseline'): LayoutBox[] => [
+    box('a', { width: { kind: 'px', value: 10 }, height: { kind: 'px', value: 5 }, marginLeft: { kind: 'px', value: 3 }, marginRight: { kind: 'px', value: 3 }, gridItem: { ...autoItem, justifySelf } }),
+    box('b', { width: { kind: 'px', value: 20 }, height: { kind: 'px', value: 5 }, gridItem: { ...autoItem, justifySelf } }),
+  ];
+  const rtl = (b: LayoutBox): LayoutBox => ({ ...b, style: { ...b.style, direction: 'rtl' } });
+  /** justify-content: start, so auto columns keep their sizes. */
+  const packed = (b: LayoutBox): LayoutBox => ({ ...b, style: { ...b.style, justifyContent: 'start' } });
+
+  it('synthesizes a horizontal item\'s inline-axis baseline at its left edge: start margins share it in ltr, left edges in rtl', () => {
+    // ltr: the column baseline is the larger start margin, 3px; rtl: the larger inline-start margin plus width, 13px and 20px.
+    expect(rects(boxesOf(grid(column60, items('baseline'))), ['a', 'b'])).toEqual([[192, 0, 640, 320], [192, 320, 1280, 320]]);
+    expect(rects(boxesOf(rtl(grid(column60, items('baseline')))), ['a', 'b'])).toEqual([[5120, 0, 640, 320], [5120, 320, 1280, 320]]);
+  });
+
+  it('last baseline in the inline axis: the end margin plus the width from the column end in ltr, the end margin in rtl', () => {
+    // ltr: the minor baseline is max(3 + 10, 0 + 20) = 20px from the column end; rtl: max(3, 0) = 3px from the column's left end.
+    expect(rects(boxesOf(grid(column60, items('last baseline'))), ['a', 'b'])).toEqual([[2560, 0, 640, 320], [2560, 320, 1280, 320]]);
+    expect(rects(boxesOf(rtl(grid(column60, items('last baseline')))), ['a', 'b'])).toEqual([[2752, 0, 640, 320], [2752, 320, 1280, 320]]);
+  });
+
+  it('measures the column baseline of an item in an auto column at its min-content width, so in rtl its shim cuts its max-content contribution to that', () => {
+    const auto = gridStyle({ templateColumns: [{ count: 1, sizes: [AUTO] }], explicitColumnCount: 1 });
+    const it1 = [glyph('a', 10, { gridItem: { ...autoItem, justifySelf: 'baseline' } }, 'X X')];
+    // ltr: the baseline is the left edge, which no width moves: the column is the 30px max-content width.
+    expect(rects(boxesOf(packed(grid(auto, it1))), ['a'])).toEqual([[0, 0, 1920, 640]]);
+    // rtl: the track baseline is the 10px min-content width, and each contribution plus its shim is that 10px.
+    expect(rects(boxesOf(rtl(packed(grid(auto, it1)))), ['a'])).toEqual([[5760, 0, 640, 1280]]);
+  });
+
+  it('last baseline in the block axis aligns last lines in the minor group, measured from the row end, and grows the row by the shim', () => {
+    const three = gridStyle({ templateColumns: [{ count: 3, sizes: [px(30)] }], explicitColumnCount: 3 });
+    const g = box('g', { display: 'grid', width: { kind: 'px', value: 100 }, alignItems: 'last baseline', grid: three }, [glyph('a', 10, { gridItem: autoItem }, 'XX XX XX'), glyph('b', 20, { gridItem: autoItem })]);
+    // a's last baseline is 2px above its bottom, b's 4px: a's 2px shim makes the row 32px, and b ends at the row end.
+    const m = boxesOf(g);
+    expect(rects(m, ['a', 'b'])).toEqual([[0, 0, 1920, 1920], [1920, 768, 1920, 1280]]);
+    expect(m.get('g')?.height).toBe(2048);
+    // The grid's first baseline is its first row's minor baseline, 28px down: a 10px glyph beside it in a flex line sits 20px down.
+    const f = box('f', { display: 'flex', alignItems: 'baseline', width: { kind: 'px', value: 300 } }, [g, glyph('x', 10)]);
+    const r = layout(input(box('root', {}, [f])), ahemMeasurer);
+    if (r.kind !== 'ok') throw new Error(r.unsupported.code);
+    const abs = absoluteRects(r.boxes);
+    expect((abs.get('x')?.y ?? 0) - (abs.get('f')?.y ?? 0)).toBe(1280);
+  });
+
+  it('falls back to end alignment for a last-baseline item with no baseline whose percentage height depends on its auto row', () => {
+    const two = gridStyle({ templateColumns: [{ count: 2, sizes: [AUTO] }], explicitColumnCount: 2 });
+    const items2 = [box('a', { alignSelf: 'last baseline', width: { kind: 'px', value: 10 }, height: { kind: 'percent', value: 50 } }), glyph('b', 20, { alignSelf: 'last baseline' })];
+    // a takes no part and sits at the row end with half of b's 20px row.
+    expect(rects(boxesOf(packed(grid(two, items2))), ['a', 'b'])).toEqual([[0, 640, 640, 640], [640, 0, 1280, 1280]]);
+  });
+
+  it('refuses a last baseline that a flex container or a scroll container would give (grid-last-baseline)', () => {
+    const one = gridStyle({ templateColumns: [{ count: 1, sizes: [AUTO] }], explicitColumnCount: 1 });
+    const codeOf = (item: LayoutBox): string => {
+      const r = layout(input(box('root', {}, [grid(one, [item])])), ahemMeasurer);
+      return r.kind === 'ok' ? 'ok' : `${r.unsupported.code} ${r.unsupported.nodeId}`;
+    };
+    expect(codeOf(box('a', { display: 'flex', alignSelf: 'last baseline' }, [glyph('a1', 10)]))).toBe('grid-last-baseline a');
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [glyph('a1', 10), glyph('a2', 10, { overflowX: 'hidden', overflowY: 'hidden' })]))).toBe('grid-last-baseline a');
+    // A scroll container earlier in the item does not decide it, and first baseline never asks for it.
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [glyph('a1', 10, { overflowX: 'hidden', overflowY: 'hidden' }), glyph('a2', 10)]))).toBe('ok');
+    expect(codeOf(box('a', { display: 'flex', alignSelf: 'baseline' }, [glyph('a1', 10)]))).toBe('ok');
+  });
+});
