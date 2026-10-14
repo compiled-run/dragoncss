@@ -691,7 +691,7 @@ export function resolvedLayers(el: ResolvedElement): ElementLayer[] {
 }
 
 /** Whether an element paints a gradient layer; one whose layers keep an unfolded length is refused (CALC-p) before it is read. */
-function paintsGradient(el: ResolvedElement): boolean {
+export function paintsGradient(el: ResolvedElement): boolean {
   if (el.props.get('background-image') === undefined) return false;
   if (BACKGROUND_LAYERS_LONGHANDS.some((p) => {
     const v = el.props.get(p as Longhand);

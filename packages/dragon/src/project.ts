@@ -1291,8 +1291,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
       // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. PNT1: an animated color
       // must not turn a currentcolor dotted, dashed or 3D outline or rounded double border translucent, nor reach a currentcolor
-      // outline or box-shadow, which native paints in the resting color. MQ-R1: native switches bands at run time, so every band's
-      // cases and animations are checked (each refusal once).
+      // paint native bakes in the resting color. MQ-R1: native switches bands at run time, so every band's cases and animations are
+      // checked (each refusal once).
       const gradientsReported = new Set<string>();
       const doublesReported = new Set<string>();
       const translucentReported = new Set<string>();
