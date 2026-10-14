@@ -23,7 +23,7 @@ type Node = { readonly el: ResolvedElement; readonly parent: string | null };
  * BG2c's refuseAnimatedGradients). alpha: wrong only where the color's opacity changes mid-flight (a gradient raster bakes whether an
  * opaque border hides the background under it, obscuresOf).
  */
-type Paint = { readonly what: string; readonly why: string; readonly own: boolean; readonly alpha: boolean };
+type Paint = { readonly what: string; readonly repaint: string; readonly own: boolean; readonly alpha: boolean };
 
 const isKeyword = (v: CssValue | null | undefined, k: string): boolean => v != null && v.kind === 'keyword' && v.value === k;
 
@@ -57,19 +57,19 @@ function currentColorPaints(address: string, tree: ReadonlyMap<string, Node>): P
   if (!paintsOwn(visibilityOf(valueOf(el, 'visibility')))) return [];
   const out: Paint[] = [];
   const style = paintedOutlineStyle(el);
-  if (style !== null && isKeyword(valueOf(el, 'outline-color'), 'currentcolor')) out.push({ what: `a ${style} outline`, why: 'outlines or box shadows', own: true, alpha: false });
+  if (style !== null && isKeyword(valueOf(el, 'outline-color'), 'currentcolor')) out.push({ what: `a ${style} outline`, repaint: 'outlines or box shadows', own: true, alpha: false });
   if (isKeyword(valueOf(el, 'display'), 'contents')) return out;
-  if (shadowInCurrentColor(address, tree)) out.push({ what: 'a box-shadow', why: 'outlines or box shadows', own: true, alpha: false });
+  if (shadowInCurrentColor(address, tree)) out.push({ what: 'a box-shadow', repaint: 'outlines or box shadows', own: true, alpha: false });
   const background = isKeyword(valueOf(el, 'background-color'), 'currentcolor');
   if (!paintsGradient(el)) {
-    if (background) out.push({ what: 'a background-color', why: 'background colours', own: true, alpha: false });
+    if (background) out.push({ what: 'a background-color', repaint: 'background colours', own: true, alpha: false });
     return out;
   }
   const stops = resolvedLayers(el).some((l) => l.image.kind === 'gradient' && l.image.gradient.stops.some((s) => s.color.kind === 'currentcolor'));
-  if (stops || background) out.push({ what: 'a gradient background', why: 'a gradient raster', own: false, alpha: false });
+  if (stops || background) out.push({ what: 'a gradient background', repaint: 'a gradient raster', own: false, alpha: false });
   // dotted, dashed and hidden sides never hide the background (obscuresOf); none has no width.
   else if (SIDES.some((s) => isKeyword(valueOf(el, `border-${s}-color` as Longhand), 'currentcolor') && !['none', 'hidden', 'dotted', 'dashed'].some((k) => isKeyword(valueOf(el, `border-${s}-style` as Longhand), k)))) {
-    out.push({ what: 'a gradient background under a currentcolor border', why: 'a gradient raster', own: false, alpha: true });
+    out.push({ what: 'a gradient background under a currentcolor border', repaint: 'a gradient raster', own: false, alpha: true });
   }
   return out;
 }
@@ -100,7 +100,7 @@ export function refuseAnimatedCurrentColorPaint(analysis: AnimationAnalysis, roo
   });
   // The addresses whose color reaches a currentcolor paint: the painting element and each ancestor it inherits color from, apart
   // for paints wrong only where the color's opacity changes.
-  type Reach = { readonly text: string; readonly why: string };
+  type Reach = { readonly text: string; readonly repaint: string };
   const reaches = new Map<string, { always?: Reach; alpha?: Reach }>();
   for (const t of trees) {
     for (const address of t.keys()) {
@@ -114,7 +114,7 @@ export function refuseAnimatedCurrentColorPaint(analysis: AnimationAnalysis, roo
         const entry = reaches.get(at) ?? {};
         for (const key of ['always', 'alpha'] as const) {
           const ps = here.filter((p) => p.alpha === (key === 'alpha'));
-          if (entry[key] === undefined && ps.length > 0) entry[key] = { text: `${ps.map((p) => p.what).join(' and ')} on ${address}`, why: (ps[0] as Paint).why };
+          if (entry[key] === undefined && ps.length > 0) entry[key] = { text: `${ps.map((p) => p.what).join(' and ')} on ${address}`, repaint: (ps[0] as Paint).repaint };
         }
         reaches.set(at, entry);
         if ((node.el.props.get('color') as ResolvedValue | undefined)?.origin !== 'inherited') break;
@@ -156,7 +156,7 @@ export function refuseAnimatedCurrentColorPaint(analysis: AnimationAnalysis, roo
           diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
             origin,
             target: t,
-            message: `${what} of color on ${ea.address}: ${paint.text} paints in currentcolor, which ${t} resolves to the resting color once, and the native animator does not repaint ${paint.why} per frame, so mid-animation ${t} would keep the resting colour where Chrome follows color (PNT1)`,
+            message: `${what} of color on ${ea.address}: ${paint.text} paints in currentcolor, which ${t} resolves to the resting color once, and the native animator does not repaint ${paint.repaint} per frame, so mid-animation ${t} would keep the resting colour where Chrome follows color (PNT1)`,
             manual: 'Give the paint its own colour, or remove the animation or transition of color.',
           }));
         }
