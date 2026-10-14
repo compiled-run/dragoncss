@@ -288,7 +288,7 @@ export function stackingOf(root: StackNode): Stacking {
   return { facts, writes, order, native, clipped };
 }
 
-export type UnorderedItem = { readonly id: string; readonly container: string; readonly kind: 'deep' | 'fraction' };
+export type UnorderedItem = { readonly id: string; readonly container: string; readonly kind: 'deep' | 'fraction' | 'barrier' };
 
 /**
  * The layer items whose order-modified place Dragon cannot prove, in a container whose items set an order other than 0. 'deep':
@@ -296,7 +296,9 @@ export type UnorderedItem = { readonly id: string; readonly container: string; r
  * (paint_layer_stacking_node.cc ChildOfFlexboxOrGridOrGridLanesParentOrGrandparent), so an item deeper inside, with no layer item
  * above it at depth 1 or 2, keeps a place the stack tree's sort does not give; wrapped tells a depth 2 node that may sit in an
  * anonymous block of its parent (inline-level). 'fraction': an order calculation that is not a whole 32-bit integer, which Blink
- * rounds and clamps (ComputeInteger) and the stack tree compares unrounded.
+ * rounds and clamps (ComputeInteger) and the stack tree compares unrounded. 'barrier': a clipping box below an item's child, which
+ * Blink gives a paint layer of its own among the sorted ones (overflow clip) that OrderLessThan never moves, and the stable sort
+ * then keeps the layer items on either side of it in tree order; the stack tree has no node for that layer.
  */
 export function unorderedItems(root: StackNode, wrapped: (n: StackNode) => boolean): readonly UnorderedItem[] {
   const out: UnorderedItem[] = [];
@@ -309,6 +311,7 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode) => boole
     }
     // A layer item at depth 1 or 2 is the layer Blink sorts, and the items inside it follow it.
     if (isItem(n, false)) return;
+    if (n.clips && deep) out.push({ id: n.id, container, kind: 'barrier' });
     for (const c of n.children) visit(c, container, depth + 1, fraction);
   };
   const walk = (n: StackNode): void => {

@@ -84,10 +84,12 @@ export function checkStackingClips(el: ResolvedElement, propagated: ResolvedElem
         target: t,
         message: reason === 'deep'
           ? `${id} is a layer item inside ${container}, whose items set order, below an item's child; Chrome sorts a layer by order only as a flex or grid item or an item's child (paint_layer_stacking_node.cc), which ${t}'s paint order does not model`
-          : `${id} is a layer item inside ${container}, whose items set an order that is not a whole 32-bit integer; Chrome paints its layers by the rounded and clamped order, which ${t}'s paint order does not compute`,
-        manual: reason === 'deep'
-          ? `Make the item of ${container} that holds ${id} a stacking context or positioned, or give ${container}'s items order: 0.`
-          : `Give ${container}'s items whole-number order values.`,
+          : reason === 'barrier'
+            ? `${id} clips inside ${container}, whose items set order, below an item's child; Chrome gives it a paint layer that the order sort cannot move past, so the layer items around it keep tree order (paint_layer_stacking_node.cc), which ${t}'s paint order does not model`
+            : `${id} is a layer item inside ${container}, whose items set an order that is not a whole 32-bit integer; Chrome paints its layers by the rounded and clamped order, which ${t}'s paint order does not compute`,
+        manual: reason === 'fraction'
+          ? `Give ${container}'s items whole-number order values.`
+          : `Make the item of ${container} that holds ${id} a stacking context or positioned, or give ${container}'s items order: 0.`,
         basis: 'computed-value',
       }));
     }

@@ -116,6 +116,10 @@ describe('Appendix E paint order', () => {
     // order 0 everywhere sorts nothing; an inline-level child of an item may sit in an anonymous block (depth 3 in Blink).
     expect(unorderedItems(n('html', {}, n('g', {}, n('a', { order: 0 }, n('a1', {}, n('x', { z: 1 }))))), () => false)).toEqual([]);
     expect(unorderedItems(n('html', {}, n('g', {}, n('a', { order: 1 }, n('x', { position: 'relative' })), n('b', { order: 0 }))), (x) => x.id === 'x')).toEqual([{ id: 'x', container: 'g', kind: 'deep' }]);
+    // A clipping box below an item's child has a Blink layer the order sort cannot move b past (a, p, b keep tree order).
+    const barrier = n('html', {}, n('g', {}, n('a', { order: 1, z: 1 }), n('m', {}, n('m1', {}, n('p', { clips: true }))), n('b', { z: 1 })));
+    expect(unorderedItems(barrier, () => false)).toEqual([{ id: 'p', container: 'g', kind: 'barrier' }]);
+    expect(unorderedItems(n('html', {}, n('g', {}, n('a', { order: 1, z: 1 }), n('m', {}, n('p', { clips: true })), n('b', { z: 1 }))), () => false)).toEqual([]);
     // An order Blink rounds or clamps (1.4 and 1.2 both paint as 1) leaves every layer item of the container unproven.
     for (const o of [1.4, 3e9]) {
       const fraction = n('html', {}, n('g', {}, n('a', { order: o, z: 1 }), n('b', { order: 1.2, z: 1 }, n('c', { position: 'relative' })), n('d', {})));
