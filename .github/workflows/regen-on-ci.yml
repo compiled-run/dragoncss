@@ -70,6 +70,8 @@ jobs:
           REPO: ${{ github.repository }}
           REGEN_BRANCH_SLOTS: '2'
           POLL_SECONDS: '60'
+          DISPATCH_BRANCH: ${{ inputs.branch }}
+          DISPATCH_HEAD: ${{ inputs.head }}
         run: |
           set -euo pipefail
           mine=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" -q .created_at)
@@ -77,6 +79,15 @@ jobs:
           filter="[.workflow_runs[] | select(.event == \"workflow_dispatch\" and .id != $GITHUB_RUN_ID and ((.display_title // \"\") | startswith(\"regen of branch \")) and (.created_at < \"$mine\" or (.created_at == \"$mine\" and .id < $GITHUB_RUN_ID)))] | length"
           waited=0
           while :; do
+            # A branch that moved off the dispatched head is refused below anyway: stop now, so the slot goes to the next run and
+            # this branch's newer dispatch (same concurrency group) is not held behind a run that can only fail.
+            if [ -n "${DISPATCH_HEAD:-}" ]; then
+              now=$(gh api "repos/$REPO/branches/$DISPATCH_BRANCH" -q .commit.sha 2>/dev/null || true)
+              if [ -n "$now" ] && [ "$now" != "$DISPATCH_HEAD" ]; then
+                echo "::error::$DISPATCH_BRANCH moved from the dispatched head $DISPATCH_HEAD to $now while waiting for a slot; dispatch again"
+                exit 1
+              fi
+            fi
             ahead=0
             for st in queued in_progress waiting pending; do
               n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q "$filter")
