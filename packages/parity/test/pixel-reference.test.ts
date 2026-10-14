@@ -16,7 +16,7 @@ import { repoPath } from '../src/paths.ts';
 import type { PixelManifest } from '../src/pixel-reference.ts';
 import type { BottomScanlines } from '../src/pixel-reference.ts';
 import { PLANT_CASE } from '../src/device-run.ts';
-import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
+import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, pngSize, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
 import { BACKEND_OF } from '../src/native-host.ts';
 import { deviceDprs } from '../src/targets.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
@@ -234,5 +234,19 @@ describe('the points protocol and check (c)', () => {
     const want = rasterSize(n.case.environment.viewport, 2.625);
     expect(checkCasePixels(readSamples(img, pts), pts, img, want, want).problems).toEqual([]);
     expect(checkCasePixels(readSamples(img, pts), pts, img, want, { width: 1050, height: 787 }).problems).toEqual(['the native capture is 1050x787, the raster rule 1050x788']);
+  });
+});
+
+describe('pngSize', () => {
+  it('reads the IHDR size of every committed pixel PNG the same as a full decode', () => {
+    const dir = repoPath('packages/parity/expected-pixels/darwin-arm64/dpr-2');
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.png')).slice(0, 25)) {
+      const png = readFileSync(join(dir, f));
+      const img = decodePng(png);
+      expect(pngSize(png)).toEqual({ width: img.width, height: img.height });
+    }
+  });
+  it('refuses bytes that are not a PNG', () => {
+    expect(() => pngSize(new Uint8Array(30))).toThrow('not a PNG');
   });
 });

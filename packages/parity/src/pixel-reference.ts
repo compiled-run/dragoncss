@@ -25,6 +25,13 @@ import { withPaintSamples } from './paint-samples/registry.ts';
 
 // ---------------------------------------------------------------- PNG
 
+/** A PNG's width and height from its IHDR chunk, without inflating the pixels. */
+export function pngSize(buf: Uint8Array): ImageSize {
+  const b = Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (b.length < 24 || b.readUInt32BE(0) !== 0x89504e47 || b.readUInt32BE(4) !== 0x0d0a1a0a || b.toString('ascii', 12, 16) !== 'IHDR') throw new Error('not a PNG with a leading IHDR chunk');
+  return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
+}
+
 /** Decodes a non-interlaced 8-bit greyscale, RGB or RGBA PNG (Chrome, simctl io and screencap write these) into RGBA8. */
 export function decodePng(buf: Uint8Array): RgbaImage {
   const b = Buffer.from(buf);
@@ -151,8 +158,9 @@ export function pixelManifest(sets: readonly { dpr: number; raster: RasterPath; 
       dpr: s.dpr,
       flags: chromeArgsAt(s.dpr),
       raster: { rasterization: s.raster.rasterization, gpu_compositing: s.raster.gpu_compositing },
+      // The size from the IHDR chunk: inflating every PNG only to read it took most of a warm run (about 100 s of 125 s).
       cases: s.cases.map((c) => {
-        const img = decodePng(c.png);
+        const img = pngSize(c.png);
         return { case: c.case, width: img.width, height: img.height, sha256: createHash('sha256').update(c.png).digest('hex') };
       }),
     })),
