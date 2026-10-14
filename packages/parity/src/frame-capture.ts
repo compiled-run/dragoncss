@@ -73,7 +73,7 @@ export async function captureFrames(browser: Browser, c: AnimCase, steps: readon
 }
 
 /** The code that decides a frame run beside its pages: this driver, the frozen page setup, the break reader and the raster rule. */
-const FRAME_CODE = ['packages/parity/src/frame-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/pixel-reference.ts'];
+const FRAME_CODE = ['packages/parity/src/frame-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/pixel-reference.ts', 'packages/parity/src/transform-capture.ts'];
 /** Remembered and fresh frame runs of this process (chrome-memo.ts). */
 export const FRAME_MEMO: MemoStats = { hits: 0, misses: 0 };
 
