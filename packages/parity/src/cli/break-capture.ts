@@ -3,7 +3,7 @@
 // packages/parity/expected-breaks/<platform>/dpr-<d>/<case>.breaks.json; one launch per DPR with chrome.ts flags (imported, unchanged)
 // and the zoom guard. Then the committed break vectors against these: equal on N/N, or every break-mismatch listed (exit 1).
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { CHROME_VERSION, chromeArgsAt, injectHarness, launchChrome, openPage } from '../chrome.ts';
+import { CHROME_VERSION, injectHarness, launchArgsOf, launchChrome, openPage } from '../chrome.ts';
 import { type MemoStats, memoizedJson } from '../chrome-memo.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
@@ -36,11 +36,13 @@ async function breakTexts(browser: Awaited<ReturnType<typeof launchChrome>>, n: 
 const BREAK_CODE = ['packages/parity/src/cli/break-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/dpr.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/transform-capture.ts'];
 const memo: MemoStats = { hits: 0, misses: 0 };
 
-/** breakTexts, remembered by its page (chrome-memo.ts); a case with a prepare script runs code the key cannot see, so it always reads. */
+/** breakTexts, remembered by its page and the browser's flags (chrome-memo.ts); a case with a prepare script runs code the key cannot
+ * see, so it always reads. */
 function breakTextsMemo(browser: Awaited<ReturnType<typeof launchChrome>>, n: EngineCase, dpr: number): Promise<ChromeBreakText[]> {
-  if (n.case.authoredPrepare !== null) return breakTexts(browser, n, dpr);
+  const args = launchArgsOf(browser);
+  if (n.case.authoredPrepare !== null || args === null) return breakTexts(browser, n, dpr);
   const env = atDpr(n.case.environment, dpr);
-  return memoizedJson('breaks', { html: injectHarness(n.case.authoredHtml, env), env, args: chromeArgsAt(dpr) }, BREAK_CODE, memo, () => breakTexts(browser, n, dpr));
+  return memoizedJson('breaks', { html: injectHarness(n.case.authoredHtml, env), env, args }, BREAK_CODE, memo, () => breakTexts(browser, n, dpr));
 }
 
 for (const dpr of DPRS) {
