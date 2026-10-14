@@ -21,7 +21,7 @@ export const LINE_CLAMP_ASPECTS: { readonly [P in (typeof LINE_CLAMP_LONGHANDS)[
   '-webkit-line-clamp': { layout: true, paint: true },
 };
 
-/** Blink EBoxOrient: inline-axis computes to horizontal and block-axis to vertical (css_value_id_mappings.h). */
+/** Blink EBoxOrient: inline-axis computes to horizontal and block-axis to vertical, as getComputedStyle reports. */
 const ORIENT: ReadonlyMap<string, string> = new Map([['horizontal', 'horizontal'], ['inline-axis', 'horizontal'], ['vertical', 'vertical'], ['block-axis', 'vertical']]);
 
 function parseBoxOrient(tokens: readonly CssNode[]): ParsedValue {

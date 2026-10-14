@@ -1007,14 +1007,20 @@
         { "lines": "2054-2169", "symbol": null, "source": "cited" },
         { "lines": "197-213", "symbol": null, "source": "cited" },
         { "lines": "3622-3647", "symbol": null, "source": "cited" },
-        { "lines": "1448-1451", "symbol": null, "source": "cited" }
+        { "lines": "1448-1451", "symbol": null, "source": "cited" },
+        { "lines": "793-851", "symbol": null, "source": "cited" },
+        { "lines": "1148-1159", "symbol": null, "source": "cited" },
+        { "lines": "1220-1231", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
         { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "reference" },
-        { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" },
+        { "file": "packages/layout/src/block.ts", "symbol": "nestedClamp", "use": "port" },
+        { "file": "packages/layout/src/inline.ts", "symbol": "checkClampContext", "use": "port" },
+        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1386,7 +1392,8 @@
         { "file": "packages/layout/src/inline.ts", "symbol": "LineEllipsis", "use": "port" },
         { "file": "packages/layout/src/text.ts", "symbol": "ELLIPSIS", "use": "reference" },
         { "file": "packages/layout/src/truncate.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/test/truncate.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/test/truncate.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -3552,10 +3559,12 @@
       "fileSha256": "0a8c094defe8bd1f77fbba3ca65d7fcdbfefab63f85bd0a2543d5f23b268f47d",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
-        { "lines": "902-928", "symbol": null, "source": "cited" }
+        { "lines": "902-928", "symbol": null, "source": "cited" },
+        { "lines": "331-351", "symbol": "InlineLayoutAlgorithm::GetLineClampState", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" }
+        { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" },
+        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
       ]
     }
   ],
