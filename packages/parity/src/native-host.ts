@@ -551,8 +551,16 @@ class DragonActivity : Activity() {
               return@OnPixelCopyFinishedListener
             }
             val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
-            val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
-            File(out, id + "@" + DumpJsonWriter.format(scale) + ".json").writeText(dumpJson(dump))
+            // One case whose dump cannot be read back or encoded (the encoder refuses a non-schema value) records that error as its
+            // dump and the run goes on: the reader fails the case as dump-invalid with the message (device-lanes.ts), never a pass.
+            val dumpFile = File(out, id + "@" + DumpJsonWriter.format(scale) + ".json")
+            try {
+              val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
+              dumpFile.writeText(dumpJson(dump))
+            } catch (e: RuntimeException) {
+              android.util.Log.e("DragonHost", "dragon host: " + id + ": the dump failed", e)
+              dumpFile.writeText("{\"dumpError\":" + org.json.JSONObject.quote(e.toString()) + "}")
+            }
             // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
             dragonHitFactsTable[id]?.let { facts -> File(out, id + "@" + DumpJsonWriter.format(scale) + ".hit").writeText(dragonHitRuns(c, facts, scale, bridge.measurer)) }
             val next = Runnable {
