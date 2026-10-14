@@ -2,7 +2,7 @@
 // snapshot/tailwind-<version>.json and snapshot/summary.md. A compiler crash on any utility fails the run and writes nothing.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { CHROME_VERSION } from '../../../parity/src/chrome.ts';
-import { openChrome } from '../chrome.ts';
+import { DUAL_MEMO, openChrome } from '../chrome.ts';
 import { serialize, SNAPSHOT_DIR, SNAPSHOT_PATH, SUMMARY_PATH, summarize, summaryMarkdown } from '../snapshot.ts';
 import { sweep } from '../sweep.ts';
 
@@ -18,3 +18,4 @@ const summary = summarize(result.records);
 writeFileSync(SUMMARY_PATH, summaryMarkdown(summary, { chrome: CHROME_VERSION }));
 const line = (['web', 'ios', 'android'] as const).map((t) => `${t} ${summary.byTarget[t].supported} supported, ${summary.byTarget[t].refused} refused, ${summary.byTarget[t].invalid} invalid, ${summary.byTarget[t].mismatch} mismatch, ${summary.byTarget[t]['na-native']} not applicable on native`).join('; ');
 console.log(`${summary.total} utilities: ${line}`);
+console.log(`Chrome dual checks: ${DUAL_MEMO.hits} remembered, ${DUAL_MEMO.misses} rendered (chrome-memo.ts)`);
