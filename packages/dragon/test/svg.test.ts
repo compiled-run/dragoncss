@@ -124,7 +124,7 @@ describe('the svg model in a compile', () => {
     const user = compile(input, false);
     expect(errors(user)).toEqual([]);
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
-    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1 })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
+    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
   it('refuses on native, and compiles for web, a shape Chrome fades, a visible shape in a hidden <svg> and an <svg> Chrome does not clip: native draws a shape opaque or not at all, with its <svg>, and clips to the box', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '40']])];
@@ -161,9 +161,9 @@ describe('the svg model in a compile', () => {
     ]);
     const c = compile(input, true);
     expect(errors(c)).toEqual([]);
-    // The display: none rect has no box, and the hidden and transparent rects paint nothing, so none is in the scene; the empty
-    // shapes keep their box and bbox (the differential compares them).
-    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => x.address)).toEqual(['z', 'o', 'e', 'c']);
+    // The display: none rect has no box, so it is in no scene; the empty shapes and the hidden and transparent rects keep their box
+    // and bbox (the differential compares them), and only the hidden and transparent ones are marked unpainted.
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.painted])).toEqual([['z', true], ['o', true], ['e', true], ['c', true], ['v', false], ['t', false]]);
     const p = nativePrograms(c, []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     for (const backend of ['uikit', 'android-views'] as const) {
@@ -179,7 +179,10 @@ describe('the svg model in a compile', () => {
     const input = svgTree('circle { visibility: hidden; }', (_r, o) => [shape(o, 'c', 'circle', [['r', '4']]), shape(o, 'r', 'rect', [['width', '4'], ['height', '4']])]);
     const c = compile(input, false);
     expect(errors(c)).toEqual([]);
-    expect(svgScenes(compile(input, true), [])?.[0]?.shapes.map((x) => x.address)).toEqual(['r']);
+    expect(svgScenes(compile(input, true), [])?.[0]?.shapes.map((x) => [x.address, x.painted])).toEqual([['c', false], ['r', true]]);
+    const p = nativePrograms(compile(input, true), []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    expect(p.programs.uikit.nodes.flatMap((n) => n.writes).flatMap((w) => (w.kind === 'svg-shapes' ? w.shapes.map((x) => x.path) : []))).toEqual([[0, 0, 0, 1, 4, 0, 1, 4, 4, 1, 0, 4, 4]]);
   });
   it('refuses a group, text, a nested svg and a shape with children (SVG-b)', () => {
     const input = svgTree('', (r, o) => [shape(o, 'g', 'g', []), { kind: 'text', id: 't', text: 'hi', origin: o }, shape(o, 'p', 'path', [['d', 'M0 0']], [shape(o, 'q', 'rect', [])]), shape(o, 'n', 'svg', [])]);
