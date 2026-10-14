@@ -14,7 +14,8 @@ import type { InteractionFaults } from '@dragon/layout';
 import { rtInteraction } from '@dragon/layout';
 import type { InteractionLevelInput, InteractionProgram, NativeBackend } from 'dragon';
 import { LONGHANDS, webClassMap } from 'dragon';
-import { CHROME_VERSION, launchChrome, openPage, PLAYWRIGHT_POINTER_SETTINGS } from './chrome.ts';
+import { CHROME_VERSION, injectHarness, launchArgsOf, launchChrome, openPage, PLAYWRIGHT_POINTER_SETTINGS } from './chrome.ts';
+import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import { frames } from './forced-pseudo.ts';
 import type { InteractionGroup } from './interaction-cases.ts';
 import { deriveTrace, groupHit, interactionGroups, interactionProgramOf, levelInputs } from './interaction-cases.ts';
@@ -473,6 +474,24 @@ async function captureRun(browser: Browser, g: InteractionGroup, d: TraceDerivat
   }
 }
 
+// The code that decides a run's steps beside its pages and its trace: this module (the drivers, the style check), the page setup
+// and the forced-pseudo frames.
+const TRACE_CODE = ['packages/parity/src/trace-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/forced-pseudo.ts'];
+/** Remembered and fresh trace runs of this process (chrome-memo.ts). */
+export const TRACE_MEMO: MemoStats = { hits: 0, misses: 0 };
+
+/** captureRun, remembered by its two pages, its trace and the hover candidates (chrome-memo.ts); a run that throws is not remembered. */
+function captureRunMemo(browser: Browser, g: InteractionGroup, d: TraceDerivation): Promise<ChromeTraceStep[]> {
+  const args = launchArgsOf(browser);
+  if (args === null) return captureRun(browser, g, d);
+  const app = d.ip.program.initial;
+  const n = g.cases[app] as NativeCase;
+  const env = n.case.environment;
+  const candidates = (d.inputs[app] as InteractionLevelInput).partition.candidates.hover;
+  const parts = { authored: injectHarness(n.case.authoredHtml, env), output: injectHarness(webOutputHtml(g, n), env), env, args, steps: d.steps, candidates, longhands: LONGHANDS };
+  return memoizedJson('trace', parts, TRACE_CODE, TRACE_MEMO, () => captureRun(browser, g, d));
+}
+
 /** A group's capture: one run per distinct derived trace of the native targets (usually one for both). */
 export async function captureTraces(browser: Browser, g: InteractionGroup): Promise<TraceCapture> {
   const runs: { targets: TraceTarget[]; stepsSha256: string; steps: ChromeTraceStep[] }[] = [];
@@ -484,7 +503,7 @@ export async function captureTraces(browser: Browser, g: InteractionGroup): Prom
       same.targets.push(target);
       continue;
     }
-    runs.push({ targets: [target], stepsSha256: sha, steps: await captureRun(browser, g, d) });
+    runs.push({ targets: [target], stepsSha256: sha, steps: await captureRunMemo(browser, g, d) });
   }
   const env = (g.cases[0] as NativeCase).case.environment;
   return { case: g.id, chrome: CHROME_VERSION, version: TRACE_CAPTURE_VERSION, viewport: env.viewport, direction: g.direction, runs };
