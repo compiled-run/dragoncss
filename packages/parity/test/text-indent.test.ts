@@ -10,22 +10,23 @@ import { committedDprCapture, DPRS, layoutCases, runDprCase } from '../src/dpr.t
 import { TEXT_INDENT } from '../src/fixture-groups/text-indent.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
-const own = new Set(TEXT_INDENT.filter((f) => f.kind === 'layout').map((f) => f.id));
-const corpus = layoutCases().filter((f) => own.has(f.spec.id));
-const compiled = new Map(corpus.map((f) => [f.spec.id, compileFixture(f.spec, NO_FAULTS, 'enforce').compiled]));
+// The Ahem cases lower natively, so the DPR lane judges them here; text-indent-latin is shaped and judged by the FIXTURES lanes.
+const corpus = layoutCases().filter((f) => f.spec.id === 'text-indent-ahem');
+const compiledFor = (direction: 'ltr' | 'rtl') => compileFixture(corpus[0]!.spec, NO_FAULTS, 'enforce', direction).compiled;
+const compiled = { ltr: compiledFor('ltr'), rtl: compiledFor('rtl') };
 
 /** Every case's outcome at DPR 1 and every DPR lane, with the given engine faults. */
 function outcomes(faults: EngineFaults): DprCaseOutcome[] {
-  return corpus.flatMap((f) => f.cases.flatMap((c) => [1, ...DPRS].map((dpr) => runDprCase(c, compiled.get(f.spec.id) as NonNullable<ReturnType<typeof compiled.get>>, dpr, committedDprCapture(c.id, dpr), faults))));
+  return corpus.flatMap((f) => f.cases.flatMap((c) => [1, ...DPRS].map((dpr) => runDprCase(c, compiled[c.environment.direction], dpr, committedDprCapture(c.id, dpr), faults))));
 }
 
 const failing = (faults: EngineFaults): string[] => outcomes(faults).filter((o) => o.status === 'fail').map((o) => `${o.id}@${o.dpr}`);
 
 describe('TXT2-h: text-indent against Chrome 145', () => {
-  it('covers the two layout fixtures in ltr and rtl, each case compiled with no error', () => {
-    expect([...own].sort()).toEqual(['text-indent-ahem', 'text-indent-latin']);
-    expect(corpus.map((f) => f.cases.map((c) => c.id))).toEqual([['text-indent-ahem', 'text-indent-ahem-rtl'], ['text-indent-latin', 'text-indent-latin-rtl']]);
-    for (const [id, c] of compiled) expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message), id).toEqual([]);
+  it('covers the group\'s two layout fixtures, and compiles text-indent-ahem in ltr and rtl with no error', () => {
+    expect(TEXT_INDENT.filter((f) => f.kind === 'layout').map((f) => f.id)).toEqual(['text-indent-ahem', 'text-indent-latin']);
+    expect(corpus.map((f) => f.cases.map((c) => c.id))).toEqual([['text-indent-ahem', 'text-indent-ahem-rtl']]);
+    for (const [direction, c] of Object.entries(compiled)) expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message), direction).toEqual([]);
   });
 
   it('the engine lays out every case as Chrome does', () => {
