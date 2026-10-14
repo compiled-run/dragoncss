@@ -24,6 +24,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/css_parser_fast_paths.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/css_parser_impl.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/css/properties/computed_style_utils.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/css_parsing_utils.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/shorthands/shorthands_custom.cc`: Copyright 2019 The Chromium Authors

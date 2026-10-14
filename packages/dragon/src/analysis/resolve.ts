@@ -27,6 +27,7 @@ import { NO_INTERACTION } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
 import { computeResize } from '../css/properties/resize.ts';
+import { computeTouchAction } from '../css/properties/touch-action.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -329,6 +330,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     adjustLineClampDisplay(props);
     computeOverflowPair(props);
     computeResize(props);
+    computeTouchAction(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
