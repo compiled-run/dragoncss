@@ -37,12 +37,13 @@ const log = (s: string): void => console.log(`parity:glyph-b3: ${s}`);
 const cases = nativeCases();
 if (args.includes('--write-bottom-pins')) {
   // Every (target, DPR, case) item, interleaved over worker threads (glyph-b3-worker.ts) so each gets a like share of the costly
-  // shadowed cases; the counts come back in item order.
+  // shadowed cases; the counts come back in item order. Two workers at most: each loads its own modules and fonts (about 0.5 GB)
+  // beside the main thread's cases, and regen runs other steps beside this one on a 7 GB macOS runner.
   const items: { readonly target: NativeTarget; readonly dpr: number; readonly id: string; readonly item: PinItem }[] = [];
   for (const target of ['ios', 'android'] as const) {
     for (const dpr of deviceDprs(target)) for (const c of cases) items.push({ target, dpr, id: c.case.id, item: { program: c.programs[BACKEND_OF[target]], viewport: c.case.environment.viewport, dpr } });
   }
-  const n = Math.max(1, Math.min(availableParallelism(), items.length));
+  const n = Math.max(1, Math.min(2, availableParallelism(), items.length));
   const shares = Array.from({ length: n }, (_, w) => items.filter((_, i) => i % n === w));
   const counted = await Promise.all(shares.map((share) => new Promise<[number, number][]>((resolve, reject) => {
     const w = new Worker(new URL('./glyph-b3-worker.ts', import.meta.url), { workerData: share.map((x) => x.item) });
