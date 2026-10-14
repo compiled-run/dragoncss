@@ -279,6 +279,34 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(runStep(resolve, label, resolveGh([])).out).toEqual({ branch: BR, sha: HEAD, mode: 'push' });
     expect(runStep(resolve, label, resolveGh([], NEW)).stdout).toContain(`moved from the labelled head ${HEAD} to ${NEW}`);
   });
+  it('a worker\'s branch regen waits, oldest first, while two older branch regens are queued or running', () => {
+    const gate = stepScript('Wait for a branch regen slot');
+    const d = tmpDir();
+    const run = (id: number, created_at: string, event = 'workflow_dispatch', display_title = runTitle(BR, HEAD, NONCE)) => ({ id, created_at, event, display_title });
+    const older = [run(1, '2026-10-14T02:00:00Z'), run(2, '2026-10-14T02:05:00Z'), run(3, '2026-10-14T02:10:00Z', 'pull_request', 'Landing batch'), run(4, '2026-10-14T02:10:00Z', 'workflow_dispatch', regenTitle(HEAD))];
+    const newer = [run(9, '2026-10-14T02:30:00Z'), run(7, '2026-10-14T02:20:00Z')];
+    // Calls 1-4 (one per status) see both older branch regens running; from call 5 on, run 1 has finished.
+    const stub = (runs: object[], later: object[]) => `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *status=in_progress*) if [ $n -le 5 ]; then body='${JSON.stringify({ workflow_runs: runs })}'; else body='${JSON.stringify({ workflow_runs: later })}'; fi ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const env = { GITHUB_RUN_ID: '7', REGEN_BRANCH_SLOTS: '2', POLL_SECONDS: '0' };
+    const waits = runStep(gate, env, stub([...older, ...newer], [older[1]!, older[2]!, older[3]!, ...newer]));
+    expect(waits.status, waits.stderr).toBe(0);
+    expect(waits.stdout).toContain('2 older branch regens are queued or running; waiting for one of 2 slots');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('9');
+    rmSync(join(d, 'calls'));
+    // The landing's runs (a label run, patch mode) and newer branch regens never hold it back.
+    const free = runStep(gate, env, stub([older[1]!, older[2]!, older[3]!, ...newer], []));
+    expect(free.status, free.stderr).toBe(0);
+    expect(free.stdout).not.toContain('waiting for one');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('5');
+  });
   it('master\'s warm run yields to branch regens (dispatched or labelled) but never to the driver\'s patch-mode runs (#220)', () => {
     const warm = (runs: object[]) => runStep(resolve, { GITHUB_EVENT_NAME: 'push', GITHUB_SHA: HEAD, DISPATCH_BRANCH: '', DISPATCH_SHA: '', DISPATCH_HEAD: '', DISPATCH_NONCE: '', PR_BRANCH: '', PR_REPO: '', PR_SHA: '' }, resolveGh(runs)).out['mode'];
     const run = (event: string, display_title: string | null) => ({ event, display_title });
