@@ -595,12 +595,12 @@
           },
           "device": null,
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -661,7 +661,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "296db4926dfe690f0d5b5ba68df9c925ee59a06913b33d16f2377bacecc7f1a3",
+                "dumpsSha256": "f0ff4f82da89214a3cb1aa8b4d9295daac85f70c8a4617afd0be3149cb4a1b1b",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -698,7 +698,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "a00cb24ca039a83602c6c45224de2e979c8a2f4d3c86a2d3ebf8d916683938dc",
+                "dumpsSha256": "b2c2afd486682c79de00c2ae196a695bd43fc478bfb1eb266390a65eb43a7dfc",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -708,12 +708,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -774,7 +774,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "296db4926dfe690f0d5b5ba68df9c925ee59a06913b33d16f2377bacecc7f1a3",
+                "dumpsSha256": "f0ff4f82da89214a3cb1aa8b4d9295daac85f70c8a4617afd0be3149cb4a1b1b",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -811,7 +811,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "a00cb24ca039a83602c6c45224de2e979c8a2f4d3c86a2d3ebf8d916683938dc",
+                "dumpsSha256": "b2c2afd486682c79de00c2ae196a695bd43fc478bfb1eb266390a65eb43a7dfc",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -821,12 +821,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -887,7 +887,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "296db4926dfe690f0d5b5ba68df9c925ee59a06913b33d16f2377bacecc7f1a3",
+                "dumpsSha256": "f0ff4f82da89214a3cb1aa8b4d9295daac85f70c8a4617afd0be3149cb4a1b1b",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -924,7 +924,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "a00cb24ca039a83602c6c45224de2e979c8a2f4d3c86a2d3ebf8d916683938dc",
+                "dumpsSha256": "b2c2afd486682c79de00c2ae196a695bd43fc478bfb1eb266390a65eb43a7dfc",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -934,12 +934,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -1000,7 +1000,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "296db4926dfe690f0d5b5ba68df9c925ee59a06913b33d16f2377bacecc7f1a3",
+                "dumpsSha256": "f0ff4f82da89214a3cb1aa8b4d9295daac85f70c8a4617afd0be3149cb4a1b1b",
                 "failures": 13,
                 "failuresByKind": {
                   "pixel": 13
@@ -1039,7 +1039,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "a00cb24ca039a83602c6c45224de2e979c8a2f4d3c86a2d3ebf8d916683938dc",
+                "dumpsSha256": "b2c2afd486682c79de00c2ae196a695bd43fc478bfb1eb266390a65eb43a7dfc",
                 "failures": 14,
                 "failuresByKind": {
                   "pixel": 14
@@ -1229,12 +1229,12 @@
             ]
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -1295,7 +1295,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "2b156b93d9c9cc5474f6d1f807f5f145cf4380771ca1f0e0f70cdf4cbc1bfede",
+                "dumpsSha256": "0dacbb116a6e445922d24ffbeef1fae975f6ecd8e935fb6e6c8eb3f8fe629f66",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1332,7 +1332,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "a87008444296982969c9a6c03b2d09e68ded7744a5d3f09eb24f2d4a50990d21",
+                "dumpsSha256": "e1c9a88183c441194f0d6e5d37a2561abc1cb2e0cfc6450f8f5bb7735228fb04",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1342,12 +1342,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -1455,12 +1455,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -1521,7 +1521,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "0a2b3fed0effc79e9587ffef16ef03e979e05e9243eaa2384c723697266e0617",
+                "dumpsSha256": "36dfe09aa92fa9a5e5688523229014cbb49c3ce3146592bc5cb18edabb765e28",
                 "failures": 52,
                 "failuresByKind": {
                   "device-record": 52
@@ -1560,7 +1560,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "e66c84405ce124d827284465101e80144023310c95ff3d98a58e952dd298df85",
+                "dumpsSha256": "7e4d76942ef0bfe14e7065f3578d6ca202553c22144e7e7a1d064d99099319ca",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1733,12 +1733,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -1846,12 +1846,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "4e1e58fcdb6d6c5ed8995f19bc7c5f3a2cb50685d71a27b6a931f659166d41a4"
+            "app": "fcdcab6a02c005e047590d9226e035b1b5081ac8143e6a95999d1ce1adc1a1e4"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         }
       ],
@@ -2554,19 +2554,19 @@
           },
           "device": null,
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
           "lane": "device-frames",
           "where": "device",
-          "state": "fail",
-          "reason": "DPR 2.625: 558/821 dumps; 264 failures (device-record 1, dump-missing 263)",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 2,
@@ -2627,7 +2627,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "e53109336311b9a4d79d85487d29f87722502eb3472d98338514c4cd5ad22224",
+                "dumpsSha256": "45261c0ebf09ae2045e55c9a591cd288d16212a76486f2355c29445982871d66",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -2657,20 +2657,17 @@
                   "boot": "cold"
                 },
                 "cases": 821,
-                "dumps": 558,
+                "dumps": 821,
                 "compared": {
-                  "a": 15805,
-                  "b": 50016,
-                  "c": 132636,
-                  "d": 15880,
-                  "breaks": 2693
+                  "a": 20542,
+                  "b": 66408,
+                  "c": 181105,
+                  "d": 20629,
+                  "breaks": 3406
                 },
-                "dumpsSha256": "f296e97f64dbc52e68250afa1afe93145fd2c5ba608c4ae5f768c2861dcc9021",
-                "failures": 264,
-                "failuresByKind": {
-                  "device-record": 1,
-                  "dump-missing": 263
-                }
+                "dumpsSha256": "787d354744a41d8a72462948aa954071e43895190a6332787c9b23023a4a0df8",
+                "failures": 0,
+                "failuresByKind": {}
               },
               {
                 "dpr": 3,
@@ -2706,193 +2703,29 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "2f915cf3e21eaa757ebc2772910750965993a4d6be5835d5a8f59249dab8c551",
+                "dumpsSha256": "1129d820f531b2e4690846c94544658b43ec8ffbf6faad010a06e9fda89dd27e",
                 "failures": 0,
                 "failuresByKind": {}
               }
             ],
-            "failuresByKind": {
-              "device-record": 1,
-              "dump-missing": 263
-            },
-            "firstFailures": [
-              {
-                "lane": "device-frames",
-                "case": "-",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "device-record",
-                "detail": "the host did not finish: the Android host crashed: FATAL EXCEPTION: main\njava.lang.IllegalStateException: dump nodes.lines.deviceEdges.top: 24.375 is not an integer\nat dev.dragon.dump.DumpJsonWriter.integer(DragonDump.kt:40)\nat dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\nat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\nat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\nat dev.dragon.dump.DumpNodes.$r8$lambda$*(Unknown Source:0)\nat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\nat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\nat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\nat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\nat dev.dragon.dump.Dump.$r8$lambda$*(Unknown Source:0)\nat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-block",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-block-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-flex",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-flex-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-breaks",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-breaks-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-shrink",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-shrink-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-north-star",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-north-star-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-links",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "atomic-inline-disclosure",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "casc-supports",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "casc-supports-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "casc-css-wide",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "casc-css-wide-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "casc-layer",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "casc-layer-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-frames",
-                "case": "casc-property",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              }
-            ],
+            "failuresByKind": {},
+            "firstFailures": [],
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
           "lane": "device-applied",
           "where": "device",
-          "state": "fail",
-          "reason": "DPR 2.625: 558/821 dumps; 264 failures (device-record 1, dump-missing 263)",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 2,
@@ -2953,7 +2786,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "e53109336311b9a4d79d85487d29f87722502eb3472d98338514c4cd5ad22224",
+                "dumpsSha256": "45261c0ebf09ae2045e55c9a591cd288d16212a76486f2355c29445982871d66",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -2983,20 +2816,17 @@
                   "boot": "cold"
                 },
                 "cases": 821,
-                "dumps": 558,
+                "dumps": 821,
                 "compared": {
-                  "a": 15805,
-                  "b": 50016,
-                  "c": 132636,
-                  "d": 15880,
-                  "breaks": 2693
+                  "a": 20542,
+                  "b": 66408,
+                  "c": 181105,
+                  "d": 20629,
+                  "breaks": 3406
                 },
-                "dumpsSha256": "f296e97f64dbc52e68250afa1afe93145fd2c5ba608c4ae5f768c2861dcc9021",
-                "failures": 264,
-                "failuresByKind": {
-                  "device-record": 1,
-                  "dump-missing": 263
-                }
+                "dumpsSha256": "787d354744a41d8a72462948aa954071e43895190a6332787c9b23023a4a0df8",
+                "failures": 0,
+                "failuresByKind": {}
               },
               {
                 "dpr": 3,
@@ -3032,193 +2862,29 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "2f915cf3e21eaa757ebc2772910750965993a4d6be5835d5a8f59249dab8c551",
+                "dumpsSha256": "1129d820f531b2e4690846c94544658b43ec8ffbf6faad010a06e9fda89dd27e",
                 "failures": 0,
                 "failuresByKind": {}
               }
             ],
-            "failuresByKind": {
-              "device-record": 1,
-              "dump-missing": 263
-            },
-            "firstFailures": [
-              {
-                "lane": "device-applied",
-                "case": "-",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "device-record",
-                "detail": "the host did not finish: the Android host crashed: FATAL EXCEPTION: main\njava.lang.IllegalStateException: dump nodes.lines.deviceEdges.top: 24.375 is not an integer\nat dev.dragon.dump.DumpJsonWriter.integer(DragonDump.kt:40)\nat dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\nat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\nat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\nat dev.dragon.dump.DumpNodes.$r8$lambda$*(Unknown Source:0)\nat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\nat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\nat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\nat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\nat dev.dragon.dump.Dump.$r8$lambda$*(Unknown Source:0)\nat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-block",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-block-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-flex",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-flex-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-breaks",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-breaks-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-shrink",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-shrink-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-north-star",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-north-star-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-links",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "atomic-inline-disclosure",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "casc-supports",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "casc-supports-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "casc-css-wide",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "casc-css-wide-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "casc-layer",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "casc-layer-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-applied",
-                "case": "casc-property",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              }
-            ],
+            "failuresByKind": {},
+            "firstFailures": [],
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
           "lane": "device-lines",
           "where": "device",
-          "state": "fail",
-          "reason": "DPR 2.625: 558/821 dumps; 264 failures (device-record 1, dump-missing 263)",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 2,
@@ -3279,7 +2945,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "e53109336311b9a4d79d85487d29f87722502eb3472d98338514c4cd5ad22224",
+                "dumpsSha256": "45261c0ebf09ae2045e55c9a591cd288d16212a76486f2355c29445982871d66",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3309,20 +2975,17 @@
                   "boot": "cold"
                 },
                 "cases": 821,
-                "dumps": 558,
+                "dumps": 821,
                 "compared": {
-                  "a": 15805,
-                  "b": 50016,
-                  "c": 132636,
-                  "d": 15880,
-                  "breaks": 2693
+                  "a": 20542,
+                  "b": 66408,
+                  "c": 181105,
+                  "d": 20629,
+                  "breaks": 3406
                 },
-                "dumpsSha256": "f296e97f64dbc52e68250afa1afe93145fd2c5ba608c4ae5f768c2861dcc9021",
-                "failures": 264,
-                "failuresByKind": {
-                  "device-record": 1,
-                  "dump-missing": 263
-                }
+                "dumpsSha256": "787d354744a41d8a72462948aa954071e43895190a6332787c9b23023a4a0df8",
+                "failures": 0,
+                "failuresByKind": {}
               },
               {
                 "dpr": 3,
@@ -3358,193 +3021,29 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "2f915cf3e21eaa757ebc2772910750965993a4d6be5835d5a8f59249dab8c551",
+                "dumpsSha256": "1129d820f531b2e4690846c94544658b43ec8ffbf6faad010a06e9fda89dd27e",
                 "failures": 0,
                 "failuresByKind": {}
               }
             ],
-            "failuresByKind": {
-              "device-record": 1,
-              "dump-missing": 263
-            },
-            "firstFailures": [
-              {
-                "lane": "device-lines",
-                "case": "-",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "device-record",
-                "detail": "the host did not finish: the Android host crashed: FATAL EXCEPTION: main\njava.lang.IllegalStateException: dump nodes.lines.deviceEdges.top: 24.375 is not an integer\nat dev.dragon.dump.DumpJsonWriter.integer(DragonDump.kt:40)\nat dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\nat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\nat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\nat dev.dragon.dump.DumpNodes.$r8$lambda$*(Unknown Source:0)\nat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\nat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\nat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\nat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\nat dev.dragon.dump.Dump.$r8$lambda$*(Unknown Source:0)\nat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-block",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-block-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-flex",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-flex-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-breaks",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-breaks-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-shrink",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-shrink-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-north-star",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-north-star-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-links",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "atomic-inline-disclosure",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "casc-supports",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "casc-supports-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "casc-css-wide",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "casc-css-wide-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "casc-layer",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "casc-layer-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              },
-              {
-                "lane": "device-lines",
-                "case": "casc-property",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "dump-missing",
-                "detail": "the device wrote no dump"
-              }
-            ],
+            "failuresByKind": {},
+            "firstFailures": [],
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
           "lane": "device-pixels",
           "where": "device",
           "state": "fail",
-          "reason": "DPR 2.625: 558/821 dumps; 329 failures (device-record 1, dump-missing 263, pixel 65)",
+          "reason": "109 failures (pixel 109)",
           "sets": [
             {
               "dpr": 2,
@@ -3605,7 +3104,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "e53109336311b9a4d79d85487d29f87722502eb3472d98338514c4cd5ad22224",
+                "dumpsSha256": "45261c0ebf09ae2045e55c9a591cd288d16212a76486f2355c29445982871d66",
                 "failures": 38,
                 "failuresByKind": {
                   "pixel": 38
@@ -3637,20 +3136,18 @@
                   "boot": "cold"
                 },
                 "cases": 821,
-                "dumps": 558,
+                "dumps": 821,
                 "compared": {
-                  "a": 15805,
-                  "b": 50016,
-                  "c": 132636,
-                  "d": 15880,
-                  "breaks": 2693
+                  "a": 20542,
+                  "b": 66408,
+                  "c": 181105,
+                  "d": 20629,
+                  "breaks": 3406
                 },
-                "dumpsSha256": "f296e97f64dbc52e68250afa1afe93145fd2c5ba608c4ae5f768c2861dcc9021",
-                "failures": 270,
+                "dumpsSha256": "787d354744a41d8a72462948aa954071e43895190a6332787c9b23023a4a0df8",
+                "failures": 50,
                 "failuresByKind": {
-                  "device-record": 1,
-                  "dump-missing": 263,
-                  "pixel": 6
+                  "pixel": 50
                 }
               },
               {
@@ -3687,7 +3184,7 @@
                   "d": 20629,
                   "breaks": 3406
                 },
-                "dumpsSha256": "2f915cf3e21eaa757ebc2772910750965993a4d6be5835d5a8f59249dab8c551",
+                "dumpsSha256": "1129d820f531b2e4690846c94544658b43ec8ffbf6faad010a06e9fda89dd27e",
                 "failures": 21,
                 "failuresByKind": {
                   "pixel": 21
@@ -3695,9 +3192,7 @@
               }
             ],
             "failuresByKind": {
-              "device-record": 1,
-              "dump-missing": 263,
-              "pixel": 65
+              "pixel": 109
             },
             "firstFailures": [
               {
@@ -3886,12 +3381,12 @@
             ]
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -3959,7 +3454,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "018a9c9768fcdde7b354c87196d430c2938541624771662e723f492a8c7d2f98",
+                "dumpsSha256": "34d5d89f08f9d6d53085123fa24ac65e243b4c8d64bc87802ae8548a1acbd347",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3997,7 +3492,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "533f31b051f8b2dff1c12740632e7656ff617c32534c8a7bdd07c7c59a0fe77e",
+                "dumpsSha256": "a24baf052027a49018249df6cd5dbe21cea146d0d9110892e9dd66e82f6f769a",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -4035,7 +3530,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "291a0c840662c283e6687069dae5499748509c89df049df57f3be52529997e1c",
+                "dumpsSha256": "2289dac27b9cf70951de0348cd85874e61c7d0b36a25017148f2d91b09ac574b",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -4045,19 +3540,19 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
           "lane": "device-hit",
           "where": "device",
-          "state": "fail",
-          "reason": "DPR 2.625: 544/702 dumps; 159 failures (device-record 1, hit-missing 158)",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 2,
@@ -4148,20 +3643,17 @@
                   "boot": "cold"
                 },
                 "cases": 702,
-                "dumps": 544,
+                "dumps": 702,
                 "compared": {
                   "a": 0,
-                  "b": 135249,
+                  "b": 155640,
                   "c": 0,
                   "d": 0,
                   "breaks": 0
                 },
-                "dumpsSha256": "d8799dccd34e946be1fde7ded2c4c684f1ed5d34479011704918defb85eff2e2",
-                "failures": 159,
-                "failuresByKind": {
-                  "device-record": 1,
-                  "hit-missing": 158
-                }
+                "dumpsSha256": "85224d113171a53f6c84d767bb448a8cefde86d05c7d23609d98dd68c19c484c",
+                "failures": 0,
+                "failuresByKind": {}
               },
               {
                 "dpr": 3,
@@ -4202,181 +3694,17 @@
                 "failuresByKind": {}
               }
             ],
-            "failuresByKind": {
-              "device-record": 1,
-              "hit-missing": 158
-            },
-            "firstFailures": [
-              {
-                "lane": "device-hit",
-                "case": "-",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "device-record",
-                "detail": "the host did not finish: the Android host crashed: FATAL EXCEPTION: main\njava.lang.IllegalStateException: dump nodes.lines.deviceEdges.top: 24.375 is not an integer\nat dev.dragon.dump.DumpJsonWriter.integer(DragonDump.kt:40)\nat dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\nat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\nat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\nat dev.dragon.dump.DumpNodes.$r8$lambda$*(Unknown Source:0)\nat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\nat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\nat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\nat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\nat dev.dragon.dump.Dump.$r8$lambda$*(Unknown Source:0)\nat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)"
-              },
-              {
-                "lane": "device-hit",
-                "case": "casc-supports",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "casc-supports-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "casc-css-wide",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "casc-css-wide-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "casc-layer",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "casc-layer-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "casc-property",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "casc-property-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "charset-none",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "charset-none-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "charset-utf8",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "charset-utf8-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "charset-utf8-upper",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "charset-utf8-upper-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "ctx-proof-auto-margins",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "ctx-proof-auto-margins-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "ctx-proof-auto-insets",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "ctx-proof-auto-insets-rtl",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              },
-              {
-                "lane": "device-hit",
-                "case": "ctx-proof-auto-flex",
-                "dpr": 2.625,
-                "node": null,
-                "kind": "hit-missing",
-                "detail": "the device wrote no hit record"
-              }
-            ],
+            "failuresByKind": {},
+            "firstFailures": [],
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -4444,7 +3772,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "55ec3cd1fa0fa48eaf958bdd324115c9d02d5b6d6d2b8a62d6637dfb0495af4f",
+                "dumpsSha256": "64ab405f17dcb8ffb378c8bef69dbf7904e5f9073de2138f43ab7780d66d2893",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -4482,7 +3810,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "b24a7164b78af7dd79880e7c13b21dea5be706e380b39725960f0de06c98c2b0",
+                "dumpsSha256": "621a1f39c38abedaccb2de890dbe8dd6ebbe5e3b1617aee342a86c94d1c4d356",
                 "failures": 55,
                 "failuresByKind": {
                   "device-record": 52,
@@ -4523,7 +3851,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "d15d6090e365c0c9882b238ec81f336139f8588ee2847b21f9ad7a7a7df92331",
+                "dumpsSha256": "892cc4a69de32d4edd8985d6ce71e6bf0b48e8ef6a78c53df4e50bb5b1f9f60f",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -4697,12 +4025,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         },
         {
@@ -4877,12 +4205,12 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "890ec4f821237c54e2e87f417cae2b8abbf7d05b4266dfb156accf7011499e26",
+            "laneCode": "6d8f03e9a02c8223890d63390c13eda56a1ed4409e69775999ab89efed5c96fe",
             "referenceData": "d23d4aa0cfc45f7254e438e54e67247f6a89b15982e4f83f59a934326f4b1d67",
-            "app": "d560b6046ea72336d1d4429ae5cfa34a8f3697e104f279395d756d4de1555488"
+            "app": "a567854b6135a2cbf0714bcf334483e45e2ae5ae587cf3a5b385ce366d7e7049"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38558386204"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38565787420"
           ]
         }
       ],
@@ -4986,57 +4314,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 558,
-              "caught": 558,
+              "applicable": 821,
+              "caught": 821,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 558,
-              "caught": 558,
+              "applicable": 821,
+              "caught": 821,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 558,
-              "caught": 558,
+              "applicable": 821,
+              "caught": 821,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 558,
-              "caught": 558,
+              "applicable": 821,
+              "caught": 821,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 558,
-              "caught": 558,
+              "applicable": 821,
+              "caught": 821,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 558,
-              "caught": 558,
+              "applicable": 821,
+              "caught": 821,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 557,
-              "caught": 557,
+              "applicable": 810,
+              "caught": 810,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 123,
-              "caught": 123,
+              "applicable": 157,
+              "caught": 157,
               "uncaught": []
             }
           ]
