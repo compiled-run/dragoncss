@@ -45,7 +45,7 @@ export const divStyle: LayoutStyle = {
   textAlign: 'start',
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
-  textOverflow: 'clip',
+  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 },
   grid: null,
   gridItem: null,
 };
@@ -90,7 +90,7 @@ export function br(id: string, over: Partial<Omit<LineBreak, 'kind' | 'id'>> = {
 
 /** A 10px Ahem text leaf, already collapsed, with the inherited text properties the compiler writes onto it. */
 export function text(id: string, value: string, over: Partial<TextLeaf> = {}): TextLeaf {
-  return { kind: 'text', id, text: value, font: ahemFont(10), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, ...over };
+  return { kind: 'text', id, text: value, font: ahemFont(10), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, ...over };
 }
 
 export const px = (value: number) => ({ kind: 'px', value }) as const;

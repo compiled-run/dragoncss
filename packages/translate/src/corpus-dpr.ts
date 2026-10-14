@@ -380,7 +380,7 @@ const INLINE_STYLE: Json = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
-  aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', grid: null, gridItem: null,
+  aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, grid: null, gridItem: null,
 };
 
 const inlineFont = (size: number): Json => ({ family: 'Ahem', size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true });
@@ -428,7 +428,7 @@ export function engineInlineCases(): string[] {
         text += ' ';
         afterSpace = true;
       }
-      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap, letterSpacing: { kind: 'px', value: 0 } };
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap, letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } };
     };
     const wrap = r.chance(0.9) ? 'wrap' : 'nowrap';
     const content = (depth: number, size: number, lh: Json): Json[] => {
@@ -519,7 +519,7 @@ function atomicInlineCases(): string[] {
         text += ' ';
         afterSpace = true;
       }
-      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } };
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } };
     };
     // A box's own inline content, collapsed: it starts a context of its own.
     const ownText = (size: number, lh: Json): Json[] => {
@@ -625,7 +625,7 @@ const OVERFLOW_STYLE: Json = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
-  aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', grid: null, gridItem: null,
+  aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, grid: null, gridItem: null,
 };
 
 /** engine-overflow: generated scroll containers with scroll metrics, appended after every earlier suite so their inputs do not move. */
@@ -708,7 +708,7 @@ export function engineOverflowCases(): string[] {
         style['textAlign'] = r.pick(['start', 'end', 'center', 'left', 'right']);
         style['display'] = 'block';
         const strut: Json = { font: font(size), lineHeight: { kind: 'normal' } };
-        return { kind: 'box', id, boxType: 'element', style, strut, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), ...strut, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } }] };
+        return { kind: 'box', id, boxType: 'element', style, strut, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), ...strut, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } }] };
       }
       const kids: Json[] = [];
       const count = r.int(4);

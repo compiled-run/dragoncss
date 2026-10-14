@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, fromCssPx, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput, zoomInput } from '../src/index.ts';
-import type { EngineFaults, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutStyle, LineHeightValue } from '../src/index.ts';
+import type { EngineFaults, GridContainerStyle, GridItemStyle, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutStyle, LineHeightValue } from '../src/index.ts';
 import { ahemFont, box, br, neutralEnvironment, px, text } from './helpers.ts';
 
 type ProbeRect = readonly [number, number, number, number];
@@ -342,5 +342,60 @@ describe('INL2a refusals and validation', () => {
     expect(codeOf(box('root', {}, [box('c', { textAlign: 'justify', width: px(30) }, [text('t', 'a b c d'), ib('a')])]))).toBe('text-align');
     expect(codeOf(box('root', {}, [box('c', { textOverflow: 'ellipsis', overflowX: 'hidden', overflowY: 'hidden', width: px(30) }, [text('t', 'a b c d'), ib('a')])]))).toBe('text-overflow');
     expect(codeOf(box('root', {}, [box('c', { width: px(30) }, [text('t', 'a b c d'), ib('a')])]))).toBe('ok');
+  });
+});
+
+// G-INL: an inline-grid is a grid container on its line (css-display-3 §2.4), whose baseline is the grid's first baseline, or its
+// bottom margin edge when it has none, also as a scroll container (Blink 145, cited at inline-box.ts atomicBaseline). The packages/parity grid corpus (grid-corpus-*.test.ts) compares these boxes with Chrome; these pin the engine's rules.
+describe('G-INL: inline-grid as an atomic inline', () => {
+  const AUTO = { kind: 'breadth', breadth: { kind: 'auto' } } as const;
+  const gridStyle: GridContainerStyle = { templateColumns: [{ count: 2, sizes: [AUTO] }], templateRows: [], autoColumns: [AUTO], autoRows: [AUTO], explicitColumnCount: 2, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row', dense: false, justifyItems: 'normal' };
+  const item: GridItemStyle = { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' };
+  const env = (root: LayoutBox): LayoutInput => ({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root });
+  // Two items on one row: a 10px Ahem 'b' (baseline 8px) and a 20px Ahem 'c' (baseline 16px), so the first and last items' baselines differ.
+  const items = (): LayoutBox[] => [box('g1', { gridItem: item }, [text('g1#0', 'b')]), box('g2', { gridItem: item }, [text('g2#0', 'c', { font: ahemFont(20) })])];
+  const ig = (style: Partial<LayoutStyle>, kids: LayoutBox[]): LayoutBox => box('g', { display: 'inline-grid', grid: gridStyle, ...style }, kids, null);
+  const line = (g: LayoutBox): LayoutBox => box('root', {}, [box('c', {}, [text('t', 'a'), g])]);
+  /** The inline-grid's border-box top less the text's top, in px; both sit on one baseline. */
+  const above = (g: LayoutBox, faults: EngineFaults = NO_ENGINE_FAULTS): number => {
+    const r = layoutWithFaults(env(line(g)), ahemMeasurer, faults);
+    if (r.kind !== 'ok') throw new Error(r.unsupported.code);
+    const abs = absoluteRects(r.boxes);
+    return ((abs.get('g') as LayoutRect).y - (abs.get('t') as LayoutRect).y) / 64;
+  };
+  it('validates as an atomic inline with a grid style and placed items, and rejects text directly in it or a grid style on inline-flex', () => {
+    const errors = (root: LayoutBox): string[] => {
+      const v = validateLayoutInput(JSON.parse(JSON.stringify(env(root))));
+      return v.ok ? [] : [...new Set(v.errors.map((e) => e.code))];
+    };
+    expect(errors(line(ig({}, items())))).toEqual([]);
+    expect(errors(line(ig({}, [box('g1', {}, [text('g1#0', 'b')])])))).toContain('grid-shape');
+    expect(errors(line(box('g', { display: 'inline-flex', grid: gridStyle }, items(), null)))).toContain('grid-shape');
+    expect(errors(line(box('g', { display: 'inline-grid', grid: gridStyle }, [text('g#0', 'b')])))).toContain('text-in-flex');
+    expect(errors(ig({}, items()))).toContain('bad-value');
+  });
+  it('sits on the line by the grid first baseline (the first item\'s), its bottom margin edge when empty, and keeps it as a scroll container', () => {
+    expect(above(ig({}, items()))).toBe(0);
+    // With no items the baseline is synthesized at the bottom margin edge: 30px + 4px below the grid top, 8px below the text top.
+    expect(above(ig({ height: { kind: 'px', value: 30 }, marginBottom: { kind: 'px', value: 4 } }, []))).toBe(-26);
+    // Unlike an inline-block, grid layout never sets UseLastBaselineForInlineBaseline, so overflow: hidden keeps the first baseline.
+    expect(above(ig({ overflowX: 'hidden', overflowY: 'hidden' }, items()))).toBe(0);
+    expect(above(box('g', { display: 'inline-block', overflowX: 'hidden', overflowY: 'hidden' }, [box('k', {}, [text('k#0', 'b')])], null))).toBe(-2);
+  });
+  it('a scroll container keeps its first baseline within its border box (inline-box.ts inlineGridBaseline)', () => {
+    // The 20px item's baseline at 16px is past the 10px-high box, so the baseline is its block-end edge: 2px above the text top.
+    expect(above(ig({ overflowX: 'hidden', overflowY: 'hidden', height: { kind: 'px', value: 10 } }, [box('g2', { gridItem: item }, [text('g2#0', 'c', { font: ahemFont(20) })])]))).toBe(-2);
+  });
+  it('plant inlineGridLastItemBaseline takes the last item\'s baseline, which moves the grid up 8px', () => {
+    expect(above(ig({}, items()), { ...NO_ENGINE_FAULTS, inlineGridLastItemBaseline: true })).toBe(-8);
+  });
+  it('refuses vertical-align other than baseline and a percentage block size on an inline-grid, as on every atomic inline', () => {
+    const code = (style: Partial<LayoutStyle>): string => {
+      const r = layoutWithFaults(env(line(ig(style, items()))), ahemMeasurer, NO_ENGINE_FAULTS);
+      return r.kind === 'ok' ? 'ok' : r.unsupported.code;
+    };
+    expect(code({ verticalAlign: { kind: 'keyword', value: 'middle' } })).toBe('vertical-align');
+    expect(code({ height: { kind: 'percent', value: 50 } })).toBe('percent-height-flex');
+    expect(code({})).toBe('ok');
   });
 });

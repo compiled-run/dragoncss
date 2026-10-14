@@ -67,6 +67,11 @@ describe('preserved text beside the other text lanes', () => {
     expect(spaced.map((e) => e.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
     expect(errorsOf('.a { white-space: pre; letter-spacing: 0; }', 'XX  XX').filter((e) => e.message.includes('spaced preserved white space'))).toEqual([]);
   });
+  it('refuses word-spacing on preserved text (TXT2-b with TXT2-c), and leaves word-spacing: normal alone', () => {
+    const spaced = errorsOf('.a { white-space: pre; word-spacing: 2px; }', 'XX  XX').filter((e) => e.message.includes('word-spacing on'));
+    expect(spaced.map((e) => e.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(errorsOf('.a { white-space: pre; word-spacing: normal; }', 'XX  XX').filter((e) => e.message.includes('word-spacing on'))).toEqual([]);
+  });
   it('refuses text-overflow: ellipsis over preserved text (TXT2-c with TXT2-f), and keeps nowrap', () => {
     const truncating = '.a { width: 30px; overflow: hidden; text-overflow: ellipsis; ';
     const refused = (css: string) => errorsOf(css, 'XX XX XX').filter((e) => e.message.includes('truncates text whose white space is preserved'));
@@ -80,6 +85,10 @@ describe('text-align: justify beside the other text lanes (TXT2 with TXT2-b and 
   it('refuses justify with letter-spacing, and leaves letter-spacing: 0 alone', () => {
     expect(justify('letter-spacing: 1px;', 'with letter-spacing')).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
     expect(justify('letter-spacing: 0;', 'with letter-spacing')).toEqual([]);
+  });
+  it('refuses justify with word-spacing, and leaves word-spacing: 0 alone', () => {
+    expect(justify('word-spacing: 2px;', 'with word-spacing')).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(justify('word-spacing: 0;', 'with word-spacing')).toEqual([]);
   });
   it('refuses justify over wrapping preserved white space, and leaves pre, which never wraps, alone', () => {
     expect(justify('white-space: pre-wrap;', 'wrapping preserved white space')).toEqual(['DRAGON_UNSUPPORTED_VALUE']);

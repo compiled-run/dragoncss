@@ -31,8 +31,11 @@ import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
+import { checkResize } from './resize.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
+/** css-text-3 §8.1: whether a computed word-spacing adds space, anything but normal and 0px. */
+const wordSpaced = (v: ResolvedValue): boolean => keywordOf(v) !== 'normal' && !(v.value.kind === 'length' && v.value.value === 0);
 /** A computed length or percentage of zero, as it serializes. */
 const isZeroLength = (v: ResolvedValue['value']): boolean => ['0', '0px', '0%'].includes(valueToString(v));
 
@@ -152,8 +155,8 @@ function checkPercentRelative(el: ResolvedElement, where: string | null, targets
 
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
 const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
-/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box (INL2a). */
-const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex';
+/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box (INL2a, G-INL). */
+const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex' || displayKeyword(el) === 'inline-grid';
 
 /**
  * One item of an inline formatting context in tree order: a text, the open or close of an inline box, a <br> (CSS2 §9.2.2), or an
@@ -345,11 +348,13 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     }
     const texts = run.flatMap((it) => (it.kind === 'text' ? [it.text] : []));
     for (const t of texts) checkPreservedText(el, t, refuse);
-    // TXT2 with TXT2-b and TXT2-c: Blink justifies with letter spacing in one ShapeResultSpacing pass, and justifies a wrapped preserved
+    // TXT2 with TXT2-b and TXT2-c: Blink justifies with letter and word spacing in one ShapeResultSpacing pass, and justifies a wrapped preserved
     // line around its preserved spaces; no Chrome case covers either yet.
     if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') {
       const spaced = texts.find((t) => keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal');
       if (spaced !== undefined) refuse(el, 'justify-letter-spacing', `text-align: justify on ${el.element.address} with letter-spacing on ${spaced.node.address} is not laid out yet`, `Remove the letter-spacing that reaches ${spaced.node.address}, or use another text-align on ${el.element.address}.`);
+      const wordSpacedText = texts.find((t) => wordSpaced(t.props.get('word-spacing') as ResolvedValue));
+      if (wordSpacedText !== undefined) refuse(el, 'justify-word-spacing', `text-align: justify on ${el.element.address} with word-spacing on ${wordSpacedText.node.address} is not laid out yet`, `Remove the word-spacing that reaches ${wordSpacedText.node.address}, or use another text-align on ${el.element.address}.`);
       const preserved = texts.find((t) => keywordOf(t.props.get('white-space-collapse') as ResolvedValue) !== 'collapse' && keywordOf(t.props.get('text-wrap-mode') as ResolvedValue) === 'wrap');
       if (preserved !== undefined) refuse(el, 'justify-white-space', `text-align: justify on ${el.element.address} with wrapping preserved white space in ${preserved.node.address} is not laid out yet`, `Remove the white-space declaration that reaches ${preserved.node.address}, or use another text-align on ${el.element.address}.`);
       // INL2a with TXT2: how Blink justifies a line around an atomic inline has no Chrome comparison yet (inline.ts checkAtomicContext).
@@ -365,6 +370,36 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
   }
 }
 
+// TXT2-h (css-text-3 §8.1): a nonzero text-indent indents the first formatted line of each block container, which the engine
+// does in the container's own inline formatting context. Refused for every target where no Chrome case proves it yet: text in
+// anonymous boxes (beside a block child, or directly in a flex or grid container), preserved white space, text-align: justify,
+// text-overflow: ellipsis, and atomic inlines.
+function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const value = el.props.get('text-indent') as ResolvedValue;
+  if (isInlineBox(el) || isZeroLength(value.value)) return;
+  const runs = inlineContexts(el, () => {});
+  if (runs.length === 0) return;
+  const at = `text-indent: ${valueToString(value.value)} on ${el.element.address}`;
+  const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c) && !isAtomic(c));
+  const display = displayKeyword(el);
+  const texts = runs.flat().filter((it): it is { readonly kind: 'text'; readonly text: ResolvedText } => it.kind === 'text');
+  let beside = '';
+  if (['flex', 'grid', 'inline-flex', 'inline-grid'].includes(display)) beside = `with text directly in the ${display} container, which Chrome wraps in an anonymous item`;
+  else if (blockChild !== undefined) beside = `with text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, which Chrome wraps in anonymous blocks`;
+  else if (texts.some((it) => keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse')) beside = 'with preserved white space';
+  else if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') beside = 'with text-align: justify';
+  else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) beside = 'with text-overflow: ellipsis';
+  else if (runs.some((r) => r.some((it) => it.kind === 'atomic'))) beside = 'beside an atomic inline';
+  if (beside === '') return;
+  const id = `text-indent|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${at} ${beside} is not proven against Chrome yet`, manual: `Remove the text-indent from ${el.element.address}, or put its text in a block of its own with text-indent.`, basis: 'computed-value' }));
+  }
+}
+
 // TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
 // (LayoutBlockFlow::ShouldTruncateOverflowingText), which the engine does left to right in the block's own inline formatting
 // context. Refused for every target: rtl, and inline content beside block children (Chrome truncates the anonymous blocks'
@@ -373,7 +408,7 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
 function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const value = el.props.get('text-overflow') as ResolvedValue;
   // A flex or grid container's text is an anonymous item, which Chrome does not truncate (its parent is no block container).
-  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid'].includes(displayKeyword(el))) return;
+  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return;
   if (['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) return;
   const runs = inlineContexts(el, () => {});
   if (runs.length === 0) return;
@@ -394,6 +429,10 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
   const spaced = keywordOf(el.props.get('letter-spacing') as ResolvedValue) !== 'normal' || runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('letter-spacing') as ResolvedValue) !== 'normal'));
   if (spaced) {
     refuse(targets, 'letter-spacing', `${at} truncates text with letter-spacing, which Dragon does not lay out yet`, `Remove letter-spacing from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
+  }
+  const wordSpacedRun = wordSpaced(el.props.get('word-spacing') as ResolvedValue) || runs.some((run) => run.some((it) => it.kind === 'text' && wordSpaced(it.text.props.get('word-spacing') as ResolvedValue)));
+  if (wordSpacedRun) {
+    refuse(targets, 'word-spacing', `${at} truncates text with word-spacing, which Dragon does not lay out yet`, `Remove word-spacing from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
   }
   // TXT2-c with TXT2-f: Blink truncates preserved text by its own items (control items, hanging spaces), which no Chrome case covers yet.
   if (runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))) {
@@ -440,6 +479,8 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
   }
   // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
   if (keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal') refuse(el, 'letter-spacing', `letter-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the letter-spacing or the white-space declaration that reaches ${t.node.address}.`);
+  // Blink adds word spacing to every preserved space, the first included (WordSpacingWhiteSpacePre), which no Chrome case covers yet.
+  if (wordSpaced(t.props.get('word-spacing') as ResolvedValue)) refuse(el, 'word-spacing', `word-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the word-spacing or the white-space declaration that reaches ${t.node.address}.`);
   if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
 
@@ -764,6 +805,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkOverflow(el, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);
@@ -774,6 +816,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInlineLevel(el, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
+      checkTextIndent(el, targets, diagnostics, reported);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);

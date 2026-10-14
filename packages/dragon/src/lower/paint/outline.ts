@@ -3,7 +3,8 @@
 // radius). The device paints it in a view of its own in the root view, after all the case's content, each box's descendants'
 // outlines before its own: Chrome's outline phase of the root stacking context.
 // analysis/paint-values/outline.ts refuses what that order cannot match without stacking (an overflow clip around the outline, a
-// positioned or transformed box in the case), auto, and a rounded outline in a style other than solid or double. The device resolves
+// positioned or transformed box in the case), auto, and a rounded outline in a style other than solid or double; outside the parity
+// lanes it also refuses a translucent dotted, dashed or 3D one, whose transparency layer the platforms composite unlike Skia. The device resolves
 // the rings with the translated paint-radius.ts outlineRings at its scale, and draws a dotted, dashed or 3D outline with the
 // translated paint-dash.ts outlinePaintOps. An outline that paints nothing (style none, a zero width, a transparent colour) has no
 // write, nor has the outline of a box that is not visible (visibility hidden or collapse, own or inherited): Chrome paints no outline

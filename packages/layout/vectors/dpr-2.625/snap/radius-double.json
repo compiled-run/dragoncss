@@ -83,17 +83,9 @@
    "height": 13408
   },
   {
-   "id": "alpha",
-   "parent": "row",
-   "x": 22144,
-   "y": 36512,
-   "width": 19088,
-   "height": 14048
-  },
-  {
    "id": "clip",
    "parent": "row",
-   "x": 43248,
+   "x": 22144,
    "y": 36512,
    "width": 19088,
    "height": 14048
@@ -199,7 +191,7 @@
    "height": 209
   },
   {
-   "id": "alpha",
+   "id": "clip",
    "left": 346,
    "top": 571,
    "right": 644,
@@ -208,19 +200,10 @@
    "height": 219
   },
   {
-   "id": "clip",
-   "left": 676,
-   "top": 571,
-   "right": 974,
-   "bottom": 790,
-   "width": 298,
-   "height": 219
-  },
-  {
    "id": "kid",
-   "left": 707,
+   "left": 377,
    "top": 602,
-   "right": 1232,
+   "right": 902,
    "bottom": 680,
    "width": 525,
    "height": 78

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 100px; margin-bottom: 2px; }
+.px { text-indent: 25px; }
+.neg { text-indent: -15px; }
+.pct { text-indent: 10%; }
+.em { text-indent: 1.5em; }
+.calc { text-indent: calc(5px + 10%); }
+.center { text-align: center; }
+.end { text-align: end; }
+.far { text-indent: -9999px; overflow: hidden; }
+.ib { display: inline-block; text-indent: 20px; }
+.ibp { display: inline-block; text-indent: 10%; }
+.min { width: min-content; text-indent: 20px; }
+.flex { display: flex; width: 200px; }
+.flat { margin: 0; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a1" class="w px">XX XX XX XX XX</div>
+<div data-dragon-id="a2" class="w neg">XX XX XX XX XX</div>
+<div data-dragon-id="a3" class="w pct">XX XX XX XX XX</div>
+<div data-dragon-id="a4" class="w em">XX XX XX XX XX</div>
+<div data-dragon-id="a5" class="w calc">XX XX XX XX XX</div>
+<div data-dragon-id="a6" class="w px">XX XX<br data-dragon-id="a6b">XX XX XX XX</div>
+<div data-dragon-id="a7" class="w px center">XX XX XX XX XX</div>
+<div data-dragon-id="a8" class="w px end">XX XX XX</div>
+<div data-dragon-id="a9" class="w px">XX <span data-dragon-id="a9s">XX XX</span> XX XX</div>
+<div data-dragon-id="a10" class="w far">XX XX</div>
+<div data-dragon-id="a11" class="w px"><p data-dragon-id="a11p" class="flat">XX XX XX</p></div>
+<div data-dragon-id="a12"><span data-dragon-id="a12i" class="ib">XXXX</span></div>
+<div data-dragon-id="a13"><span data-dragon-id="a13i" class="ibp">XXXX</span></div>
+<div data-dragon-id="a14" class="min">XX XXX</div>
+<div data-dragon-id="a15" class="flex"><div data-dragon-id="a15i" class="px">XX XX</div></div>
+</body>
+</html>

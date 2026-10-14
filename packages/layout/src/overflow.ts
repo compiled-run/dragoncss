@@ -19,6 +19,12 @@ import { isAtomicInline } from './inline-box.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
 
+/** A grid container: display grid, or inline-grid (an atomic inline, css-grid-2 §5.1). */
+function isGridContainer(b: LayoutNode): boolean {
+  const d = b.style.display;
+  return d === 'grid' || d === 'inline-grid';
+}
+
 /** A rectangle in LU relative to a box's border-box top-left. */
 export type OverflowRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
@@ -214,10 +220,10 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
         if (list === undefined) ix.oofByCb.set(key, [k]);
         else list.push(k);
         // css-grid-2 §9.1: a positioned grid parent resolves the child's percentages against its grid area.
-        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned, cb === null || cb.id !== b.id || b.style.display !== 'grid');
+        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned, cb === null || cb.id !== b.id || !isGridContainer(b));
       } else {
         // A grid item's percentages resolve against its grid area (grid.ts layoutItem).
-        walk(k, b, content, nextPositioned, paddingKnown && b.style.display !== 'grid');
+        walk(k, b, content, nextPositioned, paddingKnown && !isGridContainer(b));
       }
     }
   };
@@ -369,7 +375,7 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   if (b.kind === 'replaced') return resultOf(ix, c, n.padding);
   if (!n.paddingKnown) throw new OverflowRefusal(b.id, 'a percentage padding against a grid area: its basis is not decided here');
   // Blink GridLayoutAlgorithm::LayoutInternal: a grid scroll container's inflow bounds are its tracks (css-grid-2 §5.3), set by the layout.
-  const grid = b.style.display === 'grid';
+  const grid = isGridContainer(b);
   if (grid && sc) c.inflow = gridInflowOf(ix, b.id);
   if (hasInlineContent(b)) {
     refuseLineLevelBoxes(b);
