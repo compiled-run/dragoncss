@@ -1,0 +1,18 @@
+{
+  "case": "sizing-keywords-contribution-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"x1:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"x2:text0","data":"XX XXX","lines":2,"units":[0,0,0,1,1,1],"blank":[2]},
+    {"id":"x3:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"x4:text0","data":"XX XXX","lines":2,"units":[0,0,0,1,1,1],"blank":[2]},
+    {"id":"x5:text0","data":"XX XXX XXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"x6:text0","data":"XX XXX","lines":2,"units":[0,0,0,1,1,1],"blank":[2]},
+    {"id":"x7:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"x8:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"y8:text0","data":"X XX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"x9:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"y9:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]}
+  ]
+}

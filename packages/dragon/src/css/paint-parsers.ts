@@ -7,6 +7,7 @@ import type { Span } from '../types.ts';
 import { EFFECTS_VALUE_PARSERS } from './properties/effects.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { RADIUS_VALUE_PARSERS } from './properties/radius.ts';
+import { SELECTION_VALUE_PARSERS } from './properties/selection.ts';
 import { parseBoxShadow } from './properties/shadow.ts';
 import { TEXT_TRANSFORM_VALUE_PARSERS } from './properties/text-transform.ts';
 import { VISIBILITY_VALUE_PARSERS } from './properties/visibility.ts';
@@ -24,5 +25,6 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ['box-shadow', parseBoxShadow],
   ...Object.entries(OUTLINE_VALUE_PARSERS),
   ...Object.entries(VISIBILITY_VALUE_PARSERS),
+  ...Object.entries(SELECTION_VALUE_PARSERS),
   ...Object.entries(TEXT_TRANSFORM_VALUE_PARSERS),
 ]);

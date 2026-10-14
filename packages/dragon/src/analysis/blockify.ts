@@ -1,5 +1,5 @@
 // css-display-3 §2.7 blockification, as Blink 145 does it (StyleAdjuster::AdjustStyleForDisplay, EquivalentBlockDisplay): the
-// root, a flex or grid item (its layout parent skips display: contents), and an absolutely positioned box take the block-level
+// root, a flex or grid item (its layout parent skips display: contents), a float and an absolutely positioned box take the block-level
 // equivalent of their display. Table verified against Chrome 145.0.7632.6 on every display value (notes/T057-inl-bf.md).
 import type { Longhand } from '../css/properties.ts';
 import { diagnostic } from '../diagnostics/catalogue.ts';
@@ -42,7 +42,7 @@ export function blockifiedDisplay(display: ResolvedValue, faults: CompilerFaults
 const layoutParentDisplay = new WeakMap<ReadonlyMap<Longhand, ResolvedValue>, string | null>();
 
 /**
- * Blockifies props' display in place when the element is the root, a flex or grid item, or absolutely positioned, and records
+ * Blockifies props' display in place when the element is the root, a flex or grid item, floated or absolutely positioned, and records
  * what its children's layout parent is. parent: the element's parent's props, or null at the root.
  */
 export function blockify(props: Map<Longhand, ResolvedValue>, parent: ReadonlyMap<Longhand, ResolvedValue> | null, faults: CompilerFaults): void {
@@ -50,7 +50,12 @@ export function blockify(props: Map<Longhand, ResolvedValue>, parent: ReadonlyMa
   if (parent !== null && !layoutParentDisplay.has(parent)) throw new Error('blockify: the parent was not blockified first');
   const layoutParent = parent === null ? null : (layoutParentDisplay.get(parent) as string | null);
   const position = keysOf(props.get('position') as ResolvedValue);
-  const blockifies = parent === null || (layoutParent !== null && BLOCKIFYING_PARENTS.has(layoutParent)) || position === 'absolute' || position === 'fixed';
+  const outOfFlow = position === 'absolute' || position === 'fixed';
+  // CSS2 §9.7: an absolutely positioned box's float computes to none (Blink StyleAdjuster::AdjustComputedStyle); a float blockifies.
+  const float = props.get('float') as ResolvedValue;
+  if (outOfFlow && keysOf(float) !== 'none') props.set('float', { ...float, value: { kind: 'keyword', value: 'none' } });
+  const floating = keysOf(props.get('float') as ResolvedValue) !== 'none';
+  const blockifies = parent === null || (layoutParent !== null && BLOCKIFYING_PARENTS.has(layoutParent)) || outOfFlow || floating;
   // Blink leaves display: contents unblockified; its box does not exist.
   if (blockifies && keysOf(display) !== 'contents' && !faults.blockifySkipped) {
     const to = blockifiedDisplay(display, faults);

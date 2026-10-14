@@ -26,6 +26,11 @@ export type NativePaint = {
   readonly applied: string | null;
   readonly roundedPath: string | null;
   readonly container: string | null;
+  /**
+   * TDEC-b: the after-text hook, run by the tree's text pass once a text view is configured; it takes (the container box view, the
+   * text view, its DragonTextGeometry). Absent for a module with none.
+   */
+  readonly afterText?: string;
 };
 
 /**

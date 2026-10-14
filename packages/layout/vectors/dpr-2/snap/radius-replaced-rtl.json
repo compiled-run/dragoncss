@@ -1,0 +1,229 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 34048
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 34048
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 34048
+  },
+  {
+   "id": "avatar",
+   "parent": "row",
+   "x": 41728,
+   "y": 1280,
+   "width": 8192,
+   "height": 8192
+  },
+  {
+   "id": "ring",
+   "parent": "row",
+   "x": 30976,
+   "y": 1280,
+   "width": 9216,
+   "height": 9216
+  },
+  {
+   "id": "thick",
+   "parent": "row",
+   "x": 19200,
+   "y": 1280,
+   "width": 10240,
+   "height": 10240
+  },
+  {
+   "id": "ellipse",
+   "parent": "row",
+   "x": 5376,
+   "y": 1280,
+   "width": 12288,
+   "height": 7168
+  },
+  {
+   "id": "ellipse-ring",
+   "parent": "row",
+   "x": 35584,
+   "y": 13056,
+   "width": 14336,
+   "height": 7936
+  },
+  {
+   "id": "corners",
+   "parent": "row",
+   "x": 23808,
+   "y": 13056,
+   "width": 10240,
+   "height": 7680
+  },
+  {
+   "id": "corners-ring",
+   "parent": "row",
+   "x": 11008,
+   "y": 13056,
+   "width": 11264,
+   "height": 8704
+  },
+  {
+   "id": "fill",
+   "parent": "row",
+   "x": 40960,
+   "y": 23296,
+   "width": 8960,
+   "height": 6400
+  },
+  {
+   "id": "hidden",
+   "parent": "row",
+   "x": 29952,
+   "y": 23296,
+   "width": 9472,
+   "height": 9472
+  },
+  {
+   "id": "tall",
+   "parent": "row",
+   "x": 17664,
+   "y": 23296,
+   "width": 10752,
+   "height": 6144
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 532,
+   "width": 800,
+   "height": 532
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 532,
+   "width": 800,
+   "height": 532
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 532,
+   "width": 800,
+   "height": 532
+  },
+  {
+   "id": "avatar",
+   "left": 652,
+   "top": 20,
+   "right": 780,
+   "bottom": 148,
+   "width": 128,
+   "height": 128
+  },
+  {
+   "id": "ring",
+   "left": 484,
+   "top": 20,
+   "right": 628,
+   "bottom": 164,
+   "width": 144,
+   "height": 144
+  },
+  {
+   "id": "thick",
+   "left": 300,
+   "top": 20,
+   "right": 460,
+   "bottom": 180,
+   "width": 160,
+   "height": 160
+  },
+  {
+   "id": "ellipse",
+   "left": 84,
+   "top": 20,
+   "right": 276,
+   "bottom": 132,
+   "width": 192,
+   "height": 112
+  },
+  {
+   "id": "ellipse-ring",
+   "left": 556,
+   "top": 204,
+   "right": 780,
+   "bottom": 328,
+   "width": 224,
+   "height": 124
+  },
+  {
+   "id": "corners",
+   "left": 372,
+   "top": 204,
+   "right": 532,
+   "bottom": 324,
+   "width": 160,
+   "height": 120
+  },
+  {
+   "id": "corners-ring",
+   "left": 172,
+   "top": 204,
+   "right": 348,
+   "bottom": 340,
+   "width": 176,
+   "height": 136
+  },
+  {
+   "id": "fill",
+   "left": 640,
+   "top": 364,
+   "right": 780,
+   "bottom": 464,
+   "width": 140,
+   "height": 100
+  },
+  {
+   "id": "hidden",
+   "left": 468,
+   "top": 364,
+   "right": 616,
+   "bottom": 512,
+   "width": 148,
+   "height": 148
+  },
+  {
+   "id": "tall",
+   "left": 276,
+   "top": 364,
+   "right": 444,
+   "bottom": 460,
+   "width": 168,
+   "height": 96
+  }
+ ]
+}

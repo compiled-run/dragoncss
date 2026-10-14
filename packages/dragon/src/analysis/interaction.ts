@@ -484,6 +484,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // SVG-a1: the svg family paints only an <svg>'s shapes, never a box; an <svg> itself is an unmodelled fact (hitUnmodelledFact),
+  // as Chrome hits its painted shapes (pointer-events: visiblePainted), which the hit test does not model yet.
+  ['fill', all],
+  ['stroke', all],
+  ['stroke-width', all],
   // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
   ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
   ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
@@ -512,6 +517,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
   // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible, so its overflow is no fact of its box.
   const propagated = propagatedFrom(root);
   const visit = (el: ResolvedElement): { property: Longhand; address: string } | null => {
+    if (el.element.tag === 'svg') return { property: 'fill', address: el.element.address };
     // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
     const partner = (p: Longhand): ResolvedValue | undefined => (p === 'overflow-x' ? el.props.get('overflow-y') : p === 'overflow-y' ? el.props.get('overflow-x') : undefined);
     for (const [p, v] of el.props) {

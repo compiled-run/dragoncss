@@ -11,10 +11,11 @@ import { blockMinMaxWith, hasPercent, INDEFINITE, isScrollContainer, resolveBord
 import type { Ctx, EngineFaults, Strut } from './block.ts';
 import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
-import type { LayoutRect } from './layout.ts';
-import { absoluteRects, layoutMeasurer, layoutWithFaults, resolvedInput } from './layout.ts';
+import type { InflowBounds, LayoutRect } from './layout.ts';
+import { absoluteRects, layoutMeasurer, layoutWithInflow, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
 import { placeLines } from './inline.ts';
+import { isAtomicInline } from './inline-box.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
 
@@ -68,6 +69,8 @@ type Node = {
   readonly padding: Edges;
   /** The inline size the box's percentage margins and padding resolve against. */
   readonly cbInline: LU;
+  /** False when a percentage padding resolves against a grid area or a content box this port does not know (paddingDecided). */
+  readonly paddingKnown: boolean;
 };
 
 type Index = {
@@ -77,18 +80,21 @@ type Index = {
   /** The absolutely positioned boxes by the id of their containing block ("" for the initial containing block). */
   readonly oofByCb: Map<string, LayoutNode[]>;
   readonly flows: Map<string, Flow>;
+  /** The inflow bounds of each grid scroll container, by id (layout.ts InflowBounds). */
+  readonly gridInflow: Map<string, OverflowRect>;
 };
 
 /** scrollMetrics with planted engine faults; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasurer, viewportDirection: Direction, faults: EngineFaults): ScrollMetricsResult {
-  const r = layoutWithFaults(given, measurer, faults);
+  const placed = layoutWithInflow(given, measurer, faults, NO_GRID_FAULTS);
+  const r = placed.result;
   if (r.kind !== 'ok') return { kind: 'refused', nodeId: r.unsupported.nodeId, detail: `${r.unsupported.code}: ${r.unsupported.detail}` };
   const m = layoutMeasurer(measurer, faults);
   try {
     // The input as the layout above resolved it, with the caller's measurer.
     const input = resolvedInput(given, measurer, faults);
     const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
-    const ix = indexOf(ctx, input, absoluteRects(r.boxes));
+    const ix = indexOf(ctx, input, absoluteRects(r.boxes), placed.inflow);
     const containers: ScrollMetrics[] = [];
     for (const b of ix.order) {
       if (!isScrollContainer(b.style)) continue;
@@ -134,14 +140,15 @@ export function scrollRanges(input: LayoutInput, measurer: TextMeasurer): Scroll
  * viewport, and each container is decided on its own.
  */
 export function scrollRangesWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): ScrollRangesResult {
-  const r = layoutWithFaults(given, measurer, faults);
+  const placed = layoutWithInflow(given, measurer, faults, NO_GRID_FAULTS);
+  const r = placed.result;
   if (r.kind !== 'ok') return { kind: 'refused', nodeId: r.unsupported.nodeId, detail: `${r.unsupported.code}: ${r.unsupported.detail}` };
   let ix: Index;
   try {
     // The input as the layout above resolved it, with the caller's measurer (as scrollMetricsWithFaults).
     const input = resolvedInput(given, measurer, faults);
     const ctx: Ctx = { measurer: layoutMeasurer(measurer, faults), devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
-    ix = indexOf(ctx, input, absoluteRects(r.boxes));
+    ix = indexOf(ctx, input, absoluteRects(r.boxes), placed.inflow);
   } catch (e) {
     if (e instanceof UnsupportedSignal) return { kind: 'refused', nodeId: e.unsupported.nodeId, detail: `${e.unsupported.code}: ${e.unsupported.detail}` };
     throw e;
@@ -180,15 +187,17 @@ function nodeOf(ix: Index, id: string): Node {
   return n;
 }
 
-function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): Index {
-  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map() };
+function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inflow: readonly InflowBounds[]): Index {
+  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map() };
+  for (const f of inflow) ix.gridInflow.set(f.id, { x: f.x, y: f.y, width: f.width, height: f.height });
   const icbWidth = fromCssPx(input.viewport.width);
-  const walk = (b: LayoutNode, parent: LayoutBox | null, cbInline: LU, positioned: LayoutNode | null): void => {
+  const walk = (b: LayoutNode, parent: LayoutBox | null, cbInline: LU, positioned: LayoutNode | null, basisKnown: boolean): void => {
     const rect = abs.get(b.id);
     if (rect === undefined) throw new Error(`no laid-out box ${b.id}`);
     const border = resolveBorder(b.style, ctx.devicePixelRatio);
     const padding = resolvePaddingWith(b.style, cbInline, ctx.faults);
-    ix.nodes.set(b.id, { box: b, parent, rect, border, padding, cbInline });
+    const paddingKnown = basisKnown || !hasPercentPadding(b);
+    ix.nodes.set(b.id, { box: b, parent, rect, border, padding, cbInline, paddingKnown });
     ix.order.push(b);
     const content = clampNegativeToZero(sub(rect.width, sumEdges(border.left, border.right, padding.left, padding.right)));
     const paddingBoxWidth = clampNegativeToZero(sub(rect.width, add(border.left, border.right)));
@@ -204,14 +213,22 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): In
         const list = ix.oofByCb.get(key);
         if (list === undefined) ix.oofByCb.set(key, [k]);
         else list.push(k);
-        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned);
+        // css-grid-2 §9.1: a positioned grid parent resolves the child's percentages against its grid area.
+        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned, cb === null || cb.id !== b.id || b.style.display !== 'grid');
       } else {
-        walk(k, b, content, nextPositioned);
+        // A grid item's percentages resolve against its grid area (grid.ts layoutItem).
+        walk(k, b, content, nextPositioned, paddingKnown && b.style.display !== 'grid');
       }
     }
   };
-  walk(input.root, null, icbWidth, null);
+  walk(input.root, null, icbWidth, null, true);
   return ix;
+}
+
+/** A padding that may resolve against a percentage basis (a calculation is taken to, conservatively). */
+function hasPercentPadding(b: LayoutNode): boolean {
+  const s = b.style;
+  return [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft].some((v) => v.kind === 'percent' || v.kind === 'calc');
 }
 
 function paddingBoxWidthOf(ix: Index, b: LayoutNode): LU {
@@ -350,8 +367,10 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: sc, leftOverflow: sides.left, topOverflow: sides.top };
   // A replaced leaf (CSS 2.2 §10.3.2) has no children: its scrollable overflow is its own padding box.
   if (b.kind === 'replaced') return resultOf(ix, c, n.padding);
-  // A grid container's scrollable overflow also takes its grid area (css-grid-2 §5.3), which this port does not compute.
-  if (b.style.display === 'grid') throw new OverflowRefusal(b.id, 'a grid container: its scrollable overflow (with its grid area) is not decided here');
+  if (!n.paddingKnown) throw new OverflowRefusal(b.id, 'a percentage padding against a grid area: its basis is not decided here');
+  // Blink GridLayoutAlgorithm::LayoutInternal: a grid scroll container's inflow bounds are its tracks (css-grid-2 §5.3), set by the layout.
+  const grid = b.style.display === 'grid';
+  if (grid && sc) c.inflow = gridInflowOf(ix, b.id);
   if (hasInlineContent(b)) {
     refuseLineLevelBoxes(b);
     addLines(ix, n, b, c);
@@ -362,7 +381,7 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
     const dx = sub(kn.rect.x, n.rect.x);
     const dy = sub(kn.rect.y, n.rect.y);
     addOverflow(c, shifted(propagated(ix, kn), dx, dy));
-    if (sc) addInflow(c, inflowBounds(ix, n, kn, dx, dy));
+    if (sc && !grid) addInflow(c, inflowBounds(ix, n, kn, dx, dy));
   }
   const oofs = ix.oofByCb.get(b.id);
   if (oofs !== undefined) {
@@ -372,6 +391,12 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
     }
   }
   return resultOf(ix, c, n.padding);
+}
+
+function gridInflowOf(ix: Index, id: string): OverflowRect {
+  const r = ix.gridInflow.get(id);
+  if (r === undefined) throw new Error(`no inflow bounds for grid scroll container ${id}`);
+  return r;
 }
 
 /**
@@ -393,11 +418,11 @@ function propagated(ix: Index, n: Node): OverflowRect {
  * The PlacedLine fields addLines accounts for (R16): a new line item kind is added here with a Chrome metrics case, never skipped.
  * boxes, boxRects, breaks and breakRects are empty on every line addLines sees, as refuseLineLevelBoxes refuses inline boxes and <br>s.
  */
-export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline', 'pieces', 'boxes', 'boxRects', 'breaks', 'breakRects'];
+export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline', 'pieces', 'boxes', 'boxRects', 'breaks', 'breakRects', 'ellipsis'];
 
-/** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box or <br> child. */
+/** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box, <br> or atomic inline child. */
 function hasInlineContent(box: LayoutBox): boolean {
-  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br');
+  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || (k.kind === 'box' && isAtomicInline(k)));
 }
 
 /**
@@ -429,10 +454,20 @@ function addLines(ix: Index, n: Node, box: LayoutBox, c: Calc): void {
       first = false;
     };
     for (const p of line.pieces) take(p.x, p.width);
+    const e = line.ellipsis;
+    // TXT2-f: a truncated line box is as wide as its text or its ellipsis end (LineTruncator::TruncateLine); its hidden text
+    // adds no overflow (ScrollableOverflowCalculator::AddItemsInternal skips IsHiddenForPaint), its truncated text and ellipsis do.
+    if (e !== null) take(e.x, e.width);
     const lineRect: OverflowRect = { x: add(ox, l), y: add(oy, line.top), width: sub(r, l), height: line.height };
     if (!isEmpty(lineRect)) c.overflow = uniteEvenIfEmpty(c.overflow, lineRect);
     if (c.scrollContainer) addInflow(c, lineRect);
-    for (const p of line.pieces) addOverflow(c, { x: add(ox, p.x), y: add(oy, p.top), width: p.width, height: add(p.ascent, p.descent) });
+    let hidden = false;
+    for (const p of line.pieces) {
+      if (hidden) continue;
+      addOverflow(c, { x: add(ox, p.x), y: add(oy, p.top), width: p.truncated ? p.truncatedWidth : p.width, height: add(p.ascent, p.descent) });
+      if (e !== null && p.leaf === e.leaf) hidden = true;
+    }
+    if (e !== null) addOverflow(c, { x: add(ox, e.x), y: add(oy, e.top), width: e.width, height: add(e.ascent, e.descent) });
   }
 }
 

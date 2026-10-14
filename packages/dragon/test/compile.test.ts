@@ -44,7 +44,7 @@ describe('createProject().compile() and check()', () => {
   });
 
   it('check() reports the same diagnostics without outputs', () => {
-    const input = inputFor('.g { float: left; }', (r) => [div(r, 'g', ['g'])]);
+    const input = inputFor('.g { column-count: 2; }', (r) => [div(r, 'g', ['g'])]);
     const r = ios().check(input);
     expect(r.ok).toBe(false);
     expect(r.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
@@ -78,7 +78,7 @@ describe('createProject().compile() and check()', () => {
     const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]));
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('analysis-only');
-    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { float: left; }', (r) => [div(r, 'a', ['a'])]));
+    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { column-count: 2; }', (r) => [div(r, 'a', ['a'])]));
     expect(g.outputs.web.kind).toBe('blocked');
   });
 
@@ -174,7 +174,7 @@ describe('createProject().compile() and check()', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     const a = p.input.root.children[0]?.kind === 'box' ? p.input.root.children[0].children[0] : undefined;
     const text = a?.kind === 'box' ? a.children[0] : undefined;
-    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20, specifiedSize: { kind: 'px', value: 20 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
+    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20, specifiedSize: { kind: 'px', value: 20 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } });
   });
 
   it('the public entry exposes only the public API', () => {

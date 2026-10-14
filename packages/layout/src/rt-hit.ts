@@ -597,6 +597,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   for (const c of b.children) {
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
+    else if (c.kind === 'box' && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
     else kids++;
   }
   if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
@@ -640,6 +641,14 @@ function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
   return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
 }
 
+function isAtomicInline(b: LayoutBox): boolean {
+  return b.style.display === 'inline-block' || b.style.display === 'inline-flex';
+}
+
+function atomicRefusal(id: string): string {
+  return `${id} is an atomic inline, which the hit table does not model yet (INL2a: inline-block and inline-flex on their lines; no Chrome hit capture)`;
+}
+
 /** Blink paints grid items atomically in order-modified document order (css-grid-2 §9), which the hit table does not model. */
 function gridRefusal(id: string): string {
   return `${id} is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)`;
@@ -651,6 +660,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if (c.kind === 'box') {
+      if (isAtomicInline(c)) return atomicRefusal(c.id);
       const r = boxHitRefusal(c);
       if (r !== null) return r;
     }
@@ -658,7 +668,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
   return null;
 }
 
-/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) and a grid container have no hit model yet. */
+/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a), an atomic inline (INL2a) and a grid container have no hit model yet. */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }

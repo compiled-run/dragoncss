@@ -13,7 +13,8 @@
     "advances": [],
     "xHeight": 1118,
     "capHeight": 1490,
-    "zeroAdvance": 1292
+    "zeroAdvance": 1292,
+    "ellipsisAdvance": 1770
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -34,7 +35,8 @@
     "advances": [],
     "xHeight": 1013,
     "capHeight": 1433,
-    "zeroAdvance": 1160
+    "zeroAdvance": 1160,
+    "ellipsisAdvance": 1500
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -1981,6 +1983,7 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
     "grid": null,
     "gridItem": null
    },
@@ -2101,6 +2104,7 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
       "grid": null,
       "gridItem": null
      },
@@ -2222,6 +2226,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2257,7 +2262,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -2377,6 +2386,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2412,7 +2422,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -2532,6 +2546,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2567,7 +2582,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -2687,6 +2706,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2722,7 +2742,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       },
@@ -2842,6 +2866,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2877,7 +2902,11 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         }
         }
        ]
       }

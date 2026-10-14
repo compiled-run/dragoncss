@@ -116,6 +116,28 @@ describe('grid lowering', () => {
     expect(iosLayoutProjection(rc, ENV, []).kind).not.toBe('ready');
     expect(rc.diagnostics.map((d) => d.message).join('\n')).toContain('display: grid on <iframe> f is not supported');
   });
+  it('gives an absolutely positioned child the lines of its containing block: an auto side is the padding edge (css-grid-2 §9.1)', () => {
+    const css = [
+      '.g { display: grid; position: relative; grid-template-columns: [a] 20px [b] 20px; }',
+      '.a { position: absolute; } .p1 { grid-column: 2 / 3; grid-row: 1; } .p2 { grid-column: auto / b; grid-row: span 2; }',
+      '.p3 { grid-column: 2 / span 2; grid-row: auto / auto; } .p4 { grid-area: a / a / x / x; justify-self: end; }',
+    ].join(' ');
+    const m = boxes(css, (r) => [div(r, 'g', ['g'], [div(r, 'i', []), ...['p1', 'p2', 'p3', 'p4'].map((id) => div(r, id, ['a', id]))])]);
+    expect(['p1', 'p2', 'p3', 'p4'].map((id) => item(m, id))).toEqual([
+      { column: { kind: 'definite', start: 1, end: 2 }, row: { kind: 'start-line', line: 0 }, justifySelf: 'auto' },
+      { column: { kind: 'end-line', line: 1 }, row: { kind: 'auto', span: 2 }, justifySelf: 'auto' },
+      { column: { kind: 'definite', start: 1, end: 3 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' },
+      { column: { kind: 'definite', start: 0, end: 3 }, row: { kind: 'definite', start: 1, end: 2 }, justifySelf: 'end' },
+    ]);
+    expect(item(m, 'i')).toEqual({ column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' });
+  });
+  it('refuses self-alignment of an absolutely positioned grid child between two insets, which the engine does not do yet', () => {
+    const refusal = (css: string): string[] => compile(`.g { display: grid; position: relative; } .a { position: absolute; } ${css}`, (r) => [div(r, 'g', ['g'], [div(r, 'a', ['a'])])]).diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);
+    expect(refusal('.a { left: 0; right: 0; justify-self: center; }').join('\n')).toContain('justify-self: center has no grid layout mapping: self-alignment between two insets is not supported yet');
+    expect(refusal('.a { inset: 0; align-self: end; }').join('\n')).toContain('align-self: end has no grid layout mapping: self-alignment between two insets is not supported yet');
+    expect(refusal('.a { inset: 0; justify-self: normal; align-self: auto; }')).toEqual([]);
+    expect(refusal('.a { top: 0; justify-self: center; align-self: end; }')).toEqual([]);
+  });
   it('wraps text directly in a grid container in an auto-placed anonymous grid item', () => {
     const m = boxes('.g { display: grid; grid-template-columns: 30px 30px; }', (r) => [div(r, 'g', ['g'], [text(r, 't', 'XX'), div(r, 'b', [])])]);
     expect(m.get('g:anon0')?.style.gridItem).toEqual({ column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' });
@@ -163,11 +185,35 @@ describe('grid lowering', () => {
     expect(item(m, 'p4').column).toEqual({ kind: 'auto', span: 1 });
   });
 
-  it('refuses what the engine does not lay out: baseline and safe self-alignment; a flexible minimum never reaches it', () => {
+  it('leaves the lines of an absolutely positioned child to the engine in an axis with an automatic repeater (G2 with G4)', () => {
+    const css = [
+      '.g { display: grid; position: relative; grid-template-columns: repeat(auto-fill, [a] 25px [b]); grid-template-rows: 10px; }',
+      '.x { position: absolute; } .p1 { grid-column: a 2 / auto; grid-row: 1; } .p2 { grid-column: auto / -2; } .p3 { grid-column: span 2 / b 3; }',
+    ].join(' ');
+    const m = boxes(css, (r) => [div(r, 'g', ['g'], ['p1', 'p2', 'p3', 'p4'].map((id) => div(r, id, ['x', id])))]);
+    expect(item(m, 'p1')).toEqual({ column: { kind: 'lines', start: { kind: 'named-line', n: 2, name: 1 }, end: { kind: 'auto' } }, row: { kind: 'start-line', line: 0 }, justifySelf: 'auto' });
+    expect(item(m, 'p2').column).toEqual({ kind: 'lines', start: { kind: 'auto' }, end: { kind: 'line', n: -2 } });
+    expect(item(m, 'p3').column).toEqual({ kind: 'lines', start: { kind: 'span', n: 2 }, end: { kind: 'named-line', n: 3, name: 2 } });
+    expect(item(m, 'p4').column).toEqual({ kind: 'auto', span: 1 });
+  });
+
+  it('hands first baseline alignment in the block axis to the engine as baseline (GRID G3)', () => {
+    const m = boxes('.g { display: grid; align-items: first baseline; } .i { align-self: baseline; } .j { align-self: first baseline; }', (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i']), div(r, 'j', ['j']), div(r, 'k', [])])]);
+    expect(m.get('g')?.style.alignItems).toBe('baseline');
+    expect(['i', 'j', 'k'].map((id) => m.get(id)?.style.alignSelf)).toEqual(['baseline', 'baseline', 'auto']);
+  });
+
+  it('refuses what the engine does not lay out: inline-axis and last baseline and safe self-alignment; a flexible minimum never reaches it', () => {
     const refusal = (css: string): string[] => compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i'])])]).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.message}`);
     expect(refusal('.g { display: grid; grid-template-columns: repeat(auto-fill, 20px); }')).toEqual([]);
     expect(refusal('.g { display: grid; grid-template-rows: 5px repeat(auto-fit, [a] 1em 10%) [b]; }')).toEqual([]);
-    expect(refusal('.g { display: grid; } .i { justify-self: baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: baseline'))).toBe(true);
+    expect(refusal('.g { display: grid; } .i { justify-self: baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: baseline') && m.includes('inline axis'))).toBe(true);
+    // GRID G3: first baseline alignment in the block axis lays out; the inline axis and last baseline stay refused.
+    expect(refusal('.g { display: grid; align-items: baseline; } .i { align-self: first baseline; }')).toEqual([]);
+    expect(refusal('.g { display: grid; justify-items: first baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-items: baseline') && m.includes('inline axis'))).toBe(true);
+    expect(refusal('.g { display: grid; } .i { justify-self: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: last baseline'))).toBe(true);
+    expect(refusal('.g { display: grid; align-items: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('align-items: last baseline'))).toBe(true);
+    expect(refusal('.g { display: grid; } .i { align-self: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('align-self: last baseline'))).toBe(true);
     expect(refusal('.g { display: grid; justify-items: safe center; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-items: safe center'))).toBe(true);
     expect(refusal('.g { display: grid; grid-template-columns: 20px 30px; }')).toEqual([]);
     for (const p of ['height: 50%', 'min-height: 10%', 'max-height: calc(10px + 5%)']) {

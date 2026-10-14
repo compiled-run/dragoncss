@@ -149,4 +149,23 @@ describe('the break check of a dump', () => {
     expect(r.problems.map((p) => p.kind)).toEqual([BREAK_MISMATCH]);
     expect(r.problems[0]?.detail).toMatch(/^w1:text0: device lines \[\[0,2\],\[2,6\],\[6,8\]\], break vector \[\[0,3\],\[3,6\],\[6,8\]\]$/);
   });
+  it.each(['white-space-preserve', 'text-overflow-lines'])('%s: the device fragments of one line (preserved pieces, a truncated piece) are one break line, and a moved boundary is a mismatch', (id) => {
+    const n = cases.find((c) => c.case.id === id);
+    const d = relabelledReferenceDumps('ios', 3).find((x) => x.case.id === id);
+    const v = readBreakVector(id, 3);
+    if (n === undefined || d === undefined || v === null) throw new Error(`no ${id} data`);
+    const fragments = new Map(engineTextLines(inputOf(n, 3), m).map((t) => [t.id, t.lines.flatMap((l) => l.fragments)]));
+    const dump = { ...d, nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: fragments.get(x.id)?.[j]?.[0] ?? null, end: fragments.get(x.id)?.[j]?.[1] ?? null } : l)) })) };
+    // More fragments than break lines: the grouping is exercised.
+    expect(dump.nodes.some((x) => x.kind === 'text' && x.lines.length > (v.texts.find((t) => t.id === x.id)?.lines.length ?? 0))).toBe(true);
+    expect(checkDumpBreaks(dump, v).problems).toEqual([]);
+    const planted = plantDumpFault('break-shifted', dump, { engine: [], passingSamples: [] });
+    expect(planted).not.toBeNull();
+    expect(checkDumpBreaks(planted ?? dump, v).problems.map((p) => p.kind)).toEqual([BREAK_MISMATCH]);
+    // A fragment moved down a device px no longer joins its line.
+    const i = dump.nodes.findIndex((x) => x.kind === 'text' && x.lines.length >= 2 && x.lines[1]?.deviceEdges.top === x.lines[0]?.deviceEdges.top);
+    const moved = { ...dump, nodes: dump.nodes.map((x, k) => (k !== i ? x : { ...x, lines: x.lines.map((l, j) => (j === 1 ? { ...l, deviceEdges: { ...l.deviceEdges, top: l.deviceEdges.top + 1 } } : l)) })) };
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(checkDumpBreaks(moved, v).problems.map((p) => p.text)).toEqual([dump.nodes[i]?.id]);
+  });
 });

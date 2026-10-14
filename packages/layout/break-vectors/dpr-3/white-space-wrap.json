@@ -1,0 +1,24 @@
+{
+  "case": "white-space-wrap",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","lines":[[0,12],[12,14]]},
+    {"id":"b:text0","lines":[[0,10],[10,14]]},
+    {"id":"c:text0","lines":[[0,1],[1,2],[2,4]]},
+    {"id":"d:text0","lines":[[0,3]]},
+    {"id":"e:text0","lines":[[0,5],[5,7]]},
+    {"id":"f:text0","lines":[[0,13],[13,15]]},
+    {"id":"g:text0","lines":[[0,14],[14,16]]},
+    {"id":"h:text0","lines":[[0,4],[4,14]]},
+    {"id":"i:text0","lines":[[0,4]]},
+    {"id":"j:text0","lines":[[0,10]]},
+    {"id":"k:text0","lines":[[0,9],[9,14]]},
+    {"id":"l:text0","lines":[[0,12],[12,14]]},
+    {"id":"m:text0","lines":[[0,12],[12,19]]},
+    {"id":"n:text0","lines":[[0,3],[3,8]]},
+    {"id":"o:text0","lines":[[0,11],[11,13]]},
+    {"id":"p:text0","lines":[[0,6],[6,13]]},
+    {"id":"r1:text0","lines":[[0,5]]},
+    {"id":"r2:text0","lines":[[0,5]]}
+  ]
+}

@@ -240,7 +240,9 @@ const ITEM_ALIGN: readonly GridSelfAlign[] = ['normal', 'stretch', 'start', 'end
 
 /**
  * A justify-items or justify-self value as a grid self position. legacy <position> aligns grid items by the position; unsafe is
- * Chrome's default overflow behaviour for grid items; safe, baseline and anchor-center are not supported yet.
+ * Chrome's default overflow behaviour for grid items. Baseline alignment in the inline axis is refused: the engine aligns grid items
+ * by their first baseline in the block axis only (align-self and align-items; last baseline is refused where they are lowered), as
+ * is the engine's GridSelfAlign. safe and anchor-center are not supported yet.
  */
 function selfAlign(p: Longhand, v: CssValue, allowAuto: boolean): GridSelfAlign | 'auto' {
   if (v.kind !== 'keyword') return refuse(p, v, 'expected a keyword');
@@ -249,7 +251,8 @@ function selfAlign(p: Longhand, v: CssValue, allowAuto: boolean): GridSelfAlign 
   else if (k.startsWith('unsafe ')) k = k.slice('unsafe '.length);
   if (allowAuto && k === 'auto') return 'auto';
   if ((ITEM_ALIGN as readonly string[]).includes(k)) return k as GridSelfAlign;
-  return refuse(p, v, 'safe alignment, baseline alignment and anchor-center in a grid are not supported yet');
+  if (k === 'baseline' || k === 'last baseline') return refuse(p, v, 'baseline alignment in the inline axis of a grid is not supported yet (grid items align by baseline in the block axis only, with align-self or align-items)');
+  return refuse(p, v, 'safe alignment and anchor-center in a grid are not supported yet');
 }
 
 /** css-grid-2 §7: the grid input of a display: grid element. */
@@ -445,6 +448,40 @@ export function lowerGridItem(container: GridContainer, get: Get): GridItemStyle
   return {
     column: resolveAxis(container.columns, 'grid-column-start', 'grid-column-end', get),
     row: resolveAxis(container.rows, 'grid-row-start', 'grid-row-end', get),
+    justifySelf: selfAlign('justify-self', get('justify-self'), true),
+  };
+}
+
+/**
+ * Blink GridPlacement::ResolveOutOfFlowItemGridLines before translation: the resolved lines of each side that is not auto (a span
+ * is not auto); an automatic position leaves both sides auto. The engine treats a line outside the implicit grid as auto.
+ */
+function outOfFlowAxis(axis: AxisLines, startProp: Longhand, endProp: Longhand, get: Get): GridSpan {
+  const span = resolveAxis(axis, startProp, endProp, get);
+  if (span.kind !== 'definite') return span;
+  const startAuto = positionOf(startProp, get(startProp)).kind === 'auto';
+  const endAuto = positionOf(endProp, get(endProp)).kind === 'auto';
+  if (startAuto) return { kind: 'end-line', line: span.end };
+  if (endAuto) return { kind: 'start-line', line: span.start };
+  return span;
+}
+
+const isAuto = (v: CssValue): boolean => v.kind === 'keyword' && v.value === 'auto';
+
+/**
+ * css-grid-2 §9.1: an absolutely positioned child's grid lines, which give its containing block, and its justify-self. Between
+ * two insets the box aligns by its own justify-self or align-self (css-position-3 §4.4), which the engine does not do yet.
+ */
+export function lowerOutOfFlowGridItem(container: GridContainer, get: Get): GridItemStyle {
+  const aligned = (p: Longhand): boolean => {
+    const v = get(p);
+    return !(v.kind === 'keyword' && (v.value === 'auto' || v.value === 'normal'));
+  };
+  if (!isAuto(get('left')) && !isAuto(get('right')) && aligned('justify-self')) refuse('justify-self', get('justify-self'), 'self-alignment between two insets is not supported yet');
+  if (!isAuto(get('top')) && !isAuto(get('bottom')) && aligned('align-self')) refuse('align-self', get('align-self'), 'self-alignment between two insets is not supported yet');
+  return {
+    column: outOfFlowAxis(container.columns, 'grid-column-start', 'grid-column-end', get),
+    row: outOfFlowAxis(container.rows, 'grid-row-start', 'grid-row-end', get),
     justifySelf: selfAlign('justify-self', get('justify-self'), true),
   };
 }

@@ -2,6 +2,7 @@
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
 import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
+import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
@@ -16,9 +17,11 @@ import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
+import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
+import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
@@ -34,13 +37,20 @@ import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
+import { SELECTION } from './fixture-groups/selection.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHADOW } from './fixture-groups/shadow.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
+import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
+import { SVG } from './fixture-groups/svg.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
+import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
+import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
+import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
@@ -48,6 +58,7 @@ import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { VISIBILITY } from './fixture-groups/visibility.ts';
+import { WHITE_SPACE } from './fixture-groups/white-space.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 
 /**
@@ -104,6 +115,7 @@ export type FixtureSpec =
 export const GROUPS = {
   aliases: ALIASES,
   animations: ANIMATIONS,
+  'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
   'block-elements': BLOCK_ELEMENTS,
@@ -118,9 +130,11 @@ export const GROUPS = {
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
+  'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
   gradients: GRADIENTS,
   grid: GRID,
+  'inert-layout': INERT_LAYOUT,
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
   'inline-tags': INLINE_TAGS,
@@ -136,13 +150,20 @@ export const GROUPS = {
   radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
+  selection: SELECTION,
   selectors: SELECTORS,
   shadow: SHADOW,
   showcase: SHOWCASE,
+  'sizing-keywords': SIZING_KEYWORDS,
   'sizing-ratio': SIZING,
   states: STATES,
+  svg: SVG,
   'text-calibration': TEXT_CALIBRATION,
+  'text-decoration': TEXT_DECORATION,
+  'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,
+  'text-overflow': TEXT_OVERFLOW,
+  'text-spacing': TEXT_SPACING,
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
   transforms: TRANSFORMS,
@@ -150,6 +171,7 @@ export const GROUPS = {
   units: UNITS,
   values: VALUES,
   visibility: VISIBILITY,
+  'white-space': WHITE_SPACE,
   'writing-mode': WRITING_MODE,
 } as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
 

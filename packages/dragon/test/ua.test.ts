@@ -7,13 +7,13 @@ import { INHERITED, LONGHANDS } from '../src/css/properties.ts';
 import { properties, webrefVersion } from '../src/css/grammar.generated.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import { borderWidthKeywords, chromeVersion, computed, platform, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
-import { referenceDataset, TEXT_FONT_LONGHANDS } from '../src/ua/datasets.ts';
+import { referenceDataset, UNCAPTURED_LONGHANDS } from '../src/ua/datasets.ts';
 import { elementKeyComputed, elementKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { phrasingKeyComputed, phrasingKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
 
-/** The longhands the UA capture holds: all but font-weight and font-style, which datasets.ts supplies as html.css specified rows. */
-const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(TEXT_FONT_LONGHANDS as readonly string[]).includes(p));
+/** The longhands the UA capture holds: all but font-weight and font-style (datasets.ts html.css rows) and font-synthesis. */
+const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(UNCAPTURED_LONGHANDS as readonly string[]).includes(p));
 
 describe('captured Chrome defaults and the webref grammar', () => {
   it('pin Chrome 145.0.7632.6 and @webref/css 8.7.5, captured on darwin-arm64', () => {
@@ -25,6 +25,8 @@ describe('captured Chrome defaults and the webref grammar', () => {
     for (const tag of Object.keys(computed) as (keyof typeof computed)[]) {
       for (const p of CAPTURED_LONGHANDS) expect(computed[tag][p], `${tag} ${p}`).toBeTypeOf('string');
       for (const p of LONGHANDS) expect(properties[p], p).toBeDefined();
+      // The capture writes no uncaptured longhand (capture-ua-defaults.ts reads UNCAPTURED_LONGHANDS); the dataset supplies them.
+      for (const p of UNCAPTURED_LONGHANDS) expect(p in computed[tag], `${tag} ${p}`).toBe(false);
     }
     expect(computed.div.display).toBe('block');
     expect(computed.body['margin-top']).toBe('8px');
@@ -150,6 +152,8 @@ describe('dependency boundaries', () => {
       if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       // CASC 2: css/chrome-number.ts writes registered @property numbers as Chrome 145 serialises them (six significant digits, %g; probed in casc-property); only that file.
       if (f.endsWith(join('src', 'css', 'chrome-number.ts'))) continue;
+      // SVG-a1: analysis/elements/svg-path.ts reproduces Chrome's float32 path-number arithmetic (svg.test.ts pins it); only that file.
+      if (f.endsWith(join('src', 'analysis', 'elements', 'svg-path.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });
@@ -186,7 +190,7 @@ describe('UA longhands of the element keys (ELB-2)', () => {
 describe('UA longhands of the phrasing keys (INL-U)', () => {
   it('pins the longhands a Chrome UA rule sets on br, strong, b, em, i, code, small, sub, sup and label', () => {
     expect(phrasingKeyLonghands).toEqual({
-      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size'], sup: ['font-size'], label: [],
+      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size', 'vertical-align'], sup: ['font-size', 'vertical-align'], label: [],
     });
     for (const key of Object.keys(phrasingKeyComputed) as (keyof typeof phrasingKeyComputed)[]) {
       for (const p of CAPTURED_LONGHANDS) expect(phrasingKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');

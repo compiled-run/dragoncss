@@ -1,8 +1,8 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Direction, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
+import type { Auto, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, max, min, sub, ZERO } from './units.ts';
-import type { Edges, Frag, HeightBasis, MarginResolved, OutOfFlow, Placed, Point } from './box.ts';
+import type { Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMaxWith,
   borderBoxFromSpecified,
@@ -11,6 +11,9 @@ import {
   inlineMinMaxWith,
   INDEFINITE,
   isScrollContainer,
+  lengthMaxWidth,
+  lengthMinWidth,
+  lengthWidth,
   resolveBorder,
   resolveInlineLengthWith,
   resolveMarginWith,
@@ -20,12 +23,14 @@ import {
 } from './box.ts';
 import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
-import { layoutGridContainer } from './grid.ts';
+import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
 import { layoutInline } from './inline.ts';
+import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import type { TextMeasurer } from './text.ts';
+import { unsupported } from './unsupported.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
 export type EngineFaults = {
@@ -123,6 +128,12 @@ export type EngineFaults = {
   readonly metricRoundingSwapped: boolean;
   /** Text outside Latin, Common and Inherited is shaped instead of refused (R4). */
   readonly latinCheckSkipped: boolean;
+  /** TXT2-b: no letter spacing after the last cluster of a shaped item (ShapeResult::ApplySpacing). */
+  readonly trailingSpacingDropped: boolean;
+  /** TXT2-b: letter spacing after every code point of a shaped cluster instead of once per cluster. */
+  readonly spacingPerCodePoint: boolean;
+  /** TXT2-b: HarfBuzz keeps liga, clig and calt under nonzero letter spacing (font_features.cc). */
+  readonly ligaturesKept: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -131,6 +142,30 @@ export type EngineFaults = {
   readonly gutterReserved: boolean;
   /** A scroll container's scrollable overflow leaves out its end padding after the in-flow content (overflow.ts). */
   readonly overflowIgnoresPadding: boolean;
+  /** An inline-block's baseline is its first baseline instead of its last line box's (CSS2 §10.8.1). */
+  readonly inlineBlockFirstBaseline: boolean;
+  /** A scroll container inline-block keeps its content baseline instead of its bottom margin edge (CSS2 §10.8.1). */
+  readonly overflowBaselineIgnored: boolean;
+  /** An inline-flex box's baseline is its last item's instead of the flex container's first baseline (css-flexbox-1 §8.5). */
+  readonly inlineFlexLastBaseline: boolean;
+  /** An atomic inline's margins take no space: its border box is its advance and its line height contribution. */
+  readonly atomicMarginExcluded: boolean;
+  /** No soft wrap opportunity before or after an atomic inline (Blink line_breaker.cc allows both). */
+  readonly noBreakAroundAtomic: boolean;
+  /** An atomic inline with an auto width fills the available width instead of shrinking to fit (CSS2 §10.3.9). */
+  readonly atomicShrinkToFitIgnored: boolean;
+  /** text-overflow: the ellipsis is shaped in the truncated text's font instead of the line's (the block's) font. */
+  readonly ellipsisInTextFont: boolean;
+  /** text-overflow: a font without U+2026 draws one '.' instead of "..." (line_truncator.cc ComputeEllipsisText). */
+  readonly noDotsFallback: boolean;
+  /** text-overflow: a truncated text keeps only its truncated fragment, so its size shrinks to what is drawn. */
+  readonly truncateChangesBlockSize: boolean;
+  /** TXT2-c: a run of preserved spaces advances as one space. */
+  readonly preservedSpaceCollapsed: boolean;
+  /** TXT2-c: pre-wrap spaces before a soft wrap opportunity count toward the fit instead of hanging. */
+  readonly trailingPreWrapNotHanging: boolean;
+  /** TXT2-c: break-spaces spaces before a soft wrap opportunity hang, as pre-wrap spaces do. */
+  readonly breakSpacesHanging: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -181,10 +216,25 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   softHyphenWidthMissing: false,
   metricRoundingSwapped: false,
   latinCheckSkipped: false,
+  trailingSpacingDropped: false,
+  spacingPerCodePoint: false,
+  ligaturesKept: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,
   overflowIgnoresPadding: false,
+  inlineBlockFirstBaseline: false,
+  overflowBaselineIgnored: false,
+  inlineFlexLastBaseline: false,
+  atomicMarginExcluded: false,
+  noBreakAroundAtomic: false,
+  atomicShrinkToFitIgnored: false,
+  ellipsisInTextFont: false,
+  noDotsFallback: false,
+  truncateChangesBlockSize: false,
+  preservedSpaceCollapsed: false,
+  trailingPreWrapNotHanging: false,
+  breakSpacesHanging: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
@@ -218,6 +268,10 @@ export type ContentsResult = {
   /** Margins of descendants that adjoin this box's bottom margin. */
   readonly escapeBottom: Strut;
   readonly collapseThrough: boolean;
+  /** The last baseline from the border-box top (INL2a, inline-block baselines), or null when the box has none. */
+  readonly lastBaseline: LU | null;
+  /** The id of the flex container whose last baseline would decide lastBaseline, or '' when none does (Dragon refuses that case). */
+  readonly lastBaselineFlex: string;
 };
 
 /** A set of adjoining vertical margins, kept as Blink NGMarginStrut does: the largest positive and the most negative. */
@@ -279,8 +333,8 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
-    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow, inflow: null };
+    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: box.id };
   }
 
   if (s.display === 'grid') {
@@ -295,8 +349,10 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       },
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
-    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+    const outOfFlow = gridOutOfFlow(ctx, box, r.outOfFlow, a.borderBoxWidth, height, pad, bor);
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow, inflow: isScrollContainer(s) ? r.inflow : null };
+    // A grid container's last baseline is not modelled: an inline-block whose last line box would come from it is refused, as for flex.
+    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: box.id };
   }
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
@@ -320,11 +376,11 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const baseline = clampScrollBaseline(box, r.baseline, height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
-    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough };
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex };
   }
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
   const escapeBottom = bottomAdjoins && (height === add(intrinsic, vbp) || ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;
-  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: r.escapeTop, escapeBottom, collapseThrough };
+  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex };
 }
 
 export type BlockLevelResult = {
@@ -358,6 +414,9 @@ export type InlineContainer = {
   readonly newFormattingContext: boolean;
 };
 
+const AUTO: Auto = { kind: 'auto' };
+const NONE: NoneValue = { kind: 'none' };
+
 // CSS2 §10.3.3: block-level, non-replaced width and horizontal margins in normal flow. The containing block's direction decides
 // which margin is the start margin; when over-constrained the end margin is ignored (margin-left in rtl). Every step is Blink's
 // LayoutUnit arithmetic in Blink's order, so a saturated sum lands where Chrome's does (block_layout_algorithm.cc and
@@ -370,10 +429,27 @@ export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbD
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const m = inlineMargins(ctx, s, cbInline, cbDirection, container);
-  const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
   const stretched = max(hbp, sub(sub(m.available, m.start.value), m.end.value));
-  const raw = specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
-  const width = specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
+  // css-sizing-3 §3.2: min-content and max-content are the box's own content sizes plus its border and padding, fit-content is
+  // min(max-content, max(min-content, the stretch size)); width, min-width and max-width resolve them alike (Blink
+  // ResolveInlineLengthInternal, length_utils.cc at 145.0.7632.6).
+  const keyword = (k: string): LU | null => {
+    if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
+    if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
+    const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
+    if (k === 'min-content') return minC;
+    const maxC = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
+    if (k === 'max-content') return maxC;
+    return min(maxC, max(minC, stretched));
+  };
+  const keywordWidth = keyword(s.width.kind);
+  const keywordMin = keyword(s.minWidth.kind);
+  const keywordMax = keyword(s.maxWidth.kind);
+  const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
+  const raw = keywordWidth !== null ? keywordWidth : specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
+  const mm: MinMax = { min: keywordMin !== null ? keywordMin : lengths.min, max: keywordMax !== null ? keywordMax : lengths.max };
+  const width = keywordWidth === null && specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, mm), hbp);
   return placeWithMargins(m, container, width);
 }
 
@@ -476,6 +552,9 @@ type FlowResult = {
   /** The first baseline relative to the border-box top, or null. */
   readonly baseline: LU | null;
   readonly outOfFlow: readonly OutOfFlow[];
+  /** The last baseline relative to the border-box top, and the flex container that would decide it instead (ContentsResult). */
+  readonly lastBaseline: LU | null;
+  readonly lastBaselineFlex: string;
 };
 
 // CSS2 §9.4.1 and §8.3.1: stacks block-level children, collapsing adjoining vertical margins. css-align-3 §9.1: the first
@@ -486,7 +565,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     // CSS2 §9.2.1.1: the compiler wraps inline content beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
     const r = layoutInline(ctx, box, a.contentWidth, a.origin);
     // CSS2 §9.4.2: a formatting context with no line boxes (only empty inline boxes) is empty, so margins collapse through it.
-    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [] };
+    const last = r.lastBaseline === null ? null : add(a.origin.y, r.lastBaseline);
+    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [], lastBaseline: last, lastBaselineFlex: '' };
   }
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   const direction = directionOf(ctx, box);
@@ -496,6 +576,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let seen = false;
   let escapeTop = EMPTY_STRUT;
   let baseline: LU | null = null;
+  let lastBaseline: LU | null = null;
+  let lastBaselineFlex = '';
   const outOfFlow: OutOfFlow[] = [];
   for (const kid of kids) {
     if (kid.kind !== 'box' && kid.kind !== 'replaced') continue;
@@ -508,6 +590,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         box: kid,
         x: rtl ? { offset: add(a.origin.x, a.contentWidth), edge: 'far' } : { offset: a.origin.x, edge: 'near' },
         y: { offset: add(a.origin.y, sy), edge: 'near' },
+        area: null,
       });
       continue;
     }
@@ -520,7 +603,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).
       const frag = layoutReplacedInFlow(ctx, kid, a.contentWidth, a.childBasis);
       inline = placeBlockLevel(ctx, kid.style, a.contentWidth, direction, container, frag.width);
-      c = { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+      // A replaced box has no line boxes, so it gives an inline-block no last baseline (CSS2 §10.8.1).
+      c = { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: '' };
     } else {
       inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction, container);
       c = layoutContents(ctx, kid, {
@@ -552,13 +636,25 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     }
     const at: Placed = { frag: c.frag, x: inline.x, y: add(a.origin.y, y) };
     if (baseline === null && c.frag.baseline !== null) baseline = add(at.y, c.frag.baseline);
+    // Blink's last baseline (block_layout_algorithm.cc:3622-3647, measured in notes/T059-inl2.md): the last in-flow child with
+    // one; a scroll container child gives its bottom margin edge, and a flex child's last baseline is not modelled.
+    if (isScrollContainer(kid.style)) {
+      lastBaseline = add(add(at.y, c.frag.height), inline.marginBottom);
+      lastBaselineFlex = '';
+    } else if (c.lastBaselineFlex !== '') {
+      lastBaseline = null;
+      lastBaselineFlex = c.lastBaselineFlex;
+    } else if (c.lastBaseline !== null) {
+      lastBaseline = add(at.y, c.lastBaseline);
+      lastBaselineFlex = '';
+    }
     // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
     const offset = relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults);
     placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
     if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
   }
-  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow };
-  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline, outOfFlow };
+  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow, lastBaseline, lastBaselineFlex };
+  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex };
 }
 
 export type { Edges };

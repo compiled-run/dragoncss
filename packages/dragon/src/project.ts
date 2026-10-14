@@ -3,6 +3,7 @@
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
 import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
+import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
@@ -11,15 +12,16 @@ import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
 import { PROPERTY_ROLE } from './css/properties.ts';
-import type { Declaration, EnclosedRules, Rule, RuleCondition } from './css/stylesheet.ts';
+import type { Declaration, EnclosedRules, LonghandValue, Rule, RuleCondition } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
 import { checkTranslucent } from './analysis/paint-values/effects.ts';
+import { checkSelectable } from './analysis/selection.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
-import { inDomain, validateInput } from './analysis/input.ts';
+import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
@@ -28,6 +30,7 @@ import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './a
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
+import { refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -52,9 +55,9 @@ import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
 import type { FontSelectionRequest } from './fonts/selection.ts';
 import { foldFamily } from './fonts/selection.ts';
 import { synthesisTraits } from './fonts/metrics.ts';
-import type { TextFontValue } from './fonts/weight.ts';
+import type { SynthesisAllowed, TextFontValue } from './fonts/weight.ts';
 import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from './fonts/weight.ts';
-import { textFontOfProps } from './analysis/computed.ts';
+import { synthesisAllowedOf, textFontOfProps } from './analysis/computed.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
 import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
@@ -350,7 +353,10 @@ function blocksTarget(d: Diagnostic, t: Target): boolean {
   return d.severity === 'error' && (d.target === null || d.target === t);
 }
 
-/** Tags and attributes are checked on every template node, including both arms of every branch. */
+/** The profile features of the svg property family (fill, stroke, stroke-width). */
+const SVG_PROFILE_FEATURE = /^(fill|stroke|stroke-width):/;
+
+/** Tags and attributes are checked on every template node, including both arms of every branch and every slot's children. */
 function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): void {
   for (const n of nodes) {
     if (n.kind === 'element') {
@@ -368,6 +374,8 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
           if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
           const src = iframeSrcRefusal(n.tag, a.name, c.value);
           if (src !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${src}`, manual: 'Give the iframe an absolute https URL.' }));
+          const svg = svgAttributeRefusal(n.tag, a.name, c.value);
+          if (svg !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name}="${c.value}" on ${n.id} is not supported: ${svg}`, manual: 'Write the attribute with plain numbers (or px) and the commands M, L, H, V, C, S, Q, T and Z.' }));
         }
       }
       checkTemplates(n.children, diagnostics);
@@ -378,6 +386,52 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
       for (const s of n.slots) checkTemplates(s.children, diagnostics);
     }
   }
+}
+
+type SvgContext = 'html' | 'svg' | 'shape';
+type SlotScope = ReadonlyMap<string, { readonly children: readonly TreeNode[]; readonly slots: SlotScope; readonly stack: readonly string[] }>;
+
+/**
+ * The SVG content model (SVG-a1), checked on the tree as link.ts expands it: a call's root sits where the call sits and a
+ * projection's slot children sit where the projection sits, so a component is checked in each context it is called in. An <svg>
+ * holds only <path>, <rect> and <circle>, a shape holds nothing, and a shape outside an <svg> is not drawn by Chrome, so each is
+ * refused. Both arms of every branch are walked; a component no call reaches renders nothing and is not walked. A call cycle is
+ * left to linkDocument (DRAGON_CALL_CYCLE).
+ */
+function checkSvgContent(valid: ValidInput, diagnostics: Diagnostic[]): void {
+  const reported = new Map<TreeNode, Set<SvgContext>>();
+  const refuse = (n: TreeNode, inside: SvgContext, message: string): void => {
+    const seen = reported.get(n) ?? new Set<SvgContext>();
+    if (seen.has(inside)) return;
+    seen.add(inside);
+    reported.set(n, seen);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message }));
+  };
+  const walk = (nodes: readonly TreeNode[], inside: SvgContext, slots: SlotScope, stack: readonly string[]): void => {
+    for (const n of nodes) {
+      if (n.kind === 'text') {
+        if (inside !== 'html' && n.text.trim() !== '') refuse(n, inside, `text inside an <svg> is not supported: SVG text waits for the SVG structure package SVG-b`);
+      } else if (n.kind === 'element') {
+        if (SUPPORTED_TAGS.has(n.tag) && inside !== 'html' && !(inside === 'svg' && isSvgShapeTag(n.tag))) {
+          refuse(n, inside, `<${n.tag}> ${n.id} inside ${inside === 'svg' ? 'an <svg>' : 'an SVG shape'} is not supported: an <svg> draws only <path>, <rect> and <circle> children until the SVG structure package SVG-b`);
+        } else if (inside === 'html' && isSvgShapeTag(n.tag)) {
+          refuse(n, inside, `<${n.tag}> ${n.id} outside an <svg> is not supported: Chrome draws an SVG shape only inside an <svg>`);
+        }
+        walk(n.children, n.tag === 'svg' ? (inside === 'html' ? 'svg' : 'shape') : isSvgShapeTag(n.tag) ? 'shape' : inside, slots, stack);
+      } else if (n.kind === 'branch') {
+        walk(n.then, inside, slots, stack);
+        walk(n.else, inside, slots, stack);
+      } else if (n.kind === 'call') {
+        const callee = valid.components.get(n.component);
+        if (callee === undefined || stack.includes(callee.id)) continue;
+        walk(callee.root, inside, new Map(n.slots.map((s) => [s.name, { children: s.children, slots, stack }])), [...stack, callee.id]);
+      } else {
+        const slot = slots.get(n.slot);
+        if (slot !== undefined) walk(slot.children, inside, slot.slots, slot.stack);
+      }
+    }
+  };
+  walk(valid.rootComponent.root, 'html', new Map(), [valid.rootComponent.id]);
 }
 
 const list = (values: readonly string[]): string => (values.length <= 1 ? values.join('') : `${values.slice(0, -1).join(', ')} or ${values[values.length - 1] as string}`);
@@ -458,9 +512,9 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
 }
 
 /** The text font of an element: its computed font-weight and font-style (analysis/computed.ts, fonts/weight.ts). */
-type TextFont = TextFontValue;
+type TextFont = TextFontValue & { readonly synthesis: SynthesisAllowed };
 
-const textFontOf = (el: ResolvedElement): TextFont => textFontOfProps(el.props);
+const textFontOf = (el: ResolvedElement): TextFont => ({ ...textFontOfProps(el.props), synthesis: synthesisAllowedOf(el.props) });
 
 const describeFont = (font: TextFont): string => `font-weight ${serializeFontWeight(font.weight)} and font-style ${serializeFontStyle(font.style)}`;
 
@@ -468,8 +522,8 @@ const describeFont = (font: TextFont): string => `font-weight ${serializeFontWei
  * Why Chrome would draw a face synthesized (fonts/weight.ts synthesisOf), or null. Where the face file has the bold or italic trait,
  * Chrome suppresses that synthesis (font_custom_platform_data.cc:286-287); no Chrome case proves what it then draws, so it is refused.
  */
-function syntheticStyle(face: DeclaredFace, request: FontSelectionRequest): string | null {
-  const synthetic = synthesisOf(face.capabilities, request);
+function syntheticStyle(face: DeclaredFace, request: FontSelectionRequest, allowed: SynthesisAllowed): string | null {
+  const synthetic = synthesisOf(face.capabilities, request, undefined, allowed);
   if (synthetic === null || face.source === null) return synthetic;
   const traits = synthesisTraits(face.source.font);
   if (synthetic === 'synthetic bold' ? traits.bold : traits.italic) return `${synthetic} that Chrome suppresses because the face file has the ${synthetic === 'synthetic bold' ? 'bold' : 'italic'} trait, which Dragon does not model`;
@@ -490,7 +544,7 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   const face = (rendered[0] as { face: DeclaredFace }).face;
   if (face.source === null) return { kind: 'refused', reason: 'its face has no bytes' };
   if (face.source.font.variable) return { kind: 'refused', reason: 'it resolves to a variable face, which TXT1b proves' };
-  const synthetic = syntheticStyle(face, request);
+  const synthetic = syntheticStyle(face, request, font.synthesis);
   if (synthetic !== null) return { kind: 'refused', reason: `Chrome would draw it in ${synthetic} (DRAGON_SYNTHETIC_FONT_STYLE)` };
   return { kind: 'face', id: `sha256:${sha256HexBytes(face.source.bytes)}` };
 }
@@ -532,7 +586,7 @@ function checkSyntheticStyles(root: ResolvedElement, fonts: ProjectFonts, target
       if (support === null || support.kind !== 'resolved') continue;
       const request = requestOf(own.weight, own.style);
       for (const { family: name, face } of renderedFaces(bundledFaces(fonts), support.resolutions, c.text, request)) {
-        const synthetic = syntheticStyle(face, request);
+        const synthetic = syntheticStyle(face, request, own.synthesis);
         if (synthetic === null) continue;
         const text = synthetic === 'synthetic bold' || synthetic === 'synthetic oblique'
           ? `text ${c.node.address} in ${name} at ${describeFont(own)} would be drawn in ${synthetic}: no bundled ${name} face has that ${synthetic === 'synthetic bold' ? 'weight' : 'style'}, and ${target} cannot reproduce Skia's synthetic style`
@@ -787,8 +841,9 @@ const deferralKey = (d: Diagnostic): string => JSON.stringify(d);
 /**
  * A native profile refusal of a font-family, font-weight or font-style feature: they choose the face, and only a shaped case
  * (real faces) proves one beyond Ahem, which proves no native row until TXT1a-2 phase R, so the engine lane defers them too.
+ * TXT-W2: font-synthesis-weight, -style and -small-caps choose whether that face is synthesized, so they defer with it.
  */
-const FACE_FEATURES = ['font-family:', 'font-weight:', 'font-style:'] as const;
+const FACE_FEATURES = ['font-family:', 'font-weight:', 'font-style:', 'font-synthesis-weight:', 'font-synthesis-style:', 'font-synthesis-small-caps:'] as const;
 const isFontProfileRefusal = (d: Diagnostic): boolean =>
   d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && (d.code === 'DRAGON_UNSUPPORTED_VALUE' || d.code === 'DRAGON_UNPROVEN_CONTEXT')
   && d.profile !== null && FACE_FEATURES.some((f) => d.profile?.feature.startsWith(f) === true);
@@ -810,11 +865,14 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     // Off by default (InternalOptions.nativeRealFaces): native targets keep refusing real faces, and the engine lane lowers them in
     // engine mode (TXT1a-1's deferred font refusal).
     const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, options.faults);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
+    // (The second predicate is INL2a's: an atomic inline is proven only beside Ahem text, on every target.)
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    // T154: outside the parity lanes, native refuses an author user-select but none (P6c); the lanes run it to prove its web rows.
+    if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
@@ -832,8 +890,21 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
         const profile = profileFor(options.supportProfiles, t);
         if (statusOf(profile, u.feature, u.context) !== 'unsupported') continue;
         const proven = provenContexts(profile, u.feature);
-        if (proven.length === 0) continue;
         const id = `${t}|${u.key}|${u.declaration.span.start}|${u.declaration.span.source.uri}`;
+        // checkValues reports a CSS value no context proves; an SVG presentation attribute has no rule, so it is reported here.
+        if (proven.length === 0 && u.declaration.presentationHint === true && !reported.has(id)) {
+          reported.add(id);
+          const inCtx = supportedValuesIn(profile, u.property, u.context);
+          const lh = u.declaration.longhands[0] as LonghandValue;
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+            origin: authored(u.declaration.valueSpan),
+            target: t,
+            message: `${u.property}: ${valueToString(lh.value)} (set by the ${u.property}="${u.declaration.text}" attribute) is unsupported (support profile ${profile.revision}); ${inCtx.length > 0 ? `in ${u.context} use ${list(inCtx)}` : `no ${u.property} value is proven in ${u.context}`}`,
+            manual: inCtx.length > 0 ? `Use one of: ${inCtx.join(', ')}.` : `Remove the ${u.property} attribute; ${t} supports no value of ${u.property} yet.`,
+            profile: { target: t, profileRevision: profile.revision, feature: u.feature, context: null, status: 'unsupported' },
+          }));
+        }
+        if (proven.length === 0) continue;
         if (reported.has(id)) continue;
         reported.add(id);
         const inCtx = supportedValuesIn(profile, u.property, u.context);
@@ -1157,6 +1228,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
     }
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
+    checkSvgContent(valid, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
     // reports a rule for the targets of the bands it applies in, so a rule in no band blocks nothing.
     const bandList = bands === null ? [null] : bands.partition.bands;
@@ -1204,8 +1276,17 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
       // MQ-R1: per-band transition and animation lists are refused on native until MQ-Rt, as on web until ANIM-mq.
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
-      // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused.
-      refuseAnimatedGradients(animation, cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), nativeTargets, diagnostics);
+      // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
+      // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. MQ-R1: native switches
+      // bands at run time, so every band's cases and animations are checked (each refusal once).
+      const gradientsReported = new Set<string>();
+      const doublesReported = new Set<string>();
+      bandCases.forEach((r, k) => {
+        const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
+        const a = bandAnimations[k] as AnimationAnalysis;
+        refuseAnimatedGradients(a, roots, nativeTargets, diagnostics, gradientsReported);
+        refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
+      });
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
@@ -1222,9 +1303,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
-      // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native, but a user's compile refuses them
-      // there until PNT1-opacity-b and a clip-chain view, so a document that uses one is lane-only on native and proves no native
-      // row (pipeline.ts).
+      // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
+      // but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and P6c, so a document that uses one is
+      // lane-only on native and proves no native row (pipeline.ts).
       if (options.interactionLanes) {
         const pending: Diagnostic[] = [];
         const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
@@ -1232,6 +1313,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) {
             if (r === null) continue;
             checkTranslucent(r, native, pending, new Set());
+            checkSelectable(r, native, pending, new Set());
             checkStackingClips(r, propagatedFrom(r), native, pending, new Set());
           }
         }
@@ -1270,6 +1352,16 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const values: Diagnostic[] = [];
       checkValues(rules, targets, profiles, [], values, keys, scopeOf);
       diagnostics.splice(valuesAt, 0, ...values);
+    }
+  }
+  // SVG-a2: a native row of the svg family is derived from the parity run (chrome-dual computed values, capped at caveat as every
+  // native paint row is; device-pixels judges the drawing). In an enforced parity-lanes compile a value with no row yet is lane-only,
+  // so the lanes still lower the shapes; a compile outside the lanes refuses it until its row exists.
+  if (options.interactionLanes) {
+    const svgNative = diagnostics.filter((d) => d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && d.profile !== undefined && d.profile !== null && SVG_PROFILE_FEATURE.test(d.profile.feature));
+    if (svgNative.length > 0) {
+      diagnostics.splice(0, diagnostics.length, ...diagnostics.filter((d) => !svgNative.includes(d)));
+      laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || svgNative.some((d) => d.target === t));
     }
   }
   // The font manifest enters the digest only when the project has fonts, so a project without them keeps its digest.

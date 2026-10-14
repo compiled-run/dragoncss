@@ -1,14 +1,19 @@
 // The radius module's sample points (T046 §2): every rounded box, resolved with the TS paint-radius.ts (the reference the device
 // runs translated), gets one point clear inside and one clear outside each rounded corner's arc along the corner diagonal (rule
-// radius); an overflow: hidden rounded box gets the same pair at its padding-edge arcs (rule clip). A base colour point within
-// SAMPLE_INSET_DEVICE_PX of any rounded arc is suppressed, since arc pixels are antialiased (edge samples, decisions.md Paint);
-// edge scanlines stay, since they sit at mid-side where their own box's arc meets its side tangentially, unless they come near
-// another box's arc, whose antialiasing then decides their colours (the whole scanline is dropped).
-import { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from '@dragon/layout';
+// radius); an overflow: hidden rounded box, and a rounded img with a border (its image is clipped there), get the same pair at
+// its padding-edge arcs (rule clip); a rounded double border gets the same pair at each rounded stripe edge (rule
+// radius:<id>:<corner>-outer-stripe or -inner-stripe), whose arcs count as arcs below. A point on non-flat image content is not
+// used. A base colour point within SAMPLE_INSET_DEVICE_PX of any rounded arc is suppressed, since arc pixels are antialiased (edge
+// samples, decisions.md Paint); edge scanlines stay, since they sit at mid-side where their own box's arc meets its side
+// tangentially, unless they come near another box's arc, whose antialiasing then decides their colours (the whole scanline is
+// dropped).
+import { borderDoubleRings, hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import type { SampleBox, SamplePoint } from '../samples.ts';
 import { ruleKind, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
+import { dropsBaseAt } from './image.ts';
 import { nearRing } from './outline.ts';
+import { replacedBoxes } from './replaced-geometry.ts';
 import { underShadow } from './shadow.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
 
@@ -89,7 +94,26 @@ export function nearArc(a: Arc, x: number, y: number, inset: number = SAMPLE_INS
   return !clearInside(a, x, y, inset) && !clearOutside(a, x, y, inset);
 }
 
-type Rounded = { readonly box: SampleBox; readonly outer: readonly Arc[]; readonly inner: readonly Arc[]; readonly innerRect: readonly [number, number, number, number] };
+type Rounded = { readonly box: SampleBox; readonly outer: readonly Arc[]; readonly inner: readonly Arc[]; readonly stripes: readonly Arc[]; readonly stripeEdges: readonly { readonly rect: readonly [number, number, number, number]; readonly arcs: readonly Arc[] }[]; readonly innerRect: readonly [number, number, number, number] };
+
+/** Whether a node's four border sides are double, each at least 3 device px (BorderEdge::EffectiveStyle), so it paints two rings. */
+export function paintsDoubleRings(program: NativeProgram, b: SampleBox): boolean {
+  const styles = program.nodes.find((x) => x.id === b.id)?.writes.find((w) => w.kind === 'border-styles');
+  if (styles === undefined || styles.kind !== 'border-styles') return false;
+  const widths = [b.border.top, b.border.right, b.border.bottom, b.border.left];
+  return styles.styles.every((st, k) => st === 'double' && (widths[k] as number) >= 3);
+}
+
+/**
+ * The rects inside a rounded double border's band (the outer ring's inner edge, then the inner ring's outer edge) and their arcs,
+ * from borderDoubleRings; none for any other box.
+ */
+function stripes(program: NativeProgram, b: SampleBox, radii: readonly number[]): { readonly rects: [number, number, number, number][]; readonly arcs: Arc[][] } {
+  if (!paintsDoubleRings(program, b)) return { rects: [], arcs: [] };
+  const v = borderDoubleRings(b.left, b.top, b.right, b.bottom, [b.border.top, b.border.right, b.border.bottom, b.border.left], radii.slice(0, 8));
+  const rects = [4, 24].map((i): [number, number, number, number] => [v[i] as number, v[i + 1] as number, v[i + 2] as number, v[i + 3] as number]);
+  return { rects, arcs: rects.map((r, k) => rectArcs(...r, v.slice(k === 0 ? 16 : 32, k === 0 ? 24 : 40))) };
+}
 
 const cache = new WeakMap<PaintSampleContext, readonly Rounded[]>();
 
@@ -105,16 +129,20 @@ export function roundedBoxes(ctx: PaintSampleContext): readonly Rounded[] {
     const it = b.top + b.border.top;
     const ir = Math.max(il, b.right - b.border.right);
     const ib = Math.max(it, b.bottom - b.border.bottom);
-    out.push({ box: b, outer: rectArcs(b.left, b.top, b.right, b.bottom, r.slice(0, 8)), inner: rectArcs(il, it, ir, ib, r.slice(8, 16)), innerRect: [il, it, ir, ib] });
+    const st = stripes(ctx.program, b, r);
+    out.push({ box: b, outer: rectArcs(b.left, b.top, b.right, b.bottom, r.slice(0, 8)), inner: rectArcs(il, it, ir, ib, r.slice(8, 16)), stripes: st.arcs.flat(), stripeEdges: st.rects.map((rect, k) => ({ rect, arcs: st.arcs[k] ?? [] })), innerRect: [il, it, ir, ib] });
   }
   cache.set(ctx, out);
   return out;
 }
 
-/** Whether a pixel is near any rounded arc of the case: an outer arc, or a padding-edge arc of a box with a border or a clip. */
+/**
+ * Whether a pixel is near any rounded arc of the case: an outer arc, a rounded double border's stripe arc, or a padding-edge arc of
+ * a box with a border or a clip.
+ */
 export function nearAnyArc(ctx: PaintSampleContext, x: number, y: number): boolean {
   for (const rb of roundedBoxes(ctx)) {
-    if (rb.outer.some((a) => nearArc(a, x, y))) return true;
+    if (rb.outer.some((a) => nearArc(a, x, y)) || rb.stripes.some((a) => nearArc(a, x, y))) return true;
     const b = rb.box;
     const bordered = b.border.top + b.border.right + b.border.bottom + b.border.left > 0;
     if ((bordered || b.clips) && rb.inner.some((a) => nearArc(a, x, y))) return true;
@@ -171,7 +199,7 @@ const inImage = (ctx: PaintSampleContext, x: number, y: number): boolean => x >=
 export function nearOtherArc(ctx: PaintSampleContext, id: string, x: number, y: number): boolean {
   for (const rb of roundedBoxes(ctx)) {
     if (rb.box.id === id) continue;
-    if (rb.outer.some((a) => nearArc(a, x, y))) return true;
+    if (rb.outer.some((a) => nearArc(a, x, y)) || rb.stripes.some((a) => nearArc(a, x, y))) return true;
     const b = rb.box;
     const bordered = b.border.top + b.border.right + b.border.bottom + b.border.left > 0;
     if ((bordered || b.clips) && rb.inner.some((a) => nearArc(a, x, y))) return true;
@@ -198,6 +226,17 @@ function edgesCrossingArcs(ctx: PaintSampleContext): ReadonlySet<string> {
   return out;
 }
 
+/** Whether a node draws a replaced image. */
+function drawsImage(program: NativeProgram, id: string): boolean {
+  return program.nodes.find((x) => x.id === id)?.writes.some((w) => w.kind === 'replaced-image') === true;
+}
+
+/** Whether a pixel shows non-flat image content of any replaced box (image.ts dropsBaseAt). */
+function onNonFlatImage(ctx: PaintSampleContext, x: number, y: number): boolean {
+  for (const b of replacedBoxes(ctx).values()) if (dropsBaseAt(b, x, y)) return true;
+  return false;
+}
+
 export const RADIUS_SAMPLES: PaintSamples = {
   name: 'radius',
   keep: (p: SamplePoint, ctx: PaintSampleContext) => (ruleKind(p.rule) === 'edge' ? !edgesCrossingArcs(ctx).has(p.rule) : !nearAnyArc(ctx, p.x, p.y)),
@@ -207,7 +246,8 @@ export const RADIUS_SAMPLES: PaintSamples = {
       if (pair === null) return;
       // Each point must also be clear of every other arc of the case, so its colour is exact on both sides, of every shadow
       // layer, whose composite only the shadow rule's allowance covers, and of every outline ring's edges and rounded corners.
-      if (!pair.every((p) => inImage(ctx, p.x, p.y) && !nearAnyArc(ctx, p.x, p.y) && !underShadow(ctx, p.x, p.y) && !nearRing(ctx, p.x, p.y))) return;
+      // A point on an image must be on flat content (image.ts): resampling filters differ elsewhere.
+      if (!pair.every((p) => inImage(ctx, p.x, p.y) && !nearAnyArc(ctx, p.x, p.y) && !underShadow(ctx, p.x, p.y) && !nearRing(ctx, p.x, p.y) && !onNonFlatImage(ctx, p.x, p.y))) return;
       for (const p of pair) out.push({ x: p.x, y: p.y, rule });
     };
     for (const rb of roundedBoxes(ctx)) {
@@ -220,7 +260,13 @@ export const RADIUS_SAMPLES: PaintSamples = {
         if (inside !== undefined && !sidesAgree(ctx.program, b, a.corner) && inBorderBand(rb, inside.x, inside.y)) continue;
         push(pair, `radius:${b.id}:${a.corner}`);
       }
-      if (b.clips) for (const a of rb.inner) push(diagonalPair(ctx, a, rb.innerRect), `clip:${b.id}:${a.corner}`);
+      // A rounded double border's rings: a pair across each rounded stripe edge, so the gap between the rings is proven round.
+      rb.stripeEdges.forEach((edge, k) => {
+        for (const a of edge.arcs) push(diagonalPair(ctx, a, edge.rect), `radius:${b.id}:${a.corner}-${k === 0 ? 'outer' : 'inner'}-stripe`);
+      });
+      // A rounded img clips its image to the padding-edge curve; without a border that is the outer curve, sampled above.
+      const bordered = b.border.top + b.border.right + b.border.bottom + b.border.left > 0;
+      if (b.clips || (bordered && drawsImage(ctx.program, b.id))) for (const a of rb.inner) push(diagonalPair(ctx, a, rb.innerRect), `clip:${b.id}:${a.corner}`);
     }
     return out;
   },

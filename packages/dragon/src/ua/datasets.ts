@@ -1,9 +1,12 @@
 // Chrome UA and root defaults keyed by capture platform (docs/api.md §10.1). A reference environment on a platform with no
 // captured dataset is refused; it never borrows another platform's values.
+import { REFERENCE_PLATFORM } from './reference-platform.ts';
 import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
 import type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
 import { UNSTYLED_TAGS } from '../analysis/elements.ts';
+import { TEXT_FONT_LONGHANDS } from './uncaptured.ts';
+export { TEXT_FONT_LONGHANDS, UNCAPTURED_LONGHANDS } from './uncaptured.ts';
 
 export type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
 
@@ -27,6 +30,11 @@ export type UaDataset = {
   readonly userAgentTextFonts: { readonly [T in CapturedTag]: TextFontRow } & { readonly [K in PhrasingKey]?: TextFontRow };
   /** Chrome's minimum logical font size in px, which clamps an em font size under the keyword-sized root. */
   readonly minimumLogicalFontSize: number;
+  /**
+   * html.css:1501-1505, a:-webkit-any-link { color: -webkit-link; text-decoration: underline }, as captured on a[href] (an a whose
+   * href is unvisited: :visited never matches): the declared colour per direction and the decoration line.
+   */
+  readonly anyLink: { readonly color: { readonly ltr: string; readonly rtl: string }; readonly line: string };
   /** REPL-0: the replaced keys (iframe, img with a src), in tables of their own; uaRows reads them. */
   readonly replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [property: string]: string } };
   readonly replacedKeyLonghands: { readonly [K in ReplacedKey]: readonly string[] };
@@ -54,7 +62,7 @@ export type UaRows = {
 const NO_FORCED: DirRows = { ltr: {}, rtl: {} };
 
 function isReplacedKey(key: UaKey): key is ReplacedKey {
-  return key === 'iframe' || key === 'img[src]';
+  return key === 'iframe' || key === 'img[src]' || key === 'svg' || key === 'path' || key === 'rect' || key === 'circle';
 }
 
 /** The UA rows of a key, from the element tables or the replaced-key tables. */
@@ -65,11 +73,8 @@ export function uaRows(ua: UaDataset, key: UaKey): UaRows {
   return { computed: ua.computed[key], longhands: ua.userAgentLonghands[key], declared: ua.userAgentDeclared[key], contexts: ua.userAgentContexts[key], textFonts: ua.userAgentTextFonts[key], forced: NO_FORCED };
 }
 
-/** The platform the committed Chrome references and the UA dataset were captured on. */
-export const REFERENCE_PLATFORM = 'darwin-arm64';
-
-/** The longhands the UA text-font rows set: no captured table holds them, so they are not in computed or userAgentDeclared. */
-export const TEXT_FONT_LONGHANDS = ['font-weight', 'font-style'] as const;
+// In its own module so the capture scripts' platform check does not import the compiler and re-key on every profile change.
+export { REFERENCE_PLATFORM } from './reference-platform.ts';
 
 /**
  * Chromium 145 html.css: h1 to h6 { font-weight: bold }, b and strong { font-weight: bolder }, address, em and i { font-style: italic }.
@@ -97,7 +102,10 @@ function withSpecifiedTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark)
     }
     return [tag, rule];
   });
-  return { ...ds, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'] };
+  const declared = ds.elementKeyDeclared['a[href]'];
+  const line = ds.userAgentUnmodelled['a[href]']?.ltr['text-decoration-line'];
+  if (declared.ltr['color'] === undefined || declared.rtl['color'] === undefined || line === undefined) throw new Error(`${ds.platform}: the a[href] capture has no color or text-decoration-line`);
+  return { ...ds, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line } };
 }
 
 const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, withSpecifiedTextFonts(darwinArm64)]]);

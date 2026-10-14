@@ -4,6 +4,9 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
+import type { SvgScene } from './analysis/elements/svg.ts';
+export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
+import { svgSceneOf } from './analysis/elements/svg.ts';
 import type { Rgba8 } from './css/color.ts';
 import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
@@ -54,7 +57,7 @@ export { DIAGNOSTIC_CODES } from './diagnostics/codes.ts';
 export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
 export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
-export { collapseInlineContext, collapseInlineRun } from './analysis/resolve.ts';
+export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
 export { applyTextTransform } from './analysis/text-transform.ts';
 export type { TextTransform } from './analysis/text-transform.ts';
 export type { FormattingContext, TextContext } from './analysis/context.ts';
@@ -175,6 +178,23 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  return out;
+}
+
+/** SVG-a1: the scene of every rendered <svg> of a case, in document order (analysis/elements/svg.ts). */
+export function svgScenes(compiled: object, assignment: Assignment): readonly SvgScene[] | null {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  const out: SvgScene[] = [];
+  const walk = (el: ResolvedElement): void => {
+    // An element with display: none lays out no box, so an <svg> in it (or that is it) draws nothing.
+    const display = el.props.get('display')?.value;
+    if (display !== undefined && display.kind === 'keyword' && display.value === 'none') return;
+    const scene = svgSceneOf(el);
+    if (scene !== null) out.push(scene);
+    else for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
   return out;

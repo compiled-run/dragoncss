@@ -5,7 +5,8 @@
 // - a body that is not visible with a background of its own (html has one too, so body's does not propagate): Dragon takes the
 //   background of html and body for the canvas's, which Chrome paints whatever their visibility;
 // - a box that is not visible and has native views of its own beyond its paint stages, which the paint gate does not reach: an
-//   iframe's web view, a scroll container's scroll view, and the shadow companion and outline view of a box-shadow or an outline.
+//   iframe's web view and a scroll container's scroll view. Its box-shadow and outline need no refusal: the lowering gives a box
+//   that is not visible no shadow or outline write (lower/paint/shadow.ts, outline.ts), as Chrome paints neither for it.
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -82,17 +83,13 @@ const checkBodyBackground: PaintCheck = (el, targets, diagnostics, reported) => 
 const isKeyword = (v: ResolvedValue | undefined, ...k: readonly string[]): boolean => v !== undefined && v.value.kind === 'keyword' && k.includes(v.value.value);
 
 /**
- * The native views of a box beyond its paint stages, which dragonVisible does not gate: each by the longhand that makes it. The
- * shadow and outline longhands are looked up by name, as their families are filled by their own packages.
+ * The native views of a box beyond its paint stages, which dragonVisible does not gate: each by what makes it. The shadow companion
+ * and the outline view are not here, as a box that is not visible gets no shadow or outline write.
  */
 export function ownViews(el: Pick<ResolvedElement, 'element' | 'props'>): string[] {
   const out: string[] = [];
   if (el.element.tag === 'iframe') out.push('the web view of an iframe');
   if (isKeyword(el.props.get('overflow-x'), 'auto', 'scroll') || isKeyword(el.props.get('overflow-y'), 'auto', 'scroll')) out.push('the scroll view of a scroll container');
-  const shadow = el.props.get('box-shadow' as never) as ResolvedValue | undefined;
-  if (shadow !== undefined && !isKeyword(shadow, 'none')) out.push('the companion view of a box-shadow');
-  const outline = el.props.get('outline-style' as never) as ResolvedValue | undefined;
-  if (outline !== undefined && !isKeyword(outline, 'none')) out.push('the outline view of an outline');
   return out;
 }
 

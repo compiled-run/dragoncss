@@ -1,0 +1,20 @@
+{
+  "case": "white-space-preserve",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","data":"XX  XX\nXXXXXXXXXXXXX","lines":2,"units":[0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[6]},
+    {"id":"b:text0","data":"   XX   ","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"c:text0","data":"XX\n\nXX\n","lines":3,"units":[0,0,0,1,2,2,2],"blank":[2,3,6]},
+    {"id":"d:text0","data":"XX XX XX XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"e:text0","data":"  XX   XX  \n  XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],"blank":[0,1,5,6,9,10,11,12,13]},
+    {"id":"f:text0","data":"\n\nXX XX XX XX XX","lines":4,"units":[0,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3],"blank":[0,1,10]},
+    {"id":"g:text0","data":"X  X\n XX","lines":2,"units":[0,0,0,0,0,1,1,1],"blank":[4]},
+    {"id":"j:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"j:text1","data":"YY  ","lines":1,"units":[0,0,0,0],"blank":[3]},
+    {"id":"j:text2","data":" XX\t\tXX\n\t X","lines":3,"units":[0,0,0,0,1,1,1,1,2,2,2],"blank":[0,3,4,7,8,9]},
+    {"id":"r1:text0","data":"XX   ","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r2:text0","data":"XX   XX\nX","lines":2,"units":[0,0,0,0,0,0,0,0,1],"blank":[3,4,7]},
+    {"id":"r3:text0","data":"XX\nXXXX","lines":2,"units":[0,0,0,1,1,1,1],"blank":[2]}
+  ]
+}

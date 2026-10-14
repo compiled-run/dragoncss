@@ -93,7 +93,10 @@
     "content",
     "list-style-type",
     "list-style-position",
-    "list-style-image"
+    "list-style-image",
+    "vertical-align",
+    "float",
+    "clear"
   ],
   "shorthands": [
     "margin",
@@ -172,6 +175,9 @@
     "grid-gap",
     "grid-row-gap",
     "grid-column-gap",
+    "place-content",
+    "place-items",
+    "place-self",
     "border-radius",
     "-webkit-border-radius",
     "background-position",
@@ -291,6 +297,9 @@
     "content",
     "list-style-type",
     "list-style-position",
-    "list-style-image"
+    "list-style-image",
+    "vertical-align",
+    "float",
+    "clear"
   ]
 }

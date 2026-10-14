@@ -18,7 +18,7 @@ const DIV: LayoutStyle = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal', alignItems: 'normal',
   alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: { kind: 'auto' },
-  verticalAlign: { kind: 'keyword', value: 'baseline' }, grid: null, gridItem: null,
+  verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', grid: null, gridItem: null,
 };
 type Child = LayoutBox | ReplacedLeaf | InlineChild;
 const AHEM: FontSpec = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true };
@@ -30,7 +30,7 @@ const box = (id: string, style: Partial<LayoutStyle>, children: Child[] = []): L
 });
 const span = (id: string, children: InlineChild[]): InlineBox => ({ kind: 'inline', id, style: { ...DIV, display: 'inline' }, font: AHEM, lineHeight: { kind: 'normal' }, children });
 const br = (id: string): LineBreak => ({ kind: 'br', id, font: AHEM, lineHeight: { kind: 'normal' } });
-const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
+const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } });
 const VIEW = { width: 400, height: 300 };
 
 const input = (children: LayoutBox[]): LayoutInput => ({
@@ -44,6 +44,8 @@ const input = (children: LayoutBox[]): LayoutInput => ({
 const sc = (o: Overflow, extra: Partial<LayoutStyle> = {}): Partial<LayoutStyle> => ({ overflowX: o, overflowY: o, width: px(100), height: px(60), ...extra });
 
 const GRID = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth', breadth: { kind: 'auto' } }], autoRows: [{ kind: 'breadth', breadth: { kind: 'auto' } }], explicitColumnCount: 0, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row', dense: false, justifyItems: 'normal' } as const;
+
+const ITEM = { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' } as const;
 
 type Kid = (id: string) => Child;
 /** Child shapes covering each engine refusal and its near misses. */
@@ -62,6 +64,13 @@ const KIDS: Record<string, Kid> = {
   nestedScroll: (id) => box(id, sc('auto', { width: px(50), height: px(20) }), [leaf(`${id}t`, 'XX'), br(`${id}b`)]),
   flexSpan: (id) => box(id, { display: 'flex' }, [box(`${id}i`, {}, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])])]),
   grid: (id) => box(id, { display: 'grid', grid: GRID }),
+  // G-OVF: a grid scroll container, its items past its tracks.
+  gridScroll: (id) => box(id, sc('auto', { display: 'grid', grid: GRID, height: px(20) }), [box(`${id}i`, { height: px(90), gridItem: ITEM })]),
+  // A percentage padding against a grid area: a scrolling grid item, an abspos child of a positioned grid, and the near miss of
+  // an abspos child of a static grid (its containing block is an ancestor's padding box).
+  gridItemPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}i`, sc('auto', { paddingLeft: pct(10), gridItem: ITEM }), [box(`${id}k`, { paddingTop: pct(5), height: px(90) })])]),
+  gridAbsPct: (id) => box(id, { display: 'grid', grid: GRID, position: 'relative' }, [box(`${id}a`, sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }), [box(`${id}k`, { height: px(90) })])]),
+  gridAbsStaticPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}a`, sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }), [box(`${id}k`, { height: px(90) })])]),
   abs: (id) => box(id, { position: 'absolute', width: px(20), height: px(20) }, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])]),
 };
 
@@ -117,8 +126,12 @@ describe('OVFL-B: undecidedScrollContainers against the engine', () => {
     expect(reasons([leaf('t', 'XX'), br('b'), leaf('v', 'YY')])).toEqual(['c b: a <br> in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL1a)']);
     expect(reasons([leaf('t', 'XX'), box('k', { display: 'flex', width: px(10), height: px(10) })])).toEqual(['c k: an atomic inline in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL2)']);
     expect(reasons([box('p', { height: pct(50) }, [box('k', { height: px(10), marginBottom: px(5) })])])).toEqual(['c p: a percentage height on a box whose end margins may collapse through it: its basis is not decided here']);
-    expect(reasons([box('g', { display: 'grid', grid: GRID })])).toEqual(['c g: a grid container: its scrollable overflow (with its grid area) is not decided here']);
+    // G-OVF: a grid's scrollable overflow is decided (its tracks are a grid scroll container's inflow bounds).
+    expect(reasons([box('g', { display: 'grid', grid: GRID })])).toEqual([]);
     expect(reasons([box('p', {}, [leaf('t', 'XX')]), box('q', { height: px(10) })])).toEqual([]);
+    expect(reasons([box('g', { display: 'grid', grid: GRID, position: 'relative' }, [box('a', sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }))])])).toEqual([
+      'a a: a percentage padding against a grid area: its basis is not decided here',
+    ]);
   });
 });
 
@@ -139,13 +152,9 @@ describe('OVFL-B: the compiler refuses an undecided native scroll container', ()
     expect([span.outputs.ios.kind, span.outputs.android.kind, span.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
     const brk = compile('', (r) => [text(r, 't', 'XX'), el(r, 'br', 'b', []), text(r, 'u', 'YY')]);
     expect(refusals(brk)).toEqual(both(`${prefix('b')}a <br> in the inline formatting context of a: its scrollable overflow is not decided here (R16, INL1a) (OVFL-B)`));
-    // An atomic inline (an inline-level box beside text) never reaches the engine on native: the lowering refuses it first
-    // (INL2 has not landed), so its scroll container is blocked there; the engine's atomic-inline rule is covered on its input above.
+    // INL2a lowers an atomic inline (an inline-level box beside text) on native, so the engine's atomic-inline rule refuses its scroll container.
     const atomic = compile('.k { display: inline-flex; width: 10px; height: 10px; }', (r) => [text(r, 't', 'XX'), div(r, 'k', ['k'])]);
-    expect(atomic.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target}: ${d.message}`).sort()).toEqual([
-      'DRAGON_LOWERING_FAILED android: display: inline-flex on k has no layout mapping (expected block | flex | grid | inline)',
-      'DRAGON_LOWERING_FAILED ios: display: inline-flex on k has no layout mapping (expected block | flex | grid | inline)',
-    ]);
+    expect(refusals(atomic)).toEqual(both(`${prefix('k')}an atomic inline in the inline formatting context of a: its scrollable overflow is not decided here (R16, INL2) (OVFL-B)`));
     expect([atomic.outputs.ios.kind, atomic.outputs.android.kind]).toEqual(['blocked', 'blocked']);
     const pctHeight = compile('.p { height: 50%; } .k { height: 10px; margin-bottom: 5px; }', (r) => [div(r, 'p', ['p'], [div(r, 'k', ['k'])])]);
     expect(refusals(pctHeight)).toEqual(both(`${prefix('p')}a percentage height on a box whose end margins may collapse through it: its basis is not decided here (OVFL-B)`));

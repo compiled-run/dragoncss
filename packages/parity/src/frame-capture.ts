@@ -81,6 +81,36 @@ export async function captureFramesWithRefs(browser: Browser, c: AnimCase, steps
   return { capture: r.capture, refs: r.refs };
 }
 
+/** Page.captureScreenshot as a PNG buffer. */
+async function screenshot(cdp: CDPSession): Promise<Buffer> {
+  return Buffer.from(((await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string }).data, 'base64');
+}
+
+/** A base background no fixture shows, so setting it, and clearing it again, changes every pixel the page does not paint over. */
+const REPAINT_BACKGROUND = { r: 255, g: 0, b: 255, a: 1 };
+
+/**
+ * A screenshot of the page's current state that does not depend on the frames Chrome happened to raster before it. The page
+ * moves through every sample's state but rasters only the states a compositor frame happened to catch, and Chrome re-rasters
+ * only the rectangles it invalidates. At a fractional DPR such a rectangle can miss the antialiased device column of an edge
+ * that moved, so a column of an earlier frame stayed in the screenshot. anim-layout-margin-rtl at 2.625 and 3 showed it: k7
+ * (at 501), k9 (at 600) and k10 (at 601) differed only in device column 358, the margin's edge at an earlier sample, depending on
+ * which frames had been rastered. Changing the base background invalidates the whole view; each change is rastered by its own
+ * screenshot, so the kept one is painted from scratch. Two such repaints must give the same bytes, or the capture fails closed.
+ */
+async function repaintedScreenshot(cdp: CDPSession, at: string): Promise<Buffer> {
+  const repaint = async (): Promise<Buffer> => {
+    await cdp.send('Emulation.setDefaultBackgroundColorOverride', { color: REPAINT_BACKGROUND });
+    await screenshot(cdp);
+    await cdp.send('Emulation.setDefaultBackgroundColorOverride', {});
+    return screenshot(cdp);
+  };
+  const a = await repaint();
+  const b = await repaint();
+  if (!a.equals(b)) throw new Error(`${at}: two full repaints of the same frame gave different screenshots; the frame is not pinned`);
+  return a;
+}
+
 async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameStep[], dpr: number, rendering: 'authored' | 'compiled', css: string | null, pixels: ReadonlySet<number> | null): Promise<{ readonly capture: FrameCapture; readonly refs: FrameRefs | null }> {
   const { initial, pageSteps } = renderings(c, steps, rendering, css);
   const page = await openFrozenPage(browser, initial, { viewport: c.viewport, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' });
@@ -174,9 +204,9 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
       if (transformed.length > 0) throw new Error(`${c.id} sample ${k}: ${transformed.join(', ')} transformed; the frame break capture refuses the transform twin`);
       breaks.push(await captureBreakTexts(page));
       if (!pixels.has(k)) continue;
-      // As parity:pixel-capture shoots: CDP Page.captureScreenshot, checked against the raster size rule.
+      // As parity:pixel-capture shoots: CDP Page.captureScreenshot, checked against the raster size rule, but from a full repaint.
       cdp ??= await page.context().newCDPSession(page);
-      const png = Buffer.from(((await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string }).data, 'base64');
+      const png = await repaintedScreenshot(cdp, `${c.id}@${dpr} sample ${k}`);
       const img = decodePng(png);
       const want = rasterSize(c.viewport, dpr);
       if (img.width !== want.width || img.height !== want.height) throw new Error(`${c.id}@${dpr} sample ${k}: Chrome captured ${img.width}x${img.height}, the raster rule is ${want.width}x${want.height}`);

@@ -14,7 +14,7 @@ import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } fr
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { textFontsOf, uaRows } from '../ua/datasets.ts';
-import type { TextFontValue } from '../fonts/weight.ts';
+import type { SynthesisAllowed, TextFontValue } from '../fonts/weight.ts';
 import { computeFontStyle, computeTextFont, fontStyleCssValue, INITIAL_TEXT_FONT } from '../fonts/weight.ts';
 import type { Span } from '../types.ts';
 import type { Candidate } from './cascade.ts';
@@ -64,7 +64,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   let v: CssValue;
   const only = children[0];
   const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
-  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
+  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property) || property === 'fill' || property === 'stroke';
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
   else if (color !== null && color.ok) v = color.kind === 'keyword' ? { kind: 'keyword', value: color.keyword } : { kind: 'color', value: color.value, syntax: color.syntax };
@@ -207,6 +207,37 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   computePaintValues(props, { em: own, rem: rootFontSize ?? own });
 }
 
+/** Inherited lengths whose value may be a calculation: their em and rem compute at the declaring element (css-values-4 §6). */
+const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset'];
+const EM_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(r?em)(?![\w-])/gi;
+
+/**
+ * css-values-4 §6: an em or rem inside a calculation in an inherited length computes to px at the element that declares it, so a
+ * descendant inherits the absolute length (calc(0.5em + 1px) under a 20px font is 11px on every descendant, whatever its own size).
+ */
+export function computeInheritedMathLengths(props: Map<Longhand, ResolvedValue>, em: number | null, rem: number | null): void {
+  if (em === null || rem === null) return;
+  for (const p of INHERITED_MATH_LENGTHS) {
+    const v = props.get(p) as ResolvedValue;
+    if (v.origin === 'inherited' || v.value.kind !== 'other' || v.value.type.startsWith(REFUSED_MATH_PREFIX)) continue;
+    const text = v.value.text.replace(EM_IN_MATH, (all, before: string, n: string, unit: string) => {
+      const px = lengthToPx(Number(n), unit.toLowerCase(), { em, rem });
+      return px === null || !Number.isFinite(px) || /e/i.test(String(px)) ? all : `${before}${String(px)}${CANONICAL_LENGTH_UNIT}`;
+    });
+    if (text !== v.value.text) props.set(p, { ...v, value: { ...v.value, text } });
+  }
+}
+
+/**
+ * css-text-3 §8.2 as Chrome 145 computes letter-spacing (longhands_custom.cc LetterSpacing::CSSValueFromComputedStyleInternal): a
+ * zero length computes to normal. Planted fault zeroNotNormal keeps the zero length.
+ */
+export function computeLetterSpacing(props: Map<Longhand, ResolvedValue>, zeroNotNormal: boolean): void {
+  const v = props.get('letter-spacing') as ResolvedValue;
+  if (zeroNotNormal || (v.value.kind !== 'length' && v.value.kind !== 'number') || v.value.value !== 0) return;
+  props.set('letter-spacing', { ...v, value: { kind: 'keyword', value: 'normal' } });
+}
+
 /** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */
 export function computeGridLengths(props: Map<Longhand, ResolvedValue>, em: number | null, rem: number | null): void {
   if (em === null || rem === null) return;
@@ -252,6 +283,12 @@ export function computeFontStyleLonghands(tag: string, props: Map<Longhand, Reso
   if (font === null) throw new Error(`font-weight ${valueToString(w.value)} or font-style ${valueToString(st.value)} has no computed value`);
   if (!isRefusedMath(w.value)) props.set('font-weight', { ...w, value: { kind: 'number', value: font.weight } });
   if (!isRefusedMath(st.value)) props.set('font-style', { ...st, value: fontStyleCssValue(font.style) });
+}
+
+/** Whether Chrome may synthesize bold and oblique for an element (font-synthesis-weight and -style). */
+export function synthesisAllowedOf(props: ReadonlyMap<Longhand, ResolvedValue>): SynthesisAllowed {
+  const on = (p: Longhand): boolean => valueToString((props.get(p) as ResolvedValue).value) !== 'none';
+  return { weight: on('font-synthesis-weight'), style: on('font-synthesis-style') };
 }
 
 export const isRefusedMath = (v: CssValue): boolean => v.kind === 'other' && v.type.startsWith(REFUSED_MATH_PREFIX);

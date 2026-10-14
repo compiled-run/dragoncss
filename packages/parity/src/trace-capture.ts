@@ -5,6 +5,8 @@
 // empty. After every touch step the same steps on Dragon's own web output must leave every hover candidate's computed style at its
 // none-state value (R2's style check, P3). The TypeScript runtime (interaction-runtime.ts) must equal the effective trace at every
 // step: hover, focus and focus-visible gated; touch :active and keyboard steps recorded, not gated (P4, R10).
+// The capture's Chrome runs without Playwright's --blink-settings pointer and hover types (launchTraceChrome), which would undo
+// touch emulation's hover media whenever Chrome sends the page new WebPreferences.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser, CDPSession, Page } from 'playwright';
@@ -12,7 +14,7 @@ import type { InteractionFaults } from '@dragon/layout';
 import { rtInteraction } from '@dragon/layout';
 import type { InteractionLevelInput, InteractionProgram, NativeBackend } from 'dragon';
 import { LONGHANDS, webClassMap } from 'dragon';
-import { CHROME_VERSION, openPage } from './chrome.ts';
+import { CHROME_VERSION, launchChrome, openPage, PLAYWRIGHT_POINTER_SETTINGS } from './chrome.ts';
 import { frames } from './forced-pseudo.ts';
 import type { InteractionGroup } from './interaction-cases.ts';
 import { deriveTrace, groupHit, interactionGroups, interactionProgramOf, levelInputs } from './interaction-cases.ts';
@@ -77,6 +79,105 @@ const readMatches = (): Matches => {
   return { hoverMedia: matchMedia('(hover: hover)').matches, hover: pick(':hover'), active: pick(':active'), focus: pick(':focus'), focusVisible: pick(':focus-visible') };
 };
 
+/**
+ * How long Chrome's (hover: hover) may take to follow the emulated context before the capture fails closed. Chrome applies touch
+ * emulation before it acknowledges it, so the wait normally ends at its first check; every wait that did not is listed in the
+ * capture's summary (hoverMediaLags).
+ */
+const HOVER_MEDIA_WAIT_MS = 2000;
+
+/**
+ * Runs in the page: the animation frames until (hover: hover) equals want, or -1 when it still differs after ms. A timer ends the
+ * wait too, so it fails rather than hangs when the page stops producing frames.
+ */
+const awaitHoverMediaInPage = ([want, ms]: [boolean, number]): Promise<number> =>
+  new Promise((resolve) => {
+    const start = performance.now();
+    let waited = 0;
+    let done = false;
+    const finish = (n: number): void => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(n);
+    };
+    const timer = setTimeout(() => finish(matchMedia('(hover: hover)').matches === want ? waited : -1), ms);
+    const check = (): void => {
+      if (done) return;
+      if (matchMedia('(hover: hover)').matches === want) finish(waited);
+      else if (performance.now() - start >= ms) finish(-1);
+      else {
+        waited++;
+        requestAnimationFrame(check);
+      }
+    };
+    check();
+  });
+
+/** Every wait in this process where Chrome's hover media lagged the emulated context, for the capture's summary line. */
+export const hoverMediaLags: { readonly at: string; readonly frames: number }[] = [];
+
+/**
+ * Every touch step in this process after which navigator.maxTouchPoints was 0: Chrome had sent the page new WebPreferences, which
+ * set it from the embedder past touch emulation (as Playwright's --blink-settings did the hover media), for the capture's summary.
+ */
+export const touchPrefsUpdates: string[] = [];
+
+/** Runs in the page: the hover and pointer media touch emulation sets, and navigator.maxTouchPoints. */
+const touchMedia = (): { hover: boolean; coarse: boolean; maxTouchPoints: number } => ({ hover: matchMedia('(hover: hover)').matches, coarse: matchMedia('(pointer: coarse)').matches, maxTouchPoints: navigator.maxTouchPoints });
+
+/**
+ * Makes Chrome send the page new WebPreferences: Page.captureScreenshot with captureBeyondViewport sends them before it copies the
+ * surface and sends the original ones back after. A failed copy ("Unable to capture screenshot") still sent both, so it is not an
+ * error here; the caller confirms the update reached the page by navigator.maxTouchPoints, which Blink sets from it.
+ */
+export async function sendWebPreferencesUpdate(page: Page, cdp: CDPSession): Promise<void> {
+  await frames(page);
+  try {
+    await cdp.send('Page.captureScreenshot', { captureBeyondViewport: true });
+  } catch (e) {
+    if (!(e instanceof Error && e.message.includes('Unable to capture screenshot'))) throw e;
+  }
+}
+
+/**
+ * Fails unless touch emulation keeps (hover: none) and (pointer: coarse) through a WebPreferences update. Playwright's headless
+ * launch passes PLAYWRIGHT_POINTER_SETTINGS (chrome.ts), which Blink writes into the page settings past touch emulation on every
+ * WebPreferences update, so the media turned back to hover and fine pointer in the middle of a touch step whenever Chrome sent one
+ * (the regen failures "(hover: hover) matches under touch emulation"). sendWebPreferencesUpdate sends one.
+ */
+export async function checkTouchEmulationHolds(browser: Browser): Promise<void> {
+  const context = await browser.newContext({ viewport: { width: 100, height: 100 } });
+  try {
+    const page = await context.newPage();
+    await page.setContent('<!doctype html><html><head></head><body>x</body></html>');
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+    const before = await page.evaluate(touchMedia);
+    await sendWebPreferencesUpdate(page, cdp);
+    const after = await page.evaluate(touchMedia);
+    // Touch emulation sets maxTouchPoints to 1; a WebPreferences update sets it back to Chrome's own 0, past the emulation.
+    if (before.maxTouchPoints !== 1 || after.maxTouchPoints !== 0) throw new Error(`no WebPreferences update reached the check's page: navigator.maxTouchPoints ${before.maxTouchPoints} under touch emulation and ${after.maxTouchPoints} after the update, not 1 and 0`);
+    for (const [when, m] of [['under touch emulation', before], ['after a WebPreferences update under touch emulation', after]] as const) {
+      if (m.hover || !m.coarse) throw new Error(`${when}, Chrome reports ${m.hover ? '(hover: hover)' : '(hover: none)'} and ${m.coarse ? '(pointer: coarse)' : 'no (pointer: coarse)'}; touch emulation must give (hover: none) and (pointer: coarse) (is Chrome launched with ${PLAYWRIGHT_POINTER_SETTINGS}?)`);
+    }
+  } finally {
+    await context.close();
+  }
+}
+
+/** The trace lane's Chrome: without Playwright's pointer settings, checked to keep touch emulation through a WebPreferences update. */
+export async function launchTraceChrome(): Promise<Browser> {
+  const browser = await launchChrome(1, { withoutPointerSettings: true });
+  try {
+    await checkTouchEmulationHolds(browser);
+  } catch (e) {
+    await browser.close();
+    throw e;
+  }
+  return browser;
+}
+
 const effectiveText = (m: Matches): string => JSON.stringify([m.hoverMedia ? m.hover : [], m.active, m.focus, m.focusVisible]);
 
 /**
@@ -90,6 +191,8 @@ class TraceDriver {
   private pressAt: { x: number; y: number } | null = null;
   private touchAt: { x: number; y: number } | null = null;
   private forcedNode: number | null = null;
+  /** The group, step index and page of the step running, which names any hover media wait (hoverMediaLags). */
+  private where = '';
   private saved: { context: TraceContext; mouse: { x: number; y: number } | null; focused: string | null; focusVisible: boolean; matches: Matches } | null = null;
 
   readonly page: Page;
@@ -132,7 +235,16 @@ class TraceDriver {
     if (c === this.context) return;
     await this.cdp.send('Emulation.setTouchEmulationEnabled', c === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
     this.context = c;
+    await this.awaitHoverMedia(`${c} context`);
     await frames(this.page);
+  }
+
+  /** Waits until Chrome's hover media follows the emulated context (R2): (hover: hover) without touch emulation, none with it. */
+  private async awaitHoverMedia(at: string): Promise<void> {
+    const want = this.context === 'mouse';
+    const waited = await this.page.evaluate(awaitHoverMediaInPage, [want, HOVER_MEDIA_WAIT_MS] as [boolean, number]);
+    if (waited < 0) throw new Error(`${at}: (hover: hover) ${want ? 'does not match without' : 'matches under'} touch emulation after ${HOVER_MEDIA_WAIT_MS} ms`);
+    if (waited > 0) hoverMediaLags.push({ at: `${this.where}: ${at}`, frames: waited });
   }
 
   private async mouseEvent(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased', p: { x: number; y: number }): Promise<void> {
@@ -165,7 +277,8 @@ class TraceDriver {
   }
 
   /** Runs one step and returns Chrome's matches after it; a context whose hover media disagrees with it fails closed (R2). */
-  async step(s: InteractionStep): Promise<{ context: TraceContext; matches: Matches }> {
+  async step(s: InteractionStep, where: string): Promise<{ context: TraceContext; matches: Matches }> {
+    this.where = where;
     if (MOUSE_KINDS.has(s.kind)) await this.setContext('mouse');
     if (isTouch(s.kind)) await this.setContext('touch');
     switch (s.kind) {
@@ -223,7 +336,9 @@ class TraceDriver {
     }
     if (isTouch(s.kind)) await this.page.waitForTimeout(TAP_SETTLE_MS);
     await frames(this.page);
+    await this.awaitHoverMedia(s.kind);
     const m = await this.matches();
+    if (this.context === 'touch' && (await this.page.evaluate(() => navigator.maxTouchPoints)) === 0) touchPrefsUpdates.push(where);
     if (this.context === 'touch' && m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) matches under touch emulation`);
     if (this.context === 'mouse' && !m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) does not match without touch emulation`);
     return { context: this.context, matches: m };
@@ -250,6 +365,7 @@ class TraceDriver {
         }, [saved.focused, saved.focusVisible] as const);
       }
       await frames(this.page);
+      await this.awaitHoverMedia('force none');
       const now = await this.matches();
       if (effectiveText(now) !== effectiveText(saved.matches)) throw new Error(`forcing none did not restore Chrome's matches: ${effectiveText(now)}, before forcing ${effectiveText(saved.matches)}`);
       return;
@@ -343,8 +459,8 @@ async function captureRun(browser: Browser, g: InteractionGroup, d: TraceDerivat
     const out: ChromeTraceStep[] = [];
     for (const [i, s] of d.steps.entries()) {
       try {
-        const r = await authored.step(s);
-        await output.step(s);
+        const r = await authored.step(s, `${g.id} step ${i} authored`);
+        await output.step(s, `${g.id} step ${i} output`);
         const style = isTouch(s.kind) ? await styleCheck(output, reference, candidates) : null;
         out.push({ kind: s.kind, context: r.context, ...r.matches, style });
       } catch (e) {

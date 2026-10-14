@@ -7,7 +7,7 @@
     {"id":"lo:text0","data":"HELLO World AGAIN","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[11],"transform":"lowercase"},
     {"id":"cap:text0","data":"hello world again and more","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2],"blank":[11,21],"transform":"capitalize"},
     {"id":"none:text0","data":"mixed Case words","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[10]},
-    {"id":"reset:text0","data":"kept as Written","lines":2,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1],"blank":[7]},
+    {"id":"reset:text0","data":"held as Written","lines":2,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1],"blank":[7]},
     {"id":"inherit:text0","data":"inherited words","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[9],"transform":"uppercase"},
     {"id":"nodes:text0","data":"ab","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
     {"id":"nodes:text1","data":"gh","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../src/paint-radius.ts';
+import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../src/paint-radius.ts';
 
 const px = (value: number) => ({ percent: false, value });
 const pct = (value: number) => ({ percent: true, value });
@@ -61,7 +61,7 @@ describe('paint-radius vectors', () => {
     const v = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'paint-vectors', 'radius', 'vectors.json'), 'utf8')) as { feature: string; lines: string[] };
     expect(v.feature).toBe('radius');
     const names = new Set(v.lines.map((l) => (JSON.parse(l) as string[])[0]));
-    expect([...names].sort()).toEqual(['paint:radius:constrainCornerRadii', 'paint:radius:hasRoundedCorner', 'paint:radius:innerCornerRadii', 'paint:radius:outlineOffsetPx', 'paint:radius:outlineRings', 'paint:radius:outlineWidthPx', 'paint:radius:radiiRenderable', 'paint:radius:radiusComponent', 'paint:radius:resolveCornerRadii', 'paint:radius:roundedShape']);
+    expect([...names].sort()).toEqual(['paint:radius:borderDoubleRings', 'paint:radius:constrainCornerRadii', 'paint:radius:doubleStripeWidth', 'paint:radius:hasRoundedCorner', 'paint:radius:innerCornerRadii', 'paint:radius:outlineOffsetPx', 'paint:radius:outlineRings', 'paint:radius:outlineWidthPx', 'paint:radius:radiiRenderable', 'paint:radius:radiusComponent', 'paint:radius:resolveCornerRadii', 'paint:radius:roundedShape']);
     expect(v.lines.length).toBeGreaterThanOrEqual(90);
   });
 });
@@ -93,5 +93,41 @@ describe('outline geometry (Chrome 145 measured at DPR 2, 3 and 2.625)', () => {
     expect(r.slice(8, 16)).toEqual([16, 0, 16, 16, 12, 0, 12, 12]);
     expect(r.slice(16, 24)).toEqual([12, 0, 12, 12, 8, 0, 8, 8]);
     expect(outlineRings(0, 0, 100, 50, [10, 10, 10, 10, 6, 6, 6, 6], 4, -9, false).slice(16, 24)).toEqual([1, 1, 1, 1, 0, 0, 0, 0]);
+  });
+});
+
+describe('paint-radius: rounded double borders (Blink 145 DrawDoubleBorder)', () => {
+  it('stripe widths are roundf of a float third and two thirds of the device width, so the gap is the rest', () => {
+    expect([3, 4, 5, 6, 7, 8, 13, 31].map((w) => doubleStripeWidth(w, false))).toEqual([1, 1, 2, 2, 2, 3, 4, 10]);
+    expect([3, 4, 5, 6, 7, 8, 13, 31].map((w) => doubleStripeWidth(w, true))).toEqual([2, 3, 3, 4, 5, 5, 9, 21]);
+  });
+
+  it('a uniform 9 px double: the border box to the 3 px stripe, then the 6 px stripe to the padding edge, radii shrunk by each', () => {
+    const r = borderDoubleRings(0, 0, 100, 60, [9, 9, 9, 9], [20, 20, 20, 20, 20, 20, 20, 20]);
+    expect(r).toHaveLength(48);
+    expect(r.slice(0, 8)).toEqual([0, 0, 100, 60, 3, 3, 97, 57]);
+    expect(r.slice(8, 24)).toEqual([20, 20, 20, 20, 20, 20, 20, 20, 17, 17, 17, 17, 17, 17, 17, 17]);
+    expect(r.slice(24, 32)).toEqual([6, 6, 94, 54, 9, 9, 91, 51]);
+    expect(r.slice(32, 48)).toEqual([14, 14, 14, 14, 14, 14, 14, 14, 11, 11, 11, 11, 11, 11, 11, 11]);
+  });
+
+  it('per-side widths inset each side by its own stripe; a square corner stays square and a radius under the inset clamps to 0', () => {
+    // Widths top 8, right 4, bottom 5, left 13: outer stripes 3, 1, 2, 4; inner stripes 5, 3, 3, 9.
+    const r = borderDoubleRings(10, 20, 110, 80, [8, 4, 5, 13], [6, 30, 0, 12, 6, 2, 0, 20]);
+    expect(r.slice(4, 8)).toEqual([14, 23, 109, 78]);
+    expect(r.slice(16, 24)).toEqual([2, 29, 0, 8, 3, 0, 0, 18]);
+    expect(r.slice(24, 32)).toEqual([19, 25, 107, 77, 23, 28, 106, 75]);
+    expect(r.slice(32, 40)).toEqual([0, 27, 0, 3, 1, 0, 0, 17]);
+    expect(r.slice(40, 48)).toEqual([0, 26, 0, 0, 0, 0, 0, 15]);
+  });
+
+  it('a stripe or padding rect wider than the box clamps its size at 0 at its inset origin', () => {
+    const r = borderDoubleRings(3, 3, 14, 12, [6, 6, 6, 6], [4, 4, 4, 4, 4, 4, 4, 4]);
+    expect(r.slice(24, 32)).toEqual([7, 7, 10, 8, 9, 9, 9, 9]);
+  });
+
+  it('refuses malformed widths or radii', () => {
+    expect(() => borderDoubleRings(0, 0, 10, 10, [3, 3, 3], [0, 0, 0, 0, 0, 0, 0, 0])).toThrow('4 widths and 8 radii');
+    expect(() => borderDoubleRings(0, 0, 10, 10, [3, 3, 3, 3], [0, 0, 0, 0])).toThrow('4 widths and 8 radii');
   });
 });

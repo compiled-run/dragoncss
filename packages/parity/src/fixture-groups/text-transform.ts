@@ -2,8 +2,9 @@
 // text at build time, in blocks, flex items, anonymous flex items and inline boxes, with the previous character carried across
 // text nodes. Ahem only, so every transformed string is printable ASCII without the apostrophe (the engine's Ahem glyphs):
 // text-transform-text holds ß, whose uppercase SS breaks the line where groß does not, and punctuation, so it runs left-to-right
-// only; text-transform-keywords is letters and spaces and runs both ways. The rejects are math-auto (refused until
-// TXT2-e2) and full-width, which Chrome 145 does not parse.
+// only, and its hidden span holds a <br> (not text: text in display: none has no provable row context, T030), which would
+// capitalize cd if it took part in the line; text-transform-keywords is letters and spaces and runs both ways. The rejects are
+// math-auto (refused until TXT2-e2) and full-width, which Chrome 145 does not parse.
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';
 

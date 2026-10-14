@@ -45,6 +45,7 @@ const complete = {
   columnGap: { kind: 'normal' },
   textAlign: 'start',
   verticalAlign: { kind: 'keyword', value: 'baseline' },
+  textOverflow: 'clip',
   aspectRatio: { kind: 'auto' },
   grid: null,
   gridItem: null,

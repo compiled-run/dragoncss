@@ -101,7 +101,7 @@ function fontData(id: string): FontData {
   for (let i = 0; i < d.getUint16(4); i++) tables.set(b.toString('latin1', 12 + i * 16, 16 + i * 16), d.getUint32(12 + i * 16 + 8));
   const head = tables.get('head') as number;
   const hhea = tables.get('hhea') as number;
-  return { unitsPerEm: d.getUint16(head + 18), ascent: d.getInt16(hhea + 4), descent: -d.getInt16(hhea + 6), lineGap: d.getInt16(hhea + 8), advances: [], xHeight: 0, capHeight: 0, zeroAdvance: 0 };
+  return { unitsPerEm: d.getUint16(head + 18), ascent: d.getInt16(hhea + 4), descent: -d.getInt16(hhea + 6), lineGap: d.getInt16(hhea + 8), advances: [], xHeight: 0, capHeight: 0, zeroAdvance: 0, ellipsisAdvance: -1 };
 }
 
 /**
@@ -149,7 +149,7 @@ const shaper = new WasmShaper();
 const faceIds = [...files.keys()];
 const facesFor = (language: string): Map<string, ShapedFace> =>
   new Map(faceIds.map((id) => [id, { id, data: id === 'Ahem' ? AHEM_FONT_DATA : fontData(id), hanKerning: language === 'ja' ? hanKerningData(id, 16, language) : NO_HAN_KERNING }]));
-const faceFont = (id: string, size: number): TextFont => ({ family: id, size }) as unknown as TextFont;
+const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0 }) as unknown as TextFont;
 
 type CaseWidths = { readonly id: string; readonly lines: readonly number[]; readonly nowrap: number; readonly error: string };
 
@@ -168,7 +168,7 @@ function engineWidths(faults: ShapingFaults, stop?: (c: CaseWidths, chrome: Case
       const text = ref.paragraphs[c.paragraph] as string;
       const opps = new Set(ref.opportunities[c.paragraph]);
       const m = st.measurer.measure(text, faceFont(c.font, c.size));
-      const item = st.item(text, c.font, c.size);
+      const item = st.item(text, c.font, c.size, 0);
       const lines: number[] = [];
       let error = m.ok ? '' : m.reason;
       for (const [start, end] of c.lines) {
@@ -344,10 +344,10 @@ describe('TXT1-S: Ahem through HarfBuzz (R2)', () => {
 // offsets and widths on every line of every gate case, with Chrome's break opportunities as the break iterator.
 type DecidedLine = readonly [number, number, number];
 function decideLines(st: ShapedText, text: string, font: string, size: number, widthLu: number, opps: readonly number[]): DecidedLine[] | string {
-  const shaped = st.item(text, font, size);
+  const shaped = st.item(text, font, size, 0);
   if (!shaped.ok) return shaped.reason;
   const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
-  const r = breakItemLines(items, fromRaw(widthLu), true, false, true);
+  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false);
   if (!r.ok) return r.reason;
   let start = 0;
   return r.lines.map((l) => {
