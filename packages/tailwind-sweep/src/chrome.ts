@@ -136,11 +136,12 @@ export async function openChrome(pages: number = DEFAULT_PAGES): Promise<ChromeS
       }
     };
     const live = (c: DualCase): Promise<string[]> => withPage(async (page) => compareCaptures(await capture(page, c.authoredHtml), await capture(page, c.compiledHtml)));
-    // A dual check is remembered by its two pages, the sweep environment and the launch flags: its verdict, not the captures.
+    // A dual check is remembered by its two pages, the sweep environment, the element ids the capture must find and the launch
+    // flags: its verdict, not the captures.
     const args = launchArgsOf(browser);
     return {
       pages,
-      dual: (c) => (args === null ? live(c) : memoizedJson('tw-dual', { authored: injected(c.authoredHtml), compiled: injected(c.compiledHtml), env: SWEEP_ENVIRONMENT, args }, DUAL_CODE, DUAL_MEMO, () => live(c))),
+      dual: (c) => (args === null ? live(c) : memoizedJson('tw-dual', { authored: injected(c.authoredHtml), compiled: injected(c.compiledHtml), env: SWEEP_ENVIRONMENT, ids: ELEMENT_IDS, args }, DUAL_CODE, DUAL_MEMO, () => live(c))),
       supports: (condition) =>
         withPage(async (page) => {
           await page.setContent('<!DOCTYPE html><html><head></head><body></body></html>');
