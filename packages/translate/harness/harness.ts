@@ -799,7 +799,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -1004,6 +1004,7 @@ const FAULT_KEYS: readonly string[] = [
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
   'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
+  'inlineGridLastItemBaseline',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1069,6 +1070,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     inlineBlockFirstBaseline: b('inlineBlockFirstBaseline'),
     overflowBaselineIgnored: b('overflowBaselineIgnored'),
     inlineFlexLastBaseline: b('inlineFlexLastBaseline'),
+    inlineGridLastItemBaseline: b('inlineGridLastItemBaseline'),
     atomicMarginExcluded: b('atomicMarginExcluded'),
     noBreakAroundAtomic: b('noBreakAroundAtomic'),
     atomicShrinkToFitIgnored: b('atomicShrinkToFitIgnored'),

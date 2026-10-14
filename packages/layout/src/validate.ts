@@ -120,7 +120,7 @@ const gridContainer = obj({
 const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto', ...gridSelfAlignValues) });
 
 export const styleSchema = obj({
-  display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex'),
+  display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
   position: lit('static', 'relative', 'absolute'),
   top: inset,
   right: inset,
@@ -525,7 +525,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
-      if (style['display'] === 'grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
+      if (style['display'] === 'grid' || style['display'] === 'inline-grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
     }
     return;
   }
@@ -537,8 +537,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   const style = value['style'];
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
-  if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block or inline-flex' });
-  if (isAtomic(value) && parentId === null) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'the root box is blockified: it is never inline-block or inline-flex' });
+  if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
+  if (isAtomic(value) && parentId === null) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'the root box is blockified: it is never inline-block, inline-flex or inline-grid' });
   const children = childrenOf(value, path, errors);
   if (children === null) return;
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
@@ -562,9 +562,9 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
   const bad = (at: string, message: string): void => {
     errors.push({ path: at, code: 'grid-shape', message });
   };
-  const isGrid = style['display'] === 'grid';
+  const isGrid = style['display'] === 'grid' || style['display'] === 'inline-grid';
   const grid = style['grid'];
-  if (isGrid !== (grid !== null && grid !== undefined)) bad(`${path}.style.grid`, 'a grid style is written for display: grid and only there');
+  if (isGrid !== (grid !== null && grid !== undefined)) bad(`${path}.style.grid`, 'a grid style is written for display: grid or inline-grid and only there');
   if (isRecord(grid)) {
     for (const axis of ['Columns', 'Rows'] as const) {
       const template = grid[`template${axis}`];
@@ -702,8 +702,8 @@ function childrenOf(value: Record<string, unknown>, path: string, errors: Valida
   return children;
 }
 
-/** An atomic inline (CSS2 §9.2.4): a box with display inline-block or inline-flex. */
-const isAtomic = (c: unknown): boolean => isRecord(c) && c['kind'] === 'box' && isRecord(c['style']) && (c['style']['display'] === 'inline-block' || c['style']['display'] === 'inline-flex');
+/** An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid. */
+const isAtomic = (c: unknown): boolean => isRecord(c) && c['kind'] === 'box' && isRecord(c['style']) && (c['style']['display'] === 'inline-block' || c['style']['display'] === 'inline-flex' || c['style']['display'] === 'inline-grid');
 
 const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'text' || c['kind'] === 'inline' || c['kind'] === 'br' || isAtomic(c));
 
@@ -883,7 +883,8 @@ function checkInlineContent(box: Record<string, unknown>, children: readonly unk
     errors.push({ path: `${path}.children`, code: 'mixed-children', message: 'a box has either inline-level children or box children; wrap the inline content in anonymous boxes' });
   }
   const style = box['style'];
-  if (isRecord(style) && (style['display'] === 'flex' || style['display'] === 'grid')) {
+  const display = isRecord(style) ? style['display'] : null;
+  if (display === 'flex' || display === 'grid' || display === 'inline-flex' || display === 'inline-grid') {
     errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'inline content directly in a flex or grid container must be wrapped in an anonymous item' });
   }
   const runs: (Record<string, unknown> | null)[] = [];

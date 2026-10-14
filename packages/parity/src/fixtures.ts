@@ -38,6 +38,7 @@ import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
+import { RESIZE } from './fixture-groups/resize.ts';
 import { SELECTION } from './fixture-groups/selection.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHADOW } from './fixture-groups/shadow.ts';
@@ -154,6 +155,7 @@ export const GROUPS = {
   radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
+  resize: RESIZE,
   selection: SELECTION,
   selectors: SELECTORS,
   shadow: SHADOW,

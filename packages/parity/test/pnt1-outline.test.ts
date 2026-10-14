@@ -11,13 +11,13 @@
 // rings one device px to the right (outline-offset-1), the nominal dash gap (outline-dash-unfitted), the 3D tones swapped
 // (outline-tones-swapped).
 import { describe, expect, it } from 'vitest';
-import { nativePrograms } from 'dragon';
+import { androidProfile, createProjectWith, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, webProfile } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { PLANT_CASES } from '../src/device-run.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { nativeCompile } from '../src/native-host.ts';
-import { casePoints, committedPixels } from '../src/pixel-reference.ts';
+import { casePoints, committedPixels, devicePoints } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
 import type { Box, Rgba } from './paint-model.ts';
 import { boxes } from './paint-model.ts';
@@ -35,8 +35,8 @@ const TWINS: Record<'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tone
 const PLANTS = Object.keys(TWINS) as (keyof typeof TWINS)[];
 
 describe('PNT1 outline: the paint model at every sample point equals the committed Chrome pixels', () => {
-  it('covers the six outline fixtures in both directions', () => {
-    expect(OUTLINE_FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'outline-rounded', 'outline-dashed', 'outline-3d']);
+  it('covers the seven outline fixtures in both directions', () => {
+    expect(OUTLINE_FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'outline-rounded', 'outline-dashed', 'outline-3d', 'outline-web']);
     expect(PLANT_CASES['outline-offset-1']).toEqual(['outline-solid']);
     expect(PLANT_CASES['outline-dash-unfitted']).toEqual(['outline-dashed']);
     expect(PLANT_CASES['outline-tones-swapped']).toEqual(['outline-3d']);
@@ -93,4 +93,47 @@ describe('PNT1 outline: the paint model at every sample point equals the committ
       });
     }
   }
+});
+
+// The translucent dashed and ridge outlines (outline-web): native refuses a translucent dotted, dashed or 3D outline (its transparency
+// layer composites unlike Skia: device run 38470185768), so the lanes compile the fixture as a lane-only case, which proves web rows
+// only, and the device pixel lanes skip those outlines' points.
+describe('PNT1 outline: translucent side-painter outlines are proven on web only', () => {
+  const spec = OUTLINE_FIXTURES.find((f) => f.id === 'outline-web');
+  it("is lane-only on native, refused by name in a user compile, and its outlines are the device lanes' blind spot alone", () => {
+    if (spec === undefined) throw new Error('no outline-web fixture');
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      const lanes = nativeCompile(spec, c.environment.direction);
+      expect([laneOnlyNative(lanes, 'ios'), laneOnlyNative(lanes, 'android')], c.id).toEqual([true, true]);
+      const user = createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: c.environment.direction }).compile(fixtureInput(spec));
+      const errs = user.diagnostics.filter((d) => d.severity === 'error');
+      expect(errs.map((d) => `${d.target} ${d.message.split(',')[0]}`).sort(), c.id).toEqual(['android a5 has a dashed outline in the translucent colour rgba(200', 'android r3 has a ridge outline in the translucent colour rgba(0', 'ios a5 has a dashed outline in the translucent colour rgba(200', 'ios r3 has a ridge outline in the translucent colour rgba(0']);
+      const r = nativePrograms(lanes, c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      for (const dpr of DPRS) {
+        const all = casePoints(r.programs.uikit, c.environment.viewport, dpr);
+        const kept = devicePoints(r.programs.uikit, c.environment.viewport, dpr);
+        expect(all.some((q) => /^[a-z]+:(a5|r3):outline-/.test(q.rule)), `${c.id}@${dpr}`).toBe(true);
+        expect(kept.filter((q) => /^[a-z]+:(a5|r3):outline-/.test(q.rule)), `${c.id}@${dpr}`).toEqual([]);
+        // Only the outline points go: the boxes' and the stage's own points stay.
+        expect(kept, `${c.id}@${dpr}`).toEqual(all.filter((q) => !/^[a-z]+:(a5|r3):outline-/.test(q.rule)));
+        expect(kept.some((q) => q.rule.startsWith('interior:stage')), `${c.id}@${dpr}`).toBe(true);
+      }
+    }
+  });
+  it('drops no point of an outline fixture without a translucent side-painter outline', () => {
+    for (const s of OUTLINE_FIXTURES.filter((f) => f.id !== 'outline-web')) {
+      for (const c of casesOf(s, fixtureInput(s))) {
+        const r = nativePrograms(nativeCompile(s, c.environment.direction), c.assignment);
+        if (r.kind !== 'ready') throw new Error(r.reason);
+        expect([laneOnlyNative(nativeCompile(s, c.environment.direction), 'ios')], c.id).toEqual([false]);
+        for (const dpr of DPRS) expect(devicePoints(r.programs.uikit, c.environment.viewport, dpr), `${c.id}@${dpr}`).toEqual(casePoints(r.programs.uikit, c.environment.viewport, dpr));
+      }
+    }
+  });
+  it('cites outline-web for the web outline rows and never for a native one', () => {
+    const cites = (rows: typeof webProfile.rows): string[] => rows.filter((r) => r.feature.startsWith('outline-')).flatMap((r) => r.proofs.flatMap((p) => p.cases));
+    expect(cites(webProfile.rows)).toEqual(expect.arrayContaining(['outline-web', 'outline-web-rtl']));
+    for (const profile of [iosProfile, androidProfile]) expect(cites(profile.rows).filter((id) => id.startsWith('outline-web'))).toEqual([]);
+  });
 });

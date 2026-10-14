@@ -59,6 +59,14 @@ describe.each([['ios', 3], ['android', 2.625], ['android', 2]] as const)('device
     expect(evaluateCase(target, n, dpr, null, ref).failures.map((f) => [f.lane, f.kind])).toEqual([['device-frames', 'dump-missing'], ['device-applied', 'dump-missing'], ['device-lines', 'dump-missing'], ['device-pixels', 'dump-missing']]);
     expect(evaluateCase(target, n, dpr, { schema: 'x' }, ref).failures.every((f) => f.kind === 'dump-invalid')).toBe(true);
   });
+  it('a dump the host could not encode (its error recorded in its place) fails every lane as dump-invalid, naming the error', () => {
+    const n = sample[0] as NativeCase;
+    const ref = refs.get(n.case.id) as CaseReference;
+    const error = 'java.lang.IllegalStateException: dump nodes.lines.deviceEdges.top: 1393.5 is not an integer';
+    const got = evaluateCase(target, n, dpr, { dumpError: error }, ref).failures;
+    expect(got.map((f) => [f.lane, f.kind])).toEqual([['device-frames', 'dump-invalid'], ['device-applied', 'dump-invalid'], ['device-lines', 'dump-invalid'], ['device-pixels', 'dump-invalid']]);
+    expect(got.every((f) => f.detail.includes(error))).toBe(true);
+  });
   it.each([...DUMP_FAULTS])('planted %s is caught by its named check, in its lane, with its kind, on every dump it applies to', (fault: DumpFault) => {
     let applicable = 0;
     for (const n of sample) {

@@ -1167,7 +1167,8 @@
         { "lines": "3102-3127", "symbol": "GridLayoutAlgorithm::ComputeOutOfFlowItemContainingRect", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
     {
@@ -1527,10 +1528,27 @@
       "fileSha256": "6c5f7813cd870aa0c9aa168dac029a3e7756032be99b9e6db947cac8d0a31100",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
-        { "lines": "33-59", "symbol": "LogicalBoxFragment::FirstBaselineOrSynthesize", "source": "cited" }
+        { "lines": "33-59", "symbol": "LogicalBoxFragment::FirstBaselineOrSynthesize", "source": "cited" },
+        { "lines": "42-51", "symbol": "LogicalBoxFragment::FirstBaseline", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/grid.ts", "symbol": "firstBaselineOrSynthesize", "use": "port" }
+        { "file": "packages/layout/src/grid.ts", "symbol": "firstBaselineOrSynthesize", "use": "port" },
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "inlineGridBaseline", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/logical_box_fragment.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "a5b5cfec3fe740eed5e77b981e6b2e70df116f6b427a748b3e6ee918d8a4e20e",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "14-84", "symbol": "LogicalBoxFragment::BaselineMetrics", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
     {
@@ -1602,6 +1620,7 @@
       "fileSha256": "5f42fb0bd905865e0989c8c1f50391772ae950a3f12f5e623ee17e2f41d566a5",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
+        { "lines": "163-165", "symbol": "PhysicalBoxFragment::UseLastBaselineForInlineBaseline", "source": "cited" },
         { "lines": "167-172", "symbol": null, "source": "cited" }
       ],
       "dragon": [
@@ -3486,10 +3505,13 @@
       "fileSha256": "e0d828e4ceaede9a989d17a38d26ee09048e974db4ce7511008cae2fe33a6213",
       "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
       "ranges": [
-        { "lines": "1652-1659", "symbol": "CSSParserFastPaths::IsValidKeywordPropertyAndValue", "source": "located" }
+        { "lines": "1652-1659", "symbol": "CSSParserFastPaths::IsValidKeywordPropertyAndValue", "source": "located" },
+        { "lines": "1338-1346", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/css/properties/selection.ts", "symbol": "parseUserSelect", "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/selection.ts", "symbol": "parseUserSelect", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" },
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" }
       ]
     },
     {
@@ -3505,6 +3527,8 @@
         { "lines": "3431-3436", "symbol": "Content::ApplyValue", "source": "located" },
         { "lines": "6772-6785", "symbol": "ListStyleType::ParseSingleValue", "source": "located" },
         { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "8525-8531", "symbol": "Resize::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "8533-8552", "symbol": "Resize::ApplyValue", "source": "located" },
         { "lines": "12421-12434", "symbol": "WordSpacing::CSSValueFromComputedStyleInternal", "source": "located" }
       ],
       "dragon": [
@@ -3514,7 +3538,8 @@
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeLetterSpacing", "use": "port" },
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeWordSpacing", "use": "port" },
         { "file": "packages/dragon/src/css/properties/text-spacing.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" }
+        { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as publicEntry from '../src/index.ts';
 import { createProject } from '../src/index.ts';
-import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, webClassMap } from '../src/internal.ts';
+import { COMMITTED_PROFILES, compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, webClassMap } from '../src/internal.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
 import type { Diagnostic } from '../src/index.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text as textNode } from './helpers.ts';
@@ -28,16 +28,16 @@ describe('createProject().compile() and check()', () => {
     expect(Object.isFrozen(c)).toBe(true);
   });
 
-  it('rejects display: inline-grid with a typed diagnostic, a UTF-16 span and a blocked ios output', () => {
-    const css = '.g { display: inline-grid; }';
+  it('rejects display: inline-table with a typed diagnostic, a UTF-16 span and a blocked ios output', () => {
+    const css = '.g { display: inline-table; }';
     const c = ios().compile(inputFor(css, (r) => [div(r, 'g', ['g'])]));
     expect(c.ok).toBe(false);
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
     if (d === undefined || d.origin.kind !== 'authored') throw new Error('no span');
-    expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe('inline-grid');
+    expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe('inline-table');
     expect(d.target).toBe('ios');
     expect(d.fix !== null && 'manual' in d.fix ? d.fix.manual : '').toMatch(/block|flex|none/);
-    expect(d.profile).toMatchObject({ target: 'ios', feature: 'display:inline-grid', status: 'unsupported' });
+    expect(d.profile).toMatchObject({ target: 'ios', feature: 'display:inline-table', status: 'unsupported' });
     expectCatalogued(c.diagnostics);
     expect(c.outputs.ios.kind).toBe('blocked');
     expect(iosLayoutProjection(c, ENV, []).kind).toBe('blocked');
@@ -196,6 +196,17 @@ describe('createProject().compile() and check()', () => {
     const derived = createProjectWith(config, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     expect(enforced.digest).toBe(ios().compile(input).digest);
     expect(derived.digest).not.toBe(enforced.digest);
+  });
+
+  it('a derive compile reads none of the given profiles, so its digest and output are the same whatever they hold; an enforced digest covers them', () => {
+    const input = inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]);
+    const config = { projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 26 } } } as const;
+    const empty = { web: { ...COMMITTED_PROFILES.web, rows: [] }, ios: { ...COMMITTED_PROFILES.ios, rows: [] }, android: { ...COMMITTED_PROFILES.android, rows: [] } };
+    const compile = (profiles: 'enforce' | 'derive', supportProfiles: typeof COMMITTED_PROFILES) => createProjectWith(config, { faults: NO_FAULTS, profiles, direction: 'ltr', supportProfiles }).compile(input);
+    const [committed, emptied] = [compile('derive', COMMITTED_PROFILES), compile('derive', empty)];
+    expect(emptied.digest).toBe(committed.digest);
+    expect(JSON.stringify(emptied.outputs)).toBe(JSON.stringify(committed.outputs));
+    expect(compile('enforce', empty).digest).not.toBe(compile('enforce', COMMITTED_PROFILES).digest);
   });
 });
 

@@ -80,7 +80,9 @@ const SUBSET = [
   'text-overflow',
   // TXT2-e: text-transform (css-text-3 §2.1), after visibility, as LONGHANDS registers it.
   'text-transform',
-  // TXT2-h: text-indent (css-text-3 §8.1), after text-transform, as LONGHANDS registers it.
+  // resize (css-ui-4 §5.1), after text-transform, as LONGHANDS registers it.
+  'resize',
+  // TXT2-h: text-indent (css-text-3 §8.1), after resize, as LONGHANDS registers it.
   'text-indent',
   // TXT2-a: overflow-wrap and word-break (css-text-3 §5.2, §5.5), then the word-wrap alias, as LONGHANDS registers them.
   'overflow-wrap', 'word-break', 'word-wrap',
@@ -98,6 +100,8 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
   // which webref's <image> omits; Chrome 145 parses both in content and list-style-image (packages/parity/test/list-style-parse.test.ts).
   content: '-webkit-image-set( <image-set-option># ) | -webkit-cross-fade( <image> , <image> , [ <percentage> | <number> ] )',
   'list-style-image': '-webkit-image-set( <image-set-option># ) | -webkit-cross-fade( <image> , <image> , [ <percentage> | <number> ] )',
+  // css-ui-4 §5.1 lists no auto, but Chrome 145 parses it under CSSResizeAuto, a stable feature (css_parser_fast_paths.cc kResize).
+  resize: 'auto',
 };
 
 /**

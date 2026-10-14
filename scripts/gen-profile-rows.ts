@@ -34,15 +34,14 @@ try {
     cases.push(...outcome.cases);
     for (const c of outcome.cases) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }
-  // TXT1-C: the web-only fonts fixtures prove web rows through chrome-dual alone; their ios features are empty.
-  for (const f of FONT_FIXTURES) {
-    const outcomes = await runFontFixture(f, browser, { authored: committedFontAuthored, faults: NO_FAULTS, profiles: 'derive' });
+  // TXT1-C: the web-only fonts fixtures prove web rows through chrome-dual alone; their ios features are empty. CHROME_PAGES at a
+  // time, the outcomes in fixture order, as the layout fixtures.
+  for (const outcomes of await inOrder(FONT_FIXTURES, CHROME_PAGES, (f) => runFontFixture(f, browser, { authored: committedFontAuthored, faults: NO_FAULTS, profiles: 'derive' }))) {
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }
   // ENV-SAFE: the web-only env() fixtures prove web rows through chrome-dual alone, under their insets; their ios features are empty.
-  for (const f of ENV_FIXTURES) {
-    const outcomes = await runEnvFixture(f, browser, { authored: committedEnvAuthored(f), faults: NO_FAULTS, profiles: 'derive' });
+  for (const outcomes of await inOrder(ENV_FIXTURES, CHROME_PAGES, (f) => runEnvFixture(f, browser, { authored: committedEnvAuthored(f), faults: NO_FAULTS, profiles: 'derive' }))) {
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }

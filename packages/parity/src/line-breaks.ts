@@ -32,6 +32,8 @@ export type EngineLine = {
   readonly shifts: readonly number[];
   readonly rect: LayoutRect;
   readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+  /** The first piece's content top below its line box top in LU (the half-leading, or more beside a taller atomic inline). */
+  readonly halfLeading: number;
   readonly ellipsis: { readonly x: number; readonly cps: readonly number[]; readonly font: TextFont } | null;
   /** Per engine line rect of the line, the UTF-16 [start, end) a device dumps for it: each piece's, twice for a truncated one. */
   readonly fragments: readonly (readonly [number, number])[];
@@ -141,7 +143,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
       // Only a line of collapsed text is justified, and it has one piece per leaf; preserved pieces have no shifts.
       const shifts = mine.flatMap((q) => q.shifts);
       const fragments = mine.flatMap((q) => Array.from({ length: q.truncated ? 2 : 1 }, () => [utf16(q.start), utf16(q.end)] as const));
-      own.push({ start: utf16(first.start), end: utf16(last.end), cps, shifts, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, ellipsis, fragments });
+      own.push({ start: utf16(first.start), end: utf16(last.end), cps, shifts, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, halfLeading: first.top - line.top, ellipsis, fragments });
     }
     if (used !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${used} fragments, its layout ${pieces.length}`);
     out.push({ id: r.id, container: pId, font: leaf.font, textFont: leafFontOf(leaf), lines: own });

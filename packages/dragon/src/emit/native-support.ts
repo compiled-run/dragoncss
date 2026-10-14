@@ -558,7 +558,7 @@ public final class DragonTree {
   private var parents: [String: String?] = [:]
   /// Per text view: each line's half-leading (its content top below the line top, INL1a: it differs by line), and the view's
   /// one ascent and descent.
-  private var textMetrics: [String: (halfLeadings: [Double], ascent: Double, descent: Double)] = [:]
+  private var textMetrics: [String: (topsLU: [Double], ascent: Double, descent: Double)] = [:]
   /// Each inline box's fragments (INL1a): edges relative to the box's own snapped edges, and the line's baseline from the fragment top.
   private var inlineLines: [String: [(edges: [Double], baseline: Double)]] = [:]
   private var hosts: [String: String] = [:]
@@ -780,7 +780,7 @@ public final class DragonTree {
       var geometry: [[Double]] = []
       var geometryCps: [[Double]] = []
       var geometryPens: [[Double]] = []
-      var viewMetrics: (halfLeadings: [Double], ascent: Double, descent: Double)? = nil
+      var viewMetrics: (topsLU: [Double], ascent: Double, descent: Double)? = nil
       var firstBaselineOffset: Double? = nil
       // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
       // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
@@ -818,20 +818,20 @@ public final class DragonTree {
       // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
       for line in placed {
         for piece in line.pieces.items where Int(piece.leaf) == li {
-        // One font per text view: every line's ascent and descent are the view's; its content top below the line top is the line's.
-        let halfLeading = (piece.top - line.top) / lu
+        // One font per text view: every line's ascent and descent are the view's; its content top below the view top is the line's.
         if let m = viewMetrics, m.ascent != piece.ascent / lu || m.descent != piece.descent / lu { fatalError("dragon: \(id): line ascent \(piece.ascent / lu) and descent \(piece.descent / lu) differ from the text view's \(m.ascent) and \(m.descent)") }
         // TXT2-f: a truncated piece is two fragments, its whole run unpainted and then its painted part (inline.ts collectFragments);
         // the line's ellipsis follows the leaf it names, on the line's baseline in the line's font (truncate.ts).
         let widths = piece.truncated ? [piece.width, piece.truncatedWidth] : [piece.width]
         let ellipsis = line.ellipsis.flatMap { Int($0.leaf) == li ? $0 : nil }
         for (n, width) in widths.enumerated() {
-          viewMetrics = ((viewMetrics?.halfLeadings ?? []) + [halfLeading], piece.ascent / lu, piece.descent / lu)
           let k = specs.count
           if k >= pieces.count { fatalError("dragon: \(id): the engine's breaks give more lines than its layout (\(pieces.count))") }
           let (i, r) = pieces[k]
           if width != r.width { fatalError("dragon: \(id) line \(k): the engine's break gives width \(width) LU, its layout \(r.width) LU") }
           guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(r.id)") }
+          // The content top in LU below the view's snapped top, unsnapped like xLU: an atomic inline can put it off the device px grid.
+          viewMetrics = ((viewMetrics?.topsLU ?? []) + [a.y - e[1] * lu], piece.ascent / lu, piece.descent / lu)
           let top = try units_snapEdge(a.y - (piece.top - line.top))
           var baseline = snapped[i].top + piece.ascent / lu
           // The single-run-baseline plant: every line takes the first line's baseline below its line top.
@@ -907,10 +907,12 @@ public final class DragonTree {
       if let tv = v as? DragonTextView, !tv.specs.isEmpty {
         guard let m = textMetrics[id] else { fatalError("dragon: \(id): a text view with lines has no line metrics") }
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
-        if m.halfLeadings.count != tv.specs.count { fatalError("dragon: \(id): \(m.halfLeadings.count) line metrics for \(tv.specs.count) lines") }
+        if m.topsLU.count != tv.specs.count { fatalError("dragon: \(id): \(m.topsLU.count) line metrics for \(tv.specs.count) lines") }
         for (k, x) in tv.specs.enumerated() {
-          let top = t + x.top + m.halfLeadings[k]
-          let bottom = top + m.ascent + m.descent
+          // The content box snapped from its LU edges like left and right (snapRect): at a fractional DPR its top below the
+          // line top need not be whole device px (INL2a: an atomic inline sets the line's baseline).
+          let top = try! units_snapEdge(t * units_LU_PER_PX + m.topsLU[k])
+          let bottom = try! units_snapEdge(t * units_LU_PER_PX + m.topsLU[k] + (m.ascent + m.descent) * units_LU_PER_PX)
           let left = try! units_snapEdge(l * units_LU_PER_PX + x.xLU)
           let right = try! units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           let baseline = t + x.baseline
@@ -1790,7 +1792,7 @@ class DragonTree(val context: Context) {
       // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
       for (line in placed) for (piece in line.pieces) {
         if (piece.leaf.toInt() != li) continue
-        // One font per text view: every line's ascent and descent are the view's; its content top below the line top is the line's.
+        // One font per text view: every line's ascent and descent are the view's; its content top below the view top is the line's.
         val known = viewMetrics
         if (known != null && (known[0] != piece.ascent / lu || known[1] != piece.descent / lu)) throw IllegalStateException("dragon: " + id + ": line ascent " + (piece.ascent / lu) + " and descent " + (piece.descent / lu) + " differ from the text view's " + known[0] + " and " + known[1])
         // TXT2-f: a truncated piece is two fragments, its whole run unpainted and then its painted part (inline.ts collectFragments);
@@ -1798,13 +1800,14 @@ class DragonTree(val context: Context) {
         val widths = if (piece.truncated) doubleArrayOf(piece.width, piece.truncatedWidth) else doubleArrayOf(piece.width)
         val ellipsis = line.ellipsis?.takeIf { it.leaf.toInt() == li }
         for ((n, width) in widths.withIndex()) {
-          viewMetrics = (viewMetrics ?: doubleArrayOf(piece.ascent / lu, piece.descent / lu)) + doubleArrayOf((piece.top - line.top) / lu)
           val k = specs.size
           if (k >= pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give more lines than its layout (" + pieces.size + ")")
           val i = pieces[k]
           val r = boxes[i]
           if (width != r.width) throw IllegalStateException("dragon: " + id + " line " + k + ": the engine's break gives width " + width + " LU, its layout " + r.width + " LU")
           val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + r.id)
+          // The content top in LU below the view's snapped top, unsnapped like xLU: an atomic inline can put it off the device px grid.
+          viewMetrics = (viewMetrics ?: doubleArrayOf(piece.ascent / lu, piece.descent / lu)) + doubleArrayOf(a.y - e[1] * lu)
           val top = units_snapEdge(a.y - (piece.top - line.top))
           var baseline = snapped[i].top + piece.ascent / lu
           // The single-run-baseline plant: every line takes the first line's baseline below its line top.
@@ -1892,8 +1895,10 @@ class DragonTree(val context: Context) {
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
         if (m.size != 2 + v.specs.size) throw IllegalStateException("dragon: " + id + ": " + (m.size - 2) + " line metrics for " + v.specs.size + " lines")
         for ((k, x) in v.specs.withIndex()) {
-          val top = t + x.top + m[2 + k]
-          val bottom = top + m[0] + m[1]
+          // The content box snapped from its LU edges like left and right (snapRect): at a fractional DPR its top below the
+          // line top need not be whole device px (INL2a: an atomic inline sets the line's baseline).
+          val top = units_snapEdge(t * units_LU_PER_PX + m[2 + k])
+          val bottom = units_snapEdge(t * units_LU_PER_PX + m[2 + k] + (m[0] + m[1]) * units_LU_PER_PX)
           val left = units_snapEdge(l * units_LU_PER_PX + x.xLU)
           val right = units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           val baseline = t + x.baseline
