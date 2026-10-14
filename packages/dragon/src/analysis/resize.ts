@@ -20,7 +20,11 @@ export function checkResize(el: ResolvedElement, propagated: ResolvedElement | n
   const k = v.value.value;
   if (k === 'none') return;
   const iframe = el.element.tag === 'iframe';
-  const scroller = el !== propagated && (isScrollKeyword(el.props.get('overflow-x') as ResolvedValue) || isScrollKeyword(el.props.get('overflow-y') as ResolvedValue));
+  // Overflow makes only a block, flex or grid container a scroll container (css-overflow-3 §3); an inline box with overflow hidden
+  // scrolls nothing, so Chrome draws no resizer on it.
+  const display = el.props.get('display') as ResolvedValue | undefined;
+  const inline = display?.value.kind === 'keyword' && (display.value.value === 'inline' || display.value.value === 'contents');
+  const scroller = el !== propagated && !inline && (isScrollKeyword(el.props.get('overflow-x') as ResolvedValue) || isScrollKeyword(el.props.get('overflow-y') as ResolvedValue));
   if (!iframe && !scroller) return;
   const where = iframe ? `the iframe ${el.element.address}` : `the scroll container ${el.element.address}`;
   for (const t of nativeTargets) {

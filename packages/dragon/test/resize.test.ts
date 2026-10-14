@@ -87,6 +87,11 @@ describe('resize: native refuses it on a scroll container or an iframe', () => {
     }
   });
 
+  it('an inline box with overflow hidden is no scroll container, so resize on it compiles', () => {
+    const css = '.b { display: inline; overflow: hidden; resize: both; }';
+    expect(errors(compile(css, NATIVE)).filter((d) => d.message.includes('resize')), css).toEqual([]);
+  });
+
   it('a resize the cascade drops to none compiles; one the child inherits onto its scroll container is refused there only', () => {
     expect(errors(compile('.a { overflow: auto; resize: both; } .a { resize: none; }', NATIVE))).toEqual([]);
     const c = compile('.a { resize: both; } .b { overflow: hidden; resize: inherit; }', NATIVE);
