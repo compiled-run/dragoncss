@@ -13,7 +13,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
@@ -25,6 +25,7 @@ import type { InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
+import { computeResize } from '../css/properties/resize.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -199,8 +200,8 @@ export function phaseOneContext(runs: readonly (string | null)[], modes: readonl
 /** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
 const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
 
-/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box that stayed inline-level after blockification. */
-const isAtomicInline = (el: ResolvedElement): boolean => displayOf(el) === 'inline-block' || displayOf(el) === 'inline-flex';
+/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box that stayed inline-level after blockification. */
+const isAtomicInline = (el: ResolvedElement): boolean => displayOf(el) === 'inline-block' || displayOf(el) === 'inline-flex' || displayOf(el) === 'inline-grid';
 
 /** An atomic inline's run in collapseInlineContext: U+FFFC, which is not white space (Blink inline_items_builder.cc:1245-1251). */
 const ATOMIC_RUN = '\ufffc';
@@ -321,9 +322,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     }
     computeLengths(props, parentFontSize, rootFontSize);
     computeLetterSpacing(props, faults.zeroNotNormal);
+    computeWordSpacing(props, faults.wordNormalNotZero);
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     blockify(props, parent === null ? null : parent.props, faults);
     computeOverflowPair(props);
+    computeResize(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);

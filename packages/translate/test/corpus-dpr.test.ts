@@ -71,8 +71,9 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(INLINE_SPEC.engineInline).toBe(3000);
     expect(n['engine-overflow']).toBe(OVERFLOW_SPEC.engineOverflow);
     // TXT1a-2: 11 shaped cases, T133: 2 (inline-tags-faces ltr and rtl), TXT-W1: 12 (text-weight-*) TXT-W2: 4 (font-shorthand-*), TXT2-b: 2 (text-spacing-lato), TXT2-c: 1 (white-space-lato)
-    // and TXT2: 2 (text-justify-latin ltr and rtl), at DPR 1, 2, 3 and 2.625, each with its shape transcript.
-    expect(n['text-latin']).toBe((11 + 2 + 12 + 4 + 2 + 1 + 2) * 4);
+    // TXT2: 2 (text-justify-latin ltr and rtl), TXT2-b: 3 (text-word-spacing-lato ltr and rtl, text-word-spacing-nbsp) and TXT2-h: 2
+    // (text-indent-latin ltr and rtl), at DPR 1, 2, 3 and 2.625, each with its shape transcript.
+    expect(n['text-latin']).toBe((11 + 2 + 12 + 4 + 2 + 1 + 2 + 3 + 2) * 4);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 

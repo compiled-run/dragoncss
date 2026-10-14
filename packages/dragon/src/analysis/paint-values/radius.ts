@@ -5,6 +5,9 @@ import type { Longhand } from '../../css/properties.ts';
 import type { RadiusComponent } from '../../css/properties/radius.ts';
 import { cornerComponents, cornerValue, RADIUS_LONGHANDS, RADIUS_PAIR } from '../../css/properties/radius.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx } from '../../css/units.ts';
+import { serializeColor } from '../../css/color.ts';
+import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
+import { usedColors } from '../../lower/paint/colors.ts';
 import { valueToString } from '../computed.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { isReplacedTag } from '../elements/replaced.ts';
@@ -163,6 +166,58 @@ export const RADIUS_VALUES: PaintValues = {
     }
   },
 };
+
+/** Whether an element is drawn as a rounded double border: Blink's two rings (four double sides of one width and colour). */
+export function roundedDouble(el: ResolvedElement): boolean {
+  return !isReplacedTag(el.element.tag) && roundsCorners(el) && fourUniformDoubles(el);
+}
+
+/** Whether an element's border colour is currentcolor, so its rounded double border takes color's value (and color's animation). */
+export function borderInCurrentColor(el: ResolvedElement): boolean {
+  const c = (el.props.get('border-top-color') as ResolvedValue | undefined)?.value;
+  return c !== undefined && c.kind === 'keyword' && c.value === 'currentcolor';
+}
+
+/**
+ * PNT1b (device run 38470185768): a rounded double border in a translucent colour. Chrome fills its two rings with the colour
+ * premultiplied to 8 bits by Skia (DrawDoubleBorder's FillDRRect, no layer); the native fills blend it with the platform's own
+ * rounding, which no native colour reproduces (Android was one off in a channel at every device scale). Outside the parity lanes
+ * both native targets refuse it, at the border colour's declaration, in every state and band the check is run on (project.ts); the
+ * lanes compile it to prove the web rows (radius-double-web). A transparent border paints nothing, so it compiles.
+ */
+export function checkTranslucentRoundedDoubles(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const walk = (el: ResolvedElement): void => {
+    const display = (el.props.get('display') as ResolvedValue).value;
+    if (display.kind === 'keyword' && display.value === 'none') return;
+    const visibility = el.props.get('visibility') as ResolvedValue | undefined;
+    if (visibility === undefined) throw new Error(`${el.element.address}: visibility did not resolve`);
+    if (paintsOwn(visibilityOf(visibility.value)) && roundedDouble(el)) {
+      // fourUniformDoubles compares the computed values, so one side's colour is every side's.
+      const color = usedColors(el)['border-top-color'];
+      if (color.alpha > 0 && color.alpha < 255) {
+        const v = el.props.get('border-top-color') as ResolvedValue;
+        const current = v.value.kind === 'keyword' && v.value.value === 'currentcolor';
+        const from = current ? (el.props.get('color') as ResolvedValue) : v;
+        const origin = from.declaration === null ? el.element.node.origin : authored(from.declaration.valueSpan);
+        for (const t of targets) {
+          if (t === 'web') continue;
+          const id = `${t}|rounded-double-translucent|${el.element.address}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+            origin,
+            target: t,
+            message: `${el.element.address} is a rounded double border in the translucent colour ${serializeColor(color)}, which Chrome fills with Skia's 8-bit premultiplied colour and ${t} blends with its own rounding; ${t} draws rounded double borders in opaque colours only (PNT1b)`,
+            manual: 'Give the rounded double border an opaque colour, or use square corners.',
+            basis: 'computed-value',
+          }));
+        }
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  walk(root);
+}
 
 /** The per-side colours the native animator feeds the border stage one side at a time (dragonAnimatedSides). */
 const SIDE_COLORS: readonly Longhand[] = ['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];

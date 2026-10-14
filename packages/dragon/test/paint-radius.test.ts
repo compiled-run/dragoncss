@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { roundedShape } from '@dragon/layout';
 import type { Diagnostic } from '../src/index.ts';
 import type { Targets } from '../src/types.ts';
-import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
+import { createProjectWith, laneOnlyNative, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { BORDER_EMITTER } from '../src/emit/paint/border.ts';
@@ -144,10 +144,97 @@ describe('border-radius: refusals', () => {
   });
 
   it('a rounded double border compiles on every target when its four sides are double in one width and colour, whatever the colour syntax', () => {
-    for (const css of ['.a { width: 60px; height: 40px; border: 6px double blue; border-radius: 10px; }', '.a { width: 60px; height: 40px; border: 1px double #ff000080; border-radius: 50%; }', '.a { width: 60px; height: 40px; border: 9px double red; border-top-color: #f00; border-left-color: rgb(255 0 0); border-radius: 4px 20px; }']) {
+    // An opaque eight-digit hex colour: a translucent one is refused (the next test).
+    for (const css of ['.a { width: 60px; height: 40px; border: 6px double blue; border-radius: 10px; }', '.a { width: 60px; height: 40px; border: 1px double #ff0000ff; border-radius: 50%; }','.a { width: 60px; height: 40px; border: 9px double red; border-top-color: #f00; border-left-color: rgb(255 0 0); border-radius: 4px 20px; }']) {
       const { c } = compile(css, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
       expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE'), css).toEqual([]);
     }
+  });
+
+  it('a translucent rounded double border is refused for ios and android by name, at the colour, in every state and band; web compiles (device run 38470185768)', () => {
+    const both: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+    const project = (input: FrontEndResult, t: Targets = both, lanes = false) => createProjectWith({ projectId: 'test', targets: t }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: lanes }).compile(input);
+    const translucent = (c: { diagnostics: readonly Diagnostic[] }) => c.diagnostics.filter((d) => d.severity === 'error' && d.message.includes('rounded double border in the translucent colour'));
+    const message = (colour: string, t: string) => `a is a rounded double border in the translucent colour ${colour}, which Chrome fills with Skia's 8-bit premultiplied colour and ${t} blends with its own rounding; ${t} draws rounded double borders in opaque colours only (PNT1b)`;
+    const one = (css: string) => inputFor(`body { margin: 0; font-size: 20px; } ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]);
+    for (const [css, span, shown] of [
+      ['.a { width: 90px; height: 60px; border: 12px double rgba(192, 57, 43, 0.5); border-radius: 26px; }', '12px double rgba(192, 57, 43, 0.5)', 'rgba(192, 57, 43, 0.5)'],
+      ['.a { width: 90px; height: 60px; border: 9px double #2a3b8f; border-color: #2a3b8f80; border-radius: 50%; }', '#2a3b8f80', 'rgba(42, 59, 143, 0.5)'],
+      ['.a { width: 60px; height: 40px; border: 1px double rgba(0, 0, 0, 0.99); border-radius: 4px 20px; }', '1px double rgba(0, 0, 0, 0.99)', 'rgba(0, 0, 0, 0.99)'],
+      ['.a { width: 60px; height: 40px; color: rgba(0, 0, 255, 0.3); border: 6px double; border-radius: 10px; }', 'rgba(0, 0, 255, 0.3)', 'rgba(0, 0, 255, 0.3)'],
+    ] as const) {
+      const input = one(css);
+      const c = project(input);
+      const refused = translucent(c);
+      expect(refused.map((d) => [d.code, d.target, d.message]).sort(), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android', message(shown, 'android')], ['DRAGON_UNSUPPORTED_VALUE', 'ios', message(shown, 'ios')]]);
+      for (const d of refused) expect(spanTextOf(input, d), css).toBe(span);
+      expect(c.diagnostics.filter((d) => d.severity === 'error'), css).toEqual(refused);
+      expectCatalogued(refused);
+      expect(project(input, { web: {} }).diagnostics.filter((d) => d.severity === 'error'), `${css} on web`).toEqual([]);
+      // The parity lanes compile it on native, as a lane-only case.
+      const lanes = project(input, both, true);
+      expect(translucent(lanes), css).toEqual([]);
+      expect([laneOnlyNative(lanes, 'ios'), laneOnlyNative(lanes, 'android')], css).toEqual([true, true]);
+    }
+    const targetsOf = (input: FrontEndResult) => translucent(project(input)).map((d) => d.target).sort();
+    // A reachable state that makes the colour translucent, or rounds a translucent double border.
+    const box = '.a { width: 60px; height: 40px; border: 6px double blue; border-radius: 10px; }';
+    expect(targetsOf(stated(`body { margin: 0; } ${box} .a.on { border-color: rgba(0, 0, 255, 0.5); }`))).toEqual(['android', 'ios']);
+    expect(targetsOf(stated('body { margin: 0; } .a { width: 60px; height: 40px; border: 6px double rgba(0, 0, 255, 0.5); } .a.on { border-radius: 10px; }'))).toEqual(['android', 'ios']);
+    // MQ-R1: native switches @media bands at run time, so a band that is not the fold band's is refused too, and lane-only in the lanes.
+    for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
+      const banded = one(`${box} @media ${media} { .a { border-color: rgba(0, 0, 255, 0.5); } }`);
+      expect(targetsOf(banded), media).toEqual(['android', 'ios']);
+      const lanes = project(banded, both, true);
+      expect([laneOnlyNative(lanes, 'ios'), laneOnlyNative(lanes, 'android')], media).toEqual([true, true]);
+    }
+    // Not refused: opaque and transparent rounded double borders, a translucent square double border, a translucent rounded solid
+    // border, and a hidden box; an opaque one stays a native proof in the lanes.
+    for (const css of [box, '.a { width: 60px; height: 40px; border: 6px double transparent; border-radius: 10px; }', '.a { width: 60px; height: 40px; border: 6px double rgba(0, 0, 255, 0.5); }', '.a { width: 60px; height: 40px; border: 6px solid rgba(0, 0, 255, 0.5); border-radius: 10px; }', '.a { width: 60px; height: 40px; visibility: hidden; border: 6px double rgba(0, 0, 255, 0.5); border-radius: 10px; }']) {
+      expect(project(one(css)).diagnostics.filter((d) => d.severity === 'error'), css).toEqual([]);
+    }
+    const opaque = project(one(box), both, true);
+    expect([laneOnlyNative(opaque, 'ios'), laneOnlyNative(opaque, 'android')]).toEqual([false, false]);
+  });
+
+  it('an animation or transition of color through translucent values on a currentcolor rounded double border is refused for ios and android; web compiles', () => {
+    const both: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+    const run = (input: FrontEndResult, t: Targets = both) => createProjectWith({ projectId: 'test', targets: t }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    const refused = (input: FrontEndResult, t: Targets = both) => run(input, t).diagnostics.filter((d) => d.severity === 'error' && d.message.includes('the color passes through translucent values'));
+    const one = (css: string) => inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'a', ['a'])]);
+    const box = '.a { width: 60px; height: 40px; color: blue; border: 6px double; border-radius: 10px; }';
+    const message = (what: string, t: string) => `${what} of color on a: a rounded double border on a paints in currentcolor, and the color passes through translucent values, which ${t} blends with its own rounding, unlike Chrome's Skia; ${t} draws dotted, dashed and 3D outlines and rounded double borders in opaque colours only (PNT1)`;
+    const keyframed = one(`${box} .a { animation: f 1s forwards; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }`);
+    const ds = refused(keyframed);
+    expect(ds.map((d) => [d.code, d.target, d.message]).sort()).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android', message('an animation', 'android')], ['DRAGON_UNSUPPORTED_VALUE', 'ios', message('an animation', 'ios')]]);
+    for (const d of ds) expect(spanTextOf(keyframed, d)).toBe('f 1s forwards');
+    expectCatalogued(ds);
+    expect(refused(keyframed, { web: {} })).toEqual([]);
+    const targetsOf = (input: FrontEndResult) => refused(input).map((d) => d.target).sort();
+    // A keyframe to transparent passes through translucent colours; a parent's animated color reaches an inheriting child.
+    expect(targetsOf(one(`${box} .a { animation: f 1s; } @keyframes f { 50% { color: transparent; } }`))).toEqual(['android', 'ios']);
+    const inherited = inputFor('body { margin: 0; } .p { color: blue; animation: f 1s; } .a { width: 60px; height: 40px; border: 6px double; border-radius: 10px; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }', (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);
+    expect(refused(inherited).map((d) => d.message.split(':')[0]).sort()).toEqual(['an animation of color on p', 'an animation of color on p']);
+    // A transition from an opaque state to a transparent one, in a reachable state.
+    expect(targetsOf(stated(`body { margin: 0; } ${box} .a { transition: color 1s; } .a.on { color: transparent; }`))).toEqual(['android', 'ios']);
+    // MQ-R1: an animation only in a band that is not the fold band's.
+    for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
+      expect(targetsOf(one(`${box} @media ${media} { .a { animation: f 1s; } } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }`)), media).toEqual(['android', 'ios']);
+    }
+    // A keyframe list without a 0% or 100% color frame fills it with the resting color: a fade in from (or out to) transparent
+    // passes through translucent colours.
+    for (const frame of ['to', 'from']) {
+      expect(targetsOf(one(`${box} .a { color: transparent; animation: f 1s forwards; } @keyframes f { ${frame} { color: blue; } }`)), frame).toEqual(['android', 'ios']);
+    }
+    // Not refused: opaque keyframes and transitions, both end frames opaque over a transparent resting color, a border with its own
+    // colour, a square double border.
+    for (const input of [
+      one(`${box} .a { animation: f 1s; } @keyframes f { to { color: red; } }`),
+      one(`${box} .a { color: transparent; animation: f 1s; } @keyframes f { 0%, 100% { color: blue; } }`),
+      stated(`body { margin: 0; } ${box} .a { transition: color 1s; } .a.on { color: red; }`),
+      one('.a { width: 60px; height: 40px; color: blue; border: 6px double green; border-radius: 10px; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }'),
+      one('.a { width: 60px; height: 40px; color: blue; border: 6px double; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }'),
+    ]) expect(run(input).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
   it('any other rounded double border is refused for ios and android at the radius declaration, and not for web', () => {

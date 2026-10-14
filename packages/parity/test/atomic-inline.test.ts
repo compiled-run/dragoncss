@@ -30,7 +30,7 @@ const STYLE = {
   paddingTop: { kind: 'px', value: 0 }, paddingRight: { kind: 'px', value: 0 }, paddingBottom: { kind: 'px', value: 0 }, paddingLeft: { kind: 'px', value: 0 },
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
-  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', textOverflow: 'clip',
+  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', textOverflow: 'clip', textIndent: { kind: 'px', value: 0 },
   verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' }, grid: null, gridItem: null,
 } as const satisfies LayoutStyle;
 
@@ -103,11 +103,12 @@ afterAll(async () => {
   await browser.close();
 });
 
-describe('INL2a engine plants fail a named atomic-inline case at every DPR (committed captures)', () => {
+describe('INL2a and G-INL engine plants fail a named atomic-inline case at every DPR (committed captures)', () => {
   const PLANTS: readonly { readonly fault: keyof EngineFaults; readonly fixture: string }[] = [
     { fault: 'inlineBlockFirstBaseline', fixture: 'atomic-inline-block' },
     { fault: 'overflowBaselineIgnored', fixture: 'atomic-inline-block' },
     { fault: 'inlineFlexLastBaseline', fixture: 'atomic-inline-flex' },
+    { fault: 'inlineGridLastItemBaseline', fixture: 'atomic-inline-grid' },
     { fault: 'atomicMarginExcluded', fixture: 'atomic-inline-shrink' },
     { fault: 'noBreakAroundAtomic', fixture: 'atomic-inline-breaks' },
     { fault: 'atomicShrinkToFitIgnored', fixture: 'atomic-inline-shrink' },

@@ -63,7 +63,7 @@ function unknownPadding(root: LayoutBox): ReadonlySet<string> {
     const known = basisKnown || !hasPercentPadding(b);
     if (!known) out.add(b.id);
     if (b.kind === 'replaced') return;
-    const grid = b.style.display === 'grid';
+    const grid = b.style.display === 'grid' || b.style.display === 'inline-grid';
     for (const k of b.children) {
       if (!isNode(k)) continue;
       walk(k, outOfFlow(k) ? !(grid && b.style.position !== 'static') : known && !grid);

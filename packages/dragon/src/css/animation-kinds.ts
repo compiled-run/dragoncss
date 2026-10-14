@@ -21,12 +21,14 @@ import { OVERFLOW_ANIMATION } from './animation-kinds/overflow.ts';
 import { POINTER_ANIMATION } from './animation-kinds/pointer.ts';
 import { POSITION_ANIMATION } from './animation-kinds/position.ts';
 import { RADIUS_ANIMATION } from './animation-kinds/radius.ts';
+import { RESIZE_ANIMATION } from './animation-kinds/resize.ts';
 import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
 import { TEXT_DECORATION_ANIMATION } from './animation-kinds/text-decoration.ts';
+import { TEXT_INDENT_ANIMATION } from './animation-kinds/text-indent.ts';
 import { TEXT_OVERFLOW_ANIMATION } from './animation-kinds/text-overflow.ts';
 import { TEXT_SPACING_ANIMATION } from './animation-kinds/text-spacing.ts';
 import { TEXT_TRANSFORM_ANIMATION } from './animation-kinds/text-transform.ts';
@@ -53,12 +55,14 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...POINTER_ANIMATION,
   ...POSITION_ANIMATION,
   ...RADIUS_ANIMATION,
+  ...RESIZE_ANIMATION,
   ...SCROLLBAR_ANIMATION,
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
   ...SVG_ANIMATION,
   ...TEXT_ANIMATION,
   ...TEXT_DECORATION_ANIMATION,
+  ...TEXT_INDENT_ANIMATION,
   ...TEXT_OVERFLOW_ANIMATION,
   ...TEXT_SPACING_ANIMATION,
   ...TEXT_TRANSFORM_ANIMATION,

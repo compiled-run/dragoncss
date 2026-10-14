@@ -143,13 +143,22 @@ export function letterSpacingAfter(cp: number, spacing16: number): number {
 }
 
 /**
+ * The word spacing ShapeResultSpacing::ComputeSpacing (shape_result_spacing.cc) adds after a character, as 16.16: the spacing after a
+ * Character::TreatAsSpace (character.h) character other than the tab (SetSpacing sets allow_tabs_), NBSP included. Blink skips a space at offset 0 of the formatting
+ * context's text, where white space collapsing leaves none, and the compiler refuses word-spacing on preserved white space.
+ */
+export function wordSpacingAfter(cp: number, spacing16: number): number {
+  return spacing16 !== 0 && (cp === 0x20 || cp === 0x0a || cp === 0xa0) ? spacing16 : 0;
+}
+
+/**
  * Ahem text with letter spacing, as Blink measures it after ShapeResult::ApplySpacing: each glyph's 16.16 HarfBuzz advance plus the
  * spacing after it, summed exactly: the sums before code points start and end and over the whole text, and the first code point
  * that is not an Ahem glyph (bad), or -1.
  */
 type SpacedSums = { readonly before: number; readonly through: number; readonly total: number; readonly bad: number };
 
-function spacedSums(data: FontData, text: string, size: number, spacing16: number, start: number, end: number): SpacedSums {
+function spacedSums(data: FontData, text: string, size: number, spacing16: number, word16: number, start: number, end: number): SpacedSums {
   let k = 0;
   let before = 0;
   let through = 0;
@@ -160,7 +169,7 @@ function spacedSums(data: FontData, text: string, size: number, spacing16: numbe
     if (em < 0) return { before: 0, through: 0, total: 0, bad: cp };
     if (k === start) before = total;
     if (k === end) through = total;
-    total = total + glyphAdvance16(em * data.unitsPerEm, size, data.unitsPerEm) + letterSpacingAfter(cp, spacing16);
+    total = total + glyphAdvance16(em * data.unitsPerEm, size, data.unitsPerEm) + letterSpacingAfter(cp, spacing16) + wordSpacingAfter(cp, word16);
     k++;
   }
   if (start >= k) before = total;
@@ -200,8 +209,9 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
     measure(text: string, font: TextFont): MeasureResult {
       if (font.family !== AHEM_FACE_ID) return { ok: false, code: 'text-glyph', reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
       const spacing16 = textRunLayoutUnit(font.letterSpacing);
-      if (spacing16 !== 0) {
-        const sums = spacedSums(data, text, instanceSize(font.size), spacing16, 0, 0);
+      const word16 = textRunLayoutUnit(font.wordSpacing);
+      if (spacing16 !== 0 || word16 !== 0) {
+        const sums = spacedSums(data, text, instanceSize(font.size), spacing16, word16, 0, 0);
         if (sums.bad >= 0) return { ok: false, code: 'text-glyph', reason: `U+${sums.bad.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
         return { ok: true, measure: { width: fromPxCeil(inlineToFloat(sums.total)) } };
       }
@@ -218,8 +228,9 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
     measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
       if (font.family !== AHEM_FACE_ID) return { ok: false, code: 'text-glyph', reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
       const spacing16 = textRunLayoutUnit(font.letterSpacing);
-      if (spacing16 !== 0) {
-        const sums = spacedSums(data, text, instanceSize(font.size), spacing16, start, end);
+      const word16 = textRunLayoutUnit(font.wordSpacing);
+      if (spacing16 !== 0 || word16 !== 0) {
+        const sums = spacedSums(data, text, instanceSize(font.size), spacing16, word16, start, end);
         if (sums.bad >= 0) return { ok: false, code: 'text-glyph', reason: `U+${sums.bad.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
         const n = codePointCount(text);
         return { ok: true, measure: { width: sub(spacedPosition(sums.through, end >= n), spacedPosition(sums.before, start >= n)) } };

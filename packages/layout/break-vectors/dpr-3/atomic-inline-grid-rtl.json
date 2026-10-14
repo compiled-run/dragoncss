@@ -1,0 +1,33 @@
+{
+  "case": "atomic-inline-grid-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"row:text0","lines":[[0,1]]},
+    {"id":"row-i1:text0","lines":[[0,1]]},
+    {"id":"row-i2:text0","lines":[[0,1]]},
+    {"id":"row-i2:text1","lines":[[0,1]]},
+    {"id":"row:text1","lines":[[0,1]]},
+    {"id":"rows:text0","lines":[[0,1]]},
+    {"id":"rows-i1:text0","lines":[[0,1]]},
+    {"id":"rows-i2:text0","lines":[[0,1]]},
+    {"id":"rows:text1","lines":[[0,1]]},
+    {"id":"empty:text0","lines":[[0,1]]},
+    {"id":"empty:text1","lines":[[0,1]]},
+    {"id":"base:text0","lines":[[0,1]]},
+    {"id":"base-i1:text0","lines":[[0,1]]},
+    {"id":"base-i2:text0","lines":[[0,1]]},
+    {"id":"base:text1","lines":[[0,1]]},
+    {"id":"over:text0","lines":[[0,1]]},
+    {"id":"over-i1:text0","lines":[[0,1]]},
+    {"id":"over-i2:text0","lines":[[0,1]]},
+    {"id":"over:text1","lines":[[0,1]]},
+    {"id":"short:text0","lines":[[0,1]]},
+    {"id":"short-i1:text0","lines":[[0,5]]},
+    {"id":"short-i2:text0","lines":[[0,2]]},
+    {"id":"short:text1","lines":[[0,1]]},
+    {"id":"shrink:text0","lines":[[0,2]]},
+    {"id":"shrink-i1:text0","lines":[[0,3],[3,5]]},
+    {"id":"shrink-i2:text0","lines":[[0,2]]},
+    {"id":"shrink:text1","lines":[[1,2]]}
+  ]
+}

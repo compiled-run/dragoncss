@@ -642,7 +642,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -797,7 +797,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -841,13 +841,14 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
+    textIndent: paddingValue(f('textIndent'), p('textIndent')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
 }
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing'], path);
+  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing'], path);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
@@ -857,6 +858,7 @@ function decodeText(o: JsonObj, path: string): TextLeaf {
     whiteSpaceCollapse: lit(field(o, 'whiteSpaceCollapse', path), ['collapse', 'preserve', 'preserve-breaks', 'break-spaces'], `${path}.whiteSpaceCollapse`) as WhiteSpaceCollapse,
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
     letterSpacing: calcExpr(field(o, 'letterSpacing', path), `${path}.letterSpacing`),
+    wordSpacing: calcExpr(field(o, 'wordSpacing', path), `${path}.wordSpacing`),
   };
 }
 
@@ -990,9 +992,11 @@ const FAULT_KEYS: readonly string[] = [
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
   'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
+  'wordSpacingAtItemStart', 'wordSpacingSkipsNbsp',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
-  'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
+  'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
+  'inlineGridLastItemBaseline',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1049,6 +1053,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     trailingSpacingDropped: b('trailingSpacingDropped'),
     spacingPerCodePoint: b('spacingPerCodePoint'),
     ligaturesKept: b('ligaturesKept'),
+    wordSpacingAtItemStart: b('wordSpacingAtItemStart'),
+    wordSpacingSkipsNbsp: b('wordSpacingSkipsNbsp'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
@@ -1056,6 +1062,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     inlineBlockFirstBaseline: b('inlineBlockFirstBaseline'),
     overflowBaselineIgnored: b('overflowBaselineIgnored'),
     inlineFlexLastBaseline: b('inlineFlexLastBaseline'),
+    inlineGridLastItemBaseline: b('inlineGridLastItemBaseline'),
     atomicMarginExcluded: b('atomicMarginExcluded'),
     noBreakAroundAtomic: b('noBreakAroundAtomic'),
     atomicShrinkToFitIgnored: b('atomicShrinkToFitIgnored'),
@@ -1065,6 +1072,10 @@ function decodeFaults(v: JsonValue): EngineFaults {
     preservedSpaceCollapsed: b('preservedSpaceCollapsed'),
     trailingPreWrapNotHanging: b('trailingPreWrapNotHanging'),
     breakSpacesHanging: b('breakSpacesHanging'),
+    indentEveryLine: b('indentEveryLine'),
+    indentAfterBr: b('indentAfterBr'),
+    indentPercentInIntrinsic: b('indentPercentInIntrinsic'),
+    indentRtlFromLeft: b('indentRtlFromLeft'),
   };
 }
 
@@ -1193,6 +1204,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
     advanceNot16_16: faults.advanceNot16_16, doubleAccumulation: faults.doubleAccumulation, noReshapeAtBreak: faults.noReshapeAtBreak, kerningDropped: faults.kerningDropped,
     wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
     trailingSpacingDropped: faults.trailingSpacingDropped, spacingPerCodePoint: faults.spacingPerCodePoint, ligaturesKept: faults.ligaturesKept,
+    wordSpacingAtItemStart: faults.wordSpacingAtItemStart, wordSpacingSkipsNbsp: faults.wordSpacingSkipsNbsp,
   };
   const faceOf = (family: string): ReplayFace => {
     const f = s.faces.get(family);
@@ -1202,7 +1214,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   const itemFor = (text: string, font: TextFont): ShapedItem => {
     const f = s.faces.get(font.family);
     if (f === undefined) return { ok: false, code: 'text-glyph', reason: `no bundled face ${font.family}` };
-    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, letterSpacing: font.letterSpacing, faults: sf });
+    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, letterSpacing: font.letterSpacing, wordSpacing: font.wordSpacing, faults: sf });
     if (!made.ok) return { ok: false, code: 'text-glyph', reason: made.reason };
     const result = shapeItem(made.item);
     if (result.missing >= 0) return { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };
@@ -1288,6 +1300,8 @@ function shapingPlantOf(f: EngineFaults): string {
   if (f.trailingSpacingDropped) return 'trailingSpacingDropped';
   if (f.spacingPerCodePoint) return 'spacingPerCodePoint';
   if (f.ligaturesKept) return 'ligaturesKept';
+  if (f.wordSpacingAtItemStart) return 'wordSpacingAtItemStart';
+  if (f.wordSpacingSkipsNbsp) return 'wordSpacingSkipsNbsp';
   return '';
 }
 

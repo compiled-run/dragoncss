@@ -25,9 +25,11 @@ import { FLOAT_ASPECTS, FLOAT_CONTAINER, FLOAT_INHERITED, FLOAT_LONGHANDS, FLOAT
 import { INLINE_ASPECTS, INLINE_CONTAINER, INLINE_INHERITED, INLINE_LONGHANDS, INLINE_SHORTHANDS, INLINE_TEXT_ROLE } from './properties/inline.ts';
 import { SVG_ASPECTS, SVG_CONTAINER, SVG_INHERITED, SVG_LONGHANDS, SVG_SHORTHANDS, SVG_TEXT_ROLE } from './properties/svg.ts';
 import { SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_INHERITED, SCROLLBAR_LONGHANDS, SCROLLBAR_SHORTHANDS, SCROLLBAR_TEXT_ROLE } from './properties/scrollbar.ts';
+import { RESIZE_ASPECTS, RESIZE_CONTAINER, RESIZE_INHERITED, RESIZE_LONGHANDS, RESIZE_SHORTHANDS, RESIZE_TEXT_ROLE } from './properties/resize.ts';
 import { SELECTION_ASPECTS, SELECTION_CONTAINER, SELECTION_INHERITED, SELECTION_LONGHANDS, SELECTION_SHORTHANDS, SELECTION_TEXT_ROLE } from './properties/selection.ts';
 import { TEXT_SPACING_ASPECTS, TEXT_SPACING_CONTAINER, TEXT_SPACING_INHERITED, TEXT_SPACING_LONGHANDS, TEXT_SPACING_SHORTHANDS, TEXT_SPACING_TEXT_ROLE } from './properties/text-spacing.ts';
 import { TEXT_OVERFLOW_ASPECTS, TEXT_OVERFLOW_CONTAINER, TEXT_OVERFLOW_INHERITED, TEXT_OVERFLOW_LONGHANDS, TEXT_OVERFLOW_SHORTHANDS, TEXT_OVERFLOW_TEXT_ROLE } from './properties/text-overflow.ts';
+import { TEXT_INDENT_ASPECTS, TEXT_INDENT_CONTAINER, TEXT_INDENT_INHERITED, TEXT_INDENT_LONGHANDS, TEXT_INDENT_SHORTHANDS, TEXT_INDENT_TEXT_ROLE } from './properties/text-indent.ts';
 import { TEXT_TRANSFORM_ASPECTS, TEXT_TRANSFORM_CONTAINER, TEXT_TRANSFORM_INHERITED, TEXT_TRANSFORM_LONGHANDS, TEXT_TRANSFORM_SHORTHANDS, TEXT_TRANSFORM_TEXT_ROLE } from './properties/text-transform.ts';
 import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
 
@@ -89,12 +91,16 @@ const FAMILIES = [
   family('selection', SELECTION_LONGHANDS, SELECTION_SHORTHANDS, SELECTION_INHERITED, SELECTION_ASPECTS, SELECTION_CONTAINER, SELECTION_TEXT_ROLE),
   // SVG-a1: the paint of inline SVG shapes.
   family('svg', SVG_LONGHANDS, SVG_SHORTHANDS, SVG_INHERITED, SVG_ASPECTS, SVG_CONTAINER, SVG_TEXT_ROLE),
-  // TXT2-b (css-text-3 §8.2): letter-spacing, after visibility.
+  // TXT2-b (css-text-3 §8.1 and §8.2): letter-spacing and word-spacing, after visibility.
   family('text-spacing', TEXT_SPACING_LONGHANDS, TEXT_SPACING_SHORTHANDS, TEXT_SPACING_INHERITED, TEXT_SPACING_ASPECTS, TEXT_SPACING_CONTAINER, TEXT_SPACING_TEXT_ROLE),
   // TXT2-f (notes/T149-txt2-spec.md R9): text-overflow, after visibility.
   family('text-overflow', TEXT_OVERFLOW_LONGHANDS, TEXT_OVERFLOW_SHORTHANDS, TEXT_OVERFLOW_INHERITED, TEXT_OVERFLOW_ASPECTS, TEXT_OVERFLOW_CONTAINER, TEXT_OVERFLOW_TEXT_ROLE),
   // TXT2-e (css-text-3 §2.1): text-transform, after visibility.
   family('text-transform', TEXT_TRANSFORM_LONGHANDS, TEXT_TRANSFORM_SHORTHANDS, TEXT_TRANSFORM_INHERITED, TEXT_TRANSFORM_ASPECTS, TEXT_TRANSFORM_CONTAINER, TEXT_TRANSFORM_TEXT_ROLE),
+  // resize (css-ui-4 §5.1), after text-transform.
+  family('resize', RESIZE_LONGHANDS, RESIZE_SHORTHANDS, RESIZE_INHERITED, RESIZE_ASPECTS, RESIZE_CONTAINER, RESIZE_TEXT_ROLE),
+  // TXT2-h (css-text-3 §8.1): text-indent, after resize.
+  family('text-indent', TEXT_INDENT_LONGHANDS, TEXT_INDENT_SHORTHANDS, TEXT_INDENT_INHERITED, TEXT_INDENT_ASPECTS, TEXT_INDENT_CONTAINER, TEXT_INDENT_TEXT_ROLE),
 ] as const;
 
 export type Longhand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<infer L, string> ? L : never) : never;
@@ -122,7 +128,7 @@ if (new Set(LONGHANDS).size !== LONGHANDS.length || new Set(SHORTHANDS).size !==
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
  * so the lowering reads only the text node.
  */
-export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction', 'letter-spacing'] as const satisfies readonly Longhand[];
+export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction', 'letter-spacing', 'word-spacing'] as const satisfies readonly Longhand[];
 
 export type TextLonghand = (typeof TEXT_LONGHANDS)[number];
 
