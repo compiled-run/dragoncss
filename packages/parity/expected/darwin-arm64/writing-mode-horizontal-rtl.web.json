@@ -140,6 +140,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -273,6 +275,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -406,6 +410,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -539,6 +545,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -702,6 +710,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -865,6 +875,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1028,6 +1040,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1191,6 +1205,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1344,6 +1360,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1507,6 +1525,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1660,6 +1680,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1813,6 +1835,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1946,6 +1970,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2079,6 +2105,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2212,6 +2240,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2345,6 +2375,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2508,6 +2540,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2671,6 +2705,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2804,6 +2840,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2937,6 +2975,8 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
         "writing-mode": "horizontal-tb"
       }
     }

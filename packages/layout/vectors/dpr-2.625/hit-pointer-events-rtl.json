@@ -144,6 +144,7 @@
      "value": "baseline"
     },
     "textOverflow": "clip",
+    "lineClamp": 0,
     "grid": null,
     "gridItem": null
    },
@@ -265,6 +266,7 @@
        "value": "baseline"
       },
       "textOverflow": "clip",
+      "lineClamp": 0,
       "grid": null,
       "gridItem": null
      },
@@ -388,6 +390,7 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -512,6 +515,7 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -636,6 +640,7 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -759,6 +764,7 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -883,6 +889,7 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1007,6 +1014,7 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1172,6 +1180,7 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1295,6 +1304,7 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1456,6 +1466,7 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1619,6 +1630,7 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1743,6 +1755,7 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1866,6 +1879,7 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -2029,6 +2043,7 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -2152,6 +2167,7 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -2278,6 +2294,7 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },

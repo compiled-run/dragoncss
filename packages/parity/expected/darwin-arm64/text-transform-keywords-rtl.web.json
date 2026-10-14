@@ -139,7 +139,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -271,7 +273,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -403,7 +407,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "uppercase"
+        "text-transform": "uppercase",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -565,7 +571,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "lowercase"
+        "text-transform": "lowercase",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -727,7 +735,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "capitalize"
+        "text-transform": "capitalize",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -899,7 +909,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -1061,7 +1073,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "uppercase"
+        "text-transform": "uppercase",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -1193,7 +1207,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -1355,7 +1371,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "uppercase"
+        "text-transform": "uppercase",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -1517,7 +1535,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "capitalize"
+        "text-transform": "capitalize",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -1689,7 +1709,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "capitalize"
+        "text-transform": "capitalize",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -1851,7 +1873,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "capitalize"
+        "text-transform": "capitalize",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -2013,7 +2037,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -2185,7 +2211,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "uppercase"
+        "text-transform": "uppercase",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -2347,7 +2375,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "capitalize"
+        "text-transform": "capitalize",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -2529,7 +2559,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "capitalize"
+        "text-transform": "capitalize",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -2681,7 +2713,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "capitalize"
+        "text-transform": "capitalize",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -2833,7 +2867,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "uppercase"
+        "text-transform": "uppercase",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
@@ -2995,7 +3031,9 @@
         "stroke-width": "1px",
         "letter-spacing": "normal",
         "text-overflow": "clip",
-        "text-transform": "uppercase"
+        "text-transform": "uppercase",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none"
       }
     },
     {
