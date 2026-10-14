@@ -140,6 +140,11 @@ export function evaluateCase(target: NativeTarget, n: CheckedCase, dpr: number, 
     everyLane('dump-missing', 'the device wrote no dump');
     return { failures, compared, passingSamples: [] };
   }
+  // A host that could not read back or encode one case's dump records the error in its place (native-host.ts) and goes on.
+  if (typeof raw === 'object' && typeof (raw as { dumpError?: unknown }).dumpError === 'string') {
+    everyLane('dump-invalid', `the device could not write its dump: ${(raw as { dumpError: string }).dumpError}`);
+    return { failures, compared, passingSamples: [] };
+  }
   const v = validateNativeDump(raw);
   if (!v.ok) {
     everyLane('dump-invalid', v.errors.slice(0, 5).map((e) => `${e.path} ${e.code}`).join('; '));
