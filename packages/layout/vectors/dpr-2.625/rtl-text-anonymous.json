@@ -567,7 +567,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -862,7 +864,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -1159,7 +1163,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -1329,7 +1335,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -1498,7 +1506,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -1793,7 +1803,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -2088,7 +2100,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -2383,7 +2397,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -2677,7 +2693,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           },
           {
            "kind": "text",
@@ -2704,7 +2722,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -3000,7 +3020,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -3167,7 +3189,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -3462,7 +3486,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -3630,7 +3656,9 @@
            "wordSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }

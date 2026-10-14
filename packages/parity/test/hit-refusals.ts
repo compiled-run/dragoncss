@@ -12,9 +12,9 @@ export const INLINE_OUT: readonly string[] = [
   // #266's vertical-align-inert holds an inline-block (an atomic inline); GRID_OUT listed it for its grid container before G-HIT.
   'vertical-align-inert', 'vertical-align-inert-rtl',
   // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
-  // inline box and text-transform-text a <br>; TXT2's text-justify-ahem holds an inline box.
+  // inline box and text-transform-text a <br>; TXT2's text-justify-ahem and TXT2-a's text-break-ahem hold an inline box.
   'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
-  'text-justify-ahem', 'text-justify-ahem-rtl',
+  'text-justify-ahem', 'text-justify-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl',
   // TXT2-h's text-indent-ahem holds an inline box, a <br> and inline-blocks.
   'text-indent-ahem', 'text-indent-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).

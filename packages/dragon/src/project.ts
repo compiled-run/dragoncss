@@ -30,6 +30,7 @@ import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
+import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { refuseAnimatedTranslucentPaint } from './analysis/paint-values/translucent-paint.ts';
@@ -1289,17 +1290,20 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
       // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
       // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. PNT1: an animated color
-      // must not turn a currentcolor dotted, dashed or 3D outline or rounded double border translucent. MQ-R1: native switches
-      // bands at run time, so every band's cases and animations are checked (each refusal once).
+      // must not turn a currentcolor dotted, dashed or 3D outline or rounded double border translucent, nor reach a currentcolor
+      // outline or box-shadow, which native paints in the resting color. MQ-R1: native switches bands at run time, so every band's
+      // cases and animations are checked (each refusal once).
       const gradientsReported = new Set<string>();
       const doublesReported = new Set<string>();
       const translucentReported = new Set<string>();
+      const currentColorReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
         refuseAnimatedGradients(a, roots, nativeTargets, diagnostics, gradientsReported);
         refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
+        refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
       });
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
@@ -1391,7 +1395,12 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    profiles: targets.map((t) => profileDigest(profileFor(profiles, t))),
+    // A derive compile reads none of the given support profiles (its checks are off), so they enter only an enforced digest.
+    // Otherwise a regen that rewrote the rows from the device records changed every derive digest the parity apps carry, and
+    // the device records it was given were stale again (one more device run per landing) though no program had changed.
+    profiles: options.profiles === 'derive' ? [] : targets.map((t) => profileDigest(profileFor(profiles, t))),
+    // @supports reads the committed web profile in every mode and for every target (css/stylesheet.ts declarationSupport).
+    supportsProfile: profileDigest(COMMITTED_PROFILES.web),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     ...(options.nativeRealFaces ? { nativeRealFaces: true } : {}),

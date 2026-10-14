@@ -31,6 +31,7 @@ import { TEXT_SPACING_ASPECTS, TEXT_SPACING_CONTAINER, TEXT_SPACING_INHERITED, T
 import { TEXT_OVERFLOW_ASPECTS, TEXT_OVERFLOW_CONTAINER, TEXT_OVERFLOW_INHERITED, TEXT_OVERFLOW_LONGHANDS, TEXT_OVERFLOW_SHORTHANDS, TEXT_OVERFLOW_TEXT_ROLE } from './properties/text-overflow.ts';
 import { TEXT_INDENT_ASPECTS, TEXT_INDENT_CONTAINER, TEXT_INDENT_INHERITED, TEXT_INDENT_LONGHANDS, TEXT_INDENT_SHORTHANDS, TEXT_INDENT_TEXT_ROLE } from './properties/text-indent.ts';
 import { TEXT_TRANSFORM_ASPECTS, TEXT_TRANSFORM_CONTAINER, TEXT_TRANSFORM_INHERITED, TEXT_TRANSFORM_LONGHANDS, TEXT_TRANSFORM_SHORTHANDS, TEXT_TRANSFORM_TEXT_ROLE } from './properties/text-transform.ts';
+import { TEXT_BREAK_ASPECTS, TEXT_BREAK_CONTAINER, TEXT_BREAK_INHERITED, TEXT_BREAK_LONGHANDS, TEXT_BREAK_SHORTHANDS, TEXT_BREAK_TEXT_ROLE } from './properties/text-break.ts';
 import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
 
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
@@ -101,6 +102,8 @@ const FAMILIES = [
   family('resize', RESIZE_LONGHANDS, RESIZE_SHORTHANDS, RESIZE_INHERITED, RESIZE_ASPECTS, RESIZE_CONTAINER, RESIZE_TEXT_ROLE),
   // TXT2-h (css-text-3 §8.1): text-indent, after resize.
   family('text-indent', TEXT_INDENT_LONGHANDS, TEXT_INDENT_SHORTHANDS, TEXT_INDENT_INHERITED, TEXT_INDENT_ASPECTS, TEXT_INDENT_CONTAINER, TEXT_INDENT_TEXT_ROLE),
+  // TXT2-a (css-text-3 §5.2, §5.5): overflow-wrap, word-break and the word-wrap alias, after text-transform.
+  family('text-break', TEXT_BREAK_LONGHANDS, TEXT_BREAK_SHORTHANDS, TEXT_BREAK_INHERITED, TEXT_BREAK_ASPECTS, TEXT_BREAK_CONTAINER, TEXT_BREAK_TEXT_ROLE),
 ] as const;
 
 export type Longhand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<infer L, string> ? L : never) : never;
@@ -128,7 +131,7 @@ if (new Set(LONGHANDS).size !== LONGHANDS.length || new Set(SHORTHANDS).size !==
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
  * so the lowering reads only the text node.
  */
-export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction', 'letter-spacing', 'word-spacing'] as const satisfies readonly Longhand[];
+export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction', 'letter-spacing', 'word-spacing', 'overflow-wrap', 'word-break'] as const satisfies readonly Longhand[];
 
 export type TextLonghand = (typeof TEXT_LONGHANDS)[number];
 
