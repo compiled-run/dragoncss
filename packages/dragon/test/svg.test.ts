@@ -228,7 +228,8 @@ describe('the svg model in a compile', () => {
       createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', interactionLanes: true })
         .compile(svgTree(css, (_r, o) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4'], ...attrs])]));
     const blocked = (c: ReturnType<typeof enforced>): string[] => c.diagnostics.filter((d) => d.severity === 'error' && d.target === 'web').map((d) => `${d.code} ${d.profile?.feature ?? ''}`);
-    for (const [p, v] of [['fill', '#ff0000'], ['fill', 'red'], ['fill', 'rgba(255, 0, 0, 0.5)'], ['fill', 'transparent'], ['stroke', '#00f']] as const) {
+    // svg-colors proves hex, named, hsl(), currentcolor, inherit and fill: transparent; a translucent paint and stroke: transparent stay unproven.
+    for (const [p, v] of [['fill', 'rgba(255, 0, 0, 0.5)'], ['stroke', 'rgba(0, 0, 255, 0.5)'], ['stroke', 'transparent']] as const) {
       const attr = blocked(enforced('', [[p, v]]));
       const css = blocked(enforced(`rect { ${p}: ${v}; }`, []));
       expect(css.length, `${p}: ${v} in CSS`).toBeGreaterThan(0);
@@ -237,6 +238,8 @@ describe('the svg model in a compile', () => {
     // A proven value compiles from either.
     expect(blocked(enforced('', [['fill', 'rgb(1, 2, 3)'], ['stroke', 'rgb(4, 5, 6)'], ['stroke-width', '2']]))).toEqual([]);
     expect(blocked(enforced('rect { fill: rgb(1, 2, 3); stroke: rgb(4, 5, 6); stroke-width: 2; }', []))).toEqual([]);
+    expect(blocked(enforced('', [['fill', '#ff0000'], ['stroke', 'red']]))).toEqual([]);
+    expect(blocked(enforced('rect { fill: #ff0000; stroke: red; }', []))).toEqual([]);
   });
   it('refuses a viewBox without a size (SVG-ratio), CSS geometry on a shape, a paint server in CSS and a percentage stroke-width', () => {
     const ratio = svgTree('', (_r, o) => [shape(o, 'p', 'path', [['d', 'M0 0 H1']])], [['viewBox', '0 0 24 24']]);
