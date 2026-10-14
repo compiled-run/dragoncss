@@ -59,6 +59,19 @@ export function nativeCompile(spec: FixtureSpec, direction: Environment['directi
   return project.compile(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
 }
 
+const compiles = new Map<string, Compiled<'ios' | 'android'>>();
+
+/** nativeCompile without real faces, once per fixture and direction in a process: nativeCases, engineCases and shapedCaseIds share it. */
+export function nativeCompileOnce(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
+  const key = `${spec.id}\0${direction}`;
+  let c = compiles.get(key);
+  if (c === undefined) {
+    c = nativeCompile(spec, direction);
+    compiles.set(key, c);
+  }
+  return c;
+}
+
 export type NativeCase = {
   readonly spec: FixtureSpec;
   readonly case: ParityCase;
@@ -77,15 +90,9 @@ export function nativeCases(): readonly NativeCase[] {
   const device = new Set(vectorCaseIds());
   const out: NativeCase[] = [];
   for (const f of layoutCases()) {
-    const byDirection = new Map<string, Compiled<'ios' | 'android'>>();
     for (const c of f.cases) {
       if (!device.has(c.id)) continue;
-      const d = c.environment.direction;
-      let compiled = byDirection.get(d);
-      if (compiled === undefined) {
-        compiled = nativeCompile(f.spec, d);
-        byDirection.set(d, compiled);
-      }
+      const compiled = nativeCompileOnce(f.spec, c.environment.direction);
       const p = nativePrograms(compiled, c.assignment);
       if (p.kind !== 'ready') throw new Error(`${c.id}: no native programs: ${p.reason}`);
       out.push({ spec: f.spec, case: c, compiled, programs: p.programs });
@@ -109,7 +116,6 @@ export function engineCases(): readonly EngineCase[] {
   const native = new Map(nativeCases().map((n) => [n.case.id, n]));
   const out: EngineCase[] = [];
   for (const f of layoutCases()) {
-    const byDirection = new Map<string, Compiled<'ios' | 'android'>>();
     for (const c of f.cases) {
       const n = native.get(c.id);
       if (n !== undefined) {
@@ -117,11 +123,7 @@ export function engineCases(): readonly EngineCase[] {
         out.push({ case: c, root: n.programs.uikit.root, inputAt: (dpr) => programInput(n.programs.uikit, c.environment.viewport, dpr) });
         continue;
       }
-      let compiled = byDirection.get(c.environment.direction);
-      if (compiled === undefined) {
-        compiled = nativeCompile(f.spec, c.environment.direction);
-        byDirection.set(c.environment.direction, compiled);
-      }
+      const compiled = nativeCompileOnce(f.spec, c.environment.direction);
       const at = (dpr: number): LayoutInput => {
         const p = engineLayoutProjection(compiled, atDpr(c.environment, dpr), c.assignment);
         if (p.kind !== 'ready') throw new Error(`${c.id} at DPR ${dpr}: no engine projection: ${p.reason}`);
