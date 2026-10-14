@@ -318,7 +318,7 @@
             ],
             "digests": {
               "p1": "b7dea30a63845f297e7244a3650738916a71e0f3ab06e22e7cc7d819211316de",
-              "extended": "6c5b66f2fea31ae70eee2c5e09c1716fc22659b13afed3697570afc3b2ee6101"
+              "extended": "d663235dd53b46c488a3f7bca5466b1fa908237cd587d68ba8a44fac9c9286be"
             }
           },
           "device": null,
@@ -665,8 +665,8 @@
           "valid": 829,
           "chrome": 829,
           "engine": 829,
-          "chromeCompared": 21062,
-          "engineCompared": 21149
+          "chromeCompared": 21069,
+          "engineCompared": 21156
         },
         {
           "dpr": 3,
@@ -675,8 +675,8 @@
           "valid": 829,
           "chrome": 829,
           "engine": 829,
-          "chromeCompared": 21062,
-          "engineCompared": 21149
+          "chromeCompared": 21069,
+          "engineCompared": 21156
         }
       ],
       "dumpFaults": [
@@ -1079,7 +1079,7 @@
             ],
             "digests": {
               "p1": "b7dea30a63845f297e7244a3650738916a71e0f3ab06e22e7cc7d819211316de",
-              "extended": "6c5b66f2fea31ae70eee2c5e09c1716fc22659b13afed3697570afc3b2ee6101"
+              "extended": "d663235dd53b46c488a3f7bca5466b1fa908237cd587d68ba8a44fac9c9286be"
             }
           },
           "device": null,
@@ -1474,8 +1474,8 @@
           "valid": 829,
           "chrome": 829,
           "engine": 829,
-          "chromeCompared": 21062,
-          "engineCompared": 21149
+          "chromeCompared": 21069,
+          "engineCompared": 21156
         },
         {
           "dpr": 3,
@@ -1484,8 +1484,8 @@
           "valid": 829,
           "chrome": 829,
           "engine": 829,
-          "chromeCompared": 21062,
-          "engineCompared": 21149
+          "chromeCompared": 21069,
+          "engineCompared": 21156
         },
         {
           "dpr": 2.625,
@@ -1494,8 +1494,8 @@
           "valid": 829,
           "chrome": 829,
           "engine": 829,
-          "chromeCompared": 21062,
-          "engineCompared": 21149
+          "chromeCompared": 21069,
+          "engineCompared": 21156
         }
       ],
       "dumpFaults": [
