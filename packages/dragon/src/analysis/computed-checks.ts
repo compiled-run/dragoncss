@@ -30,8 +30,11 @@ import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
+import { checkTextTransform } from './text-transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
+/** A computed length or percentage of zero, as it serializes. */
+const isZeroLength = (v: ResolvedValue['value']): boolean => ['0', '0px', '0%'].includes(valueToString(v));
 
 /** UAX #9: in an rtl paragraph only these keep logical order (strong L letters, space, U+200B not at the end). */
 const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
@@ -149,14 +152,20 @@ function checkPercentRelative(el: ResolvedElement, where: string | null, targets
 
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
 const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
+/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box (INL2a). */
+const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex';
 
-/** One item of an inline formatting context in tree order: a text, the open or close of an inline box, or a <br> (CSS2 §9.2.2). */
-type IfcItem = { readonly kind: 'text'; readonly text: ResolvedText } | { readonly kind: 'open' | 'close' | 'br'; readonly el: ResolvedElement };
+/**
+ * One item of an inline formatting context in tree order: a text, the open or close of an inline box, a <br> (CSS2 §9.2.2), or an
+ * atomic inline (§9.2.4).
+ */
+type IfcItem = { readonly kind: 'text'; readonly text: ResolvedText } | { readonly kind: 'open' | 'close' | 'br' | 'atomic'; readonly el: ResolvedElement };
 
 /**
  * The inline formatting contexts whose block container is el (el is not itself an inline box): its maximal runs of inline-level
  * children, flattened through inline boxes. A block-level child ends a run (CSS2 §9.2.1.1); display: none children generate no box.
- * blockInInline receives each block-level box inside an inline box, which Dragon does not lay out.
+ * blockInInline receives each block-level box inside an inline box, which Dragon does not lay out, and each atomic inline there
+ * (INL2c), which is also an atomic item of the run.
  */
 function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElement, box: ResolvedElement) => void): IfcItem[][] {
   const runs: IfcItem[][] = [[]];
@@ -164,7 +173,10 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
     for (const c of box.children) {
       if (c.kind === 'text') out.push({ kind: 'text', text: c });
       else if (displayKeyword(c) === 'none') continue;
-      else if (!isInlineBox(c)) blockInInline(c, box);
+      else if (isAtomic(c)) {
+        out.push({ kind: 'atomic', el: c });
+        blockInInline(c, box);
+      } else if (!isInlineBox(c)) blockInInline(c, box);
       else if (c.element.tag === 'br') out.push({ kind: 'br', el: c });
       else {
         out.push({ kind: 'open', el: c });
@@ -177,6 +189,7 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
     const run = runs[runs.length - 1] as IfcItem[];
     if (c.kind === 'text') run.push({ kind: 'text', text: c });
     else if (displayKeyword(c) === 'none') continue;
+    else if (isAtomic(c)) run.push({ kind: 'atomic', el: c });
     else if (!isInlineBox(c)) runs.push([]);
     else if (c.element.tag === 'br') run.push({ kind: 'br', el: c });
     else {
@@ -208,6 +221,11 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
       else if (it.kind === 'text') (paragraphs[paragraphs.length - 1] as ResolvedText[]).push(it.text);
     }
     for (const texts of paragraphs) {
+      // TXT2-c: Chrome splits preserved spaces and line feeds into fragments of their own at the paragraph level (UAX #9 L1).
+      for (const t of texts) {
+        const mode = keywordOf(t.props.get('white-space-collapse') as ResolvedValue);
+        if (mode !== 'collapse') report(t, `${t.node.address} keeps its white space (white-space-collapse: ${mode}) in the rtl block ${el.element.address}, whose preserved spaces and line feeds take the paragraph direction (UAX #9 L1)`);
+      }
       for (const t of texts) if (!RTL_SAFE.test(t.text)) report(t, `text ${JSON.stringify(t.text)} of ${t.node.address} holds a character other than A-Z, a-z, space and U+200B in the rtl block ${el.element.address}`);
       // The white space (spaces and U+200B) that ends the paragraph, walked back across its texts.
       let zwsp: ResolvedText | null = null;
@@ -221,13 +239,41 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
       }
       if (zwsp !== null) report(zwsp, `U+200B ends the rtl inline content of ${el.element.address} (${zwsp.node.address}) and would take the paragraph direction (UAX #9 L1)`);
     }
+    checkRtlAtomics(el, run, diagnostics, reported);
+  }
+}
+
+// UAX #9 N1-N2 (the engine's checkRtlAtomics): an atomic inline is U+FFFC, a neutral; it keeps logical order between letters of its
+// paragraph, or alone in a paragraph without letters. Anywhere else in an rtl context it would be reordered, which is refused.
+function checkRtlAtomics(el: ResolvedElement, run: readonly IfcItem[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const paragraphs: IfcItem[][] = [[]];
+  for (const it of run) {
+    if (it.kind === 'br') paragraphs.push([]);
+    else (paragraphs[paragraphs.length - 1] as IfcItem[]).push(it);
+  }
+  const letter = /[A-Za-z]/u;
+  for (const items of paragraphs) {
+    const atomics = items.filter((it) => it.kind === 'atomic');
+    const letters = items.some((it) => it.kind === 'text' && letter.test(it.text.text));
+    if (atomics.length === 0 || (!letters && atomics.length === 1)) continue;
+    items.forEach((it, i) => {
+      if (it.kind !== 'atomic') return;
+      const before = items.slice(0, i).some((x) => x.kind === 'text' && letter.test(x.text.text));
+      const after = items.slice(i + 1).some((x) => x.kind === 'text' && letter.test(x.text.text));
+      if (before && after) return;
+      const origin = it.el.element.node.origin;
+      const id = `${it.el.element.address}|rtl-atomic`;
+      if (reported.has(id)) return;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_BIDI', { origin, message: `atomic inline ${it.el.element.address} in the rtl block ${el.element.address} has no letter on ${before ? 'its end' : 'its start'} side in its paragraph, so it would take the paragraph direction and be reordered (UAX #9 N1-N2)` }));
+    });
   }
 }
 
 // CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
 // element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
 // and runs with different text-wrap-mode in one formatting context.
-function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   if (isInlineBox(el)) return;
   const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
   const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string): void => {
@@ -239,10 +285,30 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     }
   };
   const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual);
-  const runs = inlineContexts(el, (child, box) =>
-    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`),
-  );
+  // INL2c: an atomic inline inside an inline box, or beside text in a real face (Blink's LineBreaker for it is not ported).
+  const unproven = (at: ResolvedElement, what: string, message: string, manual: string): void => {
+    for (const t of targets) {
+      const id = `${t}|atomic-${what}|${at.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin: at.element.node.origin, target: t, message, manual }));
+    }
+  };
+  const runs = inlineContexts(el, (child, box) => {
+    if (isAtomic(child)) {
+      unproven(child, 'in-inline-box', `${displayKeyword(child)} <${child.element.tag}> ${child.element.address} is an atomic inline inside the inline box <${box.element.tag}> ${box.element.address}; atomic inlines are proven only directly in their block container (INL2c)`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}.`);
+      return;
+    }
+    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`);
+  });
   for (const run of runs) {
+    const realText = run.find((it) => it.kind === 'text' && realFaceAt(it.text.node.address));
+    if (realText !== undefined && realText.kind === 'text') {
+      for (const it of run) {
+        if (it.kind !== 'atomic') continue;
+        unproven(it.el, 'beside-shaped-text', `${displayKeyword(it.el)} <${it.el.element.tag}> ${it.el.element.address} shares an inline formatting context of ${el.element.address} with text ${realText.text.node.address} in a real face; atomic inlines are proven only beside Ahem text (INL2c)`, `Put the text beside ${it.el.element.address} in its own block, or make ${it.el.element.address} a block.`);
+      }
+    }
     const lastBr = run.map((it) => it.kind).lastIndexOf('br');
     if (lastBr >= 0) {
       const after = run.slice(lastBr + 1);
@@ -278,6 +344,18 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       refuse(el, 'white-space', `white-space-collapse: ${keywordOf(preserved.text.props.get('white-space-collapse') as ResolvedValue)} on ${preserved.text.node.address} in an inline formatting context of ${el.element.address} with inline boxes or <br>s (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${el.element.address}.`);
     }
     const texts = run.flatMap((it) => (it.kind === 'text' ? [it.text] : []));
+    for (const t of texts) checkPreservedText(el, t, refuse);
+    // TXT2 with TXT2-b and TXT2-c: Blink justifies with letter spacing in one ShapeResultSpacing pass, and justifies a wrapped preserved
+    // line around its preserved spaces; no Chrome case covers either yet.
+    if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') {
+      const spaced = texts.find((t) => keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal');
+      if (spaced !== undefined) refuse(el, 'justify-letter-spacing', `text-align: justify on ${el.element.address} with letter-spacing on ${spaced.node.address} is not laid out yet`, `Remove the letter-spacing that reaches ${spaced.node.address}, or use another text-align on ${el.element.address}.`);
+      const preserved = texts.find((t) => keywordOf(t.props.get('white-space-collapse') as ResolvedValue) !== 'collapse' && keywordOf(t.props.get('text-wrap-mode') as ResolvedValue) === 'wrap');
+      if (preserved !== undefined) refuse(el, 'justify-white-space', `text-align: justify on ${el.element.address} with wrapping preserved white space in ${preserved.node.address} is not laid out yet`, `Remove the white-space declaration that reaches ${preserved.node.address}, or use another text-align on ${el.element.address}.`);
+      // INL2a with TXT2: how Blink justifies a line around an atomic inline has no Chrome comparison yet (inline.ts checkAtomicContext).
+      const atom = run.find((it) => it.kind === 'atomic');
+      if (atom !== undefined && atom.kind === 'atomic') refuse(el, 'justify-atomic', `text-align: justify on ${el.element.address} with the atomic inline ${atom.el.element.address} is not laid out yet`, `Use another text-align on ${el.element.address}, or make ${atom.el.element.address} a block.`);
+    }
     const wrapOf = (t: ResolvedText): string => keywordOf(t.props.get('text-wrap-mode') as ResolvedValue);
     const first = texts[0];
     const other = first === undefined ? undefined : texts.find((t) => wrapOf(t) !== wrapOf(first));
@@ -285,6 +363,84 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       refuse(el, 'mixed-wrap', `text-wrap-mode ${wrapOf(first)} (${first.node.address}) and ${wrapOf(other)} (${other.node.address}) in one inline formatting context of ${el.element.address} (css-text-4 §5.1), which Dragon does not lay out`, `Give all the text of ${el.element.address} the same white-space.`);
     }
   }
+}
+
+// TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
+// (LayoutBlockFlow::ShouldTruncateOverflowingText), which the engine does left to right in the block's own inline formatting
+// context. Refused for every target: rtl, and inline content beside block children (Chrome truncates the anonymous blocks'
+// lines, which the engine lays out with initial styles). Refused on native: an inline box whose colour, visibility or face differs
+// from the block's, since the native view draws the ellipsis with the text it follows while Chrome paints it in the block's style.
+function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const value = el.props.get('text-overflow') as ResolvedValue;
+  // A flex or grid container's text is an anonymous item, which Chrome does not truncate (its parent is no block container).
+  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid'].includes(displayKeyword(el))) return;
+  if (['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) return;
+  const runs = inlineContexts(el, () => {});
+  if (runs.length === 0) return;
+  const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
+  const refuse = (on: readonly string[], what: string, message: string, manual: string): void => {
+    for (const t of on) {
+      const id = `${t}|text-overflow-${what}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const at = `text-overflow: ellipsis on ${el.element.address}`;
+  if (keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl') {
+    refuse(targets, 'rtl', `${at} truncates rtl lines, which Dragon lays out left to right only`, `Remove text-overflow: ellipsis from ${el.element.address}, or make it ltr.`);
+  }
+  // TXT2-b with TXT2-f: how Chrome spaces the ellipsis and cuts spaced text (OffsetToFit) has no Chrome comparison yet.
+  const spaced = keywordOf(el.props.get('letter-spacing') as ResolvedValue) !== 'normal' || runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('letter-spacing') as ResolvedValue) !== 'normal'));
+  if (spaced) {
+    refuse(targets, 'letter-spacing', `${at} truncates text with letter-spacing, which Dragon does not lay out yet`, `Remove letter-spacing from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
+  }
+  // TXT2-c with TXT2-f: Blink truncates preserved text by its own items (control items, hanging spaces), which no Chrome case covers yet.
+  if (runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))) {
+    refuse(targets, 'white-space', `${at} truncates text whose white space is preserved, which Dragon does not lay out yet`, `Remove the white-space declaration (keep nowrap) from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
+  }
+  const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c));
+  if (blockChild !== undefined) {
+    refuse(targets, 'anonymous-block', `${at} holds text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, whose anonymous block lines Chrome truncates and Dragon does not`, `Wrap the text of ${el.element.address} in its own block, and give that block the text-overflow.`);
+  }
+  // The style the ellipsis takes from its block and the native view from its text: font size is drawn per run, the rest is not.
+  const styleOf = (e: ResolvedElement): string => JSON.stringify([usedColors(e).color, ...(['visibility', 'font-family', 'font-weight', 'font-style'] as const).map((p) => valueToString((e.props.get(p) as ResolvedValue).value))]);
+  const own = styleOf(el);
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  for (const run of runs) {
+    for (const it of run) {
+      if (it.kind !== 'open') continue;
+      // The engine reports an inline box on a truncated line as Chrome reports a culled one (inline.ts boxLineRects); padding or an
+      // inline margin gives the box a fragment of its own, whose rects that model does not cover.
+      const edges = (['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'margin-left', 'margin-right'] as const).filter((p) => !isZeroLength((it.el.props.get(p) as ResolvedValue).value));
+      if (edges.length > 0) {
+        refuse(native, 'box-fragment', `${at}: the inline box <${it.el.element.tag}> ${it.el.element.address} has ${edges.join(', ')}, so Chrome gives it a box fragment of its own on a truncated line, which Dragon does not lay out`, `Remove ${edges.join(', ')} from <${it.el.element.tag}> ${it.el.element.address}.`);
+      }
+      if (styleOf(it.el) === own) continue;
+      refuse(native, 'paint', `${at}: the inline box <${it.el.element.tag}> ${it.el.element.address} has a colour, visibility or font face other than the block's, and the native runtime draws the ellipsis with the text it follows, not in the block's style`, `Give <${it.el.element.tag}> ${it.el.element.address} the colour, visibility and font face of ${el.element.address}.`);
+    }
+  }
+}
+
+// TXT2-c (notes/T149-txt2-spec.md R3, R16): text whose white-space-collapse is not collapse keeps its white space, and the engine
+// lays out spaces and U+000A only. A tab needs tab stops (tab-size, TXT2-c3), and CR, FF and the other C0 controls become control
+// items Dragon does not model. Preserved text that is only white space beside block boxes would make an anonymous line box Chrome
+// keeps and Dragon's capture labels apart, so all-white-space preserved text is refused until Chrome cases cover it.
+function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: ResolvedElement, what: string, message: string, manual: string) => void): void {
+  const mode = keywordOf(t.props.get('white-space-collapse') as ResolvedValue);
+  if (mode === 'collapse') return;
+  const manual = `Remove the white-space declaration that reaches ${t.node.address}, or remove the character.`;
+  // preserve-breaks collapses a tab like a space (phase I), so only the modes that keep it need tab stops.
+  if (mode !== 'preserve-breaks' && t.text.includes('\t')) refuse(el, 'tab-stop', `a tab in ${t.node.address}, whose white-space-collapse is ${mode}: tab stops (tab-size, css-text-3 §4.2) are not laid out yet`, manual);
+  for (const ch of t.text) {
+    const cp = ch.codePointAt(0) as number;
+    if (cp === 0x0a || cp === 0x09 || !((cp < 0x20) || cp === 0x7f)) continue;
+    refuse(el, 'preserved-control', `U+${cp.toString(16).toUpperCase().padStart(4, '0')} in ${t.node.address}, whose white-space-collapse is ${mode}: preserved control characters (css-text-3 §4.1.2) are not laid out`, manual);
+    break;
+  }
+  // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
+  if (keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal') refuse(el, 'letter-spacing', `letter-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the letter-spacing or the white-space declaration that reaches ${t.node.address}.`);
+  if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
 
 // CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text in a block container would take its static position inside
@@ -305,7 +461,7 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
   };
   if (isRoot && keywordOf(el.props.get('position') as ResolvedValue) === 'absolute') refuse(el, `position: absolute on the root element ${el.element.address} is not supported in milestone 1`);
   // Inline content: text, or an inline box (INL1a), beside which the box would take a static position in the formatting context.
-  if (!el.children.some((c) => c.kind === 'text' || (displayKeyword(c) === 'inline'))) return;
+  if (!el.children.some((c) => c.kind === 'text' || displayKeyword(c) === 'inline' || isAtomic(c))) return;
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
@@ -545,8 +701,8 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
  * a percentage stroke-width (relative to the viewport diagonal).
  */
 function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string): void => {
-    for (const t of targets) {
+  const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string, on: readonly string[] = targets): void => {
+    for (const t of on) {
       const id = `${t}|svg-${what}|${el.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
@@ -554,6 +710,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     }
   };
   const tag = el.element.tag;
+  const native = targets.filter((t) => t !== 'web');
   for (const p of ['fill', 'stroke'] as const) {
     const v = el.props.get(p) as ResolvedValue;
     const why = svgPaintRefusal(p, v.value);
@@ -568,7 +725,23 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     if (el.element.attributes.has('viewBox') && auto.length > 0) {
       refuse('ratio', el.element.node.origin, `<svg> ${el.element.address} has a viewBox and ${auto.join(' and ')} auto: sizing from the viewBox ratio is not built yet (package SVG-ratio)`, `Give <svg> ${el.element.address} a width and a height, as attributes or in CSS.`);
     }
+    // SVG-a2: native clips the shapes to the svg's box (emit/paint/image.ts), as Chrome does at the UA's overflow: hidden only.
+    for (const p of ['overflow-x', 'overflow-y'] as const) {
+      const v = el.props.get(p) as ResolvedValue;
+      if (keywordOf(v) === 'hidden') continue;
+      refuse('overflow', v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <svg> ${el.element.address} is not supported on native: Chrome paints its shapes past the box, and native clips them to it until the SVG structure package SVG-b`, `Leave overflow on <svg> ${el.element.address} at hidden.`, native);
+    }
     return;
+  }
+  // SVG-a2: native draws a shape opaque and visible (lower/paint/image.ts carries geometry and paints only), so a shape Chrome
+  // fades or hides is refused there.
+  const opacity = el.props.get('opacity') as ResolvedValue;
+  if (!(opacity.value.kind === 'number' && opacity.value.value === 1) && !(opacity.value.kind === 'percentage' && opacity.value.value === 100)) {
+    refuse('opacity', opacity.declaration === null ? el.element.node.origin : authored(opacity.declaration.valueSpan), `opacity: ${valueToString(opacity.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn opaque there until the SVG structure package SVG-b`, `Set opacity on the <svg>, or leave it at 1 on <${tag}> ${el.element.address}.`, native);
+  }
+  const visibility = el.props.get('visibility') as ResolvedValue;
+  if (keywordOf(visibility) !== 'visible') {
+    refuse('visibility', visibility.declaration === null ? el.element.node.origin : authored(visibility.declaration.valueSpan), `visibility: ${valueToString(visibility.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn there even where Chrome hides it, until the SVG structure package SVG-b`, `Remove the shape, or give it display: none.`, native);
   }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;
@@ -577,7 +750,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, faults: GenBFaults = GEN_B_FAULTS): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults = GEN_B_FAULTS): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -599,7 +772,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
-      checkInline(el, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported, shapedAt);
+      checkTextOverflow(el, propagated, targets, diagnostics, reported);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
@@ -614,6 +788,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
+  // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
+  checkTextTransform(root, targets, diagnostics, reported);
 }
 
 /** The largest device scale a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies below it. */
@@ -625,7 +801,8 @@ const SKIP_INK_PROVEN_THICKNESS = 13;
  * TDEC-d: whether a skip-ink auto line's thickness stays within SKIP_INK_PROVEN_THICKNESS zoomed px at every device scale up to
  * NATIVE_DPR_MAX, so the device's dilation by the thickness (text_painter.cc:555-563, layout text-decoration.ts skipInkClips) is
  * the one the captures prove. auto is size / 10 of the decorating box's font; a px length or a percentage rounds half up after zoom (roundf, +0.5 at
- * most). boxSize is css px.
+ * most). boxSize is css px. A device above NATIVE_DPR_MAX still dilates as Chrome does: skipInkClips clamps the dilation at
+ * kDecorationClipMaxDilation (13 px, text_painter.cc:44), which text-decoration-ahem-skip's 6px line captures at DPR 3.
  */
 export function skipInkThicknessProven(thickness: CssValue, boxSize: number): boolean {
   const auto = thickness.kind === 'keyword' && thickness.value === 'auto';

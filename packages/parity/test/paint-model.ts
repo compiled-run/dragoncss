@@ -1,10 +1,11 @@
 // The host paint model of the PNT1 tests (pnt1-radius, pnt1-shadow): boxes in tree order, each filling its rounded border box,
-// borders between the rounded border-box and padding-edge shapes (a corner's side by the outer-to-inner diagonal), replaced images
-// inside their drawn part and padding-edge curve, rounded overflow clips of ancestors, and Skia's 8-bit source-over. It predicts the
-// colour of a sample pixel from the program and the TS paint-radius.ts geometry, for comparison with the committed Chrome PNGs.
+// borders between the rounded border-box and padding-edge shapes (a corner's side by the outer-to-inner diagonal; a rounded double
+// border's two rings), replaced images inside their drawn part and padding-edge curve, rounded overflow clips of ancestors, and
+// Skia's 8-bit source-over. It predicts the colour of a sample pixel from the program and the TS paint-radius.ts geometry, for
+// comparison with the committed Chrome PNGs.
 import { inflateSync } from 'node:zlib';
 import type { ReplacedPaint } from '@dragon/layout';
-import { hasRoundedCorner, LU_PER_PX, NO_RADIUS_FAULTS, roundedShape, snapEdges } from '@dragon/layout';
+import { borderDoubleRings, hasRoundedCorner, LU_PER_PX, NO_RADIUS_FAULTS, roundedShape, snapEdges } from '@dragon/layout';
 import type { NativeProgram, ProgramNode } from 'dragon';
 import { borderDevicePx, programInput, replacedGeometries } from 'dragon';
 import { decodePng } from '../../dragon/src/images/png.ts';
@@ -80,9 +81,10 @@ export function boxes(p: NativeProgram, viewport: { width: number; height: numbe
 
 /**
  * The model's colour at the centre of pixel (x, y): white canvas, then every box in tree order, clipped by clipping ancestors; with
- * a stop, only the boxes before the stop's index (and the stop box's background when asked).
+ * a stop, only the boxes before the stop's index (and the stop box's background when asked). doubleSolid is the double-solid plant's
+ * fault: a rounded double border painted as one solid band.
  */
-export function modelAt(list: readonly Box[], x: number, y: number, stop: { readonly index: number; readonly background: boolean } | null = null): Rgba {
+export function modelAt(list: readonly Box[], x: number, y: number, stop: { readonly index: number; readonly background: boolean } | null = null, doubleSolid = false): Rgba {
   const cx = x + 0.5;
   const cy = y + 0.5;
   const byId = new Map(list.map((b) => [b.node.id, b]));
@@ -118,6 +120,12 @@ export function modelAt(list: readonly Box[], x: number, y: number, stop: { read
     const side = sideOf(cx, cy, b, [pl, pt, pr, pb]);
     const style = styles.styles[side];
     if (style === 'none' || style === 'hidden' || (b.border[side] as number) === 0) continue;
+    // A rounded box with four double sides of 3 device px or more paints Blink's two rings (borderDoubleRings); the gap shows through.
+    if (!doubleSolid && b.radii !== null && styles.styles.every((st, k) => st === 'double' && (b.border[k] as number) >= 3)) {
+      const v = borderDoubleRings(b.l, b.t, b.r, b.b, b.border, b.radii.slice(0, 8));
+      const ring = (o: number): boolean => insideRounded(cx, cy, v[o] as number, v[o + 1] as number, v[o + 2] as number, v[o + 3] as number, v.slice(o + 8, o + 16)) && !insideRounded(cx, cy, v[o + 4] as number, v[o + 5] as number, v[o + 6] as number, v[o + 7] as number, v.slice(o + 16, o + 24));
+      if (!ring(0) && !ring(24)) continue;
+    }
     colour = over(colour, channels(colours.colors[side] as { r: number; g: number; b: number; alpha: number }));
   }
   return colour;

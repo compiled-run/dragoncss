@@ -2,6 +2,7 @@
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
 import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
+import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
@@ -46,14 +47,18 @@ import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
+import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
+import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { VISIBILITY } from './fixture-groups/visibility.ts';
+import { WHITE_SPACE } from './fixture-groups/white-space.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 
 /**
@@ -110,6 +115,7 @@ export type FixtureSpec =
 export const GROUPS = {
   aliases: ALIASES,
   animations: ANIMATIONS,
+  'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
   'block-elements': BLOCK_ELEMENTS,
@@ -154,14 +160,18 @@ export const GROUPS = {
   svg: SVG,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
+  'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,
+  'text-overflow': TEXT_OVERFLOW,
   'text-spacing': TEXT_SPACING,
+  'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
   values: VALUES,
   visibility: VISIBILITY,
+  'white-space': WHITE_SPACE,
   'writing-mode': WRITING_MODE,
 } as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
 

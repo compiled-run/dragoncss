@@ -1,4 +1,5 @@
-// SVG-a1 (/tmp/specs/svg-a.md): the SVG attribute grammars the compiler reads: path data (SVG 2 §9.3, implemented from the grammar),
+// SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): the SVG attribute grammars the compiler reads: path data (SVG 2
+// §9.3, implemented from the grammar),
 // viewBox (SVG 2 §8.6) and the plain number geometry attributes. Path data becomes absolute moveto, lineto, quadratic, cubic and
 // closepath segments in float32 user space, as Chrome hands them to Skia's SkPathBuilder: relative points and the smooth commands'
 // reflected control point (current + (current - previous control)) are float32 sums, and a moveto right after a moveto replaces

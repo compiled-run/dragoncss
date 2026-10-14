@@ -1,11 +1,13 @@
-// Outlines on the native tree (T046 §1, lower/paint/outline.ts): the case code writes a box's solid or double outline through
-// dragonSetOutline, which puts a DragonOutlineView in the tree's root view. After every layout the translated paint-radius.ts
-// outlineRings gives the rings at the device scale (Blink's snapped width and truncated offset, the radii outset), and the view draws
-// them with an even-odd fill. The root view's outline views stay after its content in Blink's outline-phase order (each box's
+// Outlines on the native tree (T046 §1, lower/paint/outline.ts): the case code writes a box's outline through dragonSetOutline, which
+// puts a DragonOutlineView in the tree's root view. After every layout the translated paint-radius.ts outlineRings gives the rings at
+// the device scale (Blink's snapped width and truncated offset, the radii outset), and the view draws a solid or double outline's
+// rings with an even-odd fill; a dotted, dashed or 3D outline is the translated paint-dash.ts outlinePaintOps around the ring's outer
+// rect, each operation in the outline colour or a 3D style's lighter or darker colour. The root view's outline views stay after its content in Blink's outline-phase order (each box's
 // descendants' outlines, then its own; boxes in tree order), so they paint as Chrome's root stacking context paints its outline phase. The readback is every ring's outer and inner rect in
 // device px from the root, from the view's live frame, or null when the view is not after the root's content.
+import type { OutlineWrite } from '../../lower/paint/outline.ts';
 import type { PaintEmitter } from './types.ts';
-import { NO_NATIVE_PAINT, rgbaLit } from './types.ts';
+import { keywordLit, NO_NATIVE_PAINT, rgbaLit } from './types.ts';
 
 const num = (v: number, what: string): string => {
   if (!Number.isFinite(v)) throw new Error(`outline ${what} ${v} is not finite`);
@@ -13,10 +15,10 @@ const num = (v: number, what: string): string => {
   return /[.eE]/.test(n) ? n.replace(/e\+?/, 'E') : `${n}.0`;
 };
 
-const SWIFT_MEMBERS = String.raw`  /// The outline view of the box, when it has a solid or double outline; it sits in the tree's root view.
+const SWIFT_MEMBERS = String.raw`  /// The outline view of the box, when it has an outline; it sits in the tree's root view.
   public var dragonOutlineView: DragonOutlineView? = nil
-  /// The outline write: double or solid, width and offset in css px.
-  public var dragonOutlineDouble = false
+  /// The outline write: the style, width and offset in css px.
+  public var dragonOutlineStyle = "solid"
   public var dragonOutlineWidth: Double = 0
   public var dragonOutlineOffset: Double = 0
 `;
@@ -25,12 +27,21 @@ const SWIFT = String.raw`import UIKit
 
 /// Device px every outline ring is shifted right; 0 except in the outline-offset-1 raster plant build.
 public let dragonOutlinePlantDevicePx: Double = 0
+/// Whether outline dashes and round dots keep the nominal gap; false except in the outline-dash-unfitted raster plant build.
+public let dragonOutlineGapUnfitted = false
+/// Whether a 3D outline swaps its lighter and darker colours; false except in the outline-tones-swapped raster plant build.
+public let dragonOutlineTonesSwapped = false
 
 /// An outline's view: its rings in device px relative to the view (24 numbers each: outer rect, inner rect, outer and inner radii),
-/// filled even-odd in the outline colour. Its frame is the first ring's outer rect.
+/// filled even-odd in the outline colour, or for a dotted, dashed or 3D outline the side painter's operations in device px from the
+/// root. Its frame is the first ring's outer rect, at origin (device px from the root).
 public final class DragonOutlineView: UIView {
   public var rings: [Double] = []
+  public var ops: [BorderOp] = []
+  public var origin: [Double] = [0, 0]
   public var color = DragonRGBA8(0, 0, 0, 0)
+  /// The colours the operations name: the outline colour, a 3D style's lighter and its darker colour.
+  public var tones: [DragonRGBA8] = []
   public var scaleFactor: Double = 1
   public init() {
     super.init(frame: .zero)
@@ -44,6 +55,10 @@ public final class DragonOutlineView: UIView {
   public override func draw(_ rect: CGRect) {
     guard let ctx = UIGraphicsGetCurrentContext() else { return }
     let s = scaleFactor
+    if !ops.isEmpty {
+      dragonDrawOutlineOps(ctx, ops, tones, CGFloat(s), origin)
+      return
+    }
     let r = rings
     ctx.setFillColor(dragonUIColor(color).cgColor)
     var k = 0
@@ -58,6 +73,48 @@ public final class DragonOutlineView: UIView {
   }
 }
 
+/// Draws the outline operations of paint-dash.ts (device px from the root) in a view whose origin is at origin, in points.
+func dragonDrawOutlineOps(_ ctx: CGContext, _ ops: [BorderOp], _ tones: [DragonRGBA8], _ scale: CGFloat, _ origin: [Double]) {
+  ctx.saveGState()
+  ctx.scaleBy(x: 1 / scale, y: 1 / scale)
+  ctx.translateBy(x: CGFloat(-origin[0]), y: CGFloat(-origin[1]))
+  for o in ops {
+    let pts = o.points.items
+    switch o.op.description {
+    case "begin-layer":
+      ctx.saveGState()
+      ctx.setAlpha(CGFloat(o.alpha))
+      ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+    case "end-layer":
+      ctx.endTransparencyLayer()
+      ctx.restoreGState()
+    case "save":
+      ctx.saveGState()
+    case "restore":
+      ctx.restoreGState()
+    case "clip":
+      ctx.setShouldAntialias(o.antialias)
+      ctx.addPath(dragonPolygon(pts))
+      ctx.clip()
+      ctx.setShouldAntialias(true)
+    case "fill", "dot":
+      let c = tones[Int(o.side)]
+      ctx.setFillColor(UIColor(red: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255, blue: CGFloat(c.b) / 255, alpha: CGFloat(o.alpha)).cgColor)
+      ctx.setShouldAntialias(o.antialias)
+      if o.op.description == "fill" {
+        ctx.addPath(dragonPolygon(pts))
+        ctx.fillPath()
+      } else {
+        ctx.fillEllipse(in: CGRect(x: pts[0] - pts[2], y: pts[1] - pts[2], width: 2 * pts[2], height: 2 * pts[2]))
+      }
+      ctx.setShouldAntialias(true)
+    default:
+      fatalError("dragon: unknown outline operation \(o.op)")
+    }
+  }
+  ctx.restoreGState()
+}
+
 /// Moves every outline view of the root after the root's other views, in Blink's outline-phase order: a box paints its
 /// descendants' outlines before its own (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order.
 public func dragonRaiseOutlines(_ root: UIView) {
@@ -68,15 +125,17 @@ public func dragonRaiseOutlines(_ root: UIView) {
   visit(root)
 }
 
-/// The outline write of a box (runtime writer): its style, width and offset in css px and colour. The first write puts the view
-/// last in the tree's root view; every after-layout hook then re-applies the paint.
-public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ double: Bool, _ width: Double, _ offset: Double, _ color: DragonRGBA8) {
+/// The outline write of a box (runtime writer): its style, width and offset in css px, colour, and a 3D style's lighter and darker
+/// colours. The first write puts the view last in the tree's root view; every after-layout hook then re-applies the paint.
+public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ style: String, _ width: Double, _ offset: Double, _ color: DragonRGBA8, _ light: DragonRGBA8, _ dark: DragonRGBA8) {
   if !(width > 0) || !offset.isFinite { fatalError("dragon: \(v.dragonId): outline width \(width) or offset \(offset) is out of range") }
-  v.dragonOutlineDouble = double
+  if !["solid", "double", "dotted", "dashed", "groove", "ridge", "inset", "outset"].contains(style) { fatalError("dragon: \(v.dragonId): outline style \(style) has no native paint") }
+  v.dragonOutlineStyle = style
   v.dragonOutlineWidth = width
   v.dragonOutlineOffset = offset
   let o = v.dragonOutlineView ?? DragonOutlineView()
   o.color = color
+  o.tones = dragonOutlineTonesSwapped ? [color, dark, light] : [color, light, dark]
   if o.superview !== t.root {
     o.removeFromSuperview()
     t.root.addSubview(o)
@@ -91,13 +150,20 @@ public func dragonAfterLayoutOutline(_ v: DragonBoxView, _ shape: DragonBoxShape
   guard let o = v.dragonOutlineView else { return }
   guard let root = o.superview as? DragonRootView else { fatalError("dragon: \(v.dragonId): the outline view is not in the root view") }
   let e = v.dragonShape.edges
+  let style = v.dragonOutlineStyle
   let rings: [Double]
+  var ops: [BorderOp] = []
   do {
     let w = try paintRadius_outlineWidthPx(v.dragonOutlineWidth, scale)
     let off = try paintRadius_outlineOffsetPx(v.dragonOutlineOffset, scale)
-    rings = try paintRadius_outlineRings(e[0] + dragonOutlinePlantDevicePx, e[1], e[2] + dragonOutlinePlantDevicePx, e[3], JsArray(v.dragonShape.radii), w, off, v.dragonOutlineDouble).items
+    rings = try paintRadius_outlineRings(e[0] + dragonOutlinePlantDevicePx, e[1], e[2] + dragonOutlinePlantDevicePx, e[3], JsArray(v.dragonShape.radii), w, off, style == "double").items
+    if try paintDash_outlineNeedsSidePainter(JsString(style)) {
+      if rings.count != 24 { fatalError("dragon: \(v.dragonId): a \(style) outline has \(rings.count / 24) rings") }
+      let c = o.color
+      ops = try paintDash_outlinePaintOps(rings[0], rings[1], rings[2], rings[3], w, JsString(style), Double(c.r), Double(c.g), Double(c.b), Double(c.a), DashFaults(false, dragonOutlineGapUnfitted)).items
+    }
   } catch {
-    fatalError("dragon: \(v.dragonId): paint-radius outlineRings failed: \(error)")
+    fatalError("dragon: \(v.dragonId): the outline painter failed: \(error)")
   }
   if rings.count < 24 || rings.count % 24 != 0 { fatalError("dragon: \(v.dragonId): \(rings.count) outline ring values") }
   let bx = rings[0]
@@ -107,6 +173,8 @@ public func dragonAfterLayoutOutline(_ v: DragonBoxView, _ shape: DragonBoxShape
   CATransaction.begin()
   CATransaction.setDisableActions(true)
   o.rings = local
+  o.ops = ops
+  o.origin = [bx, by]
   o.scaleFactor = scale
   o.frame = CGRect(x: CGFloat(bx / scale), y: CGFloat(by / scale), width: CGFloat((rings[2] - bx) / scale), height: CGFloat((rings[3] - by) / scale))
   CATransaction.commit()
@@ -132,10 +200,10 @@ public func dragonAppliedOutline(_ v: DragonBoxView) -> DumpJsonObject {
 }
 `;
 
-const KOTLIN_MEMBERS = String.raw`  /** The outline view of the box, when it has a solid or double outline; it sits in the tree's root view. */
+const KOTLIN_MEMBERS = String.raw`  /** The outline view of the box, when it has an outline; it sits in the tree's root view. */
   var dragonOutlineView: DragonOutlineView? = null
-  /** The outline write: double or solid, width and offset in css px. */
-  var dragonOutlineDouble = false
+  /** The outline write: the style, width and offset in css px. */
+  var dragonOutlineStyle = "solid"
   var dragonOutlineWidth = 0.0
   var dragonOutlineOffset = 0.0
   /** The device scale of the last layout. */
@@ -152,24 +220,42 @@ import android.graphics.RectF
 import android.view.View
 import android.view.ViewGroup
 import dev.dragon.dump.DumpJson
+import dev.dragon.layout.BorderOp
+import dev.dragon.layout.DashFaults
 import dev.dragon.layout.JsArray
+import dev.dragon.layout.paintDash_outlineNeedsSidePainter
+import dev.dragon.layout.paintDash_outlinePaintOps
 import dev.dragon.layout.paintRadius_outlineOffsetPx
 import dev.dragon.layout.paintRadius_outlineRings
 import dev.dragon.layout.paintRadius_outlineWidthPx
+import kotlin.math.roundToInt
 
 /** Device px every outline ring is shifted right; 0 except in the outline-offset-1 raster plant build. */
 const val DRAGON_OUTLINE_PLANT_DEVICE_PX = 0.0
+/** Whether outline dashes and round dots keep the nominal gap; false except in the outline-dash-unfitted raster plant build. */
+const val DRAGON_OUTLINE_GAP_UNFITTED = false
+/** Whether a 3D outline swaps its lighter and darker colours; false except in the outline-tones-swapped raster plant build. */
+const val DRAGON_OUTLINE_TONES_SWAPPED = false
 
 /**
  * An outline's view: its rings in device px relative to the view (24 numbers each: outer rect, inner rect, outer and inner radii),
- * filled even-odd in the outline colour. Its frame is the first ring's outer rect.
+ * filled even-odd in the outline colour, or for a dotted, dashed or 3D outline the side painter's operations in device px from the
+ * root. Its frame is the first ring's outer rect, at origin (device px from the root).
  */
 class DragonOutlineView(ctx: Context) : DragonGroup(ctx) {
   var rings = DoubleArray(0)
+  var ops: List<BorderOp> = emptyList()
+  var origin = DoubleArray(2)
   var color = DragonRGBA8(0, 0, 0, 0)
+  /** The colours the operations name: the outline colour, a 3D style's lighter and its darker colour. */
+  var tones: Array<DragonRGBA8> = emptyArray()
   private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
+    if (ops.isNotEmpty()) {
+      dragonDrawOutlineOps(canvas, ops, tones, origin)
+      return
+    }
     paint.style = Paint.Style.FILL
     paint.color = dragonArgb(color)
     var k = 0
@@ -182,6 +268,32 @@ class DragonOutlineView(ctx: Context) : DragonGroup(ctx) {
       k += 24
     }
   }
+}
+
+/** Draws the outline operations of paint-dash.ts (device px from the root) in a view whose origin is at origin. */
+fun dragonDrawOutlineOps(canvas: Canvas, ops: List<BorderOp>, tones: Array<DragonRGBA8>, origin: DoubleArray) {
+  canvas.save()
+  canvas.translate((-origin[0]).toFloat(), (-origin[1]).toFloat())
+  for (o in ops) {
+    val pts = o.points
+    when (o.op) {
+      "begin-layer" -> canvas.saveLayerAlpha(null, (o.alpha * 255.0).roundToInt())
+      "end-layer", "restore" -> canvas.restore()
+      "save" -> canvas.save()
+      "clip" -> canvas.clipPath(dragonPolygon(pts))
+      "fill", "dot" -> {
+        val c = tones[o.side.toInt()]
+        val paint = Paint()
+        paint.isAntiAlias = o.antialias
+        paint.style = Paint.Style.FILL
+        paint.color = dragonArgb(DragonRGBA8(c.r, c.g, c.b, 255))
+        paint.alpha = (o.alpha * 255.0).roundToInt()
+        if (o.op == "fill") canvas.drawPath(dragonPolygon(pts), paint) else canvas.drawCircle(pts[0].toFloat(), pts[1].toFloat(), pts[2].toFloat(), paint)
+      }
+      else -> throw IllegalStateException("dragon: unknown outline operation " + o.op)
+    }
+  }
+  canvas.restore()
 }
 
 /**
@@ -198,16 +310,18 @@ fun dragonRaiseOutlines(root: ViewGroup) {
 }
 
 /**
- * The outline write of a box (runtime writer): its style, width and offset in css px and colour. The first write puts the view last
- * in the tree's root view; every after-layout hook then re-applies the paint.
+ * The outline write of a box (runtime writer): its style, width and offset in css px, colour, and a 3D style's lighter and darker
+ * colours. The first write puts the view last in the tree's root view; every after-layout hook then re-applies the paint.
  */
-fun dragonSetOutline(t: DragonTree, v: DragonBoxView, double: Boolean, width: Double, offset: Double, color: DragonRGBA8) {
+fun dragonSetOutline(t: DragonTree, v: DragonBoxView, style: String, width: Double, offset: Double, color: DragonRGBA8, light: DragonRGBA8, dark: DragonRGBA8) {
   if (!(width > 0.0) || !offset.isFinite()) throw IllegalStateException("dragon: " + v.dragonId + ": outline width " + width + " or offset " + offset + " is out of range")
-  v.dragonOutlineDouble = double
+  if (style !in listOf("solid", "double", "dotted", "dashed", "groove", "ridge", "inset", "outset")) throw IllegalStateException("dragon: " + v.dragonId + ": outline style " + style + " has no native paint")
+  v.dragonOutlineStyle = style
   v.dragonOutlineWidth = width
   v.dragonOutlineOffset = offset
   val o = v.dragonOutlineView ?: DragonOutlineView(v.context)
   o.color = color
+  o.tones = if (DRAGON_OUTLINE_TONES_SWAPPED) arrayOf(color, dark, light) else arrayOf(color, light, dark)
   if (o.parent !== t.root) {
     (o.parent as? ViewGroup)?.removeView(o)
     t.root.addView(o)
@@ -227,11 +341,24 @@ fun dragonAfterLayoutOutline(v: DragonBoxView, shape: DragonBoxShape, scale: Dou
   val e = shape.edges
   val w = paintRadius_outlineWidthPx(v.dragonOutlineWidth, scale)
   val off = paintRadius_outlineOffsetPx(v.dragonOutlineOffset, scale)
-  val rings = paintRadius_outlineRings(e[0] + DRAGON_OUTLINE_PLANT_DEVICE_PX, e[1], e[2] + DRAGON_OUTLINE_PLANT_DEVICE_PX, e[3], JsArray(shape.radii.toMutableList()), w, off, v.dragonOutlineDouble)
+  val style = v.dragonOutlineStyle
+  val rings = paintRadius_outlineRings(e[0] + DRAGON_OUTLINE_PLANT_DEVICE_PX, e[1], e[2] + DRAGON_OUTLINE_PLANT_DEVICE_PX, e[3], JsArray(shape.radii.toMutableList()), w, off, style == "double")
   if (rings.size < 24 || rings.size % 24 != 0) throw IllegalStateException("dragon: " + v.dragonId + ": " + rings.size + " outline ring values")
   val bx = rings[0]
   val by = rings[1]
+  var ops: List<BorderOp> = emptyList()
+  if (paintDash_outlineNeedsSidePainter(style)) {
+    if (rings.size != 24) throw IllegalStateException("dragon: " + v.dragonId + ": a " + style + " outline has " + rings.size / 24 + " rings")
+    val c = o.color
+    try {
+      ops = paintDash_outlinePaintOps(rings[0], rings[1], rings[2], rings[3], w, style, c.r.toDouble(), c.g.toDouble(), c.b.toDouble(), c.a.toDouble(), DashFaults(false, DRAGON_OUTLINE_GAP_UNFITTED)).toList()
+    } catch (x: Exception) {
+      throw IllegalStateException("dragon: " + v.dragonId + ": the outline side painter threw " + x.message, x)
+    }
+  }
   o.rings = DoubleArray(rings.size) { k -> if (k % 24 < 8) rings[k] - (if (k % 2 == 0) bx else by) else rings[k] }
+  o.ops = ops
+  o.origin = doubleArrayOf(bx, by)
   dragonSetFrame(o.dragonFrame, bx, by, rings[2], rings[3], v.dragonId + " outline")
   dragonRaiseOutlines(root)
   root.requestLayout()
@@ -259,12 +386,18 @@ fun dragonAppliedOutline(v: DragonBoxView): List<Pair<String, DumpJson>> {
 }
 `;
 
-export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1'> = {
+/** The runtime writer call of an outline write, the same on both backends: a 3D style's two colours, or the outline colour twice. */
+const setOutline = (v: string, w: OutlineWrite): string[] => {
+  const [light, dark] = w.tones ?? [w.color, w.color];
+  return [`  dragonSetOutline(t, ${v}, ${keywordLit(w.style)}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)}, ${rgbaLit(light)}, ${rgbaLit(dark)})`];
+};
+
+export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tones-swapped'> = {
   name: 'outline',
   kinds: ['outline'],
   lines: {
-    uikit: (v, _n, w) => [`  dragonSetOutline(t, ${v}, ${w.style === 'double' ? 'true' : 'false'}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)})`],
-    'android-views': (v, _n, w) => [`  dragonSetOutline(t, ${v}, ${w.style === 'double' ? 'true' : 'false'}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)})`],
+    uikit: (v, _n, w) => setOutline(v, w),
+    'android-views': (v, _n, w) => setOutline(v, w),
   },
   applied: (e, _b, w, dpr, g) => {
     const b = g.box;
@@ -284,6 +417,20 @@ export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1'> = {
       replace: {
         uikit: ['public let dragonOutlinePlantDevicePx: Double = 0\n', 'public let dragonOutlinePlantDevicePx: Double = 1\n'],
         'android-views': ['const val DRAGON_OUTLINE_PLANT_DEVICE_PX = 0.0\n', 'const val DRAGON_OUTLINE_PLANT_DEVICE_PX = 1.0\n'],
+      },
+    },
+    {
+      name: 'outline-dash-unfitted',
+      replace: {
+        uikit: ['public let dragonOutlineGapUnfitted = false\n', 'public let dragonOutlineGapUnfitted = true\n'],
+        'android-views': ['const val DRAGON_OUTLINE_GAP_UNFITTED = false\n', 'const val DRAGON_OUTLINE_GAP_UNFITTED = true\n'],
+      },
+    },
+    {
+      name: 'outline-tones-swapped',
+      replace: {
+        uikit: ['public let dragonOutlineTonesSwapped = false\n', 'public let dragonOutlineTonesSwapped = true\n'],
+        'android-views': ['const val DRAGON_OUTLINE_TONES_SWAPPED = false\n', 'const val DRAGON_OUTLINE_TONES_SWAPPED = true\n'],
       },
     },
   ],

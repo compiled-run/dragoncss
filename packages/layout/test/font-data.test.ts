@@ -57,7 +57,7 @@ function oldAhem(faults: AhemRuleFaults): TextMeasurer {
 }
 
 /** The Ahem constants as raw font data, written out independently of AHEM_FONT_DATA. */
-const RAW_AHEM: FontData = { unitsPerEm: 1000, ascent: 800, descent: 200, lineGap: 0, advances: coveredCodePoints().map((cp) => (cp === 0x200b ? 0 : 1000)), xHeight: 800, capHeight: 800, zeroAdvance: 1000 };
+const RAW_AHEM: FontData = { unitsPerEm: 1000, ascent: 800, descent: 200, lineGap: 0, advances: coveredCodePoints().map((cp) => (cp === 0x200b ? 0 : 1000)), xHeight: 800, capHeight: 800, zeroAdvance: 1000, ellipsisAdvance: 1000 };
 
 type Leaf = { readonly text: string; readonly size: number };
 

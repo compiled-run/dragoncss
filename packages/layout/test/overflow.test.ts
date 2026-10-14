@@ -8,7 +8,7 @@ import { isScrollContainer } from '../src/box.ts';
 import type { PlacedLine } from '../src/inline.ts';
 import { ZERO } from '../src/units.ts';
 import { OverflowRefusal, PLACED_LINE_FIELDS, refuseLineLevelBoxes, scrollMetrics, scrollMetricsWithFaults, scrollRanges } from '../src/overflow.ts';
-import { box, br, divStyle, neutralEnvironment, pct, px, span, text } from './helpers.ts';
+import { ahemFont, box, br, divStyle, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 const input = (children: (LayoutBox | ReplacedLeaf)[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
   viewport: { width: 400, height: 300 },
@@ -151,8 +151,8 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
 describe('line items (R16: a new PlacedLine item kind is never skipped)', () => {
   const unhandled = (line: object): string[] => Object.keys(line).filter((k) => !PLACED_LINE_FIELDS.includes(k));
   it('addLines accounts for every PlacedLine field; a stub item kind is caught', () => {
-    expectTypeOf<keyof PlacedLine>().toEqualTypeOf<'top' | 'height' | 'baseline' | 'pieces' | 'boxes' | 'boxRects' | 'breaks' | 'breakRects'>();
-    const line: PlacedLine = { top: ZERO, height: ZERO, baseline: ZERO, pieces: [], boxes: [], boxRects: [], breaks: [], breakRects: [] };
+    expectTypeOf<keyof PlacedLine>().toEqualTypeOf<'top' | 'height' | 'baseline' | 'pieces' | 'boxes' | 'boxRects' | 'breaks' | 'breakRects' | 'ellipsis'>();
+    const line: PlacedLine = { top: ZERO, height: ZERO, baseline: ZERO, pieces: [], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null };
     expect(unhandled(line)).toEqual([]);
     expect(unhandled({ ...line, atomics: [] })).toEqual(['atomics']);
   });
@@ -176,6 +176,14 @@ describe('replaced leaves and line-level boxes (pre-landing review of #96)', () 
     const atomic = { ...ifc, children: [...ifc.children, box('k', { width: px(10), height: px(10) })] };
     expect(() => refuseLineLevelBoxes(atomic)).toThrow(OverflowRefusal);
     expect(() => refuseLineLevelBoxes(atomic)).toThrow('an atomic inline in the inline formatting context of s');
+  });
+
+  it('an atomic inline alone in a scroll container, with no text, is an inline formatting context and is refused, never measured as a block child', () => {
+    const k = box('k', { display: 'inline-block', width: px(50), height: px(150), marginBottom: px(20) });
+    const s = box('s', sc('auto', { height: px(50), paddingBottom: px(10) }), [k], { font: ahemFont(10), lineHeight: { kind: 'normal' } });
+    expect(() => refuseLineLevelBoxes(s)).toThrow('an atomic inline in the inline formatting context of s');
+    const r = scrollMetrics(input([s]), ahemMeasurer, 'ltr');
+    expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['k', expect.stringContaining('(R16, INL2)')]);
   });
 
   it('an inline box or a <br> in an inline formatting context (INL1a line items addLines does not measure) is refused', () => {

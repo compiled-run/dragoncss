@@ -1,4 +1,5 @@
-// SVG-a1 (/tmp/specs/svg-a.md): the strict outline differential (svg-compare.ts). Its viewBox and client-rect arithmetic is pinned
+// SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): the strict outline differential (svg-compare.ts). Its viewBox and
+// client-rect arithmetic is pinned
 // against values captured from Chrome 145 at DPR 1, every svg fixture case passes it against its committed capture, and each
 // planted fault fails it.
 import { describe, expect, it } from 'vitest';
@@ -8,6 +9,11 @@ import { iosLayoutProjection, svgScenes } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { committedAuthored } from '../src/committed.ts';
 import { SVG } from '../src/fixture-groups/svg.ts';
+import { DPRS } from '../src/dpr.ts';
+import { pixelAt } from '../src/native-compare.ts';
+import { nativeCases } from '../src/native-host.ts';
+import { casePoints, committedPixels } from '../src/pixel-reference.ts';
+import { svgOutline } from '../src/paint-samples/image.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import type { SvgFaults } from '../src/svg-compare.ts';
 import { chromeViewBoxTransform, compareSvg, NO_SVG_FAULTS, shapeClientRect } from '../src/svg-compare.ts';
@@ -84,7 +90,7 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     return out;
   };
   it('every shape of every case equals Chrome as doubles', async () => {
-    expect(runs.length).toBe(8);
+    expect(runs.length).toBe(10);
     expect(await problems(NO_SVG_FAULTS)).toEqual([]);
   });
   it('no SVG shape records inline line fragments: its computed display is inline, but SVG lays it out (capture.ts)', async () => {
@@ -113,9 +119,88 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     expect(nulls.length).toBe(runs.length);
     for (const m of nulls) expect(m).toMatch(/: Dragon resolved no svg scenes for this case, but Chrome captured the shapes [a-z0-9, ]+$/);
   });
+  it('a shape in Dragon\'s scene that Chrome did not lay out fails the differential (display: none, or no such shape)', async () => {
+    const ghost = (sc: Scenes): Scenes => (sc === null ? null : sc.map((x, i) => (i === 0 && x.shapes[0] !== undefined ? { ...x, shapes: [...x.shapes, { ...x.shapes[0], address: 'ghost' }] } : x)));
+    const extra = await problems(NO_SVG_FAULTS, ghost);
+    expect(extra.filter((m) => /^\S+: ghost: a Dragon svg scene has a shape that Chrome did not lay out$/.test(m)).length).toBe(runs.length);
+    // A captured shape with no client rect (Chrome's display: none) is not laid out, so a scene that keeps it fails.
+    const { spec, c } = runs[0] as (typeof runs)[number];
+    const capture = await committedAuthored(c);
+    const first = capture.nodes.find((n) => n.svg !== undefined);
+    if (first === undefined) throw new Error('no captured shape');
+    const unrendered = { ...capture, nodes: capture.nodes.map((n) => (n === first ? { ...n, hasBox: false } : n)) };
+    const { compiled } = compileFixture(spec, undefined, 'enforce', c.environment.direction);
+    const p = iosLayoutProjection(compiled, c.environment, c.assignment);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const v = validateLayoutInput(JSON.parse(JSON.stringify(p.input)));
+    if (!v.ok) throw new Error('layout input rejected');
+    const r = layoutWithFaults(v.input, measurer(), NO_ENGINE_FAULTS);
+    if (r.kind !== 'ok') throw new Error(r.unsupported.detail);
+    expect(compareSvg(unrendered, svgScenes(compiled, c.assignment), absoluteRects(r.boxes), v.input)).toEqual([`${first.id}: a Dragon svg scene has a shape that Chrome did not lay out`]);
+  });
   it('each planted fault fails the differential', async () => {
     for (const k of Object.keys(NO_SVG_FAULTS) as (keyof SvgFaults)[]) {
       expect((await problems({ ...NO_SVG_FAULTS, [k]: true })).length, k).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('the svg sample points (SVG-a2) against the committed Chrome pixels', () => {
+  const svgCases = nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'svg-shapes')));
+  it('the outline closes a subpath for the fill always, and for the stroke only at a closepath', () => {
+    const id = (x: number, y: number) => ({ x, y });
+    const open = svgOutline([0, 0, 0, 1, 10, 0, 1, 10, 10], id);
+    expect(open.fill.length).toBe(3);
+    expect(open.stroke.length).toBe(2);
+    const closed = svgOutline([0, 0, 0, 1, 10, 0, 1, 10, 10, 4], id);
+    expect(closed.fill.length).toBe(3);
+    expect(closed.stroke.length).toBe(3);
+    expect(closed.vertices).toEqual([id(0, 0), id(10, 0), id(10, 10)]);
+  });
+  it('an svg-shapes write on a box with no replaced geometry throws instead of sampling nothing', () => {
+    const n = svgCases[0];
+    if (n === undefined) throw new Error('no svg case');
+    const p = n.programs.uikit;
+    const svgWrite = p.nodes.flatMap((x) => x.writes).find((w) => w.kind === 'svg-shapes');
+    const plain = p.nodes.find((x) => x.id === 'wrap');
+    if (svgWrite === undefined || plain === undefined) throw new Error('no svg write or wrap node');
+    const broken = { ...p, nodes: p.nodes.map((x) => (x === plain ? { ...x, writes: [...x.writes, svgWrite] } : x)) };
+    expect(() => casePoints(broken, n.case.environment.viewport, 2)).toThrow(/^wrap: an svg-shapes write on a box with no replaced paint geometry at DPR 2$/);
+  });
+  it('every svg point at every DPR sits in one solid colour in Chrome: its 3x3 neighbourhood is one pixel value', () => {
+    expect(svgCases.length).toBe(10);
+    for (const n of svgCases) {
+      for (const dpr of DPRS) {
+        const img = committedPixels(n.case.id, dpr);
+        if (img === null) throw new Error(`${n.case.id}@${dpr}: no committed Chrome pixels`);
+        const pts = casePoints(n.programs.uikit, n.case.environment.viewport, dpr).filter((p) => p.rule.startsWith('svg:'));
+        expect(pts.length, `${n.case.id}@${dpr}`).toBeGreaterThan(0);
+        for (const p of pts) {
+          const at = pixelAt(img, p.x, p.y).join();
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const x = p.x + dx;
+              const y = p.y + dy;
+              if (x < 0 || y < 0 || x >= img.width || y >= img.height) continue;
+              expect(pixelAt(img, x, y).join(), `${n.case.id}@${dpr} ${p.rule} (${p.x}, ${p.y}) neighbour ${dx},${dy}`).toBe(at);
+            }
+          }
+        }
+      }
+    }
+  });
+  it("each wide stroke's colour (4 user units or more) shows at an svg point at every DPR, so a stroke under the fill or swapped is seen", () => {
+    let wide = 0;
+    for (const n of svgCases) {
+      const strokes = n.programs.uikit.nodes.flatMap((x) => x.writes.flatMap((w) => (w.kind === 'svg-shapes' ? w.shapes.flatMap((sh) => (sh.stroke !== null && sh.stroke.alpha === 255 && sh.width >= 4 ? [sh.stroke] : [])) : [])));
+      wide += strokes.length;
+      for (const dpr of DPRS) {
+        const img = committedPixels(n.case.id, dpr);
+        if (img === null) throw new Error(`${n.case.id}@${dpr}: no committed Chrome pixels`);
+        const seen = new Set(casePoints(n.programs.uikit, n.case.environment.viewport, dpr).filter((p) => p.rule.startsWith('svg:')).map((p) => pixelAt(img, p.x, p.y).slice(0, 3).join()));
+        for (const k of strokes) expect(seen.has([k.r, k.g, k.b].join()), `${n.case.id}@${dpr} stroke ${[k.r, k.g, k.b].join()}`).toBe(true);
+      }
+    }
+    expect(wide).toBeGreaterThan(0);
   });
 });

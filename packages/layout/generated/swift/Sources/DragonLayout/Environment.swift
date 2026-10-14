@@ -292,14 +292,14 @@ public func environment_resolveLetterSpacing(_ e: any U_CalcClamp_CalcInvert_Cal
   }
   // ts: packages/layout/src/environment.ts:278
   if try calc_calcHasPercent(((e as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_RootFontLength_ViewportLength) as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength)) {
-    try unsupported_unsupported(S.s_letter_spacing, env.node, S.s499, jsConcat(S.s401, env.node, S.s5))
+    try unsupported_unsupported(S.s_letter_spacing, env.node, S.s542, jsConcat(S.s437, env.node, S.s7))
   }
   return try Px(S.s_px, units_cssLengthFixed(environment_lengthDouble(LengthCalc(S.s_calc, ((e as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_RootFontLength_ViewportLength) as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength), S.s_all), env)))
 }
 
 // ts: packages/layout/src/environment.ts:282
 public func environment_resolveStyle(_ s: LayoutStyle, _ env: Env) throws -> LayoutStyle {
-  return try LayoutStyle(s.display, s.position, environment_resolveInset(s.top, env), environment_resolveInset(s.right, env), environment_resolveInset(s.bottom, env), environment_resolveInset(s.left, env), s.overflowX, s.overflowY, s.direction, s.boxSizing, environment_resolveInlineSize(s.width, env), environment_resolveSize(s.height, env), environment_resolveInlineSize(s.minWidth, env), environment_resolveSize(s.minHeight, env), environment_resolveMaxInline(s.maxWidth, env), environment_resolveMax(s.maxHeight, env), environment_envMargin(s.marginTop, env), environment_envMargin(s.marginRight, env), environment_envMargin(s.marginBottom, env), environment_envMargin(s.marginLeft, env), environment_envPadding(s.paddingTop, env), environment_envPadding(s.paddingRight, env), environment_envPadding(s.paddingBottom, env), environment_envPadding(s.paddingLeft, env), environment_resolveBorderWidth(s.borderTopWidth, env), environment_resolveBorderWidth(s.borderRightWidth, env), environment_resolveBorderWidth(s.borderBottomWidth, env), environment_resolveBorderWidth(s.borderLeftWidth, env), s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, environment_resolveBasis(s.flexBasis, env), environment_resolveOrder(s.order, env.faults), s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, environment_resolveGap(s.rowGap, env), environment_resolveGap(s.columnGap, env), s.textAlign, s.aspectRatio, environment_resolveVerticalAlign(s.verticalAlign, env), ((s.grid == nil) ? (nil as GridContainerStyle?) : (environment_zoomGrid(jsUnwrap(s.grid), env.zoom) as GridContainerStyle?)), s.gridItem)
+  return try LayoutStyle(s.display, s.position, environment_resolveInset(s.top, env), environment_resolveInset(s.right, env), environment_resolveInset(s.bottom, env), environment_resolveInset(s.left, env), s.overflowX, s.overflowY, s.direction, s.boxSizing, environment_resolveInlineSize(s.width, env), environment_resolveSize(s.height, env), environment_resolveInlineSize(s.minWidth, env), environment_resolveSize(s.minHeight, env), environment_resolveMaxInline(s.maxWidth, env), environment_resolveMax(s.maxHeight, env), environment_envMargin(s.marginTop, env), environment_envMargin(s.marginRight, env), environment_envMargin(s.marginBottom, env), environment_envMargin(s.marginLeft, env), environment_envPadding(s.paddingTop, env), environment_envPadding(s.paddingRight, env), environment_envPadding(s.paddingBottom, env), environment_envPadding(s.paddingLeft, env), environment_resolveBorderWidth(s.borderTopWidth, env), environment_resolveBorderWidth(s.borderRightWidth, env), environment_resolveBorderWidth(s.borderBottomWidth, env), environment_resolveBorderWidth(s.borderLeftWidth, env), s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, environment_resolveBasis(s.flexBasis, env), environment_resolveOrder(s.order, env.faults), s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, environment_resolveGap(s.rowGap, env), environment_resolveGap(s.columnGap, env), s.textAlign, s.aspectRatio, environment_resolveVerticalAlign(s.verticalAlign, env), s.textOverflow, ((s.grid == nil) ? (nil as GridContainerStyle?) : (environment_zoomGrid(jsUnwrap(s.grid), env.zoom) as GridContainerStyle?)), s.gridItem)
 }
 
 // ts: packages/layout/src/environment.ts:316
@@ -631,7 +631,7 @@ public func environment_fontLengths(_ font: FontSpec, _ env: Env) throws -> Font
 public func environment_refuseUnknownFace(_ m: TextMeasurer, _ font: FontSpec, _ env: Env) throws -> Void {
   // ts: packages/layout/src/environment.ts:493
   if try (!m.hasFace(font.family)) {
-    try unsupported_unsupported(S.s_text_glyph, env.node, S.s489, jsConcat(env.node, S.s74, font.family, S.s112))
+    try unsupported_unsupported(S.s_text_glyph, env.node, S.s530, jsConcat(env.node, S.s87, font.family, S.s139))
   }
 }
 
@@ -766,7 +766,7 @@ public func environment_leafPx(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_C
   case S.s_env:
     return try units_zoomCssPx(((e as! EnvLength).value * environment_safeAreaInset((e as! EnvLength).side, env)), z)
   case S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s392, (e as! any U_FontCalc_FontPercent).kind, S.s76))
+    throw JsError(message: jsConcat(S.s427, (e as! any U_FontCalc_FontPercent).kind, S.s89))
   default:
     return nil
   }

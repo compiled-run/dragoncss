@@ -125,9 +125,10 @@ export type AspectRatioValue =
 
 /**
  * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
- * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid.
+ * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block or inline-flex for an atomic inline among a block
+ * container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
-export type Display = 'block' | 'flex' | 'grid' | 'inline';
+export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
 /**
@@ -177,6 +178,8 @@ export type AlignContent =
   | 'start'
   | 'end';
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
+export type TextOverflow = 'clip' | 'ellipsis';
 /** CSS2 §10.8.1 vertical-align keywords. */
 export type VerticalAlignKeyword = 'baseline' | 'sub' | 'super' | 'text-top' | 'text-bottom' | 'middle' | 'top' | 'bottom';
 /** A vertical-align keyword value. */
@@ -328,6 +331,7 @@ export type LayoutStyle = {
   readonly textAlign: TextAlign;
   readonly aspectRatio: AspectRatioValue;
   readonly verticalAlign: VerticalAlignValue;
+  readonly textOverflow: TextOverflow;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
@@ -353,8 +357,11 @@ export type TextFont = { readonly family: string; readonly size: number; readonl
  */
 export type FontSpec = { readonly family: string; readonly size: number; readonly specifiedSize: CalcExpr; readonly absoluteSize: boolean };
 
-/** css-text-4 §3.1 white-space-collapse: only collapse is supported; the compiler has already applied phase I collapsing. */
-export type WhiteSpaceCollapse = 'collapse';
+/**
+ * css-text-4 §3.1 white-space-collapse; the compiler has already applied phase I (resolve.ts). collapse text arrives collapsed;
+ * preserve and break-spaces text arrives as authored, and preserve-breaks text with its spaces collapsed, each U+000A a forced break.
+ */
+export type WhiteSpaceCollapse = 'collapse' | 'preserve' | 'preserve-breaks' | 'break-spaces';
 /** css-text-4 §5.1 text-wrap-mode. */
 export type TextWrapMode = 'wrap' | 'nowrap';
 
@@ -362,7 +369,7 @@ export type TextWrapMode = 'wrap' | 'nowrap';
 export type TextLeaf = {
   readonly kind: 'text';
   readonly id: string;
-  /** Text after white-space phase I collapsing (css-text-3 §4.1.1): no tabs, segment breaks or doubled spaces. */
+  /** Text after white-space phase I (css-text-3 §4.1.1): collapse text holds no tabs, segment breaks or doubled spaces. */
   readonly text: string;
   readonly font: FontSpec;
   readonly lineHeight: LineHeightValue;

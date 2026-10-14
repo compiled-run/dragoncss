@@ -49,11 +49,13 @@ describe('display: -webkit-flex and -webkit-inline-flex', () => {
     expect(prefixed.diagnostics).toEqual([]);
     expect(webCss(prefixed)).toContain('display: flex;');
     expect(webCss(prefixed)).toBe(webCss(plain));
-    // inline-flex is unproven in block context, so the two compile to the same refusals.
-    const summary = (c: Compiled<K>): string[] => c.diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message}`);
+    // inline-flex compiles in block context (INL2a), and the prefixed spelling compiles to the same output.
     const inline = compile('.a { display: inline-flex; width: 10px; }').c;
-    expect(summary(inline).length).toBeGreaterThan(0);
-    expect(summary(compile('.a { display: -WEBKIT-INLINE-FLEX; width: 10px; }').c)).toEqual(summary(inline));
+    const inlinePrefixed = compile('.a { display: -WEBKIT-INLINE-FLEX; width: 10px; }').c;
+    expect(inline.diagnostics).toEqual([]);
+    expect(inlinePrefixed.diagnostics).toEqual([]);
+    expect(webCss(inlinePrefixed)).toContain('display: inline-flex;');
+    expect(webCss(inlinePrefixed)).toBe(webCss(inline));
   });
   it('the autoprefixer chain ends in its last value', () => {
     const { c } = compile('.a { display: -webkit-flex; display: flex; width: 10px; }');

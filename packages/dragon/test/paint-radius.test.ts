@@ -8,9 +8,11 @@ import type { Targets } from '../src/types.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
+import { BORDER_EMITTER } from '../src/emit/paint/border.ts';
 import { IMAGE_EMITTER } from '../src/emit/paint/image.ts';
 import { RADIUS_EMITTER } from '../src/emit/paint/radius.ts';
-import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
+import type { DraftTree, FrontEndResult } from '../src/index.ts';
+import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not, spanTextOf } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/radius.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -26,6 +28,18 @@ const spanOf = (css: string, d: Diagnostic): string => (d.origin.kind === 'autho
 function compile(css: string, targets: Targets = { ios: { minimum: '15.0' }, web: {} }) {
   const input = inputFor(`body { margin: 0; font-size: 20px; } ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]);
   return { input, c: createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input) };
+}
+
+/** A box .a that gains class on in the open state, as animations.test.ts states it, so a transition has a state pair to start it. */
+function stated(css: string): FrontEndResult {
+  const input = inputFor(css, (r) => {
+    const d = div(r, 'a', ['a']);
+    const on = { value: [{ when: eq('open', true), value: { owner: DOC, sheet: 's', name: 'on' } }, { when: not(eq('open', true)), value: null }], origin: d.origin };
+    return [{ ...d, classes: [...d.classes, on] }];
+  });
+  const tree = input.tree as DraftTree;
+  const root = tree.components[0] as DraftTree['components'][number];
+  return { ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 'open', domain: [false, true], initial: false, origin: root.origin }] }] } };
 }
 
 const CORNERS = ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'];
@@ -109,17 +123,93 @@ describe('border-radius: refusals', () => {
     }
   });
 
-  it('a rounded box with a dashed, dotted or double border side is refused for ios and android at the radius declaration (PNT1b), and not for web', () => {
-    for (const style of ['dashed', 'dotted', 'double']) {
-      const { c, input } = compile(`.a { width: 40px; height: 20px; border: 2px ${style} blue; border-radius: 6px; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+  it('a rounded box with a dashed, dotted or 3D border side is refused for ios and android at the radius declaration (PNT1b), naming why, and not for web', () => {
+    const why: { readonly [style: string]: string } = {
+      dashed: "(Blink strokes the rounded centre line with Skia's dash path effect, fitted to the whole path's length, which Dragon does not port)",
+      dotted: "(Blink strokes the rounded centre line with Skia's dash path effect and round caps, fitted to the whole path's length, which Dragon does not port)",
+      groove: '(Blink draws its two shades along the rounded corners, which Dragon does not port)',
+      outset: '(Blink draws its two shades along the rounded corners, which Dragon does not port)',
+    };
+    for (const [style, says] of Object.entries(why)) {
+      // A dashed or dotted side next to four double sides is still refused by its own name.
+      const { c, input } = compile(`.a { width: 40px; height: 20px; border: 6px double blue; border-left-style: ${style}; border-radius: 6px; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
       const refused = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
       expect(refused.map((d) => d.target).sort(), style).toEqual(['android', 'ios']);
       for (const d of refused) {
         expect(spanTextOf(input, d)).toBe('6px');
-        expect(d.message).toContain(`rounded ${style} borders are PNT1b`);
+        expect(d.message).toBe(`a rounds its corners and has a ${style} border side; rounded ${style} borders are PNT1b, which ${d.target} does not draw yet ${says}`);
       }
       expectCatalogued(refused);
     }
+  });
+
+  it('a rounded double border compiles on every target when its four sides are double in one width and colour, whatever the colour syntax', () => {
+    for (const css of ['.a { width: 60px; height: 40px; border: 6px double blue; border-radius: 10px; }', '.a { width: 60px; height: 40px; border: 1px double #ff000080; border-radius: 50%; }', '.a { width: 60px; height: 40px; border: 9px double red; border-top-color: #f00; border-left-color: rgb(255 0 0); border-radius: 4px 20px; }']) {
+      const { c } = compile(css, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+      expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE'), css).toEqual([]);
+    }
+  });
+
+  it('any other rounded double border is refused for ios and android at the radius declaration, and not for web', () => {
+    const cases = [
+      ['one double side', '.a { border: 6px solid blue; border-top-style: double; border-radius: 6px; }'],
+      ['a zero-width side', '.a { border: 6px double blue; border-left-width: 0; border-radius: 6px; }'],
+      ['a hidden side', '.a { border: 6px double blue; border-bottom-style: none; border-radius: 6px; }'],
+      ['two widths', '.a { border: 6px double blue; border-right-width: 9px; border-radius: 6px; }'],
+      ['two colours', '.a { border: 6px double blue; border-top-color: red; border-radius: 6px; }'],
+    ] as const;
+    for (const [name, css] of cases) {
+      const { c, input } = compile(css, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+      const refused = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
+      expect(refused.map((d) => d.target).sort(), name).toEqual(['android', 'ios']);
+      for (const d of refused) {
+        expect(spanTextOf(input, d), name).toBe('6px');
+        expect(d.message, name).toBe(`a rounds its corners and has a double border side, but not four double sides of one width and colour; rounded double borders are drawn only as four such sides, which ${d.target} draws as Blink's two rings (other rounded double borders are PNT1b)`);
+      }
+      expectCatalogued(refused);
+    }
+  });
+
+  it('an animation or transition of a border side colour on a rounded double border is refused for ios and android, per side or shorthand', () => {
+    // The native animator feeds each side's colour apart (dragonAnimatedSides), and the two rings are one colour (dragonDrawRoundedDouble).
+    const run = (css: string, targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }) => {
+      const input = stated(`body { margin: 0; } ${css}`);
+      const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+      return { input, c, refused: c.diagnostics.filter((d) => d.message.includes('the native animator changes each side')) };
+    };
+    const summary = (ds: readonly Diagnostic[]): string[] => ds.map((d) => `${d.target} ${d.message.split(':')[0]}`).sort();
+    const box = '.a { width: 40px; height: 30px; border: 6px double blue; border-radius: 10px; }';
+    const sides = (what: string, ps: readonly string[]): string[] => ps.flatMap((p) => [`android ${what} of ${p} on a`, `ios ${what} of ${p} on a`]).sort();
+    const all = ['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
+    const cases: [string, string, string, string[]][] = [
+      ['a transition of one side', `${box} .a { transition: border-top-color 1s; } .a.on { border-color: red; }`, 'border-top-color 1s', sides('a transition', ['border-top-color'])],
+      ['a transition of the shorthand', `${box} .a { transition: border-color 1s; } .a.on { border-color: red; }`, 'border-color 1s', sides('a transition', all)],
+      ['a transition of all', `${box} .a { transition: all 1s; } .a.on { border-left-color: red; border-top-color: red; border-right-color: red; border-bottom-color: red; }`, 'all 1s', sides('a transition', all)],
+      ['@keyframes of one side', `${box} .a { animation: k 1s infinite; } @keyframes k { to { border-top-color: red; } }`, 'k 1s infinite', sides('an animation', ['border-top-color'])],
+      ['@keyframes of the shorthand', `${box} .a { animation: k 1s infinite; } @keyframes k { to { border-color: red; } }`, 'k 1s infinite', sides('an animation', all)],
+    ];
+    for (const [name, css, span, expected] of cases) {
+      const { input, refused } = run(css);
+      expect(summary(refused), name).toEqual(expected);
+      for (const d of refused) {
+        expect(d.code, name).toBe('DRAGON_UNSUPPORTED_VALUE');
+        expect(spanTextOf(input, d), name).toBe(span);
+      }
+      expectCatalogued(refused);
+      expect(run(css, { web: {} }).refused, `${name} on web`).toEqual([]);
+    }
+    // MQ-R1: native switches @media bands at run time, so a box rounded only in a band that is not the fold band's is refused too.
+    for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
+      const css = `.a { width: 40px; height: 30px; border: 6px double blue; animation: k 1s infinite; } @media ${media} { .a { border-radius: 10px; } } @keyframes k { to { border-top-color: red; } }`;
+      expect(summary(run(css).refused), media).toEqual(sides('an animation', ['border-top-color']));
+    }
+    expect(run(`${box} .a { transition: border-top-color 1s; } .a.on { border-color: red; }`).refused[0]?.message).toBe("a transition of border-top-color on a: the box is a rounded double border, which ios draws as Blink's two rings only while its four sides are one colour, and the native animator changes each side's colour apart (animated rounded double borders are PNT1b)");
+    // Not refused: a rounded solid border, a square double border, a transition no state starts, and color under four currentcolor sides
+    // (the four sides stay one colour).
+    expect(run('.a { width: 40px; height: 30px; border: 6px solid blue; border-radius: 10px; transition: border-top-color 1s; } .a.on { border-color: red; }').refused).toEqual([]);
+    expect(run('.a { width: 40px; height: 30px; border: 6px double blue; transition: border-top-color 1s; } .a.on { border-color: red; }').refused).toEqual([]);
+    expect(run(`${box} .a { transition: border-top-color 1s; } .a.on { width: 30px; }`).refused).toEqual([]);
+    expect(run('.a { width: 40px; height: 30px; color: blue; border: 6px double; border-radius: 10px; animation: k 1s infinite; } @keyframes k { to { color: red; } }').c.diagnostics).toEqual([]);
   });
 
   it('a rounded html, body or iframe, and a rounded img with padding or another overflow, are refused for ios and android at the radius declaration, and not for web', () => {
@@ -130,8 +220,10 @@ describe('border-radius: refusals', () => {
       ['iframe', 'iframe', '.i { width: 20px; height: 20px; border-radius: 8px; }', 'draws a web view square (a rounded iframe is not supported yet)'],
       ['img padding', 'img', '.i { width: 20px; height: 20px; padding: 0 0 2px; border-radius: 8px; }', 'has padding-bottom: 2px; ios clips a rounded image only at its padding edge'],
       ['img padding %', 'img', '.i { width: 20px; height: 20px; padding-left: 1%; border-radius: 8px; }', 'has padding-left: 1%;'],
-      ['img overflow visible', 'img', '.i { width: 20px; height: 20px; overflow: visible; border-radius: 8px; }', 'rounds its corners with overflow: visible, under which Chrome does not clip the image round'],
-      ['img overflow-y hidden', 'img', '.i { width: 20px; height: 20px; overflow-y: hidden; border-radius: 8px; }', 'rounds its corners with overflow: hidden, under which Chrome does not clip the image round'],
+      ['img overflow visible', 'img', '.i { width: 20px; height: 20px; overflow: visible; border-radius: 8px; }', 'rounds its corners with overflow: visible, under which Chrome does not clip the image round; ios supports a rounded img only under overflow: clip (the img default) or hidden on both axes'],
+      ['img overflow-y visible', 'img', '.i { width: 20px; height: 20px; overflow-y: visible; border-radius: 8px; }', 'rounds its corners with overflow: visible, under which Chrome does not clip the image round'],
+      ['img overflow scroll', 'img', '.i { width: 20px; height: 20px; overflow: scroll; border-radius: 8px; }', 'rounds its corners with overflow: scroll, which Dragon has not proven on a rounded img against Chrome yet'],
+      ['img overflow-x visible, y hidden', 'img', '.i { width: 20px; height: 20px; overflow-x: visible; overflow-y: hidden; border-radius: 8px; }', 'rounds its corners with overflow: auto, which Dragon has not proven on a rounded img against Chrome yet'],
     ] as const;
     for (const [name, tag, css, says] of cases) {
       const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'i', ['i']), tag, attributes: [] } as never]);
@@ -146,9 +238,11 @@ describe('border-radius: refusals', () => {
     }
   });
 
-  it('a rounded img with no padding under its default overflow: clip compiles on every target, with and without a border', () => {
+  it('a rounded img with no padding under its default overflow: clip, or under hidden, compiles on every target, with and without a border', () => {
     const targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
-    for (const css of ['.i { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }', '.i { width: 20px; height: 12px; border: 2px solid red; border-radius: 4px 8px 0 6px / 2px 6px 0 9px; object-fit: contain; }', '.i { width: 20px; height: 20px; padding: 0; overflow: clip; border-radius: 3px; }']) {
+    // Chrome clips an img under hidden as under clip (LayoutObject::IsScrollContainer is false for a replaced element); overflow-y:
+    // hidden alone computes overflow-x: clip to hidden (StyleAdjuster::AdjustOverflow).
+    for (const css of ['.i { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }', '.i { width: 20px; height: 12px; border: 2px solid red; border-radius: 4px 8px 0 6px / 2px 6px 0 9px; object-fit: contain; }', '.i { width: 20px; height: 20px; padding: 0; overflow: clip; border-radius: 3px; }', '.i { width: 20px; height: 20px; overflow: hidden; border: 3px solid red; border-radius: 50%; }', '.i { width: 20px; height: 20px; overflow-y: hidden; border-radius: 4px; }']) {
       const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'i', ['i']), tag: 'img', attributes: [] } as never]);
       const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
       expect(c.diagnostics.filter((d) => d.message.includes('rounds its corners')), css).toEqual([]);
@@ -221,5 +315,57 @@ describe('border-radius: lowering and emission', () => {
     expect(k).toContain('val curve = dragonRoundedPath(v, shape, true)');
     // Each draw (direct and through the layer's recording) clips to the curve between the rect clip and the bitmap.
     expect(k.match(/clipRect\([^\n]+\)\n {4}if \(curve != null\) (canvas|inner)\.clipPath\(curve\)\n {4}\1\.drawBitmap\(image, null, dest, paint\)/g)?.length).toBe(2);
+  });
+
+  it('both border stages draw four double sides as the two rings of borderDoubleRings, and a double side under 3 device px as solid', () => {
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const file = BORDER_EMITTER.native[backend].file ?? '';
+      const stage = file.slice(file.indexOf(backend === 'uikit' ? 'public func dragonPaintBorderStage(' : 'fun dragonPaintBorderStage('));
+      // The double rings come first; every other rounded border reaches the ring painter with its effective styles.
+      const double = stage.indexOf(backend === 'uikit' ? 'if dragonDrawRoundedDouble(v, ctx, shape, Array(r[0..<8])) { return }' : 'if (dragonDrawRoundedDouble(v, canvas, shape, r.copyOfRange(0, 8))) return');
+      expect(double, backend).toBeGreaterThan(0);
+      expect(stage.indexOf('dragonEffectiveBorderStyle(v.dragonBorderStyles['), backend).toBeGreaterThan(double);
+      expect(stage.indexOf('dragonDrawRoundedBorders('), backend).toBeGreaterThan(stage.indexOf('dragonEffectiveBorderStyle(v.dragonBorderStyles['));
+      const fn = file.slice(file.indexOf(backend === 'uikit' ? 'public func dragonDrawRoundedDouble(' : 'fun dragonDrawRoundedDouble('));
+      expect(fn, backend).toContain('paintRadius_borderDoubleRings(e[0], e[1], e[2], e[3], JsArray(shape.borders');
+      // Ring one is the border box less the outer stripe rect, ring two the inner stripe rect less the padding edge (24 values each).
+      expect(fn, backend).toMatch(/\[\[0, 8, 4, 16\], \[24, 32, 28, 40\]\]|arrayOf\(intArrayOf\(0, 8, 4, 16\), intArrayOf\(24, 32, 28, 40\)\)/);
+      expect(fn, backend).toContain('a rounded double border that is not four double sides in one colour is PNT1b');
+    }
+    expect(BORDER_EMITTER.native.uikit.file).toContain('return style == "double" && devicePx < 3 ? "solid" : style');
+    expect(BORDER_EMITTER.native['android-views'].file).toContain('if (style == "double" && devicePx < 3.0) "solid" else style');
+  });
+
+  it('the double-solid plant swaps exactly its one flag line on each backend, which then fills the border box to the padding edge', () => {
+    const plant = BORDER_EMITTER.plants.find((p) => p.name === 'double-solid');
+    if (plant === undefined) throw new Error('no double-solid plant');
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const file = BORDER_EMITTER.native[backend].file ?? '';
+      const [from, to] = plant.replace[backend];
+      expect(file.split(from).length - 1, backend).toBe(1);
+      expect(file, backend).not.toContain(to);
+    }
+    expect(BORDER_EMITTER.native.uikit.file).toContain('let fills = dragonDoublePlantSolid ? [[0, 8, 28, 40]] :');
+    expect(BORDER_EMITTER.native['android-views'].file).toContain('val fills = if (DRAGON_DOUBLE_PLANT_SOLID) arrayOf(intArrayOf(0, 8, 28, 40)) else');
+  });
+
+  it('on Android API 31 and 32 an img\'s empty clip view gets no hardware layer or DST_OUT mask, and loses one an earlier layout gave it', () => {
+    const kotlin = RADIUS_EMITTER.native['android-views'].file ?? '';
+    const at = kotlin.indexOf('fun dragonAfterLayoutRadius(');
+    const hook = kotlin.slice(at, kotlin.indexOf('\n}\n', at));
+    // The img case takes the branch that clears the layer and the overlay, before either is made.
+    const skip = hook.indexOf('if (inner == null || (Build.VERSION.SDK_INT < 33 && dragonHostsNoChildren(v, c))) {');
+    expect(skip).toBeGreaterThan(0);
+    const cleared = hook.slice(skip, hook.indexOf('    return\n', skip));
+    expect(cleared).toContain('c.overlay.clear()');
+    expect(cleared).toContain('c.setLayerType(View.LAYER_TYPE_NONE, null)');
+    expect(hook.indexOf('c.setLayerType(View.LAYER_TYPE_HARDWARE, null)')).toBeGreaterThan(skip);
+    // Only a box that draws an image counts, and an img clip view that somehow hosts children fails loudly instead of going unmasked.
+    const helper = kotlin.slice(kotlin.indexOf('fun dragonHostsNoChildren('), kotlin.indexOf('\n}\n', kotlin.indexOf('fun dragonHostsNoChildren(')));
+    expect(helper).toContain('if (v.dragonImage == null) return false');
+    expect(helper).toContain('if (c.childCount != 0) throw IllegalStateException(');
+    // API 33 and up keeps the outline clip for every box, and UIKit is unchanged.
+    expect(hook).toContain('if (Build.VERSION.SDK_INT >= 33) {');
+    expect(RADIUS_EMITTER.native.uikit.file).not.toContain('dragonHostsNoChildren');
   });
 });
