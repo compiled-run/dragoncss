@@ -488,18 +488,18 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
   it('blames the PR at the call site\'s step when a regen round failed on CI or its patch or artifact is refused; the driver\'s own trouble applying it, or no run, judged nothing', () => {
     expect(failure(() => regen(fake({ title: regenTitle(SHA), conclusion: 'failure' }), 'regen-after-devices'))).toMatchObject({ step: 'regen-after-devices', message: expect.stringContaining('the CI regen run https://ci/run/7 concluded failure') });
     const step = (name: string) => [{ name: 'chrome-1 / round', status: 'completed', conclusion: 'failure', steps: [{ name, status: 'completed', conclusion: 'failure' }] }];
-    expect(failedJobs(step('pnpm regen --skip lanes-host --skip tw-sweep')).verdict).toHaveLength(1);
+    expect(failedJobs(step('pnpm regen --skip lanes-host')).verdict).toHaveLength(1);
     expect(failedJobs(step('pnpm regen --only lanes-host')).verdict).toHaveLength(1);
     expect(failedJobs([{ name: 'converge', status: 'completed', conclusion: 'failure', steps: [{ name: 'Pick the last round', status: 'completed', conclusion: 'failure' }] }]).verdict).toHaveLength(1);
     expect(failedJobs(step('Host side - JDK 17 and kotlinc, checked against the toolchains lanes.json records')).setup).toHaveLength(1);
     expect(failedJobs(step('Chrome side - fetch the WPT copy when the cache missed')).setup).toHaveLength(1);
     // A regen cut off (the job's 300-min timeout, a lost runner, a cancel) judged nothing: only a regen step that ran to its end
     // and failed blames the tree (#220 review).
-    const cut = (jobConclusion: string, stepStatus: string, stepConclusion: string | null) => failedJobs([{ name: 'chrome-1 / round', status: 'completed', conclusion: jobConclusion, steps: [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, { name: 'pnpm regen --skip lanes-host --skip tw-sweep', status: stepStatus, conclusion: stepConclusion }] }]);
-    expect(cut('timed_out', 'completed', 'cancelled')).toEqual({ verdict: [], setup: ['chrome-1 / round (pnpm regen --skip lanes-host --skip tw-sweep)'] });
+    const cut = (jobConclusion: string, stepStatus: string, stepConclusion: string | null) => failedJobs([{ name: 'chrome-1 / round', status: 'completed', conclusion: jobConclusion, steps: [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, { name: 'pnpm regen --skip lanes-host', status: stepStatus, conclusion: stepConclusion }] }]);
+    expect(cut('timed_out', 'completed', 'cancelled')).toEqual({ verdict: [], setup: ['chrome-1 / round (pnpm regen --skip lanes-host)'] });
     expect(cut('failure', 'in_progress', null).verdict).toEqual([]);
     expect(cut('failure', 'completed', 'cancelled').verdict).toEqual([]);
-    expect(cut('failure', 'completed', 'failure').verdict).toEqual(['chrome-1 / round (pnpm regen --skip lanes-host --skip tw-sweep)']);
+    expect(cut('failure', 'completed', 'failure').verdict).toEqual(['chrome-1 / round (pnpm regen --skip lanes-host)']);
     // Other workflows' verdicts are judged as before: a timed-out test shard is still the tree's.
     expect(failedJobs([{ name: 'native (3)', status: 'completed', conclusion: 'timed_out', steps: [{ name: 'vitest run (native files, shard 3/4)', status: 'completed', conclusion: 'cancelled' }] }]).verdict).toHaveLength(1);
     const unavailable = (f: () => unknown): CiUnavailable => {
