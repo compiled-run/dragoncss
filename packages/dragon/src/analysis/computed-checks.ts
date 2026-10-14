@@ -155,8 +155,8 @@ function checkPercentRelative(el: ResolvedElement, where: string | null, targets
 
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
 const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
-/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box (INL2a). */
-const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex';
+/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box (INL2a, G-INL). */
+const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex' || displayKeyword(el) === 'inline-grid';
 
 /**
  * One item of an inline formatting context in tree order: a text, the open or close of an inline box, a <br> (CSS2 §9.2.2), or an
@@ -408,7 +408,7 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
 function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const value = el.props.get('text-overflow') as ResolvedValue;
   // A flex or grid container's text is an anonymous item, which Chrome does not truncate (its parent is no block container).
-  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid'].includes(displayKeyword(el))) return;
+  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return;
   if (['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) return;
   const runs = inlineContexts(el, () => {});
   if (runs.length === 0) return;

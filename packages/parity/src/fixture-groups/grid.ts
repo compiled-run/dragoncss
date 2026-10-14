@@ -35,7 +35,8 @@ export const GRID: readonly FixtureSpec[] = [
   // baselines, fixed, flexible and spanned rows, align-items against align-self, the start fallback of an item whose percentage
   // size depends on its row, nested grids and flex containers as items, and a grid's first baseline in a flex line.
   both('grid-baseline'),
-  reject('reject-grid-inline-grid', 'DRAGON_UNSUPPORTED_VALUE', 'inline-grid'),
+  // G-INL: an inline-grid is an atomic inline on its line; one inside an inline box stays refused (INL2c), as inline-block and inline-flex are.
+  reject('reject-grid-inline-grid', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="box" class="box"><span data-dragon-id="cell" class="cell">X</span></span>', 'inline-grid <span> box is an atomic inline inside the inline box <span> s'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),
   reject('reject-grid-masonry', 'DRAGON_CSS_INVALID_VALUE', 'masonry'),
   reject('reject-grid-areas-not-rectangular', 'DRAGON_CSS_INVALID_VALUE', '"a a" "a b"', '""a a""a b"" is not a valid value for grid-template-areas: every row needs the same number of cells'),

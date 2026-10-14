@@ -661,11 +661,12 @@ function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
 }
 
 function isAtomicInline(b: LayoutBox): boolean {
-  return b.style.display === 'inline-block' || b.style.display === 'inline-flex';
+  const d = b.style.display;
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
 function atomicRefusal(id: string): string {
-  return `${id} is an atomic inline, which the hit table does not model yet (INL2a: inline-block and inline-flex on their lines; no Chrome hit capture)`;
+  return `${id} is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)`;
 }
 
 function boxHitRefusal(b: LayoutBox): string | null {

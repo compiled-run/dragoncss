@@ -1,4 +1,4 @@
-// INL2a compiler (notes/T059J-inl2.md): atomic inlines (inline-block and inline-flex) stay in their block container's inline
+// INL2a compiler (notes/T059J-inl2.md) and G-INL: atomic inlines (inline-block, inline-flex and inline-grid) stay in their block container's inline
 // formatting context as U+FFFC, so white space around them collapses as Chrome collapses it; they are lowered as boxes among the
 // inline content and keyed in their own contexts; and an atomic inline inside an inline box or beside real-font text is refused.
 import { readFileSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { collapseInlineContext } from '../src/analysis/resolve.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
-const CSS = 'body { font-family: Ahem; font-size: 10px; } .ib { display: inline-block; width: 10px; } .if { display: inline-flex; min-width: 30px; justify-content: center; } .f { display: flex; } .blk { display: block; } .rtl { direction: rtl; }';
+const CSS = 'body { font-family: Ahem; font-size: 10px; } .ib { display: inline-block; width: 10px; } .if { display: inline-flex; min-width: 30px; justify-content: center; } .f { display: flex; } .blk { display: block; } .rtl { direction: rtl; } .ig { display: inline-grid; grid-template-columns: auto auto; }';
 
 function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], children: TreeNode[] = []): ElementNode {
   const origin: Origin = { kind: 'authored', span: { source: ref, start: 0, end: 0 } };
@@ -71,6 +71,16 @@ describe('atomic inlines in the engine input (ios-layout.ts)', () => {
     expect(a.style.display).toBe('inline-flex');
     expect(shape(a)).toEqual(['box a:anon0 block']);
   });
+  it('an inline-grid lowers as a grid container with its tracks, whose children carry placements and whose inline content is an anonymous grid item', () => {
+    const t = (r: SourceRef) => [el(r, 'd', 'div', [], [text(r, 't0', 'aa '), el(r, 'a', 'span', ['ig'], [el(r, 'i', 'span', [], [text(r, 't1', 'X')]), text(r, 't2', 'Y')]), text(r, 't3', ' bb')])];
+    const d = boxOf(t, 'd');
+    expect(shape(d)).toEqual(['text "aa "', 'box a inline-grid', 'text " bb"']);
+    const a = boxOf(t, 'a');
+    expect(a.style.grid?.templateColumns.flatMap((r) => r.sizes)).toEqual([{ kind: 'breadth', breadth: { kind: 'auto' } }, { kind: 'breadth', breadth: { kind: 'auto' } }]);
+    expect(shape(a)).toEqual(['box i block', 'box a:anon0 block']);
+    expect(a.children.map((k) => (k.kind === 'box' ? k.style.gridItem !== null : false))).toEqual([true, true]);
+    expect(a.strut).toBeNull();
+  });
 });
 
 describe('atomic inline contexts (context.ts)', () => {
@@ -83,6 +93,16 @@ describe('atomic inline contexts (context.ts)', () => {
     expect(keys).toContain('line-height:<length-px>@text-beside-atomic/ltr');
     // The text inside the inline-flex is its anonymous flex item's.
     expect(keys).toContain('line-height:<length-px>@text-as-anonymous-flex-item/row/ltr');
+  });
+  it('an inline-grid keys its own item properties in atomic-inline, its container properties as a grid container, and its items as grid items', () => {
+    const c = project().compile(inputFor(`${CSS} .t { line-height: 12px; } .w { width: 5px; }`, (r) => [el(r, 'd', 'div', ['t'], [text(r, 't0', 'aa '), el(r, 'a', 'span', ['ig'], [el(r, 'i', 'span', ['w'], [text(r, 't1', 'X')]), text(r, 't2', 'Y')])])]));
+    const keys = compiledFeatures(c, 'ios', []);
+    expect(keys).toContain('display:inline-grid@atomic-inline/ltr');
+    expect(keys).toContain('grid-template-columns:<track-list>@grid-container/ltr');
+    expect(keys).toContain('width:<length-px>@grid/ltr');
+    expect(keys).toContain('line-height:<length-px>@text-beside-atomic/ltr');
+    expect(keys).toContain('line-height:<length-px>@text-in-grid-item/ltr');
+    expect(keys).toContain('line-height:<length-px>@text-as-anonymous-grid-item/ltr');
   });
 });
 
@@ -104,6 +124,15 @@ describe('INL2c refusals (computed-checks.ts)', () => {
     expect(codesOf(sandwich)).toEqual([]);
     const alone = (r: SourceRef) => [el(r, 'd', 'div', ['rtl'], [el(r, 'a', 'span', ['ib'])])];
     expect(codesOf(alone)).toEqual([]);
+  });
+  it('an inline-grid is an atomic inline to every refusal: inside an inline box, and at an rtl paragraph edge', () => {
+    const inBox = (r: SourceRef) => [el(r, 'd', 'div', [], [el(r, 's', 'span', [], [text(r, 't0', 'aa '), el(r, 'a', 'span', ['ig'])])])];
+    expect(codesOf(inBox)).toEqual([
+      'DRAGON_UNPROVEN_CONTEXT ios inline-grid <span> a is an atomic inline inside the inline box <span> s',
+      'DRAGON_UNPROVEN_CONTEXT web inline-grid <span> a is an atomic inline inside the inline box <span> s',
+    ]);
+    const end = (r: SourceRef) => [el(r, 'd', 'div', ['rtl'], [text(r, 't0', 'aa '), el(r, 'a', 'span', ['ig'])])];
+    expect(codesOf(end).map((c) => c.split(' ')[0])).toEqual(['DRAGON_UNSUPPORTED_BIDI']);
   });
 });
 

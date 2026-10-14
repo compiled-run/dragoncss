@@ -1,5 +1,5 @@
-// Atomic inlines (CSS2 §9.2.4, §10.3.9, §10.8.1; css-display-3 §2.4): an inline-block or inline-flex box among a block container's
-// inline-level children. It is laid out as its block-level equivalent at its shrink-to-fit width, and takes part in its line as
+// Atomic inlines (CSS2 §9.2.4, §10.3.9, §10.8.1; css-display-3 §2.4): an inline-block, inline-flex or inline-grid box among a block
+// container's inline-level children. It is laid out as its block-level equivalent at its shrink-to-fit width, and takes part in its line as
 // one U+FFFC item whose advance is its margin box and which sits on the baseline with its own baseline (INL-P family 5,
 // docs/research/inline-spike/blink-notes.md §2 and §7).
 import type { LayoutBox, LayoutStyle } from './input.ts';
@@ -13,15 +13,20 @@ import type { IntrinsicKind } from './intrinsic.ts';
 import { inlineContribution, intrinsicContentInlineSize } from './intrinsic.ts';
 import { unsupported } from './unsupported.ts';
 
-/** Whether a box is an atomic inline: display inline-block or inline-flex. */
+/** Whether a box is an atomic inline: display inline-block, inline-flex or inline-grid. */
 export function isAtomicInline(box: LayoutBox): boolean {
-  return box.style.display === 'inline-block' || box.style.display === 'inline-flex';
+  const d = box.style.display;
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
-/** The box with its block-level display (css-display-3 §2.4: inline-block is a flow-root block, inline-flex a flex container). */
+/**
+ * The box with its block-level display (css-display-3 §2.4: inline-block is a flow-root block, inline-flex a flex container and
+ * inline-grid a grid container).
+ */
 export function blockLevelOf(box: LayoutBox): LayoutBox {
   if (!isAtomicInline(box)) return box;
-  const display = box.style.display === 'inline-flex' ? 'flex' : 'block';
+  const d = box.style.display;
+  const display = d === 'inline-flex' ? 'flex' : d === 'inline-grid' ? 'grid' : 'block';
   const style: LayoutStyle = { ...box.style, display };
   return { kind: 'box', id: box.id, boxType: box.boxType, style, strut: box.strut, children: box.children };
 }
@@ -65,9 +70,12 @@ function atomicWidth(ctx: Ctx, box: LayoutBox, cbInline: LU, margins: LU): LU {
  * The baseline of an atomic inline from its border-box top (Blink 145, blink-notes.md §7), or null to synthesize it at the bottom
  * margin edge. inline-block: its last line box's baseline (block_layout_algorithm.cc:1448-1451, :3622-3647), none when it is a
  * scroll container (physical_box_fragment.h:167-172). inline-flex: the flex container's first baseline (flex_layout_algorithm.cc
- * :80-142). A last baseline that a flex container inside the inline-block would decide is refused.
+ * :80-142). inline-grid: the grid container's first baseline (grid_layout_algorithm.cc:2345-2352), since grid layout never sets
+ * UseLastBaselineForInlineBaseline, so a scroll container keeps it too (logical_box_fragment.cc:20-28, physical_box_fragment.h
+ * :163-172). A last baseline that a flex container inside the inline-block would decide is refused.
  */
 function atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: LU | null, lastFlex: string): LU | null {
+  if (box.style.display === 'inline-grid') return inlineGridBaseline(ctx, box, frag);
   if (box.style.display === 'inline-flex') {
     if (!ctx.faults.inlineFlexLastBaseline) return frag.baseline;
     // Planted fault inlineFlexLastBaseline: the last item's own baseline.
@@ -79,6 +87,21 @@ function atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: LU | null, l
   if (ctx.faults.inlineBlockFirstBaseline) return frag.baseline;
   if (lastFlex !== '') unsupported('flex-baseline', lastFlex, 'CSS2 §10.8.1, css-flexbox-1 §8.5', `the last baseline of flex container ${lastFlex} would give the baseline of inline-block ${box.id}`);
   return last;
+}
+
+/**
+ * An inline-grid's baseline from its border-box top: its first baseline, which LogicalBoxFragment::FirstBaseline keeps within
+ * [0, block size] for a scroll container (logical_box_fragment.h:42-51; layoutContents already clamps it to at most the height).
+ */
+function inlineGridBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU | null {
+  if (ctx.faults.inlineGridLastItemBaseline) {
+    // Planted fault inlineGridLastItemBaseline: the last item's own baseline.
+    const item = frag.children[frag.children.length - 1];
+    return item === undefined || item.frag.baseline === null ? frag.baseline : add(item.y, item.frag.baseline);
+  }
+  const b = frag.baseline;
+  if (b !== null && isScrollContainer(box.style) && b < ZERO) return ZERO;
+  return b;
 }
 
 /** Lays out an atomic inline in a block container whose content box is cbInline wide (percentages resolve against it). */
