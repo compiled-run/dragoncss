@@ -282,9 +282,15 @@ describe('outline: a translucent dotted, dashed or 3D outline is refused on the 
     for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
       expect(animatedOf(single(`.a { height: 10px; color: blue; outline: 2px dotted; } @media ${media} { .a { animation: f 1s; } } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }`)).map((d) => d.target).sort(), media).toEqual(['android', 'ios']);
     }
-    // Not refused: opaque keyframes, an outline with its own colour, a solid outline.
+    // A keyframe list without a 0% or 100% color frame fills it with the resting color: a fade in from (or out to) transparent
+    // passes through translucent colours.
+    for (const frame of ['to', 'from']) {
+      expect(animatedOf(single(`.a { height: 10px; color: transparent; outline: 3px dashed; animation: f 1s forwards; } @keyframes f { ${frame} { color: blue; } }`)).map((d) => d.target).sort(), frame).toEqual(['android', 'ios']);
+    }
+    // Not refused: opaque keyframes, both end frames opaque over a transparent resting color, an outline with its own colour, a solid outline.
     for (const css of [
       '.a { height: 10px; color: blue; outline: 3px dashed; animation: f 1s; } @keyframes f { to { color: red; } }',
+      '.a { height: 10px; color: transparent; outline: 3px dashed; animation: f 1s; } @keyframes f { from, to { color: blue; } }',
       '.a { height: 10px; color: blue; outline: 3px dashed red; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }',
       '.a { height: 10px; color: blue; outline: 3px solid; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }',
     ]) expect(animatedOf(single(css)), css).toEqual([]);

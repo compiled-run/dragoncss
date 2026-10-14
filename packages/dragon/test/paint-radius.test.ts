@@ -221,9 +221,16 @@ describe('border-radius: refusals', () => {
     for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
       expect(targetsOf(one(`${box} @media ${media} { .a { animation: f 1s; } } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }`)), media).toEqual(['android', 'ios']);
     }
-    // Not refused: opaque keyframes and transitions, a border with its own colour, a square double border.
+    // A keyframe list without a 0% or 100% color frame fills it with the resting color: a fade in from (or out to) transparent
+    // passes through translucent colours.
+    for (const frame of ['to', 'from']) {
+      expect(targetsOf(one(`${box} .a { color: transparent; animation: f 1s forwards; } @keyframes f { ${frame} { color: blue; } }`)), frame).toEqual(['android', 'ios']);
+    }
+    // Not refused: opaque keyframes and transitions, both end frames opaque over a transparent resting color, a border with its own
+    // colour, a square double border.
     for (const input of [
       one(`${box} .a { animation: f 1s; } @keyframes f { to { color: red; } }`),
+      one(`${box} .a { color: transparent; animation: f 1s; } @keyframes f { 0%, 100% { color: blue; } }`),
       stated(`body { margin: 0; } ${box} .a { transition: color 1s; } .a.on { color: red; }`),
       one('.a { width: 60px; height: 40px; color: blue; border: 6px double green; border-radius: 10px; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }'),
       one('.a { width: 60px; height: 40px; color: blue; border: 6px double; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }'),

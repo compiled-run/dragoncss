@@ -25,7 +25,8 @@ function currentColorPaint(el: ResolvedElement): string | null {
 /**
  * Refuses, on the native targets, an animation or transition of color on an element, or on an ancestor it inherits color from,
  * that paints a dotted, dashed or 3D outline or a rounded double border in currentcolor in some reachable state, when the color can
- * pass through a translucent value: a keyframe color that is not an opaque colour, or a transition between states one of which is
+ * pass through a translucent value: a keyframe color that is not an opaque colour, a missing 0% or 100% color frame over a resting
+ * color that is not opaque (its implicit frame), or a transition between states one of which is
  * not opaque (a transition from opaque to transparent passes through translucent colours). A transition between opaque colours stays
  * opaque. roots are the resolved roots of the analysed cases, in the analysis's order; the caller runs it per @media band, with one
  * reported set.
@@ -71,9 +72,18 @@ export function refuseAnimatedTranslucentPaint(analysis: AnimationAnalysis, root
       const paint = reaches.get(ea.address);
       const node = byAddress.get(ea.address);
       if (paint === undefined || node === undefined) continue;
-      const animated = ea.animations.some((a) => a.name !== 'none' && a.hasKeyframes && (analysis.keyframes.get(a.name)?.blocks ?? []).some((b) => b.values.some((v) => v.property === 'color' && mayBeTranslucent(v.value))));
-      const l = ea.listings.get('color');
       const colors = colorsAt(ea.address);
+      // A keyframe list that animates color but leaves out 0% or 100% fills that frame with the element's resting color, so a resting
+      // color that is not opaque (transparent included) is passed through as well.
+      const animated = ea.animations.some((a) => {
+        if (a.name === 'none' || !a.hasKeyframes) return false;
+        const blocks = (analysis.keyframes.get(a.name)?.blocks ?? []).filter((b) => b.values.some((v) => v.property === 'color'));
+        if (blocks.some((b) => b.values.some((v) => v.property === 'color' && mayBeTranslucent(v.value)))) return true;
+        if (blocks.length === 0) return false;
+        const offsets = new Set(blocks.flatMap((b) => b.offsets));
+        return (!offsets.has(0) || !offsets.has(1)) && colors.some(mayBeTranslucent);
+      });
+      const l = ea.listings.get('color');
       const transitioned = l !== undefined && l.mode === 'listed' && l.delay + l.duration > 0 && new Set(colors.map((v) => JSON.stringify(v))).size > 1 && colors.some(mayBeTranslucent);
       for (const [what, longhand] of [...(animated ? [['an animation', 'animation-name'] as const] : []), ...(transitioned ? [['a transition', 'transition-property'] as const] : [])]) {
         const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
