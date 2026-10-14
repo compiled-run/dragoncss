@@ -755,8 +755,21 @@ export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOu
   return { device: o.device, set: null, trust: null, vectors: null, blocked: `${o.device}: the device could not be stopped after its run (tooling fault), so its results are not used: ${problem}${o.blocked === null ? '' : `; ${o.blocked}`}`, blockedBy: [...(o.blockedBy ?? []), 'stop'] };
 }
 
-/** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
-export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostSource, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
+/**
+ * The parts of one device's run a CI job can run alone (device-ci.ts one --parts), each on its own booted device: cases (the batch
+ * launch and its checks, device-hit, device-states, device-traces and capture trust), anim (the frame samples, device-anim) and
+ * vectors (layout-vectors-device, on the vectors device only). A run of every part is the whole run.
+ */
+export const DEVICE_PARTS = ['cases', 'anim', 'vectors'] as const;
+export type DevicePart = (typeof DEVICE_PARTS)[number];
+export const ALL_PARTS: ReadonlySet<DevicePart> = new Set(DEVICE_PARTS);
+
+/**
+ * One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors
+ * lane; with `parts`, only those parts, in the same order, the rest left null. A part without the batch launch takes the device
+ * record from its own first launch and is blocked by a device that does not fit, as the batch launch would be.
+ */
+export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostSource, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }, parts: ReadonlySet<DevicePart> = ALL_PARTS): Promise<DeviceOutcome> {
   const backend = BACKEND_OF[t.target];
   const none = { device: spec.name, set: null, trust: null, vectors: null };
   let h: DeviceHandle;
@@ -783,69 +796,92 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const prof = deviceProfile(h);
     const dpr = prof.profileScale;
     if (!t.dprs.includes(dpr)) throw new Error(`${spec.name}: profile scale ${dpr} is not a ${t.target} device DPR`);
-    const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: devicePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
-    const outDir = join(nativeOut(t.target), 'lanes', spec.name);
-    const t0 = Date.now();
-    const r = await runApp(h, artifact, { runFile, caseCount: cases.length, outDir });
-    const rec = deviceRecord(prof, r.record);
     const root = rasterSize(cases[0]?.case.environment.viewport ?? { width: 0, height: 0 }, dpr);
-    const recProblems = recordProblems(rec, root);
-    log(`${spec.name}: ${rec.os}, build ${rec.build}; scale ${rec.profileScale} (profile) / ${rec.appScale} (app); window ${rec.windowPx.join('x')} px, stage ${rec.stagePx.join('x')} px at ${rec.rootOriginPx.join(',')}; text scale ${rec.textScale}; ${dumpedIds(outDir, dpr).length} dumps in ${((Date.now() - t0) / 1000).toFixed(0)} s${r.error === null ? '' : `; host error: ${r.error}`}`);
-    if (recProblems.some((p) => p.includes('device fit'))) return { ...none, blocked: recProblems.join('; '), blockedBy: ['device-record'] };
-    const extra: LaneFailure[] = [...recProblems, ...(r.error === null ? [] : [`the host did not finish: ${r.error}`])].flatMap((p) => DEVICE_CHECK_LANES.map((lane): LaneFailure => ({ lane, case: '-', dpr, node: null, kind: 'device-record', detail: p })));
-    const e0 = Date.now();
-    const set = evaluateSet(t.target, dpr, outDir, rec, cases, extra);
-    log(`${spec.name}: checked ${set.dumps}/${set.cases} dumps in ${((Date.now() - e0) / 1000).toFixed(0)} s; compared a ${set.compared.a}, b ${set.compared.b}, c ${set.compared.c}, d ${set.compared.d}, breaks ${set.compared.breaks}; failures ${JSON.stringify(failuresByKind(set.failures))}`);
-    // SELD-R1b: device-hit from the hit records the batch launch wrote beside its dumps, then device-states from a launch of the
-    // case scripts.
-    const h0 = Date.now();
-    // The hit cases (hit-capture.ts hitCases): the device writes no hit record for a case hitTableOf refuses, as it has no facts.
-    const hitIds = new Set(hitCases().map((n) => n.case.id));
-    const hits = evaluateHits(dpr, outDir, rec, cases.filter((n) => hitIds.has(n.case.id)), (n) => expectedHitRuns(n, dpr), extra.map((f): LaneFailure => ({ ...f, lane: HIT_LANE })).filter((f, i, all) => all.findIndex((x) => x.detail === f.detail) === i));
-    log(`${spec.name}: device-hit ${hits.dumps}/${hits.cases} records, ${hits.compared.b} runs compared in ${((Date.now() - h0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(hits.failures))}`);
-    const scripts = scriptCases(t.target);
-    const statesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-states`);
-    const s0 = Date.now();
-    const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: devicePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
-    const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
-    const states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
-    log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);
-    // ANIM-b1 3b: device-anim from a launch of the frame samples, pixels captured at the R18 subset only.
-    const anim = animSamples(t.target);
-    const subsets = animPixelSubsets(anim);
-    const animDir = join(nativeOut(t.target), 'lanes', `${spec.name}-anim`);
-    const a0 = Date.now();
-    const ar = await runApp(h, artifact, { runFile: runFileText(anim.flat().map((s) => ({ id: s.id, points: subsets.get(s.case.id)?.has(s.index) === true ? devicePoints(s.program, s.case.viewport, dpr) : [] })), false), caseCount: anim.reduce((n, xs) => n + xs.length, 0), outDir: animDir });
-    const animExtra: LaneFailure[] = ar.error === null ? [] : [{ lane: ANIM_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the frame samples: ${ar.error}` }];
-    const animSet = evaluateAnim(t.target, dpr, animDir, rec, anim, animExtra);
-    log(`${spec.name}: device-anim ${animSet.dumps}/${animSet.cases} dumps in ${((Date.now() - a0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(animSet.failures))}`);
-    // SELD-R2: device-traces from a launch of the interaction scripts; the Android host also runs each through MotionEvents.
-    const traceIds = traceScriptIds();
-    const tracesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-traces`);
-    const x0 = Date.now();
-    const xr = await runApp(h, artifact, { runFile: runFileText(traceIds.map((id) => ({ id, points: [] })), false), caseCount: traceIds.length, outDir: tracesDir });
-    const traceExtra: LaneFailure[] = xr.error === null ? [] : [{ lane: TRACE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the interaction scripts: ${xr.error}` }];
-    const traces = evaluateTraceSet(dpr, tracesDir, rec, traceIds, t.target === 'android', evaluateTraces, traceExtra);
-    log(`${spec.name}: device-traces ${traces.dumps}/${traces.cases} records, ${traces.compared.b} compared in ${((Date.now() - x0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(traces.failures))}`);
-    const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
-    const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
-      const tc = cases.find((c) => c.case.id === id);
-      if (tc === undefined) throw new Error(`no trust case ${id}`);
-      return { id, points: casePoints(tc.programs[backend], tc.case.environment.viewport, dpr), size: rasterSize(tc.case.environment.viewport, dpr) };
-    });
-    const tr0 = Date.now();
-    const tr = await runApp(h, artifact, { runFile: runFileText(trustCases, true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
-    const rows = captureTrust(trustDir, trustCases, dpr, tr.record.rootOriginPx);
-    // Trust mismatches are device-pixels failures of the set, so the failure lists and counts hold them.
-    const trustFailures = trustFailuresOf(rows, dpr, spec.name, tr.error);
-    log(`${spec.name}: capture trust ${rows.map((x) => `${x.case} ${x.points - x.mismatches.length}/${x.points}`).join(', ')} in ${((Date.now() - tr0) / 1000).toFixed(0)} s`);
+    const recordLine = (rec: DeviceRecord): string => `${rec.os}, build ${rec.build}; scale ${rec.profileScale} (profile) / ${rec.appScale} (app); window ${rec.windowPx.join('x')} px, stage ${rec.stagePx.join('x')} px at ${rec.rootOriginPx.join(',')}; text scale ${rec.textScale}`;
+    let rec: DeviceRecord | null = null;
+    let set: DeviceSet | null = null;
+    let hits: DeviceSet | null = null;
+    let states: DeviceSet | null = null;
+    if (parts.has('cases')) {
+      const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: devicePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
+      const outDir = join(nativeOut(t.target), 'lanes', spec.name);
+      const t0 = Date.now();
+      const r = await runApp(h, artifact, { runFile, caseCount: cases.length, outDir });
+      rec = deviceRecord(prof, r.record);
+      const recProblems = recordProblems(rec, root);
+      log(`${spec.name}: ${recordLine(rec)}; ${dumpedIds(outDir, dpr).length} dumps in ${((Date.now() - t0) / 1000).toFixed(0)} s${r.error === null ? '' : `; host error: ${r.error}`}`);
+      if (recProblems.some((p) => p.includes('device fit'))) return { ...none, blocked: recProblems.join('; '), blockedBy: ['device-record'] };
+      const extra: LaneFailure[] = [...recProblems, ...(r.error === null ? [] : [`the host did not finish: ${r.error}`])].flatMap((p) => DEVICE_CHECK_LANES.map((lane): LaneFailure => ({ lane, case: '-', dpr, node: null, kind: 'device-record', detail: p })));
+      const e0 = Date.now();
+      set = evaluateSet(t.target, dpr, outDir, rec, cases, extra);
+      log(`${spec.name}: checked ${set.dumps}/${set.cases} dumps in ${((Date.now() - e0) / 1000).toFixed(0)} s; compared a ${set.compared.a}, b ${set.compared.b}, c ${set.compared.c}, d ${set.compared.d}, breaks ${set.compared.breaks}; failures ${JSON.stringify(failuresByKind(set.failures))}`);
+      // SELD-R1b: device-hit from the hit records the batch launch wrote beside its dumps, then device-states from a launch of the
+      // case scripts.
+      const h0 = Date.now();
+      // The hit cases (hit-capture.ts hitCases): the device writes no hit record for a case hitTableOf refuses, as it has no facts.
+      const hitIds = new Set(hitCases().map((n) => n.case.id));
+      hits = evaluateHits(dpr, outDir, rec, cases.filter((n) => hitIds.has(n.case.id)), (n) => expectedHitRuns(n, dpr), extra.map((f): LaneFailure => ({ ...f, lane: HIT_LANE })).filter((f, i, all) => all.findIndex((x) => x.detail === f.detail) === i));
+      log(`${spec.name}: device-hit ${hits.dumps}/${hits.cases} records, ${hits.compared.b} runs compared in ${((Date.now() - h0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(hits.failures))}`);
+      const scripts = scriptCases(t.target);
+      const statesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-states`);
+      const s0 = Date.now();
+      const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: devicePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
+      const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
+      states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
+      log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);
+    }
+    let animSet: DeviceSet | null = null;
+    if (parts.has('anim')) {
+      // ANIM-b1 3b: device-anim from a launch of the frame samples, pixels captured at the R18 subset only.
+      const anim = animSamples(t.target);
+      const subsets = animPixelSubsets(anim);
+      const animDir = join(nativeOut(t.target), 'lanes', `${spec.name}-anim`);
+      const a0 = Date.now();
+      const ar = await runApp(h, artifact, { runFile: runFileText(anim.flat().map((s) => ({ id: s.id, points: subsets.get(s.case.id)?.has(s.index) === true ? devicePoints(s.program, s.case.viewport, dpr) : [] })), false), caseCount: anim.reduce((n, xs) => n + xs.length, 0), outDir: animDir });
+      if (rec === null) {
+        // No batch launch in this part: the frame samples' launch gives the device record, judged for device fit as the batch's is.
+        rec = deviceRecord(prof, ar.record);
+        const recProblems = recordProblems(rec, root);
+        log(`${spec.name}: ${recordLine(rec)} (from the frame samples' launch)`);
+        if (recProblems.some((p) => p.includes('device fit'))) return { ...none, blocked: recProblems.join('; '), blockedBy: ['device-record'] };
+      }
+      const animExtra: LaneFailure[] = ar.error === null ? [] : [{ lane: ANIM_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the frame samples: ${ar.error}` }];
+      animSet = evaluateAnim(t.target, dpr, animDir, rec, anim, animExtra);
+      log(`${spec.name}: device-anim ${animSet.dumps}/${animSet.cases} dumps in ${((Date.now() - a0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(animSet.failures))}`);
+    }
+    let traces: DeviceSet | null = null;
+    let trust: DeviceOutcome['trust'] = null;
+    if (set !== null && rec !== null) {
+      // SELD-R2: device-traces from a launch of the interaction scripts; the Android host also runs each through MotionEvents.
+      const traceIds = traceScriptIds();
+      const tracesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-traces`);
+      const x0 = Date.now();
+      const xr = await runApp(h, artifact, { runFile: runFileText(traceIds.map((id) => ({ id, points: [] })), false), caseCount: traceIds.length, outDir: tracesDir });
+      const traceExtra: LaneFailure[] = xr.error === null ? [] : [{ lane: TRACE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the interaction scripts: ${xr.error}` }];
+      traces = evaluateTraceSet(dpr, tracesDir, rec, traceIds, t.target === 'android', evaluateTraces, traceExtra);
+      log(`${spec.name}: device-traces ${traces.dumps}/${traces.cases} records, ${traces.compared.b} compared in ${((Date.now() - x0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(traces.failures))}`);
+      const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
+      const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
+        const tc = cases.find((c) => c.case.id === id);
+        if (tc === undefined) throw new Error(`no trust case ${id}`);
+        return { id, points: casePoints(tc.programs[backend], tc.case.environment.viewport, dpr), size: rasterSize(tc.case.environment.viewport, dpr) };
+      });
+      const tr0 = Date.now();
+      const tr = await runApp(h, artifact, { runFile: runFileText(trustCases, true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
+      const rows = captureTrust(trustDir, trustCases, dpr, tr.record.rootOriginPx);
+      // Trust mismatches are device-pixels failures of the set, so the failure lists and counts hold them.
+      const trustFailures = trustFailuresOf(rows, dpr, spec.name, tr.error);
+      log(`${spec.name}: capture trust ${rows.map((x) => `${x.case} ${x.points - x.mismatches.length}/${x.points}`).join(', ')} in ${((Date.now() - tr0) / 1000).toFixed(0)} s`);
+      if (trustFailures.length > 0) set = { ...set, failures: [...set.failures, ...trustFailures] };
+      trust = { device: spec.name, dpr, rows };
+    }
     let vectors: (HostRun & { device: string }) | null = null;
-    if (runVectors && spec.name === VECTOR_DEVICES[t.target]) {
+    if (runVectors && parts.has('vectors') && spec.name === VECTOR_DEVICES[t.target]) {
       const v0 = Date.now();
       vectors = await runDeviceVectors(h, t, host);
       log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
     }
-    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, states, hits, anim: animSet, traces, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
+    return { device: spec.name, set, states, hits, anim: animSet, traces, trust, vectors, blocked: null };
   };
   const stop = source.release;
   if (stop === null) return work();
