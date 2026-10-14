@@ -346,7 +346,7 @@ jobs:
           set -euo pipefail
           pnpm install --frozen-lockfile
           mkdir -p .git/dragon-regen
-          tar -xzf "$RUNNER_TEMP/last/store.tgz" -C .git/dragon-regen
+          zstd -dcq "$RUNNER_TEMP/last/store.tar.zst" | tar -xf - -C .git/dragon-regen
           node scripts/regen.ts --explain
           stale=$(jq -r '[.[] | select(.action != "skipped") | "\(.step) (\(.action): \(.why))"] | join("; ")' node_modules/.cache/dragon-regen/last-run.json)
           total=$(jq length node_modules/.cache/dragon-regen/last-run.json)
