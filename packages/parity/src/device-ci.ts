@@ -1,5 +1,6 @@
-// Device lanes on CI (.github/workflows/device-lanes.yml): every matrix device runs in its own job (cli/device-ci.ts one), which
-// writes its outcome with the evidence stamp it was made under and the host that made it. Every lane runs there, the android
+// Device lanes on CI (.github/workflows/device-lanes.yml): every matrix device runs in jobs of its own (cli/device-ci.ts one), each
+// job one or more parts of the device's run (DEVICE_PARTS) on its own booted device, writing the part's outcome with the evidence
+// stamp it was made under and the host that made it; cli/device-ci.ts combine makes each device's outcome from its parts. Every lane runs there, the android
 // vectors lane too since a NaN matches any NaN in the corpus comparison (#147). The merge (cli/device-ci.ts merge) checks that
 // every device of both targets ran exactly once on this tree's evidence, merges in matrix order as a local run does
 // (mergeOutcomes), and writes the same lanes.json and device-failures-<target>.json records, each device lane naming the hosts
@@ -9,10 +10,10 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { parseOutcome } from './device-jobs.ts';
-import type { BlockReason, DeviceOutcome } from './device-lanes.ts';
-import { BLOCK_REASONS, mergeOutcomes } from './device-lanes.ts';
+import type { BlockReason, DeviceOutcome, DevicePart } from './device-lanes.ts';
+import { BLOCK_REASONS, DEVICE_PARTS, mergeOutcomes } from './device-lanes.ts';
 import type { DeviceSpec } from './device-run.ts';
-import { DEVICE_MATRIX } from './device-run.ts';
+import { DEVICE_MATRIX, VECTOR_DEVICES } from './device-run.ts';
 import type { DeviceRun } from './lanes.ts';
 import { nativeOut } from './native-host.ts';
 import type { NativeTarget } from './targets.ts';
@@ -193,3 +194,109 @@ export function compareWithCommitted(committed: { readonly lanes: LanesRecords; 
 /** The comparison as a markdown table, with its verdict line. */
 export const comparisonText = (c: ReturnType<typeof compareWithCommitted>): string =>
   `${['| target | lane | committed | CI | failure set (lane, case, dpr, node, kind) | detail text |', '|---|---|---|---|---|---|', ...c.rows.map((r) => `| ${r.target} | ${r.lane} | ${r.committed} | ${r.ci} | ${r.set} | ${r.detail} |`)].join('\n')}\n\n${c.same ? 'Every device lane judges exactly as the committed records.' : 'Some device lanes differ from the committed records.'}\n`;
+
+// ---------------------------------------------------------------- parts of a device's run (device-ci.ts one --parts)
+
+export const PART_SCHEMA = 'dragon.device-part/1';
+
+/** The parts a device's run is made of: cases and anim, and vectors on its target's vectors device only. */
+export const partsOf = (d: DeviceSpec): DevicePart[] => DEVICE_PARTS.filter((p) => p !== 'vectors' || VECTOR_DEVICES[d.target] === d.name);
+
+/** A list of a device's parts (device-ci.ts one --parts a,b): each a part of that device, named once; returned in DEVICE_PARTS order. */
+export function parseParts(names: readonly string[], spec: DeviceSpec): DevicePart[] {
+  const mine = partsOf(spec);
+  const problems: string[] = [];
+  if (names.length === 0) problems.push('no part');
+  for (const p of names) if (!(mine as string[]).includes(p)) problems.push(`${JSON.stringify(p)} is not a part of ${spec.name} (${mine.join(', ')})`);
+  if (new Set(names).size !== names.length) problems.push('a part is named twice');
+  if (problems.length > 0) throw new Error(`parts ${JSON.stringify(names.join(','))}: ${problems.join('; ')}`);
+  return mine.filter((p) => names.includes(p));
+}
+
+/** One device job's parts of a device's run: the part outcome (the other parts null), its evidence stamp, host and per-case hashes. */
+export type PartOutcome = { readonly schema: typeof PART_SCHEMA; readonly target: NativeTarget; readonly device: string; readonly parts: readonly DevicePart[]; readonly evidence: DeviceEvidence; readonly producedOn: string; readonly outcome: DeviceOutcome; readonly dumps: CaseDumpHashes | null };
+
+export const partOutcomeText = (o: PartOutcome): string => `${JSON.stringify(o)}\n`;
+
+/** The fields each part fills in an outcome that is not blocked: a part that ran fills all of them, one that did not none. */
+const PART_FIELDS: { readonly [P in DevicePart]: readonly (keyof DeviceOutcome)[] } = { cases: ['set', 'states', 'hits', 'traces', 'trust'], anim: ['anim'], vectors: ['vectors'] };
+
+/** A part file, checked: schema, a matrix device, its parts, evidence, host, an outcome holding exactly its parts, and the hashes. */
+export function parsePartOutcome(text: string, file: string): PartOutcome {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`${file}: not JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (!isObj(v)) throw new Error(`${file}: not an object`);
+  if (v['schema'] !== PART_SCHEMA) throw new Error(`${file}: schema ${JSON.stringify(v['schema'])}, not ${PART_SCHEMA}`);
+  const target = v['target'];
+  const device = v['device'];
+  if (target !== 'ios' && target !== 'android') throw new Error(`${file}: target ${JSON.stringify(target)} is not ios or android`);
+  const spec = DEVICE_MATRIX.find((d) => d.target === target && d.name === device);
+  if (spec === undefined) throw new Error(`${file}: ${JSON.stringify(device)} is not a ${target} matrix device`);
+  const names = v['parts'];
+  if (!Array.isArray(names) || !names.every((p) => typeof p === 'string')) throw new Error(`${file}: parts is not a list of part names`);
+  const parts = parseParts(names as string[], spec);
+  if (JSON.stringify(parts) !== JSON.stringify(names)) throw new Error(`${file}: parts ${JSON.stringify(names)} are not in the order ${DEVICE_PARTS.join(', ')}`);
+  const evidence = parseEvidence(v['evidence'], file);
+  const producedOn = parseProducer(v['producedOn'], file);
+  const outcome = parseOutcome(JSON.stringify(v['outcome'] ?? null), spec.name, false);
+  if (outcome.blocked === null) {
+    const wrong: string[] = [];
+    for (const p of partsOf(spec)) for (const f of PART_FIELDS[p]) if ((outcome[f] !== undefined && outcome[f] !== null) !== parts.includes(p)) wrong.push(`${f} ${parts.includes(p) ? 'missing' : 'present'}`);
+    if (wrong.length > 0) throw new Error(`${file}: the outcome does not hold exactly the parts ${parts.join(', ')}: ${wrong.join(', ')}`);
+  }
+  if (v['dumps'] === undefined) throw new Error(`${file}: no dumps (null or the per-case hashes)`);
+  const dumps = parseCaseHashes(v['dumps'], file) ?? null;
+  return { schema: PART_SCHEMA, target, device: spec.name, parts, evidence, producedOn, outcome, dumps };
+}
+
+/**
+ * Each matrix device's outcome from its parts' files, in matrix order: every part of every device exactly once, the parts of a
+ * device made under one evidence stamp at one DPR. The outcome is the one a single run of every part makes: the cases part's sets
+ * and trust rows, the anim part's frame samples, the vectors part's run; a blocked part blocks the device, with each blocked
+ * part's reason. Throws naming every missing, repeated or mismatched part; nothing is combined from a subset.
+ */
+export function combineParts(files: readonly PartOutcome[], matrix: readonly DeviceSpec[] = DEVICE_MATRIX): CiOutcome[] {
+  const problems: string[] = [];
+  const owner = new Map<string, PartOutcome>();
+  const key = (t: string, d: string, p: DevicePart): string => `${t}/${d} ${p}`;
+  for (const f of files) {
+    for (const p of f.parts) {
+      const k = key(f.target, f.device, p);
+      if (owner.has(k)) problems.push(`${k}: two outcomes`);
+      else owner.set(k, f);
+    }
+  }
+  const out: CiOutcome[] = [];
+  for (const d of matrix) {
+    const need = partsOf(d);
+    const missing = need.filter((p) => !owner.has(key(d.target, d.name, p)));
+    for (const p of missing) problems.push(`${key(d.target, d.name, p)}: no outcome`);
+    if (missing.length > 0) continue;
+    const of = (p: DevicePart): PartOutcome => owner.get(key(d.target, d.name, p)) as PartOutcome;
+    const mine = [...new Set(need.map(of))];
+    const first = mine[0] as PartOutcome;
+    for (const f of mine.slice(1)) for (const e of ['laneCode', 'referenceData', 'app'] as const) if (f.evidence[e] !== first.evidence[e]) problems.push(`${d.target}/${d.name}: the parts ${first.parts.join(',')} and ${f.parts.join(',')} have evidence ${e} ${first.evidence[e].slice(0, 12)} and ${f.evidence[e].slice(0, 12)}`);
+    const [cases, anim] = [of('cases'), of('anim')];
+    const casesDpr = cases.outcome.set?.dpr ?? null;
+    const animDpr = anim.outcome.anim?.dpr ?? null;
+    if (casesDpr !== null && animDpr !== null && casesDpr !== animDpr) problems.push(`${d.target}/${d.name}: the cases part ran at DPR ${casesDpr}, the anim part at ${animDpr}`);
+    const blocked = mine.filter((f) => f.outcome.blocked !== null);
+    const blockedBy = [...new Set(blocked.flatMap((f) => f.outcome.blockedBy ?? []))];
+    const outcome: DeviceOutcome =
+      blocked.length > 0
+        ? { device: d.name, set: null, trust: null, vectors: null, blocked: [...new Set(blocked.map((f) => f.outcome.blocked as string))].join('; '), ...(blockedBy.length > 0 ? { blockedBy } : {}) }
+        : { device: d.name, set: cases.outcome.set, states: cases.outcome.states ?? null, hits: cases.outcome.hits ?? null, anim: anim.outcome.anim ?? null, traces: cases.outcome.traces ?? null, trust: cases.outcome.trust, vectors: need.includes('vectors') ? of('vectors').outcome.vectors : null, blocked: null };
+    let dumps: CaseDumpHashes | null = null;
+    if (blocked.length === 0 && cases.dumps !== null && anim.dumps !== null) {
+      if (cases.dumps.dpr !== anim.dumps.dpr) problems.push(`${d.target}/${d.name}: the parts' dump hashes are at DPR ${cases.dumps.dpr} and ${anim.dumps.dpr}`);
+      dumps = { dpr: cases.dumps.dpr, set: cases.dumps.set, states: cases.dumps.states, hits: cases.dumps.hits, anim: anim.dumps.anim };
+    }
+    out.push({ schema: OUTCOME_SCHEMA, target: d.target, device: d.name, evidence: first.evidence, producedOn: [...new Set(mine.map((f) => f.producedOn))].join(' + '), outcome, dumps });
+  }
+  if (problems.length > 0) throw new Error(`device parts cannot be combined:\n  ${problems.join('\n  ')}`);
+  return out;
+}

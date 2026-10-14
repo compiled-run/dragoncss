@@ -99,6 +99,11 @@ describe('case mappings (text-transform.ts, R7)', () => {
     expect(capitalize('cd', ' ', F)).toBe('Cd');
     expect(capitalize('cd', ' ', F)).toBe('Cd');
   });
+  it('previous is one UTF-16 code unit, as LayoutText::PreviousCharacter returns a UChar: after a supplementary letter, a word starts', () => {
+    // The lone low surrogate of U+10428 is Word_Break Other, so x starts a word; the whole letter (ALetter) would join it.
+    expect(capitalize('x', '\u{10428}'.slice(-1), F)).toBe('X');
+    expect(capitalize('x', 'a', F)).toBe('x');
+  });
   it('none returns the text unchanged', () => {
     expect(applyTextTransform('MiXed ß', 'none', ' ', F)).toBe('MiXed ß');
   });
@@ -187,6 +192,15 @@ describe('native refusals (R7, TXT2-e2)', () => {
   it('Georgian under a transform is refused on ios and android; web keeps the property', () => {
     expect(refusals('.a { text-transform: uppercase; }', (r) => [div(r, 'a', ['a'], [text(r, 'at', 'ქართული')])])).toEqual(NATIVE);
     expect(refusals('.a { text-transform: none; }', (r) => [div(r, 'a', ['a'], [text(r, 'at', 'ქართული')])])).toEqual([]);
+  });
+  it('Georgian under a transform only in a :hover state is refused, whichever interaction state resolves last', () => {
+    // interactionPartition resolves every state before checking any: each state's refusals must stay with its own resolved tree.
+    const values = (css: string): string[] => compile(css, (r) => [div(r, 'a', ['a'], [text(r, 'at', '\u10e5\u10d0\u10e0\u10d7\u10e3\u10da\u10d8')])]).diagnostics
+      .filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE').map((d) => `${d.target} ${d.message.slice(0, 56)}`).sort();
+    const WANT = ['android text-transform: uppercase on text a:text0 is unsupported', 'ios text-transform: uppercase on text a:text0 is unsupported'];
+    expect(values('.a:hover { text-transform: uppercase; }')).toEqual(WANT);
+    expect(values('.a:hover { text-transform: uppercase; } .a:active { text-transform: none; }')).toEqual(WANT);
+    expect(values('.a:active { text-transform: none; } .a:hover { text-transform: uppercase; }')).toEqual(WANT);
   });
   it('capitalize after an atomic inline is refused', () => {
     expect(refusals('.a { text-transform: capitalize; } .ib { display: inline-block; }', (r) => [div(r, 'a', ['a'], [span(r, 'ib', ['ib'], [text(r, 'it', 'xy')]), text(r, 'at', 'cd')])])).toEqual(NATIVE);
