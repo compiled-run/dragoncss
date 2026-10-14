@@ -488,18 +488,18 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
   it('blames the PR at the call site\'s step when a regen round failed on CI or its patch or artifact is refused; the driver\'s own trouble applying it, or no run, judged nothing', () => {
     expect(failure(() => regen(fake({ title: regenTitle(SHA), conclusion: 'failure' }), 'regen-after-devices'))).toMatchObject({ step: 'regen-after-devices', message: expect.stringContaining('the CI regen run https://ci/run/7 concluded failure') });
     const step = (name: string) => [{ name: 'chrome-1 / round', status: 'completed', conclusion: 'failure', steps: [{ name, status: 'completed', conclusion: 'failure' }] }];
-    expect(failedJobs(step('pnpm regen --skip lanes-host --skip tw-sweep')).verdict).toHaveLength(1);
+    expect(failedJobs(step('pnpm regen --skip lanes-host')).verdict).toHaveLength(1);
     expect(failedJobs(step('pnpm regen --only lanes-host')).verdict).toHaveLength(1);
     expect(failedJobs([{ name: 'converge', status: 'completed', conclusion: 'failure', steps: [{ name: 'Pick the last round', status: 'completed', conclusion: 'failure' }] }]).verdict).toHaveLength(1);
     expect(failedJobs(step('Host side - JDK 17 and kotlinc, checked against the toolchains lanes.json records')).setup).toHaveLength(1);
     expect(failedJobs(step('Chrome side - fetch the WPT copy when the cache missed')).setup).toHaveLength(1);
     // A regen cut off (the job's 300-min timeout, a lost runner, a cancel) judged nothing: only a regen step that ran to its end
     // and failed blames the tree (#220 review).
-    const cut = (jobConclusion: string, stepStatus: string, stepConclusion: string | null) => failedJobs([{ name: 'chrome-1 / round', status: 'completed', conclusion: jobConclusion, steps: [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, { name: 'pnpm regen --skip lanes-host --skip tw-sweep', status: stepStatus, conclusion: stepConclusion }] }]);
-    expect(cut('timed_out', 'completed', 'cancelled')).toEqual({ verdict: [], setup: ['chrome-1 / round (pnpm regen --skip lanes-host --skip tw-sweep)'] });
+    const cut = (jobConclusion: string, stepStatus: string, stepConclusion: string | null) => failedJobs([{ name: 'chrome-1 / round', status: 'completed', conclusion: jobConclusion, steps: [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, { name: 'pnpm regen --skip lanes-host', status: stepStatus, conclusion: stepConclusion }] }]);
+    expect(cut('timed_out', 'completed', 'cancelled')).toEqual({ verdict: [], setup: ['chrome-1 / round (pnpm regen --skip lanes-host)'] });
     expect(cut('failure', 'in_progress', null).verdict).toEqual([]);
     expect(cut('failure', 'completed', 'cancelled').verdict).toEqual([]);
-    expect(cut('failure', 'completed', 'failure').verdict).toEqual(['chrome-1 / round (pnpm regen --skip lanes-host --skip tw-sweep)']);
+    expect(cut('failure', 'completed', 'failure').verdict).toEqual(['chrome-1 / round (pnpm regen --skip lanes-host)']);
     // Other workflows' verdicts are judged as before: a timed-out test shard is still the tree's.
     expect(failedJobs([{ name: 'native (3)', status: 'completed', conclusion: 'timed_out', steps: [{ name: 'vitest run (native files, shard 3/4)', status: 'completed', conclusion: 'cancelled' }] }]).verdict).toHaveLength(1);
     const unavailable = (f: () => unknown): CiUnavailable => {
@@ -535,7 +535,7 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     const minutes = [...round.matchAll(/timeout-minutes: (\d+)/g)].map((m) => Number(m[1]));
     expect(minutes.length).toBeGreaterThan(0);
     const rounds = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml/g)].length;
-    expect(rounds).toBe(6);
+    expect(rounds).toBe(5);
     expect(DEFAULT_REGEN_WAIT_S).toBeGreaterThanOrEqual(rounds * Math.max(...minutes) * 60);
   });
   it('master\'s warm cache run yields to branch regens but never to the driver\'s patch-mode runs (#220 review)', () => {
@@ -552,7 +552,7 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(yml).toContain('echo "mode=patch"');
     // Each round is told not to save in patch mode, and the round saves only when told to.
     const calls = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml\n {4}with: \{([^\n]*)\}/g)].map((m) => m[1]!);
-    expect(calls).toHaveLength(6);
+    expect(calls).toHaveLength(5);
     for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.mode != 'patch' }}"`);
     expect(round).toContain('save_cache: { type: boolean, required: false, default: true }');
     expect(round).toMatch(/- name: Save the regen cache\n {8}if: success\(\) && inputs\.save_cache\n {8}uses: actions\/cache\/save@v4/);
@@ -563,8 +563,8 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(steps.length).toBe(2);
     for (const st of steps) expect(st, st.split('\n')[0]).toMatch(/if: [^\n]*inputs\.save_cache/);
     // The push job runs only in branch mode; the patch job only in patch mode, and uploads the combined patch.
-    expect(yml).toContain("if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'push'");
-    expect(yml).toContain("if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'patch'");
+    expect(yml).toContain("if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'push'");
+    expect(yml).toContain("if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'patch'");
     const from = yml.indexOf('\n  patch:\n');
     const patch = yml.slice(from, yml.indexOf('\n  push:\n', from));
     expect(from).toBeGreaterThan(yml.indexOf('\njobs:\n'));
