@@ -48,6 +48,7 @@ import type { CssValue } from '../css/stylesheet.ts';
 import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
+import { lineClampOf } from '../analysis/line-clamp.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
@@ -231,23 +232,17 @@ export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDa
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const fonts = { em: fontPx(get('font-size')), rem: rootFontSize };
-  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts);
+  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lineClampOf(el));
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
 
-/** TXT2-g: N for a line-clamp container (display: -webkit-box computed to flow-root, analysis/line-clamp.ts), else 0 (none). */
-function lineClamp(get: Get): number {
-  const n = get('-webkit-line-clamp');
-  return keywordOf(get('display')) === 'flow-root' && keywordOf(get('-webkit-box-orient')) === 'vertical' && n.kind === 'number' ? n.value : 0;
-}
-
 // css-lists-3 §3: a list item without a marker is a block (Blink LayoutListItem is a LayoutBlockFlow); computed-checks.ts refuses the rest.
-function displayOfStyle(id: string, get: Get): Display {
+function displayOfStyle(id: string, get: Get, lineClamp: number): Display {
   const v = get('display');
   if (v.kind === 'keyword' && v.value === 'list-item') return 'block';
   // TXT2-g: a line-clamp container computes to flow-root; with overflow: hidden (analysis/line-clamp.ts) it lays out as a block.
-  if (lineClamp(get) > 0) return 'block';
+  if (lineClamp > 0) return 'block';
   return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex']);
 }
 
@@ -299,12 +294,16 @@ function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allow
   return keyword(id, get, p, allowed);
 }
 
-function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }): LayoutStyle {
+/**
+ * lineClamp: N for a line-clamp container, decided in analysis from the specified display (analysis/line-clamp.ts lineClampOf), else
+ * 0; an anonymous box and a replaced element never clamp.
+ */
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }, lineClamp = 0): LayoutStyle {
   const l: Lowering = { em: fonts.em, rem: fonts.rem, faults };
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
-    display: displayOfStyle(id, get),
+    display: displayOfStyle(id, get, lineClamp),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
@@ -353,7 +352,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     verticalAlign: verticalAlign(id, get, l),
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
     textIndent: textIndent(id, get, l),
-    lineClamp: lineClamp(get),
+    lineClamp,
     grid: null,
     gridItem: null,
   };

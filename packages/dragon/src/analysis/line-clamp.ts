@@ -28,10 +28,26 @@ export function adjustLineClampDisplay(props: Map<Longhand, ResolvedValue>): voi
   props.set('display', { ...d, value: { kind: 'keyword', value: k === '-webkit-box' ? 'flow-root' : 'inline-block' } });
 }
 
-/** Whether the element is a line-clamp container: a specified display: -webkit-box that computes to flow-root. */
-export function isLineClampContainer(el: ResolvedElement): boolean {
+/** The specified display keyword: -webkit-box or -webkit-inline-box for the clamp (ComputedStyle::IsSpecifiedDisplayWebkitBox). */
+const specifiedDisplay = (el: ResolvedElement): string => {
   const d = prop(el, 'display');
-  return keywordOf(d) === 'flow-root' && d.declared?.kind === 'keyword' && d.declared.value === '-webkit-box' && clamps(el.props);
+  return d.declared?.kind === 'keyword' ? d.declared.value : '';
+};
+
+/**
+ * Whether the element is a line-clamp container: a specified display: -webkit-box, or a -webkit-inline-box that is blockified (a
+ * flex item, float or absolutely positioned box), that computes to flow-root. A display: flow-root with the companions never
+ * clamps in Chrome, since HasLineClamp reads the specified display.
+ */
+export function isLineClampContainer(el: ResolvedElement): boolean {
+  const s = specifiedDisplay(el);
+  return keywordOf(prop(el, 'display')) === 'flow-root' && (s === '-webkit-box' || s === '-webkit-inline-box') && clamps(el.props);
+}
+
+/** LayoutStyle.lineClamp of the element: N for a line-clamp container, else 0 (lower/ios-layout.ts). */
+export function lineClampOf(el: ResolvedElement): number {
+  const n = prop(el, '-webkit-line-clamp').value;
+  return isLineClampContainer(el) && n.kind === 'number' ? n.value : 0;
 }
 
 /**
@@ -39,7 +55,7 @@ export function isLineClampContainer(el: ResolvedElement): boolean {
  * Chrome. Planted compiler fault webkitBoxEmittedAsFlowRoot writes the computed flow-root.
  */
 export function webDisplayOf(el: ResolvedElement, faults: Pick<CompilerFaults, 'webkitBoxEmittedAsFlowRoot'>): string | null {
-  return isLineClampContainer(el) && !faults.webkitBoxEmittedAsFlowRoot ? '-webkit-box' : null;
+  return isLineClampContainer(el) && !faults.webkitBoxEmittedAsFlowRoot ? specifiedDisplay(el) : null;
 }
 
 /** Whether the web output writes the element's line-clamp longhands: only where one differs from its initial value. */
@@ -91,7 +107,7 @@ export function checkLineClamp(el: ResolvedElement, hidden: boolean, targets: re
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
     }
   };
-  if (declared === '-webkit-inline-box' && clamps(el.props)) {
+  if (k === 'inline-block' && declared === '-webkit-inline-box' && clamps(el.props)) {
     refuse(targets, 'inline', `${at}: display: -webkit-inline-box clamps an inline-block, which Dragon does not clamp yet`, `Use display: -webkit-box on ${el.element.address}, inside a block.`);
     return;
   }
@@ -110,6 +126,8 @@ export function checkLineClamp(el: ResolvedElement, hidden: boolean, targets: re
   for (const c of el.children) {
     if (c.kind !== 'element' || display(c) === 'none' || display(c) === 'inline') continue;
     const plain = display(c) === 'block' && ['overflow-x', 'overflow-y'].every((p) => keywordOf(prop(c, p as Longhand)) === 'visible') && keywordOf(prop(c, 'position')) === 'static' && keywordOf(prop(c, 'float')) === 'none';
+    // The engine truncates left to right only (inline.ts checkClampContext), so a nested rtl block is refused as the container is.
+    if (keywordOf(prop(c, 'direction')) === 'rtl') refuse(targets, 'rtl', `${at} holds the rtl block <${c.element.tag}> ${c.element.address}, whose lines Dragon truncates left to right only`, `Make <${c.element.tag}> ${c.element.address} ltr, or remove -webkit-line-clamp from ${el.element.address}.`);
     if (!plain || inlineDescendants(c).some((g) => display(g) !== 'inline')) {
       refuse(targets, 'nested', `${at} holds <${c.element.tag}> ${c.element.address}, which is not a block of inline content in its formatting context; Chrome counts lines through nested blocks, which Dragon does not yet`, `Make <${c.element.tag}> ${c.element.address} a plain block holding only text and inline boxes, or clamp its text on its own.`);
     } else blocks.push(c);
@@ -131,6 +149,11 @@ export function checkLineClamp(el: ResolvedElement, hidden: boolean, targets: re
   for (const t of texts(el)) {
     if (keywordOf(t.props.get('white-space-collapse')) !== 'collapse') {
       refuse(targets, 'white-space', `${at} holds preserved white space (${t.node.address}), which Dragon does not clamp yet`, `Remove the white-space value from the text of ${el.element.address}.`);
+    }
+    // TXT2-b with TXT2-g: how Chrome cuts word-spaced text for the ellipsis has no Chrome comparison (truncate.ts refuses it).
+    const ws = t.props.get('word-spacing') as ResolvedValue;
+    if (keywordOf(ws) !== 'normal' && !(ws.value.kind === 'length' && ws.value.value === 0)) {
+      refuse(targets, 'word-spacing', `${at} holds word-spaced text (${t.node.address}), whose ellipsis Dragon does not place yet`, `Remove word-spacing from the text of ${el.element.address}.`);
     }
     if (keywordOf(t.props.get('letter-spacing')) !== 'normal') {
       refuse(targets, 'letter-spacing', `${at} holds letter-spaced text (${t.node.address}), whose ellipsis Dragon does not place yet`, `Remove letter-spacing from the text of ${el.element.address}.`);

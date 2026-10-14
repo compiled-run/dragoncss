@@ -79,6 +79,21 @@ describe('TXT2-g: the line-clamp pattern', () => {
     expect(errors(c)).toEqual([]);
   });
 
+  it('clamps only a specified -webkit-box: display: flow-root with both companions does not clamp, as in Chrome (HasLineClamp)', () => {
+    const { c } = compile('.a { display: flow-root; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; width: 55px; }');
+    const p = iosLayoutProjection(c, ENV, []);
+    if (p.kind === 'ready') expect(lowered(c, 'a').style.lineClamp).toBe(0);
+    else expect(p.reason).not.toMatch(/line-clamp/);
+  });
+
+  it('clamps a blockified -webkit-inline-box (a flex item) as a -webkit-box, and writes the authored display to the web', () => {
+    const body: Body = (r) => [div(r, 'f', ['f'], [div(r, 'a', ['a'], [text(r, 't', 'XX XX XX XX XX XX')])])];
+    const { c } = compile('.f { display: flex; } .a { display: -webkit-inline-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; width: 55px; }', body);
+    expect(errors(c)).toEqual([]);
+    expect(lowered(c, 'a').style.lineClamp).toBe(2);
+    expect(webCss(c)).toContain('display: -webkit-inline-box;\n');
+  });
+
   it('refuses -webkit-line-clamp: calc() and keeps -webkit-box-orient values Chrome drops invalid', () => {
     expect(errors(compile(`.a { ${CLAMP} -webkit-line-clamp: calc(1 + 1); }`).c)).toEqual(['* DRAGON_UNSUPPORTED_VALUE -webkit-line-clamp: only none or a whole number of lines is supported']);
     expect(compile('.a { -webkit-line-clamp: 0; }').c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_CSS_INVALID_VALUE']);
@@ -101,6 +116,9 @@ describe('TXT2-g: what the engine does not clamp is refused with the reason', ()
     expect(refused(`.a { ${CLAMP} text-overflow: ellipsis; }`)).toEqual(all(`${at} also has text-overflow`));
     expect(refused(`.a { ${CLAMP} white-space: pre-wrap; }`)).toEqual(all(`${at} holds preserved white space`));
     expect(refused(`.a { ${CLAMP} letter-spacing: 1px; }`)).toEqual(all(`${at} holds letter-spaced text`));
+    expect(refused(`.a { ${CLAMP} word-spacing: 2px; }`)).toEqual(all(`${at} holds word-spaced text`));
+    const span: Body = (r) => [div(r, 'a', ['a'], [text(r, 't', 'XX '), { ...(div(r, 's', ['s'], [text(r, 'u', 'XX XX')]) as TreeNode & object), tag: 'span' } as TreeNode])];
+    expect(refused(`.a { ${CLAMP} } .s { word-spacing: 2px; }`, span)).toEqual(all(`${at} holds word-spaced text`));
     const br: Body = (r) => [div(r, 'a', ['a'], [text(r, 't', 'XX'), { ...(div(r, 'b', [], []) as TreeNode & object), tag: 'br' } as TreeNode, text(r, 'u', 'XX')])];
     expect(refused(`.a { ${CLAMP} }`, br)).toEqual(all(`${at} holds the forced line break <br> b, beside which Dragon does not place the ellipsis yet`));
   });
@@ -108,6 +126,8 @@ describe('TXT2-g: what the engine does not clamp is refused with the reason', ()
   it('nested blocks deeper than one level, and a -webkit-box without both companions or inline', () => {
     const deep: Body = (r) => [div(r, 'a', ['a'], [div(r, 'b', [], [div(r, 'c', [], [text(r, 't', 'XX')])])])];
     expect(refused(`.a { ${CLAMP} }`, deep)).toEqual(all(`${at} holds <div> b, which is not a block of inline content in its formatting context; Chrome counts lines through nested blocks, which Dragon does not yet`));
+    const nestedRtl: Body = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX XX XX')])])];
+    expect(refused(`.a { ${CLAMP} } .b { direction: rtl; }`, nestedRtl)).toEqual(all(`${at} holds the rtl block <div> b, whose lines Dragon truncates left to right only`));
     expect(refused('.a { display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden; }')).toContain("* display");
     expect(refused('.a { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }')).toContain("* display");
     expect(refused('.a { display: -webkit-inline-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }')).toEqual(all(`${at}`));

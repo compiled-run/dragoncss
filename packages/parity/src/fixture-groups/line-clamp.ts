@@ -1,7 +1,7 @@
 // Fixture group line-clamp (TXT2-g, notes/T149-txt2-spec.md R11): Chrome 145's legacy line clamp, display: -webkit-box with
 // -webkit-box-orient: vertical, a -webkit-line-clamp and overflow: hidden, left to right in Ahem (U+2026 is one em). The block's own
 // lines: more, exactly and fewer than N, padding and border, an overflowing line N, a line N the ellipsis fits after, Tailwind's
-// line-clamp-3, a smaller inline box (the ellipsis takes the block's font) and a clamp of 1; and block children one
+// line-clamp-3, a smaller inline box (the ellipsis takes the block's font), a clamp of 1 and a -webkit-inline-box blockified as a flex item; and block children one
 // level down (the coverage probe's shape), the clamp falling inside a child, at a child's last line, and after a padded child. The
 // rejects are what every target refuses: overflow visible, nesting deeper than one level, a calculated clamp, and a <br>
 // (Chrome's rect of a <br> after which line N ends in the ellipsis spans the ellipsis, which the engine does not model).
