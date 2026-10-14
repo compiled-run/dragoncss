@@ -364,6 +364,26 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(res.status, res.stderr).toBe(0);
     expect(res.out).toEqual({ moved: 'false' });
   });
+  it('judges nothing when the run has nothing to commit, wherever the branch went', () => {
+    const r = repo();
+    r.at(r.later);
+    const res = runWhere(r, '', 'ahead');
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.out).toEqual({ moved: 'false' });
+  });
+  it('pushes nothing when the branch is reset back after it was judged', () => {
+    const r = repo();
+    r.at(r.later);
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), r.patch);
+    expect(runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo ahead`, r.w).status).toBe(0);
+    r.at(r.head);
+    const res = runStep(push, { BRANCH: BR, SHA: r.head, NOW: r.later, RUN_URL: URL, RUNNER_TEMP: d }, 'echo "gh $*" >&2', r.w);
+    expect(res.status).not.toBe(0);
+    expect(r.remote()).toBe(r.head);
+    expect(res.out).toEqual({});
+  });
   it('refuses a branch moved back, sideways or deleted during the run, and one whose new head the outputs do not apply to', () => {
     for (const [at, status, msg] of [
       ['base', 'behind', `moved from HEAD to BASE (behind, not ahead) during the run; nothing pushed, regen again`],
