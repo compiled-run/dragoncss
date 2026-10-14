@@ -16,6 +16,7 @@ export type UnsupportedCode =
   | 'line-break'
   | 'abspos-self-alignment'
   | 'grid-replaced'
+  | 'abspos-grid-lines'
   | 'mixed-text-wrap-mode'
   | 'inline-box-decoration'
   | 'vertical-align'

@@ -136,6 +136,7 @@ if (process.argv.includes('--write')) {
 const problems: string[] = [];
 let vectors = 0;
 let resolved = 0;
+let vectorPlanted = false;
 for (const path of walkFiles(join(ROOT, 'packages/layout/vectors'), '.json')) {
   const now = JSON.parse(readFileSync(path, 'utf8')) as Json;
   if (!isObj(now) || !isObj(now['input'])) continue;
@@ -143,9 +144,14 @@ for (const path of walkFiles(join(ROOT, 'packages/layout/vectors'), '.json')) {
   const was = atBase(path);
   if (was === null) continue;
   const where = relative(ROOT, path);
-  if (plant === 'vector-value' && vectors === 0) resolvedLeaves(now['input'], []).forEach((t, i) => i === 0 && (t[spec.key] = { kind: 'px', value: 1 }));
-  if (plant === 'vector-missing' && vectors === 0) resolvedLeaves(now['input'], []).forEach((t, i) => i === 0 && delete t[spec.key]);
   const leaves = resolvedLeaves(now['input'], []);
+  // A vector plant corrupts the first compared vector that has a text leaf.
+  const first = leaves[0];
+  if (first !== undefined && !vectorPlanted && (plant === 'vector-value' || plant === 'vector-missing')) {
+    if (plant === 'vector-value') first[spec.key] = { kind: 'px', value: 1 };
+    else delete first[spec.key];
+    vectorPlanted = true;
+  }
   // Every leaf holds px 0 (withoutKeys reports any other value, or a missing key).
   const stripped = withoutKeys(now, where, problems);
   // The environment pass keeps px 0 on every resolved leaf.
