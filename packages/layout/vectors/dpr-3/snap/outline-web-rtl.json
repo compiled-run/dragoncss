@@ -1,0 +1,93 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 16128
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 16128
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 16128
+  },
+  {
+   "id": "a5",
+   "parent": "stage",
+   "x": 62016,
+   "y": 4224,
+   "width": 10560,
+   "height": 6912
+  },
+  {
+   "id": "r3",
+   "parent": "stage",
+   "x": 44736,
+   "y": 4224,
+   "width": 10752,
+   "height": 7680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 252,
+   "width": 1200,
+   "height": 252
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 252,
+   "width": 1200,
+   "height": 252
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 252,
+   "width": 1200,
+   "height": 252
+  },
+  {
+   "id": "a5",
+   "left": 969,
+   "top": 66,
+   "right": 1134,
+   "bottom": 174,
+   "width": 165,
+   "height": 108
+  },
+  {
+   "id": "r3",
+   "left": 699,
+   "top": 66,
+   "right": 867,
+   "bottom": 186,
+   "width": 168,
+   "height": 120
+  }
+ ]
+}

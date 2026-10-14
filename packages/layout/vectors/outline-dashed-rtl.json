@@ -891,130 +891,6 @@
         },
         {
          "kind": "box",
-         "id": "a5",
-         "boxType": "element",
-         "style": {
-          "display": "block",
-          "position": "static",
-          "top": {
-           "kind": "auto"
-          },
-          "right": {
-           "kind": "auto"
-          },
-          "bottom": {
-           "kind": "auto"
-          },
-          "left": {
-           "kind": "auto"
-          },
-          "overflowX": "visible",
-          "overflowY": "visible",
-          "direction": "rtl",
-          "boxSizing": "content-box",
-          "width": {
-           "kind": "px",
-           "value": 55
-          },
-          "height": {
-           "kind": "px",
-           "value": 36
-          },
-          "minWidth": {
-           "kind": "auto"
-          },
-          "minHeight": {
-           "kind": "auto"
-          },
-          "maxWidth": {
-           "kind": "none"
-          },
-          "maxHeight": {
-           "kind": "none"
-          },
-          "marginTop": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginRight": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginBottom": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginLeft": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingTop": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingRight": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingBottom": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingLeft": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderTopWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderRightWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderBottomWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderLeftWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "flexDirection": "row",
-          "flexWrap": "nowrap",
-          "flexGrow": 0,
-          "flexShrink": 1,
-          "flexBasis": {
-           "kind": "auto"
-          },
-          "order": 0,
-          "justifyContent": "normal",
-          "alignItems": "normal",
-          "alignSelf": "auto",
-          "alignContent": "normal",
-          "rowGap": {
-           "kind": "normal"
-          },
-          "columnGap": {
-           "kind": "normal"
-          },
-          "textAlign": "start",
-          "aspectRatio": {
-           "kind": "auto"
-          },
-          "verticalAlign": {
-           "kind": "keyword",
-           "value": "baseline"
-          },
-          "textOverflow": "clip",
-          "grid": null,
-          "gridItem": null
-         },
-         "strut": null,
-         "children": []
-        },
-        {
-         "kind": "box",
          "id": "t1",
          "boxType": "element",
          "style": {
@@ -1698,17 +1574,9 @@
    "height": 2304
   },
   {
-   "id": "a5",
-   "parent": "stage",
-   "x": 21056,
-   "y": 5440,
-   "width": 3520,
-   "height": 2304
-  },
-  {
    "id": "t1",
    "parent": "stage",
-   "x": 15040,
+   "x": 20480,
    "y": 5440,
    "width": 4096,
    "height": 2304
@@ -1716,7 +1584,7 @@
   {
    "id": "t2",
    "parent": "stage",
-   "x": 8576,
+   "x": 14016,
    "y": 5440,
    "width": 4544,
    "height": 2624
@@ -1724,7 +1592,7 @@
   {
    "id": "t3",
    "parent": "stage",
-   "x": 2176,
+   "x": 7616,
    "y": 5440,
    "width": 4480,
    "height": 2688
@@ -1732,15 +1600,15 @@
   {
    "id": "t4",
    "parent": "stage",
-   "x": 20480,
-   "y": 9792,
+   "x": 1600,
+   "y": 5440,
    "width": 4096,
    "height": 2304
   },
   {
    "id": "t5",
    "parent": "stage",
-   "x": 14208,
+   "x": 20224,
    "y": 9792,
    "width": 4352,
    "height": 2560

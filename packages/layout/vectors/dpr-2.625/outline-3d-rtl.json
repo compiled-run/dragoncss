@@ -1015,130 +1015,6 @@
         },
         {
          "kind": "box",
-         "id": "r3",
-         "boxType": "element",
-         "style": {
-          "display": "block",
-          "position": "static",
-          "top": {
-           "kind": "auto"
-          },
-          "right": {
-           "kind": "auto"
-          },
-          "bottom": {
-           "kind": "auto"
-          },
-          "left": {
-           "kind": "auto"
-          },
-          "overflowX": "visible",
-          "overflowY": "visible",
-          "direction": "rtl",
-          "boxSizing": "content-box",
-          "width": {
-           "kind": "px",
-           "value": 56
-          },
-          "height": {
-           "kind": "px",
-           "value": 40
-          },
-          "minWidth": {
-           "kind": "auto"
-          },
-          "minHeight": {
-           "kind": "auto"
-          },
-          "maxWidth": {
-           "kind": "none"
-          },
-          "maxHeight": {
-           "kind": "none"
-          },
-          "marginTop": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginRight": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginBottom": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginLeft": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingTop": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingRight": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingBottom": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingLeft": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderTopWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderRightWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderBottomWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderLeftWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "flexDirection": "row",
-          "flexWrap": "nowrap",
-          "flexGrow": 0,
-          "flexShrink": 1,
-          "flexBasis": {
-           "kind": "auto"
-          },
-          "order": 0,
-          "justifyContent": "normal",
-          "alignItems": "normal",
-          "alignSelf": "auto",
-          "alignContent": "normal",
-          "rowGap": {
-           "kind": "normal"
-          },
-          "columnGap": {
-           "kind": "normal"
-          },
-          "textAlign": "start",
-          "aspectRatio": {
-           "kind": "auto"
-          },
-          "verticalAlign": {
-           "kind": "keyword",
-           "value": "baseline"
-          },
-          "textOverflow": "clip",
-          "grid": null,
-          "gridItem": null
-         },
-         "strut": null,
-         "children": []
-        },
-        {
-         "kind": "box",
          "id": "i1",
          "boxType": "element",
          "style": {
@@ -1954,17 +1830,9 @@
    "height": 6720
   },
   {
-   "id": "r3",
-   "parent": "stage",
-   "x": 38976,
-   "y": 16128,
-   "width": 9408,
-   "height": 6720
-  },
-  {
    "id": "i1",
    "parent": "stage",
-   "x": 23856,
+   "x": 38976,
    "y": 16128,
    "width": 9408,
    "height": 6720
@@ -1972,7 +1840,7 @@
   {
    "id": "i2",
    "parent": "stage",
-   "x": 8736,
+   "x": 23856,
    "y": 16128,
    "width": 9408,
    "height": 6720
@@ -1980,15 +1848,15 @@
   {
    "id": "i3",
    "parent": "stage",
-   "x": 54096,
-   "y": 28560,
+   "x": 8736,
+   "y": 16128,
    "width": 9408,
    "height": 6720
   },
   {
    "id": "u1",
    "parent": "stage",
-   "x": 38976,
+   "x": 54096,
    "y": 28560,
    "width": 9408,
    "height": 6720
@@ -1996,7 +1864,7 @@
   {
    "id": "u2",
    "parent": "stage",
-   "x": 23856,
+   "x": 38976,
    "y": 28560,
    "width": 9408,
    "height": 6720
@@ -2004,7 +1872,7 @@
   {
    "id": "u3",
    "parent": "stage",
-   "x": 7840,
+   "x": 22960,
    "y": 28560,
    "width": 10304,
    "height": 7616
