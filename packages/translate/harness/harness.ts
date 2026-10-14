@@ -644,7 +644,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -844,6 +844,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     textIndent: paddingValue(f('textIndent'), p('textIndent')),
+    lineClamp: num(f('lineClamp'), p('lineClamp')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -1000,6 +1001,8 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored',
+  'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1086,6 +1089,9 @@ function decodeFaults(v: JsonValue): EngineFaults {
     breakAnywhereAlways: b('breakAnywhereAlways'),
     emergencyBreakBeforeOpportunity: b('emergencyBreakBeforeOpportunity'),
     wordBreakBreakWordIgnored: b('wordBreakBreakWordIgnored'),
+    clampHeightIncludesHiddenLines: b('clampHeightIncludesHiddenLines'),
+    clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
+    clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
   };
 }
 

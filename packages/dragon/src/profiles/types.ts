@@ -88,8 +88,11 @@ export function supportedValuesFor(profile: SupportProfile, property: string): s
 }
 
 /** The value subsets of a property with a supported row in one context, sorted (T005 rec 6: alternatives in context). */
+/** Values a profile proves only inside a pattern, never offered alone as an alternative: display: -webkit-box is the line clamp (TXT2-g). */
+const PATTERN_ONLY: ReadonlySet<string> = new Set(['display:-webkit-box']);
+
 export function supportedValuesIn(profile: SupportProfile, property: string, context: string): string[] {
   return [...new Set(profile.rows
-    .filter((r) => r.status !== 'unsupported' && r.context === context && r.feature.startsWith(`${property}:`))
+    .filter((r) => r.status !== 'unsupported' && r.context === context && r.feature.startsWith(`${property}:`) && !PATTERN_ONLY.has(r.feature))
     .map((r) => r.feature.slice(property.length + 1)))].sort();
 }
