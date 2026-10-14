@@ -4,7 +4,10 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { webProfile } from 'dragon';
 import type { Browser, ChromeOutcome, WptServer } from './chrome.ts';
-import { launchChrome, runInChrome, serveWpt } from './chrome.ts';
+import { launchArgsOf } from '../../parity/src/chrome.ts';
+import { type MemoStats, memoizedJson } from '../../parity/src/chrome-memo.ts';
+import { CHROME_PAGES, inOrder } from '../../parity/src/chrome-pool.ts';
+import { launchChrome, REPORTER_JS, runInChrome, serveWpt } from './chrome.ts';
 import type { DragonOutcome, Fixture, NumericRun, Target } from './dragon.ts';
 import { runNumeric, runTranslations } from './dragon.ts';
 import type { ChromeCount, Entry, Expectations } from './expectations.ts';
@@ -17,8 +20,24 @@ import type { ReftestEntry, ReftestLayoutReport } from './reftest.ts';
 import { captureReftest, judgeReftest, readReftestCapture, REFTEST_CAPTURE_DIR, REFTEST_LAYOUT_KIND, reftestDragonSide, RUN_REFTEST_CAPTURE_DIR, writeReftestCapture } from './reftest.ts';
 import type { SnapshotFile } from './snapshot.ts';
 import type { DeadRuleFaults } from './translate.ts';
-import { NO_DEAD_RULE_FAULTS } from './translate.ts';
-import { captureSnapshot, chromeFromSnapshot, liveDeadRulesInSnapshot, needsSnapshot, readSnapshot, RUN_SNAPSHOT_DIR, SNAPSHOT_DIR, snapshotProblem, translateSnapshot, writeSnapshot } from './snapshot.ts';
+import { NO_DEAD_RULE_FAULTS, WPT_VIEWPORT } from './translate.ts';
+import { captureSnapshot, chromeFromSnapshot, INSTRUMENT_JS, liveDeadRulesInSnapshot, needsSnapshot, readSnapshot, RUN_SNAPSHOT_DIR, SNAPSHOT_DIR, snapshotProblem, sha256, translateSnapshot, writeSnapshot } from './snapshot.ts';
+
+const SNAPSHOT_CODE = ['packages/wpt/src/snapshot.ts', 'packages/wpt/src/chrome.ts', 'packages/parity/src/chrome.ts'];
+export const SNAPSHOT_MEMO: MemoStats = { hits: 0, misses: 0 };
+/** Refusals that a slower or faster capture could change: produced again on the next run instead of remembered. */
+const TIMING_REFUSALS: ReadonlySet<string> = new Set(['snapshot:nondeterministic', 'snapshot:harness-incomplete']);
+
+/**
+ * captureSnapshot, remembered (chrome-memo.ts) by the test's path and source, the pinned WPT commit (which fixes every file the
+ * page loads from the WPT copy), the scripts injected into the page and the browser's launch flags.
+ */
+function captureSnapshotMemo(browser: Browser, origin: string, path: string, source: string, commit: string): Promise<SnapshotFile> {
+  const args = launchArgsOf(browser);
+  if (args === null) return captureSnapshot(browser, origin, path, source, commit);
+  const parts = { path, source: sha256(source), commit, args, viewport: WPT_VIEWPORT, instrument: INSTRUMENT_JS, reporter: REPORTER_JS };
+  return memoizedJson('wpt-snapshot', parts, SNAPSHOT_CODE, SNAPSHOT_MEMO, () => captureSnapshot(browser, origin, path, source, commit), (f) => !('refused' in f.result && TIMING_REFUSALS.has(f.result.refused)));
+}
 
 export type TestRecord = {
   readonly path: string;
@@ -133,12 +152,16 @@ export async function runTarget(opts: RunOptions): Promise<RunResult> {
   try {
     // Script-driven tests: Chrome's snapshots of the original pages, captured now or read from the committed store.
     if (capture && opts.filter === null) rmSync(RUN_SNAPSHOT_DIR, { recursive: true, force: true });
-    for (const path of snapshotPaths) {
+    // Each capture opens its own contexts, so CHROME_PAGES of them run at once; the files are then used in manifest order.
+    const captured = capture && snapshotPaths.length > 0
+      ? await chromeSession().then(({ browser, server }) => inOrder(snapshotPaths, CHROME_PAGES, (path) => captureSnapshotMemo(browser, server.origin, path, readFileSync(join(wpt, path), 'utf8'), commit)))
+      : null;
+    if (captured !== null) log(`snapshots: ${SNAPSHOT_MEMO.hits} remembered, ${SNAPSHOT_MEMO.misses} captured (chrome-memo.ts)`);
+    for (const [i, path] of snapshotPaths.entries()) {
       const source = readFileSync(join(wpt, path), 'utf8');
       let file: SnapshotFile | null;
-      if (capture) {
-        const { browser, server } = await chromeSession();
-        file = await captureSnapshot(browser, server.origin, path, source, commit);
+      if (captured !== null) {
+        file = captured[i] as SnapshotFile;
         writeSnapshot(RUN_SNAPSHOT_DIR, file);
         log(`snapshot ${path}: ${'refused' in file.result ? file.result.refused : `${file.result.states.length} state(s)`}`);
       } else file = readSnapshot(opts.snapshotDir ?? SNAPSHOT_DIR, path);
