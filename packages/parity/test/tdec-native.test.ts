@@ -6,7 +6,9 @@
 // transparent line are proven before any device runs. Each raster plant of the module (device-run.ts PLANT_CASES) has a model
 // that must fail at every device DPR: decoration-above-text paints the under and overlines after the glyphs, decoration-snap-css-px
 // moves each rect's top to a whole css px (Swift's and Kotlin's rounding), decoration-alpha-ignored paints each line opaque. Each
-// decorated text needs a row point, and each visible one a point that its lines' absence would change.
+// decorated text needs a row point, and each visible one a point that its lines' absence would change. text-decoration-native-current
+// holds currentcolor lines (the decorating box's colour over a differently coloured child's glyphs) and none; its glyphs take each
+// text's own colour, and the plants are judged on the plant case alone.
 import { describe, expect, it } from 'vitest';
 import { textDecoration as td } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
@@ -14,6 +16,7 @@ import { nativePrograms } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { PLANT_CASES } from '../src/device-run.ts';
 import { DPRS } from '../src/dpr.ts';
+import type { FixtureSpec } from '../src/fixtures.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { nativeCompile } from '../src/native-host.ts';
 import type { PlacedDecoration } from '../src/paint-samples/decoration-rects.ts';
@@ -22,15 +25,36 @@ import { casePoints, committedPixels, glyphLines } from '../src/pixel-reference.
 import type { GlyphBox } from '../src/samples.ts';
 
 const CASE = 'text-decoration-native';
-const SPEC = FIXTURE_GROUPS.flatMap((g) => g.fixtures).find((f) => f.id === CASE);
+const CURRENT = 'text-decoration-native-current';
+const specOf = (id: string): FixtureSpec | undefined => FIXTURE_GROUPS.flatMap((g) => g.fixtures).find((f) => f.id === id);
+const SPEC = specOf(CASE);
 const PLANTS = ['decoration-above-text', 'decoration-snap-css-px', 'decoration-alpha-ignored'] as const;
 type Plant = (typeof PLANTS)[number] | null;
 
 const WHITE: td.Rgba = { r: 255, g: 255, b: 255, a: 255 };
-/** The fixture's text colour: the initial black. */
-const INK: td.Rgba = { r: 0, g: 0, b: 0, a: 255 };
+
+/** A glyph box with its text's colour. */
+type InkBox = GlyphBox & { readonly ink: td.Rgba };
 
 const insideGlyph = (x: number, y: number, glyphs: readonly GlyphBox[]): boolean => glyphs.some((g) => x >= g.left && x + 1 <= g.right && y >= g.top && y + 1 <= g.bottom);
+
+/** Every glyph box of a program with the colour its text view draws (the text-color write); only an opaque colour is modelled. */
+function inkBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): InkBox[] {
+  const colors = new Map<string, td.Rgba>();
+  for (const n of p.nodes) {
+    for (const w of n.writes) {
+      if (w.kind !== 'text-color') continue;
+      if (w.color.alpha !== 255) throw new Error(`${n.id}: a translucent text colour, which the model does not blend`);
+      colors.set(n.id, { r: w.color.r, g: w.color.g, b: w.color.b, a: 255 });
+    }
+  }
+  return glyphLines(p, viewport, dpr).flatMap((l) => {
+    const text = l.id.slice(0, l.id.lastIndexOf(':line'));
+    const ink = colors.get(text);
+    if (ink === undefined) throw new Error(`${l.id}: no text colour for ${text}`);
+    return l.glyphs.map((g) => ({ ...g, ink }));
+  });
+}
 
 /** Swift's rounded() (half away from zero; the rect tops are positive) and Kotlin's kotlin.math.round (half to even). */
 const ROUNDINGS = {
@@ -52,7 +76,7 @@ function plantedRects(rects: readonly PlacedDecoration[], dpr: number, plant: Pl
 }
 
 /** The model's colour at a pixel: the background, the before-text rects, the glyphs, the line-throughs. */
-function modelAt(rects: readonly PlacedDecoration[], glyphs: readonly GlyphBox[], x: number, y: number, plant: Plant): td.Rgba {
+function modelAt(rects: readonly PlacedDecoration[], glyphs: readonly InkBox[], x: number, y: number, plant: Plant): td.Rgba {
   const covers = (r: PlacedDecoration): boolean => y >= r.top && y < r.top + r.height && td.columnAlpha(x, r.left, r.right, r.height) === 256 && !td.columnClipped(x, r.clips);
   const before = rects.filter((r) => r.beforeText);
   const after = rects.filter((r) => !r.beforeText);
@@ -61,7 +85,8 @@ function modelAt(rects: readonly PlacedDecoration[], glyphs: readonly GlyphBox[]
   const over = plant === 'decoration-above-text' ? [...before, ...after] : after;
   let c = WHITE;
   for (const r of under) if (covers(r)) c = td.blendOver(c, r.color, 256);
-  if (insideGlyph(x, y, glyphs)) c = INK;
+  const glyph = glyphs.find((g) => insideGlyph(x, y, [g]));
+  if (glyph !== undefined) c = glyph.ink;
   for (const r of over) if (covers(r)) c = td.blendOver(c, r.color, 256);
   return c;
 }
@@ -71,47 +96,66 @@ describe('TDEC-b: text-decoration-native\'s decoration points equal the committe
     expect(SPEC?.kind).toBe('layout');
     for (const p of PLANTS) expect(PLANT_CASES[p]).toEqual([CASE]);
   });
-  if (SPEC === undefined) return;
-  for (const c of casesOf(SPEC, fixtureInput(SPEC))) {
-    it(`${c.id} at ${DPRS.join(', ')}`, () => {
-      const compiled = nativeCompile(SPEC, c.environment.direction);
-      expect(compiled.diagnostics.filter((d) => d.message.includes('text-decoration')), 'decoration refusals').toEqual([]);
-      const programs = nativePrograms(compiled, c.assignment);
-      if (programs.kind !== 'ready') throw new Error(programs.reason);
-      const p: NativeProgram = programs.programs.uikit;
-      const problems: string[] = [];
-      const states = new Set<string>();
-      for (const dpr of DPRS) {
-        const rects = placedDecorations(p, c.environment.viewport, dpr);
-        const glyphs = glyphLines(p, c.environment.viewport, dpr).flatMap((l) => l.glyphs);
-        const caught = new Map<string, number>(PLANTS.flatMap((x) => Object.keys(ROUNDINGS).map((t) => [`${x} ${t}`, 0] as const)));
-        const points = casePoints(p, c.environment.viewport, dpr).filter((q) => q.rule.startsWith('decoration:'));
-        // Every decorated text has a point on its line's own rows clear of the glyphs, so a line hidden under the glyphs fails here.
-        const texts = [...new Set(rects.map((r) => r.text))];
-        for (const t of texts) expect(points.some((q) => q.rule.startsWith(`decoration:${t}:`) && q.rule.endsWith(':row')), `${t} has a row point @${dpr}`).toBe(true);
-        // Every visible decorated text's points see its lines: the model without that text's rects disagrees with Chrome somewhere.
-        const seen = new Map<string, number>(texts.map((t) => [t, 0]));
-        const chrome = committedPixels(c.id, dpr);
-        if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
-        for (const q of points) {
-          states.add(q.rule.slice(q.rule.lastIndexOf(':') + 1));
-          const i = (q.y * chrome.width + q.x) * 4;
-          const got = [chrome.data[i], chrome.data[i + 1], chrome.data[i + 2]];
-          const differs = (m: td.Rgba): boolean => got[0] !== m.r || got[1] !== m.g || got[2] !== m.b;
-          const want = modelAt(rects, glyphs, q.x, q.y, null);
-          if (differs(want)) problems.push(`${q.rule} at ${q.x},${q.y} @${dpr}: Chrome ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
-          for (const plant of PLANTS) {
-            for (const [t, round] of Object.entries(ROUNDINGS)) if (differs(modelAt(plantedRects(rects, dpr, plant, round), glyphs, q.x, q.y, plant))) caught.set(`${plant} ${t}`, (caught.get(`${plant} ${t}`) ?? 0) + 1);
+  it('text-decoration-native-current is a layout fixture of the text-decoration group', () => {
+    expect(specOf(CURRENT)?.kind).toBe('layout');
+  });
+  /** Per case: whether the module's plants are judged on it, the point states it must hold, and its texts' line colours (if pinned). */
+  const checks = [
+    { spec: SPEC, plants: true, states: ['row', 'above', 'below', 'ink', 'gap'], colors: null },
+    // currentcolor resolves against the decorating box (n3's green over n3r's red text); none draws nothing of its own (n4) and
+    // leaves the parent's line on the child (n3n).
+    {
+      spec: specOf(CURRENT),
+      plants: false,
+      states: ['row', 'above', 'below', 'ink'],
+      colors: { 'n1:text0': [0, 90, 200], 'n2:text0': [160, 0, 80], 'n3n:text0': [0, 130, 60], 'n3r:text0': [0, 130, 60] },
+    },
+  ] as const;
+  for (const check of checks) {
+    const spec = check.spec;
+    if (spec === undefined) continue;
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      it(`${c.id} at ${DPRS.join(', ')}`, () => {
+        const compiled = nativeCompile(spec, c.environment.direction);
+        expect(compiled.diagnostics.filter((d) => d.message.includes('text-decoration')), 'decoration refusals').toEqual([]);
+        const programs = nativePrograms(compiled, c.assignment);
+        if (programs.kind !== 'ready') throw new Error(programs.reason);
+        const p: NativeProgram = programs.programs.uikit;
+        const problems: string[] = [];
+        const states = new Set<string>();
+        for (const dpr of DPRS) {
+          const rects = placedDecorations(p, c.environment.viewport, dpr);
+          const glyphs = inkBoxes(p, c.environment.viewport, dpr);
+          if (check.colors !== null) expect(Object.fromEntries(rects.map((r) => [r.text, [r.color.r, r.color.g, r.color.b]])), `line colours @${dpr}`).toEqual(check.colors);
+          const caught = new Map<string, number>((check.plants ? PLANTS : []).flatMap((x) => Object.keys(ROUNDINGS).map((t) => [`${x} ${t}`, 0] as const)));
+          const points = casePoints(p, c.environment.viewport, dpr).filter((q) => q.rule.startsWith('decoration:'));
+          // Every decorated text has a point on its line's own rows clear of the glyphs, so a line hidden under the glyphs fails here.
+          const texts = [...new Set(rects.map((r) => r.text))];
+          for (const t of texts) expect(points.some((q) => q.rule.startsWith(`decoration:${t}:`) && q.rule.endsWith(':row')), `${t} has a row point @${dpr}`).toBe(true);
+          // Every visible decorated text's points see its lines: the model without that text's rects disagrees with Chrome somewhere.
+          const seen = new Map<string, number>(texts.map((t) => [t, 0]));
+          const chrome = committedPixels(c.id, dpr);
+          if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
+          for (const q of points) {
+            states.add(q.rule.slice(q.rule.lastIndexOf(':') + 1));
+            const i = (q.y * chrome.width + q.x) * 4;
+            const got = [chrome.data[i], chrome.data[i + 1], chrome.data[i + 2]];
+            const differs = (m: td.Rgba): boolean => got[0] !== m.r || got[1] !== m.g || got[2] !== m.b;
+            const want = modelAt(rects, glyphs, q.x, q.y, null);
+            if (differs(want)) problems.push(`${q.rule} at ${q.x},${q.y} @${dpr}: Chrome ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
+            for (const plant of check.plants ? PLANTS : []) {
+              for (const [t, round] of Object.entries(ROUNDINGS)) if (differs(modelAt(plantedRects(rects, dpr, plant, round), glyphs, q.x, q.y, plant))) caught.set(`${plant} ${t}`, (caught.get(`${plant} ${t}`) ?? 0) + 1);
+            }
+            for (const t of texts) if (differs(modelAt(rects.filter((r) => r.text !== t), glyphs, q.x, q.y, null))) seen.set(t, (seen.get(t) ?? 0) + 1);
           }
-          for (const t of texts) if (differs(modelAt(rects.filter((r) => r.text !== t), glyphs, q.x, q.y, null))) seen.set(t, (seen.get(t) ?? 0) + 1);
+          expect(points.length, `decoration points @${dpr}`).toBeGreaterThan(0);
+          for (const [key, n] of caught) expect(n, `${key} @${dpr}`).toBeGreaterThan(0);
+          for (const t of texts) if (rects.some((r) => r.text === t && r.color.a > 0)) expect(seen.get(t), `${t}'s lines seen @${dpr}`).toBeGreaterThan(0);
         }
-        expect(points.length, `decoration points @${dpr}`).toBeGreaterThan(0);
-        for (const [key, n] of caught) expect(n, `${key} @${dpr}`).toBeGreaterThan(0);
-        for (const t of texts) if (rects.some((r) => r.text === t && r.color.a > 0)) expect(seen.get(t), `${t}'s lines seen @${dpr}`).toBeGreaterThan(0);
-      }
-      expect(problems).toEqual([]);
-      // Rows beside and inside the lines, under and over glyphs (the paint order), and skip-ink gaps.
-      for (const s of ['row', 'above', 'below', 'ink', 'gap']) expect(states.has(s), s).toBe(true);
-    });
+        expect(problems).toEqual([]);
+        // Rows beside and inside the lines, under and over glyphs (the paint order), and (in the plant case) skip-ink gaps.
+        for (const s of check.states) expect(states.has(s), s).toBe(true);
+      });
+    }
   }
 });
