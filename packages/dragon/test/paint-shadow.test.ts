@@ -156,6 +156,27 @@ describe('box-shadow: lowering and emission', () => {
     expect(b?.writes.some((w) => w.kind === 'box-shadow')).toBe(false);
   });
 
+  it('an inherited currentcolor shadow takes each inheriting element\'s own color (css-color-4 §4.4), through two levels of inherit', () => {
+    const css = 'body { margin: 0; } .a { width: 60px; height: 40px; color: rgb(255, 0, 0); box-shadow: 0 0 0 4px currentcolor, 1px 1px 0.5em green; font-size: 20px; } .b { width: 30px; height: 20px; color: rgb(0, 0, 255); font-size: 10px; box-shadow: inherit; } .c { width: 10px; height: 10px; box-shadow: inherit; }';
+    const input = inputFor(css, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [div(r, 'c', ['c'])])])]);
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    // c inherits b's color as well as its shadow list, so both paint blue; the em blur computed at a (20px font) stays 10px.
+    const want = { a: 'rgb(255, 0, 0)', b: 'rgb(0, 0, 255)', c: 'rgb(0, 0, 255)' };
+    for (const [id, colour] of Object.entries(want)) expect(explainOne(c, 'ios', id, 'box-shadow').value, id).toBe(`${colour} 0px 0px 0px 4px, rgb(0, 128, 0) 1px 1px 10px 0px`);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const b of ['uikit', 'android-views'] as const) {
+      for (const [id, rgb] of [['a', { r: 255, g: 0, b: 0 }], ['b', { r: 0, g: 0, b: 255 }], ['c', { r: 0, g: 0, b: 255 }]] as const) {
+        const w = p.programs[b].nodes.find((n) => n.id === id)?.writes.find((x) => x.kind === 'box-shadow');
+        expect(w, `${b} ${id}`).toEqual(expect.objectContaining({ shadows: [
+          { inset: false, x: 0, y: 0, blur: 0, spread: 4, color: { ...rgb, alpha: 255 } },
+          { inset: false, x: 1, y: 1, blur: 10, spread: 0, color: { r: 0, g: 128, b: 0, alpha: 255 } },
+        ] }));
+      }
+    }
+  });
+
   it('a hidden or collapsed box, own or inherited, gets no box-shadow write or facts on either backend; a visible descendant keeps its own', () => {
     for (const v of ['hidden', 'collapse']) {
       const p = programs(`.a { box-shadow: 0 0 0 4px red, inset 1px 1px blue; visibility: ${v}; } .b { box-shadow: 1px 1px green; visibility: visible; }`);
