@@ -9,8 +9,9 @@
 // they differ and the recorded run wrote every output without reading any of them. Steps that neither read nor write each
 // other's files run in parallel (--jobs, default 4). --check exits 1 naming every file the run changed (and leaves them
 // regenerated); --force ignores entries recorded before this run; --from starts the first pass at that step; --explain prints
-// what each step would do and why, and changes nothing. --skip <step> leaves a step out of every pass and --only <step> leaves out
-// all the others (both repeatable): .github/workflows/regen-on-ci.yml runs the Chrome steps and lanes-host on different machines.
+// what each step would do and why, and changes nothing (DRAGON_REGEN_MACHINE keys it as another machine). --skip <step> leaves
+// a step out of every pass and --only <step> leaves out all the others (both repeatable): .github/workflows/regen-on-ci.yml runs
+// the Chrome steps and lanes-host on different machines.
 // A skipped step's outputs are not judged, so only the whole split reaches a fixed point.
 // Device lanes are never run: lanes-host rewrites only the host rows of lanes.json and keeps device records that are still current.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -837,11 +838,30 @@ export function restoreBlobs(root: string, files: Readonly<Record<string, string
   return true;
 }
 
+const MACHINE = JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version });
+
+/**
+ * DRAGON_REGEN_MACHINE: the machine facts --explain keys with instead of this machine's, as {platform, arch, node}, so a Linux job
+ * can judge whether another machine's cache entries still cover a tree (regen-on-ci.yml's push job).
+ */
+export function explainMachine(value: string | undefined): string | null {
+  if (value === undefined || value === '') return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(value);
+  } catch {
+    throw new Error(`DRAGON_REGEN_MACHINE is not JSON: ${value}`);
+  }
+  const m = v as { platform?: unknown; arch?: unknown; node?: unknown };
+  const ok = typeof v === 'object' && v !== null && !Array.isArray(v) && Object.keys(v).length === 3 && [m.platform, m.arch, m.node].every((x) => typeof x === 'string' && x !== '');
+  if (!ok) throw new Error(`DRAGON_REGEN_MACHINE must be {"platform","arch","node"} strings: ${value}`);
+  return JSON.stringify({ platform: m.platform, arch: m.arch, node: m.node });
+}
+
 /** The Io of a working tree: steps run as processes under the tracer, the cache in storeDir, step output in logDir. */
-export function localIo(root: string, storeDir: string, logDir: string): Io {
+export function localIo(root: string, storeDir: string, logDir: string, machine: string = MACHINE): Io {
   const roots = [...new Set([root, realpathSync(root)])];
   const tracer = join(root, TRACER);
-  const machine = JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version });
   const texts = new Map<string, string>();
   return {
     snapshot: (exclude) => snapshotTree(root, exclude),
@@ -964,6 +984,17 @@ async function main(): Promise<void> {
     console.error(`regen: DRAGON_REGEN_JOBS must be a positive integer, not ${JSON.stringify(process.env.DRAGON_REGEN_JOBS)}`);
     process.exit(2);
   }
+  let machine: string | null;
+  try {
+    machine = explainMachine(process.env.DRAGON_REGEN_MACHINE);
+  } catch (e) {
+    console.error(`regen: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(2);
+  }
+  if (machine !== null && !opts.explain) {
+    console.error('regen: DRAGON_REGEN_MACHINE is honoured only with --explain; a run keys with the machine it runs on');
+    process.exit(2);
+  }
   const root = git(['rev-parse', '--show-toplevel']).trim();
   let lock: { release: () => void };
   try {
@@ -986,7 +1017,7 @@ async function main(): Promise<void> {
     // Unset: git config exits 1.
   }
   if (driver !== 'true') console.log('regen: run pnpm setup:git once so merges keep generated files instead of stopping on them');
-  const io = localIo(root, storeDir, logDir);
+  const io = localIo(root, storeDir, logDir, machine ?? MACHINE);
   const r = await regen(STEPS, opts, io);
   writeFileSync(join(logDir, 'last-run.json'), `${JSON.stringify(r.records, null, 1)}\n`);
   if (r.error !== null) console.error(`regen: FAILED: ${r.error}`);

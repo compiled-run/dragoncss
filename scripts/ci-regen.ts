@@ -162,7 +162,8 @@ export function parseCommits(text: string): Commit[] {
 }
 
 /**
- * The regen commit the run pushed, checked: its message names the run and the head as its base, and its only parent is that head.
+ * The regen commit the run pushed, checked: its message names the run and the head as its base, and its only parent is that head
+ * or the newer head its Onto: line names.
  * Throws when the branch's newest commits hold no commit naming the run, or when that commit is not on top of the head expected.
  */
 export function pushedCommit(commits: readonly Commit[], runUrl: string, head: string, branch: string): string {
@@ -170,7 +171,9 @@ export function pushedCommit(commits: readonly Commit[], runUrl: string, head: s
   if (mine.length !== 1) throw new Error(`${mine.length === 0 ? 'no' : mine.length} commit${mine.length === 1 ? '' : 's'} among the newest ${commits.length} of ${branch} name${mine.length === 1 ? 's' : ''} the run ${runUrl}; expected exactly 1`);
   const c = mine[0] as Commit;
   const lines = c.message.split('\n').map((l) => l.trim());
-  if (lines[0] !== COMMIT_SUBJECT || !lines.includes(`Base: ${head}`) || c.parents.length !== 1 || c.parents[0] !== head) {
+  // A branch moved forward during the run carries the outputs on its new head, which the message names after Onto: (regen-on-ci.yml).
+  const onto = (p: string | undefined): boolean => p !== undefined && lines.some((l) => l.startsWith(`Onto: ${p} `));
+  if (lines[0] !== COMMIT_SUBJECT || !lines.includes(`Base: ${head}`) || c.parents.length !== 1 || (c.parents[0] !== head && !onto(c.parents[0]))) {
     throw new Error(`the commit ${c.sha} naming ${runUrl} is not a regen commit on top of ${head} (parents ${c.parents.join(', ') || 'none'})`);
   }
   return c.sha;

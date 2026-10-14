@@ -5,9 +5,12 @@
 # runs here, android layout-vectors-device too (a NaN matches any NaN in the corpus comparison, #147). The merge job writes the
 # lane records (device-records) and fails when a lane judges differently from the records committed at that commit, which the
 # landing driver judges against its base instead. Nothing is committed or pushed.
+# A dispatch with `plant` runs only `native-devices.ts --target <t> --plant <plant>` on each target's plant device (device-run.ts
+# PLANT_DEVICES) and passes or fails on its exit: no device run, no outcomes, no merge, no device-outcomes or device-records, and a
+# run-name the landing driver never looks for (land-devices-ci.ts runTitle).
 # Trigger: workflow_dispatch with a commit sha (the landing driver, LAND_DEVICES=ci), or the `devices` label on a pull request.
 name: device-lanes
-run-name: device lanes of ${{ inputs.sha || github.event.pull_request.head.sha }}
+run-name: ${{ inputs.plant && format('device plant {0} of {1}', inputs.plant, inputs.sha) || format('device lanes of {0}', inputs.sha || github.event.pull_request.head.sha) }}
 on:
   workflow_dispatch:
     inputs:
@@ -20,12 +23,17 @@ on:
         required: false
         default: true
         type: boolean
+      plant:
+        description: A support plant to run (native-devices.ts --plant) on each target's plant device instead of the device lanes
+        required: false
+        default: ''
+        type: string
   pull_request:
     types: [labeled]
 permissions:
   contents: read
 concurrency:
-  group: device-lanes-${{ inputs.sha || github.event.pull_request.head.sha }}
+  group: ${{ inputs.plant && format('device-plant-{0}-', inputs.plant) || 'device-lanes-' }}${{ inputs.sha || github.event.pull_request.head.sha }}
   cancel-in-progress: false
 env:
   # One device per runner: no other work shares its memory (device-run.ts memoryReserve).
@@ -42,16 +50,19 @@ jobs:
       - id: r
         env:
           SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
+          PLANT: ${{ inputs.plant }}
         run: |
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a full commit sha: $SHA"; exit 1; }
+          [[ -z "$PLANT" || "$PLANT" =~ ^[a-z0-9-]+$ ]] || { echo "::error::not a plant name: $PLANT"; exit 1; }
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "device lanes of $SHA" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$PLANT" ]; then echo "device plant $PLANT of $SHA" >> "$GITHUB_STEP_SUMMARY"; else echo "device lanes of $SHA" >> "$GITHUB_STEP_SUMMARY"; fi
   ios:
     needs: resolve
     strategy:
       fail-fast: false
       matrix:
-        device: ['iPhone 17', 'iPad (A16)']
+        # A plant dispatch runs on the plant device's runner only (device-run.ts PLANT_DEVICES).
+        device: ${{ fromJSON(inputs.plant && '["iPhone 17"]' || '["iPhone 17", "iPad (A16)"]') }}
     runs-on: xcode-27
     timeout-minutes: 120
     steps:
@@ -115,6 +126,7 @@ jobs:
           node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" ios
       # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
       - name: Device run ${{ matrix.device }}
+        if: ${{ !inputs.plant }}
         id: run
         env:
           DEVICE: ${{ matrix.device }}
@@ -139,14 +151,38 @@ jobs:
         run: |
           echo "::error::the device tooling blocked $DEVICE (a boot, settle or install fault; the Device run log says which), so this job judged nothing of the tree"
           exit 1
+      # Not a verdict step (land-devices-ci.ts VERDICT_STEP): a plant run judges the plant, never the lanes, and writes no outcome.
+      - name: Plant ${{ inputs.plant }} on the ios plant device
+        if: ${{ inputs.plant }}
+        env:
+          PLANT: ${{ inputs.plant }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/plant" /tmp/dragon-device.lock
+          echo $$ > /tmp/dragon-device.lock/pid
+          start=$(date +%s)
+          set +e
+          node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts --target ios --plant "$PLANT" 2>&1 | tee "$RUNNER_TEMP/plant/ios-$PLANT.log"
+          code=${PIPESTATUS[0]}
+          set -e
+          { echo "ios plant $PLANT: exit $code in $(( $(date +%s) - start )) s"; echo '```'; grep '^native:devices: ' "$RUNNER_TEMP/plant/ios-$PLANT.log" || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && inputs.plant }}
+        with:
+          name: plant-ios-${{ inputs.plant }}
+          path: |
+            ${{ runner.temp }}/plant
+            packages/parity/out/native/ios/devices
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && !inputs.plant }}
         with:
           name: outcome-ios-${{ strategy.job-index }}
           path: ${{ runner.temp }}/out
       # The raw dumps, hit records and trust screenshots, to compare with another host's case by case (the outcome's dumps hashes).
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && !inputs.plant }}
         with:
           name: dumps-ios-${{ strategy.job-index }}
           path: packages/parity/out/native/ios/lanes
@@ -157,7 +193,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        device: [dragon-320, dragon-smoke, dragon-480]
+        # A plant dispatch runs on the plant device's runner only (device-run.ts PLANT_DEVICES).
+        device: ${{ fromJSON(inputs.plant && '["dragon-smoke"]' || '["dragon-320", "dragon-smoke", "dragon-480"]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -244,6 +281,7 @@ jobs:
           ln -sfn "$HOME/.android" "$HOME/.config/.android"
       # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
       - name: Device run ${{ matrix.device }}
+        if: ${{ !inputs.plant }}
         id: run
         env:
           DEVICE: ${{ matrix.device }}
@@ -269,20 +307,46 @@ jobs:
         run: |
           echo "::error::the device tooling blocked $DEVICE (a boot, settle or install fault; the Device run log says which), so this job judged nothing of the tree"
           exit 1
+      # Not a verdict step (land-devices-ci.ts VERDICT_STEP): a plant run judges the plant, never the lanes, and writes no outcome.
+      - name: Plant ${{ inputs.plant }} on the android plant device
+        if: ${{ inputs.plant }}
+        env:
+          PLANT: ${{ inputs.plant }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/plant" /tmp/dragon-device.lock
+          echo $$ > /tmp/dragon-device.lock/pid
+          start=$(date +%s)
+          set +e
+          node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts --target android --plant "$PLANT" 2>&1 | tee "$RUNNER_TEMP/plant/android-$PLANT.log"
+          code=${PIPESTATUS[0]}
+          set -e
+          { echo "android plant $PLANT: exit $code in $(( $(date +%s) - start )) s"; echo '```'; grep '^native:devices: ' "$RUNNER_TEMP/plant/android-$PLANT.log" || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && inputs.plant }}
+        with:
+          name: plant-android-${{ inputs.plant }}
+          path: |
+            ${{ runner.temp }}/plant
+            packages/parity/out/native/android/devices
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && !inputs.plant }}
         with:
           name: outcome-android-${{ matrix.device }}
           path: ${{ runner.temp }}/out
       # The raw dumps, hit records and trust screenshots, to compare with another host's case by case (the outcome's dumps hashes).
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && !inputs.plant }}
         with:
           name: dumps-android-${{ matrix.device }}
           path: packages/parity/out/native/android/lanes
           if-no-files-found: ignore
           retention-days: 14
   merge:
+    # A plant dispatch merges nothing: no device-outcomes or device-records come from it.
+    if: ${{ !inputs.plant }}
     needs: [resolve, ios, android]
     runs-on: ubuntu-latest
     steps:
