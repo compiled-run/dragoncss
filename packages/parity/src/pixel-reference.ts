@@ -15,7 +15,7 @@ import { engineTextLines } from './line-breaks.ts';
 import type { CheckResult, RgbaImage } from './native-compare.ts';
 import { checkPixels } from './native-compare.ts';
 import type { DumpSample } from './native-dump.ts';
-import { expectedEngine, referenceMeasurer } from './native-host.ts';
+import { expectedEngine, glyphMeasurer, referenceMeasurer } from './native-host.ts';
 import { shapedInk } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
@@ -300,7 +300,7 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
   const input = programInput(p, viewport, dpr);
   const sizes = cssFontSizes(input.root);
-  const m = referenceMeasurer();
+  const m = glyphMeasurer();
   const texts = engineTextLines(input, m);
   const boxes = ahemGlyphBoxes();
   const upem = AHEM_FONT_DATA.unitsPerEm;
