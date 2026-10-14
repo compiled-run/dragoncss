@@ -213,11 +213,11 @@ fun harness_expect(c: Cursor, cp: Double): Unit {
 fun harness_word(c: Cursor, cps: JsArray<Double>): Unit {
   // ts: packages/translate/harness/harness.ts:194
   run {
-    val _a311 = cps
-    var _i311 = 0
-    while (_i311 < _a311.size) {
-      val cp: Double = _a311[_i311]
-      _i311++
+    val _a313 = cps
+    var _i313 = 0
+    while (_i313 < _a313.size) {
+      val cp: Double = _a313[_i313]
+      _i313++
       harness_expect(c, cp)
     }
   }
@@ -479,11 +479,11 @@ fun harness_parseJson(text: String): U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj
   val cps: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/translate/harness/harness.ts:348
   run {
-    val _a312 = jsCodePoints(text)
-    var _i312 = 0
-    while (_i312 < _a312.size) {
-      val ch: String = _a312[_i312]
-      _i312++
+    val _a314 = jsCodePoints(text)
+    var _i314 = 0
+    while (_i314 < _a314.size) {
+      val ch: String = _a314[_i314]
+      _i314++
       jsPush(cps, jsUnwrap(jsCodePointAt0(ch)))
     }
   }
@@ -509,11 +509,11 @@ fun harness_obj(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, keys: Js
   }
   // ts: packages/translate/harness/harness.ts:361
   run {
-    val _a313 = keys
-    var _i313 = 0
-    while (_i313 < _a313.size) {
-      val k: String = _a313[_i313]
-      _i313++
+    val _a315 = keys
+    var _i315 = 0
+    while (_i315 < _a315.size) {
+      val k: String = _a315[_i315]
+      _i315++
       // ts: packages/translate/harness/harness.ts:361
       if ((!(v as JsonObj).values.has(k))) {
         harness_fail((path + ": missing key " + k))
@@ -1367,11 +1367,11 @@ fun harness_q(s: String): String {
   var out: String = "\""
   // ts: packages/translate/harness/harness.ts:1076
   run {
-    val _a314 = jsCodePoints(s)
-    var _i314 = 0
-    while (_i314 < _a314.size) {
-      val ch: String = _a314[_i314]
-      _i314++
+    val _a316 = jsCodePoints(s)
+    var _i316 = 0
+    while (_i316 < _a316.size) {
+      val ch: String = _a316[_i316]
+      _i316++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       // ts: packages/translate/harness/harness.ts:1078
       if (jsStrEq(ch, "\"")) {
@@ -1478,11 +1478,11 @@ fun harness_replayShaper(calls: JsArray<ReplayCall>): GlyphShaper {
   return GlyphShaper(fun(face: String, size: Double, text: String, start: Double, end: Double, script: String, rtl: Boolean, language: String, features: JsArray<Double>): JsArray<Double> {
     // ts: packages/translate/harness/harness.ts:1176
     run {
-      val _a315 = calls
-      var _i315 = 0
-      while (_i315 < _a315.size) {
-        val c: ReplayCall = _a315[_i315]
-        _i315++
+      val _a317 = calls
+      var _i317 = 0
+      while (_i317 < _a317.size) {
+        val c: ReplayCall = _a317[_i317]
+        _i317++
         // ts: packages/translate/harness/harness.ts:1177
         if (((((((((jsStrEq(c.face, face) && (c.size == size)) && jsStrEq(c.text, text)) && (c.start == start)) && (c.end == end)) && jsStrEq(c.script, script)) && (c.rtl == rtl)) && jsStrEq(c.language, language)) && harness_sameNumbers(c.features, features))) {
           return c.glyphs
@@ -2163,11 +2163,11 @@ fun harness_commaList(parts: JsArray<String>): String {
   var out: String = ""
   // ts: packages/translate/harness/harness.ts:1601
   run {
-    val _a316 = parts
-    var _i316 = 0
-    while (_i316 < _a316.size) {
-      val x: String = _a316[_i316]
-      _i316++
+    val _a318 = parts
+    var _i318 = 0
+    while (_i318 < _a318.size) {
+      val x: String = _a318[_i318]
+      _i318++
       out = (if (jsStrEq(out, "")) x else (out + "," + x))
     }
   }
@@ -2241,11 +2241,11 @@ fun harness_tableTrig(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, pa
   fun find(r: Double): TrigEntry {
     // ts: packages/translate/harness/harness.ts:1650
     run {
-      val _a317 = table
-      var _i317 = 0
-      while (_i317 < _a317.size) {
-        val e: TrigEntry = _a317[_i317]
-        _i317++
+      val _a319 = table
+      var _i319 = 0
+      while (_i319 < _a319.size) {
+        val e: TrigEntry = _a319[_i319]
+        _i319++
         // ts: packages/translate/harness/harness.ts:1650
         if ((e.radians == r)) {
           return e
@@ -2541,13 +2541,13 @@ fun harness_libraryResult(op: String, a: JsArray<U_JsonArr_JsonBool_JsonNull_Jso
       var out: String = ""
       // ts: packages/translate/harness/harness.ts:1903
       run {
-        val _a318 = jsSort(jsCopy(items), fun(x: SortItem, y: SortItem): Double {
+        val _a320 = jsSort(jsCopy(items), fun(x: SortItem, y: SortItem): Double {
     return (x.key - y.key)
 })
-        var _i318 = 0
-        while (_i318 < _a318.size) {
-          val it: SortItem = _a318[_i318]
-          _i318++
+        var _i320 = 0
+        while (_i320 < _a320.size) {
+          val it: SortItem = _a320[_i320]
+          _i320++
           out += ((if (jsStrEq(out, "")) "" else ",") + harness_q(it.tag))
         }
       }
@@ -2579,11 +2579,11 @@ fun harness_libraryResult(op: String, a: JsArray<U_JsonArr_JsonBool_JsonNull_Jso
       var out: String = ""
       // ts: packages/translate/harness/harness.ts:1921
       run {
-        val _a319 = jsCodePoints(harness_str(jsUnwrap(v), "\$[1]"))
-        var _i319 = 0
-        while (_i319 < _a319.size) {
-          val ch: String = _a319[_i319]
-          _i319++
+        val _a321 = jsCodePoints(harness_str(jsUnwrap(v), "\$[1]"))
+        var _i321 = 0
+        while (_i321 < _a321.size) {
+          val ch: String = _a321[_i321]
+          _i321++
           out += ((if (jsStrEq(out, "")) "" else ",") + harness_h(jsUnwrap(jsCodePointAt0(ch))))
         }
       }
@@ -3408,22 +3408,22 @@ fun harness_rtAnimatorResult(a: JsArray<U_JsonArr_JsonBool_JsonNull_JsonNum_Json
       var values: String = ""
       // ts: packages/translate/harness/harness.ts:2553
       run {
-        val _a320 = frame
-        var _i320 = 0
-        while (_i320 < _a320.size) {
-          val e: FrameEntry = _a320[_i320]
-          _i320++
+        val _a322 = frame
+        var _i322 = 0
+        while (_i322 < _a322.size) {
+          val e: FrameEntry = _a322[_i322]
+          _i322++
           values += ((if (jsStrEq(values, "")) "" else ",") + "[" + harness_q(e.node) + "," + harness_q(e.property) + "," + harness_q(rtInterpolate_serializeValue(e.value, 0.0, 0.0, harness_RT_TRIG)) + "]")
         }
       }
       var colors: String = ""
       // ts: packages/translate/harness/harness.ts:2555
       run {
-        val _a321 = rtAnimator_frameColors(frame, t, harness_AN_NO_FAULTS)
-        var _i321 = 0
-        while (_i321 < _a321.size) {
-          val c: ColorWrite = _a321[_i321]
-          _i321++
+        val _a323 = rtAnimator_frameColors(frame, t, harness_AN_NO_FAULTS)
+        var _i323 = 0
+        while (_i323 < _a323.size) {
+          val c: ColorWrite = _a323[_i323]
+          _i323++
           colors += ((if (jsStrEq(colors, "")) "" else ",") + "[" + harness_q(c.node) + "," + harness_q(c.property) + "," + harness_h(c.rgba.r) + "," + harness_h(c.rgba.g) + "," + harness_h(c.rgba.b) + "," + harness_h(c.rgba.alpha) + "]")
         }
       }
@@ -3492,11 +3492,11 @@ fun harness_iaElements(xs: JsArray<Double>): String {
   var out: String = ""
   // ts: packages/translate/harness/harness.ts:2626
   run {
-    val _a322 = xs
-    var _i322 = 0
-    while (_i322 < _a322.size) {
-      val x: Double = _a322[_i322]
-      _i322++
+    val _a324 = xs
+    var _i324 = 0
+    while (_i324 < _a324.size) {
+      val x: Double = _a324[_i324]
+      _i324++
       out += ((if (jsStrEq(out, "")) "" else ",") + harness_h(x))
     }
   }
