@@ -13,6 +13,7 @@ import type { TextTransform } from 'dragon';
 import { applyTextTransform, NO_FAULTS } from 'dragon';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
+import { breakLineGroups } from './native-dump.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { applyTransformTwin } from './transform-capture.ts';
@@ -32,6 +33,8 @@ export type EngineLine = {
   readonly rect: LayoutRect;
   readonly snapped: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
   readonly ellipsis: { readonly x: number; readonly cps: readonly number[]; readonly font: TextFont } | null;
+  /** Per engine line rect of the line, the UTF-16 [start, end) a device dumps for it: each piece's, twice for a truncated one. */
+  readonly fragments: readonly (readonly [number, number])[];
 };
 /** font is the leaf's font; textFont is the font the measurer reads for it, with its resolved letter-spacing (inline.ts leafFontOf). */
 export type EngineText = { readonly id: string; readonly container: string; readonly font: TextLeaf['font']; readonly textFont: TextFont; readonly lines: readonly EngineLine[] };
@@ -136,7 +139,8 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
       const cps = mine.flatMap((q) => scalars.slice(q.start, q.paintEnd).map((ch) => ch.codePointAt(0) as number));
       // Only a line of collapsed text is justified, and it has one piece per leaf; preserved pieces have no shifts.
       const shifts = mine.flatMap((q) => q.shifts);
-      own.push({ start: utf16(first.start), end: utf16(last.end), cps, shifts, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, ellipsis });
+      const fragments = mine.flatMap((q) => Array.from({ length: q.truncated ? 2 : 1 }, () => [utf16(q.start), utf16(q.end)] as const));
+      own.push({ start: utf16(first.start), end: utf16(last.end), cps, shifts, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, ellipsis, fragments });
     }
     if (used !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${used} fragments, its layout ${pieces.length}`);
     out.push({ id: r.id, container: pId, font: leaf.font, textFont: leafFontOf(leaf), lines: own });
@@ -428,8 +432,8 @@ export function checkDumpBreaks(dump: NativeDump, v: BreakVector): BreakResult {
       problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: the dump has no text node for the break vector` });
       continue;
     }
-    // TXT2-f: the two fragments of a truncated text on one line (same offsets, same top) are one line break-wise.
-    const got = n.lines.filter((l, j) => j === 0 || !(l.start === n.lines[j - 1]?.start && l.end === n.lines[j - 1]?.end && l.deviceEdges.top === n.lines[j - 1]?.deviceEdges.top)).map((l) => [l.start, l.end] as const);
+    // TXT2-f, TXT2-c: the fragments of one line (a truncated piece's two, preserved text's pieces) are one line break-wise.
+    const got = breakLineGroups(n.lines).map((g) => [n.lines[g[0] as number]?.start ?? null, n.lines[g[g.length - 1] as number]?.end ?? null] as const);
     compared += t.lines.length;
     if (!same(got as (readonly [number, number])[], t.lines)) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: device lines ${JSON.stringify(got)}, break vector ${JSON.stringify(t.lines)}` });
   }
