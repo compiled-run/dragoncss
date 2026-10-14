@@ -1055,135 +1055,6 @@
         },
         {
          "kind": "box",
-         "id": "r3",
-         "boxType": "element",
-         "style": {
-          "display": "block",
-          "position": "static",
-          "top": {
-           "kind": "auto"
-          },
-          "right": {
-           "kind": "auto"
-          },
-          "bottom": {
-           "kind": "auto"
-          },
-          "left": {
-           "kind": "auto"
-          },
-          "overflowX": "visible",
-          "overflowY": "visible",
-          "direction": "ltr",
-          "boxSizing": "content-box",
-          "width": {
-           "kind": "px",
-           "value": 56
-          },
-          "height": {
-           "kind": "px",
-           "value": 40
-          },
-          "minWidth": {
-           "kind": "auto"
-          },
-          "minHeight": {
-           "kind": "auto"
-          },
-          "maxWidth": {
-           "kind": "none"
-          },
-          "maxHeight": {
-           "kind": "none"
-          },
-          "marginTop": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginRight": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginBottom": {
-           "kind": "px",
-           "value": 0
-          },
-          "marginLeft": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingTop": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingRight": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingBottom": {
-           "kind": "px",
-           "value": 0
-          },
-          "paddingLeft": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderTopWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderRightWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderBottomWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "borderLeftWidth": {
-           "kind": "px",
-           "value": 0
-          },
-          "flexDirection": "row",
-          "flexWrap": "nowrap",
-          "flexGrow": 0,
-          "flexShrink": 1,
-          "flexBasis": {
-           "kind": "auto"
-          },
-          "order": 0,
-          "justifyContent": "normal",
-          "alignItems": "normal",
-          "alignSelf": "auto",
-          "alignContent": "normal",
-          "rowGap": {
-           "kind": "normal"
-          },
-          "columnGap": {
-           "kind": "normal"
-          },
-          "textAlign": "start",
-          "aspectRatio": {
-           "kind": "auto"
-          },
-          "verticalAlign": {
-           "kind": "keyword",
-           "value": "baseline"
-          },
-          "textOverflow": "clip",
-          "textIndent": {
-           "kind": "px",
-           "value": 0
-          },
-          "lineClamp": 0,
-          "grid": null,
-          "gridItem": null
-         },
-         "strut": null,
-         "children": []
-        },
-        {
-         "kind": "box",
          "id": "i1",
          "boxType": "element",
          "style": {
@@ -2029,17 +1900,9 @@
    "height": 7680
   },
   {
-   "id": "r3",
-   "parent": "stage",
-   "x": 21504,
-   "y": 18432,
-   "width": 10752,
-   "height": 7680
-  },
-  {
    "id": "i1",
    "parent": "stage",
-   "x": 38784,
+   "x": 21504,
    "y": 18432,
    "width": 10752,
    "height": 7680
@@ -2047,7 +1910,7 @@
   {
    "id": "i2",
    "parent": "stage",
-   "x": 56064,
+   "x": 38784,
    "y": 18432,
    "width": 10752,
    "height": 7680
@@ -2055,15 +1918,15 @@
   {
    "id": "i3",
    "parent": "stage",
-   "x": 4224,
-   "y": 32640,
+   "x": 56064,
+   "y": 18432,
    "width": 10752,
    "height": 7680
   },
   {
    "id": "u1",
    "parent": "stage",
-   "x": 21504,
+   "x": 4224,
    "y": 32640,
    "width": 10752,
    "height": 7680
@@ -2071,7 +1934,7 @@
   {
    "id": "u2",
    "parent": "stage",
-   "x": 38784,
+   "x": 21504,
    "y": 32640,
    "width": 10752,
    "height": 7680
@@ -2079,7 +1942,7 @@
   {
    "id": "u3",
    "parent": "stage",
-   "x": 56064,
+   "x": 38784,
    "y": 32640,
    "width": 11904,
    "height": 8832

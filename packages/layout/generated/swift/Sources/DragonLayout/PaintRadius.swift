@@ -37,7 +37,7 @@ public func paintRadius_at(_ xs: JsArray<Double>, _ i: Double) throws -> Double 
   let v: Double? = jsAt(xs, i)
   // ts: packages/layout/src/paint-radius.ts:37
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s796, jsNumberToString(i), S.s86, jsNumberToString(jsLength(xs)), S.s107))
+    throw JsError(message: jsConcat(S.s797, jsNumberToString(i), S.s86, jsNumberToString(jsLength(xs)), S.s107))
   }
   return try jsUnwrap(v)
 }
@@ -47,7 +47,7 @@ public func paintRadius_lengthAt(_ xs: JsArray<RadiusLength>, _ i: Double) throw
   let v: RadiusLength? = jsAt(xs, i)
   // ts: packages/layout/src/paint-radius.ts:43
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s796, jsNumberToString(i), S.s86, jsNumberToString(jsLength(xs)), S.s109))
+    throw JsError(message: jsConcat(S.s797, jsNumberToString(i), S.s86, jsNumberToString(jsLength(xs)), S.s109))
   }
   return try jsUnwrap(v)
 }
@@ -75,7 +75,7 @@ public func paintRadius_radiusComponent(_ len: RadiusLength, _ axis: Double, _ d
 public func paintRadius_resolveCornerRadii(_ lengths: JsArray<RadiusLength>, _ width: Double, _ height: Double, _ dpr: Double) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-radius.ts:66
   if (jsLength(lengths) != 8.0) {
-    throw JsError(message: jsConcat(S.s793, jsNumberToString(jsLength(lengths)), S.s110))
+    throw JsError(message: jsConcat(S.s794, jsNumberToString(jsLength(lengths)), S.s110))
   }
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-radius.ts:68
@@ -107,7 +107,7 @@ public func paintRadius_scaleCorner(_ out: JsArray<Double>, _ x: Double, _ y: Do
 public func paintRadius_constrainCornerRadii(_ radii: JsArray<Double>, _ width: Double, _ height: Double, _ faults: RadiusFaults) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-radius.ts:87
   if (jsLength(radii) != 8.0) {
-    throw JsError(message: jsConcat(S.s793, jsNumberToString(jsLength(radii)), S.s108))
+    throw JsError(message: jsConcat(S.s794, jsNumberToString(jsLength(radii)), S.s108))
   }
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-radius.ts:89
@@ -179,7 +179,7 @@ public func paintRadius_radiiRenderable(_ radii: JsArray<Double>, _ width: Doubl
 public func paintRadius_innerCornerRadii(_ outer: JsArray<Double>, _ borders: JsArray<Double>, _ width: Double, _ height: Double, _ faults: RadiusFaults) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-radius.ts:120
   if ((jsLength(outer) != 8.0) || (jsLength(borders) != 4.0)) {
-    throw JsError(message: S.s797)
+    throw JsError(message: S.s798)
   }
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-radius.ts:122
@@ -257,7 +257,7 @@ public func paintRadius_roundedShape(_ left: Double, _ top: Double, _ right: Dou
 public func paintRadius_hasRoundedCorner(_ radii: JsArray<Double>) throws -> Bool {
   // ts: packages/layout/src/paint-radius.ts:164
   if (jsLength(radii) != 8.0) {
-    throw JsError(message: jsConcat(S.s793, jsNumberToString(jsLength(radii)), S.s108))
+    throw JsError(message: jsConcat(S.s794, jsNumberToString(jsLength(radii)), S.s108))
   }
   // ts: packages/layout/src/paint-radius.ts:165
   do {
@@ -337,7 +337,7 @@ public func paintRadius_pushRing(_ out: JsArray<Double>, _ l: Double, _ t: Doubl
 public func paintRadius_outlineRings(_ left: Double, _ top: Double, _ right: Double, _ bottom: Double, _ radii: JsArray<Double>, _ width: Double, _ offset: Double, _ double: Bool) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-radius.ts:249
   if (jsLength(radii) != 8.0) {
-    throw JsError(message: jsConcat(S.s795, jsNumberToString(jsLength(radii))))
+    throw JsError(message: jsConcat(S.s796, jsNumberToString(jsLength(radii))))
   }
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-radius.ts:251
@@ -398,7 +398,7 @@ public func paintRadius_pushInset(_ rect: JsArray<Double>, _ radii: JsArray<Doub
 public func paintRadius_borderDoubleRings(_ left: Double, _ top: Double, _ right: Double, _ bottom: Double, _ borders: JsArray<Double>, _ radii: JsArray<Double>) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-radius.ts:307
   if ((jsLength(borders) != 4.0) || (jsLength(radii) != 8.0)) {
-    throw JsError(message: S.s794)
+    throw JsError(message: S.s795)
   }
   let outerStripe: JsArray<Double> = JsArray<Double>([])
   let innerStripe: JsArray<Double> = JsArray<Double>([])
