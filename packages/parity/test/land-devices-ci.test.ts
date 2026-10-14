@@ -362,7 +362,11 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(yml).not.toMatch(/^\s*- run: pnpm install/m);
     expect(yml).toContain('retry brew install openjdk@17\n');
     expect(yml).toContain('retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/');
-    expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n          retry sdk_install\n');
+    expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n');
+    // sdkmanager runs beside the Homebrew JDK install; the step waits for it, prints its retries, and fails when it failed.
+    expect(yml).toContain('          retry sdk_install > "$RUNNER_TEMP/sdk-install.log" 2>&1 &\n          sdk_pid=$!\n');
+    expect(yml).toContain('          sdk_code=0\n          wait "$sdk_pid" || sdk_code=$?\n          cat "$RUNNER_TEMP/sdk-install.log"\n          [ "$sdk_code" = 0 ] || exit 1\n          installed=$(');
+    expect(yml.indexOf('sdk_pid=$!')).toBeLessThan(yml.indexOf('retry brew install openjdk@17'));
     // The retry warnings are never sent to /dev/null with the command's output.
     expect(yml).not.toMatch(/retry [^\n]*>\s*\/dev\/null/);
     expect(yml).toContain('for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done');
@@ -379,7 +383,7 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(runTitle(SHA).startsWith('device plant ')).toBe(false);
     for (const [target, next] of [['ios', 'android'], ['android', 'merge']] as const) {
       const job = yml.slice(yml.indexOf(`\n  ${target}:\n`), yml.indexOf(`\n  ${next}:\n`));
-      expect(job, target).toContain(`device: \${{ fromJSON(inputs.plant && '["${PLANT_DEVICES[target]}"]' || '[`);
+      expect(job, target).toContain(`include: \${{ fromJSON(inputs.plant && '[{"device":"${PLANT_DEVICES[target]}","parts":"plant"}]' || '[`);
       expect(job, target).toContain("- name: Device run ${{ matrix.device }}\n        if: ${{ !inputs.plant }}\n");
       const name = `Plant \${{ inputs.plant }} on the ${target} plant device`;
       expect(job, target).toContain(`- name: ${name}\n        if: \${{ inputs.plant }}\n`);

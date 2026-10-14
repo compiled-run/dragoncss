@@ -1286,12 +1286,14 @@ export async function installApk(h: { readonly serial: string; readonly tools: A
   return installWithRetries('android', 'adb install after the uninstall', install);
 }
 
+/** How long one launch of the app may take before it is judged unfinished: 180 s plus 3 s per case of its run file. */
+export const launchLimitMs = (caseCount: number): number => 180_000 + caseCount * 3000;
+
 /** Installs the app, hands it the run file, launches it once for every case in the file, waits and pulls the dumps. */
 export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions): Promise<AppRun> {
   rmSync(opts.outDir, { recursive: true, force: true });
   mkdirSync(opts.outDir, { recursive: true });
-  const perCase = 3000;
-  const timeout = 180_000 + opts.caseCount * perCase;
+  const timeout = launchLimitMs(opts.caseCount);
   let error: string | null = null;
   if ('udid' in h) {
     await installWithRetries('ios', 'simctl install', () => exec('xcrun', ['simctl', 'install', h.udid, artifact], { timeoutMs: 300_000, allowFailure: 'a transient failure is retried; any other failure is thrown' }));
