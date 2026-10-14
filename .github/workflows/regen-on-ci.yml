@@ -62,13 +62,16 @@ jobs:
     steps:
       # A worker's branch regen waits on this free Linux job, oldest first, while REGEN_BRANCH_SLOTS older ones are queued or
       # running: each holds a macOS runner (5 at once), and the landing's regens, device lanes and full tests need the rest.
-      # The landing's own runs (a pull request's regen label, patch mode) never wait.
+      # It also waits while a landing run is queued or running (a pull request's regen label, a patch-mode regen, a device lanes
+      # run: its four iOS jobs alone take four of the five), for at most LANDING_YIELD_SECONDS, so the landing never queues
+      # for a runner a worker took meanwhile. The landing's own runs never wait.
       - name: Wait for a branch regen slot
         if: github.event_name == 'workflow_dispatch' && inputs.branch != ''
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           REGEN_BRANCH_SLOTS: '2'
+          LANDING_YIELD_SECONDS: '5400'
           POLL_SECONDS: '60'
           DISPATCH_BRANCH: ${{ inputs.branch }}
           DISPATCH_HEAD: ${{ inputs.head }}
@@ -77,7 +80,11 @@ jobs:
           mine=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" -q .created_at)
           [[ "$mine" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$ ]] || { echo "::error::run $GITHUB_RUN_ID has no creation time: $mine"; exit 1; }
           filter="[.workflow_runs[] | select(.event == \"workflow_dispatch\" and .id != $GITHUB_RUN_ID and ((.display_title // \"\") | startswith(\"regen of branch \")) and (.created_at < \"$mine\" or (.created_at == \"$mine\" and .id < $GITHUB_RUN_ID)))] | length"
+          # The landing's runs: a pull request's regen label, a patch-mode regen ("regen of <sha>"); device lanes runs count apart.
+          landing_filter='[.workflow_runs[] | select(.event == "pull_request" or (.event == "workflow_dispatch" and ((.display_title // "") | test("^regen of [0-9a-f]{40}$"))))] | length'
           waited=0
+          told_landing=0
+          told_slots=0
           while :; do
             # A branch that moved off the dispatched head is refused below anyway: stop now, so the slot goes to the next run and
             # this branch's newer dispatch (same concurrency group) is not held behind a run that can only fail.
@@ -90,12 +97,25 @@ jobs:
               fi
             fi
             ahead=0
+            landing=0
             for st in queued in_progress waiting pending; do
-              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q "$filter")
+              runs=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100")
+              n=$(jq -r "$filter" <<<"$runs")
               ahead=$((ahead + n))
+              n=$(jq -r "$landing_filter" <<<"$runs")
+              landing=$((landing + n))
+              n=$(gh api "repos/$REPO/actions/workflows/device-lanes.yml/runs?status=$st&per_page=100" -q '.workflow_runs | length')
+              landing=$((landing + n))
             done
-            [ "$ahead" -ge "$REGEN_BRANCH_SLOTS" ] || break
-            [ "$waited" -gt 0 ] || echo "regen-on-ci: $ahead older branch regens are queued or running; waiting for one of $REGEN_BRANCH_SLOTS slots"
+            if [ "$landing" -gt 0 ] && [ "$waited" -lt "$LANDING_YIELD_SECONDS" ]; then
+              [ "$told_landing" = 1 ] || echo "regen-on-ci: $landing landing run(s) are queued or running; waiting until they end (at most $LANDING_YIELD_SECONDS s)"
+              told_landing=1
+            elif [ "$ahead" -ge "$REGEN_BRANCH_SLOTS" ]; then
+              [ "$told_slots" = 1 ] || echo "regen-on-ci: $ahead older branch regens are queued or running; waiting for one of $REGEN_BRANCH_SLOTS slots"
+              told_slots=1
+            else
+              break
+            fi
             sleep "$POLL_SECONDS"
             waited=$((waited + POLL_SECONDS))
           done
