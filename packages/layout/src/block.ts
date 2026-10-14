@@ -148,6 +148,8 @@ export type EngineFaults = {
   readonly overflowBaselineIgnored: boolean;
   /** An inline-flex box's baseline is its last item's instead of the flex container's first baseline (css-flexbox-1 §8.5). */
   readonly inlineFlexLastBaseline: boolean;
+  /** An inline-grid box's baseline is its last item's instead of the grid container's first baseline (css-grid-2 §11.8). */
+  readonly inlineGridLastItemBaseline: boolean;
   /** An atomic inline's margins take no space: its border box is its advance and its line height contribution. */
   readonly atomicMarginExcluded: boolean;
   /** No soft wrap opportunity before or after an atomic inline (Blink line_breaker.cc allows both). */
@@ -226,6 +228,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   inlineBlockFirstBaseline: false,
   overflowBaselineIgnored: false,
   inlineFlexLastBaseline: false,
+  inlineGridLastItemBaseline: false,
   atomicMarginExcluded: false,
   noBreakAroundAtomic: false,
   atomicShrinkToFitIgnored: false,

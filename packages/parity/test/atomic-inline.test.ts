@@ -103,11 +103,12 @@ afterAll(async () => {
   await browser.close();
 });
 
-describe('INL2a engine plants fail a named atomic-inline case at every DPR (committed captures)', () => {
+describe('INL2a and G-INL engine plants fail a named atomic-inline case at every DPR (committed captures)', () => {
   const PLANTS: readonly { readonly fault: keyof EngineFaults; readonly fixture: string }[] = [
     { fault: 'inlineBlockFirstBaseline', fixture: 'atomic-inline-block' },
     { fault: 'overflowBaselineIgnored', fixture: 'atomic-inline-block' },
     { fault: 'inlineFlexLastBaseline', fixture: 'atomic-inline-flex' },
+    { fault: 'inlineGridLastItemBaseline', fixture: 'atomic-inline-grid' },
     { fault: 'atomicMarginExcluded', fixture: 'atomic-inline-shrink' },
     { fault: 'noBreakAroundAtomic', fixture: 'atomic-inline-breaks' },
     { fault: 'atomicShrinkToFitIgnored', fixture: 'atomic-inline-shrink' },

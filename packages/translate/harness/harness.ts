@@ -993,6 +993,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
+  'inlineGridLastItemBaseline',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1056,6 +1057,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     inlineBlockFirstBaseline: b('inlineBlockFirstBaseline'),
     overflowBaselineIgnored: b('overflowBaselineIgnored'),
     inlineFlexLastBaseline: b('inlineFlexLastBaseline'),
+    inlineGridLastItemBaseline: b('inlineGridLastItemBaseline'),
     atomicMarginExcluded: b('atomicMarginExcluded'),
     noBreakAroundAtomic: b('noBreakAroundAtomic'),
     atomicShrinkToFitIgnored: b('atomicShrinkToFitIgnored'),

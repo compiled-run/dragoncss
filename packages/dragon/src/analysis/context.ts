@@ -51,7 +51,7 @@ export type BoxContext =
 
 /**
  * The context an element's box takes part in: the root, or its parent's formatting context. inline: an inline box (CSS2 §9.2.2),
- * which takes part in its block container's inline formatting context (a flex or grid item is blockified, so never inline); atomic-inline: an inline-block or inline-flex box (CSS2
+ * which takes part in its block container's inline formatting context (a flex or grid item is blockified, so never inline); atomic-inline: an inline-block, inline-flex or inline-grid box (CSS2
  * §9.2.4), which sits on a line of that context as one item and is sized by shrink-to-fit (§10.3.9).
  */
 export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'grid' | 'display-none' | 'inline' | 'atomic-inline';
@@ -83,8 +83,11 @@ const axisFacet = (flexContainer: ResolvedElement): AxisFacet => (keyword(flexCo
 /** Whether an element is a flex container: display flex, or inline-flex (an atomic inline, css-flexbox-1 §3). */
 const isFlexContainer = (el: ResolvedElement): boolean => keyword(el, 'display') === 'flex' || keyword(el, 'display') === 'inline-flex';
 
-/** Whether an element is an atomic inline: display inline-block or inline-flex after blockification (css-display-3 §2.7). */
-export const isAtomicInline = (el: ResolvedElement): boolean => keyword(el, 'display') === 'inline-block' || keyword(el, 'display') === 'inline-flex';
+/** Whether an element is a grid container: display grid, or inline-grid (an atomic inline, css-grid-2 §5.1). */
+const isGridContainer = (el: ResolvedElement): boolean => keyword(el, 'display') === 'grid' || keyword(el, 'display') === 'inline-grid';
+
+/** Whether an element is an atomic inline: display inline-block, inline-flex or inline-grid after blockification (css-display-3 §2.7). */
+export const isAtomicInline = (el: ResolvedElement): boolean => keyword(el, 'display') === 'inline-block' || keyword(el, 'display') === 'inline-flex' || keyword(el, 'display') === 'inline-grid';
 
 /**
  * The formatting context of an element-level longhand, with the direction of the box whose algorithm consumes it. Item
@@ -100,12 +103,12 @@ export function formattingContext(property: Longhand, el: ResolvedElement, ances
   if (role === 'container') {
     const own = directionFacet(el);
     // css-grid-2 §7: a grid container's own properties are proven in grid layout, never by their inert use on a block.
-    if (keyword(el, 'display') === 'grid') return `grid-container/${own}`;
+    if (isGridContainer(el)) return `grid-container/${own}`;
     if (!isFlexContainer(el)) return `not-flex-container/${own}`;
     const single = keyword(el, 'flex-wrap') === 'nowrap';
     return `flex-${axisFacet(el)}-${single ? 'single' : 'multi'}-line/${own}`;
   }
-  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : keyword(el, 'display') === 'inline' ? 'inline' : isAtomicInline(el) ? 'atomic-inline' : isFlexContainer(parent) ? `flex-${axisFacet(parent)}` : keyword(parent, 'display') === 'grid' ? 'grid' : 'block';
+  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : keyword(el, 'display') === 'inline' ? 'inline' : isAtomicInline(el) ? 'atomic-inline' : isFlexContainer(parent) ? `flex-${axisFacet(parent)}` : isGridContainer(parent) ? 'grid' : 'block';
   const dir = directionFacet(parent === null ? el : parent);
   const position = keyword(el, 'position');
   if (position === 'relative') return `relative-in-${base}/${dir}`;
@@ -128,7 +131,7 @@ export function textContext(el: ResolvedElement, parent: ResolvedElement | null)
   const display = keyword(el, 'display');
   if (display === 'none') return `text-in-display-none/${dir}`;
   if (isFlexContainer(el)) return `text-as-anonymous-flex-item/${axisFacet(el)}/${dir}`;
-  if (display === 'grid') return `text-as-anonymous-grid-item/${dir}`;
+  if (isGridContainer(el)) return `text-as-anonymous-grid-item/${dir}`;
   // CSS2 §9.2.2: text in an inline box flows in the inline formatting context of the box's block container, and text beside an
   // inline box shares that context, whose line boxes the boxes size (§10.8): both are their own contexts, proven apart.
   if (display === 'inline' && parent !== null) return `text-in-inline/${dir}`;
@@ -140,7 +143,7 @@ export function textContext(el: ResolvedElement, parent: ResolvedElement | null)
   // css-flexbox-1 §4.1: an absolutely positioned child of a flex container is not a flex item.
   if (parent !== null && isFlexContainer(parent) && keyword(el, 'position') !== 'absolute') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
   // css-grid-2 §9: an absolutely positioned child of a grid container is not a grid item.
-  if (parent !== null && keyword(parent, 'display') === 'grid' && keyword(el, 'position') !== 'absolute') return `text-in-grid-item/${dir}`;
+  if (parent !== null && isGridContainer(parent) && keyword(el, 'position') !== 'absolute') return `text-in-grid-item/${dir}`;
   return `text-in-block/${dir}`;
 }
 

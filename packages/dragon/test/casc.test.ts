@@ -49,7 +49,7 @@ describe('@supports conditions', () => {
     expect(decide('(display: flex) and')).toBe('undecided: "and" not followed by white space');
     expect(decide('')).toBe('undecided: an empty condition');
     // A kept value is trusted only when a web profile row proves it: the grammar lists values Chrome 145 has not shipped.
-    for (const decl of ['text-align: match-parent', 'text-align: justify-all', 'display: inline-grid', 'transition: opacity 1s']) {
+    for (const decl of ['text-align: match-parent', 'text-align: justify-all', 'display: inline-table', 'transition: opacity 1s']) {
       expect(decide(`(${decl})`), decl).toMatch(/^Dragon cannot tell whether Chrome keeps .* is not a value Dragon has proven Chrome 145 keeps\)$/);
     }
     // GRID G1a's fixtures prove display: grid on web, so it is no longer such a value.
