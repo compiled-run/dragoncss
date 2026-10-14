@@ -13,7 +13,7 @@ import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, la
 import { ANIM_LANE, HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
 import { traceScriptIds } from '../src/trace-lane.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
-import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
+import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_NAMED, TRANSFORM_REASON } from './hit-refusals.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
@@ -262,6 +262,7 @@ describe('committed out/lanes.json', () => {
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
       else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
+      else if (TRANSFORM_NAMED.includes(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
     }
     // TXT1a-2: over the device cases (targets.ts vectorCaseIds), every layout case but the shaped ones the runtime draws from phase R.
