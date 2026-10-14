@@ -28,7 +28,7 @@ import { withPaintSamples } from './paint-samples/registry.ts';
 /** A PNG's width and height from its IHDR chunk, without inflating the pixels. */
 export function pngSize(buf: Uint8Array): ImageSize {
   const b = Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength);
-  if (b.length < 24 || b.readUInt32BE(0) !== 0x89504e47 || b.toString('ascii', 12, 16) !== 'IHDR') throw new Error('not a PNG with a leading IHDR chunk');
+  if (b.length < 24 || b.readUInt32BE(0) !== 0x89504e47 || b.readUInt32BE(4) !== 0x0d0a1a0a || b.toString('ascii', 12, 16) !== 'IHDR') throw new Error('not a PNG with a leading IHDR chunk');
   return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
 }
 
