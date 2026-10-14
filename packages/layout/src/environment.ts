@@ -264,7 +264,7 @@ function resolveText(t: TextLeaf, parent: Env): TextLeaf {
   const font: FontSpec = { family: t.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
   return {
     kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode,
-    letterSpacing: resolveLetterSpacing(t.letterSpacing, env),
+    letterSpacing: resolveLetterSpacing(t.letterSpacing, env), overflowWrap: t.overflowWrap, wordBreak: t.wordBreak,
   };
 }
 

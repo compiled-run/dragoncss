@@ -55,6 +55,8 @@ import type {
   TextLeaf,
   TextWrapMode,
   WhiteSpaceCollapse,
+  OverflowWrap,
+  WordBreak,
   VerticalAlignKeyword,
   VerticalAlignValue,
   ViewportLength,
@@ -847,7 +849,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 }
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing'], path);
+  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'overflowWrap', 'wordBreak'], path);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
@@ -857,6 +859,8 @@ function decodeText(o: JsonObj, path: string): TextLeaf {
     whiteSpaceCollapse: lit(field(o, 'whiteSpaceCollapse', path), ['collapse', 'preserve', 'preserve-breaks', 'break-spaces'], `${path}.whiteSpaceCollapse`) as WhiteSpaceCollapse,
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
     letterSpacing: calcExpr(field(o, 'letterSpacing', path), `${path}.letterSpacing`),
+    overflowWrap: lit(field(o, 'overflowWrap', path), ['normal', 'break-word', 'anywhere'], `${path}.overflowWrap`) as OverflowWrap,
+    wordBreak: lit(field(o, 'wordBreak', path), ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'], `${path}.wordBreak`) as WordBreak,
   };
 }
 
@@ -992,6 +996,7 @@ const FAULT_KEYS: readonly string[] = [
   'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
+  'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
 ];
 
@@ -1065,6 +1070,11 @@ function decodeFaults(v: JsonValue): EngineFaults {
     preservedSpaceCollapsed: b('preservedSpaceCollapsed'),
     trailingPreWrapNotHanging: b('trailingPreWrapNotHanging'),
     breakSpacesHanging: b('breakSpacesHanging'),
+    anywhereMinContentIgnored: b('anywhereMinContentIgnored'),
+    breakWordShrinksMinContent: b('breakWordShrinksMinContent'),
+    breakAnywhereAlways: b('breakAnywhereAlways'),
+    emergencyBreakBeforeOpportunity: b('emergencyBreakBeforeOpportunity'),
+    wordBreakBreakWordIgnored: b('wordBreakBreakWordIgnored'),
   };
 }
 

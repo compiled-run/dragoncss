@@ -35,6 +35,8 @@ import type {
   TextOverflow,
   TextLeaf,
   TextWrapMode,
+  OverflowWrap,
+  WordBreak,
   VerticalAlignKeyword,
   VerticalAlignValue,
   WhiteSpaceCollapse,
@@ -409,8 +411,19 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   if (collapse.kind !== 'keyword' || !WHITE_SPACE_COLLAPSE.includes(collapse.value)) return fail(id, 'white-space-collapse', collapse, WHITE_SPACE_COLLAPSE.join(' | '));
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerLetterSpacing(id, get('letter-spacing')) };
+  const overflowWrap = get('overflow-wrap');
+  if (overflowWrap.kind !== 'keyword' || !OVERFLOW_WRAP.includes(overflowWrap.value)) return fail(id, 'overflow-wrap', overflowWrap, OVERFLOW_WRAP.join(' | '));
+  const wordBreak = get('word-break');
+  if (wordBreak.kind !== 'keyword' || !WORD_BREAK.includes(wordBreak.value)) return fail(id, 'word-break', wordBreak, WORD_BREAK.join(' | '));
+  return {
+    kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerLetterSpacing(id, get('letter-spacing')),
+    overflowWrap: overflowWrap.value as OverflowWrap, wordBreak: wordBreak.value as WordBreak,
+  };
 }
+
+/** The overflow-wrap and word-break values the engine reads (input.ts OverflowWrap, WordBreak); it refuses the word-break values TXT2-d adds. */
+const OVERFLOW_WRAP: readonly string[] = ['normal', 'break-word', 'anywhere'] satisfies readonly OverflowWrap[];
+const WORD_BREAK: readonly string[] = ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'] satisfies readonly WordBreak[];
 
 /** css-text-3 §8.2: a computed letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
 function lowerLetterSpacing(id: string, v: CssValue): Px {
@@ -466,7 +479,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const id = c.element.address;
   const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');

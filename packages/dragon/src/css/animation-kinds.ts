@@ -26,6 +26,7 @@ import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
+import { TEXT_BREAK_ANIMATION } from './animation-kinds/text-break.ts';
 import { TEXT_DECORATION_ANIMATION } from './animation-kinds/text-decoration.ts';
 import { TEXT_OVERFLOW_ANIMATION } from './animation-kinds/text-overflow.ts';
 import { TEXT_SPACING_ANIMATION } from './animation-kinds/text-spacing.ts';
@@ -58,6 +59,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SHADOW_ANIMATION,
   ...SVG_ANIMATION,
   ...TEXT_ANIMATION,
+  ...TEXT_BREAK_ANIMATION,
   ...TEXT_DECORATION_ANIMATION,
   ...TEXT_OVERFLOW_ANIMATION,
   ...TEXT_SPACING_ANIMATION,

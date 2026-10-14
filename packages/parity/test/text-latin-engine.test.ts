@@ -63,7 +63,7 @@ const style = {
 } as const;
 
 const fontOf = (family: string, size: number): FontSpec => ({ family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true });
-const leaf = (id: string, text: string, family: string, size: number): TextLeaf => ({ kind: 'text', id, text, font: fontOf(family, size), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } });
+const leaf = (id: string, text: string, family: string, size: number): TextLeaf => ({ kind: 'text', id, text, font: fontOf(family, size), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' });
 
 const span = (id: string, child: TextLeaf): InlineBox => ({ kind: 'inline', id, style: { ...style, display: 'inline' }, font: child.font, lineHeight: child.lineHeight, children: [child] });
 

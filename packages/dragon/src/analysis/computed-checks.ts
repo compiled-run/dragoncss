@@ -362,6 +362,12 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     if (first !== undefined && other !== undefined) {
       refuse(el, 'mixed-wrap', `text-wrap-mode ${wrapOf(first)} (${first.node.address}) and ${wrapOf(other)} (${other.node.address}) in one inline formatting context of ${el.element.address} (css-text-4 §5.1), which Dragon does not lay out`, `Give all the text of ${el.element.address} the same white-space.`);
     }
+    // TXT2-a: the engine applies one overflow-wrap and word-break per inline formatting context (inline.ts buildIfc).
+    const breakOf = (t: ResolvedText): string => `overflow-wrap: ${keywordOf(t.props.get('overflow-wrap') as ResolvedValue)}; word-break: ${keywordOf(t.props.get('word-break') as ResolvedValue)}`;
+    const otherBreak = first === undefined ? undefined : texts.find((t) => breakOf(t) !== breakOf(first));
+    if (first !== undefined && otherBreak !== undefined) {
+      refuse(el, 'mixed-break', `${breakOf(first)} (${first.node.address}) and ${breakOf(otherBreak)} (${otherBreak.node.address}) in one inline formatting context of ${el.element.address} (css-text-3 §5.2, §5.5), which Dragon does not lay out`, `Give all the text of ${el.element.address} the same overflow-wrap and word-break.`);
+    }
   }
 }
 
@@ -440,6 +446,9 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
   }
   // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
   if (keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal') refuse(el, 'letter-spacing', `letter-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the letter-spacing or the white-space declaration that reaches ${t.node.address}.`);
+  // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet (inline.ts buildIfc).
+  const breaks = (['overflow-wrap', 'word-break'] as const).filter((p) => keywordOf(t.props.get(p) as ResolvedValue) !== 'normal');
+  if (breaks.length > 0) refuse(el, 'preserved-break', `${breaks.map((p) => `${p}: ${keywordOf(t.props.get(p) as ResolvedValue)}`).join(' and ')} on ${t.node.address}, whose white-space-collapse is ${mode}: breaking preserved white space inside words is not laid out yet`, `Remove the ${breaks.join(' and ')} or the white-space declaration that reaches ${t.node.address}.`);
   if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
 

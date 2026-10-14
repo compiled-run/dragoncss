@@ -45,6 +45,7 @@ import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
+import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
 import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
@@ -158,6 +159,7 @@ export const GROUPS = {
   'sizing-ratio': SIZING,
   states: STATES,
   svg: SVG,
+  'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
   'text-justify': TEXT_JUSTIFY,

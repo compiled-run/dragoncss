@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { TextFont } from '../src/input.ts';
 import type { BreakItem, GlyphShaper, HanKerningFontData, ShapedFace, ShapedText, ShapingFaults } from '../src/shaping.ts';
-import { FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS, segmentText, shapedMeasurer, shapedText, breakItemLines } from '../src/shaping.ts';
+import { FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS, segmentText, shapedMeasurer, shapedText, breakItemLines, NO_ANYWHERE_BREAK } from '../src/shaping.ts';
 import type { FontData } from '../src/text.ts';
 import { AHEM_FONT_DATA, ahemMeasurer } from '../src/text.ts';
 import { fromRaw } from '../src/units.ts';
@@ -347,7 +347,7 @@ function decideLines(st: ShapedText, text: string, font: string, size: number, w
   const shaped = st.item(text, font, size, 0);
   if (!shaped.ok) return shaped.reason;
   const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
-  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false);
+  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false, NO_ANYWHERE_BREAK);
   if (!r.ok) return r.reason;
   let start = 0;
   return r.lines.map((l) => {

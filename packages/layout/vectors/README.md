@@ -343,7 +343,9 @@ Input:
       "letterSpacing": {
        "kind": "px",
        "value": 0
-      }
+      },
+      "overflowWrap": "normal",
+      "wordBreak": "normal"
      }
     ]
    }
