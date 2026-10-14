@@ -1,5 +1,6 @@
 // The legacy -webkit-box properties (properties/flex.ts LEGACY_BOX_PROPERTIES): Chrome 145 reads them only under display -webkit-box
-// and -webkit-inline-box, which Dragon refuses, so each accepts Chrome's grammar and sets nothing.
+// and -webkit-inline-box, which Dragon refuses, so each accepts Chrome's grammar and sets nothing. -webkit-box-orient, which the
+// line clamp reads, is a longhand (TXT2-g, line-clamp.test.ts).
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
@@ -64,7 +65,7 @@ describe('legacy -webkit-box properties', () => {
       });
     };
     const base = '.a { display: flex; width: 100px; font-family: Ahem; font-size: 10px; } .b { width: 20px; }';
-    const legacy = '.a { display: flex; width: 100px; font-family: Ahem; font-size: 10px; -webkit-box-orient: vertical; -webkit-box-direction: reverse; -webkit-box-pack: center; -webkit-box-align: end; } .b { width: 20px; -webkit-box-flex: 1; -webkit-box-ordinal-group: 2; }';
+    const legacy = '.a { display: flex; width: 100px; font-family: Ahem; font-size: 10px; -webkit-box-direction: reverse; -webkit-box-pack: center; -webkit-box-align: end; } .b { width: 20px; -webkit-box-flex: 1; -webkit-box-ordinal-group: 2; }';
     expect(outputs(legacy)).toEqual(outputs(base));
   });
 });
