@@ -604,7 +604,8 @@ public final class DragonTree {
     let boxes = ok.boxes.items
     let snapped = try snap_snapEdges(ok.boxes).items
     let abs = try layout_absoluteRects(ok.boxes)
-    let zoomed = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
+    // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
+    let zoomed = try lineClamp_clampedInput(try layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     var zBoxes: [String: LayoutBox] = [:]
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
@@ -1565,7 +1566,8 @@ class DragonTree(val context: Context) {
     val boxes = ok.boxes
     val snapped = snap_snapEdges(ok.boxes)
     val abs = layout_absoluteRects(ok.boxes)
-    val zoomed = layout_zoomInput(input, block_NO_ENGINE_FAULTS)
+    // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
+    val zoomed = lineClamp_clampedInput(layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     val zBoxes = HashMap<String, LayoutBox>()
     val zStyles = HashMap<String, LayoutStyle>()
     val zLeaves = ArrayList<ReplacedLeaf>()
