@@ -25,6 +25,7 @@ export type UnsupportedCode =
   | 'intrinsic-size-keyword'
   | 'atomic-beside-shaped-text'
   | 'letter-spacing'
+  | 'word-spacing'
   | 'text-overflow'
   | 'tab-stop'
   | 'preserved-control'

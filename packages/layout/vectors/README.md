@@ -343,6 +343,10 @@ Input:
       "letterSpacing": {
        "kind": "px",
        "value": 0
+      },
+      "wordSpacing": {
+       "kind": "px",
+       "value": 0
       }
      }
     ]

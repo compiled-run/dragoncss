@@ -2300,6 +2300,7 @@
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "justifyLine", "use": "port" },
         { "file": "packages/layout/src/shaping.ts", "symbol": "spacingAfterGlyph", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "wordSpacingAfter", "use": "port" },
         { "file": "packages/layout/test/justify.test.ts", "symbol": null, "use": "reference" }
       ]
     },
@@ -2630,10 +2631,12 @@
       "fileSha256": "55167fd8f1ec64163a371e98a1a815b22c7f5a3eab6d3b2e343ee4fd8683c2e7",
       "headerSha256": "0f58332f67e2adc7ccffd70648e9f677d3c8e4beaa2e7a1247c7f4b3cfe4441b",
       "ranges": [
+        { "lines": "175-178", "symbol": "Character::TreatAsSpace", "source": "located" },
         { "lines": "179-198", "symbol": "Character::TreatAsZeroWidthSpace", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/text.ts", "symbol": "treatAsZeroWidthSpace", "use": "port" }
+        { "file": "packages/layout/src/text.ts", "symbol": "treatAsZeroWidthSpace", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "wordSpacingAfter", "use": "port" }
       ]
     },
     {
@@ -3483,13 +3486,15 @@
         { "lines": "3330-3378", "symbol": "Content::ParseSingleValue", "source": "located" },
         { "lines": "3431-3436", "symbol": "Content::ApplyValue", "source": "located" },
         { "lines": "6772-6785", "symbol": "ListStyleType::ParseSingleValue", "source": "located" },
-        { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" }
+        { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "12421-12434", "symbol": "WordSpacing::CSSValueFromComputedStyleInternal", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "parseListsValue", "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" },
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeLetterSpacing", "use": "port" },
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeWordSpacing", "use": "port" },
         { "file": "packages/dragon/src/css/properties/text-spacing.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" }
       ]
