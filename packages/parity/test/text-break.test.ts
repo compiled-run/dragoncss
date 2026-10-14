@@ -55,9 +55,10 @@ describe('the text-break fixtures', () => {
 
 describe('every engine plant is caught on text-break-ahem at every DPR', () => {
   const corpus = layoutCases().filter((f) => f.spec.id === 'text-break-ahem');
-  const compiled = compileFixture(specOf('text-break-ahem'), NO_FAULTS, 'enforce').compiled;
+  // Each direction's case runs against the program compiled for that direction.
+  const compiled = { ltr: compileFixture(specOf('text-break-ahem'), NO_FAULTS, 'enforce', 'ltr').compiled, rtl: compileFixture(specOf('text-break-ahem'), NO_FAULTS, 'enforce', 'rtl').compiled };
   const failing = (faults: EngineFaults, dpr: number): string[] =>
-    corpus.flatMap((f) => f.cases.map((c) => runDprCase(c, compiled, dpr, committedDprCapture(c.id, dpr), faults))).filter((o) => o.status === 'fail').map((o) => `${o.id}@${o.dpr}: ${o.reason}`);
+    corpus.flatMap((f) => f.cases.map((c) => runDprCase(c, compiled[c.environment.direction], dpr, committedDprCapture(c.id, dpr), faults))).filter((o) => o.status === 'fail').map((o) => `${o.id}@${o.dpr}: ${o.reason}`);
   for (const dpr of [1, ...DPRS]) {
     it(`unfaulted passes and each plant fails at DPR ${dpr}`, () => {
       expect(corpus.flatMap((f) => f.cases).length).toBe(2);
