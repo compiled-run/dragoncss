@@ -75,3 +75,4 @@ jobs:
           packages/parity/test/api-floor.test.ts
           packages/parity/test/floor-merge.test.ts
           packages/parity/test/macroscope-ignore.test.ts
+          packages/parity/test/committed-captures.test.ts
