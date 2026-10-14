@@ -292,6 +292,7 @@ const nativeShare = (row: Row): number => Math.min(supportedShare(row, 'ios'), s
 
 // The native profiles are written by profile:rows from the committed device records. A tree whose records changed after its profiles
 // were written (a device record commit before the regen after it) measures the profiles of the old records, so it is refused.
+// native-lanes.ts holds each lane's state and failure counts, so a re-record that only swaps which cases fail is not seen here.
 function staleProfiles(): string | null {
   const lanes = committedLanes();
   const want = nativeLanesSource({ ios: lanes.verdict('ios'), android: lanes.verdict('android') });
@@ -300,8 +301,6 @@ function staleProfiles(): string | null {
 }
 
 function main(): void {
-  const stale = staleProfiles();
-  if (stale !== null) fail('profiles', stale);
   const args = process.argv.slice(2);
   const flags = new Map<string, string>();
   for (let i = 0; i < args.length; i += 2) {
@@ -309,6 +308,8 @@ function main(): void {
     if ((k !== '--out' && k !== '--json') || v === undefined || flags.has(k)) fail('arguments', 'usage: coverage-rank.ts [--out <markdown path>] [--json <probe dump path>]');
     flags.set(k, v);
   }
+  const stale = staleProfiles();
+  if (stale !== null) fail('profiles', stale);
   const out = flags.get('--out') ?? DEFAULT_OUT;
 
   const input = readInput(join(DATA, 'coverage-rank-input.json'));
