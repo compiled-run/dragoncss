@@ -495,6 +495,11 @@ describe('crashSummary', () => {
     const s = crashSummary(`${run('10-14 03:06:13.912', 1, 'x', 'aaaaa')}${run('10-14 03:07:00.000', 2, 'y', 'bbbbb').replace('IllegalStateException', 'NullPointerException')}`);
     expect(s.split('\n')[1]).toBe('java.lang.NullPointerException: no edges for dev.dragon.dump.Node@*');
   });
+  it("keeps the host's crash over a later crash of another process, and replaces the thread number", () => {
+    const other = run('10-14 03:07:00.000', 9, 'z', 'ccccc').replace('dev.dragon.host', 'com.android.systemui').replace('IllegalStateException', 'NullPointerException');
+    const s = crashSummary(`${run('10-14 03:06:13.912', 1, 'x', 'aaaaa').replace('FATAL EXCEPTION: main', 'FATAL EXCEPTION: DefaultDispatcher-worker-3')}${other}`, 'dev.dragon.host');
+    expect(s.split('\n').slice(0, 2)).toEqual(['FATAL EXCEPTION: DefaultDispatcher-worker-*', 'java.lang.IllegalStateException: no edges for dev.dragon.dump.Node@*']);
+  });
   it('without a FATAL EXCEPTION line keeps the last lines, prefixes dropped', () => {
     expect(crashSummary('10-14 03:06:13.912  1  1 E Tag: one\n10-14 03:06:13.913  1  1 E Tag: two\n')).toBe('one\ntwo');
   });

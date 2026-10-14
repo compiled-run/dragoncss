@@ -1293,18 +1293,24 @@ export const launchLimitMs = (caseCount: number): number => 180_000 + caseCount 
 export const CRASH_SUMMARY_LINES = 13;
 
 /**
- * The last crash in a logcat crash buffer, the same on every run of the same crash: each line's logcat prefix (time, pid, tid,
- * level, tag) dropped, from its FATAL EXCEPTION line, without the Process: line (a pid) or blank lines, R8's lambda hashes and
- * object identity hashes (Foo@1a2b3c) replaced, CRASH_SUMMARY_LINES lines at most.
+ * The last crash of process app in a logcat crash buffer, the same on every run of the same crash: each line's logcat prefix
+ * (time, pid, tid, level, tag) dropped, from its FATAL EXCEPTION line (the last one whose Process: line names app, else the
+ * last one), without the Process: line (a pid) or blank lines, the thread number, R8's lambda hashes, object identity hashes
+ * (Foo@1a2b3c) and 0x addresses replaced, CRASH_SUMMARY_LINES lines at most.
  */
-export function crashSummary(log: string): string {
+export function crashSummary(log: string, app: string = HOST_BUNDLE): string {
   const lines = log.split('\n')
     .map((l) => l.replace(/^\d\d-\d\d \d\d:\d\d:\d\d\.\d+\s+\d+\s+\d+\s+[VDIWEF]\s+[^:]*?\s*:\s?/, '').trim())
     .filter((l) => l !== '' && !l.startsWith('--------- beginning of'));
-  const fatal = lines.findLastIndex((l) => l.startsWith('FATAL EXCEPTION'));
+  const isFatal = (l: string): boolean => l.startsWith('FATAL EXCEPTION');
+  const ours = lines.findLastIndex((l, i) => isFatal(l) && (lines[i + 1] ?? '').startsWith(`Process: ${app},`));
+  const fatal = ours >= 0 ? ours : lines.findLastIndex(isFatal);
   const kept = (fatal < 0 ? lines : lines.slice(fatal)).filter((l) => !l.startsWith('Process:'));
   const top = fatal < 0 ? kept.slice(-CRASH_SUMMARY_LINES) : kept.slice(0, CRASH_SUMMARY_LINES);
-  return top.map((l) => l.replace(/\$r8\$lambda\$[\w-]+/g, '$r8$lambda$*').replace(/@[0-9a-f]{5,}\b/g, '@*')).join('\n');
+  return top
+    .map((l) => (isFatal(l) ? l.replace(/\d+/g, '*') : l))
+    .map((l) => l.replace(/\$r8\$lambda\$[\w-]+/g, '$r8$lambda$*').replace(/@[0-9a-f]{5,}\b/g, '@*').replace(/0x[0-9a-fA-F]+/g, '0x*'))
+    .join('\n');
 }
 
 /** Installs the app, hands it the run file, launches it once for every case in the file, waits and pulls the dumps. */
