@@ -153,6 +153,7 @@ export type JustifyContent =
   | 'end'
   | 'left'
   | 'right';
+/** css-align-3 §4.2: baseline is first baseline; last baseline aligns grid items only (the compiler refuses it on a flex item). */
 export type AlignItems =
   | 'normal'
   | 'stretch'
@@ -160,6 +161,7 @@ export type AlignItems =
   | 'flex-end'
   | 'center'
   | 'baseline'
+  | 'last baseline'
   | 'start'
   | 'end'
   | 'self-start'
@@ -253,7 +255,10 @@ export type GridSpan =
   | { readonly kind: 'lines'; readonly start: GridLine; readonly end: GridLine }
   | { readonly kind: 'start-line'; readonly line: number }
   | { readonly kind: 'end-line'; readonly line: number };
-/** css-align-3 §6.1 self positions in a grid container; normal and stretch stretch an auto size. */
+/**
+ * css-align-3 §6.1 self positions in a grid container, and §4.2 baseline alignment (baseline is first baseline); normal and stretch
+ * stretch an auto size.
+ */
 export type GridSelfAlign =
   | 'normal'
   | 'stretch'
@@ -265,7 +270,9 @@ export type GridSelfAlign =
   | 'flex-start'
   | 'flex-end'
   | 'left'
-  | 'right';
+  | 'right'
+  | 'baseline'
+  | 'last baseline';
 /**
  * A grid container's own grid properties (css-grid-2 §7). The explicit track counts are the larger of the template's and the
  * template areas' (css-grid-2 §7.1), not counting an automatic repeater, whose tracks the engine adds; tracks beyond the

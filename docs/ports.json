@@ -960,6 +960,23 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/baseline_utils.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "39a62cca497b9d700add69a72ab63c936c6aac80a01c9446c2dd04691cd9544d",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "14-44", "symbol": "DetermineBaselineWritingMode", "source": "cited" },
+        { "lines": "51-87", "symbol": "DetermineBaselineGroup", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "trackBaseline", "use": "port" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "inlineBaseline", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/block_layout_algorithm_utils.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1007,13 +1024,17 @@
         { "lines": "2054-2169", "symbol": null, "source": "cited" },
         { "lines": "197-213", "symbol": null, "source": "cited" },
         { "lines": "3622-3647", "symbol": null, "source": "cited" },
-        { "lines": "1448-1451", "symbol": null, "source": "cited" }
+        { "lines": "1448-1451", "symbol": null, "source": "cited" },
+        { "lines": "3602-3650", "symbol": "BlockLayoutAlgorithm::PropagateBaselineFromBlockChild", "source": "cited" },
+        { "lines": "3631-3649", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
         { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "reference" },
+        { "file": "packages/layout/src/block.ts", "symbol": "ContentsResult", "use": "reference" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "port" },
         { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
@@ -1134,7 +1155,7 @@
         { "lines": "254-309", "symbol": "GridItemData::SetAlignmentFallback", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/grid.ts", "symbol": "computeRowBaselines", "use": "port" }
+        { "file": "packages/layout/src/grid.ts", "symbol": "computeBaselines", "use": "port" }
       ]
     },
     {
@@ -1151,6 +1172,7 @@
         { "lines": "587-743", "symbol": "ComputeGridGeometry", "source": "located" },
         { "lines": "790-807", "symbol": "Baseline", "source": "located" },
         { "lines": "830-839", "symbol": "GetLogicalBaseline", "source": "located" },
+        { "lines": "841-852", "symbol": "GetSynthesizedLogicalBaseline", "source": "located" },
         { "lines": "871-1101", "symbol": "GridLayoutAlgorithm::ContributionSizeForGridItem", "source": "located" },
         { "lines": "1180-1280", "symbol": "GridLayoutAlgorithm::ComputeGridItemBaselines", "source": "cited" },
         { "lines": "1551-1617", "symbol": "CompleteTrackSizingAlgorithm", "source": "located" },
@@ -1515,10 +1537,14 @@
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
         { "lines": "33-59", "symbol": "LogicalBoxFragment::FirstBaselineOrSynthesize", "source": "cited" },
-        { "lines": "42-51", "symbol": "LogicalBoxFragment::FirstBaseline", "source": "cited" }
+        { "lines": "42-51", "symbol": "LogicalBoxFragment::FirstBaseline", "source": "cited" },
+        { "lines": "61-70", "symbol": "LogicalBoxFragment::LastBaseline", "source": "cited" },
+        { "lines": "33-40", "symbol": "LogicalBoxFragment::SynthesizedBaseline", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/grid.ts", "symbol": "firstBaselineOrSynthesize", "use": "port" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "port" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "inlineBaseline", "use": "port" },
         { "file": "packages/layout/src/inline-box.ts", "symbol": "inlineGridBaseline", "use": "port" }
       ]
     },
@@ -1586,6 +1612,7 @@
       "dragon": [
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
         { "file": "packages/layout/src/box.ts", "symbol": "resolveMinLength", "use": "port" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "indefiniteInlineSize", "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "blockFromRatio", "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "inlineFromRatio", "use": "port" },

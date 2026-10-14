@@ -657,7 +657,7 @@ function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
-const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'];
+const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right', 'baseline', 'last baseline'];
 
 function trackBreadth(v: JsonValue, path: string): TrackBreadth {
   const k = kindOf(v, path);
@@ -790,7 +790,7 @@ function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
   };
 }
 
-const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
+const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'last baseline', 'start', 'end', 'self-start', 'self-end'];
 
 function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const o = obj(v, STYLE_KEYS, path);

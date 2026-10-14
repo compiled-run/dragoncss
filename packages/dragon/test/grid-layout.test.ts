@@ -203,17 +203,28 @@ describe('grid lowering', () => {
     expect(['i', 'j', 'k'].map((id) => m.get(id)?.style.alignSelf)).toEqual(['baseline', 'baseline', 'auto']);
   });
 
-  it('refuses what the engine does not lay out: inline-axis and last baseline and safe self-alignment; a flexible minimum never reaches it', () => {
+  it('hands baseline alignment in the inline axis and last baseline alignment in both axes to the engine (GRID G3b)', () => {
+    const css = '.g { display: grid; justify-items: first baseline; align-items: last baseline; } .i { justify-self: last baseline; align-self: baseline; } .j { justify-self: baseline; align-self: last baseline; } .x { position: absolute; align-self: last baseline; }';
+    const m = boxes(`.g { position: relative; } ${css}`, (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i']), div(r, 'j', ['j']), div(r, 'k', []), div(r, 'x', ['x'])])]);
+    expect(m.get('g')?.style.grid?.justifyItems).toBe('baseline');
+    expect(m.get('g')?.style.alignItems).toBe('last baseline');
+    expect(['i', 'j', 'k', 'x'].map((id) => [item(m, id).justifySelf, m.get(id)?.style.alignSelf])).toEqual([['last baseline', 'baseline'], ['baseline', 'last baseline'], ['auto', 'auto'], ['auto', 'last baseline']]);
+  });
+
+  it('refuses what the engine does not lay out: last baseline outside a grid and safe self-alignment; a flexible minimum never reaches it', () => {
     const refusal = (css: string): string[] => compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i'])])]).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.message}`);
     expect(refusal('.g { display: grid; grid-template-columns: repeat(auto-fill, 20px); }')).toEqual([]);
     expect(refusal('.g { display: grid; grid-template-rows: 5px repeat(auto-fit, [a] 1em 10%) [b]; }')).toEqual([]);
-    expect(refusal('.g { display: grid; } .i { justify-self: baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: baseline') && m.includes('inline axis'))).toBe(true);
-    // GRID G3: first baseline alignment in the block axis lays out; the inline axis and last baseline stay refused.
+    // GRID G3 and G3b: baseline alignment in both axes, first and last, lays out in a grid.
     expect(refusal('.g { display: grid; align-items: baseline; } .i { align-self: first baseline; }')).toEqual([]);
-    expect(refusal('.g { display: grid; justify-items: first baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-items: baseline') && m.includes('inline axis'))).toBe(true);
-    expect(refusal('.g { display: grid; } .i { justify-self: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: last baseline'))).toBe(true);
-    expect(refusal('.g { display: grid; align-items: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('align-items: last baseline'))).toBe(true);
-    expect(refusal('.g { display: grid; } .i { align-self: last baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('align-self: last baseline'))).toBe(true);
+    expect(refusal('.g { display: grid; justify-items: first baseline; } .i { justify-self: last baseline; }')).toEqual([]);
+    expect(refusal('.g { display: grid; align-items: last baseline; } .i { align-self: last baseline; }')).toEqual([]);
+    // Last baseline stays refused on a flex container, a flex item and a block child.
+    const lastRefused = (css: string, p: string): boolean => refusal(css).some((m) => m.includes(`${p}: last baseline`) && m.includes('last baseline aligns grid items only'));
+    expect(lastRefused('.g { display: flex; align-items: last baseline; }', 'align-items')).toBe(true);
+    expect(lastRefused('.g { display: flex; } .i { align-self: last baseline; }', 'align-self')).toBe(true);
+    expect(lastRefused('.g { display: block; } .i { align-self: last baseline; }', 'align-self')).toBe(true);
+    expect(lastRefused('.g { display: block; align-items: last baseline; }', 'align-items')).toBe(true);
     expect(refusal('.g { display: grid; justify-items: safe center; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-items: safe center'))).toBe(true);
     expect(refusal('.g { display: grid; grid-template-columns: 20px 30px; }')).toEqual([]);
     for (const p of ['height: 50%', 'min-height: 10%', 'max-height: calc(10px + 5%)']) {

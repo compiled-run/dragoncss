@@ -1,4 +1,4 @@
-// Fixture group grid (GRID G0, G1a, G2, G3, G4): the grid longhands and shorthands, justify-items and justify-self, compiled and computed like
+// Fixture group grid (GRID G0, G1a, G2, G3, G3b, G4): the grid longhands and shorthands, justify-items and justify-self, compiled and computed like
 // Chrome. G0's inert fixtures put placement and template values on block and flex boxes, where Chrome ignores them, and prove
 // justify-self only on flex items (block children and absolutely positioned boxes align by it). G1a's fixtures lay out display:
 // grid: placement, named lines and areas, fr, intrinsic tracks, alignment, sizing and nesting. The rejects are inline-grid, subgrid,
@@ -35,6 +35,11 @@ export const GRID: readonly FixtureSpec[] = [
   // baselines, fixed, flexible and spanned rows, align-items against align-self, the start fallback of an item whose percentage
   // size depends on its row, nested grids and flex containers as items, and a grid's first baseline in a flex line.
   both('grid-baseline'),
+  // GRID G3b: baseline alignment in the inline axis (justify-items and justify-self, first and last, with margins, padding and
+  // borders, the min-content measure of an auto column, the fallback of a percentage width) and last baseline alignment in the
+  // block axis (align-items and align-self, spans, synthesized baselines, a scroll container, the end fallback), a grid's first
+  // baseline from a last-baseline row in a flex line, and the static positions of absolutely positioned children.
+  both('grid-baseline-axes'),
   // G-INL: an inline-grid is an atomic inline on its line; one inside an inline box stays refused (INL2c), as inline-block and inline-flex are.
   reject('reject-grid-inline-grid', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="box" class="box"><span data-dragon-id="cell" class="cell">X</span></span>', 'inline-grid <span> box is an atomic inline inside the inline box <span> s'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),
