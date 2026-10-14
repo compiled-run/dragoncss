@@ -28,6 +28,15 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
+/** A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration). */
+function withoutWrapKeys(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(withoutWrapKeys);
+  if (typeof v !== 'object' || v === null) return v;
+  const o = v as Record<string, unknown>;
+  const leaf = o['kind'] === 'text';
+  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal')).map(([k, x]) => [k, withoutWrapKeys(x)]));
+}
+
 /** The outputs of BASE (batch2's regenerated head 768a8ebdf7: batch #281 at dde476247f plus #274's and #271's groups), as digests the BASE pins recompute. */
 const BASE_OUTPUTS = { files: 12920, digest: '0f5d887ec91038a3a31f4279f49e52ac406eca122f63884c04469102e76bc582' };
 const BASE_CAPTURES = { files: 3298, digest: '34c8836ed1a5ec02111da9daadce219cacf0776f135234b02f28353e849d6e0a' };
@@ -205,7 +214,8 @@ describe('BASE pins', () => {
   // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
   // TDEC-a2's text-decoration cases (the web-only lane's captures) are its own as well. TXT2-c's white-space group and TXT2's
   // text-justify cases landed after BASE: their own files are left out as TXT-W1's are (they add files only, and change none of BASE's).
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-)/.test(p);
+  // TXT2-a's text-break cases are left out the same way.
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-break-)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -218,18 +228,24 @@ describe('BASE pins', () => {
     // TXT-W2's font-shorthand cases are its own too, as the digests below exclude them; TXT2-c's white-space layout cases and TXT2's
     // text-justify cases landed after BASE.
     const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-'));
+    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-') && !id.startsWith('text-break-'));
     // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's and #280's groups, whose FIXTURES hold 826 BASE layout cases.
     expect(base.length).toBe(826);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('c658b16ff27578eb3600b8c8d645566e9e1bdfe48b00c8682efc46327143fe84');
   });
-  it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
+  it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE (vectors up to the TXT2-a TextLeaf keys)', () => {
+    // TXT2-a gives every text leaf overflowWrap and wordBreak, so a vector is digested as its JSON with both removed where they are
+    // 'normal' (every other byte of it is still pinned), and the vectors README (a format document, not a vector) documents the keys.
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
-    const paths = files(dirs, (p) => !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(p));
-    expect({ files: paths.length, digest: digest(paths, (p) => readFileSync(repoPath(p))) }).toEqual(BASE_OUTPUTS);
+    const paths = files(dirs, (p) => !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(p) && p !== 'packages/layout/vectors/README.md');
+    const content = (p: string): string | Buffer => p.startsWith('packages/layout/vectors/') && p.endsWith('.json')
+      ? JSON.stringify(withoutWrapKeys(JSON.parse(readFileSync(repoPath(p), 'utf8')) as unknown)) : readFileSync(repoPath(p));
+    expect({ files: paths.length, digest: digest(paths, content) }).toEqual(BASE_OUTPUTS);
+    // The migration exception is not a blanket pass: a leaf whose key is not 'normal' keeps the key and differs.
+    expect(withoutWrapKeys({ kind: 'text', overflowWrap: 'anywhere', wordBreak: 'normal' })).toEqual({ kind: 'text', overflowWrap: 'anywhere' });
   });
-  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing'];
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's letter-spacing, TXT2-a's overflow-wrap and word-break. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'overflow-wrap', 'word-break'];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));
