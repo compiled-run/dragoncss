@@ -1018,7 +1018,7 @@
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
         { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "reference" },
         { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" },
-        { "file": "packages/layout/src/block.ts", "symbol": "nestedClamp", "use": "port" },
+        { "file": "packages/layout/src/line-clamp.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/inline.ts", "symbol": "checkClampContext", "use": "port" },
         { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
       ]
