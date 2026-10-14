@@ -197,10 +197,10 @@ describe('createProject().compile() and check()', () => {
     expect(derived.digest).not.toBe(enforced.digest);
   });
 
-  it('a derive compile reads no profile, so its digest and output are the same whatever the profiles hold; an enforced digest covers them', () => {
+  it('a derive compile reads none of the given profiles, so its digest and output are the same whatever they hold; an enforced digest covers them', () => {
     const input = inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]);
-    const config = { projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 26 } } } as const;
-    const empty = { ...COMMITTED_PROFILES, ios: { ...COMMITTED_PROFILES.ios, rows: [] }, android: { ...COMMITTED_PROFILES.android, rows: [] } };
+    const config = { projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 26 } } } as const;
+    const empty = { web: { ...COMMITTED_PROFILES.web, rows: [] }, ios: { ...COMMITTED_PROFILES.ios, rows: [] }, android: { ...COMMITTED_PROFILES.android, rows: [] } };
     const compile = (profiles: 'enforce' | 'derive', supportProfiles: typeof COMMITTED_PROFILES) => createProjectWith(config, { faults: NO_FAULTS, profiles, direction: 'ltr', supportProfiles }).compile(input);
     const [committed, emptied] = [compile('derive', COMMITTED_PROFILES), compile('derive', empty)];
     expect(emptied.digest).toBe(committed.digest);

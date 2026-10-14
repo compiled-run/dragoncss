@@ -1373,10 +1373,12 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    // A derive compile reads no support profile (its checks are off), so the profiles enter only an enforced digest. Otherwise a
-    // regen that rewrote the rows from the device records changed every derive digest the parity apps carry, and the device
-    // records it was given were stale again (one more device run per landing) though no program had changed.
+    // A derive compile reads none of the given support profiles (its checks are off), so they enter only an enforced digest.
+    // Otherwise a regen that rewrote the rows from the device records changed every derive digest the parity apps carry, and
+    // the device records it was given were stale again (one more device run per landing) though no program had changed.
     profiles: options.profiles === 'derive' ? [] : targets.map((t) => profileDigest(profileFor(profiles, t))),
+    // @supports reads the committed web profile in every mode and for every target (css/stylesheet.ts declarationSupport).
+    supportsProfile: profileDigest(COMMITTED_PROFILES.web),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     ...(options.nativeRealFaces ? { nativeRealFaces: true } : {}),
