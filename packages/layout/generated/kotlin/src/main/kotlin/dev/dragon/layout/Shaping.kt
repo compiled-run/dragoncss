@@ -704,12 +704,12 @@ fun shaping_segmentText(text: String): U_SegmentResult_okFalse_SegmentResult_okT
   // ts: packages/layout/src/shaping.ts:244
   run {
     var pos: Double = 0.0
-    loop20@ while ((pos < jsLength(units))) {
-      loop20_body@ do {
+    loop19@ while ((pos < jsLength(units))) {
+      loop19_body@ do {
         val cp: Double = jsUnwrap(jsAt(units, pos))
         // ts: packages/layout/src/shaping.ts:246
         if ((cp < 0.0)) {
-          break@loop20_body
+          break@loop19_body
         }
         var next: JsArray<Double> = shaping_getScripts(cp)
         val b: Double = scriptData_bracketIndex(cp)
@@ -735,12 +735,12 @@ fun shaping_segmentText(text: String): U_SegmentResult_okFalse_SegmentResult_okT
           // ts: packages/layout/src/shaping.ts:260
           run {
             var k: Double = (jsLength(st.brackets) - 1.0)
-            loop21@ while ((k >= 0.0)) {
-              loop21_body@ do {
+            loop20@ while ((k >= 0.0)) {
+              loop20_body@ do {
                 val rec: BracketRec = jsUnwrap(jsAt(st.brackets, k))
                 // ts: packages/layout/src/shaping.ts:262
                 if ((rec.ch != pair)) {
-                  break@loop21_body
+                  break@loop20_body
                 }
                 var script: Double = rec.script
                 // ts: packages/layout/src/shaping.ts:264
@@ -776,7 +776,7 @@ fun shaping_segmentText(text: String): U_SegmentResult_okFalse_SegmentResult_okT
                 }
                 st.brackets = kept
                 st.fixupDepth = (if (((st.fixupDepth - popped) > 0.0)) (st.fixupDepth - popped) else 0.0)
-                break@loop21
+                break@loop20
               } while (false)
               k -= 1.0
             }
@@ -2009,13 +2009,13 @@ fun shaping_justifiedViewWidth(item: ShapeItem, view: LineView, base: Double, ex
           // ts: packages/layout/src/shaping.ts:1108
           run {
             var k: Double = 0.0
-            loop38@ while ((k < jsLength(run.glyphs))) {
-              loop38_body@ do {
+            loop37@ while ((k < jsLength(run.glyphs))) {
+              loop37_body@ do {
                 val g: ShapingGlyph = jsUnwrap(jsAt(run.glyphs, k))
                 val c: Double = (run.start + g.ci)
                 // ts: packages/layout/src/shaping.ts:1111
                 if (((c < s) || (c >= e))) {
-                  break@loop38_body
+                  break@loop37_body
                 }
                 val next: ShapingGlyph? = jsAt(run.glyphs, (k + 1.0))
                 val clusterEnd: Boolean = ((next == null) || (jsUnwrap(next).ci != g.ci))
@@ -2259,21 +2259,21 @@ fun shaping_rewindOverflow(b: LineBuild, newEnd: Double): Unit {
   // ts: packages/layout/src/shaping.ts:1373
   run {
     var index: Double = newEnd
-    loop45@ while ((index < jsLength(b.results))) {
-      loop45_body@ do {
+    loop44@ while ((index < jsLength(b.results))) {
+      loop44_body@ do {
         val r: MutableResult = jsUnwrap(jsAt(b.results, index))
         val it: U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = jsUnwrap(jsAt(b.items, r.index))
         // ts: packages/layout/src/shaping.ts:1376
         if (jsStrEq(it.kind, "text")) {
           // ts: packages/layout/src/shaping.ts:1377
           if ((r.end == r.start)) {
-            break@loop45_body
+            break@loop44_body
           }
           // ts: packages/layout/src/shaping.ts:1378
           if ((b.wrap && shaping_isBreakableSpace(shaping_textUnit(it, r.start)))) {
             // ts: packages/layout/src/shaping.ts:1379
             if (shaping_isAllSpaces(it, (r.start + 1.0), r.end)) {
-              break@loop45_body
+              break@loop44_body
             }
             b.state = "trailing"
             shaping_rewindTo(b, index)
@@ -2285,13 +2285,13 @@ fun shaping_rewindOverflow(b: LineBuild, newEnd: Double): Unit {
             end = index
           }
           openCount += 1.0
-          break@loop45_body
+          break@loop44_body
         } else if (jsStrEq((it as U_BreakItem_br_BreakItem_close).kind, "close")) {
           // ts: packages/layout/src/shaping.ts:1389
           if ((openCount > 0.0)) {
             openCount -= 1.0
           }
-          break@loop45_body
+          break@loop44_body
         }
         b.state = "done"
         shaping_rewindTo(b, (if ((openCount > 0.0)) end else index))
@@ -2329,8 +2329,8 @@ fun shaping_handleOverflow(b: LineBuild): Unit {
   // ts: packages/layout/src/shaping.ts:1419
   run {
     var i: Double = jsLength(b.results)
-    loop43@ while ((i > 0.0)) {
-      loop43_body@ do {
+    loop42@ while ((i > 0.0)) {
+      loop42_body@ do {
         i -= 1.0
         val r: MutableResult = jsUnwrap(jsAt(b.results, i))
         // ts: packages/layout/src/shaping.ts:1422
@@ -2345,12 +2345,12 @@ fun shaping_handleOverflow(b: LineBuild): Unit {
         toRewind = (toRewind - r.width)
         // ts: packages/layout/src/shaping.ts:1430
         if ((toRewind > 0.0)) {
-          break@loop43_body
+          break@loop42_body
         }
         val it: U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = jsUnwrap(jsAt(b.items, r.index))
         // ts: packages/layout/src/shaping.ts:1432
         if ((!jsStrEq(it.kind, "text") || (r.end == r.start))) {
-          break@loop43_body
+          break@loop42_body
         }
         // ts: packages/layout/src/shaping.ts:1433
         if (((toRewind < 0.0) && r.mayBreakInside)) {
@@ -2559,20 +2559,20 @@ fun shaping_breakOneLine(b: LineBuild): BrokenLine {
   // ts: packages/layout/src/shaping.ts:1589
   run {
     var i: Double = (jsLength(b.results) - 1.0)
-    loop37@ while (((i >= 0.0) && (!b.preserve))) {
-      loop37_body@ do {
+    loop36@ while (((i >= 0.0) && (!b.preserve))) {
+      loop36_body@ do {
         val r: MutableResult = jsUnwrap(jsAt(b.results, i))
         val it: U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = jsUnwrap(jsAt(b.items, r.index))
         // ts: packages/layout/src/shaping.ts:1592
         if ((!jsStrEq(it.kind, "text") || (r.end == r.start))) {
-          break@loop37_body
+          break@loop36_body
         }
         // ts: packages/layout/src/shaping.ts:1593
         if (((shaping_textUnit(it, (r.end - 1.0)) == 32.0) && (r.view != null))) {
           hang = i
           hangWidth = (if (((r.end - 1.0) > r.start)) shaping_viewSnappedWidth((it as BreakItem_text).item, shaping_subView(jsUnwrap(r.view), r.start, (r.end - 1.0))) else units_ZERO)
         }
-        break@loop37
+        break@loop36
       } while (false)
       i -= 1.0
     }
