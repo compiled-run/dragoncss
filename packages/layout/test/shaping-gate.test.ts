@@ -101,7 +101,7 @@ function fontData(id: string): FontData {
   for (let i = 0; i < d.getUint16(4); i++) tables.set(b.toString('latin1', 12 + i * 16, 16 + i * 16), d.getUint32(12 + i * 16 + 8));
   const head = tables.get('head') as number;
   const hhea = tables.get('hhea') as number;
-  return { unitsPerEm: d.getUint16(head + 18), ascent: d.getInt16(hhea + 4), descent: -d.getInt16(hhea + 6), lineGap: d.getInt16(hhea + 8), advances: [], xHeight: 0, capHeight: 0, zeroAdvance: 0 };
+  return { unitsPerEm: d.getUint16(head + 18), ascent: d.getInt16(hhea + 4), descent: -d.getInt16(hhea + 6), lineGap: d.getInt16(hhea + 8), advances: [], xHeight: 0, capHeight: 0, zeroAdvance: 0, ellipsisAdvance: -1 };
 }
 
 /**
@@ -347,7 +347,7 @@ function decideLines(st: ShapedText, text: string, font: string, size: number, w
   const shaped = st.item(text, font, size, 0);
   if (!shaped.ok) return shaped.reason;
   const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
-  const r = breakItemLines(items, fromRaw(widthLu), true, false, true);
+  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false);
   if (!r.ok) return r.reason;
   let start = 0;
   return r.lines.map((l) => {

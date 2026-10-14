@@ -240,7 +240,9 @@ const ITEM_ALIGN: readonly GridSelfAlign[] = ['normal', 'stretch', 'start', 'end
 
 /**
  * A justify-items or justify-self value as a grid self position. legacy <position> aligns grid items by the position; unsafe is
- * Chrome's default overflow behaviour for grid items; safe, baseline and anchor-center are not supported yet.
+ * Chrome's default overflow behaviour for grid items. Baseline alignment in the inline axis is refused: the engine aligns grid items
+ * by their first baseline in the block axis only (align-self and align-items; last baseline is refused where they are lowered), as
+ * is the engine's GridSelfAlign. safe and anchor-center are not supported yet.
  */
 function selfAlign(p: Longhand, v: CssValue, allowAuto: boolean): GridSelfAlign | 'auto' {
   if (v.kind !== 'keyword') return refuse(p, v, 'expected a keyword');
@@ -249,7 +251,8 @@ function selfAlign(p: Longhand, v: CssValue, allowAuto: boolean): GridSelfAlign 
   else if (k.startsWith('unsafe ')) k = k.slice('unsafe '.length);
   if (allowAuto && k === 'auto') return 'auto';
   if ((ITEM_ALIGN as readonly string[]).includes(k)) return k as GridSelfAlign;
-  return refuse(p, v, 'safe alignment, baseline alignment and anchor-center in a grid are not supported yet');
+  if (k === 'baseline' || k === 'last baseline') return refuse(p, v, 'baseline alignment in the inline axis of a grid is not supported yet (grid items align by baseline in the block axis only, with align-self or align-items)');
+  return refuse(p, v, 'safe alignment and anchor-center in a grid are not supported yet');
 }
 
 /** css-grid-2 §7: the grid input of a display: grid element. */

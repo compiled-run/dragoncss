@@ -6,7 +6,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DPRS } from '../src/dpr.ts';
 import type { ChromeBreakText } from '../src/line-breaks.ts';
-import { alignUnits, BREAK_MISMATCH, breakVector, breakVectorDir, breakVectorPath, breakVectorText, checkDumpBreaks, chromeLines, compareVectorWithChrome, engineTextLines, expectedBreaksDir, hostBreakLine, leafTexts, parseHostBreaks, readBreakVector, readChromeBreaks, runHostBreaks } from '../src/line-breaks.ts';
+import { alignUnits, BREAK_MISMATCH, breakVector, breakVectorDir, breakVectorPath, breakVectorText, checkDumpBreaks, chromeLines, compareVectorWithChrome, engineTextLines, expectedBreaksDir, hostBreakLine, leafTexts, renderedTexts, parseHostBreaks, readBreakVector, readChromeBreaks, runHostBreaks } from '../src/line-breaks.ts';
 import { plantDumpFault } from '../src/native-compare.ts';
 import { engineCases, nativeCases, relabelledReferenceDumps } from '../src/native-host.ts';
 import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
@@ -87,6 +87,27 @@ describe('Chrome breaks', () => {
     const zwsp: ChromeBreakText = { id: 'a:text2', data: '\u200b', lines: 1, units: [0], blank: [0] };
     expect(chromeLines(zwsp, '\u200b')).toEqual([[0, 1]]);
   });
+  it('TXT2-e: a transformed node aligns its rendered text (the build-time transform of its DOM text) with the engine text, strictly', () => {
+    // U+00DF uppercases to "SS": both rendered units take the eszett's line, so the first line ends after them.
+    const up: ChromeBreakText = { id: 'a:text0', data: 'gro\u00df ma\u00df', lines: 2, units: [0, 0, 0, 0, 0, 1, 1, 1], blank: [4], transform: 'uppercase' };
+    expect(renderedTexts(up).map((t) => [t.data, t.units, t.blank])).toEqual([['GROSS MASS', [0, 0, 0, 0, 0, 0, 1, 1, 1, 1], [5]]]);
+    expect(chromeLines(up, 'GROSS MASS')).toEqual([[0, 6], [6, 10]]);
+    expect(chromeLines(up, 'GROSS MASs')).toBeNull();
+    expect(chromeLines({ id: up.id, data: up.data, lines: up.lines, units: up.units, blank: up.blank }, 'GROSS MASS')).toBeNull();
+    // Final_Sigma: the rendered text ends in U+03C2, so U+03C3 there does not align.
+    const low: ChromeBreakText = { id: 'a:text1', data: '\u039f\u0394\u039f\u03a3', lines: 1, units: [0, 0, 0, 0], blank: [], transform: 'lowercase' };
+    expect(chromeLines(low, '\u03bf\u03b4\u03bf\u03c2')).toEqual([[0, 4]]);
+    expect(chromeLines(low, '\u03bf\u03b4\u03bf\u03c3')).toBeNull();
+    // Capitalize: the first unit has both word-start readings (the text before the node is not captured); every other unit is exact.
+    const cap: ChromeBreakText = { id: 'a:text2', data: 'ab  cd', lines: 1, units: [0, 0, 0, 0, 0, 0], blank: [3], transform: 'capitalize' };
+    expect(renderedTexts(cap).map((t) => t.data)).toEqual(['Ab  Cd', 'ab  Cd']);
+    expect(chromeLines(cap, 'Ab Cd')).toEqual([[0, 5]]);
+    expect(chromeLines(cap, 'ab Cd')).toEqual([[0, 5]]);
+    expect(chromeLines(cap, 'Ab cd')).toBeNull();
+    expect(chromeLines(cap, 'AB CD')).toBeNull();
+    // A transform outside the four keywords has no reading.
+    expect(chromeLines({ ...cap, transform: 'full-width' }, 'ab cd')).toBeNull();
+  });
   it('Chrome text the vector lacks is a break-mismatch when Chrome shows it; text that only collapses away is not', () => {
     const n = cases.find((c) => c.case.id === 'text-wrap-spaces');
     const v = readBreakVector('text-wrap-spaces', 3);
@@ -127,5 +148,24 @@ describe('the break check of a dump', () => {
     const r = checkDumpBreaks(planted ?? dump, v);
     expect(r.problems.map((p) => p.kind)).toEqual([BREAK_MISMATCH]);
     expect(r.problems[0]?.detail).toMatch(/^w1:text0: device lines \[\[0,2\],\[2,6\],\[6,8\]\], break vector \[\[0,3\],\[3,6\],\[6,8\]\]$/);
+  });
+  it.each(['white-space-preserve', 'text-overflow-lines'])('%s: the device fragments of one line (preserved pieces, a truncated piece) are one break line, and a moved boundary is a mismatch', (id) => {
+    const n = cases.find((c) => c.case.id === id);
+    const d = relabelledReferenceDumps('ios', 3).find((x) => x.case.id === id);
+    const v = readBreakVector(id, 3);
+    if (n === undefined || d === undefined || v === null) throw new Error(`no ${id} data`);
+    const fragments = new Map(engineTextLines(inputOf(n, 3), m).map((t) => [t.id, t.lines.flatMap((l) => l.fragments)]));
+    const dump = { ...d, nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: fragments.get(x.id)?.[j]?.[0] ?? null, end: fragments.get(x.id)?.[j]?.[1] ?? null } : l)) })) };
+    // More fragments than break lines: the grouping is exercised.
+    expect(dump.nodes.some((x) => x.kind === 'text' && x.lines.length > (v.texts.find((t) => t.id === x.id)?.lines.length ?? 0))).toBe(true);
+    expect(checkDumpBreaks(dump, v).problems).toEqual([]);
+    const planted = plantDumpFault('break-shifted', dump, { engine: [], passingSamples: [] });
+    expect(planted).not.toBeNull();
+    expect(checkDumpBreaks(planted ?? dump, v).problems.map((p) => p.kind)).toEqual([BREAK_MISMATCH]);
+    // A fragment moved down a device px no longer joins its line.
+    const i = dump.nodes.findIndex((x) => x.kind === 'text' && x.lines.length >= 2 && x.lines[1]?.deviceEdges.top === x.lines[0]?.deviceEdges.top);
+    const moved = { ...dump, nodes: dump.nodes.map((x, k) => (k !== i ? x : { ...x, lines: x.lines.map((l, j) => (j === 1 ? { ...l, deviceEdges: { ...l.deviceEdges, top: l.deviceEdges.top + 1 } } : l)) })) };
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(checkDumpBreaks(moved, v).problems.map((p) => p.text)).toEqual([dump.nodes[i]?.id]);
   });
 });

@@ -74,6 +74,10 @@ const SUBSET = [
   ...SVG_LONGHANDS,
   // TXT2-b: letter-spacing (css-text-3 §8.2), after visibility, as LONGHANDS registers it.
   'letter-spacing',
+  // TXT2-f: text-overflow (css-overflow-4 §3.1), after visibility.
+  'text-overflow',
+  // TXT2-e: text-transform (css-text-3 §2.1), after visibility, as LONGHANDS registers it.
+  'text-transform',
 ] as const;
 
 /**
@@ -115,6 +119,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   float: 'none | left | right | inline-start | inline-end',
   clear: 'none | left | right | both | inline-start | inline-end',
   'vertical-align': 'baseline | sub | super | text-top | text-bottom | middle | top | bottom | -webkit-baseline-middle | <length-percentage>',
+  // Blink parses one keyword, clip or ellipsis: the <string> value (TextOverflowString) and the two-value form are test features
+  // in Chrome 145 (notes/T149-txt2-spec.md R2), and webref's fade and fade() are not parsed.
+  'text-overflow': 'clip | ellipsis',
+  // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.
+  'text-transform': 'none | capitalize | uppercase | lowercase | math-auto',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',

@@ -13,8 +13,10 @@ import { TEXT_CALIBRATION } from './text-calibration.ts';
 import { INLINE_TAGS } from './inline-tags.ts';
 import { TEXT_WEIGHT } from './text-weight.ts';
 import { FONT_SHORTHAND } from './font-shorthand.ts';
+import { TEXT_JUSTIFY } from './text-justify.ts';
 import { TEXT_LATIN } from './text-latin.ts';
 import { TEXT_SPACING } from './text-spacing.ts';
+import { WHITE_SPACE } from './white-space.ts';
 
 /** A web-only fonts fixture: its font map (null: none), and the face Chrome must render each element's text with in both documents. */
 export type FontFixture = {
@@ -44,6 +46,10 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   font('text-decoration-ahem', FONT_REFERENCE_MAP, { a1: 'Ahem', a2: 'Ahem', a3: 'Ahem' }),
   // The skip-ink probe: Ahem's glyph boxes cross an auto underline, so the engine refuses it (skip-ink-intercepts, TDEC-d).
   font('text-decoration-ahem-auto', FONT_REFERENCE_MAP, { a: 'Ahem' }),
+  // TDEC-d at other sizes and lengths: Ahem auto underlines at 15, 13 and 25px (15px is 39.375 at DPR 2.625, which Chrome draws at
+  // 39.37), px and percent thicknesses, px and percent offsets, and a 6px line whose dilation passes kDecorationClipMaxDilation (13
+  // device px) at DPR 3.
+  font('text-decoration-ahem-skip', FONT_REFERENCE_MAP, Object.fromEntries(['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'].map((id) => [id, 'Ahem']))),
 ];
 
 /** An invalid map: a pinned entry with no faces. */
@@ -63,7 +69,9 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
   // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
-  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  // INL2a: the refusal of an atomic inline beside real-font text.
+  ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */

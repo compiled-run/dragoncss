@@ -236,3 +236,54 @@ export function parseComputedColor(text: string): Rgba8 | null {
 export function perturbColor(c: Rgba8): Rgba8 {
   return { r: c.r === 255 ? 254 : c.r + 1, g: c.g, b: c.b, alpha: c.alpha };
 }
+
+// PNT1 outline 3D tones. Blink 145 Color::Dark and Color::Light (platform/graphics/color.cc:1138-1182) on a legacy sRGB colour, and
+// CalculateInsetOutsetColor (core/paint/box_border_painter.cc:616-641) with color_utils::GetContrastRatio (ui/gfx/color_utils.cc
+// :58-64, :392-413). Float steps use Math.fround.
+const f32 = Math.fround;
+
+/** QuantizeTo8Bit (color.cc:156-159) as the 8-bit channel it draws: the float times the largest float below 256, truncated. */
+const quantize = (v: number): number => Math.trunc(f32(v * f32(256 - 2 ** -16)));
+
+function scaled(c: Rgba8, multiplier: (v: number) => number): Rgba8 {
+  const ch = [c.r, c.g, c.b].map((x) => f32(x / 255));
+  const v = Math.max(...ch);
+  const m = multiplier(v);
+  const [r, g, b] = ch.map((x) => quantize(f32(x * m))) as [number, number, number];
+  return { r, g, b, alpha: c.alpha };
+}
+
+/** Color::Dark: white is (171, 171, 171); otherwise each channel times max(0, (v - 0.33) / v) for v its largest channel. */
+export function darkColor(c: Rgba8): Rgba8 {
+  if (c.r === 255 && c.g === 255 && c.b === 255) return { r: 171, g: 171, b: 171, alpha: c.alpha };
+  return scaled(c, (v) => (v === 0 ? 0 : Math.max(0, f32(f32(v - f32(0.33)) / v))));
+}
+
+/** Color::Light: black is (84, 84, 84); otherwise each channel times min(1, v + 0.33) / v. */
+export function lightColor(c: Rgba8): Rgba8 {
+  if (c.r === 0 && c.g === 0 && c.b === 0) return { r: 84, g: 84, b: 84, alpha: c.alpha };
+  return scaled(c, (v) => f32(Math.min(1, f32(v + f32(0.33))) / v));
+}
+
+const linearize = (x: number): number => (x <= f32(0.04045) ? f32(x / f32(12.92)) : f32(Math.pow(f32(f32(x + f32(0.055)) / f32(1.055)), f32(2.4))));
+const luminance = (c: Rgba8): number => {
+  const [r, g, b] = [c.r, c.g, c.b].map((x) => linearize(f32(x / 255))) as [number, number, number];
+  return f32(f32(f32(f32(0.2126) * r) + f32(f32(0.7152) * g)) + f32(f32(0.0722) * b));
+};
+
+/** GetContrastRatio of two colours' relative luminances. */
+export function contrastRatio(a: Rgba8, b: Rgba8): number {
+  const la = f32(luminance(a) + f32(0.05));
+  const lb = f32(luminance(b) + f32(0.05));
+  return la > lb ? f32(la / lb) : f32(lb / la);
+}
+
+/**
+ * A 3D style's two colours (CalculateInsetOutsetColor): the darker is Color::Dark; the lighter is the colour itself, or Color::Light
+ * when the colour is dark (red under 150 and green under 92) and contrasts with its darker colour by less than 1.75.
+ */
+export function insetOutsetTones(c: Rgba8): [Rgba8, Rgba8] {
+  const dark = darkColor(c);
+  const bright = f32(c.r / 255) >= f32(150 / 255) || f32(c.g / 255) >= f32(92 / 255);
+  return [bright || contrastRatio(c, dark) >= f32(1.75) ? c : lightColor(c), dark];
+}

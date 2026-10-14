@@ -2,7 +2,7 @@
 // the ARGB32 blend, the conservative skip-ink proof and the Ahem skip-ink clips (TDEC-d). The Chrome comparison is packages/parity/test/text-decoration.test.ts;
 // the values here are cases it measured.
 import { describe, expect, it } from 'vitest';
-import { ahemInkEm, ahemLineInk, blendOver, columnAlpha, columnClipped, decorationRects, decorationThickness, lineThroughOffset, NO_DECORATION_FAULTS, overlineOffset, skipInkClear, skipInkClips, underlineOffset } from '../src/text-decoration.ts';
+import { ahemInkEm, ahemLineInk, blendOver, DECORATION_CLIP_MAX_DILATION, columnAlpha, columnClipped, decorationRects, decorationThickness, lineThroughOffset, NO_DECORATION_FAULTS, overlineOffset, skipInkClear, skipInkClips, underlineOffset } from '../src/text-decoration.ts';
 import type { DecorationFont, DecorationInput } from '../src/text-decoration.ts';
 
 const LATO16: DecorationFont = { floatAscent: 16, ascent: 16, size: 16, underlineThickness: 1.6 };
@@ -97,5 +97,16 @@ describe('the Ahem skip-ink clips (TDEC-d, text_painter.cc ClipDecorationsStripe
     const r = rect();
     expect(skipInkClips(r, [{ left: 0, right: 10, top: 0, bottom: 27.5 }, { left: 10.4, right: 20, top: 28.5, bottom: 40 }], F)).toEqual([]);
     expect(skipInkClips(r, [{ left: 0.4, right: 10.6, top: 0, bottom: 27.6 }], F)).toEqual([-2, 13]);
+  });
+  it('draws the ink at the platform font size: Ahem 39.375px is drawn at 39.37 (trunc(size x 100) / 100)', () => {
+    const [g] = ahemLineInk([0x58], [10], 39.375, 50);
+    expect(g?.right).toBeCloseTo(10 + 39.37, 9);
+    expect(g?.top).toBeCloseTo(50 - 0.8 * 39.37, 9);
+  });
+  it('dilates by the thickness up to kDecorationClipMaxDilation (text_painter.cc:44, 569-570): a 20 px line dilates by 13', () => {
+    const r = { ...rect(), thickness: 20, height: 20 };
+    expect(DECORATION_CLIP_MAX_DILATION).toBe(13);
+    expect(skipInkClips(r, [{ left: 40, right: 60, top: 0, bottom: 60 }], F)).toEqual([27, 73]);
+    expect(skipInkClips({ ...r, thickness: 12, height: 12 }, [{ left: 40, right: 60, top: 0, bottom: 60 }], F)).toEqual([28, 72]);
   });
 });

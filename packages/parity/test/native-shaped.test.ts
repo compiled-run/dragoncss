@@ -61,7 +61,11 @@ describe('the emitted bridge', () => {
       const cmap = text.indexOf('bridge.glyph(', branch);
       expect(call).toBeGreaterThan(branch);
       expect(cmap).toBeGreaterThan(call);
-      expect(text.slice(call, call + 200)).toContain('piece.start, piece.visibleEnd)');
+      // The shaped call covers glyphRun's [from, to), which each line piece gives as [piece.start, paintEnd): piece.paintEnd
+      // (visibleEnd unless text-overflow truncates the line) on the fragment it paints.
+      expect(text.slice(call, call + 200)).toContain('text, font, from, to)');
+      expect(text).toMatch(/(let|val) paintEnd = (if \(painted\) |painted \? )piece\.paintEnd( else | : )piece\.start\n/);
+      expect(text).toMatch(/glyphRun\((leaves\[li\]\.text|leafText), leafFont, piece\.start, paintEnd, /);
       expect(text.slice(branch, cmap)).toMatch(/g\.xs/);
     });
   }
@@ -121,19 +125,25 @@ describe('the native reference measurer', () => {
           const zoomed = zoomInput(programInput(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr), NO_ENGINE_FAULTS);
           const m = referenceMeasurer();
           for (const leaf of textLeaves(zoomed.root)) {
-            const cps = [...leaf.text];
+            const all = [...leaf.text];
             const f = { family: leaf.font.family, size: leaf.font.size };
-            const g = pieceGlyphs(m, leaf.text, f as never, 0, cps.length);
-            if (!g.ok) throw new Error(`${n.case.id} ${leaf.id}: ${g.reason}`);
-            expect(g.glyphs.length, `${n.case.id} ${leaf.id}`).toBe(cps.length);
-            // The emitted font-data pen: float sums of the instance size times each hmtx advance / unitsPerEm.
-            const size = platformFontSize(leaf.font.size);
-            let pen = 0;
-            cps.forEach((ch, k) => {
-              expect(Math.abs((g.xs[k] as number) - pen), `${n.case.id} ${leaf.id} glyph ${k} @${dpr}`).toBeLessThan(1 / 1024);
-              pen = Math.fround(pen + Math.fround((size * (AHEM_FONT_DATA.advances[coveredIndex(ch.codePointAt(0) as number)] as number)) / AHEM_FONT_DATA.unitsPerEm));
-              glyphs++;
-            });
+            // A preserved U+000A (TXT2-c) ends a text item and has no glyph: each item between line feeds is shaped on its own, its pen from 0.
+            let at = 0;
+            for (const cps of leaf.text.split('\n').map((t) => [...t])) {
+              const g = pieceGlyphs(m, leaf.text, f as never, at, at + cps.length);
+              if (!g.ok) throw new Error(`${n.case.id} ${leaf.id}: ${g.reason}`);
+              expect(g.glyphs.length, `${n.case.id} ${leaf.id} [${at}, ${at + cps.length})`).toBe(cps.length);
+              // The emitted font-data pen: float sums of the instance size times each hmtx advance / unitsPerEm.
+              const size = platformFontSize(leaf.font.size);
+              let pen = 0;
+              cps.forEach((ch, k) => {
+                expect(Math.abs((g.xs[k] as number) - pen), `${n.case.id} ${leaf.id} glyph ${at + k} @${dpr}`).toBeLessThan(1 / 1024);
+                pen = Math.fround(pen + Math.fround((size * (AHEM_FONT_DATA.advances[coveredIndex(ch.codePointAt(0) as number)] as number)) / AHEM_FONT_DATA.unitsPerEm));
+                glyphs++;
+              });
+              at += cps.length + 1;
+            }
+            expect(at - 1, `${n.case.id} ${leaf.id}`).toBe(all.length);
           }
         }
       }

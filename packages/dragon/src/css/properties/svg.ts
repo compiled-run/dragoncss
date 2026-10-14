@@ -1,4 +1,5 @@
-// SVG paint (SVG-a1, /tmp/specs/svg-a.md): fill, stroke and stroke-width (css-fill-stroke-3), inherited, painted on the shapes of
+// SVG paint (SVG-a1, docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): fill, stroke and stroke-width (css-fill-stroke-3),
+// inherited, painted on the shapes of
 // an inline <svg>. fill and stroke take a <color> or none; paint servers and the context-* keywords wait for SVG-paint, and a
 // stroke-width other than a px length or a unitless number (Chrome's SVG quirk) waits for SVG-units.
 import type { PropertyAspect } from '../properties.ts';

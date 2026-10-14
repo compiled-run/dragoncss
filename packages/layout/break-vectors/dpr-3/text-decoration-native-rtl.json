@@ -1,0 +1,15 @@
+{
+  "case": "text-decoration-native-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"n1:text0","lines":[[0,5]]},
+    {"id":"n2:text0","lines":[[0,5]]},
+    {"id":"n3:text0","lines":[[0,6]]},
+    {"id":"n4:text0","lines":[[0,5]]},
+    {"id":"n5:text0","lines":[[0,5]]},
+    {"id":"n6:text0","lines":[[0,5]]},
+    {"id":"n7:text0","lines":[[0,3]]},
+    {"id":"n7s:text0","lines":[[0,5]]},
+    {"id":"n7:text1","lines":[[0,3]]}
+  ]
+}

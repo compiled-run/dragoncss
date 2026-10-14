@@ -7,7 +7,7 @@
 import type { Browser, Page } from 'playwright';
 import type { EngineFaults, GlyphShaper, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import { layout, measurerFor, NO_ENGINE_FAULTS, shapedMeasurerFor } from '@dragon/layout';
-import { engineLayoutProjection, NO_FAULTS } from 'dragon';
+import { engineLayoutProjection } from 'dragon';
 import type { CapturedNode, WebCapture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
@@ -16,6 +16,7 @@ import { TEXT_CALIBRATION_FACES } from './fixture-groups/text-calibration.ts';
 import { INLINE_TAGS_FACES } from './fixture-groups/inline-tags.ts';
 import { TEXT_WEIGHT_FACES } from './fixture-groups/text-weight.ts';
 import { FONT_SHORTHAND_FACES } from './fixture-groups/font-shorthand.ts';
+import { WHITE_SPACE_FACES } from './fixture-groups/white-space.ts';
 import { TEXT_LATIN_FACES } from './fixture-groups/text-latin.ts';
 import { TEXT_SPACING_FACES } from './fixture-groups/text-spacing.ts';
 import { faceProblem } from './fonts-run.ts';
@@ -24,7 +25,7 @@ import { platformFonts } from './font-reference.ts';
 import type { BreakVector, ChromeBreaks } from './line-breaks.ts';
 import { breakVector, captureBreakTexts, compareVectorWithChrome, engineTextLines, leafTexts } from './line-breaks.ts';
 import { repoPath } from './paths.ts';
-import { compileFixture } from './pipeline.ts';
+import { nativeCompileOnce } from './native-compile.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { hostShaper, REFERENCE_LANGUAGE, referenceShapedMeasurer, shapedFaceOf } from './text-shaper-host.ts';
 
@@ -68,7 +69,7 @@ export function isShapedInput(input: LayoutInput): boolean {
 
 /** The faces Chrome must draw each listed element's text with in a fixture (data-dragon-id to postScriptName), or null. */
 export function expectedFacesOf(fixture: string): { readonly [id: string]: string } | null {
-  return TEXT_LATIN_FACES.get(fixture) ?? TEXT_CALIBRATION_FACES.get(fixture) ?? INLINE_TAGS_FACES.get(fixture) ?? TEXT_WEIGHT_FACES.get(fixture) ?? FONT_SHORTHAND_FACES.get(fixture) ?? TEXT_SPACING_FACES.get(fixture) ?? null;
+  return TEXT_LATIN_FACES.get(fixture) ?? TEXT_CALIBRATION_FACES.get(fixture) ?? INLINE_TAGS_FACES.get(fixture) ?? TEXT_WEIGHT_FACES.get(fixture) ?? FONT_SHORTHAND_FACES.get(fixture) ?? TEXT_SPACING_FACES.get(fixture) ?? WHITE_SPACE_FACES.get(fixture) ?? null;
 }
 
 /**
@@ -241,14 +242,9 @@ export function shapedCaseIds(): ReadonlySet<string> {
   if (shapedIds !== null) return shapedIds;
   const out = new Set<string>();
   for (const f of layoutCases()) {
-    const byDirection = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
     for (const c of f.cases) {
-      let compiled = byDirection.get(c.environment.direction);
-      if (compiled === undefined) {
-        compiled = compileFixture(f.spec, NO_FAULTS, 'derive', c.environment.direction).compiled;
-        byDirection.set(c.environment.direction, compiled);
-      }
-      const p = engineLayoutProjection(compiled, c.environment, c.assignment);
+      // The native derive compile nativeCases lays the case out from, shared with it (the same set as a web-target derive compile).
+      const p = engineLayoutProjection(nativeCompileOnce(f.spec, c.environment.direction), c.environment, c.assignment);
       if (p.kind === 'ready' && isShapedInput(p.input)) out.add(c.id);
     }
   }

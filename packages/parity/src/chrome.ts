@@ -36,11 +36,22 @@ const launchArgs = new WeakMap<Browser, readonly string[]>();
 /** The flags launchChrome started a browser with, or null for a browser it did not start (chrome-memo.ts keys by them). */
 export const launchArgsOf = (browser: Browser): readonly string[] | null => launchArgs.get(browser) ?? null;
 
-/** Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture. */
-export async function launchChrome(forceDeviceScaleFactor: number = 1): Promise<Browser> {
+/**
+ * The pointer and hover types Playwright's headless launch passes to Blink. Blink writes --blink-settings straight into the page
+ * settings on every WebPreferences update (WebViewImpl::UpdateWebPreferences, ApplyCommandLineToSettings), past DevTools touch
+ * emulation, so a page under Emulation.setTouchEmulationEnabled gets (hover: hover) and (pointer: fine) back.
+ */
+export const PLAYWRIGHT_POINTER_SETTINGS = '--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4';
+
+/**
+ * Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture.
+ * withoutPointerSettings drops PLAYWRIGHT_POINTER_SETTINGS, so the page's pointer and hover come from Chrome alone.
+ */
+export async function launchChrome(forceDeviceScaleFactor: number = 1, opts: { readonly withoutPointerSettings?: boolean } = {}): Promise<Browser> {
   const args = chromeArgsAt(forceDeviceScaleFactor);
-  const browser = await chromium.launch({ args: [...args] });
-  launchArgs.set(browser, args);
+  const without = opts.withoutPointerSettings === true;
+  const browser = await chromium.launch({ args: [...args], ...(without ? { ignoreDefaultArgs: [PLAYWRIGHT_POINTER_SETTINGS] } : {}) });
+  launchArgs.set(browser, without ? [...args, `!${PLAYWRIGHT_POINTER_SETTINGS}`] : args);
   const version = browser.version();
   if (version !== CHROME_VERSION) {
     await browser.close();

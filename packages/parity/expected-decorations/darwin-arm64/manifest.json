@@ -86,6 +86,20 @@
    "sameLayout": true
   },
   {
+   "case": "text-decoration-ahem-skip",
+   "dpr": 1,
+   "decorated": "f63843d18b8298b702fbf93dca96f31f952c4f0dbb3e90baf72d62087f2093a9",
+   "stripped": "12e3ba18f84d4498e294441668700c5b7b0fe6f63c730186a69adde3db3e58a0",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-ahem-skip-rtl",
+   "dpr": 1,
+   "decorated": "4fbad6e1c4334f4a82c70da22afcb7561f00aadd1213a0ae2e700fb800ab29dc",
+   "stripped": "96f2406053d3a65d87241fed7a2cf4a4d15d7d13b7ff7fc55a2546a06c2c8bea",
+   "sameLayout": true
+  },
+  {
    "case": "text-decoration-lines",
    "dpr": 2,
    "decorated": "7f7ee221648ea9e9c683ef6eb7f7cbb507ade233e155d590d7a02e088c5e4e1f",
@@ -167,6 +181,20 @@
    "dpr": 2,
    "decorated": "0d2fbb839ac356539f44c35981691d38cb9b51905f085b679bce8ffc39b7f1c9",
    "stripped": "abc7a11ea2260fdb5d976ecd97fd585b85021b21884e6ddb871ef9e10ce02bb2",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-ahem-skip",
+   "dpr": 2,
+   "decorated": "7e5f0b4f72e601994e3566360b4bdd6924f27512a1f45f6dcb25ac10a82891f9",
+   "stripped": "a9d2c1b3dd2282e32b422de392807bdd0e5b7b27655f4c091fb0d2eef8e83821",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-ahem-skip-rtl",
+   "dpr": 2,
+   "decorated": "9440bf81e5d90df398e630849873adb32f1ad8aab32c25dde7e5e3be053c094a",
+   "stripped": "d06e85cd8ed607c8d6c8349d4fdb39f793ff548024764a55ad611bd6043cf90b",
    "sameLayout": true
   },
   {
@@ -254,6 +282,20 @@
    "sameLayout": true
   },
   {
+   "case": "text-decoration-ahem-skip",
+   "dpr": 3,
+   "decorated": "1fe3b040977e650cbb020121e3214ce2c7b68edd08fe340fbe332ba901998531",
+   "stripped": "117d1dd8d219a507bdcd60cd7fb2d534676bcf7078df68c6d83a50cb7388fa3b",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-ahem-skip-rtl",
+   "dpr": 3,
+   "decorated": "003f2c3e9f06827b36938d6a13eb2d0e590b9391beeeddd446593bf5c39c5f29",
+   "stripped": "d589292d9a21a5fdb1c60cfed078eb54bc2e31c9d7a696f6b8e4930fa4e57c89",
+   "sameLayout": true
+  },
+  {
    "case": "text-decoration-lines",
    "dpr": 2.625,
    "decorated": "1e18d1182ea39e53c8547c29ca0adcefde35b22766504faf10fa31f32c20032b",
@@ -335,6 +377,20 @@
    "dpr": 2.625,
    "decorated": "8d581c5483038f198afaea66fa1ad2a8c2a04e4da432fd914c1f4a27bf1e720b",
    "stripped": "0bf39ba7f9fbc5a74923f2249ce10e6c820e4f4aa168c79d2a7d6dacce2ac7c3",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-ahem-skip",
+   "dpr": 2.625,
+   "decorated": "43bf7f29925a8727123753ecbc7ed5495ff3683548cf1ea082f386506f512460",
+   "stripped": "bfe246f0e3a7fcd36dbe0f7cceee8ad5bee5f1d418e8aa1d4a3fc9f48eb015fc",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-ahem-skip-rtl",
+   "dpr": 2.625,
+   "decorated": "eec65b7cdf6c84e2baeb864e59e513fa39371f5195c159cf94bc5778210a0a80",
+   "stripped": "96a2965dbe35535f314c549838f7a9e58405c9280be8584736cde5ecfb5c81f1",
    "sameLayout": true
   }
  ]

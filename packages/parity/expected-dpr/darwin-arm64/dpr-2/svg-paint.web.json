@@ -137,7 +137,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -267,7 +269,9 @@
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -397,7 +401,9 @@
         "fill": "rgb(10, 40, 160)",
         "stroke": "none",
         "stroke-width": "3px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -527,7 +533,9 @@
         "fill": "rgb(10, 40, 160)",
         "stroke": "none",
         "stroke-width": "3px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -657,7 +665,9 @@
         "fill": "rgb(10, 40, 160)",
         "stroke": "none",
         "stroke-width": "3px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -803,7 +813,9 @@
         "fill": "rgb(0, 128, 0)",
         "stroke": "none",
         "stroke-width": "3px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -949,7 +961,9 @@
         "fill": "rgb(200, 120, 0)",
         "stroke": "none",
         "stroke-width": "3px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -1095,7 +1109,9 @@
         "fill": "rgb(250, 200, 0)",
         "stroke": "rgb(0, 0, 0)",
         "stroke-width": "1.5px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1225,7 +1241,9 @@
         "fill": "rgb(250, 200, 0)",
         "stroke": "rgb(0, 0, 0)",
         "stroke-width": "1.5px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -1371,7 +1389,9 @@
         "fill": "none",
         "stroke": "rgb(40, 40, 40)",
         "stroke-width": "1.5px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -1517,7 +1537,9 @@
         "fill": "rgb(250, 200, 0)",
         "stroke": "rgb(90, 0, 90)",
         "stroke-width": "4px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -1663,7 +1685,9 @@
         "fill": "rgb(10, 40, 160)",
         "stroke": "none",
         "stroke-width": "3px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       }
     },
     {
@@ -1793,7 +1817,9 @@
         "fill": "rgb(180, 30, 30)",
         "stroke": "none",
         "stroke-width": "3px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [
@@ -1939,7 +1965,9 @@
         "fill": "none",
         "stroke": "rgb(0, 90, 200)",
         "stroke-width": "5px",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "text-overflow": "clip",
+        "text-transform": "none"
       },
       "svg": {
         "bbox": [

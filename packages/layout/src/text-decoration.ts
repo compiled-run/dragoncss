@@ -2,11 +2,12 @@
 // text_decoration_info.cc ComputeDecorationThickness (74-102), ComputeThickness (453-464), SetLineThroughLineData (395-400),
 // OffsetFromDecoratingBox (319-330); text_decoration_offset.cc ComputeUnderlineOffsetAuto (16-33) and ComputeUnderlineOffsetForUnder
 // with TextTop (49-81; simple_font_data.cc:421-424); decoration_line_painter.cc SnapYAxis, RoundDownThickness and DrawLineAsRect
-// (15-27, 75-93); text_fragment_painter.cc paint order (550-557); text_painter.cc skip-ink band (555-563). Every length is in zoomed
+// (15-27, 75-93); text_fragment_painter.cc paint order (550-557); text_painter.cc skip-ink band and its dilation clamp (44, 555-583). Every length is in zoomed
 // (device) px. Skia 2ab8add5 fills the snapped rect with anti-aliased x edges: SkScan_Antihair.cpp antifillrect's 8-bit partial
 // coverage, blended by the ARGB32 blitter. TDEC-d: the skip-ink clip of Ahem glyphs (skipInkClips; its dilation and rounding are
 // those the decoration capture measures). The native support places decorations with it (TDEC-b, emit/paint/text-decoration.ts).
 import { floorOf, roundOf } from './rt-easing.ts';
+import { platformFontSize } from './units.ts';
 
 /** Planted faults; the decoration capture against Chrome must catch each one. */
 export type DecorationFaults = {
@@ -178,28 +179,35 @@ export function ahemInkEm(cp: number): number[] {
   return [0, 1, 0.8, -0.2];
 }
 
-/** The ink boxes of an Ahem line: each code point's ink at its pen x, scaled by the instance size, around the baseline. */
+/**
+ * The ink boxes of an Ahem line: each code point's ink at its pen x, scaled by the size Chrome draws the instance at around the
+ * baseline. size is the zoomed computed size; Skia draws at platformFontSize (trunc(size x 100) / 100: 39.375 draws at 39.37).
+ */
 export function ahemLineInk(cps: readonly number[], xs: readonly number[], size: number, baseline: number): GlyphInk[] {
+  const drawn = platformFontSize(size);
   const out: GlyphInk[] = [];
   for (let i = 0; i < cps.length; i++) {
     const e = ahemInkEm(cps[i] as number);
     if (e.length === 0) continue;
     const x = xs[i] as number;
-    out.push({ left: x + (e[0] as number) * size, right: x + (e[1] as number) * size, top: baseline - (e[2] as number) * size, bottom: baseline - (e[3] as number) * size });
+    out.push({ left: x + (e[0] as number) * drawn, right: x + (e[1] as number) * drawn, top: baseline - (e[2] as number) * drawn, bottom: baseline - (e[3] as number) * drawn });
   }
   return out;
 }
 
+/** text_painter.cc:44 kDecorationClipMaxDilation: the skip-ink dilation never exceeds 13 px, however thick the line. */
+export const DECORATION_CLIP_MAX_DILATION = 13;
+
 /**
- * text_painter.cc:555-563 ClipDecorationsStripe: every glyph whose ink crosses the skip-ink band (the line's Bounds inset by 0.5 px
- * vertically) clips its intercept, dilated by the thickness on both sides, out of the line. The clip is not anti-aliased: Skia's
+ * text_painter.cc:555-583 ClipDecorationLine: every glyph whose ink crosses the skip-ink band (the line's Bounds inset by 0.5 px
+ * vertically) clips its intercept, dilated on both sides by the thickness up to DECORATION_CLIP_MAX_DILATION (569-570), out of the line. The clip is not anti-aliased: Skia's
  * rect clip keeps column x when x lies outside [round(left - t), round(right + t)), round being SkScalarRoundToInt (floor(v + 0.5)).
  * Returns the clipped column ranges as [start, end) pairs; matched against Chrome's pixels by the decoration capture.
  */
 export function skipInkClips(rect: DecorationRect, glyphs: readonly GlyphInk[], faults: DecorationFaults): number[] {
   const bandTop = rect.y + 0.5;
   const bandBottom = rect.y + rect.thickness - 0.5;
-  const d = faults.skipInkUndilated ? 0 : rect.thickness;
+  const d = faults.skipInkUndilated ? 0 : rect.thickness < DECORATION_CLIP_MAX_DILATION ? rect.thickness : DECORATION_CLIP_MAX_DILATION;
   const out: number[] = [];
   for (const g of glyphs) {
     if (g.bottom > bandTop && g.top < bandBottom) {

@@ -143,6 +143,7 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
     "grid": null,
     "gridItem": null
    },
@@ -263,6 +264,7 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
       "grid": null,
       "gridItem": null
      },
@@ -385,6 +387,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -514,6 +517,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },

@@ -132,8 +132,9 @@ public final class DragonDecorationView: UIView {
       let cov: Double
       do { cov = try textDecoration_columnClipped(x, clipped) ? 0 : textDecoration_columnAlpha(x, left, right, rows) } catch { fatalError("dragon: \(text): columnAlpha failed: \(error)") }
       if cov > 0 {
-        let k = cov >= 256 ? 1.0 : (cov + 1) / 256
-        ctx.setFillColor(UIColor(red: CGFloat(color.r) / 255, green: CGFloat(color.g) / 255, blue: CGFloat(color.b) / 255, alpha: CGFloat(Double(color.a) / 255 * k)).cgColor)
+        // A covered column takes the colour's alpha; a partial one Skia's truncated (alpha x (coverage + 1)) >> 8 (SkAlphaMul).
+        let a = cov >= 256 ? Double(color.a) : (Double(color.a) * (cov + 1) / 256).rounded(.down)
+        ctx.setFillColor(UIColor(red: CGFloat(color.r) / 255, green: CGFloat(color.g) / 255, blue: CGFloat(color.b) / 255, alpha: CGFloat(a / 255)).cgColor)
         ctx.fill(CGRect(x: x / s, y: 0, width: 1 / s, height: rows / s))
       }
       x += 1
@@ -175,9 +176,10 @@ public func dragonPlaceTextDecorations(_ v: DragonBoxView, _ id: String) {
   let s = g.scale
   func font(_ m: [Double]) -> DecorationFont { return DecorationFont(m[0], m[1], m[2], 0) }
   let textFont = font(g.textFont)
-  // The text view's frame in its superview, in device px, against its absolute edges.
-  let dx = Double(tv.frame.minX) * s - g.origin[0]
-  let dy = Double(tv.frame.minY) * s - g.origin[1]
+  // The text view's frame in its superview, in device px, against its absolute edges: whole device px, rounded so a frame
+  // origin times the scale that lands an ulp off an integer does not move a clip or an end column.
+  let dx = (Double(tv.frame.minX) * s - g.origin[0]).rounded()
+  let dy = (Double(tv.frame.minY) * s - g.origin[1]).rounded()
   let faults = DecorationFaults(false, false, false, false, false, false, false, false, false)
   var below: [DragonDecorationView] = []
   var above: [DragonDecorationView] = []
@@ -329,8 +331,8 @@ class DragonDecorationView(ctx: Context) : DragonGroup(ctx) {
     while (x < kotlin.math.ceil(right0)) {
       val cov = if (textDecoration_columnClipped(x, clipped)) 0.0 else textDecoration_columnAlpha(x, left0, right0, rows)
       if (cov > 0.0) {
-        val k = if (cov >= 256.0) 1.0 else (cov + 1.0) / 256.0
-        val a = kotlin.math.floor(color.a * k + 0.5).toInt()
+        // A covered column takes the colour's alpha; a partial one Skia's truncated (alpha x (coverage + 1)) >> 8 (SkAlphaMul).
+        val a = if (cov >= 256.0) color.a else kotlin.math.floor(color.a * (cov + 1.0) / 256.0).toInt()
         paint.color = (a shl 24) or (color.r shl 16) or (color.g shl 8) or color.b
         canvas.drawRect(x.toFloat(), 0f, (x + 1.0).toFloat(), rows.toFloat(), paint)
       }
@@ -450,7 +452,7 @@ fun dragonAppliedTextDecoration(v: DragonBoxView): List<Pair<String, DumpJson>> 
 }
 `;
 
-export const TEXT_DECORATION_EMITTER: PaintEmitter<'text-decoration'> = {
+export const TEXT_DECORATION_EMITTER: PaintEmitter<'text-decoration', 'decoration-above-text' | 'decoration-snap-css-px' | 'decoration-alpha-ignored'> = {
   name: 'text-decoration',
   kinds: ['text-decoration'],
   lines: {
@@ -462,5 +464,34 @@ export const TEXT_DECORATION_EMITTER: PaintEmitter<'text-decoration'> = {
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, applied: 'dragonAppliedTextDecoration', afterText: 'dragonAfterTextDecoration' },
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, applied: 'dragonAppliedTextDecoration', afterText: 'dragonAfterTextDecoration' },
   },
-  plants: [],
+  // The raster plants of notes/T148J-tdec.md TDEC-b, each caught by the decoration points (parity paint-samples/text-decoration.ts):
+  // decorationViewAboveText puts the under and overline views above the text view, so they cover the glyphs they cross;
+  // deviceSnapInCssPx places each rect view's top at a whole css px instead of its snapped device row; decorationColourIgnoresAlpha
+  // paints every covered column opaque.
+  plants: [
+    {
+      name: 'decoration-above-text',
+      replace: {
+        uikit: ['  for o in below { host.insertSubview(o, belowSubview: tv) }\n', '  for o in below { host.insertSubview(o, aboveSubview: tv) }\n'],
+        'android-views': ['  for (o in below) host.addView(o, host.indexOfChild(tv))\n', '  for (o in below) host.addView(o, host.indexOfChild(tv) + 1)\n'],
+      },
+    },
+    {
+      name: 'decoration-snap-css-px',
+      replace: {
+        uikit: ['y: CGFloat((r.top + dy) / s), width', 'y: CGFloat(((r.top + dy) / s).rounded()), width'],
+        'android-views': [
+          'dragonSetFrame(o.dragonFrame, x0, r.top + dy, x1, r.top + dy + r.height, id + " decoration")',
+          'dragonSetFrame(o.dragonFrame, x0, kotlin.math.floor(kotlin.math.round((r.top + dy) / g.scale) * g.scale), x1, kotlin.math.floor(kotlin.math.round((r.top + dy) / g.scale) * g.scale) + r.height, id + " decoration")',
+        ],
+      },
+    },
+    {
+      name: 'decoration-alpha-ignored',
+      replace: {
+        uikit: ['let a = cov >= 256 ? Double(color.a) :', 'let a = cov >= 256 ? 255.0 :'],
+        'android-views': ['val a = if (cov >= 256.0) color.a else', 'val a = if (cov >= 256.0) 255 else'],
+      },
+    },
+  ],
 };

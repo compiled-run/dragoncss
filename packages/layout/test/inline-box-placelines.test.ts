@@ -75,15 +75,16 @@ describe('placeLines is exactly placeIfcLines(buildIfc(...)) (T058J2 (F))', () =
   it('on every engine-inline corpus input, with its planted fault', async () => {
     // Loaded from packages/translate at run time (packages/layout does not depend on it).
     const root = new URL('../../../', import.meta.url).pathname;
-    const dpr = (await import(pathToFileURL(join(root, 'packages/translate/src/corpus-dpr.ts')).href)) as { readonly engineInlineCases: () => string[] };
+    const dpr = (await import(pathToFileURL(join(root, 'packages/translate/src/corpus-dpr.ts')).href)) as { readonly engineInlineCases: () => string[]; readonly INLINE_SPEC: { readonly engineInline: number; readonly atomicInline: number } };
     const lines = dpr.engineInlineCases();
-    expect(lines.length).toBe(3000);
+    // INL2a appends its atomic contexts after INL1a's 3000.
+    expect(lines.length).toBe(dpr.INLINE_SPEC.engineInline + dpr.INLINE_SPEC.atomicInline);
     let n = 0;
     lines.forEach((line, i) => {
       const c = JSON.parse(line) as { readonly faults: EngineFaults; readonly input: LayoutInput };
       n += compare(`engine-inline ${i}`, c.input, c.faults);
     });
-    expect(n).toBeGreaterThanOrEqual(3000 * 4);
+    expect(n).toBeGreaterThanOrEqual(lines.length * 4);
   });
   it('on every vector input (the break vectors are the DPR ones)', () => {
     const files = vectorFiles(VECTORS);
@@ -101,9 +102,9 @@ describe('placeLines is exactly placeIfcLines(buildIfc(...)) (T058J2 (F))', () =
       n += compare(label, v.input as LayoutInput, NO_ENGINE_FAULTS, measurer);
     }
     expect(n).toBeGreaterThan(1000);
-    // The text-latin vectors (vectors/text-latin/dpr-<d>, TXT1a-2's 11 shaped cases, INL1a-tags' 2, TXT-W1's 12 text-weight cases and TXT-W2's 4 real-face font-shorthand cases, faces and synthesis in ltr and rtl, and TXT2-b's 2 text-spacing-lato cases,
-    // at DPR 1, 2, 3 and 2.625) are the shaped ones.
+    // The text-latin vectors (vectors/text-latin/dpr-<d>, TXT1a-2's 11 shaped cases, INL1a-tags' 2, TXT-W1's 12 text-weight cases and TXT-W2's 4 real-face font-shorthand cases, faces and synthesis in ltr and rtl, TXT2-b's 2 text-spacing-lato cases, TXT2-c's white-space-lato case
+    // and TXT2's 2 text-justify-latin cases, at DPR 1, 2, 3 and 2.625) are the shaped ones.
     expect(shaped).toBe(files.filter((f) => f.slice(VECTORS.length).startsWith('text-latin/')).length);
-    expect(shaped).toBe((11 + 2 + 12 + 4 + 2) * 4);
+    expect(shaped).toBe((11 + 2 + 12 + 4 + 2 + 1 + 2) * 4);
   });
 });

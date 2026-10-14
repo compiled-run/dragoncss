@@ -143,6 +143,7 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
     "grid": null,
     "gridItem": null
    },
@@ -263,6 +264,7 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
       "grid": null,
       "gridItem": null
      },
@@ -386,6 +388,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -507,6 +510,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -643,6 +647,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -779,6 +784,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -915,6 +921,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1051,6 +1058,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1187,6 +1195,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1323,6 +1332,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1459,6 +1469,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1470,6 +1481,143 @@
          "defaultWidth": 300,
          "defaultHeight": 150,
          "objectFit": "fill",
+         "objectPositionX": {
+          "kind": "percent",
+          "value": 50
+         },
+         "objectPositionY": {
+          "kind": "percent",
+          "value": 50
+         }
+        },
+        {
+         "kind": "replaced",
+         "id": "hidden",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "direction": "rtl",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "px",
+           "value": 64
+          },
+          "height": {
+           "kind": "px",
+           "value": 64
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 5
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 5
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 5
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 5
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "textOverflow": "clip",
+          "grid": null,
+          "gridItem": null
+         },
+         "natural": {
+          "kind": "image",
+          "width": 160,
+          "height": 80
+         },
+         "defaultWidth": 300,
+         "defaultHeight": 150,
+         "objectFit": "cover",
          "objectPositionX": {
           "kind": "percent",
           "value": 50
@@ -1595,6 +1743,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1629,7 +1778,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 46464
+   "height": 51072
   },
   {
    "id": "body",
@@ -1637,7 +1786,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 46464
+   "height": 51072
   },
   {
    "id": "row",
@@ -1645,7 +1794,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 46464
+   "height": 51072
   },
   {
    "id": "avatar",
@@ -1712,9 +1861,17 @@
    "height": 9600
   },
   {
+   "id": "hidden",
+   "parent": "row",
+   "x": 44928,
+   "y": 34944,
+   "width": 14208,
+   "height": 14208
+  },
+  {
    "id": "tall",
    "parent": "row",
-   "x": 43008,
+   "x": 26496,
    "y": 34944,
    "width": 16128,
    "height": 9216

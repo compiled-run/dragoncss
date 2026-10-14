@@ -15,6 +15,7 @@ import type { InflowBounds, LayoutRect } from './layout.ts';
 import { absoluteRects, layoutMeasurer, layoutWithInflow, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
 import { placeLines } from './inline.ts';
+import { isAtomicInline } from './inline-box.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
 
@@ -417,11 +418,11 @@ function propagated(ix: Index, n: Node): OverflowRect {
  * The PlacedLine fields addLines accounts for (R16): a new line item kind is added here with a Chrome metrics case, never skipped.
  * boxes, boxRects, breaks and breakRects are empty on every line addLines sees, as refuseLineLevelBoxes refuses inline boxes and <br>s.
  */
-export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline', 'pieces', 'boxes', 'boxRects', 'breaks', 'breakRects'];
+export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline', 'pieces', 'boxes', 'boxRects', 'breaks', 'breakRects', 'ellipsis'];
 
-/** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box or <br> child. */
+/** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box, <br> or atomic inline child. */
 function hasInlineContent(box: LayoutBox): boolean {
-  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br');
+  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || (k.kind === 'box' && isAtomicInline(k)));
 }
 
 /**
@@ -453,10 +454,20 @@ function addLines(ix: Index, n: Node, box: LayoutBox, c: Calc): void {
       first = false;
     };
     for (const p of line.pieces) take(p.x, p.width);
+    const e = line.ellipsis;
+    // TXT2-f: a truncated line box is as wide as its text or its ellipsis end (LineTruncator::TruncateLine); its hidden text
+    // adds no overflow (ScrollableOverflowCalculator::AddItemsInternal skips IsHiddenForPaint), its truncated text and ellipsis do.
+    if (e !== null) take(e.x, e.width);
     const lineRect: OverflowRect = { x: add(ox, l), y: add(oy, line.top), width: sub(r, l), height: line.height };
     if (!isEmpty(lineRect)) c.overflow = uniteEvenIfEmpty(c.overflow, lineRect);
     if (c.scrollContainer) addInflow(c, lineRect);
-    for (const p of line.pieces) addOverflow(c, { x: add(ox, p.x), y: add(oy, p.top), width: p.width, height: add(p.ascent, p.descent) });
+    let hidden = false;
+    for (const p of line.pieces) {
+      if (hidden) continue;
+      addOverflow(c, { x: add(ox, p.x), y: add(oy, p.top), width: p.truncated ? p.truncatedWidth : p.width, height: add(p.ascent, p.descent) });
+      if (e !== null && p.leaf === e.leaf) hidden = true;
+    }
+    if (e !== null) addOverflow(c, { x: add(ox, e.x), y: add(oy, e.top), width: e.width, height: add(e.ascent, e.descent) });
   }
 }
 

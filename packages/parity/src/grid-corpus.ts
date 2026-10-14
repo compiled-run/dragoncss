@@ -140,6 +140,32 @@ function referenceMeasurer() {
   return m.measurer;
 }
 
+/**
+ * The first element floated in block flow, or null. Dragon lays out no float: the compiler accepts float only where it has no
+ * effect (a flex or grid item, an absolutely positioned box), and the support profile refuses it elsewhere as
+ * DRAGON_UNPROVEN_CONTEXT (reject-float-block). The corpus compiles with derived profiles, which skip that check, so it refuses here.
+ */
+function floatInFlow(root: Element): string | null {
+  const decl = (style: string, name: string): string | null => {
+    const m = new RegExp(`(?:^|;)\\s*${name}\\s*:\\s*([^;]+)`).exec(style);
+    return m === null ? null : (m[1] as string).trim();
+  };
+  const walk = (el: Element, parentLays: boolean): string | null => {
+    const float = decl(el.style, 'float');
+    const position = decl(el.style, 'position');
+    if (float !== null && float !== 'none' && !parentLays && position !== 'absolute' && position !== 'fixed') return `float: ${float} on ${el.id}`;
+    const display = decl(el.style, 'display') ?? '';
+    const lays = /^(inline-)?(flex|grid)$/.test(display);
+    for (const k of el.children) {
+      if (typeof k === 'string') continue;
+      const r = walk(k, lays);
+      if (r !== null) return r;
+    }
+    return null;
+  };
+  return walk(root, false);
+}
+
 /** A diagnostic code and its message head, as a refusal reason. */
 const refusal = (code: string, message: string): string => `${code}: ${message.replace(/ on [^ ]+$/, '').slice(0, 160)}`;
 
@@ -148,6 +174,11 @@ export function runGridCase(c: CorpusCase, gridFaults: GridFaults, envs: readonl
   const out = new Map<string, EnvOutcome>();
   if (c.after !== null) {
     for (const e of envs) out.set(e.name, { kind: 'refused', reasons: ['inline-level grid baseline beside text (G3)'] });
+    return { id: c.id, family: c.family, envs: out };
+  }
+  const floated = floatInFlow(parseCaseHtml(c.html));
+  if (floated !== null) {
+    for (const e of envs) out.set(e.name, { kind: 'refused', reasons: [`float is not supported in block flow (${floated})`] });
     return { id: c.id, family: c.family, envs: out };
   }
   const doc = caseDocument(c);
@@ -224,7 +255,8 @@ function compareCase(c: CorpusCase, ids: ReadonlyMap<string, string>, abs: Reado
  */
 export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner: string; readonly pattern: RegExp }[] = [
   { id: 'inline-grid', owner: 'G-INL (after INL2): inline-level grid containers', pattern: /display: inline-grid|inline-level grid baseline/ },
-  { id: 'baseline-alignment', owner: 'G3: baseline self-alignment', pattern: /grid-baseline|justify-(self|items): (last )?baseline|align-(self|items): last baseline/ },
+  // G3 lays out first baseline alignment in the block axis; inline-axis and last baseline alignment stay refused by the compiler.
+  { id: 'baseline-alignment', owner: 'G3 follow-up: inline-axis and last baseline self-alignment', pattern: /justify-(self|items): (last )?baseline|align-(self|items): last baseline/ },
   { id: 'subgrid', owner: 'G5: subgrid', pattern: /subgrid/ },
   { id: 'writing-mode', owner: 'G-WM: vertical writing modes', pattern: /writing-mode/ },
   { id: 'sizing-keyword', owner: 'SIZE: min-content, max-content and fit-content as width', pattern: /width: (min-content|max-content|fit-content)/ },
@@ -245,7 +277,8 @@ export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner:
 export const KNOWN_MISMATCHES: ReadonlyMap<string, string> = new Map<string, string>([]);
 
 /**
- * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's, G2's and G4's scope, and G2's repeatEndNameMissed, with a
+ * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's, G2's and G4's scope, G2's repeatEndNameMissed and G3's
+ * baseline plants, with a
  * corpus case that must catch it in item or container boxes. fr-restart shows frRestartMissing only in getComputedStyle track
  * sizes, which this test does not compare.
  */
@@ -281,6 +314,8 @@ export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | 'ignoreO
   { fault: 'absposBeyondGridClamped', kase: 'ab-beyond-grid' },
   { fault: 'absposAutoLineContentEdge', kase: 'ab-auto-lines' },
   { fault: 'absposStaticAlignIgnored', kase: 'ab-align' },
+  { fault: 'baselineShimIgnored', kase: 'b-row-shim' },
+  { fault: 'baselineSynthesizedAtTop', kase: 'b-synthesized' },
 ];
 
 /**

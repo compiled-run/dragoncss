@@ -1,0 +1,14 @@
+{
+  "case": "white-space-lato",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","lines":[[0,14],[14,26],[26,30]]},
+    {"id":"b:text0","lines":[[0,10],[10,18]]},
+    {"id":"c:text0","lines":[[0,9],[9,15]]},
+    {"id":"d:text0","lines":[[0,3],[3,14]]},
+    {"id":"r1:text0","lines":[[0,5]]},
+    {"id":"r2:text0","lines":[[0,5]]},
+    {"id":"r3:text0","lines":[[0,10],[10,18]]},
+    {"id":"r4:text0","lines":[[0,10],[10,16]]}
+  ]
+}

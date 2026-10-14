@@ -48,6 +48,7 @@ const EVIDENCE_READS = [
 import { TDEC } from './regen-steps/tdec.ts';
 import { TXT1A } from './regen-steps/txt1a.ts';
 import { TXT2 } from './regen-steps/txt2.ts';
+import { TXT2E } from './regen-steps/txt2e.ts';
 
 export type { Tree } from './regen-inputs.ts';
 export type { ManualOutput, RegenFeature, Step } from './regen-steps/step.ts';
@@ -132,6 +133,7 @@ export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   tdec: TDEC,
   txt1a: TXT1A,
   txt2: TXT2,
+  txt2e: TXT2E,
 };
 
 /** Every regen step, in run order: the legacy steps with the features' steps and extra outputs placed (placeSteps). */
