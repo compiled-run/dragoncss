@@ -9,7 +9,8 @@ import type { Browser } from 'playwright';
 import { hitFacts, programInput, svgScenes } from 'dragon';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
-import { CHROME_VERSION, openPage } from './chrome.ts';
+import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
+import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
@@ -48,25 +49,43 @@ export const gridSha256 = (grid: readonly (readonly [number, number])[]): string
 /** Chrome's elementFromPoint at every grid point of a case, on its authored rendering; each id is the element's data-dragon-id. */
 export async function captureHits(browser: Browser, n: NativeCase): Promise<HitCapture> {
   const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
+  const hits = await elementsAtMemo(browser, n, grid);
+  const ids = [...new Set(hits)].sort();
+  const runs: [number, number][] = [];
+  for (const h of hits) {
+    const k = ids.indexOf(h);
+    const last = runs[runs.length - 1];
+    if (last !== undefined && last[0] === k) last[1]++;
+    else runs.push([k, 1]);
+  }
+  return { case: n.case.id, chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, viewport: n.case.environment.viewport, direction: n.case.environment.direction, points: grid.length, gridSha256: gridSha256(grid), ids, runs };
+}
+
+/** The data-dragon-id Chrome hits at each grid point (1/64 px) of a case's authored page, '#none' where none. */
+async function elementsAt(browser: Browser, n: NativeCase, grid: readonly (readonly [number, number])[]): Promise<string[]> {
   const page = await openPage(browser, n.case.authoredHtml, n.case.environment);
   try {
-    const hits = await page.evaluate((pts) => pts.map(([x, y]) => {
+    return await page.evaluate((pts) => pts.map(([x, y]) => {
       const e = document.elementFromPoint(x / 64, y / 64);
       const el = e === null ? null : e.closest('[data-dragon-id]');
       return el === null ? '#none' : (el.getAttribute('data-dragon-id') as string);
     }), grid);
-    const ids = [...new Set(hits)].sort();
-    const runs: [number, number][] = [];
-    for (const h of hits) {
-      const k = ids.indexOf(h);
-      const last = runs[runs.length - 1];
-      if (last !== undefined && last[0] === k) last[1]++;
-      else runs.push([k, 1]);
-    }
-    return { case: n.case.id, chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, viewport: n.case.environment.viewport, direction: n.case.environment.direction, points: grid.length, gridSha256: gridSha256(grid), ids, runs };
   } finally {
     await page.context().close();
   }
+}
+
+// The code that decides the hits beside the page and the grid: this module (elementsAt) and the page setup.
+const HIT_CODE = ['packages/parity/src/hit-capture.ts', 'packages/parity/src/chrome.ts'];
+/** Remembered and fresh hit captures of this process (chrome-memo.ts). */
+export const HIT_MEMO: MemoStats = { hits: 0, misses: 0 };
+
+/** elementsAt, remembered by its page and grid (chrome-memo.ts); a browser launchChrome did not start has flags the key cannot see. */
+function elementsAtMemo(browser: Browser, n: NativeCase, grid: readonly (readonly [number, number])[]): Promise<string[]> {
+  const args = launchArgsOf(browser);
+  if (args === null) return elementsAt(browser, n, grid);
+  const env = n.case.environment;
+  return memoizedJson('hit', { html: injectHarness(n.case.authoredHtml, env), env, args, grid: gridSha256(grid) }, HIT_CODE, HIT_MEMO, () => elementsAt(browser, n, grid));
 }
 
 export const hitCaptureJson = (c: HitCapture): string => `${JSON.stringify({ ...c, runs: undefined }, null, 2).replace(/\n}$/, ',')}\n  "runs": ${JSON.stringify(c.runs)}\n}\n`;

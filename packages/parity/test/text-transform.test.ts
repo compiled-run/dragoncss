@@ -54,6 +54,10 @@ function corpus(): Case[] {
   out.push(runs('nodes after full stop', 'capitalize', 'a.', 'b'));
   out.push(runs('nodes after digit', 'capitalize', '3', 'x'));
   out.push(runs('nodes across br', 'capitalize', 'ab', 'br', 'cd'));
+  // LayoutText::PreviousCharacter is one UChar: after a supplementary letter it is the lone low surrogate (Word_Break Other), so
+  // the next node starts a word, though the whole letter (ALetter) would not.
+  out.push(runs('nodes after supplementary letter', 'capitalize', '\u{10428}', 'x'));
+  out.push(runs('nodes after supplementary letter 2', 'capitalize', 'a\u{1e922}', 'yz'));
   out.push({ name: 'nodes mixed transforms', runs: [{ text: 'ab', transform: 'uppercase' }, { text: 'cd', transform: 'capitalize' }, { text: ' ef', transform: 'none' }, { text: 'gh', transform: 'capitalize' }] });
   out.push(runs('final sigma per node', 'lowercase', 'ΑΣ', 'Α'));
   return out;

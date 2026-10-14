@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:
 import { join } from 'node:path';
 import { animCasesOf, animFixtures, frameScript, pixelSamples, pixelSampleTotal } from '../anim-cases.ts';
 import { launchChrome } from '../chrome.ts';
+import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { DPRS, zoomGuard } from '../dpr.ts';
 import { captureFrames, captureFramesWithRefs, frameBreaksJson, frameCaptureJson, framePixelManifestJson } from '../frame-capture.ts';
 import { repoPath } from '../paths.ts';
@@ -43,7 +44,8 @@ for (const dpr of FRAME_DPRS) {
       }
     }) : null;
     if (device) await zoomGuard(browser, dpr);
-    for (const c of cases) {
+    // Each capture opens its own context (frame-capture.ts), so cases run CHROME_PAGES at a time, as parity:pixel-capture's do.
+    await inOrder(cases, CHROME_PAGES, async (c) => {
       const steps = frameScript(c);
       mkdirSync(join(dir, c.id), { recursive: true });
       if (raster !== null) {
@@ -63,7 +65,7 @@ for (const dpr of FRAME_DPRS) {
         writeFileSync(join(dir, c.id, `${r}-dpr${dpr}.json`), frameCaptureJson(cap));
         samples += cap.samples.length;
       }
-    }
+    });
   } finally {
     await browser.close();
   }
