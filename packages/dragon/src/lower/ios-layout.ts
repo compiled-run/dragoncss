@@ -32,6 +32,7 @@ import type {
   Position,
   SizeValue,
   TextAlign,
+  TextIndentValue,
   TextOverflow,
   TextLeaf,
   TextWrapMode,
@@ -190,6 +191,12 @@ function gap(id: string, get: Get, p: Longhand, l: Lowering): GapValue {
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | normal') : lp;
 }
 
+// css-text-3 §8.1: text-indent is a length, a percentage of the line's available width or a calculation, negative allowed.
+function textIndent(id: string, get: Get, l: Lowering): TextIndentValue {
+  const lp = lengthPercentage(id, get, 'text-indent', 'all', l);
+  return lp === null ? fail(id, 'text-indent', get('text-indent'), 'px | % | a viewport length | a calculation') : lp;
+}
+
 // css-sizing-4 §5.1: the engine takes Blink's layout ratio as raw LayoutUnits (analysis/computed-checks.ts refuses the rest).
 function aspectRatio(id: string, get: Get): AspectRatioValue {
   const v = get('aspect-ratio');
@@ -335,6 +342,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     aspectRatio: aspectRatio(id, get),
     verticalAlign: verticalAlign(id, get, l),
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
+    textIndent: textIndent(id, get, l),
     grid: null,
     gridItem: null,
   };
@@ -409,14 +417,14 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   if (collapse.kind !== 'keyword' || !WHITE_SPACE_COLLAPSE.includes(collapse.value)) return fail(id, 'white-space-collapse', collapse, WHITE_SPACE_COLLAPSE.join(' | '));
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerLetterSpacing(id, get('letter-spacing')) };
+  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerSpacing(id, 'letter-spacing', get('letter-spacing')), wordSpacing: lowerSpacing(id, 'word-spacing', get('word-spacing')) };
 }
 
-/** css-text-3 §8.2: a computed letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
-function lowerLetterSpacing(id: string, v: CssValue): Px {
+/** css-text-3 §8.1 and §8.2: a computed word-spacing or letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
+function lowerSpacing(id: string, property: 'letter-spacing' | 'word-spacing', v: CssValue): Px {
   if (v.kind === 'keyword' && v.value === 'normal') return { kind: 'px', value: 0 };
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
-  return fail(id, 'letter-spacing', v, 'normal | px');
+  return fail(id, property, v, 'normal | px');
 }
 
 /**
@@ -466,7 +474,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const id = c.element.address;
   const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');

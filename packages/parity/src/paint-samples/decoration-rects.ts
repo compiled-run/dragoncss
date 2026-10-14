@@ -46,11 +46,11 @@ export function placedDecorations(p: NativeProgram, viewport: { readonly width: 
   const fonts = new Map<string, TextFont>();
   const inline = (k: InlineChild): void => {
     if (k.kind !== 'inline') return;
-    fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0 });
+    fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0, wordSpacing: 0 });
     for (const x of k.children) inline(x);
   };
   const walk = (b: LayoutBox): void => {
-    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0 });
+    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0 });
     for (const k of b.children) {
       if (k.kind === 'box') walk(k);
       else if (k.kind !== 'replaced') inline(k);

@@ -386,7 +386,7 @@ public func replaced_replacedBlockBasis(_ leaf: ReplacedLeaf, _ basis: any U_Hei
   }
   // ts: packages/layout/src/replaced.ts:262
   if try (((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) && replaced_blockLengthsHavePercent(leaf.style)) {
-    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s527, S.s781)
+    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s536, S.s793)
   }
   return nil
 }

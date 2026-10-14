@@ -1,0 +1,12 @@
+{
+  "case": "text-indent-latin-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","data":"An indented paragraph starts its first line one step in and wraps the rest at the left edge","lines":4,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3],"blank":[21,55,86]},
+    {"id":"b:text0","data":"A percentage indent takes its share of the width the line has to fill","lines":4,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],"blank":[12,29,48]},
+    {"id":"c:text0","data":"A hanging first line made with a negative indent and padding sticks out ","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[41]},
+    {"id":"c:text1","data":" of the text","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"s:text0","data":"past the rest","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1],"blank":[8]}
+  ]
+}

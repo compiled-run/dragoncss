@@ -62,7 +62,7 @@ public final class OverflowRefusal: JsError {
   public init(_ nodeId: JsString, _ detail: JsString) throws {
     self.nodeId = nodeId
     self.detail = detail
-    super.init(message: jsConcat(nodeId, S.s157, detail))
+    super.init(message: jsConcat(nodeId, S.s164, detail))
   }
 }
 
@@ -256,7 +256,7 @@ public func overflow_scrollMetricsWithFaults(_ given: LayoutInput, _ measurer: T
   let r: any U_LayoutResult_ok_LayoutResult_unsupported = placed.result
   // ts: packages/layout/src/overflow.ts:91
   if (r.kind != S.s_ok) {
-    return ScrollMetricsResult_refused(S.s_refused, (r as! LayoutResult_unsupported).unsupported.nodeId, jsConcat((r as! LayoutResult_unsupported).unsupported.code, S.s157, (r as! LayoutResult_unsupported).unsupported.detail))
+    return ScrollMetricsResult_refused(S.s_refused, (r as! LayoutResult_unsupported).unsupported.nodeId, jsConcat((r as! LayoutResult_unsupported).unsupported.code, S.s164, (r as! LayoutResult_unsupported).unsupported.detail))
   }
   let m: TextMeasurer = try layout_layoutMeasurer(measurer, faults)
   // ts: packages/layout/src/overflow.ts:93
@@ -289,7 +289,7 @@ public func overflow_scrollMetricsWithFaults(_ given: LayoutInput, _ measurer: T
     }
     // ts: packages/layout/src/overflow.ts:108
     if (e is UnsupportedSignal) {
-      return ScrollMetricsResult_refused(S.s_refused, (e as! UnsupportedSignal).unsupported.nodeId, jsConcat((e as! UnsupportedSignal).unsupported.code, S.s157, (e as! UnsupportedSignal).unsupported.detail))
+      return ScrollMetricsResult_refused(S.s_refused, (e as! UnsupportedSignal).unsupported.nodeId, jsConcat((e as! UnsupportedSignal).unsupported.code, S.s164, (e as! UnsupportedSignal).unsupported.detail))
     }
     throw e
   }
@@ -306,7 +306,7 @@ public func overflow_scrollRangesWithFaults(_ given: LayoutInput, _ measurer: Te
   let r: any U_LayoutResult_ok_LayoutResult_unsupported = placed.result
   // ts: packages/layout/src/overflow.ts:145
   if (r.kind != S.s_ok) {
-    return ScrollRangesResult_refused(S.s_refused, (r as! LayoutResult_unsupported).unsupported.nodeId, jsConcat((r as! LayoutResult_unsupported).unsupported.code, S.s157, (r as! LayoutResult_unsupported).unsupported.detail))
+    return ScrollRangesResult_refused(S.s_refused, (r as! LayoutResult_unsupported).unsupported.nodeId, jsConcat((r as! LayoutResult_unsupported).unsupported.code, S.s164, (r as! LayoutResult_unsupported).unsupported.detail))
   }
   var ix: Index
   // ts: packages/layout/src/overflow.ts:147
@@ -317,7 +317,7 @@ public func overflow_scrollRangesWithFaults(_ given: LayoutInput, _ measurer: Te
   } catch let e {
     // ts: packages/layout/src/overflow.ts:153
     if (e is UnsupportedSignal) {
-      return ScrollRangesResult_refused(S.s_refused, (e as! UnsupportedSignal).unsupported.nodeId, jsConcat((e as! UnsupportedSignal).unsupported.code, S.s157, (e as! UnsupportedSignal).unsupported.detail))
+      return ScrollRangesResult_refused(S.s_refused, (e as! UnsupportedSignal).unsupported.nodeId, jsConcat((e as! UnsupportedSignal).unsupported.code, S.s164, (e as! UnsupportedSignal).unsupported.detail))
     }
     throw e
   }
@@ -371,7 +371,7 @@ public func overflow_nodeOf(_ ix: Index, _ id: JsString) throws -> Node {
   let n: Node? = ix.nodes.get(id)
   // ts: packages/layout/src/overflow.ts:186
   if (n == nil) {
-    throw JsError(message: jsConcat(S.s725, id))
+    throw JsError(message: jsConcat(S.s737, id))
   }
   return try jsUnwrap(n)
 }
@@ -395,7 +395,7 @@ public func overflow_indexOf(_ ctx: Ctx, _ input: LayoutInput, _ abs: JsStringMa
     let rect: LayoutRect? = abs.get(b.id)
     // ts: packages/layout/src/overflow.ts:196
     if (rect == nil) {
-      throw JsError(message: jsConcat(S.s725, b.id))
+      throw JsError(message: jsConcat(S.s737, b.id))
     }
     let border: Edges = try box_resolveBorder(b.style, ctx.devicePixelRatio)
     let padding: Edges = try box_resolvePaddingWith(b.style, cbInline, ctx.faults)
@@ -582,7 +582,7 @@ public func overflow_overflowOf(_ ix: Index, _ n: Node) throws -> OverflowRect {
   }
   // ts: packages/layout/src/overflow.ts:370
   if (!n.paddingKnown) {
-    throw try OverflowRefusal((b as! LayoutBox).id, S.s437)
+    throw try OverflowRefusal((b as! LayoutBox).id, S.s444)
   }
   let grid: Bool = ((b as! LayoutBox).style.display == S.s_grid)
   // ts: packages/layout/src/overflow.ts:373
@@ -638,7 +638,7 @@ public func overflow_gridInflowOf(_ ix: Index, _ id: JsString) throws -> Overflo
   let r: OverflowRect? = ix.gridInflow.get(id)
   // ts: packages/layout/src/overflow.ts:398
   if (r == nil) {
-    throw JsError(message: jsConcat(S.s724, id))
+    throw JsError(message: jsConcat(S.s736, id))
   }
   return try jsUnwrap(r)
 }
@@ -685,15 +685,15 @@ public func overflow_refuseLineLevelBoxes(_ box: LayoutBox) throws -> Void {
       _i150 += 1
       // ts: packages/layout/src/overflow.ts:435
       if ((k.kind == S.s_box) || ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_replaced)) {
-        throw try OverflowRefusal((k as! any U_LayoutBox_ReplacedLeaf).id, jsConcat(S.s463, box.id, S.s166))
+        throw try OverflowRefusal((k as! any U_LayoutBox_ReplacedLeaf).id, jsConcat(S.s471, box.id, S.s173))
       }
       // ts: packages/layout/src/overflow.ts:437
       if ((k as! any U_InlineBox_LineBreak_TextLeaf).kind == S.s_inline) {
-        throw try OverflowRefusal((k as! InlineBox).id, jsConcat(S.s467, box.id, S.s165))
+        throw try OverflowRefusal((k as! InlineBox).id, jsConcat(S.s475, box.id, S.s172))
       }
       // ts: packages/layout/src/overflow.ts:438
       if ((k as! any U_LineBreak_TextLeaf).kind == S.s_br) {
-        throw try OverflowRefusal((k as! LineBreak).id, jsConcat(S.s428, box.id, S.s165))
+        throw try OverflowRefusal((k as! LineBreak).id, jsConcat(S.s435, box.id, S.s172))
       }
     }
   }
@@ -778,7 +778,7 @@ public func overflow_inflowBounds(_ ix: Index, _ p: Node, _ k: Node, _ dx: Doubl
   let direction: JsString = try block_directionOf(ix.ctx, p.box)
   // ts: packages/layout/src/overflow.ts:484
   if try ((s.position == S.s_relative) && (overflow_hasPercentInset(s.top) || overflow_hasPercentInset(s.bottom))) {
-    throw try OverflowRefusal(k.box.id, S.s440)
+    throw try OverflowRefusal(k.box.id, S.s447)
   }
   let rel: RelativeOffset = try position_relativeOffsetWith(k.box, cb, box_INDEFINITE, direction, ix.ctx.faults)
   let x: Double = try units_sub(dx, rel.dx)
@@ -795,7 +795,7 @@ public func overflow_inflowBounds(_ ix: Index, _ p: Node, _ k: Node, _ dx: Doubl
     let end: EndStrut? = flow.ends.get(k.box.id)
     // ts: packages/layout/src/overflow.ts:499
     if (end == nil) {
-      throw JsError(message: jsConcat(S.s720, k.box.id))
+      throw JsError(message: jsConcat(S.s732, k.box.id))
     }
     let withOwn: Strut = try overflow_joinMargin(jsUnwrap(end).strut, mb)
     try blockEnd = (jsUnwrap(end).selfCollapsing ? units_sub(overflow_collapsed(withOwn), overflow_collapsed(jsUnwrap(end).strut)) : overflow_collapsed(withOwn))
@@ -899,7 +899,7 @@ public func overflow_readFlow(_ ix: Index, _ n: Node) throws -> Flow {
       }
       // ts: packages/layout/src/overflow.ts:593
       if try (((k as! any U_LayoutBox_ReplacedLeaf).style.position == S.s_relative) && (overflow_hasPercentInset((k as! any U_LayoutBox_ReplacedLeaf).style.top) || overflow_hasPercentInset((k as! any U_LayoutBox_ReplacedLeaf).style.bottom))) {
-        throw try OverflowRefusal((k as! any U_LayoutBox_ReplacedLeaf).id, S.s439)
+        throw try OverflowRefusal((k as! any U_LayoutBox_ReplacedLeaf).id, S.s446)
       }
       let rel: RelativeOffset = try position_relativeOffsetWith((k as! any U_LayoutBox_ReplacedLeaf), cb, box_INDEFINITE, direction, f)
       try cursor = units_sub(units_add(units_sub(kn.rect.y, rel.dy), kn.rect.height), contentTop)
@@ -938,7 +938,7 @@ public func overflow_readChild(_ ix: Index, _ n: Node) throws -> ChildMargins {
   let h: any U_Auto_LengthCalc_Percent_Px = (b as! LayoutBox).style.height
   // ts: packages/layout/src/overflow.ts:622
   if try (((((h.kind != S.s_auto) && box_hasPercent((h as! any U_LengthCalc_Percent_Px))) && (n.border.bottom == 0.0)) && (n.padding.bottom == 0.0)) && ((r.endStrut.positive != 0.0) || (r.endStrut.negative != 0.0))) {
-    throw try OverflowRefusal((b as! LayoutBox).id, S.s435)
+    throw try OverflowRefusal((b as! LayoutBox).id, S.s443)
   }
   let minMax: MinMax = try box_blockMinMaxWith((b as! LayoutBox), box_INDEFINITE, vbp, ix.ctx.faults)
   let specNoCollapse: Bool = (ix.ctx.faults.minMaxEndMarginSpec && (minMax.min > vbp))
@@ -963,7 +963,7 @@ public func overflow_viewportMetrics(_ ix: Index, _ input: LayoutInput, _ direct
   let mb: Double = try box_resolveMarginWith(s.marginBottom, width, f).value
   // ts: packages/layout/src/overflow.ts:652
   if try ((s.position == S.s_relative) && (overflow_hasPercentInset(s.top) || overflow_hasPercentInset(s.bottom))) {
-    throw try OverflowRefusal(root.box.id, S.s441)
+    throw try OverflowRefusal(root.box.id, S.s448)
   }
   let rel: RelativeOffset = try position_relativeOffsetWith(root.box, width, box_INDEFINITE, block_directionOf(ix.ctx, root.box), f)
   let x: Double = try units_sub(root.rect.x, rel.dx)

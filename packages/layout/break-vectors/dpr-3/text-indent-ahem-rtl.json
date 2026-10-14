@@ -1,0 +1,24 @@
+{
+  "case": "text-indent-ahem-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,6],[6,14]]},
+    {"id":"a2:text0","lines":[[0,12],[12,14]]},
+    {"id":"a3:text0","lines":[[0,9],[9,14]]},
+    {"id":"a4:text0","lines":[[0,9],[9,14]]},
+    {"id":"a5:text0","lines":[[0,9],[9,14]]},
+    {"id":"a6:text0","lines":[[0,5]]},
+    {"id":"a6:text1","lines":[[0,9],[9,11]]},
+    {"id":"a7:text0","lines":[[0,6],[6,14]]},
+    {"id":"a8:text0","lines":[[0,6],[6,8]]},
+    {"id":"a9:text0","lines":[[0,3]]},
+    {"id":"a9s:text0","lines":[[0,3],[3,5]]},
+    {"id":"a9:text1","lines":[[0,6]]},
+    {"id":"a10:text0","lines":[[0,5]]},
+    {"id":"a11p:text0","lines":[[0,6],[6,8]]},
+    {"id":"a12i:text0","lines":[[0,4]]},
+    {"id":"a13i:text0","lines":[[0,4]]},
+    {"id":"a14:text0","lines":[[0,3],[3,6]]},
+    {"id":"a15i:text0","lines":[[0,5]]}
+  ]
+}

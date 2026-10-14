@@ -173,6 +173,7 @@ export const styleSchema = obj({
     ...calc,
   }),
   textOverflow: lit('clip', 'ellipsis'),
+  textIndent: tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...calc }),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -192,6 +193,7 @@ export const textLeafSchema = obj({
   whiteSpaceCollapse: lit('collapse', 'preserve', 'preserve-breaks', 'break-spaces'),
   textWrapMode: lit('wrap', 'nowrap'),
   letterSpacing: calcExpr,
+  wordSpacing: calcExpr,
 });
 
 /** A replaced leaf (input.ts ReplacedLeaf); its style is checked as a box style. */
@@ -799,7 +801,7 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
 }
 
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
-const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'gridItem'>]: LayoutStyle[K] } = {
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
   top: { kind: 'auto' },
@@ -846,7 +848,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its
-// id is "<parent id>:anon<k>", and it inherits direction and text-align while every other field is its initial value.
+// id is "<parent id>:anon<k>", and it inherits direction, text-align and text-indent while every other field is its initial value.
 function checkAnonymous(box: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[], parentId: string | null): void {
   const bad = (message: string): void => {
     errors.push({ path, code: 'anonymous-shape', message });

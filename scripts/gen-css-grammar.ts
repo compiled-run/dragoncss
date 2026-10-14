@@ -74,12 +74,16 @@ const SUBSET = [
   ...SVG_LONGHANDS,
   // TXT2-b: letter-spacing (css-text-3 §8.2), after visibility, as LONGHANDS registers it.
   'letter-spacing',
+  // TXT2-b: word-spacing (css-text-3 §8.1), after letter-spacing, as LONGHANDS registers it.
+  'word-spacing',
   // TXT2-f: text-overflow (css-overflow-4 §3.1), after visibility.
   'text-overflow',
   // TXT2-e: text-transform (css-text-3 §2.1), after visibility, as LONGHANDS registers it.
   'text-transform',
   // resize (css-ui-4 §5.1), after text-transform, as LONGHANDS registers it.
   'resize',
+  // TXT2-h: text-indent (css-text-3 §8.1), after resize, as LONGHANDS registers it.
+  'text-indent',
 ] as const;
 
 /**
@@ -126,6 +130,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink parses one keyword, clip or ellipsis: the <string> value (TextOverflowString) and the two-value form are test features
   // in Chrome 145 (notes/T149-txt2-spec.md R2), and webref's fade and fade() are not parsed.
   'text-overflow': 'clip | ellipsis',
+  // Blink parses one <length-percentage>: hanging and each-line are behind CssTextIndent, a test feature in Chrome 145
+  // (notes/T149-txt2-spec.md R2).
+  'text-indent': '<length-percentage>',
   // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.
   'text-transform': 'none | capitalize | uppercase | lowercase | math-auto',
   display: [

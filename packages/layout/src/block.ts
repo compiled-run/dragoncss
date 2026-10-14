@@ -134,6 +134,10 @@ export type EngineFaults = {
   readonly spacingPerCodePoint: boolean;
   /** TXT2-b: HarfBuzz keeps liga, clig and calt under nonzero letter spacing (font_features.cc). */
   readonly ligaturesKept: boolean;
+  /** TXT2-b: no word spacing after a space at offset 0 of a shaped item (Blink's offset-0 rule counts from the formatting context). */
+  readonly wordSpacingAtItemStart: boolean;
+  /** TXT2-b: no word spacing after a no-break space in a shaped item (Character::TreatAsSpace includes it). */
+  readonly wordSpacingSkipsNbsp: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -166,6 +170,14 @@ export type EngineFaults = {
   readonly trailingPreWrapNotHanging: boolean;
   /** TXT2-c: break-spaces spaces before a soft wrap opportunity hang, as pre-wrap spaces do. */
   readonly breakSpacesHanging: boolean;
+  /** TXT2-h: text-indent indents every line, not only the first formatted line. */
+  readonly indentEveryLine: boolean;
+  /** TXT2-h: text-indent also indents each line after a forced break (<br>). */
+  readonly indentAfterBr: boolean;
+  /** TXT2-h: a percentage text-indent counts in min-content and max-content, against the line it indents. */
+  readonly indentPercentInIntrinsic: boolean;
+  /** TXT2-h: in rtl the indent is measured from the line-left edge instead of the line-right edge. */
+  readonly indentRtlFromLeft: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -219,6 +231,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   trailingSpacingDropped: false,
   spacingPerCodePoint: false,
   ligaturesKept: false,
+  wordSpacingAtItemStart: false,
+  wordSpacingSkipsNbsp: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,
@@ -235,6 +249,10 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   preservedSpaceCollapsed: false,
   trailingPreWrapNotHanging: false,
   breakSpacesHanging: false,
+  indentEveryLine: false,
+  indentAfterBr: false,
+  indentPercentInIntrinsic: false,
+  indentRtlFromLeft: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */

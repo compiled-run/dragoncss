@@ -208,7 +208,7 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
 }
 
 /** Inherited lengths whose value may be a calculation: their em and rem compute at the declaring element (css-values-4 §6). */
-const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset'];
+const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset', 'text-indent'];
 const EM_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(r?em)(?![\w-])/gi;
 
 /**
@@ -236,6 +236,17 @@ export function computeLetterSpacing(props: Map<Longhand, ResolvedValue>, zeroNo
   const v = props.get('letter-spacing') as ResolvedValue;
   if (zeroNotNormal || (v.value.kind !== 'length' && v.value.kind !== 'number') || v.value.value !== 0) return;
   props.set('letter-spacing', { ...v, value: { kind: 'keyword', value: 'normal' } });
+}
+
+/**
+ * css-text-3 §8.1 as Chrome 145 computes word-spacing (longhands_custom.cc WordSpacing::CSSValueFromComputedStyleInternal): a fixed
+ * length, normal (0) included, computes to px. Planted fault wordNormalNotZero keeps normal.
+ */
+export function computeWordSpacing(props: Map<Longhand, ResolvedValue>, wordNormalNotZero: boolean): void {
+  const v = props.get('word-spacing') as ResolvedValue;
+  if (wordNormalNotZero) return;
+  if (v.value.kind === 'keyword' && v.value.value === 'normal') props.set('word-spacing', { ...v, value: { kind: 'length', value: 0, unit: 'px' } });
+  else if (v.value.kind === 'number' && v.value.value === 0) props.set('word-spacing', { ...v, value: { kind: 'length', value: 0, unit: 'px' } });
 }
 
 /** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */
