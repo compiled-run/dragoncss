@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.wrap { width: 380px; color: #1e5aa0; stroke-width: 3px; }
+svg { display: block; margin-bottom: 4px; }
+.hex3 { fill: #c33; }
+.hex6 { fill: #1a2b3c; stroke: #ff8800; }
+.hex-upper { fill: #ABCDEF; stroke: #0F0; }
+.named { fill: rebeccapurple; stroke: navy; }
+.named-case { fill: Tomato; stroke: DarkGreen; }
+.hsl { fill: hsl(120, 60%, 40%); stroke: hsl(0 80% 50%); }
+.cur-stroke { fill: none; stroke: currentColor; }
+.cur-both { color: #804000; fill: currentcolor; stroke: CurrentColor; }
+.clear { fill: transparent; stroke: #222; }
+.parent { stroke: #6a0dad; fill: #fc0; }
+.inh { stroke: inherit; fill: inherit; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<svg data-dragon-id="s1" width="120" height="40" viewBox="0 0 60 20"><rect data-dragon-id="r1" class="hex3" x="2" y="2" width="16" height="16"/><rect data-dragon-id="r2" class="hex6" x="22" y="2" width="16" height="16"/><rect data-dragon-id="r3" class="hex-upper" x="42" y="2" width="16" height="16"/></svg>
+<svg data-dragon-id="s2" width="120" height="40"><circle data-dragon-id="c1" class="named" cx="20" cy="20" r="14"/><circle data-dragon-id="c2" class="named-case" cx="60" cy="20" r="14"/><circle data-dragon-id="c3" class="hsl" cx="100" cy="20" r="14"/></svg>
+<svg data-dragon-id="s3" width="120" height="40"><path data-dragon-id="p1" class="cur-stroke" d="M4 36 L20 4 L36 36 Z"/><path data-dragon-id="p2" class="cur-both" d="M44 36 L60 4 L76 36 Z"/><rect data-dragon-id="r4" class="clear" x="84" y="4" width="32" height="32"/></svg>
+<svg data-dragon-id="s4" class="parent" width="120" height="40"><rect data-dragon-id="r5" class="inh" x="4" y="4" width="32" height="32"/><circle data-dragon-id="c4" fill="#0a0" stroke="teal" cx="60" cy="20" r="14"/><circle data-dragon-id="c5" fill="#E0E" stroke="#123" cx="100" cy="20" r="14"/></svg>
+</div>
+</body>
+</html>
