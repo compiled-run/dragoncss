@@ -1542,6 +1542,10 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
            }
           }
          ]
@@ -1699,6 +1703,10 @@
            "whiteSpaceCollapse": "collapse",
            "textWrapMode": "wrap",
            "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
             "kind": "px",
             "value": 0
            }
@@ -1984,6 +1992,10 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
            }
           }
          ]
@@ -2141,6 +2153,10 @@
            "whiteSpaceCollapse": "collapse",
            "textWrapMode": "wrap",
            "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
             "kind": "px",
             "value": 0
            }

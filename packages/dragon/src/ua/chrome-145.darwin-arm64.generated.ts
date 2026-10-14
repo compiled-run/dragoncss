@@ -117,6 +117,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "body": {
@@ -228,6 +229,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "div": {
@@ -339,6 +341,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "p": {
@@ -450,6 +453,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "h1": {
@@ -561,6 +565,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "h2": {
@@ -672,6 +677,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "h3": {
@@ -783,6 +789,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "h4": {
@@ -894,6 +901,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "h5": {
@@ -1005,6 +1013,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "h6": {
@@ -1116,6 +1125,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "section": {
@@ -1227,6 +1237,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "article": {
@@ -1338,6 +1349,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "header": {
@@ -1449,6 +1461,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "footer": {
@@ -1560,6 +1573,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "nav": {
@@ -1671,6 +1685,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "main": {
@@ -1782,6 +1797,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "aside": {
@@ -1893,6 +1909,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "ul": {
@@ -2004,6 +2021,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "ol": {
@@ -2115,6 +2133,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "li": {
@@ -2226,6 +2245,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "blockquote": {
@@ -2337,6 +2357,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "figure": {
@@ -2448,6 +2469,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "figcaption": {
@@ -2559,6 +2581,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "address": {
@@ -2670,6 +2693,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "hr": {
@@ -2781,6 +2805,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "dl": {
@@ -2892,6 +2917,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "dt": {
@@ -3003,6 +3029,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "dd": {
@@ -3114,6 +3141,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "dragon-unstyled": {
@@ -3225,6 +3253,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
 };
@@ -3499,6 +3528,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "input": {
@@ -3610,6 +3640,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "input[type=range]": {
@@ -3721,6 +3752,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "a": {
@@ -3832,6 +3864,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "a[href]": {
@@ -3943,6 +3976,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "img": {
@@ -4054,6 +4088,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "span": {
@@ -4165,6 +4200,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
 };
@@ -4436,6 +4472,7 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "img[src]": {
@@ -4547,6 +4584,7 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "svg": {
@@ -4658,6 +4696,7 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "path": {
@@ -4769,6 +4808,7 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "rect": {
@@ -4880,6 +4920,7 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "circle": {
@@ -4991,6 +5032,7 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
 };
@@ -5183,6 +5225,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "strong": {
@@ -5294,6 +5337,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "b": {
@@ -5405,6 +5449,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "em": {
@@ -5516,6 +5561,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "i": {
@@ -5627,6 +5673,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "code": {
@@ -5738,6 +5785,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "small": {
@@ -5849,6 +5897,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "sub": {
@@ -5960,6 +6009,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "sup": {
@@ -6071,6 +6121,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
   "label": {
@@ -6182,6 +6233,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "white-space-collapse": "collapse",
     "width": "auto",
     "will-change": "auto",
+    "word-spacing": "0px",
     "z-index": "auto",
   },
 };

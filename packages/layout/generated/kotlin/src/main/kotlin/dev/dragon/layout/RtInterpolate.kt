@@ -500,11 +500,11 @@ fun rtInterpolate_applyTransformOps(start: Matrix2D, ops: JsArray<TransformOp>, 
   var m: Matrix2D = start
   // ts: packages/layout/src/rt-interpolate.ts:353
   run {
-    val _a259 = ops
-    var _i259 = 0
-    while (_i259 < _a259.size) {
-      val op: TransformOp = _a259[_i259]
-      _i259++
+    val _a260 = ops
+    var _i260 = 0
+    while (_i260 < _a260.size) {
+      val op: TransformOp = _a260[_i260]
+      _i260++
       val fam: String = rtInterpolate_family(op.fn)
       // ts: packages/layout/src/rt-interpolate.ts:355
       if (jsStrEq(fam, "translate")) {
@@ -600,11 +600,11 @@ fun rtInterpolate_multiplySmall(digits: JsArray<Double>, factor: Double): JsArra
   var carry: Double = 0.0
   // ts: packages/layout/src/rt-interpolate.ts:410
   run {
-    val _a260 = digits
-    var _i260 = 0
-    while (_i260 < _a260.size) {
-      val d: Double = _a260[_i260]
-      _i260++
+    val _a261 = digits
+    var _i261 = 0
+    while (_i261 < _a261.size) {
+      val d: Double = _a261[_i261]
+      _i261++
       val t: Double = ((d * factor) + carry)
       val q: Double = rtEasing_floorOf((t / 10.0))
       jsPush(out, (t - (q * 10.0)))

@@ -138,6 +138,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -270,6 +271,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -402,6 +404,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "1px",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -554,6 +557,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -706,6 +710,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "0.8px",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -858,6 +863,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "-0.5px",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -1020,6 +1026,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "0.8px",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -1192,6 +1199,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "1px",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -1364,6 +1372,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }
@@ -1536,6 +1545,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "1px",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none"
       }

@@ -1323,6 +1323,10 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
+         },
+         "wordSpacing": {
+          "kind": "px",
+          "value": 0
          }
         }
        ]
@@ -1481,6 +1485,10 @@
          "whiteSpaceCollapse": "preserve",
          "textWrapMode": "nowrap",
          "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         },
+         "wordSpacing": {
           "kind": "px",
           "value": 0
          }
@@ -1643,6 +1651,10 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
+         },
+         "wordSpacing": {
+          "kind": "px",
+          "value": 0
          }
         }
        ]
@@ -1801,6 +1813,10 @@
          "whiteSpaceCollapse": "preserve",
          "textWrapMode": "wrap",
          "letterSpacing": {
+          "kind": "px",
+          "value": 0
+         },
+         "wordSpacing": {
           "kind": "px",
           "value": 0
          }
@@ -2083,6 +2099,10 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
            }
           }
          ]
@@ -2240,6 +2260,10 @@
            "whiteSpaceCollapse": "preserve",
            "textWrapMode": "nowrap",
            "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
             "kind": "px",
             "value": 0
            }
@@ -2401,6 +2425,10 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
            }
           }
          ]
@@ -2558,6 +2586,10 @@
            "whiteSpaceCollapse": "preserve",
            "textWrapMode": "wrap",
            "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
             "kind": "px",
             "value": 0
            }
