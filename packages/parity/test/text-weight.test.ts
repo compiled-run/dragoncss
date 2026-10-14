@@ -30,9 +30,10 @@ import { repoPath } from '../src/paths.ts';
 
 /**
  * The outputs of BASE (batch2's regenerated head 768a8ebdf7: batch #281 at dde476247f plus #274's and #271's groups), as digests the BASE
- * pins recompute; BASE_OUTPUTS is retaken on TXT2-b word-spacing's regenerated head, whose vectors carry wordSpacing (px 0).
+ * pins recompute; BASE_OUTPUTS is retaken on TXT2-b word-spacing's regenerated head, whose vectors carry wordSpacing (px 0), and again
+ * on TXT2-h text-indent's regenerated head, whose vectors carry textIndent (px 0) and differ from TXT2-b's in nothing else.
  */
-const BASE_OUTPUTS = { files: 13144, digest: '6b0b82780d23d099a6bac7567462203d29f8f2c58a9d4f5d77e29ecfa6f557c3' };
+const BASE_OUTPUTS = { files: 13144, digest: 'b60ff3dc4841d3730a05da4deeba864e594865b83ec106b0060cf0d10517a7ea' };
 const BASE_CAPTURES = { files: 3354, digest: '3c5abaa478b11a6d660b219456339a48567a78b9f2a76c6677975fdc9d21fbd7' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -207,8 +208,9 @@ describe('BASE pins', () => {
   // (its text-weight cases and the fonts-weight-synthetic font fixture) and TXT-W2's (its font-shorthand cases). Each digest was taken at BASE with git and equals this
   // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
   // TDEC-a2's text-decoration cases (the web-only lane's captures) are its own as well. TXT2-c's white-space group and TXT2's
-  // text-justify cases landed after BASE: their own files are left out as TXT-W1's are (they add files only, and change none of BASE's).
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-)/.test(p);
+  // text-justify cases landed after BASE, and so did TXT2-b's word-spacing, TXT2-h's text-indent and the svg-colors cases (#297): their own
+  // files are left out as TXT-W1's are (they add files only, and change none of BASE's).
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -221,7 +223,7 @@ describe('BASE pins', () => {
     // TXT-W2's font-shorthand cases are its own too, as the digests below exclude them; TXT2-c's white-space layout cases and TXT2's
     // text-justify cases landed after BASE.
     const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-') && !id.startsWith('text-word-spacing-') && !id.startsWith('text-indent-'));
+    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-') && !id.startsWith('text-word-spacing-') && !id.startsWith('text-indent-') && !id.startsWith('svg-colors'));
     // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 828 BASE layout cases.
     expect(base.length).toBe(828);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('913a57ff7fbe0dd1f9eb9b3fc119cd82889e581ec4a9f6e628b0d675a73febf3');
