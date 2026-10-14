@@ -1,6 +1,10 @@
 // Computed outlines (css-ui-4 §3): outline-width computes to px (thin 1, medium 3, thick 5), and to 0 when outline-style is none, as
 // Chrome 145 serializes it; the webref initial auto of outline-color is Chrome's currentcolor. Lengths are already px here.
+import type { Rgba8 } from '../../css/color.ts';
+import { serializeColor } from '../../css/color.ts';
 import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
+import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
+import { colorChannels } from '../../lower/paint/colors.ts';
 import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
@@ -137,6 +141,74 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
       refuse(el, 'stacking', `has an outline, and ${stacked.element.address} has ${layerReason(stacked)}, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context`, 'Use outlines in a view without positioned, translucent or transformed boxes, or outline: none.', targets, diagnostics, reported);
     }
   }
+}
+
+/** The styles Blink and Dragon paint with the side painter (paint-dash.ts outlinePaintOps), the others being solid and double rings. */
+const SIDE_PAINTER_STYLES: readonly string[] = ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset'];
+
+/**
+ * The colour an element's outline paints in: outline-color, or color for currentcolor (lower/paint/outline.ts), with the
+ * declaration that set it.
+ */
+function outlineColor(el: ResolvedElement): { readonly color: Rgba8; readonly value: ResolvedValue } {
+  const c = el.props.get('outline-color') as ResolvedValue | undefined;
+  const own = el.props.get('color') as ResolvedValue | undefined;
+  if (c === undefined || own === undefined) throw new Error(`${el.element.address}: outline-color did not resolve`);
+  const current = c.value.kind === 'keyword' && c.value.value === 'currentcolor';
+  return current ? { color: colorChannels(own.value, el.element.address), value: own } : { color: colorChannels(c.value, el.element.address), value: c };
+}
+
+/**
+ * The style of the visible dotted, dashed or 3D outline the native side painter would draw for an element, or null. A rounded one
+ * and one on an inline box are refused by checkOutline already, so they are left to it.
+ */
+export function sidePainterOutline(el: ResolvedElement): string | null {
+  const style = paintedOutlineStyle(el);
+  if (style === null || !SIDE_PAINTER_STYLES.includes(style) || rounds(el) || keywordOf(el, 'display') === 'inline') return null;
+  const visibility = el.props.get('visibility') as ResolvedValue | undefined;
+  if (visibility === undefined) throw new Error(`${el.element.address}: visibility did not resolve`);
+  return paintsOwn(visibilityOf(visibility.value)) ? style : null;
+}
+
+/** Whether an element's outline-color is currentcolor, so its outline takes color's value (and color's animation). */
+export function outlineInCurrentColor(el: ResolvedElement): boolean {
+  const c = (el.props.get('outline-color') as ResolvedValue | undefined)?.value;
+  return c !== undefined && c.kind === 'keyword' && c.value === 'currentcolor';
+}
+
+/**
+ * PNT1 (device run 38470185768): a dotted, dashed, groove, ridge, inset or outset outline in a translucent colour paints its four
+ * sides into one transparency layer of the colour's alpha (Blink PaintOpacityGroup, translated in paint-dash.ts), which UIKit's
+ * transparency layer and Android's saveLayerAlpha composite with their own rounding, one off Chrome's Skia in a channel. Outside the
+ * parity lanes the native targets refuse it, at the colour's declaration, in every state and band the check is run on (project.ts);
+ * the lanes compile it to prove the web rows (outline-web). A transparent outline paints nothing, so it compiles.
+ */
+export function checkTranslucentOutlines(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const walk = (el: ResolvedElement): void => {
+    if (keywordOf(el, 'display') === 'none') return;
+    const style = sidePainterOutline(el);
+    if (style !== null) {
+      const { color, value } = outlineColor(el);
+      if (color.alpha > 0 && color.alpha < 255) {
+        const origin = value.declaration === null ? outlineOrigin(el) : authored(value.declaration.valueSpan);
+        for (const t of targets) {
+          if (t === 'web') continue;
+          const id = `${t}|outline-translucent|${el.element.address}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+            origin,
+            target: t,
+            message: `${el.element.address} has a ${style} outline in the translucent colour ${serializeColor(color)}, which Blink paints through a transparency layer of the colour's alpha, and ${t} composites that layer with its own rounding, one off Chrome's Skia in a channel; ${t} draws ${style} outlines in opaque colours only (PNT1)`,
+            manual: `Give the ${style} outline an opaque colour, or use a solid or double outline.`,
+            basis: 'computed-value',
+          }));
+        }
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  walk(root);
 }
 
 export const OUTLINE_VALUES: PaintValues = {
