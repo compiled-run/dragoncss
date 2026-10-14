@@ -235,6 +235,8 @@ export const CHANNEL_DELTA_BY_KIND: { readonly [K in SampleRule]: number } = {
   'image-flat': GATE_CHANNEL_DELTA,
   // SVG-a2: a point clear of every shape edge shows one solid paint (or the backdrop), compared strictly.
   svg: GATE_CHANNEL_DELTA,
+  // TDEC-b: the rows of a text decoration are whole device rows of one colour, compared strictly.
+  decoration: GATE_CHANNEL_DELTA,
 };
 
 /**

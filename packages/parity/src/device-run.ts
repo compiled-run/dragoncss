@@ -103,6 +103,10 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'svg-even-odd': ['svg-basic'],
   'svg-stroke-unscaled': ['svg-paint', 'svg-basic'],
   'svg-paint-swapped': ['svg-paint', 'svg-basic'],
+  // TDEC-b: text-decoration-native's decoration points (rule decoration:<text>:...) see each decoration plant.
+  'decoration-above-text': ['text-decoration-native'],
+  'decoration-snap-css-px': ['text-decoration-native'],
+  'decoration-alpha-ignored': ['text-decoration-native'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -133,6 +137,11 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'svg-even-odd': /^svg:/,
   'svg-stroke-unscaled': /^svg:/,
   'svg-paint-swapped': /^svg:/,
+  // An under or overline above the text shows over the glyphs it crosses (the over-glyph points); a rect top at a whole css px moves
+  // its rows (the row points and the clear rows beside them); an opaque transparent line shows on the background (its row points).
+  'decoration-above-text': /^decoration:/,
+  'decoration-snap-css-px': /^decoration:/,
+  'decoration-alpha-ignored': /^decoration:/,
 };
 /**
  * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason

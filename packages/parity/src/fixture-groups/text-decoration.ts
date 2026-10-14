@@ -1,9 +1,13 @@
-// Fixture group text-decoration (TDEC-a, notes/T148J-tdec.md): the values every target refuses. Decorated text is drawn on web
-// only until TDEC-b, so the decorated cases are in the web-only lane (fixture-groups/fonts.ts) and the decoration capture.
+// Fixture group text-decoration (TDEC-a, notes/T148J-tdec.md): the values every target refuses, and text-decoration-native (TDEC-b),
+// the decorations iOS and Android draw, proven on device pixels by the decoration points (paint-samples/text-decoration.ts): Ahem
+// solid underlines (skip-ink none, crossing the glyphs; skip-ink auto at 15px, clipped round them), a line-through, px and percent
+// thicknesses and offsets, an overline, a transparent line and an inline box's underline, in both directions. The other decorated
+// cases are in the web-only lane (fixture-groups/fonts.ts), where the decoration capture proves every decoration pixel.
 import type { FixtureSpec } from '../fixtures.ts';
-import { reject } from './define.ts';
+import { both, reject } from './define.ts';
 
 export const TEXT_DECORATION: readonly FixtureSpec[] = [
+  both('text-decoration-native'),
   reject('reject-text-decoration-wavy', 'DRAGON_UNSUPPORTED_VALUE', 'wavy', 'text-decoration: text-decoration-style: wavy is drawn by TDEC-c'),
   reject('reject-text-decoration-from-font', 'DRAGON_UNSUPPORTED_VALUE', 'from-font', 'text-decoration-thickness: text-decoration-thickness: from-font reads'),
   reject('reject-text-decoration-blink', 'DRAGON_UNSUPPORTED_VALUE', 'blink', 'text-decoration-line: blink is not drawn'),
