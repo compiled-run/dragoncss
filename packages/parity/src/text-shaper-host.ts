@@ -210,7 +210,8 @@ function vendoredFaceFiles(): string[] {
 }
 
 let vendoredIds: string[] | null = null;
-const vendoredFaceIds = (): string[] => {
+/** Every vendored face, registered with the host shaper once, by face id. */
+export const vendoredFaceIds = (): string[] => {
   if (vendoredIds === null) vendoredIds = vendoredFaceFiles().map((f) => registerFace(new Uint8Array(readFileSync(f))));
   return vendoredIds;
 };

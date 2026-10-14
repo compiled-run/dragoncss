@@ -227,11 +227,18 @@ export function rootFontSizeOf(root: ResolvedElement): number {
   return px;
 }
 
-export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null): LayoutStyle {
+/**
+ * Where last baseline self-alignment lays out (GRID G3b): align-items on a grid container, align-self on a child of one. Everywhere
+ * else (a flex container or item, a block) it stays refused.
+ */
+export type LastBaselineContext = { readonly items: boolean; readonly self: boolean };
+const NO_LAST_BASELINE: LastBaselineContext = { items: false, self: false };
+
+export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null, lastBaseline: LastBaselineContext = NO_LAST_BASELINE): LayoutStyle {
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const fonts = { em: fontPx(get('font-size')), rem: rootFontSize };
-  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts);
+  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline);
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
@@ -284,14 +291,18 @@ function verticalAlign(id: string, get: Get, l: Lowering): VerticalAlignValue {
   return lp === null ? fail(id, 'vertical-align', v, `${VERTICAL_ALIGN_KEYWORDS.join(' | ')} | px | % | a viewport length | a calculation`) : lp;
 }
 
-// css-align-3 §4.2: first baseline is baseline; last baseline has no layout mapping.
-function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[]): T {
+// css-align-3 §4.2: first baseline is baseline; last baseline has a layout mapping only where lastBaseline allows it (grid).
+function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[], lastBaseline: boolean): T {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'first baseline') return 'baseline' as T;
+  if (v.kind === 'keyword' && v.value === 'last baseline') {
+    if (lastBaseline) return 'last baseline' as T;
+    return fail(id, p, v, `${allowed.join(' | ')}; last baseline aligns grid items only`);
+  }
   return keyword(id, get, p, allowed);
 }
 
-function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }): LayoutStyle {
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE): LayoutStyle {
   const l: Lowering = { em: fonts.em, rem: fonts.rem, faults };
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
@@ -333,11 +344,11 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     justifyContent: keyword<JustifyContent>(id, get, 'justify-content', [
       'normal', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'stretch', 'start', 'end', 'left', 'right',
     ]),
-    alignItems: alignKeyword<AlignItems>(id, get, 'align-items', ALIGN_ITEMS),
-    alignSelf: alignKeyword<AlignSelf>(id, get, 'align-self', ['auto', ...ALIGN_ITEMS]),
+    alignItems: alignKeyword<AlignItems>(id, get, 'align-items', ALIGN_ITEMS, lastBaseline.items),
+    alignSelf: alignKeyword<AlignSelf>(id, get, 'align-self', ['auto', ...ALIGN_ITEMS], lastBaseline.self),
     alignContent: alignKeyword<AlignContent>(id, get, 'align-content', [
       'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'baseline', 'start', 'end',
-    ]),
+    ], false),
     rowGap: gap(id, get, 'row-gap', l),
     columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
@@ -543,7 +554,7 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
     const v = raw(p);
     return (p === 'overflow-x' || p === 'overflow-y') && v.kind === 'keyword' && v.value === 'clip' ? { kind: 'keyword', value: 'visible' } : v;
   };
-  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize });
+  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize }, { items: false, self: gridParent !== null });
   // css-grid-2 §5: a replaced element establishes no grid container; display: grid on one is not modelled.
   if (own.display === 'grid' || own.display === 'inline-grid') throw new LoweringError(id, 'display', `display: ${own.display} on the replaced element ${id} is not supported`);
   // css-grid-2 §8 and §9: a replaced child of a grid container carries its placement (an absolutely positioned one, its lines).
@@ -582,7 +593,8 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
-  const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
+  const display = displayOf(el);
+  const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null });
   // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible.
   const own: LayoutStyle = id === l.propagated ? { ...lowered, overflowX: 'visible', overflowY: 'visible' } : lowered;
   // css-grid-2 §7, §8 and §9: a grid container carries its tracks; each child of one carries its placement (an absolutely

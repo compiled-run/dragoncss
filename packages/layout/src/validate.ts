@@ -92,7 +92,7 @@ const justify = lit(
   'stretch', 'start', 'end', 'left', 'right',
 );
 const alignItemsValues = [
-  'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end',
+  'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'last baseline', 'start', 'end', 'self-start', 'self-end',
 ] as const;
 
 // css-grid-2 §7: track sizes, repeaters, placements and the grid self-alignment keywords.
@@ -103,7 +103,7 @@ const gridLine = tagged({ auto: {}, line: { n: int }, 'named-line': { n: int, na
 const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count }, lines: { start: gridLine, end: gridLine }, 'start-line': { line: int }, 'end-line': { line: int } });
 const lineList = arr(count0, 0);
 const gridAutoRepeat = obj({ type: lit('auto-fill', 'auto-fit'), index: count0, sizes: arr(trackSize, 1), lineNames: arr(obj({ explicit: lineList, repeat: lineList, implicit: lineList }), 0) });
-const gridSelfAlignValues = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'] as const;
+const gridSelfAlignValues = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right', 'baseline', 'last baseline'] as const;
 const gridContainer = obj({
   templateColumns: arr(repeater, 0),
   templateRows: arr(repeater, 0),

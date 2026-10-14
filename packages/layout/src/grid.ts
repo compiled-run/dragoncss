@@ -5,6 +5,7 @@
 // (docs/research/grid-spike/blink-notes.md GR1-GR18). Written in logical inline/block terms for horizontal-tb: columns are the
 // inline axis and rows the block axis; rtl mirrors the inline offsets at the end.
 import type {
+  AlignItems,
   Direction,
   GridAutoRepeat,
   GridContainerStyle,
@@ -91,8 +92,8 @@ const LU_MIN: LU = -2147483648 as LU;
 
 /**
  * Seeded grid engine errors, each a planted fault of docs/research/grid-spike/blink-notes.md in G1a's, G2's, G3's or G4's scope
- * (G3 adds baselineSynthesizedAtTop), so the G-P differential test (packages/parity/test/grid-corpus.test.ts) proves it catches
- * them. The product runs with NO_GRID_FAULTS.
+ * (G3 adds the baseline plants, G3b inlineBaselineAtInlineStart and lastBaselineAsFirst), so the G-P differential test
+ * (packages/parity/test/grid-corpus-*.test.ts) proves it catches them. The product runs with NO_GRID_FAULTS.
  */
 export type GridFaults = {
   /** autoPlacementNotDense: dense packing keeps the cursor like sparse packing. */
@@ -155,6 +156,10 @@ export type GridFaults = {
   readonly baselineShimIgnored: boolean;
   /** baselineSynthesizedAtTop: an item with no baseline synthesizes it at its border-box top instead of its bottom edge. */
   readonly baselineSynthesizedAtTop: boolean;
+  /** inlineBaselineAtInlineStart: in rtl an item's synthesized inline-axis baseline is its inline-start (right) edge, not its left. */
+  readonly inlineBaselineAtInlineStart: boolean;
+  /** lastBaselineAsFirst: last baseline alignment aligns by the first baseline, in the start-most set's major group. */
+  readonly lastBaselineAsFirst: boolean;
 };
 
 export const NO_GRID_FAULTS: GridFaults = {
@@ -188,6 +193,8 @@ export const NO_GRID_FAULTS: GridFaults = {
   absposStaticAlignIgnored: false,
   baselineShimIgnored: false,
   baselineSynthesizedAtTop: false,
+  inlineBaselineAtInlineStart: false,
+  lastBaselineAsFirst: false,
 };
 
 export type GridArgs = {
@@ -224,11 +231,13 @@ type GridAxis = 'columns' | 'rows';
 type GridSizing = 'layout' | 'min-content' | 'max-content';
 type GridContributionType = 'intrinsic-minimums' | 'content-based-minimums' | 'max-content-minimums' | 'intrinsic-maximums' | 'max-content-maximums' | 'free-space';
 export type GridAxisEdge = 'start' | 'center' | 'end';
+/** Baseline alignment specified in one axis: none, Blink AxisEdge::kFirstBaseline or AxisEdge::kLastBaseline. */
+type GridBaselineKind = 'none' | 'first' | 'last';
 /**
  * An item's alignment in one axis: the edge, whether an auto size stretches, whether overflow is safe (auto margins only), and
- * whether it is baseline alignment (Blink AxisEdge::kFirstBaseline, whose edge here is its start fallback).
+ * the baseline alignment, whose edge here is its fallback (start for first baseline, end for last baseline).
  */
-type GridAlignment = { readonly edge: GridAxisEdge; readonly stretch: boolean; readonly safe: boolean; readonly baseline: boolean };
+type GridAlignment = { readonly edge: GridAxisEdge; readonly stretch: boolean; readonly safe: boolean; readonly baseline: GridBaselineKind };
 type GridDependentItem = { readonly sets: GridSetIndices; readonly cached: LU };
 type GridKeyedSet = { readonly s: GridSet; readonly i: number; readonly p: LU };
 type GridIndexedSet = { readonly s: GridSet; readonly i: number };
@@ -287,9 +296,11 @@ type GridCollection = {
   readonly nonCollapsedTrackCount: number;
   /** Blink Baselines::major, one per set (LU_MIN for none); null when no item specifies baseline alignment in this axis. */
   majorBaselines: GridSetBaseline[] | null;
+  /** Blink Baselines::minor (last baseline groups), measured from the end of each set; null exactly when majorBaselines is. */
+  minorBaselines: GridSetBaseline[] | null;
 };
 
-/** One set's major baseline from the start of the set, LU_MIN while no item has set it. */
+/** One set's major baseline from its start, or minor baseline from its end; LU_MIN while no item has set it. */
 type GridSetBaseline = { value: LU };
 
 type GridLines = { readonly start: number; readonly end: number };
@@ -311,9 +322,11 @@ type GridItemData = {
   readonly rowSafe: boolean;
   readonly columnStretch: boolean;
   readonly rowStretch: boolean;
-  /** Blink IsBaselineSpecified(kForRows): first baseline alignment in the block axis. */
-  readonly rowBaseline: boolean;
-  /** Blink row_fallback_alignment (SetAlignmentFallback): the item cannot take part in baseline alignment and aligns to start. */
+  /** Blink IsBaselineSpecified and IsLastBaselineSpecified in each axis. */
+  readonly columnBaseline: GridBaselineKind;
+  readonly rowBaseline: GridBaselineKind;
+  /** Blink column_ and row_fallback_alignment (SetAlignmentFallback): no part in baseline alignment; safe alignment to its edge. */
+  columnFallback: boolean;
   rowFallback: boolean;
   sizingDependsOnBlockSize: boolean;
 };
@@ -1058,7 +1071,7 @@ function buildRanges(explicit: readonly GridRepeater[], implicitSize: number, st
 function newCollection(axis: GridAxis, explicit: readonly GridRepeater[], ranges: GridRange[], mustCreateBaselines: boolean): GridCollection {
   let tracks = 0;
   for (const r of ranges) if (!r.collapsed) tracks += r.trackCount;
-  return { axis, explicit, ranges, sets: [], gutter: ZERO, geometry: [], lastIndefinite: [], props: NO_PROPS(), nonCollapsedTrackCount: tracks, majorBaselines: mustCreateBaselines ? [] : null };
+  return { axis, explicit, ranges, sets: [], gutter: ZERO, geometry: [], lastIndefinite: [], props: NO_PROPS(), nonCollapsedTrackCount: tracks, majorBaselines: mustCreateBaselines ? [] : null, minorBaselines: mustCreateBaselines ? [] : null };
 }
 
 function rangeIndexFromLine(c: GridCollection, line: number): number {
@@ -1627,8 +1640,8 @@ function computeUsedTrackSizes(ctx: Ctx, grid: GridState, c: GridCollection, ava
 
 // ---- Items: alignment, sizes and contributions (Blink GridItemData, ContributionSizeForGridItem) ------------------------------
 
-/** A self position, or first baseline alignment, which grid layout takes in the block axis only (the input has no other). */
-type GridItemAlign = GridSelfAlign | 'baseline';
+/** A self position or baseline alignment, from justify-self or justify-items (columns) or align-self or align-items (rows). */
+type GridItemAlign = GridSelfAlign | AlignItems;
 
 function selfAlignOf(container: GridContainerStyle, box: LayoutBox, axis: GridAxis, containerStyle: LayoutStyle): GridItemAlign {
   const gi = box.style.gridItem;
@@ -1648,41 +1661,50 @@ function axisEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, ali
   const startAuto = startMargin.kind === 'auto';
   const endAuto = endMargin.kind === 'auto';
   // Blink AxisEdgeFromItemPosition: auto margin alignment is always safe.
-  if (startAuto && endAuto) return { edge: 'center', stretch: false, safe: true, baseline: false };
-  if (startAuto) return { edge: 'end', stretch: false, safe: true, baseline: false };
-  if (endAuto) return { edge: 'start', stretch: false, safe: true, baseline: false };
-  // Blink AxisEdgeFromItemPosition: kBaseline is AxisEdge::kFirstBaseline with a fit-content auto size.
-  if (align === 'baseline') return { edge: 'start', stretch: false, safe: false, baseline: true };
+  if (startAuto && endAuto) return { edge: 'center', stretch: false, safe: true, baseline: 'none' };
+  if (startAuto) return { edge: 'end', stretch: false, safe: true, baseline: 'none' };
+  if (endAuto) return { edge: 'start', stretch: false, safe: true, baseline: 'none' };
+  // Blink AxisEdgeFromItemPosition: kBaseline and kLastBaseline are AxisEdge::kFirstBaseline and kLastBaseline with a fit-content
+  // auto size; SetAlignmentFallback falls back to start (major group) or end (minor group).
+  if (align === 'baseline' || (align === 'last baseline' && ctx.gridFaults.lastBaselineAsFirst)) return { edge: 'start', stretch: false, safe: false, baseline: 'first' };
+  if (align === 'last baseline') return { edge: 'end', stretch: false, safe: false, baseline: 'last' };
   return selfEdge(ctx, grid, box, axis, align);
 }
 
-/** The self-position part of Blink AxisEdgeFromItemPosition, which an absolutely positioned child takes alone. */
-function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, align: GridSelfAlign): GridAlignment {
+/**
+ * The self-position part of Blink AxisEdgeFromItemPosition, which an absolutely positioned child takes alone; its static position
+ * takes first baseline as start and last baseline as end (AlignmentOffsetForOutOfFlow, grid_layout_utils.cc 407-445).
+ */
+function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
   const s = box.style;
   const rtl = directionOf(ctx, grid) === 'rtl';
   const sameDirection = directionOf(ctx, box) === directionOf(ctx, grid) || axis === 'rows';
   switch (align) {
     case 'normal':
       // css-align-3 §6.1 (Blink GridItemData): normal block-axis alignment of an item with a preferred aspect ratio is start.
-      return axis === 'rows' && hasAspectRatio(s) ? { edge: 'start', stretch: false, safe: false, baseline: false } : { edge: 'start', stretch: true, safe: false, baseline: false };
+      return axis === 'rows' && hasAspectRatio(s) ? { edge: 'start', stretch: false, safe: false, baseline: 'none' } : { edge: 'start', stretch: true, safe: false, baseline: 'none' };
     case 'stretch':
-      return { edge: 'start', stretch: true, safe: false, baseline: false };
+      return { edge: 'start', stretch: true, safe: false, baseline: 'none' };
     case 'start':
     case 'flex-start':
-      return { edge: 'start', stretch: false, safe: false, baseline: false };
+      return { edge: 'start', stretch: false, safe: false, baseline: 'none' };
     case 'end':
     case 'flex-end':
-      return { edge: 'end', stretch: false, safe: false, baseline: false };
+      return { edge: 'end', stretch: false, safe: false, baseline: 'none' };
     case 'center':
-      return { edge: 'center', stretch: false, safe: false, baseline: false };
+      return { edge: 'center', stretch: false, safe: false, baseline: 'none' };
     case 'self-start':
-      return { edge: sameDirection ? 'start' : 'end', stretch: false, safe: false, baseline: false };
+      return { edge: sameDirection ? 'start' : 'end', stretch: false, safe: false, baseline: 'none' };
     case 'self-end':
-      return { edge: sameDirection ? 'end' : 'start', stretch: false, safe: false, baseline: false };
+      return { edge: sameDirection ? 'end' : 'start', stretch: false, safe: false, baseline: 'none' };
     case 'left':
-      return { edge: rtl ? 'end' : 'start', stretch: false, safe: false, baseline: false };
+      return { edge: rtl ? 'end' : 'start', stretch: false, safe: false, baseline: 'none' };
     case 'right':
-      return { edge: rtl ? 'start' : 'end', stretch: false, safe: false, baseline: false };
+      return { edge: rtl ? 'start' : 'end', stretch: false, safe: false, baseline: 'none' };
+    case 'baseline':
+      return { edge: 'start', stretch: false, safe: false, baseline: 'none' };
+    case 'last baseline':
+      return { edge: 'end', stretch: false, safe: false, baseline: 'none' };
   }
 }
 
@@ -1720,7 +1742,11 @@ function itemInlineSize(ctx: Ctx, item: GridItemData, areaInline: LU, margins: G
   return constrain(raw, inlineMinMax(item.box.id, s, areaInline, hbp));
 }
 
-type GridItemLayout = { readonly frag: Frag; readonly margins: GridMargins };
+/**
+ * A laid-out item: its fragment, margins, and its last baseline from the border-box top as an inline-block takes it (ContentsResult),
+ * with the flex or grid container or the scroll container that would decide it instead outside an inline-block ('' when none).
+ */
+type GridItemLayout = { readonly frag: Frag; readonly margins: GridMargins; readonly lastBaseline: LU | null; readonly lastBaselineFlex: string; readonly lastBaselineScroll: string };
 
 /**
  * Lays out an item in a grid area of the given inline size and block size (INDEFINITE while measuring rows): percentages resolve
@@ -1748,7 +1774,7 @@ function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: L
     formattingContextRoot: true,
     bfcLineOffset: ZERO,
   });
-  return { frag: r.frag, margins };
+  return { frag: r.frag, margins, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, lastBaselineScroll: r.lastBaselineScroll };
 }
 
 /** css-sizing-3 §5.2 for a grid item as its own formatting context: its min- or max-content inline contribution without margins. */
@@ -1789,13 +1815,17 @@ type GridMeasure = { readonly size: LU; readonly shim: LU };
 
 /**
  * An item's min- or max-content contribution without margins: in the column axis its inline contribution (flagging an item whose
- * size depends on the block size, as Blink's is_sizing_dependent_on_block_size), in the row axis its block contribution.
+ * size depends on the block size, as Blink's is_sizing_dependent_on_block_size) plus the baseline shim of an item baseline-aligned
+ * in the inline axis (MinOrMaxContentSize, grid_layout_algorithm.cc 927-956), in the row axis its block contribution.
  */
 function contentContribution(ctx: Ctx, grid: GridState, item: GridItemData, columns: boolean, kind: 'min' | 'max'): GridMeasure {
   if (columns) {
     const s = item.box.style;
     if (s.height.kind === 'percent' || s.minHeight.kind === 'percent' || s.maxHeight.kind === 'percent' || (s.height.kind === 'auto' && item.rowStretch)) item.sizingDependsOnBlockSize = true;
-    return { size: inlineContributionOf(ctx, item.box, kind), shim: ZERO };
+    const size = inlineContributionOf(ctx, item.box, kind);
+    // Columns are measured with an indefinite inline size: % margins resolve against LayoutUnit(-1), as in contributionFor.
+    const shim = baselineAligned(item, 'columns') ? baselineShim(ctx, grid, item, 'columns', inlineBaseline(ctx, grid, item, size), INDEFINITE) : ZERO;
+    return { size: add(size, shim), shim };
   }
   return blockContribution(ctx, grid, item);
 }
@@ -1806,27 +1836,51 @@ function contentContribution(ctx: Ctx, grid: GridState, item: GridItemData, colu
  */
 function blockContribution(ctx: Ctx, grid: GridState, item: GridItemData): GridMeasure {
   const areaInline = areaSize(grid.columns, item.columnSets);
-  const frag = layoutItem(ctx, grid, item, areaInline, INDEFINITE).frag;
-  const shim = rowBaselineAligned(item) ? baselineShim(ctx, grid, item, itemBaseline(ctx, item.box, frag), areaInline) : ZERO;
-  return { size: add(frag.height, shim), shim };
+  const r = layoutItem(ctx, grid, item, areaInline, INDEFINITE);
+  const shim = baselineAligned(item, 'rows') ? baselineShim(ctx, grid, item, 'rows', blockBaseline(ctx, item, r), areaInline) : ZERO;
+  return { size: add(r.frag.height, shim), shim };
 }
 
-/** Blink CalculateBaselineShim: the track baseline less the item's baseline and its block-start margin, or nothing with none. */
-function baselineShim(ctx: Ctx, grid: GridState, item: GridItemData, baseline: LU, areaInline: LU): LU {
-  const track = trackBaseline(grid.rows, item);
+/**
+ * Blink CalculateBaselineShim with GetExtraMarginForBaseline: the track baseline less the item's baseline and its start margin
+ * (end margin for last baseline), or nothing while the set has none.
+ */
+function baselineShim(ctx: Ctx, grid: GridState, item: GridItemData, axis: GridAxis, baseline: LU, marginBasis: LU): LU {
+  const track = trackBaseline(axis === 'columns' ? grid.columns : grid.rows, item);
   if (track === LU_MIN || ctx.gridFaults.baselineShimIgnored) return ZERO;
-  return sub(sub(track, baseline), marginsOf(item.box, areaInline, grid.rtl).blockStart);
+  return sub(sub(track, baseline), baselineMargin(item, axis, marginsOf(item.box, marginBasis, grid.rtl)));
 }
 
-/** Blink GridItemData::IsBaselineAligned(kForRows): baseline alignment is specified and no fallback replaced it. */
-function rowBaselineAligned(item: GridItemData): boolean {
-  return item.rowBaseline && !item.rowFallback;
+/** Blink GetExtraMarginForBaseline outside a subgrid: the start margin for first baseline, the end margin for last baseline. */
+function baselineMargin(item: GridItemData, axis: GridAxis, m: GridMargins): LU {
+  const last = baselineKind(item, axis) === 'last';
+  if (axis === 'columns') return last ? m.inlineEnd : m.inlineStart;
+  return last ? m.blockEnd : m.blockStart;
 }
 
-/** Blink Baseline() for the major baseline-sharing group: the baseline of the item's first row set, LU_MIN for none. */
+function baselineKind(item: GridItemData, axis: GridAxis): GridBaselineKind {
+  return axis === 'columns' ? item.columnBaseline : item.rowBaseline;
+}
+
+/** Blink GridItemData::IsBaselineAligned: baseline alignment is specified and no fallback replaced it. */
+function baselineAligned(item: GridItemData, axis: GridAxis): boolean {
+  return axis === 'columns' ? item.columnBaseline !== 'none' && !item.columnFallback : item.rowBaseline !== 'none' && !item.rowFallback;
+}
+
+/**
+ * Blink Baseline() (grid_layout_algorithm.cc 790-807): the major baseline of the item's first set for first baseline, the minor
+ * baseline of its last set for last baseline (DetermineBaselineGroup, baseline_utils.h 51-87, gives a horizontal item in a
+ * horizontal-tb grid the major group for first baseline and the minor group for last baseline in both axes); LU_MIN for none.
+ */
 function trackBaseline(c: GridCollection, item: GridItemData): LU {
+  const columns = c.axis === 'columns';
+  const sets = columns ? item.columnSets : item.rowSets;
+  if (baselineKind(item, c.axis) === 'last') {
+    const minor = c.minorBaselines;
+    return minor === null ? LU_MIN : (minor[sets.end - 1] as GridSetBaseline).value;
+  }
   const major = c.majorBaselines;
-  return major === null ? LU_MIN : (major[item.rowSets.begin] as GridSetBaseline).value;
+  return major === null ? LU_MIN : (major[sets.begin] as GridSetBaseline).value;
 }
 
 /**
@@ -1844,35 +1898,128 @@ function itemBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU {
   return firstBaselineOrSynthesize(box, frag);
 }
 
-/** Length::HasPercentOrStretch for a block size: a percentage or a calculation with one (stretch never reaches the engine). */
-function percentSize(v: LayoutStyle['height'] | LayoutStyle['maxHeight']): boolean {
-  return v.kind !== 'auto' && v.kind !== 'none' && hasPercent(v);
+/**
+ * Blink LogicalBoxFragment::LastBaseline (logical_box_fragment.h 61-70) of an item laid out by grid layout, whose baseline algorithm
+ * is the default one: an inline-block's last baseline, except that a flex or grid container, or a scroll container child, would
+ * decide it differently (block_layout_algorithm.cc 3602-3650), which is refused; kept within the border box of a scroll container.
+ */
+function lastBaselineOf(item: GridItemData, r: GridItemLayout): LU | null {
+  if (r.lastBaselineFlex !== '') unsupported('grid-last-baseline', item.box.id, 'css-align-3 §9.1', `the last baseline of flex or grid container ${r.lastBaselineFlex} would give the last baseline of grid item ${item.box.id} (not yet supported)`);
+  if (r.lastBaselineScroll !== '') unsupported('grid-last-baseline', item.box.id, 'css-align-3 §9.1', `the last baseline of scroll container ${r.lastBaselineScroll} would give the last baseline of grid item ${item.box.id} (not yet supported)`);
+  const b = r.lastBaseline;
+  if (b === null) return null;
+  return isScrollContainer(item.box.style) ? maxLu(ZERO, minLu(b, r.frag.height)) : b;
 }
 
 /**
- * Blink GridLayoutAlgorithm::ComputeGridItemBaselines (grid_layout_algorithm.cc 1180-1280) for the row axis, with
- * GridItemData::SetAlignmentFallback (grid_item.cc 254-309): each baseline-aligned item is laid out in its grid area as the row
- * geometry stands, and its margin-box baseline raises the major baseline of its first row set. An item with no baseline that spans
- * an intrinsic or flexible row and whose block size depends on the row (a percentage) falls back to start alignment instead.
+ * Blink GetLogicalBaseline (grid_layout_algorithm.cc 830-839) in the row axis: the first baseline from the border-box top, or for
+ * last baseline the distance from the last baseline (synthesized at the bottom edge with none) to the border-box bottom.
  */
-function computeRowBaselines(ctx: Ctx, grid: GridState): void {
-  const c = grid.rows;
-  if (c.majorBaselines === null) return;
+function blockBaseline(ctx: Ctx, item: GridItemData, r: GridItemLayout): LU {
+  if (item.rowBaseline !== 'last') return itemBaseline(ctx, item.box, r.frag);
+  const last = lastBaselineOf(item, r);
+  return last === null ? ZERO : sub(r.frag.height, last);
+}
+
+/**
+ * Blink GetLogicalBaseline and GetSynthesizedLogicalBaseline (grid_layout_algorithm.cc 830-852) in the column axis for an item of
+ * the given border-box inline size. A horizontal item has no baseline in the inline axis (LogicalBoxFragment::FirstBaseline is
+ * empty for a writing mode other than its own), so it is synthesized in the baseline writing mode DetermineBaselineWritingMode
+ * gives (baseline_utils.h 14-44): vertical-lr in ltr, whose flipped lines put the alphabetic baseline at its block start, and
+ * vertical-rl in rtl, at its block end (SynthesizedBaseline, logical_box_fragment.h 33-40): its left edge either way. Measured
+ * from the inline-start edge for first baseline and from the inline-end edge for last baseline.
+ */
+function inlineBaseline(ctx: Ctx, grid: GridState, item: GridItemData, inlineSize: LU): LU {
+  const fromStart = grid.rtl && !ctx.gridFaults.inlineBaselineAtInlineStart ? inlineSize : ZERO;
+  return item.columnBaseline === 'last' ? sub(inlineSize, fromStart) : fromStart;
+}
+
+/** Length::HasPercentOrStretch for a size: a percentage or a calculation with one (stretch never reaches the engine). */
+function percentSize(v: LayoutStyle['height'] | LayoutStyle['maxHeight'] | LayoutStyle['width'] | LayoutStyle['maxWidth']): boolean {
+  return v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'min-content' && v.kind !== 'max-content' && v.kind !== 'fit-content' && hasPercent(v);
+}
+
+/**
+ * Blink ComputeInlineSizeForFragment for an item whose grid area has an indefinite inline size (length_utils.cc 531-603): an auto
+ * width is its min-content size, clamped by its min and max widths; % padding resolves against zero, as in inlineContributionOf.
+ * Only an item with no percentage width, min-width or max-width reaches it (its area spans an intrinsic or flexible column).
+ */
+function indefiniteInlineSize(ctx: Ctx, item: GridItemData): LU {
+  const s = item.box.style;
+  const bp = borderPaddingOf(ctx, item.box, 'columns', INDEFINITE);
+  const specified = resolveInlineLength(lengthWidth(item.box.id, s.width), ZERO);
+  const raw = specified !== null ? borderBoxFromSpecified(specified, bp, s.boxSizing) : add(intrinsicContentInlineSize(ctx, item.box, 'min'), bp);
+  return constrain(raw, inlineMinMax(item.box.id, s, ZERO, bp));
+}
+
+/** Resets one axis's major and minor baselines to LU_MIN for each set (Blink GridSizingTrackCollection::ResetBaselines). */
+function resetBaselines(c: GridCollection): void {
   const major: GridSetBaseline[] = [];
-  for (let i = 0; i < c.sets.length; i++) major.push({ value: LU_MIN });
-  c.majorBaselines = major;
-  for (const item of grid.items) {
-    if (!item.rowBaseline) continue;
-    const areaInline = areaSize(grid.columns, item.columnSets);
-    const frag = layoutItem(ctx, grid, item, areaInline, areaSize(c, item.rowSets)).frag;
-    const s = item.box.style;
-    const dependsOnTrack = frag.baseline === null && (item.rowProps.intrinsic || item.rowProps.flexible);
-    item.rowFallback = dependsOnTrack && (percentSize(s.height) || percentSize(s.minHeight) || percentSize(s.maxHeight));
-    if (item.rowFallback) continue;
-    const baseline = add(marginsOf(item.box, areaInline, grid.rtl).blockStart, itemBaseline(ctx, item.box, frag));
-    const set = major[item.rowSets.begin] as GridSetBaseline;
-    if (baseline > set.value) set.value = baseline;
+  const minor: GridSetBaseline[] = [];
+  for (let i = 0; i < c.sets.length; i++) {
+    major.push({ value: LU_MIN });
+    minor.push({ value: LU_MIN });
   }
+  c.majorBaselines = major;
+  c.minorBaselines = minor;
+}
+
+/** Blink SetMajorBaseline and SetMinorBaseline: a baseline raises its set's group baseline. */
+function raiseBaseline(c: GridCollection, item: GridItemData, baseline: LU): void {
+  const sets = c.axis === 'columns' ? item.columnSets : item.rowSets;
+  const last = baselineKind(item, c.axis) === 'last';
+  const list = last ? c.minorBaselines : c.majorBaselines;
+  if (list === null) return;
+  const set = list[last ? sets.end - 1 : sets.begin] as GridSetBaseline;
+  if (baseline > set.value) set.value = baseline;
+}
+
+/**
+ * Blink GridLayoutAlgorithm::ComputeGridItemBaselines (grid_layout_algorithm.cc 1180-1280) with GridItemData::SetAlignmentFallback
+ * (grid_item.cc 254-309): each baseline-aligned item is measured in its grid area as the geometry of the axis stands, and its
+ * margin-box baseline raises the major baseline of its first set (first baseline) or the minor baseline of its last set (last
+ * baseline). An item with no baseline in the axis that spans an intrinsic or flexible track and whose size in the axis depends on
+ * the track (a percentage height in the row axis; a percentage width in the column axis, where a horizontal item never has a
+ * baseline) falls back to its start (first baseline) or end (last baseline) edge instead.
+ */
+function computeBaselines(ctx: Ctx, grid: GridState, axis: GridAxis): void {
+  const c = axis === 'columns' ? grid.columns : grid.rows;
+  if (c.majorBaselines === null) return;
+  resetBaselines(c);
+  for (const item of grid.items) {
+    if (baselineKind(item, axis) === 'none') continue;
+    const areaInline = areaSize(grid.columns, item.columnSets);
+    const s = item.box.style;
+    const m = marginsOf(item.box, areaInline, grid.rtl);
+    let baseline: LU;
+    if (axis === 'columns') {
+      const dependsOnTrack = item.columnProps.intrinsic || item.columnProps.flexible;
+      item.columnFallback = dependsOnTrack && (percentSize(s.width) || percentSize(s.minWidth) || percentSize(s.maxWidth));
+      if (item.columnFallback) continue;
+      const width = areaInline === INDEFINITE ? indefiniteInlineSize(ctx, item) : itemInlineSize(ctx, item, areaInline, m);
+      baseline = inlineBaseline(ctx, grid, item, width);
+    } else {
+      const r = layoutItem(ctx, grid, item, areaInline, areaSize(c, item.rowSets));
+      const dependsOnTrack = r.frag.baseline === null && (item.rowProps.intrinsic || item.rowProps.flexible);
+      item.rowFallback = dependsOnTrack && (percentSize(s.height) || percentSize(s.minHeight) || percentSize(s.maxHeight));
+      if (item.rowFallback) continue;
+      baseline = blockBaseline(ctx, item, r);
+    }
+    raiseBaseline(c, item, add(baselineMargin(item, axis, m), baseline));
+  }
+}
+
+/**
+ * Blink PlaceGridItems' BaselineOffset (grid_layout_algorithm.cc 2246-2268): the offset of a baseline-aligned item from the start of
+ * its grid area, its track baseline less its own for the major group, or measured back from the area's end for the minor group.
+ */
+function baselineOffset(ctx: Ctx, grid: GridState, item: GridItemData, axis: GridAxis, r: GridItemLayout, areaSizeInAxis: LU): LU {
+  const columns = axis === 'columns';
+  const size = columns ? r.frag.width : r.frag.height;
+  const own = columns ? inlineBaseline(ctx, grid, item, size) : blockBaseline(ctx, item, r);
+  const delta = sub(trackBaseline(columns ? grid.columns : grid.rows, item), own);
+  if (baselineKind(item, axis) !== 'last') return delta;
+  return sub(sub(areaSizeInAxis, delta), size);
 }
 
 /** Blink GridLayoutAlgorithm::ContributionSizeForGridItem (css-grid-2 §12.5, GR16) in one axis. */
@@ -1905,9 +2052,11 @@ function contributionFor(ctx: Ctx, grid: GridState, c: GridCollection, type: Gri
       const sets = itemSets(item, c.axis);
       const spannedMax = setSpanSize(c, sets.begin, sets.end);
       if (spannedMax !== INDEFINITE && !ctx.gridFaults.autoMinNotClamped) {
-        // Blink ClampIntrinsicMinSize: never below the margins, the baseline shim, and the border and padding.
+        // Blink ClampIntrinsicMinSize: never below the margins, the baseline shim, and the border and padding. In the column axis
+        // the shim is the max-content one, which Blink computes after the min-content one (grid_layout_algorithm.cc 1041-1046).
         const bp = borderPaddingOf(ctx, item.box, c.axis, basis);
-        const limit = maxLu(spannedMax, add(add(marginSum, measured.shim), bp));
+        const shim = columns && baselineAligned(item, 'columns') ? contentContribution(ctx, grid, item, columns, 'max').shim : measured.shim;
+        const limit = maxLu(spannedMax, add(add(marginSum, shim), bp));
         contribution = sub(minLu(add(contribution, marginSum), limit), marginSum);
       }
     }
@@ -1944,8 +2093,8 @@ function initializeTrackSizes(ctx: Ctx, grid: GridState, axis: GridAxis): void {
 /** Blink CompleteTrackSizingAlgorithm; returns whether a row pass changed the block size of an item whose contribution depends on it. */
 function completeTrackSizing(ctx: Ctx, grid: GridState, axis: GridAxis, constraint: GridSizing, checkDependent: boolean): boolean {
   const c = axis === 'columns' ? grid.columns : grid.rows;
-  // Blink ComputeBaselineAlignment runs first, whether or not the axis has tracks to size; the columns never have baselines.
-  if (axis === 'rows') computeRowBaselines(ctx, grid);
+  // Blink ComputeBaselineAlignment runs first, whether or not the axis has tracks to size.
+  computeBaselines(ctx, grid, axis);
   if (!c.props.nonDefinite) return false;
   const available = axis === 'columns' ? grid.available.inline : grid.available.block;
   buildSets(grid, c, available);
@@ -2006,7 +2155,9 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
       rowSafe: rowAlign.safe,
       columnStretch: columnAlign.stretch,
       rowStretch: rowAlign.stretch,
+      columnBaseline: columnAlign.baseline,
       rowBaseline: rowAlign.baseline,
+      columnFallback: false,
       rowFallback: false,
       sizingDependsOnBlockSize: false,
     };
@@ -2025,8 +2176,8 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
     rtl,
     bsp: logicalBsp(pad, bor, rtl),
     items,
-    columns: newCollection('columns', columnTracks.repeaters, columnsRanges, false),
-    rows: newCollection('rows', rowTracks.repeaters, rowsRanges, items.some((i) => i.rowBaseline)),
+    columns: newCollection('columns', columnTracks.repeaters, columnsRanges, items.some((i) => i.columnBaseline !== 'none')),
+    rows: newCollection('rows', rowTracks.repeaters, rowsRanges, items.some((i) => i.rowBaseline !== 'none')),
     available,
     faults: ctx.gridFaults,
     engineFaults: ctx.faults,
@@ -2076,13 +2227,14 @@ export function layoutGridContainer(ctx: Ctx, box: LayoutBox, a: GridArgs): Grid
     initializeTrackSizes(ctx, grid, 'rows');
     completeTrackSizing(ctx, grid, 'rows', 'layout', false);
   }
-  // Blink CompleteFinalBaselineAlignment: the baselines against the final row geometry.
-  computeRowBaselines(ctx, grid);
+  // Blink CompleteFinalBaselineAlignment: the baselines against the final geometry, columns then rows.
+  computeBaselines(ctx, grid, 'columns');
+  computeBaselines(ctx, grid, 'rows');
   return placeItems(ctx, grid, a, intrinsicContent);
 }
 
 /**
- * Blink PlaceGridItems (grid_layout_algorithm.cc 2246-2285: a baseline-aligned item is offset by its track baseline less its own)
+ * Blink PlaceGridItems (grid_layout_algorithm.cc 2246-2285: a baseline-aligned item is offset by its baseline offset, baselineOffset)
  * and GridBaselineAccumulator (grid_baseline_accumulator.h, first baseline only).
  */
 function placeItems(ctx: Ctx, grid: GridState, a: GridArgs, intrinsicContent: LU): GridResult {
@@ -2099,10 +2251,13 @@ function placeItems(ctx: Ctx, grid: GridState, a: GridArgs, intrinsicContent: LU
     const areaBlock = areaSize(grid.rows, item.rowSets);
     const r = layoutItem(ctx, grid, item, areaInline, areaBlock);
     const m = r.margins;
-    const x = add(inlineOffset, alignmentOffset(ctx, areaInline, r.frag.width, m.inlineStart, m.inlineEnd, item.columnEdge, item.columnSafe));
-    // Blink AlignmentOffset: a fallback alignment is always safe; a baseline offset already holds the block-start margin.
-    const rowOffset = rowBaselineAligned(item)
-      ? sub(trackBaseline(grid.rows, item), itemBaseline(ctx, item.box, r.frag))
+    // Blink AlignmentOffset: a fallback alignment is always safe; a baseline offset already holds the margin.
+    const columnOffset = baselineAligned(item, 'columns')
+      ? baselineOffset(ctx, grid, item, 'columns', r, areaInline)
+      : alignmentOffset(ctx, areaInline, r.frag.width, m.inlineStart, m.inlineEnd, item.columnEdge, item.columnSafe || item.columnFallback);
+    const x = add(inlineOffset, columnOffset);
+    const rowOffset = baselineAligned(item, 'rows')
+      ? baselineOffset(ctx, grid, item, 'rows', r, areaBlock)
       : alignmentOffset(ctx, areaBlock, r.frag.height, m.blockStart, m.blockEnd, item.rowEdge, item.rowSafe || item.rowFallback);
     const y = add(blockOffset, rowOffset);
     const physicalX = grid.rtl ? sub(sub(borderBoxWidth, x), r.frag.width) : x;
@@ -2117,16 +2272,30 @@ function placeItems(ctx: Ctx, grid: GridState, a: GridArgs, intrinsicContent: LU
     }
     if (firstSet === NOT_FOUND || item.rowSets.begin < firstSet) firstSet = item.rowSets.begin;
   }
-  // GridBaselineAccumulator::AccumulateRows and FirstBaseline: the first row set with a major baseline is the grid's first
-  // baseline when it is also the first set holding an item; otherwise the first item in row-major order gives it.
+  // GridBaselineAccumulator::AccumulateRows and FirstBaseline (grid_baseline_accumulator.h 102-139): the first row set with a major
+  // baseline gives the grid's first baseline when it is also the first set holding an item, then the first set with a minor
+  // baseline (measured back from the set's end) when it is; otherwise the first item in row-major order gives it.
   const major = grid.rows.majorBaselines;
-  if (major !== null) {
+  const minor = grid.rows.minorBaselines;
+  if (major !== null && minor !== null) {
+    let majorSet = NOT_FOUND;
+    let majorAt = ZERO;
+    let minorSet = NOT_FOUND;
+    let minorAt = ZERO;
     for (let i = 0; i < major.length; i++) {
       const b = (major[i] as GridSetBaseline).value;
-      if (b === LU_MIN) continue;
-      if (i === firstSet) baseline = add(setOffset(grid.rows, i), b);
-      break;
+      if (b !== LU_MIN && majorSet === NOT_FOUND) {
+        majorSet = i;
+        majorAt = add(setOffset(grid.rows, i), b);
+      }
+      const n = (minor[i] as GridSetBaseline).value;
+      if (n !== LU_MIN && minorSet === NOT_FOUND) {
+        minorSet = i;
+        minorAt = sub(add(setOffset(grid.rows, i), setSpanSize(grid.rows, i, i + 1)), n);
+      }
     }
+    if (majorSet !== NOT_FOUND && majorSet === firstSet) baseline = majorAt;
+    else if (minorSet !== NOT_FOUND && minorSet === firstSet) baseline = minorAt;
   }
   return { contentHeight: intrinsicContent, placed, baseline, outOfFlow: grid.outOfFlow.map((b) => outOfFlowItem(ctx, grid, b)), inflow: gridInflowBounds(grid, borderBoxWidth) };
 }
@@ -2148,14 +2317,13 @@ function gridInflowBounds(grid: GridState, borderBoxWidth: LU): AreaRect {
 
 // ---- Absolutely positioned children (Blink PlaceOutOfFlowItems, ComputeOutOfFlowItemContainingRect, GR17) --------------------
 
-/** The edge of an absolutely positioned child's static position in its area: its self position alone, baseline as start. */
+/** The edge of an absolutely positioned child's static position in its area: its self position alone (selfEdge). */
 function outOfFlowEdge(ctx: Ctx, grid: GridState, box: LayoutBox, axis: GridAxis): GridAxisEdge {
   if (ctx.gridFaults.absposStaticAlignIgnored) return 'start';
   const gi = box.style.gridItem;
   if (gi === null) throw new Error(`${box.id} is a child of grid container ${grid.box.id} with no gridItem; validateLayoutInput rejects this input`);
   if (axis === 'columns') return selfEdge(ctx, grid.box, box, axis, gi.justifySelf === 'auto' ? grid.grid.justifyItems : gi.justifySelf).edge;
-  const a = box.style.alignSelf === 'auto' ? grid.style.alignItems : box.style.alignSelf;
-  return a === 'baseline' ? 'start' : selfEdge(ctx, grid.box, box, axis, a).edge;
+  return selfEdge(ctx, grid.box, box, axis, box.style.alignSelf === 'auto' ? grid.style.alignItems : box.style.alignSelf).edge;
 }
 
 /**

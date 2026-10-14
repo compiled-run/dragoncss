@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { display: grid; width: 160px; grid-template-columns: 70px auto; justify-content: start; column-gap: 4px; row-gap: 2px; margin-bottom: 4px; }
+.ji-base { justify-items: baseline; }
+.ji-last { justify-items: last baseline; }
+.js-base { justify-self: baseline; }
+.js-first { justify-self: first baseline; }
+.js-last { justify-self: last baseline; }
+.js-start { justify-self: start; }
+.r { display: grid; width: 200px; grid-template-columns: repeat(4, 40px); justify-content: start; column-gap: 2px; margin-bottom: 4px; }
+.ai-last { align-items: last baseline; }
+.as-last { align-self: last baseline; }
+.as-base { align-self: baseline; }
+.w10 { width: 10px; height: 6px; }
+.w23 { width: 23.5px; height: 5px; }
+.wpct { width: 50%; height: 5px; }
+.ml { margin-left: 3px; }
+.mr { margin-right: 6.5px; }
+.ml-auto { margin-left: auto; }
+.pl { padding-left: 4px; }
+.bl { border-left: 3px solid; }
+.f13 { font-size: 13px; }
+.f17 { font-size: 17px; }
+.f20 { font-size: 20px; }
+.pb7 { padding-bottom: 7px; }
+.pt15 { padding-top: 15px; }
+.mb { margin-bottom: 4.5px; }
+.mt { margin-top: 3px; }
+.bb { border-bottom: 3px solid; }
+.box { width: 10px; height: 30px; }
+.half { width: 10px; height: 50%; }
+.clip { overflow: hidden; height: 25px; }
+.span2 { grid-row: span 2; }
+.fixed2 { grid-template-rows: 40px 30px; }
+.fx { display: flex; align-items: baseline; width: 220px; margin-bottom: 4px; }
+.fg { display: grid; grid-template-columns: 30px 30px; align-items: last baseline; }
+.pos { position: relative; height: 40px; grid-template-rows: 40px; }
+.abs { position: absolute; width: 8px; height: 6px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="j" class="c ji-base"><div data-dragon-id="j1" class="w10 ml"></div><div data-dragon-id="j2">X X</div><div data-dragon-id="j3" class="w23 mr"></div><div data-dragon-id="j4" class="pl bl">XX XXX</div><div data-dragon-id="j5" class="js-first w10"></div><div data-dragon-id="j6" class="js-start w10"></div></div>
+<div data-dragon-id="k" class="c ji-last"><div data-dragon-id="k1" class="w10 ml"></div><div data-dragon-id="k2" class="f13">X X</div><div data-dragon-id="k3" class="w23 mr"></div><div data-dragon-id="k4" class="pl bl mr">XX XXX</div><div data-dragon-id="k5" class="js-base w10 mr"></div><div data-dragon-id="k6" class="ml-auto w10"></div></div>
+<div data-dragon-id="p" class="c"><div data-dragon-id="p1" class="js-base wpct"></div><div data-dragon-id="p2" class="js-last wpct"></div><div data-dragon-id="p3" class="js-base w23"></div><div data-dragon-id="p4" class="js-last w10"></div></div>
+<div data-dragon-id="a" class="r ai-last"><div data-dragon-id="a1">XX XX XX</div><div data-dragon-id="a2" class="f20">X</div><div data-dragon-id="a3" class="f13 pb7">X</div><div data-dragon-id="a4" class="f17 mb bb">X</div></div>
+<div data-dragon-id="b" class="r"><div data-dragon-id="b1" class="as-last f20 pt15">X</div><div data-dragon-id="b2" class="as-base f17">X</div><div data-dragon-id="b3" class="as-last box"></div><div data-dragon-id="b4" class="as-last mt">XX XX</div></div>
+<div data-dragon-id="s" class="r ai-last"><div data-dragon-id="s1" class="span2 f20">X X</div><div data-dragon-id="s2">X</div><div data-dragon-id="s3" class="f13">X</div><div data-dragon-id="s4" class="f17">X</div><div data-dragon-id="s5">XX</div><div data-dragon-id="s6" class="pb7">X</div><div data-dragon-id="s7" class="half"></div></div>
+<div data-dragon-id="t" class="r ai-last fixed2"><div data-dragon-id="t1" class="f13">X</div><div data-dragon-id="t2" class="half"></div><div data-dragon-id="t3" class="clip">X X X</div><div data-dragon-id="t4" class="span2 f17">XX XX</div></div>
+<div data-dragon-id="f" class="fx"><div data-dragon-id="f1" class="fg"><div data-dragon-id="f1a" class="pb7">X</div><div data-dragon-id="f1b" class="f17">X</div></div><div data-dragon-id="f2">X</div><div data-dragon-id="f3" class="fg"><div data-dragon-id="f3a" class="f20 as-base">X</div><div data-dragon-id="f3b" class="f13">X X X</div></div></div>
+<div data-dragon-id="o" class="r pos ai-last ji-last"><div data-dragon-id="o1">X</div><div data-dragon-id="o2" class="abs"></div><div data-dragon-id="o3" class="abs js-base as-base"></div></div>
+</body>
+</html>

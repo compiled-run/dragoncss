@@ -44,6 +44,13 @@ describe('refusal classification', () => {
     expect(classifyOutcome('k', { kind: 'refused', reasons: [r] })).toEqual({ kind: 'refused', category: 'bidi-atomic' });
     expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_UNSUPPORTED_BIDI: U+200B ends the rtl inline content of cb'] })).toMatchObject({ kind: 'problem' });
   });
+  it('owns the engine\'s grid-last-baseline refusal under last-baseline-source, and no other baseline refusal', () => {
+    const r = (what: string): string => `LayoutUnsupported grid-last-baseline: the last baseline of ${what} container e3 would give the last baseline of grid item e1 (not yet supported)`;
+    expect(classifyOutcome('k', { kind: 'refused', reasons: [r('flex or grid')] })).toEqual({ kind: 'refused', category: 'last-baseline-source' });
+    expect(classifyOutcome('k', { kind: 'refused', reasons: [r('scroll')] })).toEqual({ kind: 'refused', category: 'last-baseline-source' });
+    expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_LOWERING_FAILED: justify-self: last baseline on e1 has no layout mapping'] })).toMatchObject({ kind: 'problem' });
+    expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_LOWERING_FAILED: align-items: last baseline on e0 has no layout mapping (expected normal; last baseline aligns grid items only)'] })).toMatchObject({ kind: 'problem' });
+  });
   it('judges a mismatch by the pinned list', () => {
     expect(classifyOutcome('k', { kind: 'mismatch', detail: 'x' })).toEqual({ kind: 'problem', detail: 'k: x' });
     expect(classifyOutcome('k', { kind: 'match' })).toEqual({ kind: 'match' });
