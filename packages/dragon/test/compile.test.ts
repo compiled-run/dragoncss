@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as publicEntry from '../src/index.ts';
 import { createProject } from '../src/index.ts';
-import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, webClassMap } from '../src/internal.ts';
+import { COMMITTED_PROFILES, compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, webClassMap } from '../src/internal.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
 import type { Diagnostic } from '../src/index.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text as textNode } from './helpers.ts';
@@ -195,6 +195,17 @@ describe('createProject().compile() and check()', () => {
     const derived = createProjectWith(config, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     expect(enforced.digest).toBe(ios().compile(input).digest);
     expect(derived.digest).not.toBe(enforced.digest);
+  });
+
+  it('a derive compile reads no profile, so its digest and output are the same whatever the profiles hold; an enforced digest covers them', () => {
+    const input = inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]);
+    const config = { projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 26 } } } as const;
+    const empty = { ...COMMITTED_PROFILES, ios: { ...COMMITTED_PROFILES.ios, rows: [] }, android: { ...COMMITTED_PROFILES.android, rows: [] } };
+    const compile = (profiles: 'enforce' | 'derive', supportProfiles: typeof COMMITTED_PROFILES) => createProjectWith(config, { faults: NO_FAULTS, profiles, direction: 'ltr', supportProfiles }).compile(input);
+    const [committed, emptied] = [compile('derive', COMMITTED_PROFILES), compile('derive', empty)];
+    expect(emptied.digest).toBe(committed.digest);
+    expect(JSON.stringify(emptied.outputs)).toBe(JSON.stringify(committed.outputs));
+    expect(compile('enforce', empty).digest).not.toBe(compile('enforce', COMMITTED_PROFILES).digest);
   });
 });
 
