@@ -150,11 +150,13 @@ export type TransformItem = { readonly kind: 'text'; readonly node: LinkedText; 
 
 const GEORGIAN = /[Ⴀ-ჿᲐ-Ჿⴀ-⴯]/u;
 
-/** Why native targets refuse a text node's transform (keyed by the text node), set by transformRun; web keeps the property. */
-const REFUSALS = new WeakMap<LinkedText, string>();
-
-/** The transformed text of each text item of an inline formatting context, carrying the previous character in tree order. */
-export function transformRun(items: readonly TransformItem[], faults: Txt2eFaults): Map<LinkedText, string> {
+/**
+ * The transformed text of each text item of an inline formatting context, carrying the previous character in tree order. When
+ * refusals is given, it gets why native targets refuse a text node's transform (web keeps the property); the caller keeps them
+ * with the resolved tree they belong to (ResolvedText.transformRefusal), since each interaction state resolves the same text
+ * nodes under its own transforms.
+ */
+export function transformRun(items: readonly TransformItem[], faults: Txt2eFaults, refusals?: Map<LinkedText, string>): Map<LinkedText, string> {
   const out = new Map<LinkedText, string>();
   let previous = ' ';
   let afterAtomic = false;
@@ -166,15 +168,16 @@ export function transformRun(items: readonly TransformItem[], faults: Txt2eFault
     }
     const source = it.node.text;
     out.set(it.node, applyTextTransform(source, it.transform, previous, faults));
-    REFUSALS.delete(it.node);
     if (it.transform !== 'none' && GEORGIAN.test(source)) {
-      REFUSALS.set(it.node, 'it holds Georgian, whose uppercase Chrome maps back from the Mtavruli capitals Unicode 11 added');
+      refusals?.set(it.node, 'it holds Georgian, whose uppercase Chrome maps back from the Mtavruli capitals Unicode 11 added');
     } else if (it.transform === 'capitalize' && afterAtomic) {
-      REFUSALS.set(it.node, 'it follows an atomic inline, whose last character Chrome carries into the word boundaries');
+      refusals?.set(it.node, 'it follows an atomic inline, whose last character Chrome carries into the word boundaries');
     } else if (it.transform === 'capitalize' && codePoints(previous + source).some((cp) => inRanges(COMPLEX_CONTEXT, cp))) {
-      REFUSALS.set(it.node, 'it holds Complex_Context text (Thai, Lao, Khmer, Myanmar), whose word boundaries Chrome finds with dictionaries');
+      refusals?.set(it.node, 'it holds Complex_Context text (Thai, Lao, Khmer, Myanmar), whose word boundaries Chrome finds with dictionaries');
     }
     if (source === '') continue;
+    // LayoutText::PreviousCharacter: the last UTF-16 code unit of the previous transformed text (a lone low surrogate after a
+    // supplementary character), not its last code point.
     previous = (out.get(it.node) as string).slice(-1);
     afterAtomic = false;
   }
@@ -194,7 +197,7 @@ export function checkTextTransform(root: ResolvedElement, targets: readonly stri
         walk(c);
         continue;
       }
-      const reason = REFUSALS.get(c.node);
+      const reason = c.transformRefusal;
       if (reason === undefined) continue;
       const transform = textTransformOf(el.props);
       for (const t of native) {
