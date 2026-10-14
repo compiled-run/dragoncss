@@ -66,6 +66,18 @@ describe('chrome-memo', () => {
     await expect(memoizedIn(d, 'pixel', { html: 'a' }, CODE, stats, async () => { throw new Error('boom'); })).rejects.toThrow('boom');
     expect(readdirSync(d)).toEqual([]);
   });
+  it('does not remember a result keep refuses, so the next run produces it again', async () => {
+    const d = tmp();
+    const stats = { hits: 0, misses: 0 };
+    let n = 0;
+    const produce = async () => Buffer.from(`${++n}`);
+    const keep = (b: Buffer) => b.toString() !== '1';
+    expect((await memoizedIn(d, 'capture', { html: 'a' }, CODE, stats, produce, keep)).toString()).toBe('1');
+    expect(readdirSync(d)).toEqual([]);
+    expect((await memoizedIn(d, 'capture', { html: 'a' }, CODE, stats, produce, keep)).toString()).toBe('2');
+    expect((await memoizedIn(d, 'capture', { html: 'a' }, CODE, stats, produce, keep)).toString()).toBe('2');
+    expect(stats).toEqual({ hits: 1, misses: 2 });
+  });
   it('finds the git common directory of a checkout and of a worktree', () => {
     const d = tmp();
     const git = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
