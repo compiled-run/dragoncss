@@ -126,37 +126,43 @@ describe('the svg model in a compile', () => {
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
     expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1 })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
-  it('refuses on native, and compiles for web, a shape Chrome fades or hides and an <svg> Chrome does not clip: native draws every shape opaque and clips to the box', () => {
+  it('refuses on native, and compiles for web, a shape Chrome fades, a visible shape in a hidden <svg> and an <svg> Chrome does not clip: native draws a shape opaque or not at all, with its <svg>, and clips to the box', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '40']])];
     const refused = (css: string) => errors(compile(svgTree(css, shapes), false));
     expect(refused('')).toEqual([]);
     expect(refused('circle { opacity: 1; visibility: visible; } svg { overflow: hidden; }')).toEqual([]);
+    for (const css of ['circle { opacity: 0; }', 'circle { opacity: -2; }', 'svg { visibility: hidden; }', 'circle { visibility: hidden; }', 'circle { visibility: collapse; }', 'svg { visibility: hidden; } circle { visibility: inherit; }']) {
+      expect(refused(css), css).toEqual([]);
+    }
     for (const [css, message] of [
-      ['circle { opacity: 0; }', 'opacity: 0 on <circle> c is not supported on native: a shape is drawn opaque there until the SVG structure package SVG-b'],
-      ['circle { opacity: 50%; }', 'opacity: 0.5 on <circle> c is not supported on native: a shape is drawn opaque there until the SVG structure package SVG-b'],
-      ['svg { visibility: hidden; }', 'visibility: hidden on <circle> c is not supported on native: a shape is drawn there even where Chrome hides it, until the SVG structure package SVG-b'],
+      ['circle { opacity: 50%; }', 'opacity: 0.5 on <circle> c is not supported on native: a shape is drawn opaque or not at all there until the SVG structure package SVG-b'],
+      ['circle { opacity: 0.999; }', 'opacity: 0.999 on <circle> c is not supported on native: a shape is drawn opaque or not at all there until the SVG structure package SVG-b'],
+      ['svg { visibility: hidden; } circle { visibility: visible; }', '<circle> c is visible inside <svg> s, whose visibility is hidden: Chrome paints the shape, and native hides it with the <svg> until the SVG structure package SVG-b'],
     ] as const) {
       const e = refused(css);
-      // 50% also takes the translucent-opacity refusal (PNT1-opacity-b), which any box gets.
-      expect(e.filter((m) => m.includes(' on <circle> c ')).sort(), css).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${message}`, `DRAGON_UNSUPPORTED_VALUE ios ${message}`]);
+      // A fraction also takes the translucent-opacity refusal (PNT1-opacity-b), which any box gets.
+      expect(e.filter((m) => m.includes('<circle> c ')).sort(), css).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${message}`, `DRAGON_UNSUPPORTED_VALUE ios ${message}`]);
     }
     const overflow = refused('svg { overflow: visible; }');
     expect(overflow.filter((m) => m.includes('on <svg> s is not supported on native: Chrome paints its shapes past the box')).sort()).toEqual(['android', 'ios'].flatMap((t) => ['overflow-x'].map((p) => `DRAGON_UNSUPPORTED_VALUE ${t} ${p}: visible on <svg> s is not supported on native: Chrome paints its shapes past the box, and native clips them to it until the SVG structure package SVG-b`)));
     expect(overflow.every((m) => !m.startsWith('DRAGON_UNSUPPORTED_VALUE web') && !m.startsWith('DRAGON_UNSUPPORTED_VALUE *'))).toBe(true);
   });
-  it("draws no shape Chrome renders nothing for: a zero-size rect or circle, an empty path, and a shape with display: none", () => {
+  it("draws no shape Chrome renders nothing for: a zero-size rect or circle, an empty path, a shape with display: none, and a hidden or fully transparent one", () => {
     expect([svgShapeEmpty({ kind: 'rect', x: 4, y: 2, width: 0, height: 10 }), svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 3, height: 0 }), svgShapeEmpty({ kind: 'circle', cx: 1, cy: 1, r: 0 }), svgShapeEmpty({ kind: 'path', segments: [] })]).toEqual([true, true, true, true]);
     expect([svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 1, height: 1 }), svgShapeEmpty({ kind: 'circle', cx: 0, cy: 0, r: 1 })]).toEqual([false, false]);
-    const input = svgTree('.hide { display: none; }', (_r, o) => [
+    const input = svgTree('.hide { display: none; } #v { visibility: hidden; } #t { opacity: 0; }', (_r, o) => [
       shape(o, 'z', 'rect', [['x', '4'], ['y', '2'], ['height', '10'], ['stroke', 'red'], ['stroke-width', '2']]),
       { ...shape(o, 'h', 'rect', [['width', '10'], ['height', '10']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'hide' }, o)] },
       shape(o, 'o', 'circle', [['cx', '3'], ['cy', '3'], ['r', '0'], ['stroke', 'red']]),
       shape(o, 'e', 'path', [['stroke', 'red']]),
       shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']]),
+      shape(o, 'v', 'rect', [['id', 'v'], ['width', '10'], ['height', '10']]),
+      shape(o, 't', 'rect', [['id', 't'], ['width', '10'], ['height', '10']]),
     ]);
     const c = compile(input, true);
     expect(errors(c)).toEqual([]);
-    // The hidden rect has no box, so it is in no scene; the empty shapes keep their box and bbox (the differential compares them).
+    // The display: none rect has no box, and the hidden and transparent rects paint nothing, so none is in the scene; the empty
+    // shapes keep their box and bbox (the differential compares them).
     expect(svgScenes(c, [])?.[0]?.shapes.map((x) => x.address)).toEqual(['z', 'o', 'e', 'c']);
     const p = nativePrograms(c, []);
     if (p.kind !== 'ready') throw new Error(p.reason);
@@ -169,9 +175,11 @@ describe('the svg model in a compile', () => {
     const hidden = svgTree('.w { display: none; }', (_r, o) => [shape(o, 'c', 'circle', [['r', '4']])]);
     expect(svgScenes(compile(hidden, true), [])).toEqual([]);
   });
-  it('refuses visibility on a shape by name: it is not a supported property, and Chrome would hide the shape', () => {
-    const input = svgTree('circle { visibility: hidden; }', (_r, o) => [shape(o, 'c', 'circle', [['r', '4']])]);
-    expect(errors(compile(input, false)).some((m) => m.includes('visibility'))).toBe(true);
+  it('compiles a hidden shape on every target, and leaves it out of the native write', () => {
+    const input = svgTree('circle { visibility: hidden; }', (_r, o) => [shape(o, 'c', 'circle', [['r', '4']]), shape(o, 'r', 'rect', [['width', '4'], ['height', '4']])]);
+    const c = compile(input, false);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(compile(input, true), [])?.[0]?.shapes.map((x) => x.address)).toEqual(['r']);
   });
   it('refuses a group, text, a nested svg and a shape with children (SVG-b)', () => {
     const input = svgTree('', (r, o) => [shape(o, 'g', 'g', []), { kind: 'text', id: 't', text: 'hi', origin: o }, shape(o, 'p', 'path', [['d', 'M0 0']], [shape(o, 'q', 'rect', [])]), shape(o, 'n', 'svg', [])]);

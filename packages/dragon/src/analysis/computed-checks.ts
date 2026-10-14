@@ -19,7 +19,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
-import { isSvgShapeTag, svgPaintRefusal } from './elements/svg.ts';
+import { isSvgShapeTag, svgPaintRefusal, svgShapePainted } from './elements/svg.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
@@ -772,17 +772,24 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
       if (keywordOf(v) === 'hidden') continue;
       refuse('overflow', v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <svg> ${el.element.address} is not supported on native: Chrome paints its shapes past the box, and native clips them to it until the SVG structure package SVG-b`, `Leave overflow on <svg> ${el.element.address} at hidden.`, native);
     }
+    // Native paints the shapes as the <svg>'s own paint, which its visibility gates (lower/paint/visibility.ts), so a shape Chrome
+    // paints inside a hidden <svg> is refused there.
+    const visibility = el.props.get('visibility') as ResolvedValue;
+    if (keywordOf(visibility) !== 'visible') {
+      for (const c of el.children) {
+        if (c.kind !== 'element' || !isSvgShapeTag(c.element.tag) || keywordOf(c.props.get('display') as ResolvedValue) === 'none' || !svgShapePainted(c)) continue;
+        const v = c.props.get('visibility') as ResolvedValue;
+        refuse(`visible-${c.element.address}`, v.declaration === null ? c.element.node.origin : authored(v.declaration.valueSpan), `<${c.element.tag}> ${c.element.address} is visible inside <svg> ${el.element.address}, whose visibility is ${valueToString(visibility.value)}: Chrome paints the shape, and native hides it with the <svg> until the SVG structure package SVG-b`, `Give <svg> ${el.element.address} visibility: visible, and hide the shapes that should not show.`, native);
+      }
+    }
     return;
   }
-  // SVG-a2: native draws a shape opaque and visible (lower/paint/image.ts carries geometry and paints only), so a shape Chrome
-  // fades or hides is refused there.
+  // SVG-a2: native draws a shape opaque (lower/paint/image.ts carries geometry and paints only), or not at all where Chrome paints
+  // nothing (svgShapePainted: hidden, or opacity 0), so a shape Chrome fades is refused there.
   const opacity = el.props.get('opacity') as ResolvedValue;
-  if (!(opacity.value.kind === 'number' && opacity.value.value === 1) && !(opacity.value.kind === 'percentage' && opacity.value.value === 100)) {
-    refuse('opacity', opacity.declaration === null ? el.element.node.origin : authored(opacity.declaration.valueSpan), `opacity: ${valueToString(opacity.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn opaque there until the SVG structure package SVG-b`, `Set opacity on the <svg>, or leave it at 1 on <${tag}> ${el.element.address}.`, native);
-  }
-  const visibility = el.props.get('visibility') as ResolvedValue;
-  if (keywordOf(visibility) !== 'visible') {
-    refuse('visibility', visibility.declaration === null ? el.element.node.origin : authored(visibility.declaration.valueSpan), `visibility: ${valueToString(visibility.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn there even where Chrome hides it, until the SVG structure package SVG-b`, `Remove the shape, or give it display: none.`, native);
+  const alpha = opacityOf(opacity.value);
+  if (alpha !== 0 && alpha !== 1 && keywordOf(el.props.get('visibility') as ResolvedValue) === 'visible') {
+    refuse('opacity', opacity.declaration === null ? el.element.node.origin : authored(opacity.declaration.valueSpan), `opacity: ${valueToString(opacity.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn opaque or not at all there until the SVG structure package SVG-b`, `Set opacity on the <svg>, or give <${tag}> ${el.element.address} opacity 0 or 1.`, native);
   }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;

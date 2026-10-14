@@ -8,6 +8,7 @@ import { parsePathData, parseSvgLength, parseViewBox } from './svg-path.ts';
 import type { SvgShape, ViewBox } from '@dragon/layout';
 import type { Rgba8 } from '../../css/color.ts';
 import { TRANSPARENT } from '../../css/color.ts';
+import { opacityOf } from '../../css/properties/effects.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { CssValue, Declaration } from '../../css/stylesheet.ts';
 import { parseValue } from '../../css/stylesheet.ts';
@@ -195,7 +196,20 @@ export function svgShapeEmpty(shape: SvgShape): boolean {
   return shape.segments.length === 0;
 }
 
-/** The scene of a resolved <svg>; null for any other element. A shape with display: none has no box and is left out. */
+/**
+ * Whether Chrome paints a shape: not at visibility hidden or collapse (collapse is hidden off tables, css-display-3 §4), and not at
+ * a computed opacity of 0 (or below, which clamps to 0), where the shape's layer is fully transparent.
+ */
+export function svgShapePainted(el: ResolvedElement): boolean {
+  const visibility = (el.props.get('visibility') as ResolvedValue).value;
+  if (!(visibility.kind === 'keyword' && visibility.value === 'visible')) return false;
+  return opacityOf((el.props.get('opacity') as ResolvedValue).value) !== 0;
+}
+
+/**
+ * The scene of a resolved <svg>; null for any other element. A shape with display: none has no box, and one Chrome does not paint
+ * (svgShapePainted) draws nothing, so both are left out.
+ */
 export function svgSceneOf(el: ResolvedElement): SvgScene | null {
   if (el.element.tag !== SVG_TAG) return null;
   const shapes: SvgShapeScene[] = [];
@@ -203,6 +217,7 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
     if (c.kind !== 'element' || !isSvgShapeTag(c.element.tag)) continue;
     const display = (c.props.get('display') as ResolvedValue).value;
     if (display.kind === 'keyword' && display.value === 'none') continue;
+    if (!svgShapePainted(c)) continue;
     const shape = shapeOf(c.element.tag, c.element.attributes);
     if (shape === null) throw new Error(`${c.element.address}: a refused shape reached the scene`);
     const sw = (c.props.get('stroke-width') as ResolvedValue).value;
