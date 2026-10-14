@@ -426,7 +426,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -586,7 +588,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -746,7 +750,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         },
         {
          "kind": "inline",
@@ -900,7 +906,9 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -925,7 +933,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1085,7 +1095,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         },
         {
          "kind": "br",
@@ -1124,7 +1136,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1284,7 +1298,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1444,7 +1460,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1725,7 +1743,9 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }

@@ -143,6 +143,7 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
     "grid": null,
     "gridItem": null
    },
@@ -263,6 +264,7 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
       "grid": null,
       "gridItem": null
      },
@@ -383,6 +385,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -424,7 +427,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -543,6 +548,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -584,7 +590,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -703,6 +711,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -744,7 +753,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -863,6 +874,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -904,7 +916,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1023,6 +1037,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -1064,7 +1079,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1183,6 +1200,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -1224,7 +1242,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1343,6 +1363,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -1384,7 +1405,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         },
         {
          "kind": "inline",
@@ -1500,6 +1523,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": null
          },
@@ -1539,7 +1563,9 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -1565,7 +1591,9 @@
          "letterSpacing": {
           "kind": "px",
           "value": 0
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       }
