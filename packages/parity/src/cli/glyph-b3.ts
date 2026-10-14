@@ -9,14 +9,17 @@
 // --write-bottom-pins writes packages/parity/expected-glyphs/bottom-scanlines.json, the per-case glyph-bottom scanline counts that
 // pixel-reference.test.ts pins, and exits.
 import { readFileSync, writeFileSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
+import { Worker } from 'node:worker_threads';
 import type { LaneFailure } from '../device-lanes.ts';
 import type { B3Reference, Bucket } from '../glyph-b3.ts';
 import { b3Bucket, BUCKETS } from '../glyph-b3.ts';
 import { BACKEND_OF, nativeCases } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { BottomScanlines } from '../pixel-reference.ts';
-import { BOTTOM_SCANLINES_PATH, bottomScanlines, caseSamples, glyphLines } from '../pixel-reference.ts';
+import { BOTTOM_SCANLINES_PATH, caseSamples, glyphLines } from '../pixel-reference.ts';
 import type { NativeTarget } from '../targets.ts';
+import type { PinItem } from './glyph-b3-worker.ts';
 import { deviceDprs } from '../targets.ts';
 
 const args = process.argv.slice(2);
@@ -33,18 +36,27 @@ const log = (s: string): void => console.log(`parity:glyph-b3: ${s}`);
 
 const cases = nativeCases();
 if (args.includes('--write-bottom-pins')) {
-  const pins: { [t: string]: { [d: string]: { [c: string]: readonly [number, number] } } } = {};
+  // Every (target, DPR, case) item, interleaved over worker threads (glyph-b3-worker.ts) so each gets a like share of the costly
+  // shadowed cases; the counts come back in item order.
+  const items: { readonly target: NativeTarget; readonly dpr: number; readonly id: string; readonly item: PinItem }[] = [];
   for (const target of ['ios', 'android'] as const) {
-    pins[target] = {};
-    for (const dpr of deviceDprs(target)) {
-      const at: { [c: string]: readonly [number, number] } = {};
-      for (const c of cases) {
-        const n = bottomScanlines(c.programs[BACKEND_OF[target]], c.case.environment.viewport, dpr);
-        if (n[1] > 0) at[c.case.id] = n;
-      }
-      (pins[target] as { [d: string]: { [c: string]: readonly [number, number] } })[String(dpr)] = at;
-    }
+    for (const dpr of deviceDprs(target)) for (const c of cases) items.push({ target, dpr, id: c.case.id, item: { program: c.programs[BACKEND_OF[target]], viewport: c.case.environment.viewport, dpr } });
   }
+  const n = Math.max(1, Math.min(availableParallelism(), items.length));
+  const shares = Array.from({ length: n }, (_, w) => items.filter((_, i) => i % n === w));
+  const counted = await Promise.all(shares.map((share) => new Promise<[number, number][]>((resolve, reject) => {
+    const w = new Worker(new URL('./glyph-b3-worker.ts', import.meta.url), { workerData: share.map((x) => x.item) });
+    let out: [number, number][] | null = null;
+    w.once('message', (m: [number, number][]) => (out = m));
+    w.once('error', reject);
+    w.once('exit', (code) => (code === 0 && out !== null && out.length === share.length ? resolve(out) : reject(new Error(`parity:glyph-b3: a bottom-pin worker exited with ${code}`))));
+  })));
+  const pins: { [t: string]: { [d: string]: { [c: string]: readonly [number, number] } } } = {};
+  items.forEach((x, i) => {
+    const count = (counted[i % shares.length] as [number, number][])[Math.floor(i / shares.length)] as [number, number];
+    const at = ((pins[x.target] ??= {})[String(x.dpr)] ??= {});
+    if (count[1] > 0) at[x.id] = count;
+  });
   const text = (p: BottomScanlines): string => `{\n${Object.entries(p).map(([t, ds]) => `  ${JSON.stringify(t)}: {\n${Object.entries(ds).map(([d, cs]) => `    ${JSON.stringify(d)}: {\n${Object.entries(cs).map(([c, n]) => `      ${JSON.stringify(c)}: ${JSON.stringify(n)}`).join(',\n')}\n    }`).join(',\n')}\n  }`).join(',\n')}\n}\n`;
   writeFileSync(BOTTOM_SCANLINES_PATH(), text(pins));
   log(`wrote ${BOTTOM_SCANLINES_PATH()}`);
