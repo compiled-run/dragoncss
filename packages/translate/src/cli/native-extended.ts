@@ -1,6 +1,6 @@
 // native:swift and native:kotlin's worker: builds the extended corpus on its own thread while the main thread builds the P1
-// corpus, posts whether it matches its lock, and once the main thread has built the target (the build cache is keyed per process,
-// so the two threads never build at once) runs it against the extended corpus and posts the report.
+// corpus, posts whether it matches its lock, and once the main thread has built the target and run the P1 corpus (a build's work
+// directory is named by the process, so the two threads never build at once) runs the extended corpus and posts the report.
 import { once } from 'node:events';
 import { parentPort, workerData } from 'node:worker_threads';
 import { committedFiles, runTarget } from '../check.ts';

@@ -1,6 +1,6 @@
 // pnpm run native:swift and pnpm run native:kotlin: the committed generated engine against the P1 corpus (the milestone-1 vectors
 // and the units, engine and library corpora) and the extended corpus (P2b vectors, DPR vectors, engine-dpr, units-m2 and snap).
-// The extended corpus is built and run on a worker thread (native-extended.ts) beside the P1 corpus: the two take about as long.
+// The extended corpus is built on a worker thread (native-extended.ts) beside the P1 corpus: the two take about as long.
 import { Worker } from 'node:worker_threads';
 import { LOCK, lockedDigest, runTarget, staleFiles, committedFiles } from '../check.ts';
 import type { Target } from '../check.ts';
@@ -50,17 +50,20 @@ if (x.stale !== null) {
   process.exit(1);
 }
 // The target is built here first, so the worker's run finds it in the build cache: a build's work directory is named by the
-// process, which both threads share.
+// process, which both threads share. The extended run starts after the P1 run, as before, so the host never runs more engine
+// processes at once than it did (each suite has a fixed timeout).
 const files = committedFiles(target);
+let buildSeconds = 0;
 if (target === 'swift') {
   const tool = swiftTool();
-  if (tool !== null) buildSwift(tool, files);
+  if (tool !== null) buildSeconds = buildSwift(tool, files).seconds;
 } else {
   const tool = kotlinTool(defaultKotlinLookup());
-  if (tool !== null) buildKotlin(tool, files);
+  if (tool !== null) buildSeconds = buildKotlin(tool, files).seconds;
 }
+const run = runTarget(target, c, files, target);
 worker.postMessage('built');
-const r = runTarget(target, c, files, target);
+const r = run.status === 'blocked (owner tooling)' ? run : { ...run, buildSeconds };
 writeReport(r, c);
 console.log(describe(r, c));
 const rx = await runPost.promise;
