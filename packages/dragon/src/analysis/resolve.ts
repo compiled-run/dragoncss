@@ -25,6 +25,7 @@ import type { InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
+import { computeResize } from '../css/properties/resize.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -324,6 +325,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     blockify(props, parent === null ? null : parent.props, faults);
     computeOverflowPair(props);
+    computeResize(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);

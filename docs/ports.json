@@ -3465,10 +3465,13 @@
       "fileSha256": "e0d828e4ceaede9a989d17a38d26ee09048e974db4ce7511008cae2fe33a6213",
       "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
       "ranges": [
-        { "lines": "1652-1659", "symbol": "CSSParserFastPaths::IsValidKeywordPropertyAndValue", "source": "located" }
+        { "lines": "1652-1659", "symbol": "CSSParserFastPaths::IsValidKeywordPropertyAndValue", "source": "located" },
+        { "lines": "1338-1346", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/css/properties/selection.ts", "symbol": "parseUserSelect", "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/selection.ts", "symbol": "parseUserSelect", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" },
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" }
       ]
     },
     {
@@ -3483,7 +3486,9 @@
         { "lines": "3330-3378", "symbol": "Content::ParseSingleValue", "source": "located" },
         { "lines": "3431-3436", "symbol": "Content::ApplyValue", "source": "located" },
         { "lines": "6772-6785", "symbol": "ListStyleType::ParseSingleValue", "source": "located" },
-        { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" }
+        { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "8525-8531", "symbol": "Resize::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "8533-8552", "symbol": "Resize::ApplyValue", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
@@ -3491,7 +3496,8 @@
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" },
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeLetterSpacing", "use": "port" },
         { "file": "packages/dragon/src/css/properties/text-spacing.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" }
+        { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

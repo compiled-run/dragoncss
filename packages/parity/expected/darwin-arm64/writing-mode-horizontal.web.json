@@ -140,6 +140,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -273,6 +274,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -406,6 +408,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -539,6 +542,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -702,6 +706,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -865,6 +870,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1028,6 +1034,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1191,6 +1198,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1344,6 +1352,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1507,6 +1516,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1660,6 +1670,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1813,6 +1824,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1946,6 +1958,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2079,6 +2092,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2212,6 +2226,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2345,6 +2360,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2508,6 +2524,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2671,6 +2688,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2804,6 +2822,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2937,6 +2956,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "writing-mode": "horizontal-tb"
       }
     }
