@@ -785,6 +785,8 @@
     "svg-flex-rtl": "<svg> s1, s2: hit testing an svg's shapes comes with SVG-a2",
     "svg-hidden": "<svg> s1: hit testing an svg's shapes comes with SVG-a2",
     "svg-hidden-rtl": "<svg> s1: hit testing an svg's shapes comes with SVG-a2",
+    "text-decoration-native": "n7s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "text-decoration-native-rtl": "n7s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-justify-ahem": "s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-justify-ahem-rtl": "s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-overflow-lines": "a9b1 is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",
