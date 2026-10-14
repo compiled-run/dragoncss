@@ -15,7 +15,7 @@ import { asciiPairBreaks } from './linebreak.ts';
 import type { FontMetrics } from './text.ts';
 import { AHEM_FACE_ID, AHEM_FONT_DATA, coveredIndex } from './text.ts';
 import { scriptCode, scriptExtensions, USCRIPT_COMMON, USCRIPT_INHERITED, USCRIPT_LATIN } from './script-data.ts';
-import type { BreakItem, BreakResult, BrokenLine, LineView, ShapeItem } from './shaping.ts';
+import type { AnywhereBreak, BreakItem, BreakResult, BrokenLine, LineView, ShapeItem } from './shaping.ts';
 import { breakItemLines, justifiedViewWidth, subView } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
@@ -1424,7 +1424,7 @@ function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Li
   }
   const s = shapedItemsOf(ctx, ifc);
   const wrap = firstLeaf === undefined || firstLeaf.textWrapMode === 'wrap';
-  const anywhere = { anywhere: ifc.anywhere, always: ifc.anywhere && ctx.faults.breakAnywhereAlways, graphemes: s.graphemes, graphemeAtEnd: s.graphemeAtEnd };
+  const anywhere: AnywhereBreak = { anywhere: ifc.anywhere, always: ifc.anywhere && ctx.faults.breakAnywhereAlways, graphemes: s.graphemes, graphemeAtEnd: s.graphemeAtEnd };
   const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.mode === 'preserve', anywhere);
   if (!r.ok) unsupported('line-break', box.id, 'css-text-3 §5', r.reason);
   const lines: Line[] = [];
