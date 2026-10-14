@@ -472,7 +472,7 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(ok.status, ok.stderr).toBe(0);
     const pushed = r.remote();
     expect(ok.out).toEqual({ pushed });
-    expect(git(r.w, 'log', '-1', '--format=%P%n%B', pushed)).toBe(`${r.head}\n${COMMIT_SUBJECT}\n\nCommands: pnpm regen --skip lanes-host --skip tw-sweep (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated\nto a fixed point, then pnpm regen --only tw-sweep (macos-26).\nBase: ${r.head}\nRun: ${URL}`);
+    expect(git(r.w, 'log', '-1', '--format=%P%n%B', pushed)).toBe(`${r.head}\n${COMMIT_SUBJECT}\n\nCommands: pnpm regen --skip lanes-host (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated to a fixed\npoint.\nBase: ${r.head}\nRun: ${URL}`);
     expect(pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.head }], commit: { message: git(r.w, 'log', '-1', '--format=%B', pushed) } }])), URL, r.head, BR)).toBe(pushed);
     expect(ok.stderr).toContain(`gh workflow run ci.yml --ref ${BR}`);
     const f = repo();

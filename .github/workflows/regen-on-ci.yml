@@ -3,14 +3,15 @@
 # Branch mode (pnpm ci:regen): workflow_dispatch with a branch, the `head` it must still be at and a caller `nonce`; the run-name
 # "regen of branch <branch> at <head> (<nonce>)" lets the caller find its run again, and resolve refuses a branch not at `head`.
 # Patch mode (the landing driver, LAND_REGEN=ci): workflow_dispatch with a commit `sha` instead of a branch. Nothing is pushed:
-# the final combined outputs.patch (against that commit, the tw-sweep round's) is the artifact regen-patch, and no cache is saved
+# the final combined outputs.patch (against that commit, the last round's) is the artifact regen-patch, and no cache is saved
 # (the regen and WPT caches are restored only, the pnpm store is not cached), since a dispatched run regenerates an unreviewed
 # tree at master's cache scope.
 # The chain is split by machine (regen-on-ci-round.yml): the Chrome steps on macos-26, whose captures are byte-identical to the
 # local Mac's (capture-proof.yml), and lanes-host on xcode-27, the image with the local Mac's Xcode 27.0. Rounds alternate until
-# one changes nothing (at most 5). tw-sweep, which no other step reads and which takes about 50 min on a 3-core runner, runs
-# once on the converged tree, and that tree is committed. Never pushes master, a protected branch, the default branch or a fork;
-# never force-pushes (a branch that moved meanwhile makes the push fail).
+# one changes nothing (at most 5), and the last round's tree is committed. tw-sweep, which no other step reads, runs in the
+# Chrome rounds with the rest: its Chrome memo made it a few minutes, so a round of its own after them only added a runner's
+# setup. Never pushes master, a protected branch, the default branch or a fork; never force-pushes (a branch that moved
+# meanwhile makes the push fail).
 # A push made with GITHUB_TOKEN starts no workflow, so the push job dispatches ci.yml on the branch for the new commit's checks.
 # Every push to master runs the same chain without pushing ("warm"): Actions caches made in a pull request are visible only to
 # that pull request, while master's are visible to every branch, so master's run keeps the regen cache warm for all of them.
@@ -183,7 +184,7 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.mode != 'skip'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   host-1:
     needs: [resolve, chrome-1]
     if: needs.chrome-1.outputs.next != 'false'
@@ -193,7 +194,7 @@ jobs:
     needs: [resolve, host-1]
     if: needs.host-1.outputs.changed == 'true' && needs.host-1.outputs.next != 'false'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   host-2:
     needs: [resolve, chrome-2]
     if: needs.chrome-2.outputs.changed == 'true' && needs.chrome-2.outputs.next != 'false'
@@ -203,7 +204,7 @@ jobs:
     needs: [resolve, host-2]
     if: needs.host-2.outputs.changed == 'true' && needs.host-2.outputs.next != 'false'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   converge:
     needs: [resolve, chrome-1, host-1, chrome-2, host-2, chrome-3]
     if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -230,47 +231,41 @@ jobs:
           [ -n "$H1" ] || [ "$N1" = false ] || { echo "::error::host-1 reported nothing"; exit 1; }
           echo "rounds: chrome-1=$C1 host-1=$H1 chrome-2=${C2:-not run} host-2=${H2:-not run} chrome-3=${C3:-not run}; final tree from $last" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "name=$last" >> "$GITHUB_OUTPUT"
-  # always(): a skipped later round (the usual case) would otherwise skip every job after it.
-  sweep:
-    needs: [resolve, converge]
-    if: always() && needs.converge.result == 'success'
-    uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--only tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: '${{ needs.converge.outputs.last }}', name: sweep, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   warm-check:
-    needs: [resolve, sweep]
-    if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'warm'
+    needs: [resolve, converge]
+    if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'warm'
     runs-on: ubuntu-latest
     steps:
-      - name: Download the sweep round
+      - name: Download the last round
         uses: actions/download-artifact@v4
         with:
-          name: sweep
+          name: ${{ needs.converge.outputs.last }}
           path: ${{ runner.temp }}/last
       - name: Master must already be at a fixed point
         run: |
           if [ -s "$RUNNER_TEMP/last/outputs.patch" ]; then
-            echo "::error::master at ${{ needs.resolve.outputs.sha }} is not at a fixed point: regen on CI changed files (artifact sweep)"
+            echo "::error::master at ${{ needs.resolve.outputs.sha }} is not at a fixed point: regen on CI changed files (artifact ${{ needs.converge.outputs.last }})"
             exit 1
           fi
           echo "regen-on-ci: master at ${{ needs.resolve.outputs.sha }} is at a fixed point; the regen cache is warm" >> "$GITHUB_STEP_SUMMARY"
-  # Patch mode: the final combined patch alone (the sweep artifact also holds the regen cache and logs), for the landing driver to
+  # Patch mode: the final combined patch alone (the round's artifact also holds the regen cache and logs), for the landing driver to
   # apply with git apply --binary --index. Empty when the commit is already at its fixed point.
   patch:
-    needs: [resolve, sweep]
-    if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'patch'
+    needs: [resolve, converge]
+    if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'patch'
     runs-on: ubuntu-latest
     steps:
-      - name: Download the sweep round (the converged tree with tw-sweep run)
+      - name: Download the last round (the converged tree)
         uses: actions/download-artifact@v4
         with:
-          name: sweep
+          name: ${{ needs.converge.outputs.last }}
           path: ${{ runner.temp }}/last
       - name: The combined outputs.patch
         env:
           SHA: ${{ needs.resolve.outputs.sha }}
         run: |
           set -euo pipefail
-          test -f "$RUNNER_TEMP/last/outputs.patch" || { echo "::error::the sweep round has no outputs.patch"; exit 1; }
+          test -f "$RUNNER_TEMP/last/outputs.patch" || { echo "::error::the last round has no outputs.patch"; exit 1; }
           mkdir -p "$RUNNER_TEMP/patch"
           cp "$RUNNER_TEMP/last/outputs.patch" "$RUNNER_TEMP/patch/outputs.patch"
           if [ -s "$RUNNER_TEMP/patch/outputs.patch" ]; then
@@ -285,8 +280,8 @@ jobs:
           path: ${{ runner.temp }}/patch/outputs.patch
           if-no-files-found: error
   push:
-    needs: [resolve, sweep]
-    if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'push'
+    needs: [resolve, converge]
+    if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -297,10 +292,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.resolve.outputs.sha }}
-      - name: Download the sweep round (the converged tree with tw-sweep run)
+      - name: Download the last round (the converged tree)
         uses: actions/download-artifact@v4
         with:
-          name: sweep
+          name: ${{ needs.converge.outputs.last }}
           path: ${{ runner.temp }}/last
       # A commit pushed to the branch during the run (a test fix, say) no longer throws the run away: the outputs go on top of the
       # new head when the patch applies there and --explain finds every step's cache entry still covering the result, which
@@ -382,8 +377,8 @@ jobs:
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -q -F - <<EOF
           Regenerate on CI: pnpm regen (regen-on-ci)
 
-          Commands: pnpm regen --skip lanes-host --skip tw-sweep (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated
-          to a fixed point, then pnpm regen --only tw-sweep (macos-26).
+          Commands: pnpm regen --skip lanes-host (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated to a fixed
+          point.
           Base: $SHA$onto
           Run: $RUN_URL
           EOF
