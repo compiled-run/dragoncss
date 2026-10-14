@@ -60,8 +60,9 @@ const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object
 /**
  * A device process's outcome, checked field by field against the device it ran: a set with its DPR, device record, counts, dumps
  * digest, failures and fault rows; the trust rows; the vectors run; the blocked reason. Anything else stops the run (fail closed).
+ * A part's outcome (device-ci.ts one --parts, `whole` false) may hold no batch set without being blocked.
  */
-export function parseOutcome(text: string, device: string): DeviceOutcome {
+export function parseOutcome(text: string, device: string, whole = true): DeviceOutcome {
   let v: unknown;
   try {
     v = JSON.parse(text);
@@ -110,7 +111,7 @@ export function parseOutcome(text: string, device: string): DeviceOutcome {
   if (v['blocked'] !== null && typeof v['blocked'] !== 'string') problems.push('blocked is neither null nor a string');
   const by = v['blockedBy'];
   if (by !== undefined && (!Array.isArray(by) || !by.every(isBlockReason) || (by.length > 0) !== (v['blocked'] !== null))) problems.push('blockedBy is not the block reasons of a blocked outcome');
-  if (v['blocked'] === null && set === null) problems.push('neither a set nor a blocked reason');
+  if (whole && v['blocked'] === null && set === null) problems.push('neither a set nor a blocked reason');
   if (problems.length > 0) throw new Error(`${device}: malformed device outcome: ${problems.join('; ')}`);
   return v as unknown as DeviceOutcome;
 }

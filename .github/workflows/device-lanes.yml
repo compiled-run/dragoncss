@@ -1,10 +1,13 @@
-# CI-OFFLOAD step 3-4: the device lanes of a commit on GitHub-hosted standard runners, one job per matrix device, in parallel.
-# iOS simulators run on xcode-27 (Xcode 27.0, the local Mac's) with the pinned iOS 26.5 (23F77) runtime; Android emulators run
-# on ubuntu-latest with KVM and the x86_64 android-36 image (device-run.ts androidImage). Each job writes its outcome with the
-# evidence stamp and host it ran on (packages/parity/src/cli/device-ci.ts one), uploaded together as device-outcomes. Every lane
-# runs here, android layout-vectors-device too (a NaN matches any NaN in the corpus comparison, #147). The merge job writes the
-# lane records (device-records) and fails when a lane judges differently from the records committed at that commit, which the
-# landing driver judges against its base instead. Nothing is committed or pushed.
+# CI-OFFLOAD step 3-4: the device lanes of a commit on GitHub-hosted standard runners, in parallel. Each job runs parts of one
+# matrix device's run on its own booted device (device-ci.ts one --parts: cases, anim, vectors), so no job runs a whole device:
+# Android, whose runners are plentiful, runs every part in its own job; iOS, limited to 5 macOS jobs across the account, runs the
+# iPhone's vectors lane apart and the rest of each device together. iOS simulators run on xcode-27 (Xcode 27.0, the local Mac's)
+# with the pinned iOS 26.5 (23F77) runtime; Android emulators run on ubuntu-latest with KVM and the x86_64 android-36 image
+# (device-run.ts androidImage). Each job writes its part outcome with the evidence stamp and host it ran on; the merge job makes
+# each device's outcome from its parts (device-ci.ts combine), uploaded together as device-outcomes. Every lane runs here, android
+# layout-vectors-device too (a NaN matches any NaN in the corpus comparison, #147). The merge job writes the lane records
+# (device-records) and fails when a lane judges differently from the records committed at that commit, which the landing driver
+# judges against its base instead. Nothing is committed or pushed.
 # A dispatch with `plant` runs only `native-devices.ts --target <t> --plant <plant>` on each target's plant device (device-run.ts
 # PLANT_DEVICES) and passes or fails on its exit: no device run, no outcomes, no merge, no device-outcomes or device-records, and a
 # run-name the landing driver never looks for (land-devices-ci.ts runTitle).
@@ -61,10 +64,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # A plant dispatch runs on the plant device's runner only (device-run.ts PLANT_DEVICES).
-        device: ${{ fromJSON(inputs.plant && '["iPhone 17"]' || '["iPhone 17", "iPad (A16)"]') }}
+        # A plant dispatch runs on the plant device's runner only (device-run.ts PLANT_DEVICES). Three macOS jobs: the iPhone's
+        # vectors lane apart from its cases and frame samples, and the iPad's whole run (it has no vectors lane).
+        include: ${{ fromJSON(inputs.plant && '[{"device":"iPhone 17","parts":"plant"}]' || '[{"device":"iPhone 17","parts":"cases,anim"},{"device":"iPhone 17","parts":"vectors"},{"device":"iPad (A16)","parts":"cases,anim"}]') }}
     runs-on: xcode-27
-    timeout-minutes: 120
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -130,16 +134,17 @@ jobs:
         id: run
         env:
           DEVICE: ${{ matrix.device }}
+          PARTS: ${{ matrix.parts }}
         run: |
           mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
           echo $$ > /tmp/dragon-device.lock/pid
-          slug=$(echo "$DEVICE" | tr -c 'A-Za-z0-9-' '_')
+          slug=$(echo "$DEVICE" | tr -c 'A-Za-z0-9-' '_')-$(echo "$PARTS" | tr ',' '+')
           start=$(date +%s)
           set +e
-          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one ios "$DEVICE" "$RUNNER_TEMP/out/ios-$slug.json" 2>&1 | tee "$RUNNER_TEMP/out/ios-$slug.log"
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one ios "$DEVICE" "$RUNNER_TEMP/out/ios-$slug.json" --parts "$PARTS" 2>&1 | tee "$RUNNER_TEMP/out/ios-$slug.log"
           code=${PIPESTATUS[0]}
           set -e
-          echo "ios $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "ios $DEVICE ($PARTS): exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
           # device-ci.ts TOOLING_EXIT: the tooling blocked the device (boot, settle, install); Device tooling fails the job instead.
           if [ "$code" = 4 ]; then echo "tooling=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           exit "$code"
@@ -193,10 +198,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # A plant dispatch runs on the plant device's runner only (device-run.ts PLANT_DEVICES).
-        device: ${{ fromJSON(inputs.plant && '["dragon-smoke"]' || '["dragon-320", "dragon-smoke", "dragon-480"]') }}
+        # A plant dispatch runs on the plant device's runner only (device-run.ts PLANT_DEVICES). Every part of every device in its
+        # own job: cases and anim of each device, and the vectors lane of dragon-smoke.
+        include: ${{ fromJSON(inputs.plant && '[{"device":"dragon-smoke","parts":"plant"}]' || '[{"device":"dragon-320","parts":"cases"},{"device":"dragon-320","parts":"anim"},{"device":"dragon-smoke","parts":"cases"},{"device":"dragon-smoke","parts":"anim"},{"device":"dragon-smoke","parts":"vectors"},{"device":"dragon-480","parts":"cases"},{"device":"dragon-480","parts":"anim"}]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 45
     env:
       # device-run.ts reads and pins each AVD's config.ini under ~/.android/avd; newer avdmanager defaults elsewhere.
       ANDROID_AVD_HOME: /home/runner/.android/avd
@@ -241,14 +247,6 @@ jobs:
       - name: JDK 17, kotlinc 2.4.20 and the Android SDK packages (the local Mac's versions)
         run: |
           retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          retry brew install openjdk@17
-          echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
-          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
-          retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
-          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
-          # Added after brew's bin, so it comes first on PATH.
-          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$sdk" --licenses >/dev/null || true
           # A download can fail transiently ("unknown archive"): sdkmanager is retried, three failures fail the step, and every
@@ -257,7 +255,21 @@ jobs:
           pkgs=(emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' 'ndk;27.2.12479018')
           # Its progress output goes to a log; a failed attempt prints the log's tail beside the retry warning.
           sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }
-          retry sdk_install
+          # sdkmanager (on the runner's own Java) installs while Homebrew installs the JDK; its retries are printed after.
+          retry sdk_install > "$RUNNER_TEMP/sdk-install.log" 2>&1 &
+          sdk_pid=$!
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          retry brew install openjdk@17
+          echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          # Added after brew's bin, so it comes first on PATH.
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+          sdk_code=0
+          wait "$sdk_pid" || sdk_code=$?
+          cat "$RUNNER_TEMP/sdk-install.log"
+          [ "$sdk_code" = 0 ] || exit 1
           installed=$("$sdk" --list_installed | awk -F'|' 'NF >= 3 { gsub(/ /, "", $1); print $1 }')
           echo "$installed"
           for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done
@@ -285,17 +297,19 @@ jobs:
         id: run
         env:
           DEVICE: ${{ matrix.device }}
+          PARTS: ${{ matrix.parts }}
         run: |
           "$JAVA_HOME/bin/java" -version
           kotlinc -version
           mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
           echo $$ > /tmp/dragon-device.lock/pid
+          slug="$DEVICE-$(echo "$PARTS" | tr ',' '+')"
           start=$(date +%s)
           set +e
-          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one android "$DEVICE" "$RUNNER_TEMP/out/android-$DEVICE.json" 2>&1 | tee "$RUNNER_TEMP/out/android-$DEVICE.log"
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one android "$DEVICE" "$RUNNER_TEMP/out/android-$slug.json" --parts "$PARTS" 2>&1 | tee "$RUNNER_TEMP/out/android-$slug.log"
           code=${PIPESTATUS[0]}
           set -e
-          echo "android $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "android $DEVICE ($PARTS): exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
           # device-ci.ts TOOLING_EXIT: the tooling blocked the device (boot, settle, install); Device tooling fails the job instead.
           if [ "$code" = 4 ]; then echo "tooling=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           exit "$code"
@@ -334,13 +348,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ always() && !inputs.plant }}
         with:
-          name: outcome-android-${{ matrix.device }}
+          name: outcome-android-${{ strategy.job-index }}
           path: ${{ runner.temp }}/out
       # The raw dumps, hit records and trust screenshots, to compare with another host's case by case (the outcome's dumps hashes).
       - uses: actions/upload-artifact@v4
         if: ${{ always() && !inputs.plant }}
         with:
-          name: dumps-android-${{ matrix.device }}
+          name: dumps-android-${{ strategy.job-index }}
           path: packages/parity/out/native/android/lanes
           if-no-files-found: ignore
           retention-days: 14
@@ -349,6 +363,7 @@ jobs:
     if: ${{ !inputs.plant }}
     needs: [resolve, ios, android]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -368,8 +383,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: outcome-*
-          path: ${{ runner.temp }}/outcomes
+          path: ${{ runner.temp }}/parts
           merge-multiple: true
+      # One outcome per device from its parts' files: every part exactly once, under one evidence stamp (device-ci.ts combine).
+      - name: Merge the device outcomes of each device's parts
+        run: node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts combine "$RUNNER_TEMP/parts" "$RUNNER_TEMP/outcomes"
       # The outcomes are uploaded first, whatever the merge and the comparison say: the landing driver merges and judges them itself.
       - name: Upload the device outcomes (the landing driver merges them itself)
         uses: actions/upload-artifact@v4

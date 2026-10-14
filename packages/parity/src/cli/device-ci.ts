@@ -1,7 +1,10 @@
 // Device lanes on CI (device-ci.ts, .github/workflows/device-lanes.yml), under the device lease like every device run.
-//   one <target> <device> <outcome.json>: builds the target's app, boots the one device, runs it as a local run runs each device
-//     (runOneDevice, judged against the committed host run while it is current), and writes the outcome with its evidence stamp
-//     and host.
+//   one <target> <device> <outcome.json> [--parts <part,...>]: builds the target's app, boots the one device, runs it as a local
+//     run runs each device (runOneDevice, judged against the committed host run while it is current), and writes the outcome with
+//     its evidence stamp and host. With --parts (cases, anim, vectors) only those parts run and the file is a part file; an iOS
+//     simulator boots while the app builds.
+//   combine <parts-dir> <out-dir>: makes each matrix device's outcome from the part files in <parts-dir> (every part exactly
+//     once, one evidence stamp per device) and writes them to <out-dir> for merge.
 //   merge <dir>: merges every outcome in <dir> (all matrix devices of both targets, this tree's evidence) and writes out/lanes.json
 //     and out/device-failures-<target>.json as parity:lanes --run-device does.
 //   hashes <target> <device> <dpr>: prints the per-case hashes (CaseDumpHashes) of the dumps a run on this host left for the device.
@@ -10,25 +13,28 @@
 //     --judge (a run for review) a difference exits 1, without it (a run the landing driver judges itself) it only reports.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { CaseDumpHashes } from '../device-ci.ts';
-import { caseDumpHashes, ciOutcomeText, diffCaseHashes, parseCaseHashes, compareWithCommitted, comparisonText, mergeCiOutcomes, OUTCOME_SCHEMA, parseCiOutcome, producerLabel, blockedExit } from '../device-ci.ts';
+import type { CaseDumpHashes, CiOutcome } from '../device-ci.ts';
+import { caseDumpHashes, ciOutcomeText, combineParts, diffCaseHashes, parseCaseHashes, parseParts, parsePartOutcome, partOutcomeText, compareWithCommitted, comparisonText, mergeCiOutcomes, OUTCOME_SCHEMA, PART_SCHEMA, parseCiOutcome, producerLabel, blockedExit } from '../device-ci.ts';
 import { deviceEvidence } from '../device-evidence.ts';
-import { allRunFailures, deviceFailuresText, failuresByKind, runOneDevice } from '../device-lanes.ts';
-import { DEVICE_MATRIX, requireDeviceLease, ToolingFault } from '../device-run.ts';
+import { EarlyBoots, prebuildApps } from '../device-jobs.ts';
+import type { DevicePart } from '../device-lanes.ts';
+import { ALL_PARTS, allRunFailures, deviceFailuresText, failuresByKind, runOneDevice } from '../device-lanes.ts';
+import { boot, DEVICE_MATRIX, release, requireDeviceLease, ToolingFault } from '../device-run.ts';
 import { checkLaneParity, committedHostRun, fileStatusProblems, laneSources, lanesFile, readLanesFile, writeLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos, nativeCases, nativeOut } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import { nativeTargets } from '../targets.ts';
 
 // Exit codes: 0 merged with lane parity; 1 a parity failure, a failed device run, or a device the tree blocked (a matrix mismatch,
-// a device record that does not fit); 2 usage; 3 a refused merge (a missing, repeated or foreign half), with nothing written;
+// a device record that does not fit); 2 usage; 3 a refused merge or combine (a missing, repeated or foreign outcome or part), with
+// nothing written;
 // 4 (TOOLING_EXIT) a device only the tooling blocked: a boot or settle that failed, a device that could not be stopped, or an
 // install that kept failing transiently (blockedExit). The workflow reports 4 in a step that judges nothing.
-const USAGE = 'usage: device-ci.ts one <ios|android> <device> <outcome.json> | merge <dir> | compare <committed-dir> [--judge] | hashes <ios|android> <device> <dpr> | diff <a.json> <b.json>';
+const USAGE = 'usage: device-ci.ts one <ios|android> <device> <outcome.json> [--parts <cases,anim,vectors>] | combine <parts-dir> <out-dir> | merge <dir> | compare <committed-dir> [--judge] | hashes <ios|android> <device> <dpr> | diff <a.json> <b.json>';
 const [mode, ...rest] = process.argv.slice(2);
 const targets = nativeTargets();
 
-if (mode === 'one' && rest.length === 3) {
+if (mode === 'one' && (rest.length === 3 || (rest.length === 5 && rest[3] === '--parts'))) {
   const [target, device, out] = rest as [string, string, string];
   const t = targets.find((x) => x.target === target);
   const spec = DEVICE_MATRIX.find((d) => d.target === target && d.name === device);
@@ -36,26 +42,56 @@ if (mode === 'one' && rest.length === 3) {
     console.error(`device-ci one: ${JSON.stringify(device)} is not a ${target} matrix device (${DEVICE_MATRIX.map((d) => `${d.target}/${d.name}`).join(', ')})`);
     process.exit(2);
   }
+  let parts: DevicePart[] | null = null;
+  if (rest.length === 5) {
+    try {
+      parts = parseParts(rest[4]!.split(','), spec);
+    } catch (e) {
+      console.error(`device-ci one --parts: ${e instanceof Error ? e.message : String(e)}`);
+      process.exit(2);
+    }
+  }
+  const run: ReadonlySet<DevicePart> = parts === null ? ALL_PARTS : new Set(parts);
   requireDeviceLease();
-  const log = (l: string): void => console.log(`device-ci ${t.target} ${spec.name}: ${l}`);
+  const log = (l: string): void => console.log(`device-ci ${t.target} ${spec.name}${parts === null ? '' : ` (${parts.join(',')})`}: ${l}`);
   // Stamped before any device work, as runTargetOnDevices does.
   const evidence = deviceEvidence(t.target);
-  const cases = nativeCases();
-  const b0 = Date.now();
-  const build = t.target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
-  for (const l of build.log) log(`build: ${l}`);
-  log(`build: ${((Date.now() - b0) / 1000).toFixed(0)} s`);
-  if (build.cases !== cases.length) throw new Error(`${t.target}: the app holds ${build.cases} cases, layoutCases() ${cases.length}`);
-  const host = committedHostRun(readLanesFile(), targets, t.target);
-  if (host === null) log('no current committed host run: the vectors lane is judged without one');
+  // Only the cases and anim parts launch the app; the vectors part runs the generated harness alone.
+  const needApp = run.has('cases') || run.has('anim');
+  // The iOS simulator boots (minutes on a fresh runner) while the app builds in its own process, as parity:lanes boots early.
+  const early = needApp && t.target === 'ios' ? new EarlyBoots([spec]) : null;
   let outcome: Awaited<ReturnType<typeof runOneDevice>>;
   try {
-    outcome = await runOneDevice(t, spec, host, build.artifact, () => cases, true, log);
-  } catch (e) {
-    // An install that kept failing transiently judged nothing of the tree; any other failure of the run stays a failure (1).
-    if (!(e instanceof ToolingFault)) throw e;
-    log(`blocked by the device tooling: ${e.message}`);
-    process.exit(blockedExit(['install-transient']));
+    let artifact = '';
+    let appCases = 0;
+    if (needApp) {
+      const b0 = Date.now();
+      if (early !== null && (await prebuildApps([t.target], (l) => log(`build: ${l}`))).length > 0) throw new Error(`${t.target}: the app build failed (its lines are above)`);
+      const build = t.target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
+      for (const l of build.log) log(`build: ${l}`);
+      log(`build: ${((Date.now() - b0) / 1000).toFixed(0)} s`);
+      artifact = build.artifact;
+      appCases = build.cases;
+    }
+    const casesOf = (): ReturnType<typeof nativeCases> => {
+      if (!needApp) return [];
+      const cases = nativeCases();
+      if (appCases !== cases.length) throw new Error(`${t.target}: the app holds ${appCases} cases, layoutCases() ${cases.length}`);
+      return cases;
+    };
+    const host = committedHostRun(readLanesFile(), targets, t.target);
+    if (host === null && run.has('vectors')) log('no current committed host run: the vectors lane is judged without one');
+    try {
+      outcome = await runOneDevice(t, spec, host, artifact, casesOf, true, log, { boot: () => early?.take(spec, log) ?? boot(spec), release: (h) => release(h, log) }, run);
+    } catch (e) {
+      // An install that kept failing transiently judged nothing of the tree; any other failure of the run stays a failure (1).
+      if (!(e instanceof ToolingFault)) throw e;
+      log(`blocked by the device tooling: ${e.message}`);
+      process.exit(blockedExit(['install-transient']));
+    }
+  } finally {
+    // A boot the run never took (the build failed) is stopped.
+    for (const p of (await early?.releaseRest(log)) ?? []) log(`an early boot could not be stopped: ${p}`);
   }
   // Evidence only: whether a dumped capture differed from its warm-up capture (the iOS host's render-server warm-up).
   const warm = join(nativeOut(t.target), 'lanes', spec.name, 'warmup-ios.txt');
@@ -63,11 +99,12 @@ if (mode === 'one' && rest.length === 3) {
   // The hashes are evidence for comparing hosts, not a verdict: one that cannot be read leaves them null, loudly.
   let dumps: CaseDumpHashes | null = null;
   try {
-    dumps = caseDumpHashes(t.target, spec.name, outcome.set?.dpr ?? null);
+    dumps = caseDumpHashes(t.target, spec.name, outcome.set?.dpr ?? outcome.anim?.dpr ?? null);
   } catch (e) {
     console.log(`::warning::device-ci ${t.target} ${spec.name}: the per-case dump hashes could not be read, so the outcome carries none: ${e instanceof Error ? e.message : String(e)}`);
   }
-  writeFileSync(out, ciOutcomeText({ schema: OUTCOME_SCHEMA, target: t.target, device: spec.name, evidence, producedOn: producerLabel(), outcome, dumps }));
+  const producedOn = producerLabel();
+  writeFileSync(out, parts === null ? ciOutcomeText({ schema: OUTCOME_SCHEMA, target: t.target, device: spec.name, evidence, producedOn, outcome, dumps }) : partOutcomeText({ schema: PART_SCHEMA, target: t.target, device: spec.name, parts, evidence, producedOn, outcome, dumps }));
   log(`outcome written to ${out}${outcome.blocked === null ? '' : ` (blocked: ${outcome.blocked})`}`);
   // A blocked device fails its job (the outcome is still uploaded to show why): with TOOLING_EXIT when the tooling blocked it (a
   // boot, settle or stop fault), which judges nothing of the tree; with a verdict when the tree did (blockedExit).
@@ -75,6 +112,20 @@ if (mode === 'one' && rest.length === 3) {
     process.exitCode = blockedExit(outcome.blockedBy);
     log(`blocked by ${(outcome.blockedBy ?? ['an unnamed reason']).join(', ')}: exit ${process.exitCode}`);
   }
+} else if (mode === 'combine' && rest.length === 2) {
+  const [dir, outDir] = rest as [string, string];
+  let combined: CiOutcome[];
+  try {
+    const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
+    combined = combineParts(files.map((f) => parsePartOutcome(readFileSync(join(dir, f), 'utf8'), f)));
+    if (existsSync(outDir) && readdirSync(outDir).some((f) => f.endsWith('.json'))) throw new Error(`${outDir} already holds outcomes`);
+  } catch (e) {
+    console.error(`device-ci combine: REFUSED: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(3);
+  }
+  mkdirSync(outDir, { recursive: true });
+  for (const o of combined) writeFileSync(join(outDir, `${o.target}-${o.device.replace(/[^A-Za-z0-9-]+/g, '_')}.json`), ciOutcomeText(o));
+  console.log(`device-ci combine: ${combined.length} device outcomes written to ${outDir}${combined.some((o) => o.outcome.blocked !== null) ? ` (blocked: ${combined.filter((o) => o.outcome.blocked !== null).map((o) => o.device).join(', ')})` : ''}`);
 } else if (mode === 'merge' && rest.length === 1) {
   const dir = rest[0]!;
   let files: string[] = [];
