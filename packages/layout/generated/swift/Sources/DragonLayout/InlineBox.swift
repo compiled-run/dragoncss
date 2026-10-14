@@ -31,7 +31,7 @@ public func inlineBox_blockLevelOf(_ box: LayoutBox) throws -> LayoutBox {
     return box
   }
   let display: JsString = ((box.style.display == S.s_inline_flex) ? S.s_flex : S.s_block)
-  let style: LayoutStyle = LayoutStyle(display, box.style.position, box.style.top, box.style.right, box.style.bottom, box.style.left, box.style.overflowX, box.style.overflowY, box.style.direction, box.style.boxSizing, box.style.width, box.style.height, box.style.minWidth, box.style.minHeight, box.style.maxWidth, box.style.maxHeight, box.style.marginTop, box.style.marginRight, box.style.marginBottom, box.style.marginLeft, box.style.paddingTop, box.style.paddingRight, box.style.paddingBottom, box.style.paddingLeft, box.style.borderTopWidth, box.style.borderRightWidth, box.style.borderBottomWidth, box.style.borderLeftWidth, box.style.flexDirection, box.style.flexWrap, box.style.flexGrow, box.style.flexShrink, box.style.flexBasis, box.style.order, box.style.justifyContent, box.style.alignItems, box.style.alignSelf, box.style.alignContent, box.style.rowGap, box.style.columnGap, box.style.textAlign, box.style.aspectRatio, box.style.verticalAlign, box.style.textOverflow, box.style.grid, box.style.gridItem)
+  let style: LayoutStyle = LayoutStyle(display, box.style.position, box.style.top, box.style.right, box.style.bottom, box.style.left, box.style.overflowX, box.style.overflowY, box.style.direction, box.style.boxSizing, box.style.width, box.style.height, box.style.minWidth, box.style.minHeight, box.style.maxWidth, box.style.maxHeight, box.style.marginTop, box.style.marginRight, box.style.marginBottom, box.style.marginLeft, box.style.paddingTop, box.style.paddingRight, box.style.paddingBottom, box.style.paddingLeft, box.style.borderTopWidth, box.style.borderRightWidth, box.style.borderBottomWidth, box.style.borderLeftWidth, box.style.flexDirection, box.style.flexWrap, box.style.flexGrow, box.style.flexShrink, box.style.flexBasis, box.style.order, box.style.justifyContent, box.style.alignItems, box.style.alignSelf, box.style.alignContent, box.style.rowGap, box.style.columnGap, box.style.textAlign, box.style.aspectRatio, box.style.verticalAlign, box.style.textOverflow, box.style.textIndent, box.style.grid, box.style.gridItem)
   return LayoutBox(S.s_box, box.id, box.boxType, style, box.strut, box.children)
 }
 
@@ -78,7 +78,7 @@ public func inlineBox_atomicBaseline(_ ctx: Ctx, _ box: LayoutBox, _ frag: Frag,
   }
   // ts: packages/layout/src/inline-box.ts:80
   if (lastFlex != S.s0) {
-    try unsupported_unsupported(S.s_flex_baseline, lastFlex, S.s214, jsConcat(S.s903, lastFlex, S.s120, box.id))
+    try unsupported_unsupported(S.s_flex_baseline, lastFlex, S.s218, jsConcat(S.s915, lastFlex, S.s124, box.id))
   }
   return last
 }

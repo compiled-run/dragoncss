@@ -141,7 +141,9 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
-        "text-indent": "0px"
+        "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal"
       }
     },
     {
@@ -275,7 +277,9 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
-        "text-indent": "0px"
+        "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal"
       }
     },
     {
@@ -409,7 +413,9 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
-        "text-indent": "28px"
+        "text-indent": "28px",
+        "overflow-wrap": "normal",
+        "word-break": "normal"
       }
     },
     {
@@ -593,7 +599,9 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
-        "text-indent": "12%"
+        "text-indent": "12%",
+        "overflow-wrap": "normal",
+        "word-break": "normal"
       }
     },
     {
@@ -777,7 +785,9 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
-        "text-indent": "-11px"
+        "text-indent": "-11px",
+        "overflow-wrap": "normal",
+        "word-break": "normal"
       }
     },
     {
@@ -961,7 +971,9 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
-        "text-indent": "-11px"
+        "text-indent": "-11px",
+        "overflow-wrap": "normal",
+        "word-break": "normal"
       }
     },
     {

@@ -138,8 +138,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -272,8 +274,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -406,8 +410,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -540,8 +546,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -674,8 +682,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -828,8 +838,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -962,8 +974,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -1096,8 +1110,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -1230,8 +1246,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -1384,8 +1402,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -1518,8 +1538,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -1652,8 +1674,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -1786,8 +1810,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -1940,8 +1966,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -2074,8 +2102,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -2208,8 +2238,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -2342,8 +2374,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -2496,8 +2530,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -2630,8 +2666,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -2764,8 +2802,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -2898,8 +2938,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -3052,8 +3094,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -3186,8 +3230,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -3320,8 +3366,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -3454,8 +3502,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -3608,8 +3658,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -3742,8 +3794,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -3876,8 +3930,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -4010,8 +4066,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -4164,8 +4222,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -4298,8 +4358,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -4432,8 +4494,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -4566,8 +4630,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -4720,8 +4786,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -4854,8 +4922,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -4988,8 +5058,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -5122,8 +5194,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -5276,8 +5350,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -5410,8 +5486,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -5544,8 +5622,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -5678,8 +5758,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -5832,8 +5914,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -5966,8 +6050,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -6100,8 +6186,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -6234,8 +6322,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -6388,8 +6478,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -6522,8 +6614,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -6656,8 +6750,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -6790,8 +6886,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -6944,8 +7042,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -7078,8 +7178,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -7212,8 +7314,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -7346,8 +7450,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -7500,8 +7606,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -7634,8 +7742,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -7768,8 +7878,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -7902,8 +8014,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -8056,8 +8170,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -8190,8 +8306,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -8324,8 +8442,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -8458,8 +8578,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -8612,8 +8734,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -8746,8 +8870,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -8880,8 +9006,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -9014,8 +9142,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -9168,8 +9298,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -9302,8 +9434,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -9436,8 +9570,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -9570,8 +9706,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -9724,8 +9862,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -9858,8 +9998,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -9992,8 +10134,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -10126,8 +10270,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -10280,8 +10426,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -10414,8 +10562,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -10548,8 +10698,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -10682,8 +10834,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -10816,8 +10970,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -10950,8 +11106,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -11084,8 +11242,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -11218,8 +11378,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -11352,8 +11514,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -11486,8 +11650,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
@@ -11620,8 +11786,10 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal"
       }
