@@ -15,7 +15,8 @@ import { compareZoomedLayout } from './compare.ts';
 import { referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import { canonicalJsonText } from './state-cases.ts';
-import { chromeArgsAt, CHROME_VERSION, openFrozenPage } from './chrome.ts';
+import { chromeArgsAt, CHROME_VERSION, injectHarness, launchArgsOf, openFrozenPage } from './chrome.ts';
+import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import type { ChromeBreaks, ChromeBreakText } from './line-breaks.ts';
 import { captureBreakTexts } from './line-breaks.ts';
 import type { RgbaImage } from './native-compare.ts';
@@ -68,7 +69,33 @@ function renderings(c: AnimCase, steps: readonly FrameStep[], rendering: 'author
 
 /** Captures one frame case at one DPR in one rendering. */
 export async function captureFrames(browser: Browser, c: AnimCase, steps: readonly FrameStep[], dpr: number, rendering: 'authored' | 'compiled' = 'authored', css: string | null = null): Promise<FrameCapture> {
-  return (await runFrames(browser, c, steps, dpr, rendering, css, null)).capture;
+  return (await runFramesMemo(browser, c, steps, dpr, rendering, css, null)).capture;
+}
+
+/** The code that decides a frame run beside its pages: this driver, the frozen page setup, the break reader and the raster rule. */
+const FRAME_CODE = ['packages/parity/src/frame-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/pixel-reference.ts'];
+/** Remembered and fresh frame runs of this process (chrome-memo.ts). */
+export const FRAME_MEMO: MemoStats = { hits: 0, misses: 0 };
+
+type StoredRun = { readonly capture: FrameCapture; readonly refs: { readonly breaks: FrameRefs['breaks']; readonly pixels: readonly (readonly [number, string])[] } | null };
+
+/**
+ * runFrames, remembered (chrome-memo.ts) by everything sent to the page: the harnessed initial page, every morph, advance and
+ * dump, the tracked properties, the viewport, DPR and direction, the samples screenshotted, and the browser's launch flags. The
+ * case id and the dump times are in the key too, as they are written into the capture. A browser launchChrome did not start
+ * always runs.
+ */
+async function runFramesMemo(browser: Browser, c: AnimCase, steps: readonly FrameStep[], dpr: number, rendering: 'authored' | 'compiled', css: string | null, pixels: ReadonlySet<number> | null): Promise<{ readonly capture: FrameCapture; readonly refs: FrameRefs | null }> {
+  const args = launchArgsOf(browser);
+  if (args === null) return runFrames(browser, c, steps, dpr, rendering, css, pixels);
+  const { initial, pageSteps } = renderings(c, steps, rendering, css);
+  const env = { viewport: c.viewport, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' as const };
+  const parts = { case: c.id, rendering, initial: injectHarness(initial, env), pageSteps, steps, tracked: trackedProperties(c.ap), env, pixels: pixels === null ? null : [...pixels].sort((a, b) => a - b), args };
+  const stored = await memoizedJson<StoredRun>('frames', parts, FRAME_CODE, FRAME_MEMO, async () => {
+    const r = await runFrames(browser, c, steps, dpr, rendering, css, pixels);
+    return { capture: r.capture, refs: r.refs === null ? null : { breaks: r.refs.breaks, pixels: [...r.refs.pixels].map(([k, png]) => [k, png.toString('base64')] as const) } };
+  });
+  return { capture: stored.capture, refs: stored.refs === null ? null : { breaks: stored.refs.breaks, pixels: new Map(stored.refs.pixels.map(([k, b64]) => [k, Buffer.from(b64, 'base64')])) } };
 }
 
 /** The device lanes' per-sample Chrome references (R18): the breaks at every dump, and the PNG at each pixel sample (dump index). */
@@ -76,7 +103,7 @@ export type FrameRefs = { readonly breaks: readonly (readonly ChromeBreakText[])
 
 /** captureFrames in the authored rendering, also reading Chrome's breaks at every dump and screenshotting each of `pixels`. */
 export async function captureFramesWithRefs(browser: Browser, c: AnimCase, steps: readonly FrameStep[], dpr: number, pixels: readonly number[]): Promise<{ readonly capture: FrameCapture; readonly refs: FrameRefs }> {
-  const r = await runFrames(browser, c, steps, dpr, 'authored', null, new Set(pixels));
+  const r = await runFramesMemo(browser, c, steps, dpr, 'authored', null, new Set(pixels));
   if (r.refs === null) throw new Error(`${c.id}: no references were read`);
   return { capture: r.capture, refs: r.refs };
 }
