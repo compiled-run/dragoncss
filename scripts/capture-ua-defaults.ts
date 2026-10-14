@@ -14,7 +14,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CHROME_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
+import { CHROME_VERSION, launchArgsOf, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
+import { type MemoStats, memoizedJson } from '../packages/parity/src/chrome-memo.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import { hostPlatform } from '../packages/parity/src/platform.ts';
 import { LONGHANDS } from '../packages/dragon/src/css/properties.ts';
@@ -833,15 +834,35 @@ async function compare(otherPath: string, currentPath: string): Promise<number> 
   return differing.length === 0 ? 0 : 1;
 }
 
-const browser = await launchChrome();
-try {
+/** The two dataset files and the faults that refuse them, read from Chrome. */
+async function captureOutputs(browser: Browser): Promise<{ outputs: [string, string][]; faults: string[] }> {
   const light = await capture(browser, 'light');
   const dark = await capture(browser, plant === 'dark-as-light' ? 'light' : 'dark');
   if (plant !== undefined) applyPlant(plant, light);
   const faults = [...(await selfConsistency(browser, 'light', light)), ...(await selfConsistency(browser, 'dark', dark))];
   if (dark.systemColors['Canvas'] === light.systemColors['Canvas']) faults.push(`dark capture is not dark: Canvas is ${light.systemColors['Canvas']} in both the light and the dark capture`);
   if (dark.values['html']?.['color'] !== dark.systemColors['CanvasText']) faults.push(`dark capture is not dark: the root color ${dark.values['html']?.['color']} is not the dark CanvasText ${dark.systemColors['CanvasText']}`);
-  const outputs: [string, string][] = [[lightFile, render(light, 'light')], [darkFile, render(dark, 'dark')]];
+  return { outputs: [[lightFile, render(light, 'light')], [darkFile, render(dark, 'dark')]], faults };
+}
+
+// Everything the written files depend on beside Chrome itself (chrome-memo.ts keys the Chrome and Playwright versions and the
+// platform): this script, the page setup and the captured longhands. Only a fault-free capture is remembered; --check and
+// --plant always read Chrome.
+const UA_CODE = ['scripts/capture-ua-defaults.ts', 'packages/parity/src/chrome.ts'];
+const memo: MemoStats = { hits: 0, misses: 0 };
+
+const browser = await launchChrome();
+try {
+  const launchArgs = launchArgsOf(browser);
+  const { outputs, faults } =
+    check || launchArgs === null
+      ? await captureOutputs(browser)
+      : await memoizedJson('ua', { platform, args: launchArgs, longhands: CAPTURED_LONGHANDS, files: [lightFile, darkFile] }, UA_CODE, memo, async () => {
+          const r = await captureOutputs(browser);
+          if (r.faults.length > 0) throw new Error(`ua:capture refuses to write:\n${r.faults.join('\n')}`);
+          return r;
+        });
+  if (memo.hits > 0) console.log('ua:capture: remembered (chrome-memo.ts)');
   if (check) {
     for (const [file, text] of outputs) {
       let committed = '';
