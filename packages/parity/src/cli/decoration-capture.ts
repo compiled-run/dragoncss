@@ -7,6 +7,7 @@ import type { Browser, Page } from 'playwright';
 import { captureFixture } from '../capture.ts';
 import type { ParityCase } from '../cases.ts';
 import { CHROME_VERSION, launchChrome, openPage } from '../chrome.ts';
+import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { DECORATION_DPRS, DECORATION_MANIFEST, decorationCases, decorationDir, decorationPath, sha256, strippedHtml } from '../decoration-capture.ts';
 import type { DecorationManifest } from '../decoration-capture.ts';
 import { atDpr, zoomGuard } from '../dpr.ts';
@@ -46,7 +47,8 @@ for (const dpr of DECORATION_DPRS) {
   const browser = await launchChrome(dpr);
   try {
     if (dpr !== 1) await zoomGuard(browser, dpr);
-    for (const { fixture, case: c } of cases) {
+    // Each capture opens its own context, so cases run CHROME_PAGES at a time; the manifest keeps case order.
+    const rows = await inOrder(cases, CHROME_PAGES, async ({ fixture, case: c }) => {
       const prepare = referenceTransform(fixture);
       const stripped = strippedHtml(c.authoredHtml);
       const a = await captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], prepare);
@@ -60,8 +62,9 @@ for (const dpr of DECORATION_DPRS) {
       const plain = await shoot(browser, stripped, c, dpr, prepare);
       writeFileSync(decorationPath(c.id, dpr, false), decorated);
       writeFileSync(decorationPath(c.id, dpr, true), plain);
-      out.push({ case: c.id, dpr, decorated: sha256(decorated), stripped: sha256(plain), sameLayout });
-    }
+      return { case: c.id, dpr, decorated: sha256(decorated), stripped: sha256(plain), sameLayout };
+    });
+    out.push(...rows);
   } finally {
     await browser.close();
   }
