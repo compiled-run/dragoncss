@@ -38,8 +38,10 @@ function withoutWrapKeys(v: unknown): unknown {
 }
 
 /** The outputs of BASE (batch2's regenerated head 768a8ebdf7: batch #281 at dde476247f plus #274's and #271's groups), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 12920, digest: '0f5d887ec91038a3a31f4279f49e52ac406eca122f63884c04469102e76bc582' };
-const BASE_CAPTURES = { files: 3298, digest: '34c8836ed1a5ec02111da9daadce219cacf0776f135234b02f28353e849d6e0a' };
+// TXT2-a: master's BASE_OUTPUTS (13144 files, 1c0b1fdab4…) recomputed over the same tree with the text-break exclusion, the vectors README
+// left out and each vector read without the TXT2-a TextLeaf keys at 'normal' (it has none), so the pinned bytes are BASE's.
+const BASE_OUTPUTS = { files: 13143, digest: '6d29e7aeb85005fee32fd009df20f39bf4bdf1d4342c65184afff78e7814e8d6' };
+const BASE_CAPTURES = { files: 3354, digest: '3c5abaa478b11a6d660b219456339a48567a78b9f2a76c6677975fdc9d21fbd7' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -229,9 +231,9 @@ describe('BASE pins', () => {
     // text-justify cases landed after BASE.
     const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-') && !id.startsWith('text-break-'));
-    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's and #280's groups, whose FIXTURES hold 826 BASE layout cases.
-    expect(base.length).toBe(826);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('c658b16ff27578eb3600b8c8d645566e9e1bdfe48b00c8682efc46327143fe84');
+    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 828 BASE layout cases.
+    expect(base.length).toBe(828);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('913a57ff7fbe0dd1f9eb9b3fc119cd82889e581ec4a9f6e628b0d675a73febf3');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE (vectors up to the TXT2-a TextLeaf keys)', () => {
     // TXT2-a gives every text leaf overflowWrap and wordBreak, so a vector is digested as its JSON with both removed where they are

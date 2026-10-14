@@ -279,6 +279,34 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(runStep(resolve, label, resolveGh([])).out).toEqual({ branch: BR, sha: HEAD, mode: 'push' });
     expect(runStep(resolve, label, resolveGh([], NEW)).stdout).toContain(`moved from the labelled head ${HEAD} to ${NEW}`);
   });
+  it('a worker\'s branch regen waits, oldest first, while two older branch regens are queued or running', () => {
+    const gate = stepScript('Wait for a branch regen slot');
+    const d = tmpDir();
+    const run = (id: number, created_at: string, event = 'workflow_dispatch', display_title = runTitle(BR, HEAD, NONCE)) => ({ id, created_at, event, display_title });
+    const older = [run(1, '2026-10-14T02:00:00Z'), run(2, '2026-10-14T02:05:00Z'), run(3, '2026-10-14T02:10:00Z', 'pull_request', 'Landing batch'), run(4, '2026-10-14T02:10:00Z', 'workflow_dispatch', regenTitle(HEAD))];
+    const newer = [run(9, '2026-10-14T02:30:00Z'), run(7, '2026-10-14T02:20:00Z')];
+    // Calls 1-4 (one per status) see both older branch regens running; from call 5 on, run 1 has finished.
+    const stub = (runs: object[], later: object[]) => `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *status=in_progress*) if [ $n -le 5 ]; then body='${JSON.stringify({ workflow_runs: runs })}'; else body='${JSON.stringify({ workflow_runs: later })}'; fi ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const env = { GITHUB_RUN_ID: '7', REGEN_BRANCH_SLOTS: '2', POLL_SECONDS: '0' };
+    const waits = runStep(gate, env, stub([...older, ...newer], [older[1]!, older[2]!, older[3]!, ...newer]));
+    expect(waits.status, waits.stderr).toBe(0);
+    expect(waits.stdout).toContain('2 older branch regens are queued or running; waiting for one of 2 slots');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('9');
+    rmSync(join(d, 'calls'));
+    // The landing's runs (a label run, patch mode) and newer branch regens never hold it back.
+    const free = runStep(gate, env, stub([older[1]!, older[2]!, older[3]!, ...newer], []));
+    expect(free.status, free.stderr).toBe(0);
+    expect(free.stdout).not.toContain('waiting for one');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('5');
+  });
   it('master\'s warm run yields to branch regens (dispatched or labelled) but never to the driver\'s patch-mode runs (#220)', () => {
     const warm = (runs: object[]) => runStep(resolve, { GITHUB_EVENT_NAME: 'push', GITHUB_SHA: HEAD, DISPATCH_BRANCH: '', DISPATCH_SHA: '', DISPATCH_HEAD: '', DISPATCH_NONCE: '', PR_BRANCH: '', PR_REPO: '', PR_SHA: '' }, resolveGh(runs)).out['mode'];
     const run = (event: string, display_title: string | null) => ({ event, display_title });
@@ -327,7 +355,7 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     return { w, origin, base, head, later, patch, at: (sha: string) => git(w, 'push', '-q', '-f', 'origin', `${sha}:refs/heads/${BR}`), remote: () => git(w, 'ls-remote', 'origin', `refs/heads/${BR}`).split('\t')[0] ?? '' };
   }
   const runPush = (r: ReturnType<typeof repo>, patch: string) => {
-    const env = { BRANCH: BR, SHA: r.head, RUN_URL: URL };
+    const env = { BRANCH: BR, SHA: r.head, NOW: '', RUN_URL: URL };
     const d = tmpDir();
     mkdirSync(join(d, 'last'));
     writeFileSync(join(d, 'last', 'outputs.patch'), patch);
@@ -349,18 +377,86 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(fixed.out).toEqual({ pushed: 'none' });
     expect(f.remote()).toBe(f.head);
   });
-  it('refuses to push when the branch moved during the run: forward, back to an ancestor, or deleted', () => {
-    for (const where of ['later', 'base', 'gone'] as const) {
+  const where = stepScript('Where the branch is now');
+  /** The step's gh stub answers the compare query with the given status. */
+  const runWhere = (r: ReturnType<typeof repo>, patch: string, status: string) => {
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), patch);
+    return runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo '${status}'`, r.w);
+  };
+  it('judges a branch still at the head as not moved', () => {
+    const r = repo();
+    r.at(r.head);
+    const res = runWhere(r, r.patch, 'identical');
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.out).toEqual({ moved: 'false' });
+  });
+  it('judges nothing when the run has nothing to commit, wherever the branch went', () => {
+    const r = repo();
+    r.at(r.later);
+    const res = runWhere(r, '', 'ahead');
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.out).toEqual({ moved: 'false' });
+  });
+  it('pushes nothing when the branch is reset back after it was judged', () => {
+    const r = repo();
+    r.at(r.later);
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), r.patch);
+    expect(runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo ahead`, r.w).status).toBe(0);
+    r.at(r.head);
+    const res = runStep(push, { BRANCH: BR, SHA: r.head, NOW: r.later, RUN_URL: URL, RUNNER_TEMP: d }, 'echo "gh $*" >&2', r.w);
+    expect(res.status).not.toBe(0);
+    expect(r.remote()).toBe(r.head);
+    expect(res.out).toEqual({});
+  });
+  it('refuses a branch moved back, sideways or deleted during the run, and one whose new head the outputs do not apply to', () => {
+    for (const [at, status, msg] of [
+      ['base', 'behind', `moved from HEAD to BASE (behind, not ahead) during the run; nothing pushed, regen again`],
+      ['later', 'diverged', `moved from HEAD to LATER (diverged, not ahead) during the run; nothing pushed, regen again`],
+      ['gone', 'ahead', 'no longer exists; nothing pushed'],
+      ['clash', 'ahead', `moved from HEAD to CLASH during the run and the outputs do not apply there; nothing pushed, regen again`],
+    ] as const) {
       const r = repo();
-      if (where === 'gone') r.at(r.base);
-      else r.at(r[where]);
-      if (where === 'gone') git(r.w, 'push', '-q', 'origin', `:refs/heads/${BR}`);
-      const before = where === 'gone' ? '' : r.remote();
-      const res = runPush(r, r.patch);
-      expect(res.status, where).not.toBe(0);
-      expect(res.stdout, where).toContain(`::error::${BR} moved from ${r.head} to ${where === 'gone' ? 'nothing' : r[where]} during the run; nothing pushed, regen again`);
-      expect(where === 'gone' ? git(r.w, 'ls-remote', 'origin', `refs/heads/${BR}`) : r.remote(), where).toBe(before);
-      expect(res.out, where).toEqual({});
+      let target = r.later;
+      if (at === 'clash') {
+        git(r.w, 'checkout', '-q', '--detach', r.head);
+        writeFileSync(join(r.w, 'out.json'), '3\n');
+        git(r.w, 'commit', '-q', '-am', 'clash');
+        target = git(r.w, 'rev-parse', 'HEAD');
+        git(r.w, 'checkout', '-q', '--detach', r.head);
+      }
+      if (at === 'base') target = r.base;
+      r.at(target);
+      if (at === 'gone') git(r.w, 'push', '-q', 'origin', `:refs/heads/${BR}`);
+      const res = runWhere(r, r.patch, status);
+      expect(res.status, at).not.toBe(0);
+      expect(res.stdout, at).toContain(`::error::${BR} ${msg.replace('HEAD', r.head).replace('BASE', r.base).replace('LATER', r.later).replace('CLASH', target)}`);
+      expect(res.out, at).toEqual({});
     }
+  });
+  it('carries the outputs onto a head that moved forward, and the push names it after Onto:', () => {
+    const r = repo();
+    r.at(r.later);
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), r.patch);
+    const moved = runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo ahead`, r.w);
+    expect(moved.status, moved.stderr).toBe(0);
+    expect(moved.out).toEqual({ moved: 'true', now: r.later });
+    expect(git(r.w, 'rev-parse', 'HEAD')).toBe(r.later);
+    const ok = runStep(push, { BRANCH: BR, SHA: r.head, NOW: r.later, RUN_URL: URL, RUNNER_TEMP: d }, 'echo "gh $*" >&2', r.w);
+    expect(ok.status, ok.stderr).toBe(0);
+    const pushed = r.remote();
+    expect(ok.out).toEqual({ pushed });
+    expect(git(r.w, 'show', `${pushed}:out.json`)).toBe('2');
+    expect(git(r.w, 'show', `${pushed}:later.ts`)).toBe('y');
+    const message = git(r.w, 'log', '-1', '--format=%B', pushed);
+    expect(message).toContain(`Base: ${r.head}\nOnto: ${r.later} (pushed during the run;`);
+    expect(pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.later }], commit: { message } }])), URL, r.head, BR)).toBe(pushed);
+    // The Onto: line must name the commit's own parent.
+    expect(() => pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.base }], commit: { message } }])), URL, r.head, BR)).toThrow('is not a regen commit on top of');
   });
 });

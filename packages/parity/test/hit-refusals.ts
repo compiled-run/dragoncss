@@ -13,6 +13,8 @@ export const INLINE_OUT: readonly string[] = [
   // inline box and text-transform-text a <br>; TXT2's text-justify-ahem and TXT2-a's text-break-ahem hold an inline box.
   'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
   'text-justify-ahem', 'text-justify-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl',
+  // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
+  'text-decoration-native', 'text-decoration-native-rtl',
   // INL2a: every atomic-inline case holds an inline-block or inline-flex on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];

@@ -7,6 +7,7 @@ import { LandFailure } from '../../../scripts/land-lib.ts';
 import { repoPath } from '../src/paths.ts';
 import { artifactMissing, PatchRefused, abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch, DEVICE_RUN_STEP, TOOLING_STEP, VERDICT_STEP } from '../../../scripts/land-devices-ci.ts';
 import { TOOLING_EXIT } from '../src/device-ci.ts';
+import { PLANT_DEVICES } from '../src/device-run.ts';
 
 const SHA = 'a'.repeat(40);
 const T0 = Date.parse('2026-10-04T12:00:00Z');
@@ -361,12 +362,40 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(yml).not.toMatch(/^\s*- run: pnpm install/m);
     expect(yml).toContain('retry brew install openjdk@17\n');
     expect(yml).toContain('retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/');
-    expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n          retry sdk_install\n');
+    expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n');
+    // sdkmanager runs beside the Homebrew JDK install; the step waits for it, prints its retries, and fails when it failed.
+    expect(yml).toContain('          retry sdk_install > "$RUNNER_TEMP/sdk-install.log" 2>&1 &\n          sdk_pid=$!\n');
+    expect(yml).toContain('          sdk_code=0\n          wait "$sdk_pid" || sdk_code=$?\n          cat "$RUNNER_TEMP/sdk-install.log"\n          [ "$sdk_code" = 0 ] || exit 1\n          installed=$(');
+    expect(yml.indexOf('sdk_pid=$!')).toBeLessThan(yml.indexOf('retry brew install openjdk@17'));
     // The retry warnings are never sent to /dev/null with the command's output.
     expect(yml).not.toMatch(/retry [^\n]*>\s*\/dev\/null/);
     expect(yml).toContain('for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done');
     expect(yml).toMatch(/for i in 1 2 3; do have && break; xcodebuild -downloadPlatform iOS -buildVersion 23F77/);
     expect(yml).toContain('echo "::error::$* failed 3 times"; return 1; }');
+  });
+  it('device-lanes.yml runs a plant dispatch on the plant devices only, with no outcome, record or verdict step the driver reads', () => {
+    const yml = readFileSync(repoPath('.github/workflows/device-lanes.yml'), 'utf8');
+    expect(yml).toMatch(/\n {6}plant:\n {8}description: [^\n]+\n {8}required: false\n {8}default: ''\n {8}type: string\n/);
+    expect(yml).toContain('[[ -z "$PLANT" || "$PLANT" =~ ^[a-z0-9-]+$ ]] || { echo "::error::not a plant name: $PLANT"; exit 1; }');
+    // A plant run's title is never the one the driver finds its device run by.
+    const runName = /\nrun-name: ([^\n]+)\n/.exec(yml)?.[1] ?? '';
+    expect(runName).toBe(`\${{ inputs.plant && format('device plant {0} of {1}', inputs.plant, inputs.sha) || format('${runTitle('{0}')}', inputs.sha || github.event.pull_request.head.sha) }}`);
+    expect(runTitle(SHA).startsWith('device plant ')).toBe(false);
+    for (const [target, next] of [['ios', 'android'], ['android', 'merge']] as const) {
+      const job = yml.slice(yml.indexOf(`\n  ${target}:\n`), yml.indexOf(`\n  ${next}:\n`));
+      expect(job, target).toContain(`include: \${{ fromJSON(inputs.plant && '[{"device":"${PLANT_DEVICES[target]}","parts":"plant"}]' || '[`);
+      expect(job, target).toContain("- name: Device run ${{ matrix.device }}\n        if: ${{ !inputs.plant }}\n");
+      const name = `Plant \${{ inputs.plant }} on the ${target} plant device`;
+      expect(job, target).toContain(`- name: ${name}\n        if: \${{ inputs.plant }}\n`);
+      expect(VERDICT_STEP.test(name.replace('${{ inputs.plant }}', 'decoration-above-text')), target).toBe(false);
+      expect(name.startsWith(TOOLING_STEP), target).toBe(false);
+      expect(job, target).toContain(`native-devices.ts --target ${target} --plant "$PLANT"`);
+      // Every outcome and dump upload is skipped on a plant run; its own upload is named apart from outcome-*.
+      for (const m of job.matchAll(/- uses: actions\/upload-artifact@v4\n {8}if: ([^\n]+)\n {8}with:\n {10}name: ([^\n]+)\n/g)) {
+        expect(m[1], `${target} ${m[2]}`).toBe(m[2]!.startsWith('plant-') ? '${{ always() && inputs.plant }}' : '${{ always() && !inputs.plant }}');
+      }
+    }
+    expect(yml).toContain('\n  merge:\n    # A plant dispatch merges nothing: no device-outcomes or device-records come from it.\n    if: ${{ !inputs.plant }}\n');
   });
   it('does not blame the tree for a summary that failed because a shard died in setup and wrote no report (#199 review)', () => {
     const job = (name: string, stepName: string) => ({ name, status: 'completed', conclusion: 'failure', steps: [{ name: stepName, status: 'completed', conclusion: 'failure' }] });
