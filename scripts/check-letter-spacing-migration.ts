@@ -26,7 +26,7 @@ const ROOT = join(import.meta.dirname, '..');
  */
 const SPECS = {
   'letter-spacing': { key: 'letterSpacing', after: 'textWrapMode', base: 'af67457777', computed: 'normal', emitted: ['normal'] },
-  'word-spacing': { key: 'wordSpacing', after: 'letterSpacing', base: 'bf22ab3a4c', computed: '0px', emitted: ['normal', '0px'] },
+  'word-spacing': { key: 'wordSpacing', after: 'letterSpacing', base: '318068844a', computed: '0px', emitted: ['normal', '0px'] },
 } as const;
 /** The neutral engine value: px 0 (normal). */
 const NEUTRAL = JSON.stringify({ kind: 'px', value: 0 });
