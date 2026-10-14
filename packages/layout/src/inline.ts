@@ -7,7 +7,7 @@ import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeight
 import type { LU } from './units.ts';
 import { add, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
-import { hasPercent, resolveBorder } from './box.ts';
+import { hasPercent, resolveBorder, resolveLength } from './box.ts';
 import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
@@ -15,7 +15,7 @@ import { asciiPairBreaks } from './linebreak.ts';
 import type { FontMetrics } from './text.ts';
 import { AHEM_FACE_ID, AHEM_FONT_DATA, coveredIndex } from './text.ts';
 import { scriptCode, scriptExtensions, USCRIPT_COMMON, USCRIPT_INHERITED, USCRIPT_LATIN } from './script-data.ts';
-import type { BreakItem, BreakResult, BrokenLine, LineView, ShapeItem } from './shaping.ts';
+import type { AnywhereBreak, BreakItem, BreakResult, BrokenLine, LineView, ShapeItem } from './shaping.ts';
 import { breakItemLines, justifiedViewWidth, subView } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
@@ -24,6 +24,7 @@ import type { AtomicLayout } from './inline-box.ts';
 import { atomicContribution, isAtomicInline, layoutAtomic } from './inline-box.ts';
 import type { TruncSource } from './truncate.ts';
 import { truncateLine } from './truncate.ts';
+import { graphemeBreaks } from './grapheme.ts';
 
 const SPACE = 0x20;
 const ZWSP = 0x200b;
@@ -80,6 +81,16 @@ export type Ifc = {
    * text item of its own (InlineItemsBuilder::InsertBreakOpportunityAfterLeadingPreservedSpaces), ascending.
    */
   readonly fragmentStarts: readonly number[];
+  /**
+   * TXT2-a (css-text-3 §5.5, Blink LineBreaker::SetCurrentStyleForce): anywhere is break_anywhere_if_overflow_ in content mode
+   * (overflow-wrap anywhere or break-word, word-break: break-word); minAnywhere is break-character in min-content mode (overflow-wrap:
+   * anywhere, word-break: break-word). graphemes are the break-character boundaries (UAX #29 grapheme cluster starts), graphemeItems
+   * the char items they start at.
+   */
+  readonly anywhere: boolean;
+  readonly minAnywhere: boolean;
+  readonly graphemes: readonly Boundary[];
+  readonly graphemeItems: readonly number[];
 };
 
 /**
@@ -316,14 +327,16 @@ function inlineChildren(box: LayoutBox): (InlineChild | LayoutBox)[] {
 
 /** A font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts), unspaced. */
 function fontOf(f: FontSpec): TextFont {
-  return { family: f.family, size: f.size, letterSpacing: 0 };
+  return { family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0 };
 }
 
-/** A text leaf's font as the measurer reads it: its font with its letter-spacing in px, which the environment pass resolved. */
+/** A text leaf's font as the measurer reads it: its font with its letter-spacing and word-spacing in px, which the environment pass resolved. */
 export function leafFontOf(t: TextLeaf): TextFont {
   const ls = t.letterSpacing;
   if (ls.kind !== 'px') throw new Error(`${t.id}: a ${ls.kind} letter-spacing reached layout; the environment pass resolves it`);
-  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value };
+  const ws = t.wordSpacing;
+  if (ws.kind !== 'px') throw new Error(`${t.id}: a ${ws.kind} word-spacing reached layout; the environment pass resolves it`);
+  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value, wordSpacing: ws.value };
 }
 
 /** A line height after the environment pass, which resolves percentages and calculations to px. */
@@ -495,6 +508,9 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (leafFontOf(t).letterSpacing !== 0) {
       for (const ch of t.text) if ((ch.codePointAt(0) as number) === 0xad) unsupported('letter-spacing', t.id, 'css-text-3 §8.2', `${t.id} has letter-spacing and a soft hyphen`);
     }
+    if (leafFontOf(t).wordSpacing !== 0) {
+      for (const ch of t.text) if ((ch.codePointAt(0) as number) === 0xad) unsupported('word-spacing', t.id, 'css-text-3 §8.1', `${t.id} has word-spacing and a soft hyphen`);
+    }
     for (const segment of lineFeedSegments(t)) {
       if (segment === '') continue;
       const m = ctx.measurer.measure(segment, leafFontOf(t));
@@ -506,12 +522,29 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
     }
+    if (t.wordBreak !== 'normal' && t.wordBreak !== 'break-word') unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: ${t.wordBreak} on ${t.id} (TXT2-d)`);
+    if (first !== undefined && (t.overflowWrap !== first.overflowWrap || t.wordBreak !== first.wordBreak)) {
+      unsupported('mixed-text-wrap-mode', t.id, 'css-text-3 §5.2, §5.5', `text runs with different overflow-wrap or word-break in one formatting context of ${box.id}`);
+    }
+    // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet.
+    if ((t.overflowWrap !== 'normal' || t.wordBreak !== 'normal') && t.whiteSpaceCollapse !== 'collapse') {
+      unsupported('word-break', t.id, 'css-text-3 §5.5', `overflow-wrap: ${t.overflowWrap} and word-break: ${t.wordBreak} on ${t.id}, whose white-space-collapse is ${t.whiteSpaceCollapse}`);
+    }
   }
+  // Blink LineBreaker::SetCurrentStyleForce (line_breaker.cc:4495-4542). Planted faults: wordBreakBreakWordIgnored reads
+  // word-break: break-word as normal; anywhereMinContentIgnored keeps min-content's normal opportunities under anywhere;
+  // breakWordShrinksMinContent lets overflow-wrap: break-word break anywhere in min-content too.
+  const ow = first === undefined ? 'normal' : first.overflowWrap;
+  const breakWordBreak = first !== undefined && first.wordBreak === 'break-word' && !ctx.faults.wordBreakBreakWordIgnored;
+  const anywhere = ow !== 'normal' || breakWordBreak;
+  const minAnywhere = ((ow === 'anywhere' || breakWordBreak) && !ctx.faults.anywhereMinContentIgnored) || (ow === 'break-word' && ctx.faults.breakWordShrinksMinContent);
   const strut = box.strut;
   if (strut === null) throw new Error(`${box.id} has inline content and no strut; validateLayoutInput rejects this input`);
   const starts: number[] = [];
   const wrap = first === undefined || first.textWrapMode === 'wrap';
   const boundaries = boundariesOf(ctx, box, items, wrap, shaped, mode, starts);
+  const graphemeItems: number[] = [];
+  const graphemes = wrap && (anywhere || minAnywhere) ? graphemeBoundariesOf(items, graphemeItems) : [];
   return {
     leaves: flat.leaves,
     boxes: flat.boxes,
@@ -531,7 +564,49 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     mode,
     wrap,
     fragmentStarts: mode === 'preserve' && wrap ? leadingSpaceEnds(items) : [],
+    anywhere: wrap && anywhere,
+    minAnywhere: wrap && minAnywhere,
+    graphemes,
+    graphemeItems,
   };
+}
+
+/**
+ * The break-character boundaries (UAX #29 extended grapheme cluster starts) of the text between <br>s, characters and atomic
+ * inlines (U+FFFC) alike, placed after the close tags that follow the cluster before them, as boundariesOf places soft ones.
+ */
+function graphemeBoundariesOf(items: readonly Item[], startItems: number[]): Boundary[] {
+  const out: Boundary[] = [];
+  let run: number[] = [];
+  const flushRun = (): void => {
+    const breaks = graphemeBreaks(run.map((i) => (items[i] as Item).cp));
+    for (let p = 1; p < run.length; p++) {
+      if (!(breaks[p] as boolean)) continue;
+      out.push({ at: afterCloses(items, run[p - 1] as number), forced: false });
+      startItems.push(run[p] as number);
+    }
+    run = [];
+  };
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] as Item;
+    if (it.kind === 'char' || it.kind === 'atomic') run.push(i);
+    else if (it.kind === 'br' || it.kind === 'nl') flushRun();
+  }
+  flushRun();
+  return out;
+}
+
+/** Boundaries a and b merged in item order, one per place, a forced one winning (boundariesOf's rule). */
+function mergeBoundaries(a: readonly Boundary[], b: readonly Boundary[]): Boundary[] {
+  const ordered = [...a, ...b].sort((x, y) => (x.at !== y.at ? x.at - y.at : x.forced === y.forced ? 0 : x.forced ? -1 : 1));
+  const out: Boundary[] = [];
+  let lastAt = -1;
+  for (const x of ordered) {
+    if (x.at === lastAt) continue;
+    out.push(x);
+    lastAt = x.at;
+  }
+  return out;
 }
 
 /** A leaf's text split at its preserved U+000A (the whole text for collapse text): what the measurer shapes, one text item each. */
@@ -561,6 +636,7 @@ function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpa
     if (mode === 'break-spaces' && t.font.family !== AHEM_FACE_ID) unsupported('line-break', t.id, 'css-text-4 §5.1', `white-space-collapse: break-spaces in the real face of ${t.id} (TXT2-c2)`);
     // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
     if (leafFontOf(t).letterSpacing !== 0) unsupported('letter-spacing', t.id, 'css-text-3 §8.2', `${t.id} has letter-spacing and white-space-collapse: ${mode}`);
+    if (leafFontOf(t).wordSpacing !== 0) unsupported('word-spacing', t.id, 'css-text-3 §8.1', `${t.id} has word-spacing and white-space-collapse: ${mode}`);
     for (const ch of t.text) {
       const cp = ch.codePointAt(0) as number;
       if (cp === 0x09) unsupported('tab-stop', t.id, 'css-text-3 §4.2', `a preserved tab in ${t.id}; tab stops are TXT2-c3`);
@@ -640,8 +716,10 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
     const prev = last < 0 ? null : (leaves[last] as TextLeaf);
     const t = leaves[it.leaf] as TextLeaf;
     // ShouldBreakShapingBeforeText (inline_node.cc) breaks the run where the Font differs, and FontDescription's == compares letter
-    // spacing, so a span with other spacing is its own run.
-    if (prev !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && leafFontOf(prev).letterSpacing === leafFontOf(t).letterSpacing) {
+    // and word spacing, so a span with other spacing is its own run.
+    const pf = prev === null ? null : leafFontOf(prev);
+    const tf = leafFontOf(t);
+    if (prev !== null && pf !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && pf.letterSpacing === tf.letterSpacing && pf.wordSpacing === tf.wordSpacing) {
       unsupported('text-shaping-run', t.id, 'css-text-3 §7.3 (boundary shaping)', `${prev.id} and ${t.id} are adjacent text in one face and size, which Blink shapes as one run`);
     }
     last = it.leaf;
@@ -1146,12 +1224,18 @@ function endsOf(ifc: Ifc): Boundary[] {
   return out;
 }
 
+/** min-content's boundaries: under break-character (Ifc minAnywhere) every grapheme boundary too (HandleTextForFastMinContent). */
+function minEndsOf(ifc: Ifc): Boundary[] {
+  if (!ifc.minAnywhere) return endsOf(ifc);
+  return mergeBoundaries(endsOf(ifc), ifc.graphemes);
+}
+
 // css-text-3 §5: greedy line breaking. A line takes segments between boundaries while they fit, and always its first; a forced
 // boundary ends it. A line fits when its width without the hanging spaces passes Blink's fit test (linefit.ts fitsAvailable: at
 // most the available width plus one LayoutUnit); the planted fault fitWithoutEpsilon drops that LayoutUnit. Items after the last
 // <br> without a character make no line (Blink IsEmptyLine); an inline box that would start there is refused, as where Blink
 // puts it is not measured. A context without any character or <br> has no line at all (INL-P f1-empty-root).
-function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line[] {
+function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU, indent: LU): Line[] {
   // Planted fault breakOffByOne: a line accepts one more glyph advance than fits, so breaks land one glyph late.
   const firstLeaf = ifc.leaves[0];
   let slack = ZERO;
@@ -1160,7 +1244,10 @@ function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line
     if (glyph.ok) slack = glyph.measure.width;
   }
   const fit: FitFaults = { noEpsilon: ctx.faults.fitWithoutEpsilon, breakInsideWord: false };
-  const ends = endsOf(ifc);
+  // Planted fault breakAnywhereAlways: break-character opportunities from the start instead of only after an overflow.
+  const always = ifc.anywhere && ctx.faults.breakAnywhereAlways;
+  const ends = always ? mergeBoundaries(endsOf(ifc), ifc.graphemes) : endsOf(ifc);
+  const limit = add(available, slack);
   const lines: Line[] = [];
   let start = 0;
   let k = 0;
@@ -1175,17 +1262,60 @@ function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line
     let end = (ends[k] as Boundary).at;
     let forced = (ends[k] as Boundary).forced;
     k++;
+    const firstEnd = end;
+    // The indented line starts at its indent (LineBreaker position_), so its text fits in what the indent leaves.
+    const lineLimit = indented(ctx, lines, lines.length) ? sub(limit, indent) : limit;
     while (!forced && k < ends.length) {
       const next = ends[k] as Boundary;
-      if (!fitsAvailable(toPx(width(ctx, ifc, adv, start, fitEndOf(ctx, ifc, start, next.at))), add(available, slack), fit)) break;
+      if (!lineFits(ctx, ifc, adv, start, next.at, lineLimit, fit)) {
+        // Planted fault emergencyBreakBeforeOpportunity: the next segment is broken at graphemes on this line instead of wrapping.
+        if (ifc.anywhere && ctx.faults.emergencyBreakBeforeOpportunity) {
+          const g = graphemeBreakIn(ctx, ifc, adv, start, end, next.at, lineLimit, fit);
+          if (g > end) end = g;
+        }
+        break;
+      }
       end = next.at;
       forced = next.forced;
       k++;
+    }
+    // line_breaker.cc:4182-4187 with RetryAfterOverflow (:4226-4250): when the line's first segment overflows (no opportunity fits)
+    // and break_anywhere_if_overflow_ is set, the line is broken again at grapheme cluster boundaries; the last that fits ends it,
+    // or the first one when none does. The next line starts there, at the same boundaries as before. HandleTrailingSpaces keeps the
+    // collapsible spaces after a break-character break on this line, so a break before nothing but hanging space is no break.
+    if (ifc.anywhere && !always && end === firstEnd && !lineFits(ctx, ifc, adv, start, end, lineLimit, fit)) {
+      const g = graphemeBreakIn(ctx, ifc, adv, start, start, end, lineLimit, fit);
+      if (g > start && visibleEndOf(ifc, g, end) > g) {
+        end = g;
+        forced = false;
+        k--;
+      }
     }
     lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: [], forced, justified: null });
     start = end;
   }
   return lines;
+}
+
+/** Whether items [start, end) fit a line of the limit width without their hanging spaces (linefit.ts fitsAvailable). */
+function lineFits(ctx: Ctx, ifc: Ifc, adv: readonly LU[], start: number, end: number, limit: LU, fit: FitFaults): boolean {
+  return fitsAvailable(toPx(width(ctx, ifc, adv, start, fitEndOf(ctx, ifc, start, end))), limit, fit);
+}
+
+/**
+ * The break-character end of a line from start that breaks inside items [from, to): the last grapheme boundary there that fits,
+ * or the first one after start when none fits and from is start (the overflowing first cluster stays on the line); else from.
+ */
+function graphemeBreakIn(ctx: Ctx, ifc: Ifc, adv: readonly LU[], start: number, from: number, to: number, limit: LU, fit: FitFaults): number {
+  let best = from;
+  let first = -1;
+  for (const g of ifc.graphemes) {
+    if (g.at <= from || g.at >= to) continue;
+    if (first < 0) first = g.at;
+    if (lineFits(ctx, ifc, adv, start, g.at, limit, fit)) best = g.at;
+  }
+  if (best === from && from === start && first >= 0) return first;
+  return best;
 }
 
 /** Whether ShapeLine must reshape a line end at a space (LineInfo::ComputeNeedsAccurateEndPosition): text-align off the start side. */
@@ -1225,11 +1355,19 @@ function opportunityAt(ifc: Ifc, i: number): boolean {
 }
 
 /** The formatting context as LineBreaker items (shaping.ts BreakItem): one text item per leaf, its tags and <br>s; and their first item indices. */
-type ShapedItems = { readonly items: readonly BreakItem[]; readonly firstItem: readonly number[] };
+type ShapedItems = { readonly items: readonly BreakItem[]; readonly firstItem: readonly number[]; readonly graphemes: readonly (readonly number[])[]; readonly graphemeAtEnd: readonly boolean[] };
+
+function graphemeAt(ifc: Ifc, i: number): boolean {
+  for (const g of ifc.graphemeItems) if (g === i) return true;
+  return false;
+}
 
 function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
   const items: BreakItem[] = [];
   const firstItem: number[] = [];
+  // TXT2-a: each item's break-character opportunities (grapheme cluster starts inside it, and whether one follows its end).
+  const graphemes: (readonly number[])[] = [];
+  const graphemeAtEnd: boolean[] = [];
   let offset = 0;
   let i = 0;
   while (i < ifc.items.length) {
@@ -1254,6 +1392,10 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       if (next < 0) for (let j = i; j < ifc.items.length && (ifc.items[j] as Item).kind !== 'char'; j++) if ((ifc.items[j] as Item).kind === 'br' || (ifc.items[j] as Item).kind === 'nl') atEnd = false;
       items.push({ kind: 'text', item: s.item, result: s.result, opportunities: opps, atEnd, offset });
       firstItem.push(first);
+      const gs: number[] = [];
+      for (let o = 1; o < i - first; o++) if (graphemeAt(ifc, first + o)) gs.push(o);
+      graphemes.push(gs);
+      graphemeAtEnd.push(next >= 0 ? graphemeAt(ifc, next) : atEnd);
       offset = offset + (i - first);
       continue;
     }
@@ -1267,9 +1409,11 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       offset++;
     }
     firstItem.push(i);
+    graphemes.push([]);
+    graphemeAtEnd.push(false);
     i++;
   }
-  return { items, firstItem };
+  return { items, firstItem, graphemes, graphemeAtEnd };
 }
 
 /** The item index of a LineBreaker position. */
@@ -1281,7 +1425,7 @@ function itemIndexOf(ifc: Ifc, s: ShapedItems, index: number, offset: number): n
 // css-text-3 §5 for real-font text: Blink's LineBreaker over the shaped leaves (shaping.ts breakItemLines), with its fit test
 // (one LayoutUnit of epsilon; planted fault fitWithoutEpsilon drops it) and ShapeLine's reshaping at line edges. A line's text
 // results keep their inline sizes, which place the pieces.
-function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Line[] {
+function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, indent: LU): Line[] {
   const firstLeaf = ifc.leaves[0];
   let slack = ZERO;
   if (ctx.faults.breakOffByOne && firstLeaf !== undefined) {
@@ -1290,7 +1434,8 @@ function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Li
   }
   const s = shapedItemsOf(ctx, ifc);
   const wrap = firstLeaf === undefined || firstLeaf.textWrapMode === 'wrap';
-  const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.mode === 'preserve');
+  const anywhere: AnywhereBreak = { anywhere: ifc.anywhere, always: ifc.anywhere && ctx.faults.breakAnywhereAlways, graphemes: s.graphemes, graphemeAtEnd: s.graphemeAtEnd };
+  const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.mode === 'preserve', indent, ctx.faults.indentEveryLine, ctx.faults.indentAfterBr, anywhere);
   if (!r.ok) unsupported('line-break', box.id, 'css-text-3 §5', r.reason);
   const lines: Line[] = [];
   let start = 0;
@@ -1387,10 +1532,11 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], lin
   if (box.style.textAlign !== 'justify' || last || line.forced) return null;
   const free = sub(available, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd));
   if (free <= 0) return null;
-  // TXT2-b with TXT2: Blink applies letter spacing and expansion in one ShapeResultSpacing pass, which no Chrome case covers yet.
+  // TXT2-b with TXT2: Blink applies letter and word spacing and expansion in one ShapeResultSpacing pass, which no Chrome case covers yet.
   for (let i = line.start; i < line.end; i++) {
     const it = ifc.items[i] as Item;
     if (it.kind === 'char' && leafFontOf(ifc.leaves[it.leaf] as TextLeaf).letterSpacing !== 0) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line with letter-spacing (${(ifc.leaves[it.leaf] as TextLeaf).id}) is not proven against Chrome`);
+    if (it.kind === 'char' && leafFontOf(ifc.leaves[it.leaf] as TextLeaf).wordSpacing !== 0) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line with word-spacing (${(ifc.leaves[it.leaf] as TextLeaf).id}) is not proven against Chrome`);
   }
   // Blink expands around a CJK ideograph or symbol too (both sides, text-justify auto on 16-bit text); no fixture proves that,
   // so a line holding one, its hanging end included, is refused rather than given Latin-only opportunities.
@@ -1549,6 +1695,36 @@ function onlyBreakIn(ifc: Ifc, b: number, start: number, end: number): number {
   return br;
 }
 
+// css-text-3 §8.1 (Blink LineBreaker::ComputeTextIndent, line_breaker.cc 811-822): the indent of a block container's first formatted
+// line, against the line's available inline size. What no Chrome case covers yet beside a nonzero indent is refused.
+function textIndentOf(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): LU {
+  const v = box.style.textIndent;
+  if ((v.kind === 'px' || v.kind === 'percent') && v.value === 0) return ZERO;
+  let beside = '';
+  if (box.boxType === 'anonymous') beside = 'in an anonymous block';
+  else if (ifc.mode !== 'collapse') beside = 'with preserved white space';
+  else if (box.style.textAlign === 'justify') beside = 'with text-align: justify';
+  else if (box.style.textOverflow === 'ellipsis' && (box.style.overflowX !== 'visible' || box.style.overflowY !== 'visible')) beside = 'with text-overflow: ellipsis';
+  else if (ifc.atomics.length > 0) beside = 'beside an atomic inline';
+  if (beside !== '') unsupported('text-indent', box.id, 'css-text-3 §8.1', `text-indent on ${box.id} ${beside} is not proven against Chrome`);
+  return resolveLength(v, available, ctx.faults);
+}
+
+/**
+ * Whether line n after lines takes the indent: only the first formatted line, not one after a <br> (ShouldApplyTextIndent,
+ * line_breaker.cc 44-54). Planted faults indentEveryLine and indentAfterBr indent more.
+ */
+function indented(ctx: Ctx, lines: readonly Line[], n: number): boolean {
+  const prev = n > 0 ? (lines[n - 1] as Line) : undefined;
+  return prev === undefined || ctx.faults.indentEveryLine || (ctx.faults.indentAfterBr && prev.forced);
+}
+
+/** text-indent in an intrinsic size: a percentage is of nothing (0); planted fault indentPercentInIntrinsic takes it of the line's width. */
+function intrinsicIndentOf(ctx: Ctx, box: LayoutBox, lineWidth: LU): LU {
+  const v = box.style.textIndent;
+  return resolveLength(v, ctx.faults.indentPercentInIntrinsic ? lineWidth : ZERO, ctx.faults);
+}
+
 /**
  * The line boxes of a block container's inline formatting context (CSS2 §10.8, css-text-3 §5 and §7.1), stacked by their own
  * heights from the content-box top. This is the one source of lines: layout, the native runtime, the break vectors and the
@@ -1569,13 +1745,15 @@ function layoutAtomics(ctx: Ctx, ifc: Ifc, available: LU): AtomicLayout[] {
 
 function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly AtomicLayout[], available: LU): AtomicLine[] {
   const adv = atoms.map((a) => a.advance);
-  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available) : breakLines(ctx, ifc, adv, available);
+  const indent = textIndentOf(ctx, box, ifc, available);
+  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available, indent) : breakLines(ctx, ifc, adv, available, indent);
   const rtl = directionOf(ctx, box) === 'rtl';
   checkClampContext(ctx, box, ifc, atoms.length);
   const out: AtomicLine[] = [];
   let top = ZERO;
   for (let n = 0; n < broken.length; n++) {
     const unjustified = broken[n] as Line;
+    const lineIndent = indented(ctx, broken, n) ? indent : ZERO;
     if (ifc.mode !== 'collapse') {
       // TXT2-c with TXT2: Blink justifies a soft-wrapped preserved line around its preserved spaces, which no Chrome case covers yet.
       const lastItem = ifc.items[unjustified.end - 1] as Item | undefined;
@@ -1590,7 +1768,9 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
     const justified = justifyLine(ctx, box, ifc, adv, unjustified, n === broken.length - 1, available);
     const line: Line = justified === null ? unjustified : { start: unjustified.start, end: unjustified.end, visibleEnd: unjustified.visibleEnd, pieces: unjustified.pieces, forced: unjustified.forced, justified };
     // A justified line starts at its line-left edge in either direction (ApplyJustification returns inset / 2, zero outside ruby).
-    const offset = justified === null ? alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd))) : ZERO;
+    // LineInfo::ComputeWidth counts the indent, which sits on the line's start side: before the text in ltr, after it in rtl.
+    const aligned = justified === null ? alignOffset(ctx, box, sub(available, add(lineIndent, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd)))) : ZERO;
+    const offset = rtl && !ctx.faults.indentRtlFromLeft ? aligned : add(aligned, lineIndent);
     const on: number[] = [];
     for (let b = 0; b < ifc.boxes.length; b++) if (boxOnLine(ifc, b, line.start, line.end)) on.push(b);
     // CSS2 §10.8.1 with baseline alignment: the strut and every inline box on the line add their ascent and descent with their
@@ -1741,6 +1921,7 @@ function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: r
     const font = leafFontOf(t);
     // How Blink spaces the ellipsis and cuts spaced text at OffsetToFit is not proven against Chrome yet.
     if (font.letterSpacing !== 0) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has letter-spacing on a truncated line of ${box.id}`);
+    if (font.wordSpacing !== 0) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has word-spacing on a truncated line of ${box.id}`);
     sources.push({ text: t.text, font, start: p.start, end: p.visibleEnd, x: p.x, width: p.width });
   }
   const r = truncateLine(ctx, box.id, available, fontOf(strut.font), sources, ifc.shaped);
@@ -2026,13 +2207,22 @@ export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max
   const adv = ifc.atomics.map((a) => atomicContribution(ctx, a, kind));
   let widest = ZERO;
   let start = 0;
-  for (const b of endsOf(ifc)) {
+  let afterForced = false;
+  for (const b of kind === 'min' ? minEndsOf(ifc) : endsOf(ifc)) {
     if (kind === 'max' && !b.forced) continue;
     const visible = intrinsicEndOf(ctx, ifc, start, b.at, kind);
-    widest = max(widest, kind === 'max' ? width(ctx, ifc, adv, start, visible) : cachedWidth(ctx, ifc, adv, start, visible));
+    const w = kind === 'max' ? width(ctx, ifc, adv, start, visible) : cachedWidth(ctx, ifc, adv, start, visible);
+    widest = max(widest, intrinsicIndented(ctx, box, start === 0, afterForced, w));
     start = b.at;
+    afterForced = b.forced;
   }
   return widest;
+}
+
+/** A line or segment's intrinsic width with the indent it takes (LineBreaker's position starts at it on the indented line). */
+function intrinsicIndented(ctx: Ctx, box: LayoutBox, first: boolean, afterForced: boolean, w: LU): LU {
+  const on = first || ctx.faults.indentEveryLine || (ctx.faults.indentAfterBr && afterForced);
+  return on ? add(w, intrinsicIndentOf(ctx, box, w)) : w;
 }
 
 /**
@@ -2056,14 +2246,19 @@ const NEARLY_MAX_RAW = 2147483646;
 function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | 'max'): LU {
   let widest = ZERO;
   if (kind === 'max') {
-    const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW));
+    const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW), ZERO);
     // At max-content preserved spaces at the end of a line count, as on the Ahem path (intrinsicEndOf): LineBreaker at an unlimited
     // width keeps pre and break-spaces spaces, and pre-wrap's trailing spaces fit there, so none hangs.
-    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, [], line, line.start, intrinsicEndOf(ctx, ifc, line.start, line.end, 'max')));
+    for (let n = 0; n < lines.length; n++) {
+      const line = lines[n] as Line;
+      const w = spanWidth(ctx, ifc, [], line, line.start, intrinsicEndOf(ctx, ifc, line.start, line.end, 'max'));
+      widest = max(widest, intrinsicIndented(ctx, box, n === 0, n > 0 && (lines[n - 1] as Line).forced, w));
+    }
     return widest;
   }
   let start = 0;
-  for (const b of endsOf(ifc)) {
+  let afterForced = false;
+  for (const b of minEndsOf(ifc)) {
     const visible = intrinsicEndOf(ctx, ifc, start, b.at, 'min');
     let w = cachedWidth(ctx, ifc, [], start, visible);
     const lastChar = visible > start ? (ifc.items[visible - 1] as Item) : null;
@@ -2074,8 +2269,9 @@ function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | '
       if (!hyphen.ok) unsupported('text-glyph', t.id, 'css-text-3 §6.1', hyphen.reason);
       w = add(w, hyphen.measure.width);
     }
-    widest = max(widest, w);
+    widest = max(widest, intrinsicIndented(ctx, box, start === 0, afterForced, w));
     start = b.at;
+    afterForced = b.forced;
   }
   return widest;
 }

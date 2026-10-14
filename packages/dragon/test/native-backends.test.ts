@@ -120,10 +120,10 @@ describe('the LayoutStyle constructor arguments', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p.programs['android-views'])]).map((f) => f.text).join('\n');
-    // INL1a: verticalAlign follows aspectRatio (input.ts order), always baseline from the compiler; then TXT2-f's textOverflow, TXT2-g's lineClamp, and
-    // GRID's grid and gridItem, nil off a grid.
-    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), JsString("clip"), 0.0, nil, nil)';
-    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), "clip", 0.0, null, null)';
+    // INL1a: verticalAlign follows aspectRatio (input.ts order), always baseline from the compiler; then TXT2-f's textOverflow,
+    // TXT2-h's textIndent, TXT2-g's lineClamp, and GRID's grid and gridItem, nil off a grid.
+    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), JsString("clip"), Px(JsString("px"), 0.0), 0.0, nil, nil)';
+    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), "clip", Px("px", 0.0), 0.0, null, null)';
     expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0)${swiftAlign}`);
     expect(swift).toContain(`AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0)${swiftAlign}`);
     expect(swift).toContain(`JsString("start"), Auto(JsString("auto"))${swiftAlign}`);
@@ -241,7 +241,7 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
     return p.input.root;
   }
   it('on a text leaf and inside an lh leaf, in Swift and Kotlin', () => {
-    const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } } as const;
+    const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' } as const;
     const width = { kind: 'calc', range: 'non-negative', expr: { kind: 'lh', value: 2, font, lineHeight: lhCalc } } as const;
     // INL1a: the container's strut has the leaf's font and line-height (validate.ts leaf-font), so it is a third LineHeightCalc.
     const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), strut: { font, lineHeight: lhCalc }, children: [leaf] } as const;

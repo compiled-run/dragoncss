@@ -9,10 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { TextFont } from '../src/input.ts';
 import type { BreakItem, GlyphShaper, HanKerningFontData, ShapedFace, ShapedText, ShapingFaults } from '../src/shaping.ts';
-import { FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS, segmentText, shapedMeasurer, shapedText, breakItemLines } from '../src/shaping.ts';
+import { FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS, segmentText, shapedMeasurer, shapedText, breakItemLines, NO_ANYWHERE_BREAK } from '../src/shaping.ts';
 import type { FontData } from '../src/text.ts';
 import { AHEM_FONT_DATA, ahemMeasurer } from '../src/text.ts';
-import { fromRaw } from '../src/units.ts';
+import { fromRaw, ZERO } from '../src/units.ts';
 import { isLatinText } from '../src/script-data.ts';
 
 // packages/text-shaper is loaded by relative path at run time (no package.json change); these are the parts the test uses.
@@ -149,7 +149,7 @@ const shaper = new WasmShaper();
 const faceIds = [...files.keys()];
 const facesFor = (language: string): Map<string, ShapedFace> =>
   new Map(faceIds.map((id) => [id, { id, data: id === 'Ahem' ? AHEM_FONT_DATA : fontData(id), hanKerning: language === 'ja' ? hanKerningData(id, 16, language) : NO_HAN_KERNING }]));
-const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0 }) as unknown as TextFont;
+const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0, wordSpacing: 0 }) as unknown as TextFont;
 
 type CaseWidths = { readonly id: string; readonly lines: readonly number[]; readonly nowrap: number; readonly error: string };
 
@@ -168,7 +168,7 @@ function engineWidths(faults: ShapingFaults, stop?: (c: CaseWidths, chrome: Case
       const text = ref.paragraphs[c.paragraph] as string;
       const opps = new Set(ref.opportunities[c.paragraph]);
       const m = st.measurer.measure(text, faceFont(c.font, c.size));
-      const item = st.item(text, c.font, c.size, 0);
+      const item = st.item(text, c.font, c.size, 0, 0);
       const lines: number[] = [];
       let error = m.ok ? '' : m.reason;
       for (const [start, end] of c.lines) {
@@ -344,10 +344,10 @@ describe('TXT1-S: Ahem through HarfBuzz (R2)', () => {
 // offsets and widths on every line of every gate case, with Chrome's break opportunities as the break iterator.
 type DecidedLine = readonly [number, number, number];
 function decideLines(st: ShapedText, text: string, font: string, size: number, widthLu: number, opps: readonly number[]): DecidedLine[] | string {
-  const shaped = st.item(text, font, size, 0);
+  const shaped = st.item(text, font, size, 0, 0);
   if (!shaped.ok) return shaped.reason;
   const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
-  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false);
+  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false, ZERO, false, false, NO_ANYWHERE_BREAK);
   if (!r.ok) return r.reason;
   let start = 0;
   return r.lines.map((l) => {

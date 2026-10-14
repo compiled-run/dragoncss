@@ -14,7 +14,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CHROME_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
+import { CHROME_VERSION, launchArgsOf, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
+import { CHROME_PAGES, inOrder } from '../packages/parity/src/chrome-pool.ts';
+import { type MemoStats, memoizedJson } from '../packages/parity/src/chrome-memo.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import { hostPlatform } from '../packages/parity/src/platform.ts';
 import { LONGHANDS } from '../packages/dragon/src/css/properties.ts';
@@ -150,6 +152,91 @@ type Capture = {
   systemColors: Record<string, string | null>;
   /** Phrasing key -> family -> parent font-size -> the key's computed font-size. */
   fontSizes: Record<string, Record<string, Record<string, string>>>;
+};
+
+/** The ancestor-context scan of capture(), run in the page over a slice of the tags. */
+const scanContexts = ({ tags, ancestors, specs, props, minimum, declared }: {
+  tags: string[];
+  ancestors: string[];
+  specs: typeof SPECS;
+  props: string[];
+  minimum: number;
+  declared: Record<string, Dirs>;
+}): Record<string, string[]> => {
+  const hostEl = document.getElementById('host') as HTMLElement;
+  const make = (key: string): HTMLElement => {
+    const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
+    const e = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
+    for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
+    return e;
+  };
+  const out: Record<string, string[]> = {};
+  const standIn = (of: HTMLElement): string => {
+    const cs = getComputedStyle(of);
+    return Array.from(cs).map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';');
+  };
+  const differs = (chain: string[], tag: string): boolean => {
+    hostEl.replaceChildren();
+    let parent: HTMLElement = hostEl;
+    for (const a of chain) {
+      const next = make(a);
+      parent.appendChild(next);
+      parent = next;
+    }
+    const el = make(tag);
+    parent.appendChild(el);
+    const inContext = Object.fromEntries(props.map((p) => [p, getComputedStyle(el).getPropertyValue(p)]));
+    const style = standIn(parent);
+    const holder = document.createElement('div');
+    holder.setAttribute('style', style);
+    const bare = make(tag);
+    holder.appendChild(bare);
+    hostEl.appendChild(holder);
+    const outside = Object.fromEntries(props.map((p) => [p, getComputedStyle(bare).getPropertyValue(p)]));
+    // The stand-in reads the parent's serialized values, so a px value may differ in its last serialized digit.
+    const same = (x: string, y: string): boolean => {
+      if (x === y) return true;
+      const m = /^(-?[0-9.]+)px$/.exec(x);
+      const n = /^(-?[0-9.]+)px$/.exec(y);
+      return m !== null && n !== null && Math.abs(Number(m[1]) - Number(n[1])) <= 1e-4 * Math.max(1, Math.abs(Number(m[1])));
+    };
+    // Chrome's minimum logical font size clamps an em size under a keyword-sized root; the stand-in's px size is not clamped.
+    // Dragon refuses a clamped UA size (minimumLogicalFontSize), so a clamp is not a context.
+    const px = (v: string): number => Number.parseFloat(v);
+    if (inContext['font-size'] === `${minimum}px` && px(outside['font-size'] as string) < minimum) return false;
+    const differing = props.filter((p) => !same(inContext[p] as string, outside[p] as string));
+    if (differing.length === 0) return false;
+    if (differing.some((p) => p !== 'font-size')) return true;
+    // Only font-size differs: the stand-in's px size is not keyword-relative, while Chrome keeps a size relative to the medium
+    // keyword (em, %, smaller, larger) keyword-relative, so a generic family change (code's monospace) rescales it. A chain
+    // of unstyled elements given each ancestor's declared values keeps that; if it reproduces the value, no UA rule keys on
+    // the ancestor and it is not a context (elementKeyFontSizes records the keyword-relative sizes).
+    hostEl.replaceChildren();
+    let replicaParent: HTMLElement = hostEl;
+    for (const a of chain) {
+      const next = document.createElement('dragon-unstyled');
+      for (const [p, v] of Object.entries(((declared[a] as Record<string, Record<string, string>>)['ltr']) as Record<string, string>)) next.style.setProperty(p, v);
+      replicaParent.appendChild(next);
+      replicaParent = next;
+    }
+    const replicated = make(tag);
+    replicaParent.appendChild(replicated);
+    return getComputedStyle(replicated).fontSize !== inContext['font-size'];
+  };
+  for (const tag of tags) {
+    const found = new Set<string>();
+    for (const a of ancestors) {
+      if (a === 'body') continue;
+      if (differs([a], tag)) found.add(a);
+      for (const b of ancestors) {
+        // a alone gives the model's values here, so the outer b (with a between) is the ancestor a UA rule keys on.
+        if (b === 'body' || found.has(a) || found.has(b)) continue;
+        if (differs([b, a], tag)) found.add(b);
+      }
+    }
+    out[tag] = [...found].sort();
+  }
+  return out;
 };
 
 async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
@@ -289,85 +376,20 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
 
   // Contexts: a tag inside ancestor tags (one and two levels) versus inside a div carrying the parent's computed style. Any
   // milestone longhand that differs comes from a UA rule keyed on an ancestor, which the declared values above do not model.
-  const contexts = await host.evaluate(
-    ({ tags, ancestors, specs, props, minimum, declared }) => {
-      const hostEl = document.getElementById('host') as HTMLElement;
-      const make = (key: string): HTMLElement => {
-        const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
-        const e = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
-        for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
-        return e;
-      };
-      const out: Record<string, string[]> = {};
-      const standIn = (of: HTMLElement): string => {
-        const cs = getComputedStyle(of);
-        return Array.from(cs).map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';');
-      };
-      const differs = (chain: string[], tag: string): boolean => {
-        hostEl.replaceChildren();
-        let parent: HTMLElement = hostEl;
-        for (const a of chain) {
-          const next = make(a);
-          parent.appendChild(next);
-          parent = next;
-        }
-        const el = make(tag);
-        parent.appendChild(el);
-        const inContext = Object.fromEntries(props.map((p) => [p, getComputedStyle(el).getPropertyValue(p)]));
-        const style = standIn(parent);
-        const holder = document.createElement('div');
-        holder.setAttribute('style', style);
-        const bare = make(tag);
-        holder.appendChild(bare);
-        hostEl.appendChild(holder);
-        const outside = Object.fromEntries(props.map((p) => [p, getComputedStyle(bare).getPropertyValue(p)]));
-        // The stand-in reads the parent's serialized values, so a px value may differ in its last serialized digit.
-        const same = (x: string, y: string): boolean => {
-          if (x === y) return true;
-          const m = /^(-?[0-9.]+)px$/.exec(x);
-          const n = /^(-?[0-9.]+)px$/.exec(y);
-          return m !== null && n !== null && Math.abs(Number(m[1]) - Number(n[1])) <= 1e-4 * Math.max(1, Math.abs(Number(m[1])));
-        };
-        // Chrome's minimum logical font size clamps an em size under a keyword-sized root; the stand-in's px size is not clamped.
-        // Dragon refuses a clamped UA size (minimumLogicalFontSize), so a clamp is not a context.
-        const px = (v: string): number => Number.parseFloat(v);
-        if (inContext['font-size'] === `${minimum}px` && px(outside['font-size'] as string) < minimum) return false;
-        const differing = props.filter((p) => !same(inContext[p] as string, outside[p] as string));
-        if (differing.length === 0) return false;
-        if (differing.some((p) => p !== 'font-size')) return true;
-        // Only font-size differs: the stand-in's px size is not keyword-relative, while Chrome keeps a size relative to the medium
-        // keyword (em, %, smaller, larger) keyword-relative, so a generic family change (code's monospace) rescales it. A chain
-        // of unstyled elements given each ancestor's declared values keeps that; if it reproduces the value, no UA rule keys on
-        // the ancestor and it is not a context (elementKeyFontSizes records the keyword-relative sizes).
-        hostEl.replaceChildren();
-        let replicaParent: HTMLElement = hostEl;
-        for (const a of chain) {
-          const next = document.createElement('dragon-unstyled');
-          for (const [p, v] of Object.entries(((declared[a] as Record<string, Record<string, string>>)['ltr']) as Record<string, string>)) next.style.setProperty(p, v);
-          replicaParent.appendChild(next);
-          replicaParent = next;
-        }
-        const replicated = make(tag);
-        replicaParent.appendChild(replicated);
-        return getComputedStyle(replicated).fontSize !== inContext['font-size'];
-      };
-      for (const tag of tags) {
-        const found = new Set<string>();
-        for (const a of ancestors) {
-          if (a === 'body') continue;
-          if (differs([a], tag)) found.add(a);
-          for (const b of ancestors) {
-            // a alone gives the model's values here, so the outer b (with a between) is the ancestor a UA rule keys on.
-            if (b === 'body' || found.has(a) || found.has(b)) continue;
-            if (differs([b, a], tag)) found.add(b);
-          }
-        }
-        out[tag] = [...found].sort();
-      }
-      return out;
-    },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...CAPTURED_LONGHANDS], minimum: minimumLogicalFontSize, declared },
-  );
+  // The scan is most of a capture and each tag's is its own, so the tags run in slices, CHROME_PAGES pages of their own context
+  // at once, and the slices merge back in tag order.
+  const contextTags = [...ELEMENT_TAGS, ...ALL_KEYS];
+  const sliceSize = Math.ceil(contextTags.length / (4 * CHROME_PAGES));
+  const slices = Array.from({ length: Math.ceil(contextTags.length / sliceSize) }, (_, i) => contextTags.slice(i * sliceSize, (i + 1) * sliceSize));
+  const contextSlices = await inOrder(slices, CHROME_PAGES, async (slice) => {
+    const page = await openPage(browser, hostDoc(scheme), ENV);
+    try {
+      return await page.evaluate(scanContexts, { tags: slice, ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...CAPTURED_LONGHANDS], minimum: minimumLogicalFontSize, declared });
+    } finally {
+      await page.context().close();
+    }
+  });
+  const contexts: Record<string, string[]> = Object.assign({}, ...contextSlices);
   const textFonts = await host.evaluate(
     ({ tags, specs, props }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
@@ -833,15 +855,39 @@ async function compare(otherPath: string, currentPath: string): Promise<number> 
   return differing.length === 0 ? 0 : 1;
 }
 
-const browser = await launchChrome();
-try {
-  const light = await capture(browser, 'light');
-  const dark = await capture(browser, plant === 'dark-as-light' ? 'light' : 'dark');
+/** The two dataset files and the faults that refuse them, read from Chrome. */
+async function captureOutputs(browser: Browser): Promise<{ outputs: [string, string][]; faults: string[] }> {
+  // Light and dark together; both run to their end before a failure is thrown (no page is left mid-capture), light's first.
+  const settled = await Promise.allSettled([capture(browser, 'light'), capture(browser, plant === 'dark-as-light' ? 'light' : 'dark')]);
+  const [light, dark] = settled.map((r) => {
+    if (r.status === 'rejected') throw r.reason;
+    return r.value;
+  }) as [Capture, Capture];
   if (plant !== undefined) applyPlant(plant, light);
   const faults = [...(await selfConsistency(browser, 'light', light)), ...(await selfConsistency(browser, 'dark', dark))];
   if (dark.systemColors['Canvas'] === light.systemColors['Canvas']) faults.push(`dark capture is not dark: Canvas is ${light.systemColors['Canvas']} in both the light and the dark capture`);
   if (dark.values['html']?.['color'] !== dark.systemColors['CanvasText']) faults.push(`dark capture is not dark: the root color ${dark.values['html']?.['color']} is not the dark CanvasText ${dark.systemColors['CanvasText']}`);
-  const outputs: [string, string][] = [[lightFile, render(light, 'light')], [darkFile, render(dark, 'dark')]];
+  return { outputs: [[lightFile, render(light, 'light')], [darkFile, render(dark, 'dark')]], faults };
+}
+
+// Everything the written files depend on beside Chrome itself (chrome-memo.ts keys the Chrome and Playwright versions and the
+// platform): this script, the page setup, the page pool and the captured longhands. Only a fault-free capture is remembered; --check and
+// --plant always read Chrome.
+const UA_CODE = ['scripts/capture-ua-defaults.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/chrome-pool.ts'];
+const memo: MemoStats = { hits: 0, misses: 0 };
+
+const browser = await launchChrome();
+try {
+  const launchArgs = launchArgsOf(browser);
+  const { outputs, faults } =
+    check || launchArgs === null
+      ? await captureOutputs(browser)
+      : await memoizedJson('ua', { platform, args: launchArgs, longhands: CAPTURED_LONGHANDS, files: [lightFile, darkFile] }, UA_CODE, memo, async () => {
+          const r = await captureOutputs(browser);
+          if (r.faults.length > 0) throw new Error(`ua:capture refuses to write:\n${r.faults.join('\n')}`);
+          return r;
+        });
+  if (memo.hits > 0) console.log('ua:capture: remembered (chrome-memo.ts)');
   if (check) {
     for (const [file, text] of outputs) {
       let committed = '';

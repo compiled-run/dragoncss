@@ -126,7 +126,7 @@ describe('the validator\'s grid rules, each with a planted input', () => {
   });
   it('rejects text directly in a grid container and an anonymous item that is not auto-placed', () => {
     const textIn = input(box('root', {}, [grid(gridStyle({}), [])]));
-    (textIn.root.children[0] as unknown as { children: unknown[] }).children = [{ kind: 'text', id: 't', text: 'X', font: { family: 'Ahem', size: 10 }, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } }];
+    (textIn.root.children[0] as unknown as { children: unknown[] }).children = [{ kind: 'text', id: 't', text: 'X', font: { family: 'Ahem', size: 10 }, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' }];
     expect(codes(textIn)).toContain('text-in-flex $.root.children[0].children');
     const anonymous = mutate((r) => {
       const a = r.children[0]?.children[0] as { boxType: string; style: Record<string, unknown> };

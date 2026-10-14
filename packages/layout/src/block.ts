@@ -136,6 +136,10 @@ export type EngineFaults = {
   readonly spacingPerCodePoint: boolean;
   /** TXT2-b: HarfBuzz keeps liga, clig and calt under nonzero letter spacing (font_features.cc). */
   readonly ligaturesKept: boolean;
+  /** TXT2-b: no word spacing after a space at offset 0 of a shaped item (Blink's offset-0 rule counts from the formatting context). */
+  readonly wordSpacingAtItemStart: boolean;
+  /** TXT2-b: no word spacing after a no-break space in a shaped item (Character::TreatAsSpace includes it). */
+  readonly wordSpacingSkipsNbsp: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -168,6 +172,24 @@ export type EngineFaults = {
   readonly trailingPreWrapNotHanging: boolean;
   /** TXT2-c: break-spaces spaces before a soft wrap opportunity hang, as pre-wrap spaces do. */
   readonly breakSpacesHanging: boolean;
+  /** TXT2-h: text-indent indents every line, not only the first formatted line. */
+  readonly indentEveryLine: boolean;
+  /** TXT2-h: text-indent also indents each line after a forced break (<br>). */
+  readonly indentAfterBr: boolean;
+  /** TXT2-h: a percentage text-indent counts in min-content and max-content, against the line it indents. */
+  readonly indentPercentInIntrinsic: boolean;
+  /** TXT2-h: in rtl the indent is measured from the line-left edge instead of the line-right edge. */
+  readonly indentRtlFromLeft: boolean;
+  /** TXT2-a: overflow-wrap: anywhere and word-break: break-word leave min-content at its normal opportunities (css-text-3 §5.5). */
+  readonly anywhereMinContentIgnored: boolean;
+  /** TXT2-a: overflow-wrap: break-word breaks anywhere in min-content too (Blink applies it in content mode only). */
+  readonly breakWordShrinksMinContent: boolean;
+  /** TXT2-a: overflow-wrap breaks at grapheme boundaries from the start instead of only when a line overflows. */
+  readonly breakAnywhereAlways: boolean;
+  /** TXT2-a: an overflowing segment is broken at graphemes on the current line even though an earlier opportunity fits. */
+  readonly emergencyBreakBeforeOpportunity: boolean;
+  /** TXT2-a: word-break: break-word is laid out as normal. */
+  readonly wordBreakBreakWordIgnored: boolean;
   /** TXT2-g: a line-clamp container's content height takes every line instead of ending after line N. */
   readonly clampHeightIncludesHiddenLines: boolean;
   /** TXT2-g: line N of a line-clamp container gets an ellipsis only when it overflows, not whenever content follows. */
@@ -227,6 +249,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   trailingSpacingDropped: false,
   spacingPerCodePoint: false,
   ligaturesKept: false,
+  wordSpacingAtItemStart: false,
+  wordSpacingSkipsNbsp: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,
@@ -243,6 +267,15 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   preservedSpaceCollapsed: false,
   trailingPreWrapNotHanging: false,
   breakSpacesHanging: false,
+  indentEveryLine: false,
+  indentAfterBr: false,
+  indentPercentInIntrinsic: false,
+  indentRtlFromLeft: false,
+  anywhereMinContentIgnored: false,
+  breakWordShrinksMinContent: false,
+  breakAnywhereAlways: false,
+  emergencyBreakBeforeOpportunity: false,
+  wordBreakBreakWordIgnored: false,
   clampHeightIncludesHiddenLines: false,
   clampEllipsisMissingWhenLineFits: false,
   clampEllipsisOnExactLastLine: false,

@@ -858,8 +858,14 @@ function runPlacement(g: GridContainerStyle, boxes: readonly LayoutBox[], ctx: C
   for (const b of boxes) {
     const gi = b.style.gridItem;
     if (gi === null) throw new Error(`${b.id} is an in-flow grid item with no gridItem; validateLayoutInput rejects this input`);
-    const c = clampSpan(itemSpan(columnTracks, gi.column, ctx.gridFaults));
-    const r = clampSpan(itemSpan(rowTracks, gi.row, ctx.gridFaults));
+    const cs = itemSpan(columnTracks, gi.column, ctx.gridFaults);
+    const rs = itemSpan(rowTracks, gi.row, ctx.gridFaults);
+    // Only planted fault absposInFlow keeps an absolutely positioned child, with its engine-resolved lines, among the grid items.
+    if (cs.kind === 'start-line' || cs.kind === 'end-line' || rs.kind === 'start-line' || rs.kind === 'end-line') {
+      unsupported('abspos-grid-lines', b.id, 'css-grid-2 §9', `${b.id} holds an absolutely positioned child's grid lines but is laid out in flow (planted fault absposInFlow)`);
+    }
+    const c = clampSpan(cs);
+    const r = clampSpan(rs);
     if (c.definite) columnStartOffset = maxN(columnStartOffset, -c.start);
     if (r.definite) rowStartOffset = maxN(rowStartOffset, -r.start);
     cols.push(c);

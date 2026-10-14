@@ -180,6 +180,11 @@ export type AlignContent =
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
 /** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
 export type TextOverflow = 'clip' | 'ellipsis';
+/**
+ * css-text-3 §8.1 text-indent: <length-percentage>, negative allowed, on the first formatted line of a block container. A percentage
+ * is of the line's available inline size, and of nothing (0) at min-content and max-content (Blink LineBreaker::ComputeTextIndent).
+ */
+export type TextIndentValue = Px | Percent | LengthCalc;
 /** CSS2 §10.8.1 vertical-align keywords. */
 export type VerticalAlignKeyword = 'baseline' | 'sub' | 'super' | 'text-top' | 'text-bottom' | 'middle' | 'top' | 'bottom';
 /** A vertical-align keyword value. */
@@ -332,6 +337,7 @@ export type LayoutStyle = {
   readonly aspectRatio: AspectRatioValue;
   readonly verticalAlign: VerticalAlignValue;
   readonly textOverflow: TextOverflow;
+  readonly textIndent: TextIndentValue;
   /**
    * css-overflow-4 §4.2 -webkit-line-clamp on a block container (the compiler's display: -webkit-box line-clamp pattern, which
    * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
@@ -351,7 +357,7 @@ export type LayoutStyle = {
  * A text item's font as the measurer reads it: the face, the computed size and the used letter-spacing in px (css-text-3 §8.2,
  * 0 for normal), which Blink keeps in the FontDescription and adds after every cluster (ShapeResult::ApplySpacing).
  */
-export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number };
+export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number };
 
 /**
  * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
@@ -369,6 +375,10 @@ export type FontSpec = { readonly family: string; readonly size: number; readonl
 export type WhiteSpaceCollapse = 'collapse' | 'preserve' | 'preserve-breaks' | 'break-spaces';
 /** css-text-4 §5.1 text-wrap-mode. */
 export type TextWrapMode = 'wrap' | 'nowrap';
+/** css-text-3 §5.5 overflow-wrap (word-wrap is its alias). */
+export type OverflowWrap = 'normal' | 'break-word' | 'anywhere';
+/** css-text-3 §5.2 word-break; break-all, keep-all and auto-phrase are refused (code word-break, TXT2-d). */
+export type WordBreak = 'normal' | 'break-all' | 'keep-all' | 'break-word' | 'auto-phrase';
 
 /** A text run with every inherited text property written on it by the compiler (goal.md principle 3). */
 export type TextLeaf = {
@@ -385,6 +395,10 @@ export type TextLeaf = {
    * to zoomed px (Blink StyleBuilderConverter::ConvertSpacing, a Length::Fixed), which layout reads.
    */
   readonly letterSpacing: CalcExpr;
+  /** css-text-3 §8.1 word-spacing as letterSpacing is held (normal is px 0); Blink adds it after every space (ShapeResult::ApplySpacing). */
+  readonly wordSpacing: CalcExpr;
+  readonly overflowWrap: OverflowWrap;
+  readonly wordBreak: WordBreak;
 };
 
 /** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */

@@ -9,7 +9,7 @@ import { animCasesOf, animFixtures, frameScript, pixelSamples, pixelSampleTotal 
 import { launchChrome } from '../chrome.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { DPRS, zoomGuard } from '../dpr.ts';
-import { captureFrames, captureFramesWithRefs, frameBreaksJson, frameCaptureJson, framePixelManifestJson } from '../frame-capture.ts';
+import { captureFrames, captureFramesWithRefs, FRAME_MEMO, frameBreaksJson, frameCaptureJson, framePixelManifestJson } from '../frame-capture.ts';
 import { repoPath } from '../paths.ts';
 import { requireSoftwareRaster } from '../pixel-reference.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
@@ -70,4 +70,4 @@ for (const dpr of FRAME_DPRS) {
     await browser.close();
   }
 }
-console.log(`parity:anim-capture: ${cases.length} frame cases, ${samples} samples over DPRs ${FRAME_DPRS.join(', ')} (compiled rendering at DPR 1); breaks at every authored sample and ${perDpr} pixel samples per DPR at DPRs ${DPRS.join(', ')}`);
+console.log(`parity:anim-capture: ${cases.length} frame cases, ${samples} samples over DPRs ${FRAME_DPRS.join(', ')} (compiled rendering at DPR 1); breaks at every authored sample and ${perDpr} pixel samples per DPR at DPRs ${DPRS.join(', ')}; ${FRAME_MEMO.hits} runs remembered, ${FRAME_MEMO.misses} run (chrome-memo.ts)`);

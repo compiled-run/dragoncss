@@ -43,13 +43,16 @@ export function memoKey(kind: string, parts: unknown, code: readonly string[]): 
 
 export type MemoStats = { hits: number; misses: number };
 
-/** produce()'s bytes for this key: the remembered ones when present, else produced now and remembered. */
-export function memoized(kind: string, parts: unknown, code: readonly string[], stats: MemoStats, produce: () => Promise<Buffer>): Promise<Buffer> {
-  return memoizedIn(memoDir(kind), kind, parts, code, stats, produce);
+/** Which produced bytes to remember: keep returns false for a result that a later run could change (a timeout, say). */
+export type Keep = (bytes: Buffer) => boolean;
+
+/** produce()'s bytes for this key: the remembered ones when present, else produced now and remembered when keep allows. */
+export function memoized(kind: string, parts: unknown, code: readonly string[], stats: MemoStats, produce: () => Promise<Buffer>, keep?: Keep): Promise<Buffer> {
+  return memoizedIn(memoDir(kind), kind, parts, code, stats, produce, keep);
 }
 
 /** memoized with the memo in directory d. */
-export async function memoizedIn(d: string, kind: string, parts: unknown, code: readonly string[], stats: MemoStats, produce: () => Promise<Buffer>): Promise<Buffer> {
+export async function memoizedIn(d: string, kind: string, parts: unknown, code: readonly string[], stats: MemoStats, produce: () => Promise<Buffer>, keep: Keep = () => true): Promise<Buffer> {
   if (process.env['DRAGON_CHROME_MEMO'] !== '1') return produce();
   const file = join(d, memoKey(kind, parts, code));
   if (existsSync(file)) {
@@ -60,6 +63,7 @@ export async function memoizedIn(d: string, kind: string, parts: unknown, code: 
   }
   stats.misses++;
   const bytes = await produce();
+  if (!keep(bytes)) return bytes;
   mkdirSync(d, { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
   writeFileSync(tmp, bytes);
@@ -67,8 +71,8 @@ export async function memoizedIn(d: string, kind: string, parts: unknown, code: 
   return bytes;
 }
 
-/** memoized for a JSON-able value: remembered as its JSON text. */
-export async function memoizedJson<T>(kind: string, parts: unknown, code: readonly string[], stats: MemoStats, produce: () => Promise<T>): Promise<T> {
-  const bytes = await memoized(kind, parts, code, stats, async () => Buffer.from(JSON.stringify(await produce())));
+/** memoized for a JSON-able value: remembered as its JSON text when keep allows. */
+export async function memoizedJson<T>(kind: string, parts: unknown, code: readonly string[], stats: MemoStats, produce: () => Promise<T>, keep: (value: T) => boolean = () => true): Promise<T> {
+  const bytes = await memoized(kind, parts, code, stats, async () => Buffer.from(JSON.stringify(await produce())), (b) => keep(JSON.parse(b.toString('utf8')) as T));
   return JSON.parse(bytes.toString('utf8')) as T;
 }

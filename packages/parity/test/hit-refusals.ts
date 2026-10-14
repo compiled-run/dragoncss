@@ -7,18 +7,24 @@ export const INLINE_OUT: readonly string[] = [
   'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
   // #266's float-clear-inert holds an inline box.
   'float-clear-inert', 'float-clear-inert-rtl',
-  // TXT2-b's text-spacing-ahem holds an inline box.
-  'text-spacing-ahem', 'text-spacing-ahem-rtl',
+  // TXT2-b's text-spacing-ahem and text-word-spacing-ahem hold an inline box.
+  'text-spacing-ahem', 'text-spacing-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl',
+  // #266's vertical-align-inert holds an inline-block (an atomic inline); GRID_OUT listed it for its grid container before G-HIT.
+  'vertical-align-inert', 'vertical-align-inert-rtl',
   // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
-  // inline box and text-transform-text a <br>; TXT2's text-justify-ahem holds an inline box.
+  // inline box and text-transform-text a <br>; TXT2's text-justify-ahem and TXT2-a's text-break-ahem hold an inline box.
   'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
-  'text-justify-ahem', 'text-justify-ahem-rtl',
+  'text-justify-ahem', 'text-justify-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl',
+  // TXT2-h's text-indent-ahem holds an inline box, a <br> and inline-blocks.
+  'text-indent-ahem', 'text-indent-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
   'text-decoration-native', 'text-decoration-native-rtl',
   // INL2a: every atomic-inline case holds an inline-block or inline-flex on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];
 export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet/;
+// ALIAS-2's alias-paint writes -webkit-transform, so the hit lane refuses it with the transform reason though its name is not transform-.
+export const TRANSFORM_NAMED: readonly string[] = ['alias-paint'];
 export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;
 export const STACKING_OUT: readonly string[] = [
   'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'stacking-basic',
@@ -26,5 +32,5 @@ export const STACKING_OUT: readonly string[] = [
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2.
-export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-hidden', 'svg-hidden-rtl'];
+export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-hidden', 'svg-hidden-rtl', 'svg-colors', 'svg-colors-rtl'];
 export const SVG_REASON = /^<svg> .+: hit testing an svg's shapes comes with SVG-a2$/;

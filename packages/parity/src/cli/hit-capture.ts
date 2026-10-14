@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { launchChrome } from '../chrome.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
-import { captureHits, expectedHitDir, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../hit-capture.ts';
+import { captureHits, expectedHitDir, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../hit-capture.ts';
 import { repoPath } from '../paths.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
 
@@ -56,4 +56,4 @@ try {
 } finally {
   await browser.close();
 }
-console.log(`parity:hit-capture: ${cases.length} cases, ${points} points into packages/parity/expected-hit`);
+console.log(`parity:hit-capture: ${cases.length} cases (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit`);

@@ -8,6 +8,7 @@ import { writeFileSync } from 'node:fs';
 import { NO_ENGINE_FAULTS } from '../packages/layout/src/block.ts';
 import { NO_FAULTS } from '../packages/dragon/src/faults.ts';
 import { launchChrome } from '../packages/parity/src/chrome.ts';
+import { CHROME_PAGES, inOrder } from '../packages/parity/src/chrome-pool.ts';
 import { committedAuthored } from '../packages/parity/src/committed.ts';
 import { FIXTURES } from '../packages/parity/src/fixtures.ts';
 import { FONT_FIXTURES } from '../packages/parity/src/fixture-groups/fonts.ts';
@@ -27,9 +28,9 @@ import { animationFeatures, mediaFeatures } from '../packages/dragon/src/interna
 const browser = await launchChrome();
 const cases: CaseOutcome[] = [];
 try {
-  for (const spec of FIXTURES) {
-    if (spec.kind !== 'layout') continue;
-    const outcome = await runFixture(spec, browser, { authored: committedAuthored, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' });
+  // CHROME_PAGES fixtures at a time, so one fixture's Chrome reads overlap another's compile; the outcomes come back in fixture order.
+  const layoutSpecs = FIXTURES.filter((spec) => spec.kind === 'layout');
+  for (const outcome of await inOrder(layoutSpecs, CHROME_PAGES, (spec) => runFixture(spec, browser, { authored: committedAuthored, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' }))) {
     cases.push(...outcome.cases);
     for (const c of outcome.cases) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }

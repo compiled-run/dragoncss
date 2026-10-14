@@ -183,6 +183,7 @@ function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
 function inlineNeedsEnvironment(c: InlineChild, faults: EngineFaults): boolean {
   if (fontNeedsEnvironment(c.font, c.lineHeight, faults)) return true;
   if (c.kind === 'text' && (c.letterSpacing.kind !== 'px' || !inCssLengthRange(c.letterSpacing.value))) return true;
+  if (c.kind === 'text' && (c.wordSpacing.kind !== 'px' || !inCssLengthRange(c.wordSpacing.value))) return true;
   if (c.kind !== 'inline') return false;
   if (styleNeedsEnvironment(c.style)) return true;
   for (const k of c.children) if (inlineNeedsEnvironment(k, faults)) return true;
@@ -202,12 +203,12 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
     s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind,
     s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind,
     s.paddingBottom.kind, s.paddingLeft.kind, s.borderTopWidth.kind, s.borderRightWidth.kind, s.borderBottomWidth.kind,
-    s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind,
+    s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind, s.textIndent.kind,
   ];
   for (const k of kinds) if (k === 'calc') return true;
   const lengths = [
     s.top, s.right, s.bottom, s.left, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight,
-    s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap,
+    s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap, s.textIndent,
   ];
   for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
   return gridNeedsEnvironment(s.grid);
@@ -264,18 +265,19 @@ function resolveText(t: TextLeaf, parent: Env): TextLeaf {
   const font: FontSpec = { family: t.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
   return {
     kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode,
-    letterSpacing: resolveLetterSpacing(t.letterSpacing, env),
+    letterSpacing: resolveSpacing('letter-spacing', t.letterSpacing, env),
+    wordSpacing: resolveSpacing('word-spacing', t.wordSpacing, env), overflowWrap: t.overflowWrap, wordBreak: t.wordBreak,
   };
 }
 
 /**
- * letter-spacing in zoomed px (StyleBuilderConverter::ConvertSpacing through ConvertToLength): a px length zoomed and clamped, a
- * calculation without a percentage Length::Fixed of its double value. A percentage is of the font size (FontDescription::LetterSpacing),
- * which is not ported yet.
+ * letter-spacing or word-spacing in zoomed px (StyleBuilderConverter::ConvertSpacing through ConvertToLength): a px length zoomed and
+ * clamped, a calculation without a percentage Length::Fixed of its double value. A percentage is of the font size
+ * (FontDescription::LetterSpacing and WordSpacing), which is not ported yet.
  */
-function resolveLetterSpacing(e: CalcExpr, env: Env): Px {
+function resolveSpacing(property: 'letter-spacing' | 'word-spacing', e: CalcExpr, env: Env): Px {
   if (e.kind === 'px') return lengthPx(e, env.zoom);
-  if (calcHasPercent(e)) unsupported('letter-spacing', env.node, 'css-text-3 §8.2', `a percentage letter-spacing on ${env.node} (relative to the font size) is not laid out yet`);
+  if (calcHasPercent(e)) unsupported(property, env.node, property === 'letter-spacing' ? 'css-text-3 §8.2' : 'css-text-3 §8.1', `a percentage ${property} on ${env.node} (relative to the font size) is not laid out yet`);
   return { kind: 'px', value: cssLengthFixed(lengthDouble({ kind: 'calc', expr: e, range: 'all' }, env)) };
 }
 
@@ -309,6 +311,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     rowGap: resolveGap(s.rowGap, env),
     columnGap: resolveGap(s.columnGap, env),
     verticalAlign: resolveVerticalAlign(s.verticalAlign, env),
+    textIndent: envPadding(s.textIndent, env),
     grid: s.grid === null ? null : zoomGrid(s.grid, env.zoom),
   };
 }
@@ -485,7 +488,7 @@ function fontLengths(font: FontSpec, env: Env): FontLengths {
   const size = computedSize(font, env);
   const m = env.faults.exUntruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: env.faults.metricHalfUp, untruncatedFontSize: true }) : env.measurer;
   refuseUnknownFace(m, font, env);
-  return m.lengths({ family: font.family, size, letterSpacing: 0 });
+  return m.lengths({ family: font.family, size, letterSpacing: 0, wordSpacing: 0 });
 }
 
 /** A face the measurer does not hold is refused with text-glyph, at the node whose font or length names it. */
@@ -516,7 +519,7 @@ function computedLineHeightPx(lh: LineHeightValue, font: FontSpec, env: Env): nu
         return floatAdd(floatAdd(fontMetricPx(i, d.unitsPerEm, d.ascent), fontMetricPx(i, d.unitsPerEm, d.descent)), fontMetricPx(i, d.unitsPerEm, d.lineGap));
       }
       refuseUnknownFace(env.measurer, font, env);
-      const m = env.measurer.metrics({ family: font.family, size, letterSpacing: 0 });
+      const m = env.measurer.metrics({ family: font.family, size, letterSpacing: 0, wordSpacing: 0 });
       return toPx(add(add(m.ascent, m.descent), m.lineGap));
     }
     case 'number':
@@ -1019,6 +1022,7 @@ function styleDependencies(s: LayoutStyle, out: DependencyFlags): void {
   if (s.rowGap.kind === 'calc') calcDependencies(s.rowGap.expr, out);
   if (s.columnGap.kind === 'calc') calcDependencies(s.columnGap.expr, out);
   if (s.verticalAlign.kind === 'calc') calcDependencies(s.verticalAlign.expr, out);
+  if (s.textIndent.kind === 'calc') calcDependencies(s.textIndent.expr, out);
 }
 
 /** The environment inputs the input's tree reads (translated, so the native hosts ask the engine rather than re-walk the tree). */
