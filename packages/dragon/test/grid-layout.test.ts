@@ -211,6 +211,21 @@ describe('grid lowering', () => {
     expect(['i', 'j', 'k', 'x'].map((id) => [item(m, id).justifySelf, m.get(id)?.style.alignSelf])).toEqual([['last baseline', 'baseline'], ['baseline', 'last baseline'], ['auto', 'auto'], ['auto', 'last baseline']]);
   });
 
+  it('takes last baseline on every grid item, blockified inline-level elements and anonymous text items included, and refuses it on an inline box', () => {
+    const span = (r: Parameters<typeof div>[0], id: string, classes: string[], children: Parameters<typeof div>[3] = []) => ({ ...div(r, id, classes, children), tag: 'span' });
+    const css = '.g { display: grid; align-items: last baseline; } .i { align-self: last baseline; } .ib { display: inline-block; } .if { display: inline-flex; } .ig { display: inline-grid; }';
+    // css-display-3 §2.7: a grid blockifies its children, so none of these is lowered as an inline box or an atomic inline.
+    const m = boxes(css, (r) => [div(r, 'g', ['g'], [text(r, 't0', 'X'), span(r, 'a', ['i'], [text(r, 't1', 'X')]), span(r, 'b', ['i', 'ib'], [text(r, 't2', 'X')]), span(r, 'c', ['i', 'if'], [text(r, 't3', 'X')]), span(r, 'd', ['i', 'ig'], [span(r, 'e', ['i'], [text(r, 't4', 'X')])])])]);
+    expect(['a', 'b', 'c', 'd', 'e'].map((id) => [m.get(id)?.style.display, m.get(id)?.style.alignSelf])).toEqual([['block', 'last baseline'], ['block', 'last baseline'], ['flex', 'last baseline'], ['grid', 'last baseline'], ['block', 'last baseline']]);
+    expect([m.get('g:anon0')?.style.alignSelf, m.get('g:anon0')?.style.gridItem]).toEqual(['auto', expect.anything()]);
+    // An inline-grid among inline content is not a grid item, but its children are.
+    const n = boxes(`.ig { display: inline-grid; align-items: last baseline; } .i { align-self: last baseline; }`, (r) => [div(r, 'p', [], [text(r, 't0', 'X'), span(r, 'g', ['ig'], [span(r, 'e', ['i'], [text(r, 't1', 'X')])])])]);
+    expect([n.get('g')?.style.alignItems, n.get('e')?.style.alignSelf]).toEqual(['last baseline', 'last baseline']);
+    // An inline box inside a grid item is not a grid item.
+    const errors = compile(`${css} .s { align-self: last baseline; }`, (r) => [div(r, 'g', ['g'], [div(r, 'i', [], [text(r, 't0', 'X'), span(r, 's', ['s'], [text(r, 't1', 'X')])])])]).diagnostics.filter((d) => d.severity === 'error');
+    expect(errors.map((d) => d.message).filter((msg) => msg.includes('align-self: last baseline on s') && msg.includes('last baseline aligns grid items only'))).toHaveLength(1);
+  });
+
   it('refuses what the engine does not lay out: last baseline outside a grid and safe self-alignment; a flexible minimum never reaches it', () => {
     const refusal = (css: string): string[] => compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i'])])]).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.message}`);
     expect(refusal('.g { display: grid; grid-template-columns: repeat(auto-fill, 20px); }')).toEqual([]);

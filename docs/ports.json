@@ -1098,6 +1098,7 @@
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "buildItem", "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "columnIntrinsicBlockSize", "use": "port" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "reference" },
         { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
@@ -1146,6 +1147,7 @@
         { "lines": "24-183", "symbol": "GridBaselineAccumulator", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "reference" },
         { "file": "packages/layout/src/grid.ts", "symbol": "placeItems", "use": "port" }
       ]
     },
@@ -1556,6 +1558,7 @@
         { "lines": "33-40", "symbol": "LogicalBoxFragment::SynthesizedBaseline", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "ContentsResult", "use": "reference" },
         { "file": "packages/layout/src/grid.ts", "symbol": "firstBaselineOrSynthesize", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "inlineBaseline", "use": "port" },
