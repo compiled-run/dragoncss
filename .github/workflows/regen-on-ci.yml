@@ -83,7 +83,8 @@ jobs:
             # this branch's newer dispatch (same concurrency group) is not held behind a run that can only fail.
             if [ -n "${DISPATCH_HEAD:-}" ]; then
               now=$(gh api "repos/$REPO/branches/$DISPATCH_BRANCH" -q .commit.sha 2>/dev/null || true)
-              if [ -n "$now" ] && [ "$now" != "$DISPATCH_HEAD" ]; then
+              # gh prints an error body on a failed lookup (5xx, rate limit): only a commit sha counts, anything else waits on.
+              if [[ "$now" =~ ^[0-9a-f]{40}$ ]] && [ "$now" != "$DISPATCH_HEAD" ]; then
                 echo "::error::$DISPATCH_BRANCH moved from the dispatched head $DISPATCH_HEAD to $now while waiting for a slot; dispatch again"
                 exit 1
               fi
