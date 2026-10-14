@@ -110,13 +110,25 @@ export function kotlinTool(lookup: KotlinLookup = defaultKotlinLookup()): Kotlin
   const jh = run(lookup.javaHomeCommand, ['-v', '17+']);
   if (jh.ok) homes.push(jh.out.trim());
   homes.push(...lookup.jdkHomes);
-  const javaHome = homes.find((h) => h !== '' && run(join(h, 'bin/java'), ['-version']).ok);
+  // Each probe's output is kept: kotlinc -version starts a JVM (5-7 s), so running it again for the version doubled that.
+  let java = '';
+  const javaHome = homes.find((h) => {
+    if (h === '') return false;
+    const r = run(join(h, 'bin/java'), ['-version']);
+    java = r.out;
+    return r.ok;
+  });
   if (javaHome === undefined) return null;
   const env = { ...process.env, JAVA_HOME: javaHome, PATH: `${join(javaHome, 'bin')}:${process.env['PATH'] ?? ''}` };
-  const kotlinc = lookup.kotlincs.find((k) => run(k, ['-version'], env).ok);
+  let kotlin = '';
+  const kotlinc = lookup.kotlincs.find((k) => {
+    const r = run(k, ['-version'], env);
+    kotlin = r.out;
+    return r.ok;
+  });
   if (kotlinc === undefined) return null;
-  const kv = run(kotlinc, ['-version'], env).out.split('\n').find((l) => l.includes('kotlinc')) ?? '';
-  const jv = run(join(javaHome, 'bin/java'), ['-version']).out.split('\n')[0] ?? '';
+  const kv = kotlin.split('\n').find((l) => l.includes('kotlinc')) ?? '';
+  const jv = java.split('\n')[0] ?? '';
   return { kotlinc, javaHome, version: `${kv.replace(/^info: /, '').trim()}; ${jv.trim()}` };
 }
 
