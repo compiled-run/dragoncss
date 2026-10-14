@@ -1,7 +1,8 @@
 // Chrome's output for one capture, remembered by everything that decides it: the page sent to Chrome, the code that drives the
 // page, the pinned Chrome and the machine. A regen step re-run for a compiler change its pages do not show reuses the bytes
 // instead of rendering again. The memo lives beside regen's cache (.git/dragon-regen/v2), which CI carries between rounds and
-// prunes after 30 days unused. DRAGON_CHROME_MEMO=0 renders everything afresh.
+// prunes after 30 days unused. It is on only with DRAGON_CHROME_MEMO=1, which pnpm regen sets for its steps (DRAGON_CHROME_MEMO=0
+// before pnpm regen renders everything afresh); tests and direct runs always render.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { release } from 'node:os';
@@ -49,7 +50,7 @@ export function memoized(kind: string, parts: unknown, code: readonly string[], 
 
 /** memoized with the memo in directory d. */
 export async function memoizedIn(d: string, kind: string, parts: unknown, code: readonly string[], stats: MemoStats, produce: () => Promise<Buffer>): Promise<Buffer> {
-  if (process.env['DRAGON_CHROME_MEMO'] === '0') return produce();
+  if (process.env['DRAGON_CHROME_MEMO'] !== '1') return produce();
   const file = join(d, memoKey(kind, parts, code));
   if (existsSync(file)) {
     stats.hits++;
@@ -64,4 +65,10 @@ export async function memoizedIn(d: string, kind: string, parts: unknown, code: 
   writeFileSync(tmp, bytes);
   renameSync(tmp, file);
   return bytes;
+}
+
+/** memoized for a JSON-able value: remembered as its JSON text. */
+export async function memoizedJson<T>(kind: string, parts: unknown, code: readonly string[], stats: MemoStats, produce: () => Promise<T>): Promise<T> {
+  const bytes = await memoized(kind, parts, code, stats, async () => Buffer.from(JSON.stringify(await produce())));
+  return JSON.parse(bytes.toString('utf8')) as T;
 }

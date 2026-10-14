@@ -880,7 +880,8 @@ export function localIo(root: string, storeDir: string, logDir: string): Io {
             done({ code, log: readFileSync(logFile, 'utf8'), trace, touched });
           });
         };
-        const env = { ...process.env, DRAGON_REGEN_TRACE: traceDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import ${JSON.stringify(tracer)}`.trim() };
+        // Steps reuse Chrome's output for pages they rendered before (packages/parity/src/chrome-memo.ts) unless told not to.
+        const env = { ...process.env, DRAGON_CHROME_MEMO: process.env.DRAGON_CHROME_MEMO ?? '1', DRAGON_REGEN_TRACE: traceDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import ${JSON.stringify(tracer)}`.trim() };
         const child = spawn(step.argv[0]!, step.argv.slice(1), { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env });
         child.stdout.pipe(out, { end: false });
         child.stderr.pipe(out, { end: false });

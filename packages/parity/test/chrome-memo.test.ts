@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { gitCommonDir, memoizedIn, memoKey } from '../src/chrome-memo.ts';
 
 const CODE = ['packages/parity/src/chrome.ts'];
@@ -12,9 +12,14 @@ const tmp = (): string => {
   dirs.push(d);
   return d;
 };
+const before = process.env['DRAGON_CHROME_MEMO'];
+beforeEach(() => {
+  process.env['DRAGON_CHROME_MEMO'] = '1';
+});
 afterEach(() => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
-  delete process.env['DRAGON_CHROME_MEMO'];
+  if (before === undefined) delete process.env['DRAGON_CHROME_MEMO'];
+  else process.env['DRAGON_CHROME_MEMO'] = before;
 });
 
 describe('chrome-memo', () => {
@@ -36,15 +41,24 @@ describe('chrome-memo', () => {
     expect(memoKey('pixel', { html: 'a', dpr: 3 }, CODE)).not.toBe(k);
     expect(memoKey('pixel', { html: 'a', dpr: 2 }, [...CODE, 'packages/parity/src/dpr.ts'])).not.toBe(k);
   });
-  it('renders everything afresh with DRAGON_CHROME_MEMO=0', async () => {
+  it('renders everything afresh unless DRAGON_CHROME_MEMO is 1 (pnpm regen sets it for its steps)', async () => {
+    for (const v of ['0', '', undefined]) {
+      const d = tmp();
+      const stats = { hits: 0, misses: 0 };
+      if (v === undefined) delete process.env['DRAGON_CHROME_MEMO'];
+      else process.env['DRAGON_CHROME_MEMO'] = v;
+      let n = 0;
+      await memoizedIn(d, 'pixel', { html: 'a' }, CODE, stats, async () => Buffer.from(`${++n}`));
+      await memoizedIn(d, 'pixel', { html: 'a' }, CODE, stats, async () => Buffer.from(`${++n}`));
+      expect(n, String(v)).toBe(2);
+      expect(readdirSync(d)).toEqual([]);
+    }
+  });
+  it('remembers a JSON value as its JSON', async () => {
     const d = tmp();
     const stats = { hits: 0, misses: 0 };
-    process.env['DRAGON_CHROME_MEMO'] = '0';
-    let n = 0;
-    await memoizedIn(d, 'pixel', { html: 'a' }, CODE, stats, async () => Buffer.from(`${++n}`));
-    await memoizedIn(d, 'pixel', { html: 'a' }, CODE, stats, async () => Buffer.from(`${++n}`));
-    expect(n).toBe(2);
-    expect(readdirSync(d)).toEqual([]);
+    const v = await memoizedIn(d, 'capture', { html: 'a' }, CODE, stats, async () => Buffer.from(JSON.stringify([{ id: 'a', x: 1.5, computed: null }])));
+    expect(JSON.parse(v.toString('utf8'))).toEqual([{ id: 'a', x: 1.5, computed: null }]);
   });
   it('remembers nothing when producing fails', async () => {
     const d = tmp();

@@ -6,7 +6,8 @@
 import type { Browser, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
-import { CHROME_VERSION, injectHarness, openPage } from './chrome.ts';
+import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
+import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
 import { applyTransformTwin } from './transform-capture.ts';
 
@@ -88,6 +89,31 @@ const collectNodes = (props: string[]): CapturedNode[] => {
  * fixture's stated-reference transform (font-reference.ts), run on the loaded page before the capture; none for every other fixture.
  */
 export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
+  // A prepare script is code the memo key cannot see, and a browser launchChrome did not start has flags it cannot see.
+  const args = launchArgsOf(browser);
+  if (prepare !== undefined || args === null) return captureFixtureLive(browser, fixture, html, env, extra, prepare);
+  const parts = { html: injectHarness(html, env), env, args, properties: [...LONGHANDS, ...extra], flavour: BROWSER_FLAVOUR };
+  const nodes = await memoizedJson('capture', parts, CAPTURE_CODE, CAPTURE_MEMO, async () => (await captureFixtureLive(browser, fixture, html, env, extra)).nodes);
+  return captureOf(fixture, env, nodes);
+}
+
+/** The code that decides a capture's nodes beside the page itself: the page setup, the in-page collector and the transform twin. */
+const CAPTURE_CODE = ['packages/parity/src/capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/transform-capture.ts'];
+/** Remembered and fresh captures of this process (chrome-memo.ts). */
+export const CAPTURE_MEMO: MemoStats = { hits: 0, misses: 0 };
+
+const captureOf = (fixture: string, env: Environment, nodes: readonly CapturedNode[]): WebCapture => ({
+  fixture,
+  chrome: CHROME_VERSION,
+  browser: BROWSER_FLAVOUR,
+  platform: hostPlatform(),
+  viewport: { width: env.viewport.width, height: env.viewport.height },
+  devicePixelRatio: env.devicePixelRatio,
+  direction: env.direction,
+  nodes,
+});
+
+async function captureFixtureLive(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
   const page = await openPage(browser, html, env);
   try {
     if (prepare !== undefined) await prepare(page);
@@ -102,16 +128,7 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
         nodes[i] = { ...n, computed };
       }
     }
-    return {
-      fixture,
-      chrome: CHROME_VERSION,
-      browser: BROWSER_FLAVOUR,
-      platform: hostPlatform(),
-      viewport: { width: env.viewport.width, height: env.viewport.height },
-      devicePixelRatio: env.devicePixelRatio,
-      direction: env.direction,
-      nodes,
-    };
+    return captureOf(fixture, env, nodes);
   } finally {
     await page.context().close();
   }

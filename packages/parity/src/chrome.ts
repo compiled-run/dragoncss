@@ -31,9 +31,16 @@ export function ahemFontFace(): string {
   return ahemFace;
 }
 
+const launchArgs = new WeakMap<Browser, readonly string[]>();
+
+/** The flags launchChrome started a browser with, or null for a browser it did not start (chrome-memo.ts keys by them). */
+export const launchArgsOf = (browser: Browser): readonly string[] | null => launchArgs.get(browser) ?? null;
+
 /** Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture. */
 export async function launchChrome(forceDeviceScaleFactor: number = 1): Promise<Browser> {
-  const browser = await chromium.launch({ args: [...chromeArgsAt(forceDeviceScaleFactor)] });
+  const args = chromeArgsAt(forceDeviceScaleFactor);
+  const browser = await chromium.launch({ args: [...args] });
+  launchArgs.set(browser, args);
   const version = browser.version();
   if (version !== CHROME_VERSION) {
     await browser.close();
