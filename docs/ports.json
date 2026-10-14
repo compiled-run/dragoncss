@@ -1359,7 +1359,11 @@
         { "lines": "1286-1468", "symbol": "LineBreaker::HandleText", "source": "located" },
         { "lines": "44-54", "symbol": "ShouldApplyTextIndent", "source": "cited" },
         { "lines": "811-822", "symbol": "LineBreaker::ComputeTextIndent", "source": "cited" },
-        { "lines": "843-844", "symbol": "LineBreaker::PrepareNextLine", "source": "cited" }
+        { "lines": "843-844", "symbol": "LineBreaker::PrepareNextLine", "source": "cited" },
+        { "lines": "4008-4250", "symbol": null, "source": "cited" },
+        { "lines": "4495-4542", "symbol": null, "source": "cited" },
+        { "lines": "4182-4187", "symbol": null, "source": "cited" },
+        { "lines": "4226-4250", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "cachedWidth", "use": "port" },
@@ -1367,7 +1371,10 @@
         { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/units.ts", "symbol": "cachedRangeWidth", "use": "port" },
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
-        { "file": "packages/layout/src/block.ts", "symbol": "EngineFaults", "use": "reference" }
+        { "file": "packages/layout/src/block.ts", "symbol": "EngineFaults", "use": "reference" },
+        { "file": "packages/layout/test/inline-wrap.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/inline.ts", "symbol": "buildIfc", "use": "port" },
+        { "file": "packages/layout/src/inline.ts", "symbol": "breakLines", "use": "port" }
       ]
     },
     {
