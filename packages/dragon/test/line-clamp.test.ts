@@ -94,13 +94,15 @@ describe('TXT2-g: what the engine does not clamp is refused with the reason', ()
   const all = (what: string): string[] => ['android', 'ios', 'web'].map((t) => `${t} ${what}`);
   const at = '-webkit-line-clamp on a';
 
-  it('overflow visible, rtl, a height, text-overflow, preserved white space and letter-spacing', () => {
+  it('overflow visible, rtl, a height, text-overflow, preserved white space, letter-spacing and a <br>', () => {
     expect(refused(`.a { ${CLAMP} overflow: visible; }`)).toEqual(all(`${at} needs overflow`));
     expect(refused(`.a { ${CLAMP} direction: rtl; }`)).toEqual(all(`${at} clamps rtl lines, which Dragon truncates left to right only`));
     expect(refused(`.a { ${CLAMP} max-height: 20px; }`)).toEqual(all(`${at} has a height or max-height, with which Chrome clamps by height as well as by lines`));
     expect(refused(`.a { ${CLAMP} text-overflow: ellipsis; }`)).toEqual(all(`${at} also has text-overflow`));
     expect(refused(`.a { ${CLAMP} white-space: pre-wrap; }`)).toEqual(all(`${at} holds preserved white space`));
     expect(refused(`.a { ${CLAMP} letter-spacing: 1px; }`)).toEqual(all(`${at} holds letter-spaced text`));
+    const br: Body = (r) => [div(r, 'a', ['a'], [text(r, 't', 'XX'), { ...(div(r, 'b', [], []) as TreeNode & object), tag: 'br' } as TreeNode, text(r, 'u', 'XX')])];
+    expect(refused(`.a { ${CLAMP} }`, br)).toEqual(all(`${at} holds the forced line break <br> b, beside which Dragon does not place the ellipsis yet`));
   });
 
   it('nested blocks deeper than one level, and a -webkit-box without both companions or inline', () => {

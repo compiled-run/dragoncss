@@ -118,8 +118,11 @@ export function checkLineClamp(el: ResolvedElement, hidden: boolean, targets: re
     for (const g of inlineDescendants(b)) {
       // el's own block children are checked above.
       if (b === el && el.children.includes(g) && display(g) !== 'inline') continue;
-      if (display(g) !== 'inline') refuse(targets, 'atomic', `${at} holds the inline-level box <${g.element.tag}> ${g.element.address}, which Dragon does not clamp beside`, `Make <${g.element.tag}> ${g.element.address} display: inline, or move it out of ${el.element.address}.`);
-      else if (g.element.tag !== 'br' && paintOf(g) !== paintOf(b)) {
+      if (g.element.tag === 'br') {
+        // Chrome's rect of a <br> after which line N ends in the ellipsis spans the ellipsis (measured, line-clamp-lines at DPR 2).
+        refuse(targets, 'br', `${at} holds the forced line break <br> ${g.element.address}, beside which Dragon does not place the ellipsis yet`, `Remove <br> ${g.element.address}, or split the text into blocks.`);
+      } else if (display(g) !== 'inline') refuse(targets, 'atomic', `${at} holds the inline-level box <${g.element.tag}> ${g.element.address}, which Dragon does not clamp beside`, `Make <${g.element.tag}> ${g.element.address} display: inline, or move it out of ${el.element.address}.`);
+      else if (paintOf(g) !== paintOf(b)) {
         refuse(targets.filter((t) => t === 'ios' || t === 'android'), 'paint', `${at}: the inline box <${g.element.tag}> ${g.element.address} has a colour, visibility or font face other than its block's, and the native runtime draws the ellipsis with the text it follows, not in the block's style`, `Give <${g.element.tag}> ${g.element.address} the colour, visibility and font face of its block.`);
       }
     }

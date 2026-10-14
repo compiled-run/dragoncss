@@ -3,7 +3,7 @@
 // is proven by the line-clamp fixture group (packages/parity); these cases pin the port's decisions in 10px Ahem.
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutResult, LayoutStyle } from '../src/index.ts';
-import { absoluteRects, ahemMeasurer, fromCssPx, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, clampedInput, fromCssPx, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
 import { ahemFont, box, neutralEnvironment, px, span, text } from './helpers.ts';
 
 const G = 640;
@@ -100,6 +100,14 @@ describe('TXT2-g: block children, one level down', () => {
     expect(last?.ellipsis).toMatchObject({ x: 2 * G });
     const [own] = placeLines(ctx(), box('b2', { lineClamp: 1 }, [t('t', 'XX')]), fromCssPx(55));
     expect(own?.ellipsis).toBeNull();
+  });
+
+  it('clampedInput gives a host the children as the layout clamped them', () => {
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('root', {}, [box('a', CLAMP(3), [block('b1', 'XX XX'), block('b2', 'XX XX XX XX XX XX'), block('b3', 'XX')])]) };
+    const r = layoutWithFaults(input, ahemMeasurer, NO_ENGINE_FAULTS);
+    if (r.kind !== 'ok') throw new Error('refused');
+    const a = clampedInput(input, r.boxes, ahemMeasurer).root.children[0] as LayoutBox;
+    expect(a.children.map((k) => (k.kind === 'box' ? k.style.lineClamp : null))).toEqual([0, -2, 0]);
   });
 
   it('refuses a child that is not a block of inline content', () => {
