@@ -72,7 +72,8 @@ jobs:
           REPO: ${{ github.repository }}
           REGEN_BRANCH_SLOTS: '2'
           LANDING_YIELD_SECONDS: '5400'
-          POLL_SECONDS: '60'
+          # 9 calls a poll: two waiting runs stay well under the token's 1000 requests an hour.
+          POLL_SECONDS: '120'
           DISPATCH_BRANCH: ${{ inputs.branch }}
           DISPATCH_HEAD: ${{ inputs.head }}
         run: |
@@ -98,16 +99,18 @@ jobs:
             fi
             ahead=0
             landing=0
+            failed=0
+            # A failed list (5xx, the token's hourly rate limit, which every waiting run shares) counts nothing: it waits a poll.
             for st in queued in_progress waiting pending; do
-              runs=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100")
-              n=$(jq -r "$filter" <<<"$runs")
+              runs=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" 2>/dev/null) && n=$(jq -r "$filter" <<<"$runs") && m=$(jq -r "$landing_filter" <<<"$runs") && [[ "$n$m" =~ ^[0-9]+$ ]] || { failed=1; break; }
               ahead=$((ahead + n))
-              n=$(jq -r "$landing_filter" <<<"$runs")
-              landing=$((landing + n))
-              n=$(gh api "repos/$REPO/actions/workflows/device-lanes.yml/runs?status=$st&per_page=100" -q '.workflow_runs | length')
+              landing=$((landing + m))
+              n=$(gh api "repos/$REPO/actions/workflows/device-lanes.yml/runs?status=$st&per_page=100" -q '.workflow_runs | length' 2>/dev/null) && [[ "$n" =~ ^[0-9]+$ ]] || { failed=1; break; }
               landing=$((landing + n))
             done
-            if [ "$landing" -gt 0 ] && [ "$waited" -lt "$LANDING_YIELD_SECONDS" ]; then
+            if [ "$failed" = 1 ]; then
+              echo "regen-on-ci: listing the queued and running runs failed; trying again in $POLL_SECONDS s"
+            elif [ "$landing" -gt 0 ] && [ "$waited" -lt "$LANDING_YIELD_SECONDS" ]; then
               [ "$told_landing" = 1 ] || echo "regen-on-ci: $landing landing run(s) are queued or running; waiting until they end (at most $LANDING_YIELD_SECONDS s)"
               told_landing=1
             elif [ "$ahead" -ge "$REGEN_BRANCH_SLOTS" ]; then

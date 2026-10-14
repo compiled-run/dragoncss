@@ -332,10 +332,32 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
       rmSync(join(d, 'calls'));
     }
     // Past LANDING_YIELD_SECONDS it stops yielding to the landing and takes the free slot.
-    const capped = runStep(gate, { ...landing, LANDING_YIELD_SECONDS: '1', POLL_SECONDS: '1' }, landingStub([older[2]!, older[3]!], []));
+    const always = `
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
+  *status=in_progress*) body='${JSON.stringify({ workflow_runs: [older[2]!, older[3]!] })}' ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const capped = runStep(gate, { ...landing, LANDING_YIELD_SECONDS: '1', POLL_SECONDS: '1' }, always);
     expect(capped.status, capped.stderr).toBe(0);
     expect(capped.stdout).toContain('2 landing run(s) are queued or running; waiting until they end (at most 1 s)');
     expect(capped.stdout).toContain('started after waiting 1 s');
+    // A failed list (a rate limit) waits a poll instead of failing the run.
+    const limited = runStep(gate, landing, `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*) if [ $n -le 3 ]; then echo '{"message":"API rate limit exceeded"}'; exit 1; fi; body='{"workflow_runs":[]}' ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`);
+    expect(limited.status, limited.stderr).toBe(0);
+    expect(limited.stdout).toContain('listing the queued and running runs failed; trying again in 0 s');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('11');
     rmSync(join(d, 'calls'));
     // A branch that moved off its dispatched head stops at once instead of waiting for a slot it would only be refused in.
     const branchAt = (sha: string) => `
