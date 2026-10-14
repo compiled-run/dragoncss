@@ -9,6 +9,8 @@ export const INLINE_OUT: readonly string[] = [
   'float-clear-inert', 'float-clear-inert-rtl',
   // TXT2-b's text-spacing-ahem and text-word-spacing-ahem hold an inline box.
   'text-spacing-ahem', 'text-spacing-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl',
+  // #266's vertical-align-inert holds an inline-block (an atomic inline); GRID_OUT listed it for its grid container before G-HIT.
+  'vertical-align-inert', 'vertical-align-inert-rtl',
   // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
   // inline box and text-transform-text a <br>; TXT2's text-justify-ahem holds an inline box.
   'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
@@ -21,6 +23,8 @@ export const INLINE_OUT: readonly string[] = [
   ...['block', 'flex', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];
 export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet/;
+// ALIAS-2's alias-paint writes -webkit-transform, so the hit lane refuses it with the transform reason though its name is not transform-.
+export const TRANSFORM_NAMED: readonly string[] = ['alias-paint'];
 export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;
 export const STACKING_OUT: readonly string[] = [
   'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'stacking-basic',
