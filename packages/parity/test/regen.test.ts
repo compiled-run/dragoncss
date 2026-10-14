@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
-import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree, worktreeLock } from '../../../scripts/regen.ts';
+import { checkTrace, commandOf, type Context, type Entry, explainMachine, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree, worktreeLock } from '../../../scripts/regen.ts';
 import { exportTargetsUnder, importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -791,6 +791,20 @@ describe('one regen per worktree', () => {
       expect(() => worktreeLock(a, 200, alive)).not.toThrow();
     } finally {
       rmSync(base, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('DRAGON_REGEN_MACHINE (--explain on another machine)', () => {
+  it('keys with the given platform, arch and node, in the order a run keys with them', () => {
+    expect(explainMachine(undefined)).toBeNull();
+    expect(explainMachine('')).toBeNull();
+    expect(explainMachine('{"node":"v24.15.0","arch":"arm64","platform":"darwin"}')).toBe(JSON.stringify({ platform: 'darwin', arch: 'arm64', node: 'v24.15.0' }));
+    expect(explainMachine(JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version }))).toBe(JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version }));
+  });
+  it('refuses anything but exactly three non-empty strings', () => {
+    for (const bad of ['junk', '[]', 'null', '{"platform":"darwin","arch":"arm64"}', '{"platform":"darwin","arch":"arm64","node":""}', '{"platform":"darwin","arch":"arm64","node":24}', '{"platform":"darwin","arch":"arm64","node":"v24","extra":"x"}']) {
+      expect(() => explainMachine(bad), bad).toThrow('DRAGON_REGEN_MACHINE');
     }
   });
 });
