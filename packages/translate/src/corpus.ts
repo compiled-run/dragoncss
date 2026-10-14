@@ -156,7 +156,7 @@ const INITIAL: LayoutStyle = {
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
-  textOverflow: 'clip',
+  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 },
   grid: null, gridItem: null,
 };
 
@@ -274,7 +274,7 @@ function randomText(r: Rng, rtl: boolean): string {
 }
 
 function textLeaf(r: Rng, id: string, font: { size: number; lh: TextLeaf['lineHeight']; wrap: TextLeaf['textWrapMode'] }, rtl: boolean): TextLeaf {
-  return { kind: 'text', id, text: randomText(r, rtl), font: { family: 'Ahem', size: font.size, specifiedSize: { kind: 'px', value: font.size }, absoluteSize: true }, lineHeight: font.lh, whiteSpaceCollapse: 'collapse', textWrapMode: font.wrap, letterSpacing: { kind: 'px', value: 0 } };
+  return { kind: 'text', id, text: randomText(r, rtl), font: { family: 'Ahem', size: font.size, specifiedSize: { kind: 'px', value: font.size }, absoluteSize: true }, lineHeight: font.lh, whiteSpaceCollapse: 'collapse', textWrapMode: font.wrap, letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } };
 }
 
 /** A text container's strut: its leaves' font and line-height (INL1a; drawn from nothing, so the P1 inputs keep their shape). */

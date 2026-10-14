@@ -13,7 +13,8 @@ import { REFERENCE_PLATFORM } from './platform.ts';
 export const GRID_CORPUS_DIR = 'docs/research/grid-spike/probe';
 
 type Rect = readonly [number, number, number, number];
-type Result = { readonly c: Rect; readonly cols: string; readonly rows: string; readonly items: readonly Rect[] };
+/** a: in a case with after text, the text run's box within the container border box (the line box puts it on the grid's baseline). */
+type Result = { readonly c: Rect; readonly cols: string; readonly rows: string; readonly items: readonly Rect[]; readonly a?: Rect };
 export type CorpusCase = {
   readonly family: string;
   readonly id: string;
@@ -55,6 +56,7 @@ export function parseCorpusFamily(family: string, text: string): CorpusCase[] {
     j.envs.forEach((name, e) => {
       const r = c.distinct[c.env[e] as number];
       if (r === undefined || !isRect(r.c) || !Array.isArray(r.items) || r.items.length !== c.labels.length || !r.items.every(isRect) || typeof r.cols !== 'string' || typeof r.rows !== 'string') throw new Error(`${family} ${id}: environment ${name} has no complete result`);
+      if (c.after !== undefined && !isRect(r.a)) throw new Error(`${family} ${id}: environment ${name} has no box for its after text`);
       results.set(name, r);
     });
     return { family, id, note: c.note, cb: c.cb, html: c.html, labels: c.labels, after: c.after ?? null, results };
@@ -109,7 +111,8 @@ function parseCaseHtml(html: string): Element {
 
 /**
  * A parity-fixture document for a case: the wrapper as a fixed-size block at the page origin (the corpus places it absolutely at
- * the origin; both put its border box at 0,0), each element's inline style moved to a rule of its own class.
+ * the origin; both put its border box at 0,0), each element's inline style moved to a rule of its own class, and a case's after
+ * text in the wrapper after the grid.
  */
 export function caseDocument(c: CorpusCase): { readonly html: string; readonly ids: ReadonlyMap<string, string> } {
   const root = parseCaseHtml(c.html);
@@ -119,7 +122,8 @@ export function caseDocument(c: CorpusCase): { readonly html: string; readonly i
     if (el.label !== null) ids.set(el.label, el.id);
     if (el.style !== '') rules.push(`.${el.id} { ${el.style}; }`);
     const cls = el === root ? 'cb' : el.style === '' ? '' : el.id;
-    const body = el.children.map((k) => (typeof k === 'string' ? k : render(k))).join('');
+    const after = el === root && c.after !== null ? c.after.replace(/&/g, '&amp;').replace(/</g, '&lt;') : '';
+    const body = el.children.map((k) => (typeof k === 'string' ? k : render(k))).join('') + after;
     return `<div data-dragon-id="${el.id}"${cls === '' ? '' : ` class="${cls}"`}>${body}</div>`;
   };
   const markup = render(root);
@@ -172,10 +176,6 @@ const refusal = (code: string, message: string): string => `${code}: ${message.r
 /** Compiles one case per direction and compares the engine with Chrome in every horizontal-tb environment. */
 export function runGridCase(c: CorpusCase, gridFaults: GridFaults, envs: readonly CorpusEnv[] = HORIZONTAL_ENVS, engineFaults: EngineFaults = NO_ENGINE_FAULTS): CaseOutcome {
   const out = new Map<string, EnvOutcome>();
-  if (c.after !== null) {
-    for (const e of envs) out.set(e.name, { kind: 'refused', reasons: ['inline-level grid baseline beside text (G3)'] });
-    return { id: c.id, family: c.family, envs: out };
-  }
   const floated = floatInFlow(parseCaseHtml(c.html));
   if (floated !== null) {
     for (const e of envs) out.set(e.name, { kind: 'refused', reasons: [`float is not supported in block flow (${floated})`] });
@@ -244,6 +244,12 @@ function compareCase(c: CorpusCase, ids: ReadonlyMap<string, string>, abs: Reado
     }
     check(label, physical(chrome.items[k] as Rect, grid.width, e.direction), [box.x - grid.x, box.y - grid.y, box.width, box.height]);
   });
+  if (c.after !== null) {
+    // The wrapper's only text, after the grid (caseDocument): its bounding box, as the corpus's Range rect.
+    const text = abs.get('cb:text0');
+    if (chrome.a === undefined || text === undefined) problems.push('after text: no box to compare');
+    else check('after text', physical(chrome.a, grid.width, e.direction), [text.x - grid.x, text.y - grid.y, text.width, text.height]);
+  }
   return problems.length === 0 ? { kind: 'match' } : { kind: 'mismatch', detail: problems.join('; ') };
 }
 
@@ -254,7 +260,8 @@ function compareCase(c: CorpusCase, ids: ReadonlyMap<string, string>, abs: Reado
  * Each pattern matches the refusal reasons runGridCase records.
  */
 export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner: string; readonly pattern: RegExp }[] = [
-  { id: 'inline-grid', owner: 'G-INL (after INL2): inline-level grid containers', pattern: /display: inline-grid|inline-level grid baseline/ },
+  // G-INL lays out an inline-grid on its line; in rtl the compiler refuses one at a paragraph edge, which UAX #9 would reorder.
+  { id: 'bidi-atomic', owner: 'INL2 bidi: UAX #9 resolution of an atomic inline at a paragraph edge in rtl', pattern: /DRAGON_UNSUPPORTED_BIDI: atomic inline \S+ in the rtl block \S+ has no letter on its (start|end) side/ },
   // G3 lays out first baseline alignment in the block axis; inline-axis and last baseline alignment stay refused by the compiler.
   { id: 'baseline-alignment', owner: 'G3 follow-up: inline-axis and last baseline self-alignment', pattern: /justify-(self|items): (last )?baseline|align-(self|items): last baseline/ },
   { id: 'subgrid', owner: 'G5: subgrid', pattern: /subgrid/ },
@@ -278,11 +285,11 @@ export const KNOWN_MISMATCHES: ReadonlyMap<string, string> = new Map<string, str
 
 /**
  * Each grid plant of docs/research/grid-spike/blink-notes.md in G1a's, G2's and G4's scope, G2's repeatEndNameMissed and G3's
- * baseline plants, with a
- * corpus case that must catch it in item or container boxes. fr-restart shows frRestartMissing only in getComputedStyle track
- * sizes, which this test does not compare.
+ * baseline plants, and the engine plants ignoreOrder and G-INL's inlineGridLastItemBaseline, with a corpus case that must catch it
+ * in item or container boxes. fr-restart shows frRestartMissing only in getComputedStyle track sizes, which this test does not
+ * compare.
  */
-export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | 'ignoreOrder'; readonly kase: string }[] = [
+export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | GridEnginePlant; readonly kase: string }[] = [
   { fault: 'denseAsSparse', kase: 'p-dense' },
   { fault: 'sparseRewinds', kase: 'p-sparse-cursor' },
   { fault: 'implicitForward', kase: 'p-implicit-before' },
@@ -316,12 +323,19 @@ export const GRID_PLANTS: readonly { readonly fault: keyof GridFaults | 'ignoreO
   { fault: 'absposStaticAlignIgnored', kase: 'ab-align' },
   { fault: 'baselineShimIgnored', kase: 'b-row-shim' },
   { fault: 'baselineSynthesizedAtTop', kase: 'b-synthesized' },
+  // An inline-grid whose last item's baseline is not its first baseline, so the plant moves it on its line.
+  { fault: 'inlineGridLastItemBaseline', kase: 'rnd-0091' },
 ];
+
+/** The engine faults (not grid faults) GRID_PLANTS plants. */
+export type GridEnginePlant = 'ignoreOrder' | 'inlineGridLastItemBaseline';
+export const GRID_ENGINE_PLANTS: readonly GridEnginePlant[] = ['ignoreOrder', 'inlineGridLastItemBaseline'];
 
 /**
  * Chrome deviations in grid layout (blink-notes.md "Suspected deviations"): the engine follows Chrome, and a spec-reading plant must
- * make every registered case differ from Chrome. grid-max-content-auto-min (inline-grid and float cases) and
- * grid-default-self-overflow-unsafe (overflow: auto scrollers) are captured in the corpus, but G1a refuses their contexts.
+ * make every registered case differ from Chrome. grid-max-content-auto-min is captured in the corpus: its inline-grid case
+ * (m-max-content-auto-min) runs since G-INL and matches Chrome, but no spec-reading plant registers it yet, and its float case and
+ * grid-default-self-overflow-unsafe (overflow: auto scrollers) stay refused.
  */
 export const GRID_DEVIATIONS: readonly { readonly id: string; readonly spec: string; readonly blink: string; readonly fault: keyof GridFaults; readonly cases: readonly string[] }[] = [
   {

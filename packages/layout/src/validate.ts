@@ -120,7 +120,7 @@ const gridContainer = obj({
 const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto', ...gridSelfAlignValues) });
 
 export const styleSchema = obj({
-  display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex'),
+  display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
   position: lit('static', 'relative', 'absolute'),
   top: inset,
   right: inset,
@@ -173,6 +173,7 @@ export const styleSchema = obj({
     ...calc,
   }),
   textOverflow: lit('clip', 'ellipsis'),
+  textIndent: tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...calc }),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -192,6 +193,7 @@ export const textLeafSchema = obj({
   whiteSpaceCollapse: lit('collapse', 'preserve', 'preserve-breaks', 'break-spaces'),
   textWrapMode: lit('wrap', 'nowrap'),
   letterSpacing: calcExpr,
+  wordSpacing: calcExpr,
 });
 
 /** A replaced leaf (input.ts ReplacedLeaf); its style is checked as a box style. */
@@ -520,7 +522,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
-      if (style['display'] === 'grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
+      if (style['display'] === 'grid' || style['display'] === 'inline-grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
     }
     return;
   }
@@ -532,8 +534,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   const style = value['style'];
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
-  if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block or inline-flex' });
-  if (isAtomic(value) && parentId === null) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'the root box is blockified: it is never inline-block or inline-flex' });
+  if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
+  if (isAtomic(value) && parentId === null) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'the root box is blockified: it is never inline-block, inline-flex or inline-grid' });
   const children = childrenOf(value, path, errors);
   if (children === null) return;
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
@@ -557,9 +559,9 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
   const bad = (at: string, message: string): void => {
     errors.push({ path: at, code: 'grid-shape', message });
   };
-  const isGrid = style['display'] === 'grid';
+  const isGrid = style['display'] === 'grid' || style['display'] === 'inline-grid';
   const grid = style['grid'];
-  if (isGrid !== (grid !== null && grid !== undefined)) bad(`${path}.style.grid`, 'a grid style is written for display: grid and only there');
+  if (isGrid !== (grid !== null && grid !== undefined)) bad(`${path}.style.grid`, 'a grid style is written for display: grid or inline-grid and only there');
   if (isRecord(grid)) {
     for (const axis of ['Columns', 'Rows'] as const) {
       const template = grid[`template${axis}`];
@@ -697,8 +699,8 @@ function childrenOf(value: Record<string, unknown>, path: string, errors: Valida
   return children;
 }
 
-/** An atomic inline (CSS2 §9.2.4): a box with display inline-block or inline-flex. */
-const isAtomic = (c: unknown): boolean => isRecord(c) && c['kind'] === 'box' && isRecord(c['style']) && (c['style']['display'] === 'inline-block' || c['style']['display'] === 'inline-flex');
+/** An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid. */
+const isAtomic = (c: unknown): boolean => isRecord(c) && c['kind'] === 'box' && isRecord(c['style']) && (c['style']['display'] === 'inline-block' || c['style']['display'] === 'inline-flex' || c['style']['display'] === 'inline-grid');
 
 const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'text' || c['kind'] === 'inline' || c['kind'] === 'br' || isAtomic(c));
 
@@ -799,7 +801,7 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
 }
 
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
-const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'gridItem'>]: LayoutStyle[K] } = {
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
   top: { kind: 'auto' },
@@ -846,7 +848,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its
-// id is "<parent id>:anon<k>", and it inherits direction and text-align while every other field is its initial value.
+// id is "<parent id>:anon<k>", and it inherits direction, text-align and text-indent while every other field is its initial value.
 function checkAnonymous(box: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[], parentId: string | null): void {
   const bad = (message: string): void => {
     errors.push({ path, code: 'anonymous-shape', message });
@@ -877,7 +879,8 @@ function checkInlineContent(box: Record<string, unknown>, children: readonly unk
     errors.push({ path: `${path}.children`, code: 'mixed-children', message: 'a box has either inline-level children or box children; wrap the inline content in anonymous boxes' });
   }
   const style = box['style'];
-  if (isRecord(style) && (style['display'] === 'flex' || style['display'] === 'grid')) {
+  const display = isRecord(style) ? style['display'] : null;
+  if (display === 'flex' || display === 'grid' || display === 'inline-flex' || display === 'inline-grid') {
     errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'inline content directly in a flex or grid container must be wrapped in an anonymous item' });
   }
   const runs: (Record<string, unknown> | null)[] = [];

@@ -404,6 +404,26 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(warm([run('workflow_dispatch', null)])).toBe('skip');
     expect(warm([run('workflow_dispatch', `regen of ${HEAD.slice(0, 12)}`)])).toBe('skip');
   });
+  it('converge picks the last round that ran, and a round the other side had nothing to do after ends the chain', () => {
+    const pick = stepScript('Pick the last round');
+    const last = (e: Record<string, string>) => runStep(pick, { C1: '', N1: '', H1: '', C2: '', H2: '', C3: '', ...e }, 'exit 9');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true', H2: 'false' }).out['name']).toBe('host-2');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true' }).out['name']).toBe('chrome-2');
+    expect(last({ C1: 'true', N1: 'true', H1: 'false' }).out['name']).toBe('host-1');
+    // chrome-1 left lanes-host nothing to do: host-1 is skipped and chrome-1's tree is final.
+    expect(last({ C1: 'false', N1: 'false' }).out['name']).toBe('chrome-1');
+    const missing = last({ C1: 'true', N1: 'true' });
+    expect(missing.status).toBe(1);
+    expect(missing.stdout).toContain('host-1 reported nothing');
+    expect(last({}).stdout).toContain('chrome-1 reported nothing');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true', H2: 'true', C3: 'true' }).stdout).toContain('no fixed point after 5 rounds');
+    // Each later round runs only when the round before it changed files and left the other side something to do.
+    expect(yml).toContain("if: needs.chrome-1.outputs.next != 'false'");
+    for (const [prev, cur] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) {
+      const job = yml.slice(yml.indexOf(`\n  ${cur}:\n`), yml.indexOf('uses:', yml.indexOf(`\n  ${cur}:\n`)));
+      expect(job).toContain(`if: needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false'`);
+    }
+  });
   it('the run-name gives branch mode its branch, head and nonce; patch mode keeps "regen of <sha>"', () => {
     const line = /\nrun-name: ([^\n]+)\n/.exec(yml)?.[1];
     expect(line).toBe("${{ inputs.sha && format('regen of {0}', inputs.sha) || inputs.branch && format('regen of branch {0} at {1} ({2})', inputs.branch, inputs.head || 'its head', inputs.nonce || 'no nonce') || (github.event_name == 'pull_request' && github.event.pull_request.title) || (github.event_name == 'push' && github.event.head_commit.message) || 'regen-on-ci' }}");

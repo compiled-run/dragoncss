@@ -7,18 +7,22 @@ export const INLINE_OUT: readonly string[] = [
   'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
   // #266's float-clear-inert holds an inline box.
   'float-clear-inert', 'float-clear-inert-rtl',
-  // TXT2-b's text-spacing-ahem holds an inline box.
-  'text-spacing-ahem', 'text-spacing-ahem-rtl',
+  // TXT2-b's text-spacing-ahem and text-word-spacing-ahem hold an inline box.
+  'text-spacing-ahem', 'text-spacing-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl',
   // #266's vertical-align-inert holds an inline-block (an atomic inline); GRID_OUT listed it for its grid container before G-HIT.
   'vertical-align-inert', 'vertical-align-inert-rtl',
   // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
   // inline box and text-transform-text a <br>; TXT2's text-justify-ahem holds an inline box.
   'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
   'text-justify-ahem', 'text-justify-ahem-rtl',
+  // TXT2-h's text-indent-ahem holds an inline box, a <br> and inline-blocks.
+  'text-indent-ahem', 'text-indent-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
   'text-decoration-native', 'text-decoration-native-rtl',
-  // INL2a: every atomic-inline case holds an inline-block or inline-flex on a line (rt-hit.ts refuses an atomic inline by name).
-  ...['block', 'flex', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
+  // resize-values holds an inline box (sp, resize on an inline span).
+  'resize-values', 'resize-values-rtl',
+  // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
+  ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];
 export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet/;
 // ALIAS-2's alias-paint writes -webkit-transform, so the hit lane refuses it with the transform reason though its name is not transform-.

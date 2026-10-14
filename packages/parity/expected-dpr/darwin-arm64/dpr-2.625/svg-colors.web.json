@@ -138,8 +138,11 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -270,8 +273,11 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -402,8 +408,11 @@
         "stroke": "none",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -534,8 +543,11 @@
         "stroke": "none",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -666,8 +678,11 @@
         "stroke": "none",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -814,8 +829,11 @@
         "stroke": "rgb(255, 136, 0)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -962,8 +980,11 @@
         "stroke": "rgb(0, 255, 0)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -1110,8 +1131,11 @@
         "stroke": "none",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -1242,8 +1266,11 @@
         "stroke": "rgb(0, 0, 128)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -1390,8 +1417,11 @@
         "stroke": "rgb(0, 100, 0)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -1538,8 +1568,11 @@
         "stroke": "rgb(230, 26, 26)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -1686,8 +1719,11 @@
         "stroke": "none",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -1818,8 +1854,11 @@
         "stroke": "rgb(30, 90, 160)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -1966,8 +2005,11 @@
         "stroke": "rgb(128, 64, 0)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -2114,8 +2156,11 @@
         "stroke": "rgb(34, 34, 34)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -2262,8 +2307,11 @@
         "stroke": "rgb(106, 13, 173)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -2394,8 +2442,11 @@
         "stroke": "rgb(106, 13, 173)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -2542,8 +2593,11 @@
         "stroke": "rgb(0, 128, 128)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
@@ -2690,8 +2744,11 @@
         "stroke": "rgb(17, 34, 51)",
         "stroke-width": "3px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "resize": "none",
+        "text-indent": "0px"
       },
       "svg": {
         "bbox": [
