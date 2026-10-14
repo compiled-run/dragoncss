@@ -7,7 +7,7 @@ import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeight
 import type { LU } from './units.ts';
 import { add, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
-import { hasPercent, resolveBorder } from './box.ts';
+import { hasPercent, resolveBorder, resolveLength } from './box.ts';
 import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
@@ -1151,7 +1151,7 @@ function endsOf(ifc: Ifc): Boundary[] {
 // most the available width plus one LayoutUnit); the planted fault fitWithoutEpsilon drops that LayoutUnit. Items after the last
 // <br> without a character make no line (Blink IsEmptyLine); an inline box that would start there is refused, as where Blink
 // puts it is not measured. A context without any character or <br> has no line at all (INL-P f1-empty-root).
-function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line[] {
+function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU, indent: LU): Line[] {
   // Planted fault breakOffByOne: a line accepts one more glyph advance than fits, so breaks land one glyph late.
   const firstLeaf = ifc.leaves[0];
   let slack = ZERO;
@@ -1175,9 +1175,11 @@ function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line
     let end = (ends[k] as Boundary).at;
     let forced = (ends[k] as Boundary).forced;
     k++;
+    // The indented line starts at its indent (LineBreaker position_), so its text fits in what the indent leaves.
+    const lineAvailable = indented(ctx, lines, lines.length) ? sub(add(available, slack), indent) : add(available, slack);
     while (!forced && k < ends.length) {
       const next = ends[k] as Boundary;
-      if (!fitsAvailable(toPx(width(ctx, ifc, adv, start, fitEndOf(ctx, ifc, start, next.at))), add(available, slack), fit)) break;
+      if (!fitsAvailable(toPx(width(ctx, ifc, adv, start, fitEndOf(ctx, ifc, start, next.at))), lineAvailable, fit)) break;
       end = next.at;
       forced = next.forced;
       k++;
@@ -1281,7 +1283,7 @@ function itemIndexOf(ifc: Ifc, s: ShapedItems, index: number, offset: number): n
 // css-text-3 §5 for real-font text: Blink's LineBreaker over the shaped leaves (shaping.ts breakItemLines), with its fit test
 // (one LayoutUnit of epsilon; planted fault fitWithoutEpsilon drops it) and ShapeLine's reshaping at line edges. A line's text
 // results keep their inline sizes, which place the pieces.
-function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Line[] {
+function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, indent: LU): Line[] {
   const firstLeaf = ifc.leaves[0];
   let slack = ZERO;
   if (ctx.faults.breakOffByOne && firstLeaf !== undefined) {
@@ -1290,7 +1292,7 @@ function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Li
   }
   const s = shapedItemsOf(ctx, ifc);
   const wrap = firstLeaf === undefined || firstLeaf.textWrapMode === 'wrap';
-  const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.mode === 'preserve');
+  const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.mode === 'preserve', indent, ctx.faults.indentEveryLine, ctx.faults.indentAfterBr);
   if (!r.ok) unsupported('line-break', box.id, 'css-text-3 §5', r.reason);
   const lines: Line[] = [];
   let start = 0;
@@ -1549,6 +1551,36 @@ function onlyBreakIn(ifc: Ifc, b: number, start: number, end: number): number {
   return br;
 }
 
+// css-text-3 §8.1 (Blink LineBreaker::ComputeTextIndent, line_breaker.cc 811-822): the indent of a block container's first formatted
+// line, against the line's available inline size. What no Chrome case covers yet beside a nonzero indent is refused.
+function textIndentOf(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): LU {
+  const v = box.style.textIndent;
+  if ((v.kind === 'px' || v.kind === 'percent') && v.value === 0) return ZERO;
+  let beside = '';
+  if (box.boxType === 'anonymous') beside = 'in an anonymous block';
+  else if (ifc.mode !== 'collapse') beside = 'with preserved white space';
+  else if (box.style.textAlign === 'justify') beside = 'with text-align: justify';
+  else if (box.style.textOverflow === 'ellipsis' && (box.style.overflowX !== 'visible' || box.style.overflowY !== 'visible')) beside = 'with text-overflow: ellipsis';
+  else if (ifc.atomics.length > 0) beside = 'beside an atomic inline';
+  if (beside !== '') unsupported('text-indent', box.id, 'css-text-3 §8.1', `text-indent on ${box.id} ${beside} is not proven against Chrome`);
+  return resolveLength(v, available, ctx.faults);
+}
+
+/**
+ * Whether line n after lines takes the indent: only the first formatted line, not one after a <br> (ShouldApplyTextIndent,
+ * line_breaker.cc 44-54). Planted faults indentEveryLine and indentAfterBr indent more.
+ */
+function indented(ctx: Ctx, lines: readonly Line[], n: number): boolean {
+  const prev = n > 0 ? (lines[n - 1] as Line) : undefined;
+  return prev === undefined || ctx.faults.indentEveryLine || (ctx.faults.indentAfterBr && prev.forced);
+}
+
+/** text-indent in an intrinsic size: a percentage is of nothing (0); planted fault indentPercentInIntrinsic takes it of the line's width. */
+function intrinsicIndentOf(ctx: Ctx, box: LayoutBox, lineWidth: LU): LU {
+  const v = box.style.textIndent;
+  return resolveLength(v, ctx.faults.indentPercentInIntrinsic ? lineWidth : ZERO, ctx.faults);
+}
+
 /**
  * The line boxes of a block container's inline formatting context (CSS2 §10.8, css-text-3 §5 and §7.1), stacked by their own
  * heights from the content-box top. This is the one source of lines: layout, the native runtime, the break vectors and the
@@ -1569,12 +1601,14 @@ function layoutAtomics(ctx: Ctx, ifc: Ifc, available: LU): AtomicLayout[] {
 
 function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly AtomicLayout[], available: LU): AtomicLine[] {
   const adv = atoms.map((a) => a.advance);
-  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available) : breakLines(ctx, ifc, adv, available);
+  const indent = textIndentOf(ctx, box, ifc, available);
+  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available, indent) : breakLines(ctx, ifc, adv, available, indent);
   const rtl = directionOf(ctx, box) === 'rtl';
   const out: AtomicLine[] = [];
   let top = ZERO;
   for (let n = 0; n < broken.length; n++) {
     const unjustified = broken[n] as Line;
+    const lineIndent = indented(ctx, broken, n) ? indent : ZERO;
     if (ifc.mode !== 'collapse') {
       // TXT2-c with TXT2: Blink justifies a soft-wrapped preserved line around its preserved spaces, which no Chrome case covers yet.
       const lastItem = ifc.items[unjustified.end - 1] as Item | undefined;
@@ -1589,7 +1623,9 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
     const justified = justifyLine(ctx, box, ifc, adv, unjustified, n === broken.length - 1, available);
     const line: Line = justified === null ? unjustified : { start: unjustified.start, end: unjustified.end, visibleEnd: unjustified.visibleEnd, pieces: unjustified.pieces, forced: unjustified.forced, justified };
     // A justified line starts at its line-left edge in either direction (ApplyJustification returns inset / 2, zero outside ruby).
-    const offset = justified === null ? alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd))) : ZERO;
+    // LineInfo::ComputeWidth counts the indent, which sits on the line's start side: before the text in ltr, after it in rtl.
+    const aligned = justified === null ? alignOffset(ctx, box, sub(available, add(lineIndent, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd)))) : ZERO;
+    const offset = rtl && !ctx.faults.indentRtlFromLeft ? aligned : add(aligned, lineIndent);
     const on: number[] = [];
     for (let b = 0; b < ifc.boxes.length; b++) if (boxOnLine(ifc, b, line.start, line.end)) on.push(b);
     // CSS2 §10.8.1 with baseline alignment: the strut and every inline box on the line add their ascent and descent with their
@@ -1987,11 +2023,14 @@ export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max
   const adv = ifc.atomics.map((a) => atomicContribution(ctx, a, kind));
   let widest = ZERO;
   let start = 0;
+  let afterForced = false;
   for (const b of endsOf(ifc)) {
     if (kind === 'max' && !b.forced) continue;
     const visible = intrinsicEndOf(ctx, ifc, start, b.at, kind);
-    widest = max(widest, kind === 'max' ? width(ctx, ifc, adv, start, visible) : cachedWidth(ctx, ifc, adv, start, visible));
+    const w = kind === 'max' ? width(ctx, ifc, adv, start, visible) : cachedWidth(ctx, ifc, adv, start, visible);
+    widest = max(widest, intrinsicIndented(ctx, box, start === 0, afterForced, w));
     start = b.at;
+    afterForced = b.forced;
   }
   return widest;
 }
@@ -2000,6 +2039,12 @@ export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max
  * The end of what an intrinsic size measures of items [start, end): without the spaces that hang. At max-content a line ends only at
  * a forced break or the end, where pre-wrap spaces hang only if they do not fit, which they always do at an unlimited width.
  */
+/** A line or segment's intrinsic width with the indent it takes (LineBreaker's position starts at it on the indented line). */
+function intrinsicIndented(ctx: Ctx, box: LayoutBox, first: boolean, afterForced: boolean, w: LU): LU {
+  const on = first || ctx.faults.indentEveryLine || (ctx.faults.indentAfterBr && afterForced);
+  return on ? add(w, intrinsicIndentOf(ctx, box, w)) : w;
+}
+
 function intrinsicEndOf(ctx: Ctx, ifc: Ifc, start: number, end: number, kind: 'min' | 'max'): number {
   if (ifc.mode === 'collapse' || ifc.mode === 'preserve-breaks') return visibleEndOf(ifc, start, end);
   if (kind === 'max') return contentEndOf(ifc, start, end);
@@ -2017,13 +2062,18 @@ const NEARLY_MAX_RAW = 2147483646;
 function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | 'max'): LU {
   let widest = ZERO;
   if (kind === 'max') {
-    const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW));
+    const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW), ZERO);
     // At max-content preserved spaces at the end of a line count, as on the Ahem path (intrinsicEndOf): LineBreaker at an unlimited
     // width keeps pre and break-spaces spaces, and pre-wrap's trailing spaces fit there, so none hangs.
-    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, [], line, line.start, intrinsicEndOf(ctx, ifc, line.start, line.end, 'max')));
+    for (let n = 0; n < lines.length; n++) {
+      const line = lines[n] as Line;
+      const w = spanWidth(ctx, ifc, [], line, line.start, intrinsicEndOf(ctx, ifc, line.start, line.end, 'max'));
+      widest = max(widest, intrinsicIndented(ctx, box, n === 0, n > 0 && (lines[n - 1] as Line).forced, w));
+    }
     return widest;
   }
   let start = 0;
+  let afterForced = false;
   for (const b of endsOf(ifc)) {
     const visible = intrinsicEndOf(ctx, ifc, start, b.at, 'min');
     let w = cachedWidth(ctx, ifc, [], start, visible);
@@ -2035,8 +2085,9 @@ function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | '
       if (!hyphen.ok) unsupported('text-glyph', t.id, 'css-text-3 §6.1', hyphen.reason);
       w = add(w, hyphen.measure.width);
     }
-    widest = max(widest, w);
+    widest = max(widest, intrinsicIndented(ctx, box, start === 0, afterForced, w));
     start = b.at;
+    afterForced = b.forced;
   }
   return widest;
 }

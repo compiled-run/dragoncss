@@ -32,6 +32,7 @@ import type {
   Position,
   SizeValue,
   TextAlign,
+  TextIndentValue,
   TextOverflow,
   TextLeaf,
   TextWrapMode,
@@ -190,6 +191,12 @@ function gap(id: string, get: Get, p: Longhand, l: Lowering): GapValue {
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | normal') : lp;
 }
 
+// css-text-3 §8.1: text-indent is a length, a percentage of the line's available width or a calculation, negative allowed.
+function textIndent(id: string, get: Get, l: Lowering): TextIndentValue {
+  const lp = lengthPercentage(id, get, 'text-indent', 'all', l);
+  return lp === null ? fail(id, 'text-indent', get('text-indent'), 'px | % | a viewport length | a calculation') : lp;
+}
+
 // css-sizing-4 §5.1: the engine takes Blink's layout ratio as raw LayoutUnits (analysis/computed-checks.ts refuses the rest).
 function aspectRatio(id: string, get: Get): AspectRatioValue {
   const v = get('aspect-ratio');
@@ -335,6 +342,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     aspectRatio: aspectRatio(id, get),
     verticalAlign: verticalAlign(id, get, l),
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
+    textIndent: textIndent(id, get, l),
     grid: null,
     gridItem: null,
   };

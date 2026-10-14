@@ -12,7 +12,7 @@ import type { BreakItem, GlyphShaper, HanKerningFontData, ShapedFace, ShapedText
 import { FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS, segmentText, shapedMeasurer, shapedText, breakItemLines } from '../src/shaping.ts';
 import type { FontData } from '../src/text.ts';
 import { AHEM_FONT_DATA, ahemMeasurer } from '../src/text.ts';
-import { fromRaw } from '../src/units.ts';
+import { fromRaw, ZERO } from '../src/units.ts';
 import { isLatinText } from '../src/script-data.ts';
 
 // packages/text-shaper is loaded by relative path at run time (no package.json change); these are the parts the test uses.
@@ -347,7 +347,7 @@ function decideLines(st: ShapedText, text: string, font: string, size: number, w
   const shaped = st.item(text, font, size, 0);
   if (!shaped.ok) return shaped.reason;
   const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
-  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false);
+  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false, ZERO, false, false);
   if (!r.ok) return r.reason;
   let start = 0;
   return r.lines.map((l) => {

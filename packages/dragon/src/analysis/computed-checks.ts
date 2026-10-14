@@ -365,6 +365,36 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
   }
 }
 
+// TXT2-h (css-text-3 §8.1): a nonzero text-indent indents the first formatted line of each block container, which the engine
+// does in the container's own inline formatting context. Refused for every target where no Chrome case proves it yet: text in
+// anonymous boxes (beside a block child, or directly in a flex or grid container), preserved white space, text-align: justify,
+// text-overflow: ellipsis, and atomic inlines.
+function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const value = el.props.get('text-indent') as ResolvedValue;
+  if (isInlineBox(el) || isZeroLength(value.value)) return;
+  const runs = inlineContexts(el, () => {});
+  if (runs.length === 0) return;
+  const at = `text-indent: ${valueToString(value.value)} on ${el.element.address}`;
+  const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c) && !isAtomic(c));
+  const display = displayKeyword(el);
+  const texts = runs.flat().filter((it): it is { readonly kind: 'text'; readonly text: ResolvedText } => it.kind === 'text');
+  let beside = '';
+  if (['flex', 'grid', 'inline-flex', 'inline-grid'].includes(display)) beside = `with text directly in the ${display} container, which Chrome wraps in an anonymous item`;
+  else if (blockChild !== undefined) beside = `with text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, which Chrome wraps in anonymous blocks`;
+  else if (texts.some((it) => keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse')) beside = 'with preserved white space';
+  else if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') beside = 'with text-align: justify';
+  else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) beside = 'with text-overflow: ellipsis';
+  else if (runs.some((r) => r.some((it) => it.kind === 'atomic'))) beside = 'beside an atomic inline';
+  if (beside === '') return;
+  const id = `text-indent|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${at} ${beside} is not proven against Chrome yet`, manual: `Remove the text-indent from ${el.element.address}, or put its text in a block of its own with text-indent.`, basis: 'computed-value' }));
+  }
+}
+
 // TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
 // (LayoutBlockFlow::ShouldTruncateOverflowingText), which the engine does left to right in the block's own inline formatting
 // context. Refused for every target: rtl, and inline content beside block children (Chrome truncates the anonymous blocks'
@@ -774,6 +804,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInlineLevel(el, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
+      checkTextIndent(el, targets, diagnostics, reported);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);

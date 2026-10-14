@@ -202,12 +202,12 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
     s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind,
     s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind,
     s.paddingBottom.kind, s.paddingLeft.kind, s.borderTopWidth.kind, s.borderRightWidth.kind, s.borderBottomWidth.kind,
-    s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind,
+    s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind, s.textIndent.kind,
   ];
   for (const k of kinds) if (k === 'calc') return true;
   const lengths = [
     s.top, s.right, s.bottom, s.left, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight,
-    s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap,
+    s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap, s.textIndent,
   ];
   for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
   return gridNeedsEnvironment(s.grid);
@@ -309,6 +309,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     rowGap: resolveGap(s.rowGap, env),
     columnGap: resolveGap(s.columnGap, env),
     verticalAlign: resolveVerticalAlign(s.verticalAlign, env),
+    textIndent: envPadding(s.textIndent, env),
     grid: s.grid === null ? null : zoomGrid(s.grid, env.zoom),
   };
 }
@@ -1019,6 +1020,7 @@ function styleDependencies(s: LayoutStyle, out: DependencyFlags): void {
   if (s.rowGap.kind === 'calc') calcDependencies(s.rowGap.expr, out);
   if (s.columnGap.kind === 'calc') calcDependencies(s.columnGap.expr, out);
   if (s.verticalAlign.kind === 'calc') calcDependencies(s.verticalAlign.expr, out);
+  if (s.textIndent.kind === 'calc') calcDependencies(s.textIndent.expr, out);
 }
 
 /** The environment inputs the input's tree reads (translated, so the native hosts ask the engine rather than re-walk the tree). */
