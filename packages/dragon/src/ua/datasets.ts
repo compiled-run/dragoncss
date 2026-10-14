@@ -1,5 +1,6 @@
 // Chrome UA and root defaults keyed by capture platform (docs/api.md §10.1). A reference environment on a platform with no
 // captured dataset is refused; it never borrows another platform's values.
+import { REFERENCE_PLATFORM } from './reference-platform.ts';
 import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
 import type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
@@ -72,8 +73,8 @@ export function uaRows(ua: UaDataset, key: UaKey): UaRows {
   return { computed: ua.computed[key], longhands: ua.userAgentLonghands[key], declared: ua.userAgentDeclared[key], contexts: ua.userAgentContexts[key], textFonts: ua.userAgentTextFonts[key], forced: NO_FORCED };
 }
 
-/** The platform the committed Chrome references and the UA dataset were captured on. */
-export const REFERENCE_PLATFORM = 'darwin-arm64';
+// In its own module so the capture scripts' platform check does not import the compiler and re-key on every profile change.
+export { REFERENCE_PLATFORM } from './reference-platform.ts';
 
 /**
  * Chromium 145 html.css: h1 to h6 { font-weight: bold }, b and strong { font-weight: bolder }, address, em and i { font-style: italic }.
