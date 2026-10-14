@@ -61,20 +61,20 @@ public final class Fit {
 
 // ts: packages/layout/src/truncate.ts:34
 public func truncate_ellipsisOf(_ ctx: Ctx, _ nodeId: JsString, _ font: TextFont) throws -> EllipsisRun {
-  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s951, font)
+  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s961, font)
   // ts: packages/layout/src/truncate.ts:36
   if one.ok {
-    return EllipsisRun(S.s951, (one as! MeasureResult_okTrue).measure.width)
+    return EllipsisRun(S.s961, (one as! MeasureResult_okTrue).measure.width)
   }
   // ts: packages/layout/src/truncate.ts:37
   if ((one as! MeasureResult_okFalse).code != S.s_text_glyph) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (one as! MeasureResult_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s543, (one as! MeasureResult_okFalse).reason)
   }
-  let dots: JsString = (ctx.faults.noDotsFallback ? S.s149 : S.s150)
+  let dots: JsString = (ctx.faults.noDotsFallback ? S.s151 : S.s152)
   let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(dots, font)
   // ts: packages/layout/src/truncate.ts:41
   if (!m.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (m as! MeasureResult_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s543, (m as! MeasureResult_okFalse).reason)
   }
   return EllipsisRun(dots, (m as! MeasureResult_okTrue).measure.width)
 }
@@ -117,7 +117,7 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
         let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(truncate_codePoints(s.text, s.start, (s.start + k)), s.font)
         // ts: packages/layout/src/truncate.ts:70
         if (!m.ok) {
-          try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (m as! MeasureResult_okFalse).reason)
+          try unsupported_unsupported(S.s_text_glyph, nodeId, S.s543, (m as! MeasureResult_okFalse).reason)
         }
         // ts: packages/layout/src/truncate.ts:71
         if ((m as! MeasureResult_okTrue).measure.width > target) {
@@ -132,7 +132,7 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
   let item: any U_ShapedItem_okFalse_ShapedItem_okTrue = try ctx.measurer.shaped(s.text, s.font)
   // ts: packages/layout/src/truncate.ts:77
   if (!item.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (item as! ShapedItem_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s543, (item as! ShapedItem_okFalse).reason)
   }
   let result: ShapeResult = (item as! ShapedItem_okTrue).result
   let limit: Double = try units_toFloat(target)
@@ -204,14 +204,14 @@ public func truncate_truncatedWidth(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSo
     let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(truncate_codePoints(s.text, s.start, (s.start + count)), s.font)
     // ts: packages/layout/src/truncate.ts:115
     if (!m.ok) {
-      try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (m as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_glyph, nodeId, S.s543, (m as! MeasureResult_okFalse).reason)
     }
     return (m as! MeasureResult_okTrue).measure.width
   }
   let item: any U_ShapedItem_okFalse_ShapedItem_okTrue = try ctx.measurer.shaped(s.text, s.font)
   // ts: packages/layout/src/truncate.ts:119
   if (!item.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (item as! ShapedItem_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s543, (item as! ShapedItem_okFalse).reason)
   }
   return try shaping_viewSnappedWidth((item as! ShapedItem_okTrue).item, shaping_subView(shaping_wholeView((item as! ShapedItem_okTrue).result), s.start, (s.start + count)))
 }
@@ -228,25 +228,25 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
   // ts: packages/layout/src/truncate.ts:139
   do {
     var i: Double = (jsLength(children) - 1.0)
-    loop33: while (i >= 0.0) {
-      loop33_body: do {
+    loop32: while (i >= 0.0) {
+      loop32_body: do {
         let c: TruncSource = try jsUnwrap(jsAt(children, i))
         let first: Bool = (i == 0.0)
         var space: Double = try units_sub(available, c.x)
         // ts: packages/layout/src/truncate.ts:143
         if (space <= 0.0) {
-          break loop33_body
+          break loop32_body
         }
         try space = units_sub(space, e.width)
         // ts: packages/layout/src/truncate.ts:145
         if (space >= c.width) {
           ellipsized = i
           try x = units_add(c.x, c.width)
-          break loop33
+          break loop32
         }
         // ts: packages/layout/src/truncate.ts:151
         if ((space <= 0.0) && (!first)) {
-          break loop33_body
+          break loop32_body
         }
         let length: Double = (c.end - c.start)
         let fit: Fit = try truncate_offsetToFit(ctx, nodeId, c, shaped, space)
@@ -255,7 +255,7 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
         if ((n == 0.0) || (n == length)) {
           // ts: packages/layout/src/truncate.ts:156
           if (!first) {
-            break loop33_body
+            break loop32_body
           }
           n = ((n == 0.0) ? 1.0 : (length - 1.0))
         }
@@ -263,7 +263,7 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
         count = n
         try cutWidth = ((n == fit.count) ? fit.width : truncate_truncatedWidth(ctx, nodeId, c, shaped, n))
         try x = units_add(c.x, cutWidth)
-        break loop33
+        break loop32
       }
       i -= 1.0
     }
