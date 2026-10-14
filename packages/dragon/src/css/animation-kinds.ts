@@ -21,6 +21,7 @@ import { OVERFLOW_ANIMATION } from './animation-kinds/overflow.ts';
 import { POINTER_ANIMATION } from './animation-kinds/pointer.ts';
 import { POSITION_ANIMATION } from './animation-kinds/position.ts';
 import { RADIUS_ANIMATION } from './animation-kinds/radius.ts';
+import { RESIZE_ANIMATION } from './animation-kinds/resize.ts';
 import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
@@ -53,6 +54,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...POINTER_ANIMATION,
   ...POSITION_ANIMATION,
   ...RADIUS_ANIMATION,
+  ...RESIZE_ANIMATION,
   ...SCROLLBAR_ANIMATION,
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
