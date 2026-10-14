@@ -140,7 +140,8 @@
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -273,7 +274,8 @@
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -406,7 +408,8 @@
         "letter-spacing": "normal",
         "word-spacing": "4px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -559,7 +562,8 @@
         "letter-spacing": "normal",
         "word-spacing": "4px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -712,7 +716,8 @@
         "letter-spacing": "normal",
         "word-spacing": "-2px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -875,7 +880,8 @@
         "letter-spacing": "normal",
         "word-spacing": "4px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -1048,7 +1054,8 @@
         "letter-spacing": "normal",
         "word-spacing": "4px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -1221,7 +1228,8 @@
         "letter-spacing": "1px",
         "word-spacing": "3px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -1394,7 +1402,8 @@
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {
@@ -1567,7 +1576,8 @@
         "letter-spacing": "normal",
         "word-spacing": "4px",
         "text-overflow": "clip",
-        "text-transform": "none"
+        "text-transform": "none",
+        "text-indent": "0px"
       }
     },
     {

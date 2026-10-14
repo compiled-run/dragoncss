@@ -138,6 +138,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "0px"
@@ -271,6 +272,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "0px"
@@ -404,6 +406,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -567,6 +570,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "-15px"
@@ -730,6 +734,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "10%"
@@ -893,6 +898,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "15px"
@@ -1056,6 +1062,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "calc(10% + 5px)"
@@ -1219,6 +1226,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -1402,6 +1410,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -1535,6 +1544,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -1698,6 +1708,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -1861,6 +1872,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -2034,6 +2046,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -2217,6 +2230,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "-9999px"
@@ -2370,6 +2384,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -2503,6 +2518,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"
@@ -2666,6 +2682,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "0px"
@@ -2799,6 +2816,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "20px"
@@ -2952,6 +2970,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "0px"
@@ -3085,6 +3104,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "10%"
@@ -3238,6 +3258,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "20px"
@@ -3401,6 +3422,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "0px"
@@ -3534,6 +3556,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "25px"

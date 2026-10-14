@@ -138,6 +138,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "0px"
@@ -271,6 +272,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "0px"
@@ -404,6 +406,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "28px"
@@ -587,6 +590,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "12%"
@@ -770,6 +774,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "-11px"
@@ -953,6 +958,7 @@
         "stroke": "none",
         "stroke-width": "1px",
         "letter-spacing": "normal",
+        "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
         "text-indent": "-11px"
