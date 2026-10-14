@@ -61,10 +61,10 @@ public final class Fit {
 
 // ts: packages/layout/src/truncate.ts:34
 public func truncate_ellipsisOf(_ ctx: Ctx, _ nodeId: JsString, _ font: TextFont) throws -> EllipsisRun {
-  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s932, font)
+  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s933, font)
   // ts: packages/layout/src/truncate.ts:36
   if one.ok {
-    return EllipsisRun(S.s932, (one as! MeasureResult_okTrue).measure.width)
+    return EllipsisRun(S.s933, (one as! MeasureResult_okTrue).measure.width)
   }
   // ts: packages/layout/src/truncate.ts:37
   if ((one as! MeasureResult_okFalse).code != S.s_text_glyph) {

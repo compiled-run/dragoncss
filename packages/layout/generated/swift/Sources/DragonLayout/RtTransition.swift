@@ -254,7 +254,7 @@ public func rtTransition_stateAt(_ states: JsArray<TransitionState>, _ i: Double
   let s: TransitionState? = (jsIsInteger(i) ? (jsAt(states, i) as TransitionState?) : (nil as TransitionState?))
   // ts: packages/layout/src/rt-transition.ts:175
   if (s == nil) {
-    throw JsError(message: jsConcat(S.s907, jsNumberToString(i), S.s77, jsNumberToString(jsLength(states)), S.s105))
+    throw JsError(message: jsConcat(S.s908, jsNumberToString(i), S.s77, jsNumberToString(jsLength(states)), S.s105))
   }
   return try jsUnwrap(s)
 }

@@ -1155,7 +1155,7 @@ public func grid_resolveAgainstOpposite(_ a: GridAxisTracks, _ opposite: Double,
   if ((pos as! any U_GridLine_area_GridLine_line_GridLine_namedLine_GridLine_span).kind == S.s_span) {
     return (start ? (GridSpan_definite(S.s_definite, (opposite - (pos as! GridLine_span).n), opposite) as any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine) : (GridSpan_definite(S.s_definite, opposite, (opposite + (pos as! GridLine_span).n)) as any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine))
   }
-  throw JsError(message: S.s745)
+  throw JsError(message: S.s746)
 }
 
 // ts: packages/layout/src/grid.ts:664
@@ -3469,7 +3469,7 @@ public func grid_checkInsetAlignment(_ box: LayoutBox) throws -> Void {
   let inline: JsString = try ((gi == nil) ? S.s_auto : jsUnwrap(gi).justifySelf)
   // ts: packages/layout/src/grid.ts:2163
   if ((((s.left.kind != S.s_auto) && (s.right.kind != S.s_auto)) && (inline != S.s_auto)) && (inline != S.s_normal)) {
-    try unsupported_unsupported(S.s_abspos_self_alignment, box.id, S.s532, jsConcat(S.s657, inline, S.s20))
+    try unsupported_unsupported(S.s_abspos_self_alignment, box.id, S.s532, jsConcat(S.s658, inline, S.s20))
   }
   // ts: packages/layout/src/grid.ts:2164
   if ((((s.top.kind != S.s_auto) && (s.bottom.kind != S.s_auto)) && (s.alignSelf != S.s_auto)) && (s.alignSelf != S.s_normal)) {
@@ -3551,7 +3551,7 @@ public func grid_outOfFlowLines(_ ctx: Ctx, _ span: any U_GridSpan_auto_GridSpan
   case S.s_end_line:
     return try GridLines(grid_NOT_FOUND, within(((span as! GridSpan_endLine).line + startOffset)))
   case S.s_lines:
-    throw JsError(message: S.s748)
+    throw JsError(message: S.s749)
   default:
     break
   }
