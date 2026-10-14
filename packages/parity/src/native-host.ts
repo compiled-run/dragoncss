@@ -32,7 +32,7 @@ import type { NativeTarget } from './targets.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import { deviceDprs, vectorCaseIds } from './targets.ts';
 import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
-import { ahemFaceId, fontDataOf, hostShaper } from './text-shaper-host.ts';
+import { ahemFaceId, fontDataOf, hostShaper, vendoredFaceIds } from './text-shaper-host.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
 export const ANDROID_TARGET_SDK = 36;
@@ -115,6 +115,15 @@ export function engineCases(): readonly EngineCase[] {
 export function referenceMeasurer(): TextMeasurer {
   const ahem = ahemFaceId();
   return deviceShapedMeasurer(new Map([[ahem, fontDataOf(ahem)]]), hostShaper);
+}
+
+/**
+ * referenceMeasurer with every vendored face bundled beside Ahem, as a phase R app bundles the faces its case names: the glyph rule's
+ * measurer, which lays out a real-face case's lines before reading their shaped ink (pixel-reference.ts glyphLines).
+ */
+export function glyphMeasurer(): TextMeasurer {
+  const ids = [ahemFaceId(), ...vendoredFaceIds()];
+  return deviceShapedMeasurer(new Map(ids.map((id) => [id, fontDataOf(id)] as const)), hostShaper);
 }
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
