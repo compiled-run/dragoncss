@@ -8,7 +8,8 @@ import type { DeviceEvidence } from '../src/device-evidence.ts';
 import type { DeviceOutcome, DevicePart, DeviceSet, LaneFailure } from '../src/device-lanes.ts';
 import { deviceFailuresText, DEVICE_PARTS, runOneDevice } from '../src/device-lanes.ts';
 import type { DeviceSpec } from '../src/device-run.ts';
-import { DEVICE_MATRIX, VECTOR_DEVICES } from '../src/device-run.ts';
+import { DEVICE_MATRIX, launchLimitMs, VECTOR_DEVICES } from '../src/device-run.ts';
+import { animSamples } from '../src/anim-samples.ts';
 import { repoPath } from '../src/paths.ts';
 import { nativeTargets } from '../src/targets.ts';
 
@@ -165,6 +166,14 @@ describe('device-lanes.yml runs every part of every device exactly once', () => 
       expect(job, target).toContain(`name: outcome-${target}-\${{ strategy.job-index }}`);
     }
     expect([...seen].sort()).toEqual(DEVICE_MATRIX.flatMap((d) => partsOf(d).map((p) => `${d.target}/${d.name} ${p}`)).sort());
+  });
+  it('with a job limit above setup, build and boot plus the longest launch of any part, so a hung case is a launch verdict', () => {
+    // The frame samples are the longest launch (the batch launch holds fewer cases); 20 minutes covers setup, build and boot.
+    const longest = Math.max(...(['ios', 'android'] as const).map((t) => launchLimitMs(animSamples(t).reduce((n, xs) => n + xs.length, 0))));
+    for (const [target, next] of [['ios', 'android'], ['android', 'merge']] as const) {
+      const minutes = Number(/\n {4}timeout-minutes: (\d+)\n/.exec(jobOf(target, next))?.[1]);
+      expect(minutes * 60_000, target).toBeGreaterThanOrEqual(20 * 60_000 + longest);
+    }
   });
   it('and the merge job combines them before it uploads device-outcomes and merges', () => {
     const merge = yml.slice(yml.indexOf('\n  merge:\n'));
