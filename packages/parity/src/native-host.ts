@@ -10,27 +10,24 @@ import { availableParallelism } from 'node:os';
 import type { LayoutBox, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import type { LU } from '@dragon/layout';
 import { deviceShapedMeasurer, layout, LU_PER_PX, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
-import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
-import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, engineLayoutProjection, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
+import type { Compiled, EmitCase, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
+import { emitAndroidViewsCases, emitNativeSupport, emitUikitCases, engineLayoutProjection, expectedDigest, expectedDump, nativePrograms, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
 import { animEmits } from './anim-samples.ts';
 import { deviceHitSource } from './hit-capture.ts';
 import { deviceTraceSources } from './trace-lane.ts';
 import type { ParityCase } from './cases.ts';
-import { fixtureInput } from './cases.ts';
 import { atDpr, layoutCases } from './dpr.ts';
-import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
-import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
-import { ENVIRONMENT } from './fixtures.ts';
 import type { EncoderLanguage } from './native-encoders.ts';
 import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
 import { referenceDump } from './native-compare.ts';
 import type { NativeDump } from './native-dump.ts';
+import { NATIVE_CONFIG, nativeCompileOnce } from './native-compile.ts';
+export { NATIVE_CONFIG, nativeCompile, nativeCompileOnce } from './native-compile.ts';
 import { BUILD_CACHE, hit, publish, pruneCache, replace } from '../../translate/src/build-cache.ts';
 import { repoPath } from './paths.ts';
-import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import { deviceDprs, vectorCaseIds } from './targets.ts';
@@ -38,7 +35,6 @@ import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimModuleMapSha256, 
 import { ahemFaceId, fontDataOf, hostShaper } from './text-shaper-host.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
-export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 export const ANDROID_TARGET_SDK = 36;
 export const ANDROID_BUILD_TOOLS = '36.0.0';
 export const IOS_TARGET = 'arm64-apple-ios15.0-simulator';
@@ -46,31 +42,7 @@ export const HOST_BUNDLE = 'dev.dragon.host';
 
 export const nativeOut = (target: NativeTarget): string => repoPath(`packages/parity/out/native/${target}`);
 
-// ---------------------------------------------------------------- the native generation compile
-
-/** The lane compile (item 9): ios and android together, derive mode, one per fixture and direction. */
-/** nativeRealFaces: lower real bundled faces natively (TXT1a-2 phase C), off by default until phase R; tests of that lowering turn it on. */
-export function nativeCompile(spec: FixtureSpec, direction: Environment['direction'], nativeRealFaces = false): Compiled<'ios' | 'android'> {
-  if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
-  // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
-  // TXT1a-2: a real-font fixture compiles with its font map and the map's vendored faces as assets, as pipeline.ts compileFixture does.
-  const fonts = fontMapOf(spec.id);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG }, ...(fonts === undefined ? {} : { fonts }) }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, nativeRealFaces, interactionLanes: true });
-  return project.compile(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
-}
-
-const compiles = new Map<string, Compiled<'ios' | 'android'>>();
-
-/** nativeCompile without real faces, once per fixture and direction in a process: nativeCases, engineCases and shapedCaseIds share it. */
-export function nativeCompileOnce(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
-  const key = `${spec.id}\0${direction}`;
-  let c = compiles.get(key);
-  if (c === undefined) {
-    c = nativeCompile(spec, direction);
-    compiles.set(key, c);
-  }
-  return c;
-}
+// ---------------------------------------------------------------- the native cases (the compile is native-compile.ts)
 
 export type NativeCase = {
   readonly spec: FixtureSpec;

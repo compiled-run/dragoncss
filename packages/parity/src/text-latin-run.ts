@@ -24,7 +24,7 @@ import { platformFonts } from './font-reference.ts';
 import type { BreakVector, ChromeBreaks } from './line-breaks.ts';
 import { breakVector, captureBreakTexts, compareVectorWithChrome, engineTextLines, leafTexts } from './line-breaks.ts';
 import { repoPath } from './paths.ts';
-import { nativeCompileOnce } from './native-host.ts';
+import { nativeCompileOnce } from './native-compile.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { hostShaper, REFERENCE_LANGUAGE, referenceShapedMeasurer, shapedFaceOf } from './text-shaper-host.ts';
 
