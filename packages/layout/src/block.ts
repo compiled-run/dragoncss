@@ -29,6 +29,7 @@ import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
+import type { ClampedChild } from './line-clamp.ts';
 import { clampChild } from './line-clamp.ts';
 import type { TextMeasurer } from './text.ts';
 import { unsupported } from './unsupported.ts';
@@ -622,7 +623,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       c = { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: '' };
     } else {
       inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction, container);
-      const clamp = clampLeft > 0 ? clampChild(ctx, box, kid, inline.borderBoxWidth, a.contentWidth, clampLeft, kids.slice(k + 1)) : null;
+      const clamp: ClampedChild | null = clampLeft > 0 ? clampChild(ctx, box, kid, inline.borderBoxWidth, a.contentWidth, clampLeft, kids.slice(k + 1)) : null;
       if (clamp !== null) {
         clampLeft = clamp.left;
         kid = clamp.kid;

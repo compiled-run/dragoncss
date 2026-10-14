@@ -18,12 +18,15 @@ import type { LU } from './units.ts';
 import { fromCssPx } from './units.ts';
 import { unsupported } from './unsupported.ts';
 
+/** clampChild's result: the lines left after the child, and the child as it is laid out. */
+export type ClampedChild = { readonly left: number; readonly kid: LayoutBox };
+
 /**
  * One child of the line-clamp container box, with left lines until the clamp point and the children after it: the lines left
  * after it, and the child as it is laid out (lineClamp -left when the clamp point is its line `left` and content follows).
  * contentWidth is the child's content-box inline size and cbInline the container's, which the child's padding resolves against.
  */
-export function clampChild(ctx: Ctx, box: LayoutBox, kid: LayoutBox, borderBoxWidth: LU, cbInline: LU, left: number, after: LayoutBox['children']): { readonly left: number; readonly kid: LayoutBox } {
+export function clampChild(ctx: Ctx, box: LayoutBox, kid: LayoutBox, borderBoxWidth: LU, cbInline: LU, left: number, after: LayoutBox['children']): ClampedChild {
   if (kid.strut === null || kid.style.display !== 'block' || isScrollContainer(kid.style)) {
     unsupported('line-clamp', kid.id, 'css-overflow-4 §4.2', `${kid.id} in the line-clamp container ${box.id} is not a block container of inline content in its formatting context`);
   }
@@ -64,7 +67,7 @@ export function clampedInput(input: LayoutInput, boxes: readonly LayoutRect[], m
       }
       let kid = c;
       if (left > 0 && !isOutOfFlow(ctx, c)) {
-        const r = clampChild(ctx, b, c, widthOf(c.id), content, left, b.children.slice(k + 1));
+        const r: ClampedChild = clampChild(ctx, b, c, widthOf(c.id), content, left, b.children.slice(k + 1));
         left = r.left;
         kid = r.kid;
       }
