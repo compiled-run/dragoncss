@@ -67,6 +67,8 @@ const isTouch = (k: InteractionStep['kind']): boolean => TOUCH_KINDS.has(k);
 
 /** Holds the page after a tap long enough for the gesture Chrome derives from the touch sequence to be dispatched. */
 const TAP_SETTLE_MS = 100;
+/** The longest wait for (hover: hover) to follow a touch emulation change before the step's check fails it. */
+const HOVER_SETTLE_MS = 5_000;
 
 type Matches = { readonly hoverMedia: boolean; readonly hover: string[]; readonly active: string[]; readonly focus: string[]; readonly focusVisible: string[] };
 
@@ -133,6 +135,15 @@ class TraceDriver {
     await this.cdp.send('Emulation.setTouchEmulationEnabled', c === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
     this.context = c;
     await frames(this.page);
+    await this.hoverMediaSettled();
+  }
+
+  /**
+   * Waits until (hover: hover) agrees with the context. Chrome re-evaluates media queries after touch emulation changes on its own
+   * schedule, and two frames are not always enough on a loaded runner; a page that never agrees still fails the step's check.
+   */
+  private async hoverMediaSettled(): Promise<void> {
+    await this.page.waitForFunction((want) => matchMedia('(hover: hover)').matches === want, this.context === 'mouse', { timeout: HOVER_SETTLE_MS }).catch(() => undefined);
   }
 
   private async mouseEvent(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased', p: { x: number; y: number }): Promise<void> {
@@ -223,6 +234,7 @@ class TraceDriver {
     }
     if (isTouch(s.kind)) await this.page.waitForTimeout(TAP_SETTLE_MS);
     await frames(this.page);
+    await this.hoverMediaSettled();
     const m = await this.matches();
     if (this.context === 'touch' && m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) matches under touch emulation`);
     if (this.context === 'mouse' && !m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) does not match without touch emulation`);
