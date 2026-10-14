@@ -327,7 +327,7 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     return { w, origin, base, head, later, patch, at: (sha: string) => git(w, 'push', '-q', '-f', 'origin', `${sha}:refs/heads/${BR}`), remote: () => git(w, 'ls-remote', 'origin', `refs/heads/${BR}`).split('\t')[0] ?? '' };
   }
   const runPush = (r: ReturnType<typeof repo>, patch: string) => {
-    const env = { BRANCH: BR, SHA: r.head, RUN_URL: URL };
+    const env = { BRANCH: BR, SHA: r.head, NOW: '', RUN_URL: URL };
     const d = tmpDir();
     mkdirSync(join(d, 'last'));
     writeFileSync(join(d, 'last', 'outputs.patch'), patch);
@@ -349,18 +349,66 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(fixed.out).toEqual({ pushed: 'none' });
     expect(f.remote()).toBe(f.head);
   });
-  it('refuses to push when the branch moved during the run: forward, back to an ancestor, or deleted', () => {
-    for (const where of ['later', 'base', 'gone'] as const) {
+  const where = stepScript('Where the branch is now');
+  /** The step's gh stub answers the compare query with the given status. */
+  const runWhere = (r: ReturnType<typeof repo>, patch: string, status: string) => {
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), patch);
+    return runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo '${status}'`, r.w);
+  };
+  it('judges a branch still at the head as not moved', () => {
+    const r = repo();
+    r.at(r.head);
+    const res = runWhere(r, r.patch, 'identical');
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.out).toEqual({ moved: 'false' });
+  });
+  it('refuses a branch moved back, sideways or deleted during the run, and one whose new head the outputs do not apply to', () => {
+    for (const [at, status, msg] of [
+      ['base', 'behind', `moved from HEAD to BASE (behind, not ahead) during the run; nothing pushed, regen again`],
+      ['later', 'diverged', `moved from HEAD to LATER (diverged, not ahead) during the run; nothing pushed, regen again`],
+      ['gone', 'ahead', 'no longer exists; nothing pushed'],
+      ['clash', 'ahead', `moved from HEAD to CLASH during the run and the outputs do not apply there; nothing pushed, regen again`],
+    ] as const) {
       const r = repo();
-      if (where === 'gone') r.at(r.base);
-      else r.at(r[where]);
-      if (where === 'gone') git(r.w, 'push', '-q', 'origin', `:refs/heads/${BR}`);
-      const before = where === 'gone' ? '' : r.remote();
-      const res = runPush(r, r.patch);
-      expect(res.status, where).not.toBe(0);
-      expect(res.stdout, where).toContain(`::error::${BR} moved from ${r.head} to ${where === 'gone' ? 'nothing' : r[where]} during the run; nothing pushed, regen again`);
-      expect(where === 'gone' ? git(r.w, 'ls-remote', 'origin', `refs/heads/${BR}`) : r.remote(), where).toBe(before);
-      expect(res.out, where).toEqual({});
+      let target = r.later;
+      if (at === 'clash') {
+        git(r.w, 'checkout', '-q', '--detach', r.head);
+        writeFileSync(join(r.w, 'out.json'), '3\n');
+        git(r.w, 'commit', '-q', '-am', 'clash');
+        target = git(r.w, 'rev-parse', 'HEAD');
+        git(r.w, 'checkout', '-q', '--detach', r.head);
+      }
+      if (at === 'base') target = r.base;
+      r.at(target);
+      if (at === 'gone') git(r.w, 'push', '-q', 'origin', `:refs/heads/${BR}`);
+      const res = runWhere(r, r.patch, status);
+      expect(res.status, at).not.toBe(0);
+      expect(res.stdout, at).toContain(`::error::${BR} ${msg.replace('HEAD', r.head).replace('BASE', r.base).replace('LATER', r.later).replace('CLASH', target)}`);
+      expect(res.out, at).toEqual({});
     }
+  });
+  it('carries the outputs onto a head that moved forward, and the push names it after Onto:', () => {
+    const r = repo();
+    r.at(r.later);
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), r.patch);
+    const moved = runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo ahead`, r.w);
+    expect(moved.status, moved.stderr).toBe(0);
+    expect(moved.out).toEqual({ moved: 'true', now: r.later });
+    expect(git(r.w, 'rev-parse', 'HEAD')).toBe(r.later);
+    const ok = runStep(push, { BRANCH: BR, SHA: r.head, NOW: r.later, RUN_URL: URL, RUNNER_TEMP: d }, 'echo "gh $*" >&2', r.w);
+    expect(ok.status, ok.stderr).toBe(0);
+    const pushed = r.remote();
+    expect(ok.out).toEqual({ pushed });
+    expect(git(r.w, 'show', `${pushed}:out.json`)).toBe('2');
+    expect(git(r.w, 'show', `${pushed}:later.ts`)).toBe('y');
+    const message = git(r.w, 'log', '-1', '--format=%B', pushed);
+    expect(message).toContain(`Base: ${r.head}\nOnto: ${r.later} (pushed during the run;`);
+    expect(pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.later }], commit: { message } }])), URL, r.head, BR)).toBe(pushed);
+    // The Onto: line must name the commit's own parent.
+    expect(() => pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.base }], commit: { message } }])), URL, r.head, BR)).toThrow('is not a regen commit on top of');
   });
 });
