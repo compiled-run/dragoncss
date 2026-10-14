@@ -188,11 +188,14 @@ export function shapedFaceOf(id: string, language: string): ShapedFace {
   return f;
 }
 
+let ahemId: string | null = null;
 /** The bundled Ahem, registered once; its bytes must be the ones whose sha256 the engine names. */
 export function ahemFaceId(): string {
+  if (ahemId !== null) return ahemId;
   const bytes = new Uint8Array(readFileSync(repoPath(AHEM_FILE)));
   if (sha256Of(bytes) !== AHEM_SHA256) throw new Error(`${AHEM_FILE} has sha256 ${sha256Of(bytes)}, but the engine's AHEM_SHA256 is ${AHEM_SHA256}`);
-  return registerFace(bytes);
+  ahemId = registerFace(bytes);
+  return ahemId;
 }
 
 /** Every vendored font file (vendor/fonts/<family>/<file>.ttf), the faces a fixture or the north star can bundle. */
