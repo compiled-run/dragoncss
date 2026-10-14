@@ -148,7 +148,7 @@ jobs:
       - name: Would the other side's round run anything
         id: next
         env:
-          OTHER: ${{ inputs.side == 'chrome' && '--only lanes-host' || '--skip lanes-host --skip tw-sweep' }}
+          OTHER: ${{ inputs.side == 'chrome' && '--only lanes-host' || '--skip lanes-host' }}
         run: |
           next=true
           # shellcheck disable=SC2086

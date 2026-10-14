@@ -535,7 +535,7 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     const minutes = [...round.matchAll(/timeout-minutes: (\d+)/g)].map((m) => Number(m[1]));
     expect(minutes.length).toBeGreaterThan(0);
     const rounds = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml/g)].length;
-    expect(rounds).toBe(6);
+    expect(rounds).toBe(5);
     expect(DEFAULT_REGEN_WAIT_S).toBeGreaterThanOrEqual(rounds * Math.max(...minutes) * 60);
   });
   it('master\'s warm cache run yields to branch regens but never to the driver\'s patch-mode runs (#220 review)', () => {
@@ -552,7 +552,7 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(yml).toContain('echo "mode=patch"');
     // Each round is told not to save in patch mode, and the round saves only when told to.
     const calls = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml\n {4}with: \{([^\n]*)\}/g)].map((m) => m[1]!);
-    expect(calls).toHaveLength(6);
+    expect(calls).toHaveLength(5);
     for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.mode != 'patch' }}"`);
     expect(round).toContain('save_cache: { type: boolean, required: false, default: true }');
     expect(round).toMatch(/- name: Save the regen cache\n {8}if: success\(\) && inputs\.save_cache\n {8}uses: actions\/cache\/save@v4/);
@@ -563,8 +563,8 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(steps.length).toBe(2);
     for (const st of steps) expect(st, st.split('\n')[0]).toMatch(/if: [^\n]*inputs\.save_cache/);
     // The push job runs only in branch mode; the patch job only in patch mode, and uploads the combined patch.
-    expect(yml).toContain("if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'push'");
-    expect(yml).toContain("if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'patch'");
+    expect(yml).toContain("if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'push'");
+    expect(yml).toContain("if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'patch'");
     const from = yml.indexOf('\n  patch:\n');
     const patch = yml.slice(from, yml.indexOf('\n  push:\n', from));
     expect(from).toBeGreaterThan(yml.indexOf('\njobs:\n'));

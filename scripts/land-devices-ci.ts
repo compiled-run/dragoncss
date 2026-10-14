@@ -407,7 +407,7 @@ export const fullTestWorkflow = (explain: (runId: number) => string | null): CiW
 
 // ---- LAND_REGEN=ci ----------------------------------------------------------------------------------------------------
 // The landing tree's `pnpm regen` on GitHub runners: regen-on-ci.yml in patch mode (the Chrome steps on macos-26, lanes-host on
-// xcode-27, to their fixed point, then tw-sweep) for the tree's commit, pushed apart to land-regen/c-<sha>; its combined
+// xcode-27, to their fixed point) for the tree's commit, pushed apart to land-regen/c-<sha>; its combined
 // outputs.patch is applied to the tree with git apply --binary --index.
 export const REGEN_WORKFLOW_FILE = 'regen-on-ci.yml';
 export const PATCH_ARTIFACT = 'regen-patch';
