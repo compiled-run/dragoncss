@@ -144,6 +144,10 @@
      "value": "baseline"
     },
     "textOverflow": "clip",
+    "textIndent": {
+     "kind": "px",
+     "value": 0
+    },
     "lineClamp": 0,
     "grid": null,
     "gridItem": null
@@ -266,6 +270,10 @@
        "value": "baseline"
       },
       "textOverflow": "clip",
+      "textIndent": {
+       "kind": "px",
+       "value": 0
+      },
       "lineClamp": 0,
       "grid": null,
       "gridItem": null
@@ -389,6 +397,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "lineClamp": 0,
         "grid": null,
         "gridItem": null
@@ -512,6 +524,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "lineClamp": 0,
           "grid": null,
           "gridItem": null
@@ -552,7 +568,13 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -672,6 +694,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "lineClamp": 0,
           "grid": null,
           "gridItem": null
@@ -796,6 +822,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "lineClamp": 0,
           "grid": null,
           "gridItem": null
@@ -836,7 +866,13 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -956,6 +992,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "lineClamp": 0,
           "grid": null,
           "gridItem": null
@@ -1079,6 +1119,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -1119,7 +1163,13 @@
              "letterSpacing": {
               "kind": "px",
               "value": 0
-             }
+             },
+             "wordSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -1239,6 +1289,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -1364,6 +1418,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -1488,6 +1546,10 @@
                "value": "baseline"
               },
               "textOverflow": "clip",
+              "textIndent": {
+               "kind": "px",
+               "value": 0
+              },
               "lineClamp": 0,
               "grid": null,
               "gridItem": null
@@ -1613,6 +1675,10 @@
                "value": "baseline"
               },
               "textOverflow": "clip",
+              "textIndent": {
+               "kind": "px",
+               "value": 0
+              },
               "lineClamp": 0,
               "grid": null,
               "gridItem": null
@@ -1742,6 +1808,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "lineClamp": 0,
           "grid": null,
           "gridItem": null
@@ -1866,6 +1936,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -1991,6 +2065,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -2031,7 +2109,13 @@
              "letterSpacing": {
               "kind": "px",
               "value": 0
-             }
+             },
+             "wordSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }
@@ -2156,6 +2240,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "lineClamp": 0,
         "grid": null,
         "gridItem": null
@@ -2279,6 +2367,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "lineClamp": 0,
           "grid": null,
           "gridItem": null
@@ -2319,7 +2411,13 @@
            "letterSpacing": {
             "kind": "px",
             "value": 0
-           }
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -2439,6 +2537,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "lineClamp": 0,
           "grid": null,
           "gridItem": null
@@ -2561,6 +2663,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -2685,6 +2791,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -2725,7 +2835,13 @@
              "letterSpacing": {
               "kind": "px",
               "value": 0
-             }
+             },
+             "wordSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -2847,6 +2963,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -2971,6 +3091,10 @@
                "value": "baseline"
               },
               "textOverflow": "clip",
+              "textIndent": {
+               "kind": "px",
+               "value": 0
+              },
               "lineClamp": 0,
               "grid": null,
               "gridItem": null
@@ -3096,6 +3220,10 @@
                "value": "baseline"
               },
               "textOverflow": "clip",
+              "textIndent": {
+               "kind": "px",
+               "value": 0
+              },
               "lineClamp": 0,
               "grid": null,
               "gridItem": null
@@ -3225,6 +3353,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "lineClamp": 0,
           "grid": null,
           "gridItem": null
@@ -3349,6 +3481,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -3474,6 +3610,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "lineClamp": 0,
             "grid": null,
             "gridItem": null
@@ -3514,7 +3654,13 @@
              "letterSpacing": {
               "kind": "px",
               "value": 0
-             }
+             },
+             "wordSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }

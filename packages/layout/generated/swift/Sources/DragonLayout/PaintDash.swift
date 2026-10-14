@@ -168,7 +168,7 @@ public func paintDash_at(_ xs: JsArray<Double>, _ i: Double) throws -> Double {
   let v: Double? = jsAt(xs, i)
   // ts: packages/layout/src/paint-dash.ts:71
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s772, jsNumberToString(i)))
+    throw JsError(message: jsConcat(S.s791, jsNumberToString(i)))
   }
   return try jsUnwrap(v)
 }
@@ -215,7 +215,7 @@ public func paintDash_styleRank(_ style: JsString) throws -> Double {
   if (style == S.s_double) {
     return 9.0
   }
-  throw JsError(message: jsConcat(S.s768, style, S.s42))
+  throw JsError(message: jsConcat(S.s787, style, S.s44))
 }
 
 // ts: packages/layout/src/paint-dash.ts:91
@@ -271,7 +271,7 @@ public func paintDash_edgeAt(_ edges: JsArray<DashEdge>, _ side: Double) throws 
   let e: DashEdge? = jsAt(edges, side)
   // ts: packages/layout/src/paint-dash.ts:130
   if (e == nil) {
-    throw JsError(message: jsConcat(S.s770, jsNumberToString(side)))
+    throw JsError(message: jsConcat(S.s789, jsNumberToString(side)))
   }
   return try jsUnwrap(e)
 }
@@ -350,11 +350,11 @@ public func paintDash_makeEdge(_ widths: JsArray<Double>, _ styles: JsArray<JsSt
   let s: JsString? = jsAt(styles, side)
   // ts: packages/layout/src/paint-dash.ts:175
   if (s == nil) {
-    throw JsError(message: jsConcat(S.s771, jsNumberToString(side)))
+    throw JsError(message: jsConcat(S.s790, jsNumberToString(side)))
   }
   // ts: packages/layout/src/paint-dash.ts:176
   if try (!paintDash_isBorderStyle(jsUnwrap(s))) {
-    throw try JsError(message: jsConcat(S.s768, jsUnwrap(s), S.s42))
+    throw try JsError(message: jsConcat(S.s787, jsUnwrap(s), S.s44))
   }
   let w: Double = try paintDash_at(widths, side)
   return try DashEdge(w, paintDash_effectiveStyle(jsUnwrap(s), w), paintDash_at(colors, (4.0 * side)), paintDash_at(colors, ((4.0 * side) + 1.0)), paintDash_at(colors, ((4.0 * side) + 2.0)), paintDash_at(colors, ((4.0 * side) + 3.0)))
@@ -481,11 +481,11 @@ public func paintDash_opacityGroups(_ p: DashPainter) throws -> JsArray<DashOpac
   var current: Double = 0.0
   // ts: packages/layout/src/paint-dash.ts:273
   do {
-    let _a178 = sorted
-    var _i178 = 0
-    while _i178 < _a178.items.count {
-      let side: Double = _a178.items[_i178]
-      _i178 += 1
+    let _a181 = sorted
+    var _i181 = 0
+    while _i181 < _a181.items.count {
+      let side: Double = _a181.items[_i181]
+      _i181 += 1
       let a: Double = try paintDash_alphaOf(paintDash_edgeAt(p.edges, side))
       // ts: packages/layout/src/paint-dash.ts:275
       if (a != current) {
@@ -495,7 +495,7 @@ public func paintDash_opacityGroups(_ p: DashPainter) throws -> JsArray<DashOpac
       let g: DashOpacityGroup? = jsAt(groups, (jsLength(groups) - 1.0))
       // ts: packages/layout/src/paint-dash.ts:280
       if (g == nil) {
-        throw JsError(message: S.s769)
+        throw JsError(message: S.s788)
       }
       _ = try jsPush(jsUnwrap(g).sides, side)
     }
@@ -528,11 +528,11 @@ public func paintDash_includesAdjacentEdges(_ sides: JsArray<Double>) throws -> 
   var vertical: Bool = false
   // ts: packages/layout/src/paint-dash.ts:301
   do {
-    let _a179 = sides
-    var _i179 = 0
-    while _i179 < _a179.items.count {
-      let s: Double = _a179.items[_i179]
-      _i179 += 1
+    let _a182 = sides
+    var _i182 = 0
+    while _i182 < _a182.items.count {
+      let s: Double = _a182.items[_i182]
+      _i182 += 1
       // ts: packages/layout/src/paint-dash.ts:302
       if ((s == paintDash_TOP) || (s == paintDash_BOTTOM)) {
         horizontal = true
@@ -549,7 +549,7 @@ public func paintDash_doneAt(_ completed: JsArray<DashDone>, _ side: Double) thr
   let d: DashDone? = jsAt(completed, side)
   // ts: packages/layout/src/paint-dash.ts:314
   if (d == nil) {
-    throw JsError(message: jsConcat(S.s770, jsNumberToString(side)))
+    throw JsError(message: jsConcat(S.s789, jsNumberToString(side)))
   }
   return try jsUnwrap(d).v
 }
@@ -572,7 +572,7 @@ public func paintDash_paintOpacityGroup(_ p: DashPainter, _ groups: JsArray<Dash
   let group: DashOpacityGroup? = jsAt(groups, ((jsLength(groups) - index) - 1.0))
   // ts: packages/layout/src/paint-dash.ts:325
   if (group == nil) {
-    throw JsError(message: S.s769)
+    throw JsError(message: S.s788)
   }
   var paintAlpha: Double = try paintDash_f32((jsUnwrap(group).alpha / effectiveOpacity))
   var opacity: Double = effectiveOpacity
@@ -586,11 +586,11 @@ public func paintDash_paintOpacityGroup(_ p: DashPainter, _ groups: JsArray<Dash
   let completed: JsArray<DashDone> = try paintDash_paintOpacityGroup(p, groups, (index + 1.0), opacity)
   // ts: packages/layout/src/paint-dash.ts:335
   do {
-    let _a180 = try jsUnwrap(group).sides
-    var _i180 = 0
-    while _i180 < _a180.items.count {
-      let side: Double = _a180.items[_i180]
-      _i180 += 1
+    let _a183 = try jsUnwrap(group).sides
+    var _i183 = 0
+    while _i183 < _a183.items.count {
+      let side: Double = _a183.items[_i183]
+      _i183 += 1
       try paintDash_paintSide(p, side, paintAlpha, completed)
       let d: DashDone? = jsAt(completed, side)
       // ts: packages/layout/src/paint-dash.ts:338
@@ -1152,11 +1152,11 @@ public func paintDash_outlineNeedsSidePainter(_ style: JsString) throws -> Bool 
 public func paintDash_outlinePaintOps(_ left: Double, _ top: Double, _ right: Double, _ bottom: Double, _ width: Double, _ style: JsString, _ r: Double, _ g: Double, _ b: Double, _ a: Double, _ faults: DashFaults) throws -> JsArray<BorderOp> {
   // ts: packages/layout/src/paint-dash.ts:810
   if try (!paintDash_outlineNeedsSidePainter(style)) {
-    throw JsError(message: jsConcat(S.s773, style, S.s42))
+    throw JsError(message: jsConcat(S.s792, style, S.s44))
   }
   // ts: packages/layout/src/paint-dash.ts:811
   if (((!(width > 0.0)) || ((right - left) < (2.0 * width))) || ((bottom - top) < (2.0 * width))) {
-    throw JsError(message: jsConcat(S.s767, jsNumberToString(width), S.s26, jsNumberToString(left), S.s134, jsNumberToString(top), S.s134, jsNumberToString(right), S.s134, jsNumberToString(bottom)))
+    throw JsError(message: jsConcat(S.s786, jsNumberToString(width), S.s28, jsNumberToString(left), S.s141, jsNumberToString(top), S.s141, jsNumberToString(right), S.s141, jsNumberToString(bottom)))
   }
   let out: JsArray<BorderOp> = JsArray<BorderOp>([])
   let edges: JsArray<DashEdge> = JsArray<DashEdge>([])

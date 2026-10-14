@@ -23,7 +23,7 @@ fun lineClamp_clampChild(ctx: Ctx, box: LayoutBox, kid: LayoutBox, borderBoxWidt
   val follows: Boolean = ((lines > left) || jsSome(after, fun(n: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf): Boolean {
     return (jsStrEq(n.kind, "replaced") || (jsStrEq((n as U_InlineBox_LayoutBox_LineBreak_TextLeaf).kind, "box") && (!position_isOutOfFlow(ctx, (n as LayoutBox)))))
 }))
-  return ClampedChild(0.0, (if (follows) LayoutBox(kid.kind, kid.id, kid.boxType, LayoutStyle(kid.style.display, kid.style.position, kid.style.top, kid.style.right, kid.style.bottom, kid.style.left, kid.style.overflowX, kid.style.overflowY, kid.style.direction, kid.style.boxSizing, kid.style.width, kid.style.height, kid.style.minWidth, kid.style.minHeight, kid.style.maxWidth, kid.style.maxHeight, kid.style.marginTop, kid.style.marginRight, kid.style.marginBottom, kid.style.marginLeft, kid.style.paddingTop, kid.style.paddingRight, kid.style.paddingBottom, kid.style.paddingLeft, kid.style.borderTopWidth, kid.style.borderRightWidth, kid.style.borderBottomWidth, kid.style.borderLeftWidth, kid.style.flexDirection, kid.style.flexWrap, kid.style.flexGrow, kid.style.flexShrink, kid.style.flexBasis, kid.style.order, kid.style.justifyContent, kid.style.alignItems, kid.style.alignSelf, kid.style.alignContent, kid.style.rowGap, kid.style.columnGap, kid.style.textAlign, kid.style.aspectRatio, kid.style.verticalAlign, kid.style.textOverflow, (-left), kid.style.grid, kid.style.gridItem), kid.strut, kid.children) else kid))
+  return ClampedChild(0.0, (if (follows) LayoutBox(kid.kind, kid.id, kid.boxType, LayoutStyle(kid.style.display, kid.style.position, kid.style.top, kid.style.right, kid.style.bottom, kid.style.left, kid.style.overflowX, kid.style.overflowY, kid.style.direction, kid.style.boxSizing, kid.style.width, kid.style.height, kid.style.minWidth, kid.style.minHeight, kid.style.maxWidth, kid.style.maxHeight, kid.style.marginTop, kid.style.marginRight, kid.style.marginBottom, kid.style.marginLeft, kid.style.paddingTop, kid.style.paddingRight, kid.style.paddingBottom, kid.style.paddingLeft, kid.style.borderTopWidth, kid.style.borderRightWidth, kid.style.borderBottomWidth, kid.style.borderLeftWidth, kid.style.flexDirection, kid.style.flexWrap, kid.style.flexGrow, kid.style.flexShrink, kid.style.flexBasis, kid.style.order, kid.style.justifyContent, kid.style.alignItems, kid.style.alignSelf, kid.style.alignContent, kid.style.rowGap, kid.style.columnGap, kid.style.textAlign, kid.style.aspectRatio, kid.style.verticalAlign, kid.style.textOverflow, kid.style.textIndent, (-left), kid.style.grid, kid.style.gridItem), kid.strut, kid.children) else kid))
 }
 
 // ts: packages/layout/src/line-clamp.ts:45
@@ -32,11 +32,11 @@ fun lineClamp_clampedInput(input: LayoutInput, boxes: JsArray<LayoutRect>, measu
   val widths: JsStringMap<Double> = JsStringMap<Double>()
   // ts: packages/layout/src/line-clamp.ts:48
   run {
-    val _a143 = boxes
-    var _i143 = 0
-    while (_i143 < _a143.size) {
-      val r: LayoutRect = _a143[_i143]
-      _i143++
+    val _a146 = boxes
+    var _i146 = 0
+    while (_i146 < _a146.size) {
+      val r: LayoutRect = _a146[_i146]
+      _i146++
       widths.set(r.id, r.width)
     }
   }

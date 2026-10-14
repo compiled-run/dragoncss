@@ -13,7 +13,7 @@ public final class ClampedChild {
 public func lineClamp_clampChild(_ ctx: Ctx, _ box: LayoutBox, _ kid: LayoutBox, _ borderBoxWidth: Double, _ cbInline: Double, _ left: Double, _ after: JsArray<any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf>) throws -> ClampedChild {
   // ts: packages/layout/src/line-clamp.ts:30
   if try (((kid.strut == nil) || (kid.style.display != S.s_block)) || box_isScrollContainer(kid.style)) {
-    try unsupported_unsupported(S.s_line_clamp, kid.id, S.s540, jsConcat(kid.id, S.s50, box.id, S.s67))
+    try unsupported_unsupported(S.s_line_clamp, kid.id, S.s553, jsConcat(kid.id, S.s56, box.id, S.s72))
   }
   let pad: Edges = try box_resolvePaddingWith(kid.style, cbInline, ctx.faults)
   let bor: Edges = try box_resolveBorder(kid.style, ctx.devicePixelRatio)
@@ -25,7 +25,7 @@ public func lineClamp_clampChild(_ ctx: Ctx, _ box: LayoutBox, _ kid: LayoutBox,
   let follows: Bool = try ((lines > left) || jsSome(after, { (n: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return try ((n.kind == S.s_replaced) || (((n as! any U_InlineBox_LayoutBox_LineBreak_TextLeaf).kind == S.s_box) && (!position_isOutOfFlow(ctx, (n as! LayoutBox)))))
 }))
-  return ClampedChild(0.0, (follows ? LayoutBox(kid.kind, kid.id, kid.boxType, LayoutStyle(kid.style.display, kid.style.position, kid.style.top, kid.style.right, kid.style.bottom, kid.style.left, kid.style.overflowX, kid.style.overflowY, kid.style.direction, kid.style.boxSizing, kid.style.width, kid.style.height, kid.style.minWidth, kid.style.minHeight, kid.style.maxWidth, kid.style.maxHeight, kid.style.marginTop, kid.style.marginRight, kid.style.marginBottom, kid.style.marginLeft, kid.style.paddingTop, kid.style.paddingRight, kid.style.paddingBottom, kid.style.paddingLeft, kid.style.borderTopWidth, kid.style.borderRightWidth, kid.style.borderBottomWidth, kid.style.borderLeftWidth, kid.style.flexDirection, kid.style.flexWrap, kid.style.flexGrow, kid.style.flexShrink, kid.style.flexBasis, kid.style.order, kid.style.justifyContent, kid.style.alignItems, kid.style.alignSelf, kid.style.alignContent, kid.style.rowGap, kid.style.columnGap, kid.style.textAlign, kid.style.aspectRatio, kid.style.verticalAlign, kid.style.textOverflow, (-left), kid.style.grid, kid.style.gridItem), kid.strut, kid.children) : kid))
+  return ClampedChild(0.0, (follows ? LayoutBox(kid.kind, kid.id, kid.boxType, LayoutStyle(kid.style.display, kid.style.position, kid.style.top, kid.style.right, kid.style.bottom, kid.style.left, kid.style.overflowX, kid.style.overflowY, kid.style.direction, kid.style.boxSizing, kid.style.width, kid.style.height, kid.style.minWidth, kid.style.minHeight, kid.style.maxWidth, kid.style.maxHeight, kid.style.marginTop, kid.style.marginRight, kid.style.marginBottom, kid.style.marginLeft, kid.style.paddingTop, kid.style.paddingRight, kid.style.paddingBottom, kid.style.paddingLeft, kid.style.borderTopWidth, kid.style.borderRightWidth, kid.style.borderBottomWidth, kid.style.borderLeftWidth, kid.style.flexDirection, kid.style.flexWrap, kid.style.flexGrow, kid.style.flexShrink, kid.style.flexBasis, kid.style.order, kid.style.justifyContent, kid.style.alignItems, kid.style.alignSelf, kid.style.alignContent, kid.style.rowGap, kid.style.columnGap, kid.style.textAlign, kid.style.aspectRatio, kid.style.verticalAlign, kid.style.textOverflow, kid.style.textIndent, (-left), kid.style.grid, kid.style.gridItem), kid.strut, kid.children) : kid))
 }
 
 // ts: packages/layout/src/line-clamp.ts:45
@@ -34,11 +34,11 @@ public func lineClamp_clampedInput(_ input: LayoutInput, _ boxes: JsArray<Layout
   let widths: JsStringMap<Double> = JsStringMap<Double>()
   // ts: packages/layout/src/line-clamp.ts:48
   do {
-    let _a143 = boxes
-    var _i143 = 0
-    while _i143 < _a143.items.count {
-      let r: LayoutRect = _a143.items[_i143]
-      _i143 += 1
+    let _a146 = boxes
+    var _i146 = 0
+    while _i146 < _a146.items.count {
+      let r: LayoutRect = _a146.items[_i146]
+      _i146 += 1
       _ = widths.set(r.id, r.width)
     }
   }
@@ -47,7 +47,7 @@ public func lineClamp_clampedInput(_ input: LayoutInput, _ boxes: JsArray<Layout
     let w: Double? = widths.get(id)
     // ts: packages/layout/src/line-clamp.ts:51
     if (w == nil) {
-      throw JsError(message: jsConcat(S.s509, id))
+      throw JsError(message: jsConcat(S.s521, id))
     }
     return try jsUnwrap(w)
   }
