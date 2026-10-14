@@ -11,7 +11,7 @@ import { trustCoverageProblems } from '../src/lanes.ts';
 import type { AvdDeviceSpec, DeviceRecord, DeviceSpec, GoldenParts } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
 import { ANDROID_RENDERER, avdDir, dropGolden, deviceRecord, dropSuspect, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, GUEST_TIMEZONE, IOS_SPRINGBOARD_PINS, snapshotLoadFailed, goldenCurrent, goldenKey, goldenKeyFile, springboardPinsToWrite } from '../src/device-run.ts';
-import { installWithRetries, ToolingFault, transientInstallFailure, SYSTEMUI_RESTART_AFTER, systemUiRestart } from '../src/device-run.ts';
+import { crashSummary, installWithRetries, ToolingFault, transientInstallFailure, SYSTEMUI_RESTART_AFTER, systemUiRestart } from '../src/device-run.ts';
 import type { ExecResult } from '../src/device-exec.ts';
 import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, isLinePlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
@@ -466,5 +466,36 @@ describe('the simulators run in Full Screen Apps (iPadOS 26 Windowed Apps kept t
     expect(pin).toMatch(/'defaults', 'write', 'com\.apple\.springboard', k, '-bool', 'NO'/);
     expect(pin.indexOf("'shutdown'")).toBeLessThan(pin.indexOf("'boot', udid"));
     expect(pin).toContain('const still = springboardPinsToWrite(');
+  });
+});
+
+describe('crashSummary', () => {
+  const run = (time: string, pid: number, hash: string, obj: string): string => [
+    '--------- beginning of crash',
+    `${time}  ${pid}  ${pid} E AndroidRuntime: FATAL EXCEPTION: main`,
+    `${time}  ${pid}  ${pid} E AndroidRuntime: Process: dev.dragon.host, PID: ${pid}`,
+    `${time}  ${pid}  ${pid} E AndroidRuntime: java.lang.IllegalStateException: no edges for dev.dragon.dump.Node@${obj}`,
+    `${time}  ${pid}  ${pid} E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)`,
+    `${time}  ${pid}  ${pid} E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$${hash}(Unknown Source:0)`,
+    ...Array.from({ length: 20 }, (_, i) => `${time}  ${pid}  ${pid} E AndroidRuntime: \tat android.os.Frame${i}.run(Frame.java:${i})`),
+    '',
+  ].join('\n');
+  it('is the same for the same crash on two runs: no times, pids, lambda or identity hashes', () => {
+    const a = crashSummary(run('10-14 03:06:13.912', 2687, 'SA2wZ4V5LaX50OULbhdebs8UusI', '1a2b3c4'));
+    expect(a).toBe(crashSummary(run('10-15 11:42:01.007', 31544, 'uI66E-_roOhT8JnCFRryt6gwOmw', '9f8e7d6')));
+    expect(a.split('\n')).toEqual([
+      'FATAL EXCEPTION: main',
+      'java.lang.IllegalStateException: no edges for dev.dragon.dump.Node@*',
+      'at dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)',
+      'at dev.dragon.dump.DumpNodes.$r8$lambda$*(Unknown Source:0)',
+      ...Array.from({ length: 9 }, (_, i) => `at android.os.Frame${i}.run(Frame.java:${i})`),
+    ]);
+  });
+  it('keeps the last crash of a buffer that holds two', () => {
+    const s = crashSummary(`${run('10-14 03:06:13.912', 1, 'x', 'aaaaa')}${run('10-14 03:07:00.000', 2, 'y', 'bbbbb').replace('IllegalStateException', 'NullPointerException')}`);
+    expect(s.split('\n')[1]).toBe('java.lang.NullPointerException: no edges for dev.dragon.dump.Node@*');
+  });
+  it('without a FATAL EXCEPTION line keeps the last lines, prefixes dropped', () => {
+    expect(crashSummary('10-14 03:06:13.912  1  1 E Tag: one\n10-14 03:06:13.913  1  1 E Tag: two\n')).toBe('one\ntwo');
   });
 });
