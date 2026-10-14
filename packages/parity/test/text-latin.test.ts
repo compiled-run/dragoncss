@@ -234,12 +234,12 @@ const AHEM_ADDED = ['font-shorthand-inherit', 'font-shorthand-inherit-rtl'];
 /** TXT2-c's Ahem white-space cases: added after BASE, laid out natively, so no shaped case. */
 const WHITE_SPACE_AHEM_IDS = ['white-space-preserve', 'white-space-wrap'];
 /**
- * TXT2 text-align: justify (fixture-groups/text-justify.ts), TXT2-b word-spacing (fixture-groups/text-spacing.ts) and TXT2-a overflow-wrap and
- * word-break (fixture-groups/text-break.ts), after BASE: their
- * Ahem cases lower natively, their real-face ones are shaped.
+ * TXT2 text-align: justify (fixture-groups/text-justify.ts), TXT2-b word-spacing (fixture-groups/text-spacing.ts), TXT2-h text-indent
+ * (fixture-groups/text-indent.ts) and TXT2-a overflow-wrap and word-break (fixture-groups/text-break.ts), after BASE: their Ahem cases
+ * lower natively, their real-face ones are shaped.
  */
-const LATER_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl'];
-const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-break-lato'];
+const LATER_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl'];
+const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-indent-latin', 'text-indent-latin-rtl', 'text-break-lato'];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);

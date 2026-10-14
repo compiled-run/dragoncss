@@ -644,7 +644,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -843,6 +843,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
+    textIndent: paddingValue(f('textIndent'), p('textIndent')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -997,6 +998,7 @@ const FAULT_KEYS: readonly string[] = [
   'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
   'wordSpacingAtItemStart', 'wordSpacingSkipsNbsp',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
+  'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
@@ -1074,6 +1076,10 @@ function decodeFaults(v: JsonValue): EngineFaults {
     preservedSpaceCollapsed: b('preservedSpaceCollapsed'),
     trailingPreWrapNotHanging: b('trailingPreWrapNotHanging'),
     breakSpacesHanging: b('breakSpacesHanging'),
+    indentEveryLine: b('indentEveryLine'),
+    indentAfterBr: b('indentAfterBr'),
+    indentPercentInIntrinsic: b('indentPercentInIntrinsic'),
+    indentRtlFromLeft: b('indentRtlFromLeft'),
     anywhereMinContentIgnored: b('anywhereMinContentIgnored'),
     breakWordShrinksMinContent: b('breakWordShrinksMinContent'),
     breakAnywhereAlways: b('breakAnywhereAlways'),

@@ -156,7 +156,7 @@ const INITIAL: LayoutStyle = {
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
-  textOverflow: 'clip',
+  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 },
   grid: null, gridItem: null,
 };
 

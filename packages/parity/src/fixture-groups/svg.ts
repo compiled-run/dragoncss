@@ -2,7 +2,8 @@
 // flex item, drawing <path>,
 // <rect> and <circle> with fill, stroke and stroke-width from CSS and presentation attributes, under every viewBox case of
 // xMidYMid meet, in both directions. Their shapes are proven by the strict outline differential (svg-compare.ts); the rejects
-// name what SVG-a1 refuses.
+// name what SVG-a1 refuses. svg-colors writes fill and stroke in the colour syntaxes real sheets use (hex, named, hsl(),
+// currentcolor, transparent, inherit, and hex and named presentation attributes), which svg-paint's rgb() alone left unproven.
 import { readFileSync } from 'node:fs';
 import type { FixtureSpec } from '../fixtures.ts';
 import { repoPath } from '../paths.ts';
@@ -28,6 +29,7 @@ export const SVG: readonly FixtureSpec[] = [
   both('svg-paint'),
   both('svg-flex'),
   both('svg-hidden'),
+  both('svg-colors'),
   reject('reject-svg-inline', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-inline', 'a', 'svg'), 'display: inline on <svg> a makes it an inline-level replaced box'),
   reject('reject-svg-ratio', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-ratio', 'a', 'svg'), '<svg> a has a viewBox and width and height auto'),
   reject('reject-svg-arc', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-arc', 'p'), 'attribute d="M2 12 A10 10 0 0 1 22 12" on p is not supported: elliptical arc commands are not built yet (package SVG-arc)'),

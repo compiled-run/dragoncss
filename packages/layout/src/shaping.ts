@@ -1604,12 +1604,15 @@ function breakOneLine(b: LineBuild): BrokenLine {
 }
 
 /**
- * LineBreaker::NextLine over the items with an available width (no floats, no text-indent). wrap is the context's
+ * LineBreaker::NextLine over the items with an available width (no floats). wrap is the context's
  * text-wrap-mode; accurateEnd is LineInfo::NeedsAccurateEndPosition (text-align other than the start side), which keeps
  * ShapeLine reshaping the end of a line that breaks at a space. epsilon is LayoutUnit::AddEpsilon (AvailableWidthToFit). preserve:
- * the text's white-space-collapse is preserve, so its spaces are not collapsible (pre, pre-wrap).
+ * the text's white-space-collapse is preserve, so its spaces are not collapsible (pre, pre-wrap). indent is the first line's text-indent,
+ * where LineBreaker's position starts (line_breaker.cc 843-844), so the line fits what it leaves; planted faults indentEvery and
+ * indentAfterForced give it to every line, or to each line after a forced break too. anywhere carries
+ * overflow-wrap's break-character opportunities (TXT2-a).
  */
-export function breakItemLines(items: readonly BreakItem[], available: LU, wrap: boolean, accurateEnd: boolean, epsilon: boolean, preserve: boolean, anywhere: AnywhereBreak): BrokenLines {
+export function breakItemLines(items: readonly BreakItem[], available: LU, wrap: boolean, accurateEnd: boolean, epsilon: boolean, preserve: boolean, indent: LU, indentEvery: boolean, indentAfterForced: boolean, anywhere: AnywhereBreak): BrokenLines {
   const toFit: number = epsilon ? available + 1 : available;
   const lines: BrokenLine[] = [];
   let curItem = 0;
@@ -1617,8 +1620,9 @@ export function breakItemLines(items: readonly BreakItem[], available: LU, wrap:
   let afterForced = false;
   try {
     while (curItem < items.length) {
+      const indented = lines.length === 0 || indentEvery || (indentAfterForced && afterForced);
       const b: LineBuild = {
-        items, toFit, wrap, accurateEnd, afterForced, lineStart: lineOffsetOf(items, curItem, curOffset), preserve,
+        items, toFit: indented ? toFit - indent : toFit, wrap, accurateEnd, afterForced, lineStart: lineOffsetOf(items, curItem, curOffset), preserve,
         anywhere, override: anywhere.always, startItem: curItem, startOffset: curOffset,
         results: [], position: 0, state: 'continue', leading: true, forced: false, curItem, curOffset,
       };

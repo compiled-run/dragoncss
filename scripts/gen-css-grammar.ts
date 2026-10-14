@@ -80,6 +80,8 @@ const SUBSET = [
   'text-overflow',
   // TXT2-e: text-transform (css-text-3 §2.1), after visibility, as LONGHANDS registers it.
   'text-transform',
+  // TXT2-h: text-indent (css-text-3 §8.1), after text-transform, as LONGHANDS registers it.
+  'text-indent',
   // TXT2-a: overflow-wrap and word-break (css-text-3 §5.2, §5.5), then the word-wrap alias, as LONGHANDS registers them.
   'overflow-wrap', 'word-break', 'word-wrap',
 ] as const;
@@ -126,6 +128,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink parses one keyword, clip or ellipsis: the <string> value (TextOverflowString) and the two-value form are test features
   // in Chrome 145 (notes/T149-txt2-spec.md R2), and webref's fade and fade() are not parsed.
   'text-overflow': 'clip | ellipsis',
+  // Blink parses one <length-percentage>: hanging and each-line are behind CssTextIndent, a test feature in Chrome 145
+  // (notes/T149-txt2-spec.md R2).
+  'text-indent': '<length-percentage>',
   // Blink WordBreak (css_properties.json5 keywords): css-text-4's manual is not parsed in Chrome 145 (notes/T149-txt2-spec.md R2).
   'word-break': 'normal | break-all | keep-all | break-word | auto-phrase',
   // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.

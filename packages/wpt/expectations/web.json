@@ -29546,7 +29546,7 @@
     "css/css-text/text-indent/below-float.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-text/text-indent/below-float2.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-text/text-indent/below-float3.html": {"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-text/text-indent/percentage-value-intrinsic-size.html": {"missing":"DRAGON_UNSUPPORTED_PROPERTY:text-indent: 100%","status":"not-runnable"},
+    "css/css-text/text-indent/percentage-value-intrinsic-size.html": {"missing":"DRAGON_UNSUPPORTED_VALUE:100%","status":"not-runnable"},
     "css/css-text/text-indent/text-indent-abspos-hanging-001.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-text/text-indent/text-indent-caret-001.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-text/text-indent/text-indent-caret-hanging-001.html": {"missing":"kind:reftest","status":"not-runnable"},

@@ -170,6 +170,14 @@ export type EngineFaults = {
   readonly trailingPreWrapNotHanging: boolean;
   /** TXT2-c: break-spaces spaces before a soft wrap opportunity hang, as pre-wrap spaces do. */
   readonly breakSpacesHanging: boolean;
+  /** TXT2-h: text-indent indents every line, not only the first formatted line. */
+  readonly indentEveryLine: boolean;
+  /** TXT2-h: text-indent also indents each line after a forced break (<br>). */
+  readonly indentAfterBr: boolean;
+  /** TXT2-h: a percentage text-indent counts in min-content and max-content, against the line it indents. */
+  readonly indentPercentInIntrinsic: boolean;
+  /** TXT2-h: in rtl the indent is measured from the line-left edge instead of the line-right edge. */
+  readonly indentRtlFromLeft: boolean;
   /** TXT2-a: overflow-wrap: anywhere and word-break: break-word leave min-content at its normal opportunities (css-text-3 §5.5). */
   readonly anywhereMinContentIgnored: boolean;
   /** TXT2-a: overflow-wrap: break-word breaks anywhere in min-content too (Blink applies it in content mode only). */
@@ -251,6 +259,10 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   preservedSpaceCollapsed: false,
   trailingPreWrapNotHanging: false,
   breakSpacesHanging: false,
+  indentEveryLine: false,
+  indentAfterBr: false,
+  indentPercentInIntrinsic: false,
+  indentRtlFromLeft: false,
   anywhereMinContentIgnored: false,
   breakWordShrinksMinContent: false,
   breakAnywhereAlways: false,
