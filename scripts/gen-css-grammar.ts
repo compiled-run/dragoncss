@@ -84,6 +84,8 @@ const SUBSET = [
   'resize',
   // TXT2-h: text-indent (css-text-3 §8.1), after resize, as LONGHANDS registers it.
   'text-indent',
+  // TXT2-a: overflow-wrap and word-break (css-text-3 §5.2, §5.5), then the word-wrap alias, as LONGHANDS registers them.
+  'overflow-wrap', 'word-break', 'word-wrap',
 ] as const;
 
 /**
@@ -133,6 +135,8 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink parses one <length-percentage>: hanging and each-line are behind CssTextIndent, a test feature in Chrome 145
   // (notes/T149-txt2-spec.md R2).
   'text-indent': '<length-percentage>',
+  // Blink WordBreak (css_properties.json5 keywords): css-text-4's manual is not parsed in Chrome 145 (notes/T149-txt2-spec.md R2).
+  'word-break': 'normal | break-all | keep-all | break-word | auto-phrase',
   // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.
   'text-transform': 'none | capitalize | uppercase | lowercase | math-auto',
   display: [

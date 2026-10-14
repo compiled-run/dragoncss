@@ -33,6 +33,7 @@
     "land:post-review": "node --conditions=dragon-internal scripts/land-post-review.ts",
     "land:dispatch": "node scripts/land-actions.ts dispatch",
     "land:clear-outage": "node scripts/land-actions.ts clear-outage",
+    "coverage:rank": "node --conditions=dragon-internal scripts/coverage-rank.ts",
     "evidence:stamp": "node --conditions=dragon-internal scripts/evidence-stamp.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
     "case:gen": "node scripts/gen-case-data.ts",

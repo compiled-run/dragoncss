@@ -647,7 +647,9 @@
          "wordSpacing": {
           "kind": "px",
           "value": 6
-         }
+         },
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       }

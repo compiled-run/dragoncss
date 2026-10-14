@@ -234,12 +234,12 @@ const AHEM_ADDED = ['font-shorthand-inherit', 'font-shorthand-inherit-rtl'];
 /** TXT2-c's Ahem white-space cases: added after BASE, laid out natively, so no shaped case. */
 const WHITE_SPACE_AHEM_IDS = ['white-space-preserve', 'white-space-wrap'];
 /**
- * TXT2 text-align: justify (fixture-groups/text-justify.ts), TXT2-b word-spacing (fixture-groups/text-spacing.ts) and TXT2-h text-indent
- * (fixture-groups/text-indent.ts), after BASE: their Ahem cases lower natively, their real-face ones are shaped. svg-colors (#297,
- * fixture-groups/svg.ts) landed after BASE too and lowers natively.
+ * TXT2 text-align: justify (fixture-groups/text-justify.ts), TXT2-b word-spacing (fixture-groups/text-spacing.ts), TXT2-h text-indent
+ * (fixture-groups/text-indent.ts) and TXT2-a overflow-wrap and word-break (fixture-groups/text-break.ts), after BASE: their Ahem cases
+ * lower natively, their real-face ones are shaped. svg-colors (#297, fixture-groups/svg.ts) landed after BASE too and lowers natively.
  */
-const LATER_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl'];
-const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-indent-latin', 'text-indent-latin-rtl'];
+const LATER_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl', 'text-break-ahem', 'text-break-ahem-rtl'];
+const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-indent-latin', 'text-indent-latin-rtl', 'text-break-lato'];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);
@@ -261,17 +261,17 @@ const probe = (id: string) => {
 };
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
-  const BASE_LAYOUT_CASES = 817;
+  const BASE_LAYOUT_CASES = 821;
   const SHAPED = [...NEW_IDS, ...TAG_IDS];
   const ADDED = [...SHAPED, ...WHITE_SPACE_AHEM_IDS];
   it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases, the T133 tag cases and the later groups', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 813 BASE layout cases, plus G-INL's atomic-inline-grid and SVG colours' svg-colors (817).
+    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 813 BASE layout cases, plus G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web, and resize-values (821; svg-colors is a later group).
     // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
     const later = [...LATER_NATIVE_IDS, ...LATER_SHAPED_IDS];
     const base = ids.filter((id) => !ADDED.includes(id) && !AHEM_ADDED.includes(id) && !later.includes(id));
     expect(base.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('cd3cf7d9e690bee1be03223acdf337175e8945d8a19dee50fd1e7b29b0a9f989');
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('a42e43db74d8c317686e75e9092f10e663acb71a32671376129420e73a67fe9a');
     expect(ids.filter((id) => ADDED.includes(id)).sort()).toEqual([...ADDED].sort());
     expect(ids.filter((id) => AHEM_ADDED.includes(id))).toEqual(AHEM_ADDED);
     expect(ids.filter((id) => later.includes(id)).sort()).toEqual([...later].sort());
@@ -350,7 +350,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
         }
       }
     }
-    // The 10 real-face cases, T133's 2 and the text-justify-latin ones are native-refused (engine only); every other case, the Ahem
+    // The 10 real-face cases, T133's 2, the text-justify-latin ones and text-break-lato are native-refused (engine only); every other case, the Ahem
     // fractional and font-shorthand inherit ones too, lowers natively, TXT2-c's two Ahem white-space cases and text-justify-ahem among them.
     expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1 + AHEM_ADDED.length + WHITE_SPACE_AHEM_IDS.length + LATER_NATIVE_IDS.length) * 4, (NEW_IDS.length - 1 + TAG_IDS.length + LATER_SHAPED_IDS.length) * 4]);
   });

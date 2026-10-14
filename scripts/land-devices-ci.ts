@@ -407,17 +407,17 @@ export const fullTestWorkflow = (explain: (runId: number) => string | null): CiW
 
 // ---- LAND_REGEN=ci ----------------------------------------------------------------------------------------------------
 // The landing tree's `pnpm regen` on GitHub runners: regen-on-ci.yml in patch mode (the Chrome steps on macos-26, lanes-host on
-// xcode-27, to their fixed point, then tw-sweep) for the tree's commit, pushed apart to land-regen/c-<sha>; its combined
+// xcode-27, to their fixed point) for the tree's commit, pushed apart to land-regen/c-<sha>; its combined
 // outputs.patch is applied to the tree with git apply --binary --index.
 export const REGEN_WORKFLOW_FILE = 'regen-on-ci.yml';
 export const PATCH_ARTIFACT = 'regen-patch';
 export const PATCH_FILE = 'outputs.patch';
 export const regenTitle = (sha: string): string => `regen of ${sha}`;
 /**
- * Past the longest chain of rounds (regen-on-ci.yml: chrome-1, host-1, chrome-2, host-2, chrome-3 and sweep, 300 min each), so a
+ * Past the longest chain of rounds (regen-on-ci.yml: chrome-1, host-1, chrome-2, host-2 and chrome-3, 300 min each), so a
  * run still within its own limits is never cut short; a whole regen usually takes 30 to 45 min. LAND_REGEN_WAIT sets it lower.
  */
-export const REGEN_ROUNDS = 6;
+export const REGEN_ROUNDS = 5;
 export const DEFAULT_REGEN_WAIT_S = REGEN_ROUNDS * 300 * 60 + 900;
 
 /** The regen-patch artifact: exactly outputs.patch (empty at a fixed point). */

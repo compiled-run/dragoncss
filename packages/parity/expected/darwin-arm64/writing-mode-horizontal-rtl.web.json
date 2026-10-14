@@ -143,6 +143,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -279,6 +281,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -415,6 +419,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -551,6 +557,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -717,6 +725,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -883,6 +893,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1049,6 +1061,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1215,6 +1229,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1371,6 +1387,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1537,6 +1555,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1693,6 +1713,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1849,6 +1871,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1985,6 +2009,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2121,6 +2147,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2257,6 +2285,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2393,6 +2423,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2559,6 +2591,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2725,6 +2759,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2861,6 +2897,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2997,6 +3035,8 @@
         "text-transform": "none",
         "resize": "none",
         "text-indent": "0px",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
         "writing-mode": "horizontal-tb"
       }
     }

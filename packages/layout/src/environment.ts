@@ -266,7 +266,7 @@ function resolveText(t: TextLeaf, parent: Env): TextLeaf {
   return {
     kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode,
     letterSpacing: resolveSpacing('letter-spacing', t.letterSpacing, env),
-    wordSpacing: resolveSpacing('word-spacing', t.wordSpacing, env),
+    wordSpacing: resolveSpacing('word-spacing', t.wordSpacing, env), overflowWrap: t.overflowWrap, wordBreak: t.wordBreak,
   };
 }
 
