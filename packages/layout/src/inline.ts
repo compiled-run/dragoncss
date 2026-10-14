@@ -2035,16 +2035,16 @@ export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max
   return widest;
 }
 
-/**
- * The end of what an intrinsic size measures of items [start, end): without the spaces that hang. At max-content a line ends only at
- * a forced break or the end, where pre-wrap spaces hang only if they do not fit, which they always do at an unlimited width.
- */
 /** A line or segment's intrinsic width with the indent it takes (LineBreaker's position starts at it on the indented line). */
 function intrinsicIndented(ctx: Ctx, box: LayoutBox, first: boolean, afterForced: boolean, w: LU): LU {
   const on = first || ctx.faults.indentEveryLine || (ctx.faults.indentAfterBr && afterForced);
   return on ? add(w, intrinsicIndentOf(ctx, box, w)) : w;
 }
 
+/**
+ * The end of what an intrinsic size measures of items [start, end): without the spaces that hang. At max-content a line ends only at
+ * a forced break or the end, where pre-wrap spaces hang only if they do not fit, which they always do at an unlimited width.
+ */
 function intrinsicEndOf(ctx: Ctx, ifc: Ifc, start: number, end: number, kind: 'min' | 'max'): number {
   if (ifc.mode === 'collapse' || ifc.mode === 'preserve-breaks') return visibleEndOf(ifc, start, end);
   if (kind === 'max') return contentEndOf(ifc, start, end);

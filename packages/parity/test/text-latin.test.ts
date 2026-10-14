@@ -233,9 +233,12 @@ const TAG_IDS = ['inline-tags-faces', 'inline-tags-faces-rtl',
 const AHEM_ADDED = ['font-shorthand-inherit', 'font-shorthand-inherit-rtl'];
 /** TXT2-c's Ahem white-space cases: added after BASE, laid out natively, so no shaped case. */
 const WHITE_SPACE_AHEM_IDS = ['white-space-preserve', 'white-space-wrap'];
-/** TXT2 text-align: justify (fixture-groups/text-justify.ts), after BASE: its Ahem cases lower natively, its real-face ones are shaped. */
-const JUSTIFY_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl'];
-const JUSTIFY_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl'];
+/**
+ * TXT2 text-align: justify (fixture-groups/text-justify.ts) and TXT2-h text-indent (fixture-groups/text-indent.ts), after BASE: their
+ * Ahem cases lower natively, their real-face ones are shaped.
+ */
+const JUSTIFY_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl'];
+const JUSTIFY_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-indent-latin', 'text-indent-latin-rtl'];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);
