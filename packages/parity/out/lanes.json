@@ -597,10 +597,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -661,7 +661,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "585be636c61c041e80e84960bb5304eec312204b97df4dc76702924d7abd35e0",
+                "dumpsSha256": "701ccd640bfea694bd5b020559444cecb7cbc1e0e7f41ef17d20c686353b12f9",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -698,7 +698,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "79306a0fe8e4daa57d7b0a7ab35f1da5ba7f86f8a57244b379333557151c9ee6",
+                "dumpsSha256": "d8d8efaf4737af0c3912317482047f9cad26309e03989c7a1f7a0249cb005207",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -710,10 +710,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -774,7 +774,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "585be636c61c041e80e84960bb5304eec312204b97df4dc76702924d7abd35e0",
+                "dumpsSha256": "701ccd640bfea694bd5b020559444cecb7cbc1e0e7f41ef17d20c686353b12f9",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -811,7 +811,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "79306a0fe8e4daa57d7b0a7ab35f1da5ba7f86f8a57244b379333557151c9ee6",
+                "dumpsSha256": "d8d8efaf4737af0c3912317482047f9cad26309e03989c7a1f7a0249cb005207",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -823,10 +823,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -887,7 +887,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "585be636c61c041e80e84960bb5304eec312204b97df4dc76702924d7abd35e0",
+                "dumpsSha256": "701ccd640bfea694bd5b020559444cecb7cbc1e0e7f41ef17d20c686353b12f9",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -924,7 +924,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "79306a0fe8e4daa57d7b0a7ab35f1da5ba7f86f8a57244b379333557151c9ee6",
+                "dumpsSha256": "d8d8efaf4737af0c3912317482047f9cad26309e03989c7a1f7a0249cb005207",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -936,10 +936,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -1000,7 +1000,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "585be636c61c041e80e84960bb5304eec312204b97df4dc76702924d7abd35e0",
+                "dumpsSha256": "701ccd640bfea694bd5b020559444cecb7cbc1e0e7f41ef17d20c686353b12f9",
                 "failures": 13,
                 "failuresByKind": {
                   "pixel": 13
@@ -1039,7 +1039,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "79306a0fe8e4daa57d7b0a7ab35f1da5ba7f86f8a57244b379333557151c9ee6",
+                "dumpsSha256": "d8d8efaf4737af0c3912317482047f9cad26309e03989c7a1f7a0249cb005207",
                 "failures": 14,
                 "failuresByKind": {
                   "pixel": 14
@@ -1231,10 +1231,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -1295,7 +1295,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "2fec5c3435e807d43aa2cca015aaf81e8ca314684e73187be7e18427b2e759d2",
+                "dumpsSha256": "151b12d34d620e7189b84a2a942b921cf5fd33bdb3fbae3e9a00ae0cbeae9e49",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1332,7 +1332,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "2762734beca0d1bfef3970b66b20a67b7cb1d7d4bd35ff8b8810286d5a218a9a",
+                "dumpsSha256": "29e428d63ee8f4fe34029b28b8a3caf1dae73c8b51b87802dc60362da8c0c739",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1344,10 +1344,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -1457,10 +1457,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -1521,7 +1521,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "b895e882d92c1a42d2793358dff9f1f219848d88995cfd8b7252ecfba0dff090",
+                "dumpsSha256": "2e1e9b5608da9a1609a2b83b895aba71be883ebb9847030fb98066fa560a76a5",
                 "failures": 52,
                 "failuresByKind": {
                   "device-record": 52
@@ -1560,7 +1560,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "94512200da95a00506a02fcd1d30396c448e50bd4e3daae5b4af53eb8876aa89",
+                "dumpsSha256": "b3490047f282f14cb184414ec07900bc76f0f0ff64f8c99b1e6aa4ba2728ddc0",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1735,10 +1735,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -1848,10 +1848,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "1f6b5f7cd737cb849719a830a82c75083552b960687808b3c589581792c7ba38"
+            "app": "fde66b06b5d8cbf790914deb80ee51636c608ee3d08ad88e036b5a26a6be3403"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         }
       ],
@@ -2556,10 +2556,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -2627,7 +2627,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "efcf830aceb9c06c11bc686a9d678a04e9fd1ed48bc9f8e8948605a9ca9c8f15",
+                "dumpsSha256": "d79c5845af84e0e09c79ba93611427e61ae3b090adbf81b0e74968716a0cd73c",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -2665,7 +2665,7 @@
                   "d": 15880,
                   "breaks": 2693
                 },
-                "dumpsSha256": "e2abddcdf5f900069a23303a95ecf15fd106e4c365577670d77fcc333b649bff",
+                "dumpsSha256": "02cb68c6c628221c37016451e32240472c6d2f2338cbe6a652eb459ec9534a53",
                 "failures": 262,
                 "failuresByKind": {
                   "device-record": 1,
@@ -2706,7 +2706,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "3ee2655e5b7184daeabbe2def8bd489de6621e798f78599f5ae955320a80e3b0",
+                "dumpsSha256": "3f99b599a55e2431c1c54acffe1134cb7280b267f2310ef4b34a724ecbef4806",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -2722,7 +2722,7 @@
                 "dpr": 2.625,
                 "node": null,
                 "kind": "device-record",
-                "detail": "the host did not finish: the Android host crashed (mCurrentFocus=Window{203e2e1 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{116922066 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}; mWakefulness=Awake mHoldingDisplaySuspendBlocker=true): dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$SA2wZ4V5LaX50OULbhdebs8UusI(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.$r8$lambda$2ihi87IrpoT49v2HxoC28dteCno(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.write(DragonDump.kt:119)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DragonDumpKt.dumpJson(DragonDump.kt:93)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.runCase$capture$lambda$1$copy$0(DragonActivity.kt:195)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.$r8$lambda$uI66E-_roOhT8JnCFRryt6gwOmw(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity$$ExternalSyntheticLambda2.onPixelCopyFinished(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.view.PixelCopy$1.lambda$onCopyFinished$0(PixelCopy.java:193)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.view.PixelCopy$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Handler.handleCallback(Handler.java:995)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:103)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:248)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:338)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:9067)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)\n"
+                "detail": "the host did not finish: the Android host crashed (mCurrentFocus=Window{700b658 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{231310270 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}; mWakefulness=Awake mHoldingDisplaySuspendBlocker=true): dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$SA2wZ4V5LaX50OULbhdebs8UusI(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.$r8$lambda$2ihi87IrpoT49v2HxoC28dteCno(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.write(DragonDump.kt:119)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DragonDumpKt.dumpJson(DragonDump.kt:93)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.runCase$capture$lambda$1$copy$0(DragonActivity.kt:195)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.$r8$lambda$uI66E-_roOhT8JnCFRryt6gwOmw(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity$$ExternalSyntheticLambda2.onPixelCopyFinished(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.view.PixelCopy$1.lambda$onCopyFinished$0(PixelCopy.java:193)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.view.PixelCopy$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Handler.handleCallback(Handler.java:995)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:103)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:248)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:338)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:9067)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)\n"
               },
               {
                 "lane": "device-frames",
@@ -2882,10 +2882,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -2953,7 +2953,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "efcf830aceb9c06c11bc686a9d678a04e9fd1ed48bc9f8e8948605a9ca9c8f15",
+                "dumpsSha256": "d79c5845af84e0e09c79ba93611427e61ae3b090adbf81b0e74968716a0cd73c",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -2991,7 +2991,7 @@
                   "d": 15880,
                   "breaks": 2693
                 },
-                "dumpsSha256": "e2abddcdf5f900069a23303a95ecf15fd106e4c365577670d77fcc333b649bff",
+                "dumpsSha256": "02cb68c6c628221c37016451e32240472c6d2f2338cbe6a652eb459ec9534a53",
                 "failures": 262,
                 "failuresByKind": {
                   "device-record": 1,
@@ -3032,7 +3032,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "3ee2655e5b7184daeabbe2def8bd489de6621e798f78599f5ae955320a80e3b0",
+                "dumpsSha256": "3f99b599a55e2431c1c54acffe1134cb7280b267f2310ef4b34a724ecbef4806",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -3048,7 +3048,7 @@
                 "dpr": 2.625,
                 "node": null,
                 "kind": "device-record",
-                "detail": "the host did not finish: the Android host crashed (mCurrentFocus=Window{203e2e1 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{116922066 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}; mWakefulness=Awake mHoldingDisplaySuspendBlocker=true): dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$SA2wZ4V5LaX50OULbhdebs8UusI(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.$r8$lambda$2ihi87IrpoT49v2HxoC28dteCno(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.write(DragonDump.kt:119)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DragonDumpKt.dumpJson(DragonDump.kt:93)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.runCase$capture$lambda$1$copy$0(DragonActivity.kt:195)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.$r8$lambda$uI66E-_roOhT8JnCFRryt6gwOmw(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity$$ExternalSyntheticLambda2.onPixelCopyFinished(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.view.PixelCopy$1.lambda$onCopyFinished$0(PixelCopy.java:193)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.view.PixelCopy$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Handler.handleCallback(Handler.java:995)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:103)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:248)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:338)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:9067)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)\n"
+                "detail": "the host did not finish: the Android host crashed (mCurrentFocus=Window{700b658 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{231310270 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}; mWakefulness=Awake mHoldingDisplaySuspendBlocker=true): dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$SA2wZ4V5LaX50OULbhdebs8UusI(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.$r8$lambda$2ihi87IrpoT49v2HxoC28dteCno(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.write(DragonDump.kt:119)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DragonDumpKt.dumpJson(DragonDump.kt:93)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.runCase$capture$lambda$1$copy$0(DragonActivity.kt:195)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.$r8$lambda$uI66E-_roOhT8JnCFRryt6gwOmw(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity$$ExternalSyntheticLambda2.onPixelCopyFinished(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.view.PixelCopy$1.lambda$onCopyFinished$0(PixelCopy.java:193)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.view.PixelCopy$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Handler.handleCallback(Handler.java:995)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:103)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:248)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:338)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:9067)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)\n"
               },
               {
                 "lane": "device-applied",
@@ -3208,10 +3208,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -3279,7 +3279,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "efcf830aceb9c06c11bc686a9d678a04e9fd1ed48bc9f8e8948605a9ca9c8f15",
+                "dumpsSha256": "d79c5845af84e0e09c79ba93611427e61ae3b090adbf81b0e74968716a0cd73c",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3317,7 +3317,7 @@
                   "d": 15880,
                   "breaks": 2693
                 },
-                "dumpsSha256": "e2abddcdf5f900069a23303a95ecf15fd106e4c365577670d77fcc333b649bff",
+                "dumpsSha256": "02cb68c6c628221c37016451e32240472c6d2f2338cbe6a652eb459ec9534a53",
                 "failures": 262,
                 "failuresByKind": {
                   "device-record": 1,
@@ -3358,7 +3358,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "3ee2655e5b7184daeabbe2def8bd489de6621e798f78599f5ae955320a80e3b0",
+                "dumpsSha256": "3f99b599a55e2431c1c54acffe1134cb7280b267f2310ef4b34a724ecbef4806",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -3374,7 +3374,7 @@
                 "dpr": 2.625,
                 "node": null,
                 "kind": "device-record",
-                "detail": "the host did not finish: the Android host crashed (mCurrentFocus=Window{203e2e1 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{116922066 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}; mWakefulness=Awake mHoldingDisplaySuspendBlocker=true): dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$SA2wZ4V5LaX50OULbhdebs8UusI(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.$r8$lambda$2ihi87IrpoT49v2HxoC28dteCno(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.write(DragonDump.kt:119)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DragonDumpKt.dumpJson(DragonDump.kt:93)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.runCase$capture$lambda$1$copy$0(DragonActivity.kt:195)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.$r8$lambda$uI66E-_roOhT8JnCFRryt6gwOmw(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity$$ExternalSyntheticLambda2.onPixelCopyFinished(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.view.PixelCopy$1.lambda$onCopyFinished$0(PixelCopy.java:193)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.view.PixelCopy$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Handler.handleCallback(Handler.java:995)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:103)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:248)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:338)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:9067)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)\n"
+                "detail": "the host did not finish: the Android host crashed (mCurrentFocus=Window{700b658 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{231310270 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}; mWakefulness=Awake mHoldingDisplaySuspendBlocker=true): dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$SA2wZ4V5LaX50OULbhdebs8UusI(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.$r8$lambda$2ihi87IrpoT49v2HxoC28dteCno(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.write(DragonDump.kt:119)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DragonDumpKt.dumpJson(DragonDump.kt:93)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.runCase$capture$lambda$1$copy$0(DragonActivity.kt:195)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.$r8$lambda$uI66E-_roOhT8JnCFRryt6gwOmw(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity$$ExternalSyntheticLambda2.onPixelCopyFinished(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.view.PixelCopy$1.lambda$onCopyFinished$0(PixelCopy.java:193)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.view.PixelCopy$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Handler.handleCallback(Handler.java:995)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:103)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:248)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:338)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:9067)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)\n"
               },
               {
                 "lane": "device-lines",
@@ -3534,10 +3534,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -3605,7 +3605,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "efcf830aceb9c06c11bc686a9d678a04e9fd1ed48bc9f8e8948605a9ca9c8f15",
+                "dumpsSha256": "d79c5845af84e0e09c79ba93611427e61ae3b090adbf81b0e74968716a0cd73c",
                 "failures": 38,
                 "failuresByKind": {
                   "pixel": 38
@@ -3645,7 +3645,7 @@
                   "d": 15880,
                   "breaks": 2693
                 },
-                "dumpsSha256": "e2abddcdf5f900069a23303a95ecf15fd106e4c365577670d77fcc333b649bff",
+                "dumpsSha256": "02cb68c6c628221c37016451e32240472c6d2f2338cbe6a652eb459ec9534a53",
                 "failures": 268,
                 "failuresByKind": {
                   "device-record": 1,
@@ -3687,7 +3687,7 @@
                   "d": 20615,
                   "breaks": 3406
                 },
-                "dumpsSha256": "3ee2655e5b7184daeabbe2def8bd489de6621e798f78599f5ae955320a80e3b0",
+                "dumpsSha256": "3f99b599a55e2431c1c54acffe1134cb7280b267f2310ef4b34a724ecbef4806",
                 "failures": 21,
                 "failuresByKind": {
                   "pixel": 21
@@ -3888,10 +3888,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -3959,7 +3959,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "e5fef4fc8f88bf9ca0654f61e72f037ac7ac6b6dec52a067248b623280f68316",
+                "dumpsSha256": "fe7bcb87b85ddba2e2ebcbf7a90944d07f942cba71594fbfd93253e070e8c216",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3997,7 +3997,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "d90fbd6c3ee8f0dfa9850457978a68cce4745acf68c03b0b28ce597a4b665f1d",
+                "dumpsSha256": "017ed3ab2cdc09699596d642d58df2709ce367a60a6c3bf950518c577a7a3a65",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -4035,7 +4035,7 @@
                   "d": 1184,
                   "breaks": 144
                 },
-                "dumpsSha256": "c5ff39dc04138280b8bfda967b201a1a4f7ba59feb2eec0e5ab5974c7bcc77d2",
+                "dumpsSha256": "49185bdddeed36f167b6f410405558ac64e2a1a40de0b9d6f8fc4ca8ddfa6476",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -4047,10 +4047,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -4213,7 +4213,7 @@
                 "dpr": 2.625,
                 "node": null,
                 "kind": "device-record",
-                "detail": "the host did not finish: the Android host crashed (mCurrentFocus=Window{203e2e1 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{116922066 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}; mWakefulness=Awake mHoldingDisplaySuspendBlocker=true): dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$SA2wZ4V5LaX50OULbhdebs8UusI(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.$r8$lambda$2ihi87IrpoT49v2HxoC28dteCno(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.Dump.write(DragonDump.kt:119)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.dump.DragonDumpKt.dumpJson(DragonDump.kt:93)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.runCase$capture$lambda$1$copy$0(DragonActivity.kt:195)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.$r8$lambda$uI66E-_roOhT8JnCFRryt6gwOmw(Unknown Source:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat dev.dragon.host.DragonActivity$$ExternalSyntheticLambda2.onPixelCopyFinished(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.view.PixelCopy$1.lambda$onCopyFinished$0(PixelCopy.java:193)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.view.PixelCopy$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Handler.handleCallback(Handler.java:995)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:103)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:248)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:338)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:9067)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)\n10-14 01:40:36.171  2669  2669 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)\n"
+                "detail": "the host did not finish: the Android host crashed (mCurrentFocus=Window{700b658 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{231310270 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}; mWakefulness=Awake mHoldingDisplaySuspendBlocker=true): dev.dragon.dump.DumpNodesLinesDeviceEdges.write(DragonDump.kt:335)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodesLines.write(DragonDump.kt:291)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write$lambda$0(DragonDump.kt:231)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.$r8$lambda$SA2wZ4V5LaX50OULbhdebs8UusI(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpNodes.write(DragonDump.kt:231)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.write$lambda$0(DragonDump.kt:119)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.$r8$lambda$2ihi87IrpoT49v2HxoC28dteCno(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DumpJsonWriter.array(DragonDump.kt:48)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.Dump.write(DragonDump.kt:119)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.dump.DragonDumpKt.dumpJson(DragonDump.kt:93)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.runCase$capture$lambda$1$copy$0(DragonActivity.kt:195)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity.$r8$lambda$uI66E-_roOhT8JnCFRryt6gwOmw(Unknown Source:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat dev.dragon.host.DragonActivity$$ExternalSyntheticLambda2.onPixelCopyFinished(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.view.PixelCopy$1.lambda$onCopyFinished$0(PixelCopy.java:193)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.view.PixelCopy$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Handler.handleCallback(Handler.java:995)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:103)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:248)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:338)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:9067)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)\n10-14 03:06:13.912  2687  2687 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)\n"
               },
               {
                 "lane": "device-hit",
@@ -4373,10 +4373,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -4444,7 +4444,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "c15c9e19a356c669f5c4feb0408eb6a3dec572bb6c71179b1efe777795b129ce",
+                "dumpsSha256": "273aabf950bd8c7aafba4df0fa6a66303b17611612e667ef31b03705f8a822ce",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -4482,7 +4482,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "c913b7b16af5ea0c7e9b4d16c81e6de6b039a54a864219d1ea3b4d9d9ab3015f",
+                "dumpsSha256": "a07fb770cc230b439595edc119b152aa78edbe939f5419af91c2ecbc7f4e987d",
                 "failures": 55,
                 "failuresByKind": {
                   "device-record": 52,
@@ -4523,7 +4523,7 @@
                   "d": 6610,
                   "breaks": 110
                 },
-                "dumpsSha256": "2ce39a1458e84b25db293c08affd0d83b5d535fdf7384e879b00892898930aa0",
+                "dumpsSha256": "a2ad65d73ae3c8cd388c0ded0f68c7287342763be6f44204a2e77fcf4618a19d",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -4699,10 +4699,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         },
         {
@@ -4879,10 +4879,10 @@
           "evidence": {
             "laneCode": "d3eb1edcfd05bc38fef72dd5fb905b2d4660940fcfb21b220c18da580a2c4659",
             "referenceData": "b20834a152ee047561fb1d2f501b5aa477e58dc7e3efd4c689fa1327a8d8f976",
-            "app": "9b6b9b649d147c8b450785ae520b74b411be56e90a4967c5b7968dbda1e792e8"
+            "app": "75d8c063086a3a45991259a0d02918df7112727418a4c011f4824008aa0ff94f"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38495862675"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38503377335"
           ]
         }
       ],
