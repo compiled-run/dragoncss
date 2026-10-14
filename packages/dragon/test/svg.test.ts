@@ -228,7 +228,8 @@ describe('the svg model in a compile', () => {
       createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', interactionLanes: true })
         .compile(svgTree(css, (_r, o) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4'], ...attrs])]));
     const blocked = (c: ReturnType<typeof enforced>): string[] => c.diagnostics.filter((d) => d.severity === 'error' && d.target === 'web').map((d) => `${d.code} ${d.profile?.feature ?? ''}`);
-    for (const [p, v] of [['fill', '#ff0000'], ['fill', 'red'], ['fill', 'rgba(255, 0, 0, 0.5)'], ['fill', 'transparent'], ['stroke', '#00f']] as const) {
+    // svg-colors proves hex, named and transparent fill and hex stroke, so these are values its rows still leave unproven.
+    for (const [p, v] of [['fill', 'rgba(255, 0, 0, 0.5)'], ['stroke', 'rgba(0, 0, 255, 0.5)'], ['stroke', 'transparent']] as const) {
       const attr = blocked(enforced('', [[p, v]]));
       const css = blocked(enforced(`rect { ${p}: ${v}; }`, []));
       expect(css.length, `${p}: ${v} in CSS`).toBeGreaterThan(0);
