@@ -290,22 +290,74 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
 n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
 case "$2" in
   repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
-  *status=in_progress*) if [ $n -le 5 ]; then body='${JSON.stringify({ workflow_runs: runs })}'; else body='${JSON.stringify({ workflow_runs: later })}'; fi ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
+  *status=in_progress*) if [ $n -le 9 ]; then body='${JSON.stringify({ workflow_runs: runs })}'; else body='${JSON.stringify({ workflow_runs: later })}'; fi ;;
   *status=*) body='{"workflow_runs":[]}' ;;
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac
 if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
-    const env = { GITHUB_RUN_ID: '7', REGEN_BRANCH_SLOTS: '2', POLL_SECONDS: '0' };
+    // LANDING_YIELD_SECONDS 0: the landing's runs (a label run, patch mode) no longer hold it back, only the slots do.
+    const env = { GITHUB_RUN_ID: '7', REGEN_BRANCH_SLOTS: '2', LANDING_YIELD_SECONDS: '0', POLL_SECONDS: '0' };
     const waits = runStep(gate, env, stub([...older, ...newer], [older[1]!, older[2]!, older[3]!, ...newer]));
     expect(waits.status, waits.stderr).toBe(0);
     expect(waits.stdout).toContain('2 older branch regens are queued or running; waiting for one of 2 slots');
-    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('9');
+    expect(waits.stdout).not.toContain('landing run');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('17');
     rmSync(join(d, 'calls'));
-    // The landing's runs (a label run, patch mode) and newer branch regens never hold it back.
+    // Newer branch regens never hold it back.
     const free = runStep(gate, env, stub([older[1]!, older[2]!, older[3]!, ...newer], []));
     expect(free.status, free.stderr).toBe(0);
     expect(free.stdout).not.toContain('waiting for one');
-    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('5');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('9');
+    rmSync(join(d, 'calls'));
+    // While the landing runs, a free slot waits too: a label run, a patch-mode regen or a device lanes run, until it ends.
+    const landingStub = (regen: object[], devices: object[]) => `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*status=queued*) if [ $n -le 9 ]; then body='${JSON.stringify({ workflow_runs: devices })}'; else body='{"workflow_runs":[]}'; fi ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
+  *status=in_progress*) if [ $n -le 9 ]; then body='${JSON.stringify({ workflow_runs: regen })}'; else body='{"workflow_runs":[]}'; fi ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const landing = { ...env, LANDING_YIELD_SECONDS: '5400' };
+    for (const [regen, devices] of [[[older[2]!], []], [[older[3]!], []], [[], [{ id: 50, event: 'workflow_dispatch', display_title: `device lanes of ${HEAD}` }]]] as [object[], object[]][]) {
+      const held = runStep(gate, landing, landingStub([...regen, ...newer], devices));
+      expect(held.status, held.stderr).toBe(0);
+      expect(held.stdout).toContain('1 landing run(s) are queued or running; waiting until they end (at most 5400 s)');
+      expect(held.stdout).not.toContain('waiting for one');
+      expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('17');
+      rmSync(join(d, 'calls'));
+    }
+    // Past LANDING_YIELD_SECONDS it stops yielding to the landing and takes the free slot.
+    const always = `
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
+  *status=in_progress*) body='${JSON.stringify({ workflow_runs: [older[2]!, older[3]!] })}' ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const capped = runStep(gate, { ...landing, LANDING_YIELD_SECONDS: '1', POLL_SECONDS: '1' }, always);
+    expect(capped.status, capped.stderr).toBe(0);
+    expect(capped.stdout).toContain('2 landing run(s) are queued or running; waiting until they end (at most 1 s)');
+    expect(capped.stdout).toContain('started after waiting 1 s');
+    // A failed list (a rate limit) waits a poll instead of failing the run.
+    const limited = runStep(gate, landing, `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*) if [ $n -le 3 ]; then echo '{"message":"API rate limit exceeded"}'; exit 1; fi; body='{"workflow_runs":[]}' ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`);
+    expect(limited.status, limited.stderr).toBe(0);
+    expect(limited.stdout).toContain('listing the queued and running runs failed; trying again in 0 s');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('11');
     rmSync(join(d, 'calls'));
     // A branch that moved off its dispatched head stops at once instead of waiting for a slot it would only be refused in.
     const branchAt = (sha: string) => `
@@ -325,6 +377,7 @@ n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
 case "$2" in
   repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
   repos/${REPO}/branches/${BR}) ${branch} ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
   *status=in_progress*) if [ $n -le 6 ]; then body='${JSON.stringify({ workflow_runs: [...older, ...newer] })}'; else body='${JSON.stringify({ workflow_runs: newer })}'; fi ;;
   *status=*) body='{"workflow_runs":[]}' ;;
   *) echo "unexpected gh $*" >&2; exit 9 ;;
@@ -350,6 +403,26 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(warm([run('workflow_dispatch', 'regen-on-ci')])).toBe('skip');
     expect(warm([run('workflow_dispatch', null)])).toBe('skip');
     expect(warm([run('workflow_dispatch', `regen of ${HEAD.slice(0, 12)}`)])).toBe('skip');
+  });
+  it('converge picks the last round that ran, and a round the other side had nothing to do after ends the chain', () => {
+    const pick = stepScript('Pick the last round');
+    const last = (e: Record<string, string>) => runStep(pick, { C1: '', N1: '', H1: '', C2: '', H2: '', C3: '', ...e }, 'exit 9');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true', H2: 'false' }).out['name']).toBe('host-2');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true' }).out['name']).toBe('chrome-2');
+    expect(last({ C1: 'true', N1: 'true', H1: 'false' }).out['name']).toBe('host-1');
+    // chrome-1 left lanes-host nothing to do: host-1 is skipped and chrome-1's tree is final.
+    expect(last({ C1: 'false', N1: 'false' }).out['name']).toBe('chrome-1');
+    const missing = last({ C1: 'true', N1: 'true' });
+    expect(missing.status).toBe(1);
+    expect(missing.stdout).toContain('host-1 reported nothing');
+    expect(last({}).stdout).toContain('chrome-1 reported nothing');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true', H2: 'true', C3: 'true' }).stdout).toContain('no fixed point after 5 rounds');
+    // Each later round runs only when the round before it changed files and left the other side something to do.
+    expect(yml).toContain("if: needs.chrome-1.outputs.next != 'false'");
+    for (const [prev, cur] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) {
+      const job = yml.slice(yml.indexOf(`\n  ${cur}:\n`), yml.indexOf('uses:', yml.indexOf(`\n  ${cur}:\n`)));
+      expect(job).toContain(`if: needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false'`);
+    }
   });
   it('the run-name gives branch mode its branch, head and nonce; patch mode keeps "regen of <sha>"', () => {
     const line = /\nrun-name: ([^\n]+)\n/.exec(yml)?.[1];

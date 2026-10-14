@@ -20,6 +20,9 @@ on:
       changed:
         description: "'true' when this round changed any file"
         value: ${{ jobs.round.outputs.changed }}
+      next:
+        description: "'false' when the other side's steps would all be skipped on this round's tree (regen --explain), so its round would do nothing"
+        value: ${{ jobs.round.outputs.next }}
 permissions:
   contents: read
 jobs:
@@ -28,6 +31,7 @@ jobs:
     timeout-minutes: 300
     outputs:
       changed: ${{ steps.regen.outputs.changed }}
+      next: ${{ steps.next.outputs.next }}
     env:
       # Inputs of the wpt and lanes-host cache keys; the same on every runner so the cache carries between rounds.
       DRAGON_WPT_DIR: /Users/runner/wpt
@@ -70,7 +74,7 @@ jobs:
         run: |
           if [ -s "$RUNNER_TEMP/prev/outputs.patch" ]; then git apply --binary "$RUNNER_TEMP/prev/outputs.patch"; fi
           mkdir -p .git/dragon-regen
-          tar -xzf "$RUNNER_TEMP/prev/store.tgz" -C .git/dragon-regen
+          zstd -dcq "$RUNNER_TEMP/prev/store.tar.zst" | tar -xf - -C .git/dragon-regen
       - name: Chrome side - Playwright 1.58.2 Chromium and the pinned WPT copy
         if: inputs.side == 'chrome'
         run: |
@@ -132,11 +136,29 @@ jobs:
           mkdir -p "$RUNNER_TEMP/out"
           git diff --cached --binary "${{ inputs.sha }}" > "$RUNNER_TEMP/out/outputs.patch"
           git diff --cached --stat "${{ inputs.sha }}" | tail -1
-          tar -czf "$RUNNER_TEMP/out/store.tgz" -C .git/dragon-regen v2
+          # zstd on every core: gzip took about a minute of each round for the 1.6 GB store, and as long again to unpack.
+          tar -cf - -C .git/dragon-regen v2 | zstd -T0 -3 -q -o "$RUNNER_TEMP/out/store.tar.zst"
           cp "$RUNNER_TEMP/regen.log" "$RUNNER_TEMP/out/"
           cp node_modules/.cache/dragon-regen/*.log node_modules/.cache/dragon-regen/last-run.json "$RUNNER_TEMP/out/" 2>/dev/null || true
           echo "${{ inputs.name }} (${{ inputs.runner }}): pnpm regen ${{ inputs.args }}: exit $code, ${secs} s, changed files: $changed" | tee "$RUNNER_TEMP/out/timing.txt" >> "$GITHUB_STEP_SUMMARY"
           exit "$code"
+      # A round of the other side whose steps would all be skipped changes nothing and costs a runner and several minutes of
+      # setup: regen --explain on this round's tree says so first. Both sides key with the same machine and environment (the
+      # job env above), so the explain here decides what that round would. Anything but a clean "all skipped" says it runs.
+      - name: Would the other side's round run anything
+        id: next
+        env:
+          OTHER: ${{ inputs.side == 'chrome' && '--only lanes-host' || '--skip lanes-host --skip tw-sweep' }}
+        run: |
+          next=true
+          # shellcheck disable=SC2086
+          if node scripts/regen.ts --explain $OTHER > "$RUNNER_TEMP/next.log" 2>&1; then
+            n=$(jq '[.[] | select(.action != "skipped")] | length' node_modules/.cache/dragon-regen/last-run.json 2>/dev/null || echo error)
+            [ "$n" != 0 ] || next=false
+          fi
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "${{ inputs.name }}: the other side's round (regen $OTHER) $([ "$next" = true ] && echo runs || echo would change nothing)" | tee -a "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/next.log"
       - name: Upload this round
         if: always()
         uses: actions/upload-artifact@v4
@@ -144,6 +166,8 @@ jobs:
           name: ${{ inputs.name }}
           path: ${{ runner.temp }}/out
           if-no-files-found: warn
+          # The store is zstd already; zipping it again only costs time.
+          compression-level: 0
       - name: Save the regen cache
         if: success() && inputs.save_cache
         uses: actions/cache/save@v4
