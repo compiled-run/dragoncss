@@ -1,8 +1,7 @@
 // Device lanes on CI (device-ci.ts, .github/workflows/device-lanes.yml), under the device lease like every device run.
 //   one <target> <device> <outcome.json> [--parts <part,...>]: builds the target's app, boots the one device, runs it as a local
 //     run runs each device (runOneDevice, judged against the committed host run while it is current), and writes the outcome with
-//     its evidence stamp and host. With --parts (cases, anim, vectors) only those parts run and the file is a part file; an iOS
-//     simulator boots while the app builds.
+//     its evidence stamp and host. With --parts (cases, anim, vectors) only those parts run and the file is a part file.
 //   combine <parts-dir> <out-dir>: makes each matrix device's outcome from the part files in <parts-dir> (every part exactly
 //     once, one evidence stamp per device) and writes them to <out-dir> for merge.
 //   merge <dir>: merges every outcome in <dir> (all matrix devices of both targets, this tree's evidence) and writes out/lanes.json
@@ -16,7 +15,6 @@ import { join } from 'node:path';
 import type { CaseDumpHashes, CiOutcome } from '../device-ci.ts';
 import { caseDumpHashes, ciOutcomeText, combineParts, diffCaseHashes, parseCaseHashes, parseParts, parsePartOutcome, partOutcomeText, compareWithCommitted, comparisonText, mergeCiOutcomes, OUTCOME_SCHEMA, PART_SCHEMA, parseCiOutcome, producerLabel, blockedExit } from '../device-ci.ts';
 import { deviceEvidence } from '../device-evidence.ts';
-import { EarlyBoots, prebuildApps } from '../device-jobs.ts';
 import type { DevicePart } from '../device-lanes.ts';
 import { ALL_PARTS, allRunFailures, deviceFailuresText, failuresByKind, runOneDevice } from '../device-lanes.ts';
 import { boot, DEVICE_MATRIX, release, requireDeviceLease, ToolingFault } from '../device-run.ts';
@@ -58,40 +56,34 @@ if (mode === 'one' && (rest.length === 3 || (rest.length === 5 && rest[3] === '-
   const evidence = deviceEvidence(t.target);
   // Only the cases and anim parts launch the app; the vectors part runs the generated harness alone.
   const needApp = run.has('cases') || run.has('anim');
-  // The iOS simulator boots (minutes on a fresh runner) while the app builds in its own process, as parity:lanes boots early.
-  const early = needApp && t.target === 'ios' ? new EarlyBoots([spec]) : null;
+  // The app builds before the boot: on a 3-core macOS runner a simulator booting beside swiftc made the build 4 times slower
+  // (run 38508725677: 878 s against 212 s).
+  let artifact = '';
+  let appCases = 0;
+  if (needApp) {
+    const b0 = Date.now();
+    const build = t.target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
+    for (const l of build.log) log(`build: ${l}`);
+    log(`build: ${((Date.now() - b0) / 1000).toFixed(0)} s`);
+    artifact = build.artifact;
+    appCases = build.cases;
+  }
+  const casesOf = (): ReturnType<typeof nativeCases> => {
+    if (!needApp) return [];
+    const cases = nativeCases();
+    if (appCases !== cases.length) throw new Error(`${t.target}: the app holds ${appCases} cases, layoutCases() ${cases.length}`);
+    return cases;
+  };
+  const host = committedHostRun(readLanesFile(), targets, t.target);
+  if (host === null && run.has('vectors')) log('no current committed host run: the vectors lane is judged without one');
   let outcome: Awaited<ReturnType<typeof runOneDevice>>;
   try {
-    let artifact = '';
-    let appCases = 0;
-    if (needApp) {
-      const b0 = Date.now();
-      if (early !== null && (await prebuildApps([t.target], (l) => log(`build: ${l}`))).length > 0) throw new Error(`${t.target}: the app build failed (its lines are above)`);
-      const build = t.target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
-      for (const l of build.log) log(`build: ${l}`);
-      log(`build: ${((Date.now() - b0) / 1000).toFixed(0)} s`);
-      artifact = build.artifact;
-      appCases = build.cases;
-    }
-    const casesOf = (): ReturnType<typeof nativeCases> => {
-      if (!needApp) return [];
-      const cases = nativeCases();
-      if (appCases !== cases.length) throw new Error(`${t.target}: the app holds ${appCases} cases, layoutCases() ${cases.length}`);
-      return cases;
-    };
-    const host = committedHostRun(readLanesFile(), targets, t.target);
-    if (host === null && run.has('vectors')) log('no current committed host run: the vectors lane is judged without one');
-    try {
-      outcome = await runOneDevice(t, spec, host, artifact, casesOf, true, log, { boot: () => early?.take(spec, log) ?? boot(spec), release: (h) => release(h, log) }, run);
-    } catch (e) {
-      // An install that kept failing transiently judged nothing of the tree; any other failure of the run stays a failure (1).
-      if (!(e instanceof ToolingFault)) throw e;
-      log(`blocked by the device tooling: ${e.message}`);
-      process.exit(blockedExit(['install-transient']));
-    }
-  } finally {
-    // A boot the run never took (the build failed) is stopped.
-    for (const p of (await early?.releaseRest(log)) ?? []) log(`an early boot could not be stopped: ${p}`);
+    outcome = await runOneDevice(t, spec, host, artifact, casesOf, true, log, { boot: () => boot(spec), release: (h) => release(h, log) }, run);
+  } catch (e) {
+    // An install that kept failing transiently judged nothing of the tree; any other failure of the run stays a failure (1).
+    if (!(e instanceof ToolingFault)) throw e;
+    log(`blocked by the device tooling: ${e.message}`);
+    process.exit(blockedExit(['install-transient']));
   }
   // Evidence only: whether a dumped capture differed from its warm-up capture (the iOS host's render-server warm-up).
   const warm = join(nativeOut(t.target), 'lanes', spec.name, 'warmup-ios.txt');
