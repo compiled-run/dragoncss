@@ -25,8 +25,8 @@ import { captureSnapshot, chromeFromSnapshot, INSTRUMENT_JS, liveDeadRulesInSnap
 
 const SNAPSHOT_CODE = ['packages/wpt/src/snapshot.ts', 'packages/wpt/src/chrome.ts', 'packages/parity/src/chrome.ts'];
 export const SNAPSHOT_MEMO: MemoStats = { hits: 0, misses: 0 };
-/** Refusals that a slower or faster capture could change: produced again on the next run instead of remembered. */
-const TIMING_REFUSALS: ReadonlySet<string> = new Set(['snapshot:nondeterministic', 'snapshot:harness-incomplete']);
+/** Refusals that a slower or faster capture could change (2 is testharness's TIMEOUT): produced again on the next run instead of remembered. */
+const TIMING_REFUSALS: ReadonlySet<string> = new Set(['snapshot:nondeterministic', 'snapshot:harness-incomplete', 'snapshot:harness-status:2']);
 
 /**
  * captureSnapshot, remembered (chrome-memo.ts) by the test's path and source, the pinned WPT commit (which fixes every file the
@@ -156,7 +156,7 @@ export async function runTarget(opts: RunOptions): Promise<RunResult> {
     const captured = capture && snapshotPaths.length > 0
       ? await chromeSession().then(({ browser, server }) => inOrder(snapshotPaths, CHROME_PAGES, (path) => captureSnapshotMemo(browser, server.origin, path, readFileSync(join(wpt, path), 'utf8'), commit)))
       : null;
-    if (captured !== null) log(`snapshots: ${SNAPSHOT_MEMO.hits} remembered, ${SNAPSHOT_MEMO.misses} captured (chrome-memo.ts)`);
+    if (captured !== null && SNAPSHOT_MEMO.hits + SNAPSHOT_MEMO.misses > 0) log(`snapshots: ${SNAPSHOT_MEMO.hits} remembered, ${SNAPSHOT_MEMO.misses} captured (chrome-memo.ts)`);
     for (const [i, path] of snapshotPaths.entries()) {
       const source = readFileSync(join(wpt, path), 'utf8');
       let file: SnapshotFile | null;
