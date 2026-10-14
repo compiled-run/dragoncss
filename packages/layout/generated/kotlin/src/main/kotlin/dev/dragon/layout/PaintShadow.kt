@@ -145,11 +145,11 @@ fun paintShadow_values(cells: JsArray<PaintShadow_Cell>): JsArray<Double> {
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/paint-shadow.ts:132
   run {
-    val _a190 = cells
-    var _i190 = 0
-    while (_i190 < _a190.size) {
-      val c: PaintShadow_Cell = _a190[_i190]
-      _i190++
+    val _a189 = cells
+    var _i189 = 0
+    while (_i189 < _a189.size) {
+      val c: PaintShadow_Cell = _a189[_i189]
+      _i189++
       jsPush(out, c.v)
     }
   }
@@ -376,11 +376,11 @@ fun paintShadow_rasterMask(path: AaPath, s: ShadowShape, hole: ShadowShape?, b: 
     val data: JsArray<Double> = jsArrayOf<Double>()
     // ts: packages/layout/src/paint-shadow.ts:329
     run {
-      val _a191 = paintAa_devicePixels(dev)
-      var _i191 = 0
-      while (_i191 < _a191.size) {
-        val v: Double = _a191[_i191]
-        _i191++
+      val _a190 = paintAa_devicePixels(dev)
+      var _i190 = 0
+      while (_i190 < _a190.size) {
+        val v: Double = _a190[_i190]
+        _i190++
         jsPush(data, (255.0 - v))
       }
     }
@@ -633,11 +633,11 @@ fun paintShadow_backdropAt(fills: JsArray<BackdropFill>, x: Double, y: Double): 
   var b: Double = 255.0
   // ts: packages/layout/src/paint-shadow.ts:517
   run {
-    val _a192 = fills
-    var _i192 = 0
-    while (_i192 < _a192.size) {
-      val f: BackdropFill = _a192[_i192]
-      _i192++
+    val _a191 = fills
+    var _i191 = 0
+    while (_i191 < _a191.size) {
+      val f: BackdropFill = _a191[_i191]
+      _i191++
       // ts: packages/layout/src/paint-shadow.ts:518
       if ((jsLength(f.radii) != 8.0)) {
         throw JsError(("paint-shadow: a backdrop fill has " + jsNumberToString(jsLength(f.radii)) + " radii, not 8"))
@@ -752,11 +752,11 @@ fun paintShadow_layerValues(layer: JsArray<PaintShadow_Cell>, over: JsArray<Pain
       val px: JsArray<Double> = paintShadow_encodeOver(paintShadow_cellAt(over, i).v, paintShadow_cellAt(over, (i + 1.0)).v, paintShadow_cellAt(over, (i + 2.0)).v, paintShadow_cellAt(back, i).v, paintShadow_cellAt(back, (i + 1.0)).v, paintShadow_cellAt(back, (i + 2.0)).v, paintShadow_cellAt(layer, (i + 3.0)).v)
       // ts: packages/layout/src/paint-shadow.ts:583
       run {
-        val _a193 = px
-        var _i193 = 0
-        while (_i193 < _a193.size) {
-          val v: Double = _a193[_i193]
-          _i193++
+        val _a192 = px
+        var _i192 = 0
+        while (_i192 < _a192.size) {
+          val v: Double = _a192[_i192]
+          _i192++
           jsPush(out, v)
         }
       }
@@ -801,11 +801,11 @@ fun paintShadow_tileMaskAt(cache: JsArray<TileMask>, spread: ShadowShape, ox: Do
   val j: Double = paintDither_ccTileIndex(y, paintShadow_TILE)
   // ts: packages/layout/src/paint-shadow.ts:624
   run {
-    val _a194 = cache
-    var _i194 = 0
-    while (_i194 < _a194.size) {
-      val t: TileMask = _a194[_i194]
-      _i194++
+    val _a193 = cache
+    var _i193 = 0
+    while (_i193 < _a193.size) {
+      val t: TileMask = _a193[_i193]
+      _i193++
       // ts: packages/layout/src/paint-shadow.ts:624
       if (((t.i == i) && (t.j == j))) {
         return t.mask
@@ -840,11 +840,11 @@ fun paintShadow_outerLayer(left: Double, top: Double, right: Double, bottom: Dou
   var bounds: PaintBlur_IRect? = null
   // ts: packages/layout/src/paint-shadow.ts:654
   run {
-    val _a195 = shadows
-    var _i195 = 0
-    while (_i195 < _a195.size) {
-      val sh: ShadowInput = _a195[_i195]
-      _i195++
+    val _a194 = shadows
+    var _i194 = 0
+    while (_i194 < _a194.size) {
+      val sh: ShadowInput = _a194[_i194]
+      _i194++
       val z: JsArray<Double> = paintShadow_zoomed(sh, dpr, faults)
       val spread: ShadowShape = paintShadow_spreadShape(left, top, right, bottom, border.radii, paintShadow_at(z, 3.0), faults)
       val shape: ShadowShape = paintShadow_offsetShape(spread, paintShadow_at(z, 0.0), paintShadow_at(z, 1.0))
@@ -977,11 +977,11 @@ fun paintShadow_insetLayer(left: Double, top: Double, right: Double, bottom: Dou
     var m: A8Mask? = null
     // ts: packages/layout/src/paint-shadow.ts:750
     run {
-      val _a196 = cache
-      var _i196 = 0
-      while (_i196 < _a196.size) {
-        val t: TileMask = _a196[_i196]
-        _i196++
+      val _a195 = cache
+      var _i195 = 0
+      while (_i195 < _a195.size) {
+        val t: TileMask = _a195[_i195]
+        _i195++
         // ts: packages/layout/src/paint-shadow.ts:750
         if (((t.i == i) && (t.j == j))) {
           m = t.mask

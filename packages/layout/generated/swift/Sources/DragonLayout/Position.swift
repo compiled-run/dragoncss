@@ -81,11 +81,11 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:39
   do {
-    let _a197 = box.children
-    var _i197 = 0
-    while _i197 < _a197.items.count {
-      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a197.items[_i197]
-      _i197 += 1
+    let _a196 = box.children
+    var _i196 = 0
+    while _i196 < _a196.items.count {
+      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a196.items[_i196]
+      _i196 += 1
       // ts: packages/layout/src/position.ts:40
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
         try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s206, jsConcat(S.s450, (k as! ReplacedLeaf).id, S.s71))
@@ -129,7 +129,7 @@ public func position_blockInset(_ box: any U_LayoutBox_ReplacedLeaf, _ v: any U_
   }
   // ts: packages/layout/src/position.ts:58
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s528, S.s784)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s529, S.s787)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
 }

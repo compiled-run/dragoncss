@@ -140,6 +140,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -273,6 +274,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -406,6 +408,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -539,6 +542,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -702,6 +706,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -865,6 +870,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1028,6 +1034,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1191,6 +1198,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1354,6 +1362,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1517,6 +1526,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1670,6 +1680,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1803,6 +1814,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1966,6 +1978,7 @@
         "letter-spacing": "normal",
         "text-overflow": "clip",
         "text-transform": "none",
+        "text-indent": "0px",
         "writing-mode": "horizontal-tb"
       }
     },

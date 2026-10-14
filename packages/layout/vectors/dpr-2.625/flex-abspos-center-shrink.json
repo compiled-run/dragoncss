@@ -144,6 +144,10 @@
      "value": "baseline"
     },
     "textOverflow": "clip",
+    "textIndent": {
+     "kind": "px",
+     "value": 0
+    },
     "grid": null,
     "gridItem": null
    },
@@ -265,6 +269,10 @@
        "value": "baseline"
       },
       "textOverflow": "clip",
+      "textIndent": {
+       "kind": "px",
+       "value": 0
+      },
       "grid": null,
       "gridItem": null
      },
@@ -388,6 +396,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "grid": null,
         "gridItem": null
        },
@@ -509,6 +521,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "grid": null,
           "gridItem": null
          },
@@ -672,6 +688,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "grid": null,
         "gridItem": null
        },
@@ -793,6 +813,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "grid": null,
           "gridItem": null
          },
@@ -956,6 +980,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1079,6 +1107,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "grid": null,
           "gridItem": null
          },
@@ -1205,6 +1237,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1326,6 +1362,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "grid": null,
           "gridItem": null
          },
@@ -1489,6 +1529,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1610,6 +1654,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "grid": null,
           "gridItem": null
          },
@@ -1772,6 +1820,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1895,6 +1947,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "grid": null,
           "gridItem": null
          },
@@ -2016,6 +2072,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "grid": null,
             "gridItem": null
            },
@@ -2180,6 +2240,10 @@
          "value": "baseline"
         },
         "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
         "grid": null,
         "gridItem": null
        },
@@ -2303,6 +2367,10 @@
            "value": "baseline"
           },
           "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
           "grid": null,
           "gridItem": null
          },
@@ -2424,6 +2492,10 @@
              "value": "baseline"
             },
             "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
             "grid": null,
             "gridItem": null
            },

@@ -309,7 +309,7 @@ public func box_lengthMaxWidth(_ nodeId: JsString, _ v: any U_FitContent_LengthC
 
 // ts: packages/layout/src/box.ts:203
 public func box_refuseKeyword(_ nodeId: JsString, _ prop: JsString, _ keyword: JsString) throws -> Never {
-  try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s534, jsConcat(prop, S.s158, keyword, S.s93))
+  try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s535, jsConcat(prop, S.s158, keyword, S.s93))
 }
 
 // ts: packages/layout/src/box.ts:208
@@ -332,7 +332,7 @@ public func box_percentBlockBasis(_ box: LayoutBox, _ basis: any U_HeightBasis_d
   }
   // ts: packages/layout/src/box.ts:228
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s528, jsConcat(prop, S.s96))
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s529, jsConcat(prop, S.s96))
   }
   return nil
 }
