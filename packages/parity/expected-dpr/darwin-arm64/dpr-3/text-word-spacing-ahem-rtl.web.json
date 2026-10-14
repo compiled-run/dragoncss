@@ -141,6 +141,7 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -275,6 +276,7 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -409,6 +411,7 @@
         "word-spacing": "2px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -563,6 +566,7 @@
         "word-spacing": "7px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -717,6 +721,7 @@
         "word-spacing": "10px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -871,6 +876,7 @@
         "word-spacing": "-15px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -1025,6 +1031,7 @@
         "word-spacing": "0.33px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -1179,6 +1186,7 @@
         "word-spacing": "7px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -1333,6 +1341,7 @@
         "word-spacing": "7px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -1497,6 +1506,7 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -1651,6 +1661,7 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -1805,6 +1816,7 @@
         "word-spacing": "0px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -1979,6 +1991,7 @@
         "word-spacing": "9px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -2143,6 +2156,7 @@
         "word-spacing": "5px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },
@@ -2297,6 +2311,7 @@
         "word-spacing": "4px",
         "text-overflow": "clip",
         "text-transform": "none",
+        "resize": "none",
         "text-indent": "0px"
       }
     },

@@ -4,21 +4,21 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4510 (19.4%) | 18775 (80.6%) | 1 | 0 | 0 |
-| ios | 4447 (19.1%) | 18798 (80.7%) | 1 | 0 | 40 |
-| android | 4447 (19.1%) | 18798 (80.7%) | 1 | 0 | 40 |
+| web | 4580 (19.7%) | 18705 (80.3%) | 1 | 0 | 0 |
+| ios | 4517 (19.4%) | 18728 (80.4%) | 1 | 0 | 40 |
+| android | 4517 (19.4%) | 18728 (80.4%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4218, ios 4218 and android 4218 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4288, ios 4288 and android 4288 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1447 / 104 / 0 / 0 / 0 | 1447 / 104 / 0 / 0 / 0 | 1447 / 104 / 0 / 0 / 0 |
+| layout | 1551 | 1448 / 103 / 0 / 0 / 0 | 1448 / 103 / 0 / 0 / 0 | 1448 / 103 / 0 / 0 / 0 |
 | flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
-| typography | 261 | 71 / 190 / 0 / 0 / 0 | 61 / 200 / 0 / 0 / 0 | 61 / 200 / 0 / 0 / 0 |
+| typography | 261 | 140 / 121 / 0 / 0 / 0 | 130 / 131 / 0 / 0 / 0 | 130 / 131 / 0 / 0 / 0 |
 | colours | 14842 | 100 / 14742 / 0 / 0 / 0 | 96 / 14746 / 0 / 0 / 0 | 96 / 14746 / 0 / 0 / 0 |
 | backgrounds | 151 | 19 / 132 / 0 / 0 / 0 | 19 / 132 / 0 / 0 / 0 | 19 / 132 / 0 / 0 / 0 |
 | borders | 250 | 172 / 78 / 0 / 0 / 0 | 172 / 78 / 0 / 0 / 0 | 172 / 78 / 0 / 0 / 0 |
@@ -62,7 +62,6 @@ As published (before the shell pre-pass), the sheet compiles for web 4218, ios 4
 | `property scroll-margin-left` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-right` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-top` | 70 | 70 | 70 | 4 |
-| `property text-indent` | 70 | 70 | 70 | 4 |
 | `value calc()` | 52 | 52 | 52 | 4 |
 | `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
 | `property cursor` | 36 | 0 | 0 | 36 |
@@ -75,3 +74,4 @@ As published (before the shell pre-pass), the sheet compiles for web 4218, ios 4
 | `property scroll-padding-inline-end` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-inline-start` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-left` | 35 | 35 | 35 | 2 |
+| `property scroll-padding-right` | 35 | 35 | 35 | 2 |

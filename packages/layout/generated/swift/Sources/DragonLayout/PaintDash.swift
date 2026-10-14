@@ -1156,7 +1156,7 @@ public func paintDash_outlinePaintOps(_ left: Double, _ top: Double, _ right: Do
   }
   // ts: packages/layout/src/paint-dash.ts:811
   if (((!(width > 0.0)) || ((right - left) < (2.0 * width))) || ((bottom - top) < (2.0 * width))) {
-    throw JsError(message: jsConcat(S.s769, jsNumberToString(width), S.s26, jsNumberToString(left), S.s138, jsNumberToString(top), S.s138, jsNumberToString(right), S.s138, jsNumberToString(bottom)))
+    throw JsError(message: jsConcat(S.s769, jsNumberToString(width), S.s26, jsNumberToString(left), S.s137, jsNumberToString(top), S.s137, jsNumberToString(right), S.s137, jsNumberToString(bottom)))
   }
   let out: JsArray<BorderOp> = JsArray<BorderOp>([])
   let edges: JsArray<DashEdge> = JsArray<DashEdge>([])
