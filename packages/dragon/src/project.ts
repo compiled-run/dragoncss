@@ -29,6 +29,7 @@ import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
+import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
@@ -1278,14 +1279,17 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
       // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
       // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. MQ-R1: native switches
-      // bands at run time, so every band's cases and animations are checked (each refusal once).
+      // bands at run time, so every band's cases and animations are checked (each refusal once). PNT1: an animated color must not
+      // reach a currentcolor outline or box-shadow, which native paints in the resting color.
       const gradientsReported = new Set<string>();
       const doublesReported = new Set<string>();
+      const currentColorReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
         refuseAnimatedGradients(a, roots, nativeTargets, diagnostics, gradientsReported);
         refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
+        refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
       });
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
