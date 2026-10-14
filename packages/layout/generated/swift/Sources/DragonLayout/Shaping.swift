@@ -910,11 +910,11 @@ public func shaping_refusalOf(_ units: JsArray<Double>) throws -> JsString {
       let textDefault: Bool = ((((((((((cp == 35.0) || (cp == 42.0)) || ((cp >= 48.0) && (cp <= 57.0))) || (cp == 169.0)) || (cp == 174.0)) || (cp == 8252.0)) || (cp == 8265.0)) || (cp == 8482.0)) || (cp == 8505.0)) || ((cp >= 8596.0) && (cp <= 8601.0)))
       // ts: packages/layout/src/shaping.ts:227
       if try (scriptData_isExtendedPictographic(cp) && (!textDefault)) {
-        return try jsConcat(S.s405, jsToUpperCase(jsToStringRadix16(cp)), S.s62)
+        return try jsConcat(S.s406, jsToUpperCase(jsToStringRadix16(cp)), S.s63)
       }
       // ts: packages/layout/src/shaping.ts:228
       if try ((cp > 255.0) && scriptData_isMark(cp)) {
-        return try jsConcat(S.s405, jsToUpperCase(jsToStringRadix16(cp)), S.s57)
+        return try jsConcat(S.s406, jsToUpperCase(jsToStringRadix16(cp)), S.s58)
       }
     }
   }
@@ -1023,7 +1023,7 @@ public func shaping_segmentText(_ text: JsString) throws -> any U_SegmentResult_
         }
         // ts: packages/layout/src/shaping.ts:282
         if try ((jsUnwrap(jsAt(next, 0.0)) == scriptData_USCRIPT_INHERITED) && (jsLength(next) > 1.0)) {
-          return try SegmentResult_okFalse(false, jsConcat(S.s405, jsToUpperCase(jsToStringRadix16(cp)), S.s64))
+          return try SegmentResult_okFalse(false, jsConcat(S.s406, jsToUpperCase(jsToStringRadix16(cp)), S.s65))
         }
         // ts: packages/layout/src/shaping.ts:283
         if try (!shaping_mergeSets(st, next)) {
@@ -1742,7 +1742,7 @@ public func shaping_missingIn(_ results: JsArray<ShapeResult>) throws -> Double 
 
 // ts: packages/layout/src/shaping.ts:761
 public func shaping_noGlyph(_ cp: Double) throws -> any U_LineResult_okFalse_LineResult_okTrue {
-  return try LineResult_okFalse(false, jsConcat(S.s405, jsToUpperCase(jsToStringRadix16(cp)), S.s40))
+  return try LineResult_okFalse(false, jsConcat(S.s406, jsToUpperCase(jsToStringRadix16(cp)), S.s40))
 }
 
 // ts: packages/layout/src/shaping.ts:770
@@ -1776,10 +1776,10 @@ public func shaping_hyphenWidth(_ item: ShapeItem) throws -> any U_LineResult_ok
     }
     return try shaping_shapeItem((made as! ItemResult_okTrue).item)
   }
-  var r: ShapeResult = try own(S.s940)
+  var r: ShapeResult = try own(S.s943)
   // ts: packages/layout/src/shaping.ts:790
   if ((r.missing >= 0.0) || (jsLength(r.runs) == 0.0)) {
-    try r = own(S.s146)
+    try r = own(S.s147)
   }
   // ts: packages/layout/src/shaping.ts:791
   if (r.missing >= 0.0) {
@@ -1809,7 +1809,7 @@ public func shaping_lineView(_ item: ShapeItem, _ paragraph: ShapeResult, _ star
   if try (((start == rangeStart) && (available >= shaping_snapWidth(paragraph.width, faults))) && shaping_isStartSafe(paragraph)) {
     // ts: packages/layout/src/shaping.ts:809
     if (breakOffset != rangeEnd) {
-      return LineResult_okFalse(false, jsConcat(S.s898, jsNumberToString(breakOffset)))
+      return LineResult_okFalse(false, jsConcat(S.s901, jsNumberToString(breakOffset)))
     }
     return try LineResult_okTrue(true, rangeEnd, shaping_snapped(JsArray<ViewSegment>([ViewSegment(paragraph, rangeStart, rangeEnd)]), faults))
   }
@@ -1844,7 +1844,7 @@ public func shaping_lineView(_ item: ShapeItem, _ paragraph: ShapeResult, _ star
       candidate = adjusted
       // ts: packages/layout/src/shaping.ts:839
       if (breakOffset != adjusted) {
-        return LineResult_okFalse(false, jsConcat(S.s256, jsNumberToString(adjusted), S.s23, jsNumberToString(breakOffset)))
+        return LineResult_okFalse(false, jsConcat(S.s257, jsNumberToString(adjusted), S.s23, jsNumberToString(breakOffset)))
       }
       lineEnd = trimmed
       hasLineEnd = true
@@ -1855,7 +1855,7 @@ public func shaping_lineView(_ item: ShapeItem, _ paragraph: ShapeResult, _ star
   if (candidate >= rangeEnd) {
     // ts: packages/layout/src/shaping.ts:848
     if (breakOffset != rangeEnd) {
-      return LineResult_okFalse(false, jsConcat(S.s905, jsNumberToString(breakOffset)))
+      return LineResult_okFalse(false, jsConcat(S.s908, jsNumberToString(breakOffset)))
     }
     let missing: Double = try shaping_missingIn(JsArray<ShapeResult>([lineStart]))
     // ts: packages/layout/src/shaping.ts:850
@@ -2384,7 +2384,7 @@ public func shaping_breakText(_ b: LineBuild, _ r: MutableResult, _ availIn: Dou
   let it: any U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = try jsUnwrap(jsAt(b.items, r.index))
   // ts: packages/layout/src/shaping.ts:1272
   if (it.kind != S.s_text) {
-    throw try BreakFailure(S.s500)
+    throw try BreakFailure(S.s502)
   }
   var avail: Double = availIn
   let wrapped: Bool = (((((it as! BreakItem_text).offset + r.start) != 0.0) && (((it as! BreakItem_text).offset + r.start) == b.lineStart)) && (!b.afterForced))
@@ -2592,7 +2592,7 @@ public func shaping_handleOverflow(_ b: LineBuild) throws -> Void {
           let minAvail: Double = (r.width - 1.0)
           // ts: packages/layout/src/shaping.ts:1415
           if (minAvail <= 0.0) {
-            throw try BreakFailure(S.s452)
+            throw try BreakFailure(S.s453)
           }
           let before: MutableResult = MutableResult(r.index, r.start, r.end, r.width, r.hyphen, r.view, r.canBreakAfter, r.mayBreakInside, r.hangs)
           _ = try shaping_breakText(b, r, ((itemAvail < minAvail) ? itemAvail : minAvail), itemAvail)
@@ -2634,7 +2634,7 @@ public func shaping_handleText(_ b: LineBuild) throws -> Void {
   let it: any U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = try jsUnwrap(jsAt(b.items, b.curItem))
   // ts: packages/layout/src/shaping.ts:1449
   if (it.kind != S.s_text) {
-    throw try BreakFailure(S.s629)
+    throw try BreakFailure(S.s632)
   }
   // ts: packages/layout/src/shaping.ts:1450
   if (b.state == S.s_trailing) {
@@ -2842,7 +2842,7 @@ public func shaping_breakItemLines(_ items: JsArray<any U_BreakItem_br_BreakItem
       }
       // ts: packages/layout/src/shaping.ts:1593
       if ((line.nextItem == curItem) && (line.nextOffset == curOffset)) {
-        throw try BreakFailure(jsConcat(S.s900, jsNumberToString(curItem)))
+        throw try BreakFailure(jsConcat(S.s903, jsNumberToString(curItem)))
       }
       _ = jsPush(lines, line)
       curItem = line.nextItem
@@ -2880,7 +2880,7 @@ public func shaping_shapedText(_ faces: JsStringMap<ShapedFace>, _ shaper: Glyph
     var out: any U_ShapedItem_okFalse_ShapedItem_okTrue
     // ts: packages/layout/src/shaping.ts:1634
     if (f == nil) {
-      out = ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s725, face))
+      out = ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s728, face))
     } else {
       let made: any U_ItemResult_okFalse_ItemResult_okTrue = try shaping_makeItem(ItemInput(shaper, jsUnwrap(f).id, size, text, language, jsUnwrap(f).hanKerning, letterSpacing, wordSpacing, faults))
       // ts: packages/layout/src/shaping.ts:1637
@@ -2888,7 +2888,7 @@ public func shaping_shapedText(_ faces: JsStringMap<ShapedFace>, _ shaper: Glyph
         out = ShapedItem_okFalse(false, S.s_text_glyph, (made as! ItemResult_okFalse).reason)
       } else {
         let result: ShapeResult = try shaping_shapeItem((made as! ItemResult_okTrue).item)
-        try out = ((result.missing >= 0.0) ? (ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s405, jsToUpperCase(jsToStringRadix16(result.missing)), S.s40)) as any U_ShapedItem_okFalse_ShapedItem_okTrue) : (ShapedItem_okTrue(true, (made as! ItemResult_okTrue).item, result) as any U_ShapedItem_okFalse_ShapedItem_okTrue))
+        try out = ((result.missing >= 0.0) ? (ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s406, jsToUpperCase(jsToStringRadix16(result.missing)), S.s40)) as any U_ShapedItem_okFalse_ShapedItem_okTrue) : (ShapedItem_okTrue(true, (made as! ItemResult_okTrue).item, result) as any U_ShapedItem_okFalse_ShapedItem_okTrue))
       }
     }
     _ = cache.set(key, out)
@@ -2910,7 +2910,7 @@ public func shaping_shapedText(_ faces: JsStringMap<ShapedFace>, _ shaper: Glyph
     let f: ShapedFace? = faces.get(font.family)
     // ts: packages/layout/src/shaping.ts:1655
     if (f == nil) {
-      throw JsError(message: jsConcat(S.s725, font.family, S.s184))
+      throw JsError(message: jsConcat(S.s728, font.family, S.s185))
     }
     let size: Double = try units_platformFontSize(font.size)
     let d: FontData = try jsUnwrap(f).data
@@ -2939,7 +2939,7 @@ public func shaping_shapedText(_ faces: JsStringMap<ShapedFace>, _ shaper: Glyph
     let f: ShapedFace? = faces.get(font.family)
     // ts: packages/layout/src/shaping.ts:1678
     if (f == nil) {
-      throw JsError(message: jsConcat(S.s725, font.family, S.s184))
+      throw JsError(message: jsConcat(S.s728, font.family, S.s185))
     }
     return try text_fontMetricLengths(jsUnwrap(f).data, units_platformFontSize(font.size))
 }, { (text: JsString, font: TextFont) throws -> any U_ShapedItem_okFalse_ShapedItem_okTrue in
@@ -3126,7 +3126,7 @@ public func shaping_firstOutsideLatin(_ text: JsString) throws -> Double {
 
 // ts: packages/layout/src/shaping.ts:1805
 public func shaping_outsideLatinReason(_ cp: Double) throws -> JsString {
-  return try jsConcat(S.s405, jsToUpperCase(jsToStringRadix16(cp)), S.s80)
+  return try jsConcat(S.s406, jsToUpperCase(jsToStringRadix16(cp)), S.s81)
 }
 
 // ts: packages/layout/src/shaping.ts:1809

@@ -61,20 +61,20 @@ public final class Fit {
 
 // ts: packages/layout/src/truncate.ts:34
 public func truncate_ellipsisOf(_ ctx: Ctx, _ nodeId: JsString, _ font: TextFont) throws -> EllipsisRun {
-  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s941, font)
+  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s944, font)
   // ts: packages/layout/src/truncate.ts:36
   if one.ok {
-    return EllipsisRun(S.s941, (one as! MeasureResult_okTrue).measure.width)
+    return EllipsisRun(S.s944, (one as! MeasureResult_okTrue).measure.width)
   }
   // ts: packages/layout/src/truncate.ts:37
   if ((one as! MeasureResult_okFalse).code != S.s_text_glyph) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s537, (one as! MeasureResult_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (one as! MeasureResult_okFalse).reason)
   }
-  let dots: JsString = (ctx.faults.noDotsFallback ? S.s149 : S.s150)
+  let dots: JsString = (ctx.faults.noDotsFallback ? S.s150 : S.s151)
   let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(dots, font)
   // ts: packages/layout/src/truncate.ts:41
   if (!m.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s537, (m as! MeasureResult_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (m as! MeasureResult_okFalse).reason)
   }
   return EllipsisRun(dots, (m as! MeasureResult_okTrue).measure.width)
 }
@@ -117,7 +117,7 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
         let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(truncate_codePoints(s.text, s.start, (s.start + k)), s.font)
         // ts: packages/layout/src/truncate.ts:70
         if (!m.ok) {
-          try unsupported_unsupported(S.s_text_glyph, nodeId, S.s537, (m as! MeasureResult_okFalse).reason)
+          try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (m as! MeasureResult_okFalse).reason)
         }
         // ts: packages/layout/src/truncate.ts:71
         if ((m as! MeasureResult_okTrue).measure.width > target) {
@@ -132,7 +132,7 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
   let item: any U_ShapedItem_okFalse_ShapedItem_okTrue = try ctx.measurer.shaped(s.text, s.font)
   // ts: packages/layout/src/truncate.ts:77
   if (!item.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s537, (item as! ShapedItem_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (item as! ShapedItem_okFalse).reason)
   }
   let result: ShapeResult = (item as! ShapedItem_okTrue).result
   let limit: Double = try units_toFloat(target)
@@ -204,14 +204,14 @@ public func truncate_truncatedWidth(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSo
     let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(truncate_codePoints(s.text, s.start, (s.start + count)), s.font)
     // ts: packages/layout/src/truncate.ts:115
     if (!m.ok) {
-      try unsupported_unsupported(S.s_text_glyph, nodeId, S.s537, (m as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (m as! MeasureResult_okFalse).reason)
     }
     return (m as! MeasureResult_okTrue).measure.width
   }
   let item: any U_ShapedItem_okFalse_ShapedItem_okTrue = try ctx.measurer.shaped(s.text, s.font)
   // ts: packages/layout/src/truncate.ts:119
   if (!item.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s537, (item as! ShapedItem_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s540, (item as! ShapedItem_okFalse).reason)
   }
   return try shaping_viewSnappedWidth((item as! ShapedItem_okTrue).item, shaping_subView(shaping_wholeView((item as! ShapedItem_okTrue).result), s.start, (s.start + count)))
 }

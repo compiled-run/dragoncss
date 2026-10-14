@@ -476,7 +476,7 @@ public final class GridLine_area: U_GridLine_area_GridLine_auto_GridLine_line_Gr
 }
 
 // ts: packages/layout/src/input.ts:246
-public final class GridSpan_definite: U_GridSpan_auto_GridSpan_definite, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_startLine {
+public final class GridSpan_definite: U_GridSpan_auto_GridSpan_definite, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_lines {
   public let kind: JsString
   public let start: Double
   public let end: Double
@@ -488,7 +488,7 @@ public final class GridSpan_definite: U_GridSpan_auto_GridSpan_definite, U_GridS
 }
 
 // ts: packages/layout/src/input.ts:247
-public final class GridSpan_auto: U_GridSpan_auto_GridSpan_definite, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_startLine, U_GridSpan_auto_GridSpan_endLine_GridSpan_lines_GridSpan_startLine {
+public final class GridSpan_auto: U_GridSpan_auto_GridSpan_definite, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_lines, U_GridSpan_auto_GridSpan_endLine_GridSpan_lines_GridSpan_startLine {
   public let kind: JsString
   public let span: Double
   public init(_ kind: JsString, _ span: Double) {
@@ -498,7 +498,7 @@ public final class GridSpan_auto: U_GridSpan_auto_GridSpan_definite, U_GridSpan_
 }
 
 // ts: packages/layout/src/input.ts:248
-public final class GridSpan_lines: U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_auto_GridSpan_endLine_GridSpan_lines_GridSpan_startLine {
+public final class GridSpan_lines: U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_lines, U_GridSpan_auto_GridSpan_endLine_GridSpan_lines_GridSpan_startLine {
   public let kind: JsString
   public let start: any U_GridLine_area_GridLine_auto_GridLine_line_GridLine_namedLine_GridLine_namedSpan_GridLine_span
   public let end: any U_GridLine_area_GridLine_auto_GridLine_line_GridLine_namedLine_GridLine_namedSpan_GridLine_span
@@ -520,7 +520,7 @@ public final class GridSpan_startLine: U_GridSpan_auto_GridSpan_definite_GridSpa
 }
 
 // ts: packages/layout/src/input.ts:250
-public final class GridSpan_endLine: U_GridSpan_auto_GridSpan_definite_GridSpan_endLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_startLine, U_GridSpan_auto_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_endLine_GridSpan_startLine {
+public final class GridSpan_endLine: U_GridSpan_auto_GridSpan_definite_GridSpan_endLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_startLine, U_GridSpan_auto_GridSpan_endLine_GridSpan_lines_GridSpan_startLine, U_GridSpan_endLine_GridSpan_startLine {
   public let kind: JsString
   public let line: Double
   public init(_ kind: JsString, _ line: Double) {
