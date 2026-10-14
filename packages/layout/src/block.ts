@@ -134,6 +134,10 @@ export type EngineFaults = {
   readonly spacingPerCodePoint: boolean;
   /** TXT2-b: HarfBuzz keeps liga, clig and calt under nonzero letter spacing (font_features.cc). */
   readonly ligaturesKept: boolean;
+  /** TXT2-b: no word spacing after a space at offset 0 of a shaped item (Blink's offset-0 rule counts from the formatting context). */
+  readonly wordSpacingAtItemStart: boolean;
+  /** TXT2-b: no word spacing after a no-break space in a shaped item (Character::TreatAsSpace includes it). */
+  readonly wordSpacingSkipsNbsp: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -229,6 +233,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   trailingSpacingDropped: false,
   spacingPerCodePoint: false,
   ligaturesKept: false,
+  wordSpacingAtItemStart: false,
+  wordSpacingSkipsNbsp: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,

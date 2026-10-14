@@ -192,6 +192,7 @@ export const textLeafSchema = obj({
   whiteSpaceCollapse: lit('collapse', 'preserve', 'preserve-breaks', 'break-spaces'),
   textWrapMode: lit('wrap', 'nowrap'),
   letterSpacing: calcExpr,
+  wordSpacing: calcExpr,
   overflowWrap: lit('normal', 'break-word', 'anywhere'),
   wordBreak: lit('normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'),
 });

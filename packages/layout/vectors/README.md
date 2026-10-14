@@ -344,6 +344,10 @@ Input:
        "kind": "px",
        "value": 0
       },
+      "wordSpacing": {
+       "kind": "px",
+       "value": 0
+      },
       "overflowWrap": "normal",
       "wordBreak": "normal"
      }

@@ -799,14 +799,15 @@ public final class DragonTree {
           }
         } else {
           let runSize = try units_platformFontSize(font.size)
-          // Letter spacing follows each glyph as the engine adds it (text.ts letterSpacingAfter, 16.16).
+          // Letter and word spacing follow each glyph as the engine adds them (text.ts letterSpacingAfter and wordSpacingAfter, 16.16).
           let spacing16 = try units_textRunLayoutUnit(font.letterSpacing)
+          let word16 = try units_textRunLayoutUnit(font.wordSpacing)
           var pen: Float = 0
           for (n, sc) in Array(text.description.unicodeScalars)[Int(from)..<Int(to)].enumerated() {
             let gid = bridge.glyph(Int(sc.value))
             glyphs.append(CGGlyph(gid))
             xs.append(x + Double(pen) + shift(n))
-            let spacing = try text_letterSpacingAfter(Double(sc.value), spacing16)
+            let spacing = try text_letterSpacingAfter(Double(sc.value), spacing16) + text_wordSpacingAfter(Double(sc.value), word16)
             pen = pen + Float(runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm) + Float(spacing / 65536)
           }
         }
@@ -1483,6 +1484,7 @@ import dev.dragon.layout.ScrollRangesResult_refused
 import dev.dragon.layout.shaping_pieceGlyphs
 import dev.dragon.layout.snap_snapEdges
 import dev.dragon.layout.text_letterSpacingAfter
+import dev.dragon.layout.text_wordSpacingAfter
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
 import dev.dragon.layout.units_platformFontSize
@@ -1770,14 +1772,15 @@ class DragonTree(val context: Context) {
         val cps = text.codePoints().toArray().copyOfRange(from.toInt(), to.toInt())
         val glyphs = IntArray(cps.size)
         val xs = DoubleArray(cps.size)
-        // Letter spacing follows each glyph as the engine adds it (text.ts letterSpacingAfter, 16.16).
+        // Letter and word spacing follow each glyph as the engine adds them (text.ts letterSpacingAfter and wordSpacingAfter, 16.16).
         val spacing16 = units_textRunLayoutUnit(font.letterSpacing)
+        val word16 = units_textRunLayoutUnit(font.wordSpacing)
         var pen = 0f
         for ((n, cp) in cps.withIndex()) {
           val gid = bridge.glyph(cp)
           glyphs[n] = gid
           xs[n] = x + pen.toDouble() + shift(n)
-          pen = pen + (runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + (text_letterSpacingAfter(cp.toDouble(), spacing16) / 65536).toFloat()
+          pen = pen + (runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + ((text_letterSpacingAfter(cp.toDouble(), spacing16) + text_wordSpacingAfter(cp.toDouble(), word16)) / 65536).toFloat()
         }
         return Pair(glyphs, xs)
       }
@@ -2388,7 +2391,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   };
   const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);
   const inline = (c: import('@dragon/layout').InlineChild): string => {
-    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)})`;
+    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${engineValue(lang, c.wordSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)})`;
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };

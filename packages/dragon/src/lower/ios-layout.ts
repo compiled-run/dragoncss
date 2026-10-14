@@ -416,7 +416,7 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   const wordBreak = get('word-break');
   if (wordBreak.kind !== 'keyword' || !WORD_BREAK.includes(wordBreak.value)) return fail(id, 'word-break', wordBreak, WORD_BREAK.join(' | '));
   return {
-    kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerLetterSpacing(id, get('letter-spacing')),
+    kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerSpacing(id, 'letter-spacing', get('letter-spacing')), wordSpacing: lowerSpacing(id, 'word-spacing', get('word-spacing')),
     overflowWrap: overflowWrap.value as OverflowWrap, wordBreak: wordBreak.value as WordBreak,
   };
 }
@@ -425,11 +425,11 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
 const OVERFLOW_WRAP: readonly string[] = ['normal', 'break-word', 'anywhere'] satisfies readonly OverflowWrap[];
 const WORD_BREAK: readonly string[] = ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'] satisfies readonly WordBreak[];
 
-/** css-text-3 §8.2: a computed letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
-function lowerLetterSpacing(id: string, v: CssValue): Px {
+/** css-text-3 §8.1 and §8.2: a computed word-spacing or letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
+function lowerSpacing(id: string, property: 'letter-spacing' | 'word-spacing', v: CssValue): Px {
   if (v.kind === 'keyword' && v.value === 'normal') return { kind: 'px', value: 0 };
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
-  return fail(id, 'letter-spacing', v, 'normal | px');
+  return fail(id, property, v, 'normal | px');
 }
 
 /**
@@ -479,7 +479,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const id = c.element.address;
   const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');

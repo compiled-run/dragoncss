@@ -90,13 +90,13 @@ describe('text nodes carry their inherited text styles (goal.md principle 3)', (
     const topo = textTopology(c, []);
     expect(topo?.map((t) => t.address)).toEqual(['p:text0']);
     const t = (topo ?? [])[0];
-    expect(Object.keys(t?.inherited ?? {}).sort()).toEqual(['color', 'direction', 'font-family', 'font-size', 'letter-spacing', 'line-height', 'overflow-wrap', 'text-align', 'text-wrap-mode', 'white-space-collapse', 'word-break']);
+    expect(Object.keys(t?.inherited ?? {}).sort()).toEqual(['color', 'direction', 'font-family', 'font-size', 'letter-spacing', 'line-height', 'overflow-wrap', 'text-align', 'text-wrap-mode', 'white-space-collapse', 'word-break', 'word-spacing']);
     for (const o of Object.values(t?.inherited ?? {})) expect(o).toMatchObject({ kind: 'inherited', element: 'p' });
     expect(t?.inherited['font-size']).toMatchObject({ kind: 'inherited', element: 'p', from: { kind: 'inherited', element: 'body', from: { kind: 'authored' } } });
     expect(t?.context).toBe('text-in-block/ltr');
   });
   it('the lowering reads the text node, never its parent: a text node with a dropped font-size lays out at its own 16px', () => {
-    expect(find(lowered(input), 'p:text0')).toEqual({ kind: 'text', id: 'p:text0', text: 'XX XX', font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'nowrap', letterSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' });
+    expect(find(lowered(input), 'p:text0')).toEqual({ kind: 'text', id: 'p:text0', text: 'XX XX', font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'nowrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' });
     const faulty = find(lowered(input, { ...NO_FAULTS, dropInheritedText: true }), 'p:text0');
     expect(faulty?.kind === 'text' && faulty.font.size).toBe(16);
     expect((find(lowered(input, { ...NO_FAULTS, dropInheritedText: true }), 'p') as LayoutBox).style.textAlign).toBe('center');
@@ -179,5 +179,20 @@ describe('text-overflow: ellipsis with letter-spacing (TXT2-f with TXT2-b)', () 
   });
   it('leaves letter-spacing: 0, which computes to normal, alone', () => {
     expect(refused(compile('letter-spacing: 0;'))).toEqual([]);
+  });
+});
+
+describe('text-overflow: ellipsis with word-spacing (TXT2-f with TXT2-b)', () => {
+  const both = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } });
+  const compile = (decl: string) => both().compile(inputFor(`${FONT} .a { width: 30px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; ${decl} }`, (r) => [div(r, 'a', ['a'], [text(r, 't', 'XX XX XX')])]));
+  const refused = (c: ReturnType<typeof compile>) => c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('truncates text with word-spacing')).map((d) => d.target).sort();
+  it('is refused on every target when the truncated text is word-spaced, since no Chrome comparison covers it yet', () => {
+    const c = compile('word-spacing: 2px;');
+    expectCatalogued(c.diagnostics);
+    expect(refused(c)).toEqual(['android', 'ios', 'web']);
+  });
+  it('leaves word-spacing: normal and 0, which compute to 0px, alone', () => {
+    expect(refused(compile('word-spacing: normal;'))).toEqual([]);
+    expect(refused(compile('word-spacing: 0;'))).toEqual([]);
   });
 });

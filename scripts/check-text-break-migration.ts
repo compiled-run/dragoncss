@@ -85,7 +85,7 @@ function insertKeys(j: Json): Json {
   const out: Obj = {};
   for (const [k, v] of Object.entries(j)) {
     out[k] = insertKeys(v);
-    if (j['kind'] === 'text' && k === 'letterSpacing' && !Object.hasOwn(j, 'overflowWrap')) {
+    if (j['kind'] === 'text' && k === (Object.hasOwn(j, 'wordSpacing') ? 'wordSpacing' : 'letterSpacing') && !Object.hasOwn(j, 'overflowWrap')) {
       out['overflowWrap'] = 'normal';
       out['wordBreak'] = 'normal';
     }
