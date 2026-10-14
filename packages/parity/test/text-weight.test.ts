@@ -39,11 +39,12 @@ function withoutWrapKeys(v: unknown): unknown {
 
 /**
  * The outputs of BASE (batch2's regenerated head 768a8ebdf7: batch #281 at dde476247f plus #274's and #271's groups), as digests the BASE
- * pins recompute; BASE_OUTPUTS is retaken on TXT2-b word-spacing's regenerated head, whose vectors carry wordSpacing (px 0). TXT2-a reads that
- * same tree (13144 files, 6b0b82780d…) with its text-break files (and TXT2-h's text-indent ones) and the vectors README left out and each vector without the TXT2-a TextLeaf
- * keys at 'normal' (it has none), so the pinned bytes are that head's.
+ * pins recompute; BASE_OUTPUTS is retaken on TXT2-b word-spacing's regenerated head, whose vectors carry wordSpacing (px 0). TXT2-a, stacked
+ * on TXT2-h, retakes it on #300's regenerated head db70ff03a0 (#295 and master 3ad2099079 merged in), read with its text-break files (and
+ * TXT2-h's text-indent ones) and the vectors README left out and each vector without the TXT2-a TextLeaf keys at 'normal' (it has none), so
+ * the pinned bytes are that head's.
  */
-const BASE_OUTPUTS = { files: 13143, digest: '1f763a56b82a320f3da0a8c7e1843dd74346daa42b502c64f32cd9663b348a03' };
+const BASE_OUTPUTS = { files: 13175, digest: '0df2b1abf926895ffcfa438fcccd36663e61ea82be294c9b112b8ad40821269b' };
 const BASE_CAPTURES = { files: 3354, digest: '3c5abaa478b11a6d660b219456339a48567a78b9f2a76c6677975fdc9d21fbd7' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
