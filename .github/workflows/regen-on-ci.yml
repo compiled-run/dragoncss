@@ -57,7 +57,37 @@ jobs:
       branch: ${{ steps.r.outputs.branch }}
       sha: ${{ steps.r.outputs.sha }}
       mode: ${{ steps.r.outputs.mode }}
+    # Waiting for a slot (below) can take hours while the landing's regens run.
+    timeout-minutes: 360
     steps:
+      # A worker's branch regen waits on this free Linux job, oldest first, while REGEN_BRANCH_SLOTS older ones are queued or
+      # running: each holds a macOS runner (5 at once), and the landing's regens, device lanes and full tests need the rest.
+      # The landing's own runs (a pull request's regen label, patch mode) never wait.
+      - name: Wait for a branch regen slot
+        if: github.event_name == 'workflow_dispatch' && inputs.branch != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REGEN_BRANCH_SLOTS: '2'
+          POLL_SECONDS: '60'
+        run: |
+          set -euo pipefail
+          mine=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" -q .created_at)
+          [[ "$mine" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$ ]] || { echo "::error::run $GITHUB_RUN_ID has no creation time: $mine"; exit 1; }
+          filter="[.workflow_runs[] | select(.event == \"workflow_dispatch\" and .id != $GITHUB_RUN_ID and ((.display_title // \"\") | startswith(\"regen of branch \")) and (.created_at < \"$mine\" or (.created_at == \"$mine\" and .id < $GITHUB_RUN_ID)))] | length"
+          waited=0
+          while :; do
+            ahead=0
+            for st in queued in_progress waiting pending; do
+              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q "$filter")
+              ahead=$((ahead + n))
+            done
+            [ "$ahead" -ge "$REGEN_BRANCH_SLOTS" ] || break
+            [ "$waited" -gt 0 ] || echo "regen-on-ci: $ahead older branch regens are queued or running; waiting for one of $REGEN_BRANCH_SLOTS slots"
+            sleep "$POLL_SECONDS"
+            waited=$((waited + POLL_SECONDS))
+          done
+          echo "regen-on-ci: started after waiting $waited s for a branch regen slot" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Resolve and refuse unsafe branches
         id: r
         env:
@@ -233,12 +263,68 @@ jobs:
         with:
           name: sweep
           path: ${{ runner.temp }}/last
+      # A commit pushed to the branch during the run (a test fix, say) no longer throws the run away: the outputs go on top of the
+      # new head when the patch applies there and --explain finds every step's cache entry still covering the result, which
+      # holds when the new commits changed no file any step reads. Anything else fails as before and asks for a new regen.
+      - name: Where the branch is now
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ needs.resolve.outputs.branch }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [ "$BRANCH" != master ] || exit 1
+          now=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
+          [ -n "$now" ] || { echo "::error::$BRANCH no longer exists; nothing pushed"; exit 1; }
+          # Nothing to commit (already at a fixed point) needs no judging: the next step says so whatever the branch did.
+          if [ "$now" = "$SHA" ] || [ ! -s "$RUNNER_TEMP/last/outputs.patch" ]; then echo "moved=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Only a branch that moved forward from the regenerated commit qualifies; one moved back or sideways fails.
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$SHA...$now" -q .status)
+          [ "$status" = ahead ] || { echo "::error::$BRANCH moved from $SHA to $now ($status, not ahead) during the run; nothing pushed, regen again"; exit 1; }
+          git fetch -q --no-tags --depth=1 origin "$now"
+          git checkout -q --detach "$now"
+          git apply --binary --index "$RUNNER_TEMP/last/outputs.patch" || { echo "::error::$BRANCH moved from $SHA to $now during the run and the outputs do not apply there; nothing pushed, regen again"; exit 1; }
+          echo "regen-on-ci: $BRANCH moved from $SHA to $now during the run; judging the outputs on $now" | tee -a "$GITHUB_STEP_SUMMARY"
+          { echo "moved=true"; echo "now=$now"; } >> "$GITHUB_OUTPUT"
+      - name: Moved - set up pnpm 10.33.2
+        if: steps.head.outputs.moved == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - name: Moved - set up Node 24.15.0
+        if: steps.head.outputs.moved == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - name: Moved - every step's cache entry must still cover the tree
+        if: steps.head.outputs.moved == 'true'
+        env:
+          # The machine and environment the rounds keyed with (regen-on-ci-round.yml), so the keys match theirs.
+          DRAGON_REGEN_MACHINE: '{"platform":"darwin","arch":"arm64","node":"v24.15.0"}'
+          DRAGON_WPT_DIR: /Users/runner/wpt
+          JAVA_HOME: /opt/homebrew/opt/openjdk@17
+          ANDROID_HOME: /opt/homebrew/share/android-commandlinetools
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+          NOW: ${{ steps.head.outputs.now }}
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          mkdir -p .git/dragon-regen
+          tar -xzf "$RUNNER_TEMP/last/store.tgz" -C .git/dragon-regen
+          node scripts/regen.ts --explain
+          stale=$(jq -r '[.[] | select(.action != "skipped") | "\(.step) (\(.action): \(.why))"] | join("; ")' node_modules/.cache/dragon-regen/last-run.json)
+          total=$(jq length node_modules/.cache/dragon-regen/last-run.json)
+          [ "$total" -gt 0 ] || { echo "::error::regen --explain judged no step"; exit 1; }
+          [ -z "$stale" ] || { echo "::error::the commits pushed during the run change regen inputs: $stale; nothing pushed, regen again"; exit 1; }
+          echo "regen-on-ci: all $total steps are still covered on $NOW" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Commit and push the outputs, then start CI on the new commit
         id: push
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ needs.resolve.outputs.branch }}
           SHA: ${{ needs.resolve.outputs.sha }}
+          NOW: ${{ steps.head.outputs.now }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -248,20 +334,23 @@ jobs:
             echo "pushed=none" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # A plain push already refuses a branch that moved forward or sideways; this also refuses one moved back to an ancestor.
-          now=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
-          [ "$now" = "$SHA" ] || { echo "::error::$BRANCH moved from $SHA to ${now:-nothing} during the run; nothing pushed, regen again"; exit 1; }
-          git apply --binary --index "$RUNNER_TEMP/last/outputs.patch"
+          if [ -z "$NOW" ]; then
+            git apply --binary --index "$RUNNER_TEMP/last/outputs.patch"
+            onto=""
+          else
+            onto=$'\n'"Onto: $NOW (pushed during the run; regen --explain found every step's cache entry still covering it)"
+          fi
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -q -F - <<EOF
           Regenerate on CI: pnpm regen (regen-on-ci)
 
           Commands: pnpm regen --skip lanes-host --skip tw-sweep (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated
           to a fixed point, then pnpm regen --only tw-sweep (macos-26).
-          Base: $SHA
+          Base: $SHA$onto
           Run: $RUN_URL
           EOF
           git diff --stat HEAD~1 | tail -1 | tee -a "$GITHUB_STEP_SUMMARY"
-          git push origin "HEAD:refs/heads/$BRANCH"
+          # The lease refuses a branch that moved again since it was judged, back to an ancestor included.
+          git push --force-with-lease="refs/heads/$BRANCH:${NOW:-$SHA}" origin "HEAD:refs/heads/$BRANCH"
           new=$(git rev-parse HEAD)
           echo "regen-on-ci: pushed $new to $BRANCH" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "pushed=$new" >> "$GITHUB_OUTPUT"
