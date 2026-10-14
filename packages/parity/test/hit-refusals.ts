@@ -9,6 +9,8 @@ export const INLINE_OUT: readonly string[] = [
   'float-clear-inert', 'float-clear-inert-rtl',
   // TXT2-b's text-spacing-ahem holds an inline box.
   'text-spacing-ahem', 'text-spacing-ahem-rtl',
+  // #266's vertical-align-inert holds an inline-block (an atomic inline); GRID_OUT listed it for its grid container before G-HIT.
+  'vertical-align-inert', 'vertical-align-inert-rtl',
   // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
   // inline box and text-transform-text a <br>; TXT2's text-justify-ahem holds an inline box.
   'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
