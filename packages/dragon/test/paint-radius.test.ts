@@ -197,6 +197,39 @@ describe('border-radius: refusals', () => {
     expect([laneOnlyNative(opaque, 'ios'), laneOnlyNative(opaque, 'android')]).toEqual([false, false]);
   });
 
+  it('an animation or transition of color through translucent values on a currentcolor rounded double border is refused for ios and android; web compiles', () => {
+    const both: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+    const run = (input: FrontEndResult, t: Targets = both) => createProjectWith({ projectId: 'test', targets: t }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    const refused = (input: FrontEndResult, t: Targets = both) => run(input, t).diagnostics.filter((d) => d.severity === 'error' && d.message.includes('the color passes through translucent values'));
+    const one = (css: string) => inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'a', ['a'])]);
+    const box = '.a { width: 60px; height: 40px; color: blue; border: 6px double; border-radius: 10px; }';
+    const message = (what: string, t: string) => `${what} of color on a: a rounded double border on a paints in currentcolor, and the color passes through translucent values, which ${t} blends with its own rounding, unlike Chrome's Skia; ${t} draws dotted, dashed and 3D outlines and rounded double borders in opaque colours only (PNT1)`;
+    const keyframed = one(`${box} .a { animation: f 1s forwards; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }`);
+    const ds = refused(keyframed);
+    expect(ds.map((d) => [d.code, d.target, d.message]).sort()).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android', message('an animation', 'android')], ['DRAGON_UNSUPPORTED_VALUE', 'ios', message('an animation', 'ios')]]);
+    for (const d of ds) expect(spanTextOf(keyframed, d)).toBe('f 1s forwards');
+    expectCatalogued(ds);
+    expect(refused(keyframed, { web: {} })).toEqual([]);
+    const targetsOf = (input: FrontEndResult) => refused(input).map((d) => d.target).sort();
+    // A keyframe to transparent passes through translucent colours; a parent's animated color reaches an inheriting child.
+    expect(targetsOf(one(`${box} .a { animation: f 1s; } @keyframes f { 50% { color: transparent; } }`))).toEqual(['android', 'ios']);
+    const inherited = inputFor('body { margin: 0; } .p { color: blue; animation: f 1s; } .a { width: 60px; height: 40px; border: 6px double; border-radius: 10px; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }', (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);
+    expect(refused(inherited).map((d) => d.message.split(':')[0]).sort()).toEqual(['an animation of color on p', 'an animation of color on p']);
+    // A transition from an opaque state to a transparent one, in a reachable state.
+    expect(targetsOf(stated(`body { margin: 0; } ${box} .a { transition: color 1s; } .a.on { color: transparent; }`))).toEqual(['android', 'ios']);
+    // MQ-R1: an animation only in a band that is not the fold band's.
+    for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
+      expect(targetsOf(one(`${box} @media ${media} { .a { animation: f 1s; } } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }`)), media).toEqual(['android', 'ios']);
+    }
+    // Not refused: opaque keyframes and transitions, a border with its own colour, a square double border.
+    for (const input of [
+      one(`${box} .a { animation: f 1s; } @keyframes f { to { color: red; } }`),
+      stated(`body { margin: 0; } ${box} .a { transition: color 1s; } .a.on { color: red; }`),
+      one('.a { width: 60px; height: 40px; color: blue; border: 6px double green; border-radius: 10px; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }'),
+      one('.a { width: 60px; height: 40px; color: blue; border: 6px double; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }'),
+    ]) expect(run(input).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+
   it('any other rounded double border is refused for ios and android at the radius declaration, and not for web', () => {
     const cases = [
       ['one double side', '.a { border: 6px solid blue; border-top-style: double; border-radius: 6px; }'],

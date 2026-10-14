@@ -270,6 +270,29 @@ describe('outline: a translucent dotted, dashed or 3D outline is refused on the 
     // A :hover state is refused on native in a user's compile anyway (SELD-R2); its translucent outline is named as well.
     expect(targetsOf(user(single('.a { height: 10px; outline: 3px dashed red; } .a:hover { outline-color: rgba(255, 0, 0, 0.5); }')))).toEqual(['android', 'ios']);
   });
+  it('an animation or transition of color through translucent values on a currentcolor dotted, dashed or 3D outline is refused too', () => {
+    const animatedOf = (input: FrontEndResult) => errors(user(input)).filter((d) => d.message.includes('the color passes through translucent values'));
+    const keyframed = single('.a { height: 10px; color: blue; outline: 3px dashed; animation: f 1s forwards; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }');
+    const ds = animatedOf(keyframed);
+    expect(ds.map((d) => [d.target, d.message]).sort()).toEqual(['android', 'ios'].map((t) => [t, `an animation of color on a: a dashed outline on a paints in currentcolor, and the color passes through translucent values, which ${t} blends with its own rounding, unlike Chrome's Skia; ${t} draws dotted, dashed and 3D outlines and rounded double borders in opaque colours only (PNT1)`]));
+    for (const d of ds) expect(spanTextOf(keyframed, d)).toBe('f 1s forwards');
+    expectCatalogued(ds);
+    expect(errors(user(keyframed, { web: {} }))).toEqual([]);
+    expect(animatedOf(stated('.a { height: 10px; color: blue; outline: 4px ridge; transition: color 1s; } .a.on { color: transparent; }')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    for (const media of ['(min-width: 600px)', '(max-width: 599px)']) {
+      expect(animatedOf(single(`.a { height: 10px; color: blue; outline: 2px dotted; } @media ${media} { .a { animation: f 1s; } } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }`)).map((d) => d.target).sort(), media).toEqual(['android', 'ios']);
+    }
+    // Not refused: opaque keyframes, an outline with its own colour, a solid outline.
+    for (const css of [
+      '.a { height: 10px; color: blue; outline: 3px dashed; animation: f 1s; } @keyframes f { to { color: red; } }',
+      '.a { height: 10px; color: blue; outline: 3px dashed red; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }',
+      '.a { height: 10px; color: blue; outline: 3px solid; animation: f 1s; } @keyframes f { to { color: rgba(0, 0, 255, 0.5); } }',
+    ]) expect(animatedOf(single(css)), css).toEqual([]);
+  });
+  it('an outline on an inline box gets the inline refusal alone, translucent or not', () => {
+    const inline = errors(user(single('.a { display: inline; outline: 3px dashed rgba(255, 0, 0, 0.5); }')));
+    expect(inline.map((d) => [d.target, d.message.split(',')[0]]).sort()).toEqual([['android', 'a has an outline on an inline box'], ['ios', 'a has an outline on an inline box']]);
+  });
   it('opaque, transparent, solid, double, hidden and zero-width outlines compile on ios and android', () => {
     for (const css of [
       'outline: 3px dashed red', 'outline: 3px dotted rgba(255, 0, 0, 1)', 'outline: 4px ridge #00f', 'outline: 3px inset transparent', 'outline: 3px outset rgba(0, 0, 0, 0)',

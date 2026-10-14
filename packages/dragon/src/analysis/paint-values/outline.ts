@@ -159,6 +159,24 @@ function outlineColor(el: ResolvedElement): { readonly color: Rgba8; readonly va
 }
 
 /**
+ * The style of the visible dotted, dashed or 3D outline the native side painter would draw for an element, or null. A rounded one
+ * and one on an inline box are refused by checkOutline already, so they are left to it.
+ */
+export function sidePainterOutline(el: ResolvedElement): string | null {
+  const style = paintedOutlineStyle(el);
+  if (style === null || !SIDE_PAINTER_STYLES.includes(style) || rounds(el) || keywordOf(el, 'display') === 'inline') return null;
+  const visibility = el.props.get('visibility') as ResolvedValue | undefined;
+  if (visibility === undefined) throw new Error(`${el.element.address}: visibility did not resolve`);
+  return paintsOwn(visibilityOf(visibility.value)) ? style : null;
+}
+
+/** Whether an element's outline-color is currentcolor, so its outline takes color's value (and color's animation). */
+export function outlineInCurrentColor(el: ResolvedElement): boolean {
+  const c = (el.props.get('outline-color') as ResolvedValue | undefined)?.value;
+  return c !== undefined && c.kind === 'keyword' && c.value === 'currentcolor';
+}
+
+/**
  * PNT1 (device run 38470185768): a dotted, dashed, groove, ridge, inset or outset outline in a translucent colour paints its four
  * sides into one transparency layer of the colour's alpha (Blink PaintOpacityGroup, translated in paint-dash.ts), which UIKit's
  * transparency layer and Android's saveLayerAlpha composite with their own rounding, one off Chrome's Skia in a channel. Outside the
@@ -168,11 +186,8 @@ function outlineColor(el: ResolvedElement): { readonly color: Rgba8; readonly va
 export function checkTranslucentOutlines(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const walk = (el: ResolvedElement): void => {
     if (keywordOf(el, 'display') === 'none') return;
-    const style = paintedOutlineStyle(el);
-    const visibility = el.props.get('visibility') as ResolvedValue | undefined;
-    if (visibility === undefined) throw new Error(`${el.element.address}: visibility did not resolve`);
-    // A rounded one is refused by checkOutline already.
-    if (style !== null && SIDE_PAINTER_STYLES.includes(style) && !rounds(el) && paintsOwn(visibilityOf(visibility.value))) {
+    const style = sidePainterOutline(el);
+    if (style !== null) {
       const { color, value } = outlineColor(el);
       if (color.alpha > 0 && color.alpha < 255) {
         const origin = value.declaration === null ? outlineOrigin(el) : authored(value.declaration.valueSpan);

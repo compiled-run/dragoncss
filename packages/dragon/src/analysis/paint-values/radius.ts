@@ -167,6 +167,17 @@ export const RADIUS_VALUES: PaintValues = {
   },
 };
 
+/** Whether an element is drawn as a rounded double border: Blink's two rings (four double sides of one width and colour). */
+export function roundedDouble(el: ResolvedElement): boolean {
+  return !isReplacedTag(el.element.tag) && roundsCorners(el) && fourUniformDoubles(el);
+}
+
+/** Whether an element's border colour is currentcolor, so its rounded double border takes color's value (and color's animation). */
+export function borderInCurrentColor(el: ResolvedElement): boolean {
+  const c = (el.props.get('border-top-color') as ResolvedValue | undefined)?.value;
+  return c !== undefined && c.kind === 'keyword' && c.value === 'currentcolor';
+}
+
 /**
  * PNT1b (device run 38470185768): a rounded double border in a translucent colour. Chrome fills its two rings with the colour
  * premultiplied to 8 bits by Skia (DrawDoubleBorder's FillDRRect, no layer); the native fills blend it with the platform's own
@@ -180,7 +191,7 @@ export function checkTranslucentRoundedDoubles(root: ResolvedElement, targets: r
     if (display.kind === 'keyword' && display.value === 'none') return;
     const visibility = el.props.get('visibility') as ResolvedValue | undefined;
     if (visibility === undefined) throw new Error(`${el.element.address}: visibility did not resolve`);
-    if (!isReplacedTag(el.element.tag) && paintsOwn(visibilityOf(visibility.value)) && roundsCorners(el) && fourUniformDoubles(el)) {
+    if (paintsOwn(visibilityOf(visibility.value)) && roundedDouble(el)) {
       // fourUniformDoubles compares the computed values, so one side's colour is every side's.
       const color = usedColors(el)['border-top-color'];
       if (color.alpha > 0 && color.alpha < 255) {
