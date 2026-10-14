@@ -64,8 +64,9 @@ describe('createProject().compile() and check()', () => {
     expect(rules).toEqual(['.dg0 {', '.dg1 {', '.dg2 {']);
     expect(text).not.toMatch(/\.a\b|\.b\b|body|html/);
     // Every longhand is written on every rule, except the insets, which are written only when one of them is not auto, and the
-    // outline longhands, which are written only when an author declaration sets one (Chrome's UA :focus-visible ring stays).
-    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset'];
+    // outline longhands, which are written only when an author declaration sets one (Chrome's UA :focus-visible ring stays), and the
+    // line-clamp longhands, which are written only where one is not initial (TXT2-g).
+    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp'];
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');
