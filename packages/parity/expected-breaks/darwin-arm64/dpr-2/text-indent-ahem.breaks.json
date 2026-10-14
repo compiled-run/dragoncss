@@ -1,0 +1,25 @@
+{
+  "case": "text-indent-ahem",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"a1:text0","data":"XX XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1,1,1,1],"blank":[5]},
+    {"id":"a2:text0","data":"XX XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1],"blank":[11]},
+    {"id":"a3:text0","data":"XX XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[8]},
+    {"id":"a4:text0","data":"XX XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[8]},
+    {"id":"a5:text0","data":"XX XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[8]},
+    {"id":"a6:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"a6:text1","data":"XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1],"blank":[8]},
+    {"id":"a7:text0","data":"XX XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1,1,1,1],"blank":[5]},
+    {"id":"a8:text0","data":"XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"a9:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"a9:text1","data":" XX XX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"a9s:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"a10:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"a11p:text0","data":"XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"a12i:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"a13i:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"a14:text0","data":"XX XXX","lines":2,"units":[0,0,0,1,1,1],"blank":[2]},
+    {"id":"a15i:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]}
+  ]
+}

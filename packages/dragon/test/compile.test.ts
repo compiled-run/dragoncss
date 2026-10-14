@@ -28,16 +28,16 @@ describe('createProject().compile() and check()', () => {
     expect(Object.isFrozen(c)).toBe(true);
   });
 
-  it('rejects display: inline-grid with a typed diagnostic, a UTF-16 span and a blocked ios output', () => {
-    const css = '.g { display: inline-grid; }';
+  it('rejects display: inline-table with a typed diagnostic, a UTF-16 span and a blocked ios output', () => {
+    const css = '.g { display: inline-table; }';
     const c = ios().compile(inputFor(css, (r) => [div(r, 'g', ['g'])]));
     expect(c.ok).toBe(false);
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
     if (d === undefined || d.origin.kind !== 'authored') throw new Error('no span');
-    expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe('inline-grid');
+    expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe('inline-table');
     expect(d.target).toBe('ios');
     expect(d.fix !== null && 'manual' in d.fix ? d.fix.manual : '').toMatch(/block|flex|none/);
-    expect(d.profile).toMatchObject({ target: 'ios', feature: 'display:inline-grid', status: 'unsupported' });
+    expect(d.profile).toMatchObject({ target: 'ios', feature: 'display:inline-table', status: 'unsupported' });
     expectCatalogued(c.diagnostics);
     expect(c.outputs.ios.kind).toBe('blocked');
     expect(iosLayoutProjection(c, ENV, []).kind).toBe('blocked');
@@ -174,7 +174,7 @@ describe('createProject().compile() and check()', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     const a = p.input.root.children[0]?.kind === 'box' ? p.input.root.children[0].children[0] : undefined;
     const text = a?.kind === 'box' ? a.children[0] : undefined;
-    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20, specifiedSize: { kind: 'px', value: 20 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } });
+    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20, specifiedSize: { kind: 'px', value: 20 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } });
   });
 
   it('the public entry exposes only the public API', () => {

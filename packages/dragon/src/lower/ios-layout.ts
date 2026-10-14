@@ -32,6 +32,7 @@ import type {
   Position,
   SizeValue,
   TextAlign,
+  TextIndentValue,
   TextOverflow,
   TextLeaf,
   TextWrapMode,
@@ -190,6 +191,12 @@ function gap(id: string, get: Get, p: Longhand, l: Lowering): GapValue {
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | normal') : lp;
 }
 
+// css-text-3 §8.1: text-indent is a length, a percentage of the line's available width or a calculation, negative allowed.
+function textIndent(id: string, get: Get, l: Lowering): TextIndentValue {
+  const lp = lengthPercentage(id, get, 'text-indent', 'all', l);
+  return lp === null ? fail(id, 'text-indent', get('text-indent'), 'px | % | a viewport length | a calculation') : lp;
+}
+
 // css-sizing-4 §5.1: the engine takes Blink's layout ratio as raw LayoutUnits (analysis/computed-checks.ts refuses the rest).
 function aspectRatio(id: string, get: Get): AspectRatioValue {
   const v = get('aspect-ratio');
@@ -231,7 +238,7 @@ const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '')
 function displayOfStyle(id: string, get: Get): Display {
   const v = get('display');
   if (v.kind === 'keyword' && v.value === 'list-item') return 'block';
-  return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex']);
+  return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid']);
 }
 
 /**
@@ -268,7 +275,7 @@ const VERTICAL_ALIGN_KEYWORDS: readonly VerticalAlignKeyword[] = ['baseline', 's
 // CSS2 §10.8.1: only inline-level boxes read vertical-align, so every other box takes baseline, whatever it computes to.
 function verticalAlign(id: string, get: Get, l: Lowering): VerticalAlignValue {
   const display = keywordOf(get('display'));
-  if (display !== 'inline' && display !== 'inline-block' && display !== 'inline-flex') return { kind: 'keyword', value: 'baseline' };
+  if (display !== 'inline' && display !== 'inline-block' && display !== 'inline-flex' && display !== 'inline-grid') return { kind: 'keyword', value: 'baseline' };
   const v = get('vertical-align');
   if (v.kind === 'keyword') return { kind: 'keyword', value: keyword(id, get, 'vertical-align', VERTICAL_ALIGN_KEYWORDS) };
   const lp = lengthPercentage(id, get, 'vertical-align', 'all', l);
@@ -335,6 +342,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     aspectRatio: aspectRatio(id, get),
     verticalAlign: verticalAlign(id, get, l),
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
+    textIndent: textIndent(id, get, l),
     grid: null,
     gridItem: null,
   };
@@ -409,14 +417,14 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   if (collapse.kind !== 'keyword' || !WHITE_SPACE_COLLAPSE.includes(collapse.value)) return fail(id, 'white-space-collapse', collapse, WHITE_SPACE_COLLAPSE.join(' | '));
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerLetterSpacing(id, get('letter-spacing')) };
+  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerSpacing(id, 'letter-spacing', get('letter-spacing')), wordSpacing: lowerSpacing(id, 'word-spacing', get('word-spacing')) };
 }
 
-/** css-text-3 §8.2: a computed letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
-function lowerLetterSpacing(id: string, v: CssValue): Px {
+/** css-text-3 §8.1 and §8.2: a computed word-spacing or letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
+function lowerSpacing(id: string, property: 'letter-spacing' | 'word-spacing', v: CssValue): Px {
   if (v.kind === 'keyword' && v.value === 'normal') return { kind: 'px', value: 0 };
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
-  return fail(id, 'letter-spacing', v, 'normal | px');
+  return fail(id, property, v, 'normal | px');
 }
 
 /**
@@ -445,8 +453,8 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
   }
 }
 
-/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box among inline content (INL2a). */
-const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'element' && (displayOf(c) === 'inline-block' || displayOf(c) === 'inline-flex');
+/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box among inline content (INL2a, G-INL). */
+const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'element' && (displayOf(c) === 'inline-block' || displayOf(c) === 'inline-flex' || displayOf(c) === 'inline-grid');
 
 /** CSS2 §9.2.2: inline-level content: text, an element whose box is an inline box (display: inline, <br> included), or an atomic inline. */
 // A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line.
@@ -466,7 +474,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const id = c.element.address;
   const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');
@@ -524,7 +532,7 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
   };
   const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize });
   // css-grid-2 §5: a replaced element establishes no grid container; display: grid on one is not modelled.
-  if (own.display === 'grid') throw new LoweringError(id, 'display', `display: grid on the replaced element ${id} is not supported`);
+  if (own.display === 'grid' || own.display === 'inline-grid') throw new LoweringError(id, 'display', `display: ${own.display} on the replaced element ${id} is not supported`);
   // css-grid-2 §8 and §9: a replaced child of a grid container carries its placement (an absolutely positioned one, its lines).
   const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, raw) : lowerGridItem(gridParent, raw)));
   const style: LayoutStyle = gridItem === null ? own : { ...own, gridItem };
@@ -566,10 +574,10 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const own: LayoutStyle = id === l.propagated ? { ...lowered, overflowX: 'visible', overflowY: 'visible' } : lowered;
   // css-grid-2 §7, §8 and §9: a grid container carries its tracks; each child of one carries its placement (an absolutely
   // positioned one, the lines of its containing block).
-  const grid = own.display === 'grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
+  const grid = own.display === 'grid' || own.display === 'inline-grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
   const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, get) : lowerGridItem(gridParent, get)));
   const style: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
-  const container = displayOf(el) === 'flex' || displayOf(el) === 'inline-flex' || displayOf(el) === 'grid';
+  const container = displayOf(el) === 'flex' || displayOf(el) === 'inline-flex' || displayOf(el) === 'grid' || displayOf(el) === 'inline-grid';
   const inline = kids.filter(isInlineLevel);
   const wrap = inline.length > 0 && (container || inline.length !== kids.length);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
@@ -599,6 +607,6 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   flush();
   // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
   // atomic inline is on a line (INL2a).
-  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex')));
+  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
   return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
 }

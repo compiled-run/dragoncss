@@ -125,10 +125,10 @@ export type AspectRatioValue =
 
 /**
  * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
- * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block or inline-flex for an atomic inline among a block
- * container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
+ * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block, inline-flex or inline-grid for an atomic inline
+ * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
-export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex';
+export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
 /**
@@ -180,6 +180,11 @@ export type AlignContent =
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
 /** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
 export type TextOverflow = 'clip' | 'ellipsis';
+/**
+ * css-text-3 §8.1 text-indent: <length-percentage>, negative allowed, on the first formatted line of a block container. A percentage
+ * is of the line's available inline size, and of nothing (0) at min-content and max-content (Blink LineBreaker::ComputeTextIndent).
+ */
+export type TextIndentValue = Px | Percent | LengthCalc;
 /** CSS2 §10.8.1 vertical-align keywords. */
 export type VerticalAlignKeyword = 'baseline' | 'sub' | 'super' | 'text-top' | 'text-bottom' | 'middle' | 'top' | 'bottom';
 /** A vertical-align keyword value. */
@@ -332,6 +337,7 @@ export type LayoutStyle = {
   readonly aspectRatio: AspectRatioValue;
   readonly verticalAlign: VerticalAlignValue;
   readonly textOverflow: TextOverflow;
+  readonly textIndent: TextIndentValue;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
@@ -346,7 +352,7 @@ export type LayoutStyle = {
  * A text item's font as the measurer reads it: the face, the computed size and the used letter-spacing in px (css-text-3 §8.2,
  * 0 for normal), which Blink keeps in the FontDescription and adds after every cluster (ShapeResult::ApplySpacing).
  */
-export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number };
+export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number };
 
 /**
  * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
@@ -380,6 +386,8 @@ export type TextLeaf = {
    * to zoomed px (Blink StyleBuilderConverter::ConvertSpacing, a Length::Fixed), which layout reads.
    */
   readonly letterSpacing: CalcExpr;
+  /** css-text-3 §8.1 word-spacing as letterSpacing is held (normal is px 0); Blink adds it after every space (ShapeResult::ApplySpacing). */
+  readonly wordSpacing: CalcExpr;
 };
 
 /** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */

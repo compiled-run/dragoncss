@@ -21,6 +21,8 @@ describe('corpus parser', () => {
     expect(() => parseCorpusFamily('f', file({ envs: ['dpr1.5-ltr-horizontal-tb'] }))).toThrow(/does not run/);
     expect(() => parseCorpusFamily('f', file({ cb: [7777, 100] }).replace('7777', '1e999'))).toThrow(/bad wrapper size/);
     expect(() => parseCorpusFamily('f', file({ after: 3 }))).toThrow(/after is not a string/);
+    expect(() => parseCorpusFamily('f', file({ after: 'X' }))).toThrow(/no box for its after text/);
+    expect(parseCorpusFamily('f', file({ after: 'X', result: { ...result, a: [64, 0, 64, 64] } }))[0]?.after).toBe('X');
     expect(() => parseCorpusFamily('f', file({ result: { ...result, cols: undefined } }))).toThrow(/no complete result/);
   });
 });
@@ -36,6 +38,11 @@ describe('refusal classification', () => {
     expect(classifyOutcome('k', { kind: 'refused', reasons: [r('overflow-x', 'is auto'), r('overflow-y', 'is auto')] })).toEqual({ kind: 'refused', category: 'overflow-auto' });
     expect(classifyOutcome('k', { kind: 'refused', reasons: [r('overflow-y', 'computes to auto beside overflow-x: hidden (css-overflow-3 §3.1)')] })).toEqual({ kind: 'refused', category: 'overflow-auto' });
     expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_UNSUPPORTED_VALUE: overflow-x is auto on e0'] })).toMatchObject({ kind: 'problem' });
+  });
+  it('owns the rtl atomic inline bidi refusal (computed-checks checkRtlAtomics) under bidi-atomic, and nothing else of that code', () => {
+    const r = 'DRAGON_UNSUPPORTED_BIDI: atomic inline e0 in the rtl block cb has no letter on its start side in its paragraph, so it would take the paragraph direction and be reordered (UAX #9 N1-N2)';
+    expect(classifyOutcome('k', { kind: 'refused', reasons: [r] })).toEqual({ kind: 'refused', category: 'bidi-atomic' });
+    expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_UNSUPPORTED_BIDI: U+200B ends the rtl inline content of cb'] })).toMatchObject({ kind: 'problem' });
   });
   it('judges a mismatch by the pinned list', () => {
     expect(classifyOutcome('k', { kind: 'mismatch', detail: 'x' })).toEqual({ kind: 'problem', detail: 'k: x' });
