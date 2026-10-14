@@ -27,7 +27,7 @@ function frags(r: LayoutResult, leaf: string): number[][] {
   return out;
 }
 
-const indented = (style: Partial<LayoutStyle>, ...kids: LayoutBox['children']): LayoutBox => box('root', {}, [box('a', { width: px(100), ...style }, kids)]);
+const indented = (style: Partial<LayoutStyle>, ...kids: LayoutBox['children'][number][]): LayoutBox => box('root', {}, [box('a', { width: px(100), ...style }, kids)]);
 
 describe('TXT2-h: text-indent on the first formatted line', () => {
   it('starts the first line at the indent and fits its text in what is left; later lines start at 0', () => {
