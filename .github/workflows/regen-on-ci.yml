@@ -57,7 +57,37 @@ jobs:
       branch: ${{ steps.r.outputs.branch }}
       sha: ${{ steps.r.outputs.sha }}
       mode: ${{ steps.r.outputs.mode }}
+    # Waiting for a slot (below) can take hours while the landing's regens run.
+    timeout-minutes: 360
     steps:
+      # A worker's branch regen waits on this free Linux job, oldest first, while REGEN_BRANCH_SLOTS older ones are queued or
+      # running: each holds a macOS runner (5 at once), and the landing's regens, device lanes and full tests need the rest.
+      # The landing's own runs (a pull request's regen label, patch mode) never wait.
+      - name: Wait for a branch regen slot
+        if: github.event_name == 'workflow_dispatch' && inputs.branch != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REGEN_BRANCH_SLOTS: '2'
+          POLL_SECONDS: '60'
+        run: |
+          set -euo pipefail
+          mine=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" -q .created_at)
+          [[ "$mine" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$ ]] || { echo "::error::run $GITHUB_RUN_ID has no creation time: $mine"; exit 1; }
+          filter="[.workflow_runs[] | select(.event == \"workflow_dispatch\" and .id != $GITHUB_RUN_ID and ((.display_title // \"\") | startswith(\"regen of branch \")) and (.created_at < \"$mine\" or (.created_at == \"$mine\" and .id < $GITHUB_RUN_ID)))] | length"
+          waited=0
+          while :; do
+            ahead=0
+            for st in queued in_progress waiting pending; do
+              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q "$filter")
+              ahead=$((ahead + n))
+            done
+            [ "$ahead" -ge "$REGEN_BRANCH_SLOTS" ] || break
+            [ "$waited" -gt 0 ] || echo "regen-on-ci: $ahead older branch regens are queued or running; waiting for one of $REGEN_BRANCH_SLOTS slots"
+            sleep "$POLL_SECONDS"
+            waited=$((waited + POLL_SECONDS))
+          done
+          echo "regen-on-ci: started after waiting $waited s for a branch regen slot" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Resolve and refuse unsafe branches
         id: r
         env:
