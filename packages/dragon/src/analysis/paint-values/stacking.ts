@@ -1,9 +1,10 @@
 // The stacking refusal (T046 §1, lower/paint/stacking.ts): a box with an integer z-index whose layer would take it out of an overflow
 // clip in its containing-block chain needs a clip-chain wrapper around its re-hosted view, which EMS's hosting hook does not have,
-// so it is refused on the native targets. The web target paints it itself.
+// so it is refused on the native targets. So is a layer item deeper inside a flex or grid container whose items set order than
+// Blink sorts layers by order (lower/paint/stacking.ts unorderedItems). The web target paints both itself.
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import type { StackNode } from '../../lower/paint/stacking.ts';
-import { stackingOf, transformedForStacking } from '../../lower/paint/stacking.ts';
+import { FLEX_OR_GRID, stackingOf, transformedForStacking, unorderedItems } from '../../lower/paint/stacking.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
@@ -22,23 +23,26 @@ const keyword = (el: ResolvedElement, p: 'display' | 'position' | 'overflow-x'):
  */
 export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedElement | null): StackNode {
   let texts = 0;
-  const node = (el: ResolvedElement, parentFlex: boolean): StackNode => {
+  const node = (el: ResolvedElement, item: boolean): StackNode => {
     const position = keyword(el, 'position');
+    const order = (el.props.get('order') as ResolvedValue).value;
     const z = zIndexOf((el.props.get('z-index') as ResolvedValue).value);
     const opacity = opacityOf((el.props.get('opacity') as ResolvedValue).value);
     if (opacity === null) throw new Error(`${el.element.address}: opacity did not compute to a number`);
-    const flex = ['flex', 'inline-flex'].includes(keyword(el, 'display'));
+    const container = FLEX_OR_GRID.includes(keyword(el, 'display'));
     return {
       id: el.element.address,
       position: position === 'relative' || position === 'absolute' || position === 'fixed' || position === 'sticky' ? position : 'static',
-      z: position !== 'static' || parentFlex ? z : null,
+      z: position !== 'static' || item ? z : null,
+      // A refused order (an infinite calc()) is reported where it is declared and blocks the native targets.
+      ...(item && position !== 'absolute' && position !== 'fixed' && order.kind === 'number' ? { order: order.value } : {}),
       opacity,
       transformed: transformedForStacking(el),
       clips: el !== propagated && keyword(el, 'display') !== 'inline' && keyword(el, 'overflow-x') !== 'visible',
       text: false,
       children: el.children.flatMap((c): StackNode[] => {
         if (c.kind === 'text') return [{ id: `${el.element.address}:text#${texts++}`, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: true, children: [] }];
-        return keyword(c, 'display') === 'none' ? [] : [node(c, flex)];
+        return keyword(c, 'display') === 'none' ? [] : [node(c, container)];
       }),
     };
   };
@@ -65,7 +69,30 @@ export function checkStackingClips(el: ResolvedElement, propagated: ResolvedElem
     for (const c of e.children) if (c.kind === 'element') walk(c);
   };
   walk(el);
-  for (const { id, clip, kind } of stackingOf(resolvedStackTree(el, propagated)).clipped) {
+  const tree = resolvedStackTree(el, propagated);
+  const inlineLevel = (n: StackNode): boolean => ['inline', 'inline-block', 'inline-flex', 'inline-grid'].includes(keyword(byId.get(n.id) ?? el, 'display'));
+  for (const { id, container, kind: reason } of unorderedItems(tree, (n) => !n.text && inlineLevel(n))) {
+    const at = byId.get(id);
+    if (at === undefined) throw new Error(`${id}: an unordered stacking item that is not an element`);
+    for (const t of targets) {
+      if (t === 'web') continue;
+      const key = `${t}|stacking-order|${id}`;
+      if (reported.has(key)) continue;
+      reported.add(key);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: itemOrigin(at),
+        target: t,
+        message: reason === 'deep'
+          ? `${id} is a layer item inside ${container}, whose items set order, below an item's child; Chrome sorts a layer by order only as a flex or grid item or an item's child (paint_layer_stacking_node.cc), which ${t}'s paint order does not model`
+          : `${id} is a layer item inside ${container}, whose items set an order that is not a whole 32-bit integer; Chrome paints its layers by the rounded and clamped order, which ${t}'s paint order does not compute`,
+        manual: reason === 'deep'
+          ? `Make the item of ${container} that holds ${id} a stacking context or positioned, or give ${container}'s items order: 0.`
+          : `Give ${container}'s items whole-number order values.`,
+        basis: 'computed-value',
+      }));
+    }
+  }
+  for (const { id, clip, kind } of stackingOf(tree).clipped) {
     const at = byId.get(id);
     if (at === undefined) throw new Error(`${id}: a clipped stacking item that is not an element`);
     for (const t of targets) {
