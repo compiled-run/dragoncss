@@ -456,6 +456,26 @@ function fragmentOrders(s: TableState, container: LayoutBox): Map<string, number
   return out;
 }
 
+/**
+ * The grid items' places in a container's fragment order, by id: Blink paints grid items atomically in order-modified document
+ * order (css-grid-2 §9; GridLayoutAlgorithm::PlaceGridItems adds them in that order), which is the order the engine lists them in.
+ */
+function gridOrders(s: TableState, container: LayoutBox): Map<string, number> {
+  const inFlow = new Map<string, boolean>();
+  for (const c of container.children) {
+    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
+  }
+  const out = new Map<string, number>();
+  let k = 0;
+  for (const x of s.boxes) {
+    const parent = x.parent;
+    if (parent === null || parent !== container.id || !inFlow.has(x.id)) continue;
+    out.set(x.id, k);
+    k++;
+  }
+  return out;
+}
+
 /** Ahem's ink of a leaf: the em box when a glyph other than p (descender only) shows; p alone inks below the baseline only. */
 function inkAbove(leaf: TextLeaf): boolean {
   let full = false;
@@ -569,7 +589,6 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
 }
 
 function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<string, number> | null, target: number, inherited: PointerEvents): void {
-  if (b.style.display === 'grid') throw new HitError(gridRefusal(b.id));
   const i = s.nodes.length;
   let pe = inherited;
   let own = target;
@@ -602,7 +621,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   }
   if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
   if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves);
-  const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
+  const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : b.style.display === 'grid' ? gridOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
@@ -649,14 +668,7 @@ function atomicRefusal(id: string): string {
   return `${id} is an atomic inline, which the hit table does not model yet (INL2a: inline-block and inline-flex on their lines; no Chrome hit capture)`;
 }
 
-/** Blink paints grid items atomically in order-modified document order (css-grid-2 §9), which the hit table does not model. */
-function gridRefusal(id: string): string {
-  return `${id} is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)`;
-}
-
 function boxHitRefusal(b: LayoutBox): string | null {
-  // Grid items sit only in grid containers (validate.ts), so refusing the container refuses its items.
-  if (b.style.display === 'grid') return gridRefusal(b.id);
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if (c.kind === 'box') {
@@ -668,7 +680,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
   return null;
 }
 
-/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a), an atomic inline (INL2a) and a grid container have no hit model yet. */
+/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a), and an atomic inline (INL2a) have no hit model yet. */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }
