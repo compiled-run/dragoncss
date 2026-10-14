@@ -857,7 +857,12 @@ async function compare(otherPath: string, currentPath: string): Promise<number> 
 
 /** The two dataset files and the faults that refuse them, read from Chrome. */
 async function captureOutputs(browser: Browser): Promise<{ outputs: [string, string][]; faults: string[] }> {
-  const [light, dark] = await Promise.all([capture(browser, 'light'), capture(browser, plant === 'dark-as-light' ? 'light' : 'dark')]);
+  // Light and dark together; both run to their end before a failure is thrown (no page is left mid-capture), light's first.
+  const settled = await Promise.allSettled([capture(browser, 'light'), capture(browser, plant === 'dark-as-light' ? 'light' : 'dark')]);
+  const [light, dark] = settled.map((r) => {
+    if (r.status === 'rejected') throw r.reason;
+    return r.value;
+  }) as [Capture, Capture];
   if (plant !== undefined) applyPlant(plant, light);
   const faults = [...(await selfConsistency(browser, 'light', light)), ...(await selfConsistency(browser, 'dark', dark))];
   if (dark.systemColors['Canvas'] === light.systemColors['Canvas']) faults.push(`dark capture is not dark: Canvas is ${light.systemColors['Canvas']} in both the light and the dark capture`);
@@ -866,9 +871,9 @@ async function captureOutputs(browser: Browser): Promise<{ outputs: [string, str
 }
 
 // Everything the written files depend on beside Chrome itself (chrome-memo.ts keys the Chrome and Playwright versions and the
-// platform): this script, the page setup and the captured longhands. Only a fault-free capture is remembered; --check and
+// platform): this script, the page setup, the page pool and the captured longhands. Only a fault-free capture is remembered; --check and
 // --plant always read Chrome.
-const UA_CODE = ['scripts/capture-ua-defaults.ts', 'packages/parity/src/chrome.ts'];
+const UA_CODE = ['scripts/capture-ua-defaults.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/chrome-pool.ts'];
 const memo: MemoStats = { hits: 0, misses: 0 };
 
 const browser = await launchChrome();
