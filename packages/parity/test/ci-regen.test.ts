@@ -306,6 +306,37 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(free.status, free.stderr).toBe(0);
     expect(free.stdout).not.toContain('waiting for one');
     expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('5');
+    rmSync(join(d, 'calls'));
+    // A branch that moved off its dispatched head stops at once instead of waiting for a slot it would only be refused in.
+    const branchAt = (sha: string) => `
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  repos/${REPO}/branches/${BR}) body='{"commit":{"sha":"${sha}"}}' ;;
+  *status=*) body='${JSON.stringify({ workflow_runs: [...older, ...newer] })}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const moved = runStep(gate, { ...env, DISPATCH_BRANCH: BR, DISPATCH_HEAD: HEAD }, branchAt(NEW));
+    expect(moved.status).toBe(1);
+    expect(moved.stdout).toContain(`${BR} moved from the dispatched head ${HEAD} to ${NEW} while waiting for a slot; dispatch again`);
+    // Still at its head, or a failed lookup (gh prints the error body and exits 1): it keeps waiting, then takes the freed slot.
+    const lookup = (branch: string) => `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  repos/${REPO}/branches/${BR}) ${branch} ;;
+  *status=in_progress*) if [ $n -le 6 ]; then body='${JSON.stringify({ workflow_runs: [...older, ...newer] })}'; else body='${JSON.stringify({ workflow_runs: newer })}'; fi ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    for (const branch of [`body='{"commit":{"sha":"${HEAD}"}}'`, `echo '{"message":"Server Error","status":"502"}'; exit 1`]) {
+      const stays = runStep(gate, { ...env, DISPATCH_BRANCH: BR, DISPATCH_HEAD: HEAD }, lookup(branch));
+      expect(stays.status, stays.stderr).toBe(0);
+      expect(stays.stdout).toContain('waiting for one of 2 slots');
+      expect(stays.stdout).not.toContain('moved');
+      rmSync(join(d, 'calls'));
+    }
   });
   it('master\'s warm run yields to branch regens (dispatched or labelled) but never to the driver\'s patch-mode runs (#220)', () => {
     const warm = (runs: object[]) => runStep(resolve, { GITHUB_EVENT_NAME: 'push', GITHUB_SHA: HEAD, DISPATCH_BRANCH: '', DISPATCH_SHA: '', DISPATCH_HEAD: '', DISPATCH_NONCE: '', PR_BRANCH: '', PR_REPO: '', PR_SHA: '' }, resolveGh(runs)).out['mode'];

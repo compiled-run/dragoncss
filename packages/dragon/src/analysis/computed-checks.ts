@@ -33,6 +33,8 @@ import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
+/** css-text-3 §8.1: whether a computed word-spacing adds space, anything but normal and 0px. */
+const wordSpaced = (v: ResolvedValue): boolean => keywordOf(v) !== 'normal' && !(v.value.kind === 'length' && v.value.value === 0);
 /** A computed length or percentage of zero, as it serializes. */
 const isZeroLength = (v: ResolvedValue['value']): boolean => ['0', '0px', '0%'].includes(valueToString(v));
 
@@ -345,11 +347,13 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     }
     const texts = run.flatMap((it) => (it.kind === 'text' ? [it.text] : []));
     for (const t of texts) checkPreservedText(el, t, refuse);
-    // TXT2 with TXT2-b and TXT2-c: Blink justifies with letter spacing in one ShapeResultSpacing pass, and justifies a wrapped preserved
+    // TXT2 with TXT2-b and TXT2-c: Blink justifies with letter and word spacing in one ShapeResultSpacing pass, and justifies a wrapped preserved
     // line around its preserved spaces; no Chrome case covers either yet.
     if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') {
       const spaced = texts.find((t) => keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal');
       if (spaced !== undefined) refuse(el, 'justify-letter-spacing', `text-align: justify on ${el.element.address} with letter-spacing on ${spaced.node.address} is not laid out yet`, `Remove the letter-spacing that reaches ${spaced.node.address}, or use another text-align on ${el.element.address}.`);
+      const wordSpacedText = texts.find((t) => wordSpaced(t.props.get('word-spacing') as ResolvedValue));
+      if (wordSpacedText !== undefined) refuse(el, 'justify-word-spacing', `text-align: justify on ${el.element.address} with word-spacing on ${wordSpacedText.node.address} is not laid out yet`, `Remove the word-spacing that reaches ${wordSpacedText.node.address}, or use another text-align on ${el.element.address}.`);
       const preserved = texts.find((t) => keywordOf(t.props.get('white-space-collapse') as ResolvedValue) !== 'collapse' && keywordOf(t.props.get('text-wrap-mode') as ResolvedValue) === 'wrap');
       if (preserved !== undefined) refuse(el, 'justify-white-space', `text-align: justify on ${el.element.address} with wrapping preserved white space in ${preserved.node.address} is not laid out yet`, `Remove the white-space declaration that reaches ${preserved.node.address}, or use another text-align on ${el.element.address}.`);
       // INL2a with TXT2: how Blink justifies a line around an atomic inline has no Chrome comparison yet (inline.ts checkAtomicContext).
@@ -425,6 +429,10 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
   if (spaced) {
     refuse(targets, 'letter-spacing', `${at} truncates text with letter-spacing, which Dragon does not lay out yet`, `Remove letter-spacing from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
   }
+  const wordSpacedRun = wordSpaced(el.props.get('word-spacing') as ResolvedValue) || runs.some((run) => run.some((it) => it.kind === 'text' && wordSpaced(it.text.props.get('word-spacing') as ResolvedValue)));
+  if (wordSpacedRun) {
+    refuse(targets, 'word-spacing', `${at} truncates text with word-spacing, which Dragon does not lay out yet`, `Remove word-spacing from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
+  }
   // TXT2-c with TXT2-f: Blink truncates preserved text by its own items (control items, hanging spaces), which no Chrome case covers yet.
   if (runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))) {
     refuse(targets, 'white-space', `${at} truncates text whose white space is preserved, which Dragon does not lay out yet`, `Remove the white-space declaration (keep nowrap) from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
@@ -470,6 +478,8 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
   }
   // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
   if (keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal') refuse(el, 'letter-spacing', `letter-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the letter-spacing or the white-space declaration that reaches ${t.node.address}.`);
+  // Blink adds word spacing to every preserved space, the first included (WordSpacingWhiteSpacePre), which no Chrome case covers yet.
+  if (wordSpaced(t.props.get('word-spacing') as ResolvedValue)) refuse(el, 'word-spacing', `word-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the word-spacing or the white-space declaration that reaches ${t.node.address}.`);
   if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
 

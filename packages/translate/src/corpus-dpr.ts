@@ -428,7 +428,7 @@ export function engineInlineCases(): string[] {
         text += ' ';
         afterSpace = true;
       }
-      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap, letterSpacing: { kind: 'px', value: 0 } };
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap, letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } };
     };
     const wrap = r.chance(0.9) ? 'wrap' : 'nowrap';
     const content = (depth: number, size: number, lh: Json): Json[] => {
@@ -519,7 +519,7 @@ function atomicInlineCases(): string[] {
         text += ' ';
         afterSpace = true;
       }
-      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } };
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } };
     };
     // A box's own inline content, collapsed: it starts a context of its own.
     const ownText = (size: number, lh: Json): Json[] => {
@@ -708,7 +708,7 @@ export function engineOverflowCases(): string[] {
         style['textAlign'] = r.pick(['start', 'end', 'center', 'left', 'right']);
         style['display'] = 'block';
         const strut: Json = { font: font(size), lineHeight: { kind: 'normal' } };
-        return { kind: 'box', id, boxType: 'element', style, strut, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), ...strut, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } }] };
+        return { kind: 'box', id, boxType: 'element', style, strut, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), ...strut, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 } }] };
       }
       const kids: Json[] = [];
       const count = r.int(4);

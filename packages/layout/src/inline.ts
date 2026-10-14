@@ -316,14 +316,16 @@ function inlineChildren(box: LayoutBox): (InlineChild | LayoutBox)[] {
 
 /** A font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts), unspaced. */
 function fontOf(f: FontSpec): TextFont {
-  return { family: f.family, size: f.size, letterSpacing: 0 };
+  return { family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0 };
 }
 
-/** A text leaf's font as the measurer reads it: its font with its letter-spacing in px, which the environment pass resolved. */
+/** A text leaf's font as the measurer reads it: its font with its letter-spacing and word-spacing in px, which the environment pass resolved. */
 export function leafFontOf(t: TextLeaf): TextFont {
   const ls = t.letterSpacing;
   if (ls.kind !== 'px') throw new Error(`${t.id}: a ${ls.kind} letter-spacing reached layout; the environment pass resolves it`);
-  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value };
+  const ws = t.wordSpacing;
+  if (ws.kind !== 'px') throw new Error(`${t.id}: a ${ws.kind} word-spacing reached layout; the environment pass resolves it`);
+  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value, wordSpacing: ws.value };
 }
 
 /** A line height after the environment pass, which resolves percentages and calculations to px. */
@@ -495,6 +497,9 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (leafFontOf(t).letterSpacing !== 0) {
       for (const ch of t.text) if ((ch.codePointAt(0) as number) === 0xad) unsupported('letter-spacing', t.id, 'css-text-3 §8.2', `${t.id} has letter-spacing and a soft hyphen`);
     }
+    if (leafFontOf(t).wordSpacing !== 0) {
+      for (const ch of t.text) if ((ch.codePointAt(0) as number) === 0xad) unsupported('word-spacing', t.id, 'css-text-3 §8.1', `${t.id} has word-spacing and a soft hyphen`);
+    }
     for (const segment of lineFeedSegments(t)) {
       if (segment === '') continue;
       const m = ctx.measurer.measure(segment, leafFontOf(t));
@@ -561,6 +566,7 @@ function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpa
     if (mode === 'break-spaces' && t.font.family !== AHEM_FACE_ID) unsupported('line-break', t.id, 'css-text-4 §5.1', `white-space-collapse: break-spaces in the real face of ${t.id} (TXT2-c2)`);
     // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
     if (leafFontOf(t).letterSpacing !== 0) unsupported('letter-spacing', t.id, 'css-text-3 §8.2', `${t.id} has letter-spacing and white-space-collapse: ${mode}`);
+    if (leafFontOf(t).wordSpacing !== 0) unsupported('word-spacing', t.id, 'css-text-3 §8.1', `${t.id} has word-spacing and white-space-collapse: ${mode}`);
     for (const ch of t.text) {
       const cp = ch.codePointAt(0) as number;
       if (cp === 0x09) unsupported('tab-stop', t.id, 'css-text-3 §4.2', `a preserved tab in ${t.id}; tab stops are TXT2-c3`);
@@ -640,8 +646,10 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
     const prev = last < 0 ? null : (leaves[last] as TextLeaf);
     const t = leaves[it.leaf] as TextLeaf;
     // ShouldBreakShapingBeforeText (inline_node.cc) breaks the run where the Font differs, and FontDescription's == compares letter
-    // spacing, so a span with other spacing is its own run.
-    if (prev !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && leafFontOf(prev).letterSpacing === leafFontOf(t).letterSpacing) {
+    // and word spacing, so a span with other spacing is its own run.
+    const pf = prev === null ? null : leafFontOf(prev);
+    const tf = leafFontOf(t);
+    if (prev !== null && pf !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && pf.letterSpacing === tf.letterSpacing && pf.wordSpacing === tf.wordSpacing) {
       unsupported('text-shaping-run', t.id, 'css-text-3 §7.3 (boundary shaping)', `${prev.id} and ${t.id} are adjacent text in one face and size, which Blink shapes as one run`);
     }
     last = it.leaf;
@@ -1389,10 +1397,11 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], lin
   if (box.style.textAlign !== 'justify' || last || line.forced) return null;
   const free = sub(available, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd));
   if (free <= 0) return null;
-  // TXT2-b with TXT2: Blink applies letter spacing and expansion in one ShapeResultSpacing pass, which no Chrome case covers yet.
+  // TXT2-b with TXT2: Blink applies letter and word spacing and expansion in one ShapeResultSpacing pass, which no Chrome case covers yet.
   for (let i = line.start; i < line.end; i++) {
     const it = ifc.items[i] as Item;
     if (it.kind === 'char' && leafFontOf(ifc.leaves[it.leaf] as TextLeaf).letterSpacing !== 0) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line with letter-spacing (${(ifc.leaves[it.leaf] as TextLeaf).id}) is not proven against Chrome`);
+    if (it.kind === 'char' && leafFontOf(ifc.leaves[it.leaf] as TextLeaf).wordSpacing !== 0) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line with word-spacing (${(ifc.leaves[it.leaf] as TextLeaf).id}) is not proven against Chrome`);
   }
   // Blink expands around a CJK ideograph or symbol too (both sides, text-justify auto on 16-bit text); no fixture proves that,
   // so a line holding one, its hanging end included, is refused rather than given Latin-only opportunities.
@@ -1738,6 +1747,7 @@ function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: r
     const font = leafFontOf(t);
     // How Blink spaces the ellipsis and cuts spaced text at OffsetToFit is not proven against Chrome yet.
     if (font.letterSpacing !== 0) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has letter-spacing on a truncated line of ${box.id}`);
+    if (font.wordSpacing !== 0) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has word-spacing on a truncated line of ${box.id}`);
     sources.push({ text: t.text, font, start: p.start, end: p.visibleEnd, x: p.x, width: p.width });
   }
   const r = truncateLine(ctx, box.id, available, fontOf(strut.font), sources, ifc.shaped);

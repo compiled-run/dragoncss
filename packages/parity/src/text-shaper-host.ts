@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import type { EngineFaults, FontData, GlyphShaper, HanKerningFontData, ShapedFace, TextMeasurer } from '@dragon/layout';
-import { AHEM_FACE_ID, AHEM_SHA256, FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, letterSpacingAfter, NO_ENGINE_FAULTS, NO_HAN_KERNING, REFERENCE_LANGUAGE, shapedMeasurerFor, textRunLayoutUnit } from '@dragon/layout';
+import { AHEM_FACE_ID, AHEM_SHA256, FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, letterSpacingAfter, NO_ENGINE_FAULTS, NO_HAN_KERNING, REFERENCE_LANGUAGE, shapedMeasurerFor, textRunLayoutUnit, wordSpacingAfter } from '@dragon/layout';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 
@@ -232,15 +232,16 @@ export type ShapedInk = { readonly x: number; readonly y: number; readonly left:
  * The ink of a run of text in a registered face at an instance size, left to right: HarfBuzz shapes it as the engine does (Latin,
  * left to right, chws on), the pen advances by the 16.16 advances summed in float, and each glyph's box is its extents at its
  * offset; a glyph with no outline gives null. Letter spacing in px turns off liga, clig and calt and follows the last glyph of every
- * cluster (shaping.ts applySpacing).
+ * cluster, and word spacing follows the last glyph of every cluster that starts with a space (shaping.ts spacingAfterGlyph).
  */
-export function shapedInk(face: string, size: number, text: string, letterSpacing: number): ShapedInk[] {
+export function shapedInk(face: string, size: number, text: string, letterSpacing: number, wordSpacing: number): ShapedInk[] {
   const font = fontAt(face, size);
   const off = (tag: string) => ({ tag, value: 0, start: 0, end: 4294967295 });
   const spaced = Math.fround(letterSpacing) !== 0;
   const features = [...(spaced ? [off('liga'), off('clig'), off('calt')] : []), { tag: 'chws', value: 1, start: 0, end: 4294967295 }];
   const g = hb().shape(font, text, 0, text.length, { script: 'Latn', direction: 'ltr', language: REFERENCE_LANGUAGE, features });
   const spacing16 = textRunLayoutUnit(letterSpacing);
+  const word16 = textRunLayoutUnit(wordSpacing);
   const out: ShapedInk[] = [];
   let pen = 0;
   for (let i = 0; i < g.length; i += 7) {
@@ -249,7 +250,7 @@ export function shapedInk(face: string, size: number, text: string, letterSpacin
     const e = hb().glyphExtents(font, g[i] as number);
     out.push(e === undefined || e[2] === 0 || e[3] === 0 ? null : { x, y, left: x + e[0] / 65536, right: x + (e[0] + e[2]) / 65536, top: y + e[1] / 65536, bottom: y + (e[1] + e[3]) / 65536, cluster: g[i + 1] as number });
     const lastOfCluster = i + 7 >= g.length || g[i + 8] !== g[i + 1];
-    const advance = (g[i + 2] as number) + (lastOfCluster ? letterSpacingAfter(text.charCodeAt(g[i + 1] as number), spacing16) : 0);
+    const advance = (g[i + 2] as number) + (lastOfCluster ? letterSpacingAfter(text.charCodeAt(g[i + 1] as number), spacing16) + wordSpacingAfter(text.charCodeAt(g[i + 1] as number), word16) : 0);
     pen = Math.fround(pen + Math.fround(advance / 65536));
   }
   return out;

@@ -74,6 +74,8 @@ const SUBSET = [
   ...SVG_LONGHANDS,
   // TXT2-b: letter-spacing (css-text-3 §8.2), after visibility, as LONGHANDS registers it.
   'letter-spacing',
+  // TXT2-b: word-spacing (css-text-3 §8.1), after letter-spacing, as LONGHANDS registers it.
+  'word-spacing',
   // TXT2-f: text-overflow (css-overflow-4 §3.1), after visibility.
   'text-overflow',
   // TXT2-e: text-transform (css-text-3 §2.1), after visibility, as LONGHANDS registers it.

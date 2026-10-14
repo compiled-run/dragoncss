@@ -7,8 +7,8 @@ export const INLINE_OUT: readonly string[] = [
   'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
   // #266's float-clear-inert holds an inline box.
   'float-clear-inert', 'float-clear-inert-rtl',
-  // TXT2-b's text-spacing-ahem holds an inline box.
-  'text-spacing-ahem', 'text-spacing-ahem-rtl',
+  // TXT2-b's text-spacing-ahem and text-word-spacing-ahem hold an inline box.
+  'text-spacing-ahem', 'text-spacing-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl',
   // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
   // inline box and text-transform-text a <br>; TXT2's text-justify-ahem holds an inline box.
   'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',

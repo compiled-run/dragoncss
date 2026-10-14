@@ -1,0 +1,15 @@
+{
+  "case": "text-word-spacing-lato-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"px4:text0","lines":[[0,33]]},
+    {"id":"kern:text0","lines":[[0,20]]},
+    {"id":"neg:text0","lines":[[0,26],[26,43]]},
+    {"id":"wrap:text0","lines":[[0,17],[17,43],[43,53]]},
+    {"id":"sans:text0","lines":[[0,20],[20,41],[41,46]]},
+    {"id":"both:text0","lines":[[0,19],[19,39],[39,45]]},
+    {"id":"mixed:text0","lines":[[0,11]]},
+    {"id":"spaced:text0","lines":[[0,14]]},
+    {"id":"mixed:text1","lines":[[1,11]]}
+  ]
+}

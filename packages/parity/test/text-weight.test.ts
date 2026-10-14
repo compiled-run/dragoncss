@@ -28,8 +28,11 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** The outputs of BASE (batch2's regenerated head 768a8ebdf7: batch #281 at dde476247f plus #274's and #271's groups), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 13144, digest: '1c0b1fdab4178f226e521511125be0e1336b9cf80c80a12d8034a248cd55d9fa' };
+/**
+ * The outputs of BASE (batch2's regenerated head 768a8ebdf7: batch #281 at dde476247f plus #274's and #271's groups), as digests the BASE
+ * pins recompute; BASE_OUTPUTS is retaken on TXT2-b word-spacing's regenerated head, whose vectors carry wordSpacing (px 0).
+ */
+const BASE_OUTPUTS = { files: 13144, digest: '6b0b82780d23d099a6bac7567462203d29f8f2c58a9d4f5d77e29ecfa6f557c3' };
 const BASE_CAPTURES = { files: 3354, digest: '3c5abaa478b11a6d660b219456339a48567a78b9f2a76c6677975fdc9d21fbd7' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -205,7 +208,7 @@ describe('BASE pins', () => {
   // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
   // TDEC-a2's text-decoration cases (the web-only lane's captures) are its own as well. TXT2-c's white-space group and TXT2's
   // text-justify cases landed after BASE: their own files are left out as TXT-W1's are (they add files only, and change none of BASE's).
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-indent-)/.test(p);
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -218,7 +221,7 @@ describe('BASE pins', () => {
     // TXT-W2's font-shorthand cases are its own too, as the digests below exclude them; TXT2-c's white-space layout cases and TXT2's
     // text-justify cases landed after BASE.
     const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-') && !id.startsWith('text-indent-'));
+    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-') && !id.startsWith('text-word-spacing-') && !id.startsWith('text-indent-'));
     // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 828 BASE layout cases.
     expect(base.length).toBe(828);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('913a57ff7fbe0dd1f9eb9b3fc119cd82889e581ec4a9f6e628b0d675a73febf3');
@@ -228,8 +231,8 @@ describe('BASE pins', () => {
     const paths = files(dirs, (p) => !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(p));
     expect({ files: paths.length, digest: digest(paths, (p) => readFileSync(repoPath(p))) }).toEqual(BASE_OUTPUTS);
   });
-  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'text-indent'];
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent'];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));

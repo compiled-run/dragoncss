@@ -193,6 +193,7 @@ export const textLeafSchema = obj({
   whiteSpaceCollapse: lit('collapse', 'preserve', 'preserve-breaks', 'break-spaces'),
   textWrapMode: lit('wrap', 'nowrap'),
   letterSpacing: calcExpr,
+  wordSpacing: calcExpr,
 });
 
 /** A replaced leaf (input.ts ReplacedLeaf); its style is checked as a box style. */

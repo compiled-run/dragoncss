@@ -10,7 +10,7 @@ import {
   USCRIPT_BOPOMOFO, USCRIPT_COMMON, USCRIPT_HAN, USCRIPT_HIRAGANA, USCRIPT_INHERITED, USCRIPT_KATAKANA, USCRIPT_LATIN,
 } from './script-data.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from './text.ts';
-import { fontMetricLengths, letterSpacingAfter } from './text.ts';
+import { fontMetricLengths, letterSpacingAfter, wordSpacingAfter } from './text.ts';
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import {
@@ -73,11 +73,16 @@ export type ShapingFaults = {
   readonly spacingPerCodePoint: boolean;
   /** TXT2-b: liga, clig and calt stay on under letter spacing. */
   readonly ligaturesKept: boolean;
+  /** TXT2-b: no word spacing after a space at offset 0 of an item, as if Blink's offset-0 rule counted from the item. */
+  readonly wordSpacingAtItemStart: boolean;
+  /** TXT2-b: no word spacing after a no-break space. */
+  readonly wordSpacingSkipsNbsp: boolean;
 };
 
 export const NO_SHAPING_FAULTS: ShapingFaults = {
   advanceNot16_16: false, doubleAccumulation: false, noReshapeAtBreak: false, kerningDropped: false, wholePixelPositions: false, softHyphenWidthMissing: false,
-  metricRoundingSwapped: false, trailingSpacingDropped: false, spacingPerCodePoint: false, ligaturesKept: false,
+  metricRoundingSwapped: false, trailingSpacingDropped: false, spacingPerCodePoint: false, ligaturesKept: false, wordSpacingAtItemStart: false,
+  wordSpacingSkipsNbsp: false,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -459,6 +464,8 @@ export type ShapeItem = {
   readonly hanKerningMayApply: boolean;
   /** The letter spacing as TextRunLayoutUnit (16.16), which ShapeResult::ApplySpacing adds after every cluster; 0 for none. */
   readonly letterSpacing16: number;
+  /** The word spacing as TextRunLayoutUnit (16.16), which ShapeResult::ApplySpacing adds after every space; 0 for none. */
+  readonly wordSpacing16: number;
   readonly faults: ShapingFaults;
 };
 
@@ -471,6 +478,8 @@ export type ItemInput = {
   readonly hanKerning: HanKerningFontData;
   /** The used letter spacing in px (FontDescription::LetterSpacing), 0 for normal. */
   readonly letterSpacing: number;
+  /** The used word spacing in px (FontDescription::WordSpacing), 0 for normal. */
+  readonly wordSpacing: number;
   readonly faults: ShapingFaults;
 };
 
@@ -504,7 +513,8 @@ export function makeItem(input: ItemInput): ItemResult {
     ok: true,
     item: {
       shaper: input.shaper, face: input.face, size: input.size, text: input.text, units, language: input.language, segments: seg.segments, features,
-      hanKerning: input.hanKerning, hanKerningMayApply: hanKerningMayApply(units, 0, units.length), letterSpacing16: textRunLayoutUnit(input.letterSpacing), faults: input.faults,
+      hanKerning: input.hanKerning, hanKerningMayApply: hanKerningMayApply(units, 0, units.length), letterSpacing16: textRunLayoutUnit(input.letterSpacing),
+      wordSpacing16: textRunLayoutUnit(input.wordSpacing), faults: input.faults,
     },
   };
 }
@@ -540,19 +550,27 @@ function wholePixel(raw: number): number {
 /**
  * ShapeResult::ApplySpacingOrExpansion with letter spacing (shape_result.cc, shape_result_spacing.cc ComputeSpacing): the last glyph
  * of every HarfBuzz cluster gains the spacing, the last cluster of the item included, unless the cluster starts with a zero-width
- * space. The run width is then the unclamped sum. Word spacing is not modelled; the compiler accepts only its initial value.
+ * space, and the last glyph of a cluster that starts with a space gains the word spacing. The run width is then the unclamped sum.
  */
 function spacingAfterGlyph(item: ShapeItem, g: readonly number[], o: number, runEnd: number): number {
   const cluster = g[o + 1] as number;
   const lastGlyph = o + GLYPH_STRIDE >= g.length;
   if (!lastGlyph && (g[o + GLYPH_STRIDE + 1] as number) === cluster) return 0;
   if (item.faults.trailingSpacingDropped && lastGlyph && runEnd >= item.units.length) return 0;
-  let add = letterSpacingAfter(item.units[cluster] as number, item.letterSpacing16);
+  let add = letterSpacingAfter(item.units[cluster] as number, item.letterSpacing16) + wordSpacingOf(item, cluster);
   if (item.faults.spacingPerCodePoint) {
     const next = lastGlyph ? runEnd : (g[o + GLYPH_STRIDE + 1] as number);
     for (let c = cluster + 1; c < next; c++) if ((item.units[c] as number) >= 0) add = add + letterSpacingAfter(item.units[c] as number, item.letterSpacing16);
   }
   return add;
+}
+
+/** The word spacing after the character at an item offset, with the planted faults. */
+function wordSpacingOf(item: ShapeItem, at: number): number {
+  const cp = item.units[at] as number;
+  if (item.faults.wordSpacingAtItemStart && at === 0) return 0;
+  if (item.faults.wordSpacingSkipsNbsp && cp === 0xa0) return 0;
+  return wordSpacingAfter(cp, item.wordSpacing16);
 }
 
 /** HarfBuzzShaper::Shape over [start, end) with the item as context. */
@@ -581,11 +599,11 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
       const safe = o === 0 ? true : cluster === (g[o + 1 - GLYPH_STRIDE] as number) ? false : Number.isInteger(flags / 2);
       const raw = g[o + 2] as number;
       const shaped = item.faults.wholePixelPositions && !Number.isInteger(raw / 65536) ? wholePixel(raw) : raw;
-      const advance = item.letterSpacing16 === 0 ? shaped : shaped + spacingAfterGlyph(item, g, o, e);
+      const advance = item.letterSpacing16 === 0 && item.wordSpacing16 === 0 ? shaped : shaped + spacingAfterGlyph(item, g, o, e);
       glyphs.push({ glyph: gid, ci: cluster - s, advance, safe });
       advances.push(advance);
     }
-    const run: ShapingRun = { start: s, numChars: e - s, glyphs, width: sumAdvances(advances, item.faults, item.letterSpacing16 === 0) };
+    const run: ShapingRun = { start: s, numChars: e - s, glyphs, width: sumAdvances(advances, item.faults, item.letterSpacing16 === 0 && item.wordSpacing16 === 0) };
     runs.push(run);
     width = accumulate(width, run.width, item.faults);
   }
@@ -764,7 +782,7 @@ export function lineWidth(item: ShapeItem, paragraph: ShapeResult, start: number
 /** ComputedStyle::HyphenString: U+2010 if the face has a glyph for it, else U+002D, shaped as its own item. */
 function hyphenWidth(item: ShapeItem): LineResult {
   const own = (text: string): ShapeResult => {
-    const made = makeItem({ shaper: item.shaper, face: item.face, size: item.size, text, language: item.language, hanKerning: NO_HAN_KERNING, letterSpacing: 0, faults: item.faults });
+    const made = makeItem({ shaper: item.shaper, face: item.face, size: item.size, text, language: item.language, hanKerning: NO_HAN_KERNING, letterSpacing: 0, wordSpacing: 0, faults: item.faults });
     if (!made.ok) return shapeRange(item, 0, 0, false, false, false);
     return shapeItem(made.item);
   };
@@ -1603,22 +1621,22 @@ export type ShapedItem = { readonly ok: true; readonly item: ShapeItem; readonly
 export type ShapedText = {
   /** R2's TextMeasurer, over the face TextFont.family names (the face id: Ahem, or a bundled face's sha256). */
   readonly measurer: TextMeasurer;
-  item(text: string, face: string, size: number, letterSpacing: number): ShapedItem;
+  item(text: string, face: string, size: number, letterSpacing: number, wordSpacing: number): ShapedItem;
   line(shaped: ShapedItem, start: number, breakOffset: number, available: LU, isBreakable: (offset: number) => boolean): LineResult;
 };
 
 /** The shaping core over the host's faces and HarfBuzz, for text in one language. */
 export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: GlyphShaper, faults: ShapingFaults, language: string): ShapedText {
   const cache = new Map<string, ShapedItem>();
-  const item = (text: string, face: string, size: number, letterSpacing: number): ShapedItem => {
-    const key = `${face}\n${size}\n${letterSpacing}\n${text}`;
+  const item = (text: string, face: string, size: number, letterSpacing: number, wordSpacing: number): ShapedItem => {
+    const key = `${face}\n${size}\n${letterSpacing}\n${wordSpacing}\n${text}`;
     const hit = cache.get(key);
     if (hit !== undefined) return hit;
     const f = faces.get(face);
     let out: ShapedItem;
     if (f === undefined) out = { ok: false, code: 'text-glyph', reason: `no bundled face ${face}` };
     else {
-      const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, letterSpacing, faults });
+      const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, letterSpacing, wordSpacing, faults });
       if (!made.ok) out = { ok: false, code: 'text-glyph', reason: made.reason };
       else {
         const result = shapeItem(made.item);
@@ -1632,7 +1650,7 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     if (!shaped.ok) return { ok: false, reason: shaped.reason };
     return lineWidth(shaped.item, shaped.result, start, breakOffset, available, isBreakable);
   };
-  const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size), font.letterSpacing);
+  const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size), font.letterSpacing, font.wordSpacing);
   const measurer: TextMeasurer = {
     // R5: SimpleFontData's rounded ascent and descent of the platform-size font; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {

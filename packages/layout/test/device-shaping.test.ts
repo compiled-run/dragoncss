@@ -46,7 +46,7 @@ const ahemShaper: GlyphShaper = {
   },
 };
 
-const font = (size: number): TextFont => ({ family: AHEM_FACE_ID, size, letterSpacing: 0 }) as unknown as TextFont;
+const font = (size: number): TextFont => ({ family: AHEM_FACE_ID, size, letterSpacing: 0, wordSpacing: 0 }) as unknown as TextFont;
 const device = deviceShapedMeasurer(new Map([[AHEM_FACE_ID, AHEM_FONT_DATA]]), ahemShaper);
 
 /** Computed sizes of the native cases' kinds: whole, fractional (the Ahem fractional-size fixtures) and zoomed to the device DPRs. */
@@ -172,7 +172,7 @@ describe('pieceGlyphs', () => {
   });
   it('passes a refusal of the measurer through, with its reason', () => {
     expect(pieceGlyphs(device, 'XΩ', font(16), 0, 1)).toEqual({ ok: false, reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
-    expect(pieceGlyphs(device, 'X', { family: 'Lato', size: 16, letterSpacing: 0 } as unknown as TextFont, 0, 1)).toEqual({ ok: false, reason: 'no bundled face Lato' });
+    expect(pieceGlyphs(device, 'X', { family: 'Lato', size: 16, letterSpacing: 0, wordSpacing: 0 } as unknown as TextFont, 0, 1)).toEqual({ ok: false, reason: 'no bundled face Lato' });
     expect(pieceGlyphs(ahemMeasurer, 'X', font(16), 0, 1).ok).toBe(false);
   });
 });
