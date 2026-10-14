@@ -15,6 +15,8 @@ export const INLINE_OUT: readonly string[] = [
   'text-justify-ahem', 'text-justify-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
   'text-decoration-native', 'text-decoration-native-rtl',
+  // resize-values holds an inline box (sp, resize on an inline span).
+  'resize-values', 'resize-values-rtl',
   // INL2a: every atomic-inline case holds an inline-block or inline-flex on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];
