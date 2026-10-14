@@ -19,6 +19,7 @@ import { FONT_SHORTHAND_FACES } from './fixture-groups/font-shorthand.ts';
 import { WHITE_SPACE_FACES } from './fixture-groups/white-space.ts';
 import { TEXT_LATIN_FACES } from './fixture-groups/text-latin.ts';
 import { TEXT_SPACING_FACES } from './fixture-groups/text-spacing.ts';
+import { TEXT_BREAK_FACES } from './fixture-groups/text-break.ts';
 import { faceProblem } from './fonts-run.ts';
 import type { PlatformFont } from './font-reference.ts';
 import { platformFonts } from './font-reference.ts';
@@ -69,7 +70,7 @@ export function isShapedInput(input: LayoutInput): boolean {
 
 /** The faces Chrome must draw each listed element's text with in a fixture (data-dragon-id to postScriptName), or null. */
 export function expectedFacesOf(fixture: string): { readonly [id: string]: string } | null {
-  return TEXT_LATIN_FACES.get(fixture) ?? TEXT_CALIBRATION_FACES.get(fixture) ?? INLINE_TAGS_FACES.get(fixture) ?? TEXT_WEIGHT_FACES.get(fixture) ?? FONT_SHORTHAND_FACES.get(fixture) ?? TEXT_SPACING_FACES.get(fixture) ?? WHITE_SPACE_FACES.get(fixture) ?? null;
+  return TEXT_LATIN_FACES.get(fixture) ?? TEXT_CALIBRATION_FACES.get(fixture) ?? INLINE_TAGS_FACES.get(fixture) ?? TEXT_WEIGHT_FACES.get(fixture) ?? FONT_SHORTHAND_FACES.get(fixture) ?? TEXT_SPACING_FACES.get(fixture) ?? WHITE_SPACE_FACES.get(fixture) ?? TEXT_BREAK_FACES.get(fixture) ?? null;
 }
 
 /**

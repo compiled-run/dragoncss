@@ -31,7 +31,8 @@ export type UnsupportedCode =
   | 'tab-stop'
   | 'preserved-control'
   | 'mixed-white-space'
-  | 'text-indent';
+  | 'text-indent'
+  | 'word-break';
 
 /** The refusals a TextMeasurer returns: a code point with no glyph, or text outside the measurer's scripts (R4, notes/T056-txt1a-spec.md). */
 export type TextRefusalCode = 'text-glyph' | 'text-script';

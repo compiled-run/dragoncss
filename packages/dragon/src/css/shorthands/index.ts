@@ -13,6 +13,7 @@ import { OUTLINE_SHORTHANDS } from './outline.ts';
 import { RADIUS_SHORTHANDS } from './radius.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { TEXT_SHORTHANDS } from './text.ts';
+import { TEXT_BREAK_SHORTHANDS } from './text-break.ts';
 import { TEXT_DECORATION_SHORTHANDS } from './text-decoration.ts';
 import { WRITING_MODE_SHORTHANDS } from './writing-mode.ts';
 
@@ -34,6 +35,7 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...RADIUS_SHORTHANDS,
   ...OUTLINE_SHORTHANDS,
   ...LISTS_SHORTHANDS,
+  ...TEXT_BREAK_SHORTHANDS,
 };
 
 export function shorthandHandler(property: Shorthand): ShorthandHandler {

@@ -180,6 +180,16 @@ export type EngineFaults = {
   readonly indentPercentInIntrinsic: boolean;
   /** TXT2-h: in rtl the indent is measured from the line-left edge instead of the line-right edge. */
   readonly indentRtlFromLeft: boolean;
+  /** TXT2-a: overflow-wrap: anywhere and word-break: break-word leave min-content at its normal opportunities (css-text-3 §5.5). */
+  readonly anywhereMinContentIgnored: boolean;
+  /** TXT2-a: overflow-wrap: break-word breaks anywhere in min-content too (Blink applies it in content mode only). */
+  readonly breakWordShrinksMinContent: boolean;
+  /** TXT2-a: overflow-wrap breaks at grapheme boundaries from the start instead of only when a line overflows. */
+  readonly breakAnywhereAlways: boolean;
+  /** TXT2-a: an overflowing segment is broken at graphemes on the current line even though an earlier opportunity fits. */
+  readonly emergencyBreakBeforeOpportunity: boolean;
+  /** TXT2-a: word-break: break-word is laid out as normal. */
+  readonly wordBreakBreakWordIgnored: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -256,6 +266,11 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   indentAfterBr: false,
   indentPercentInIntrinsic: false,
   indentRtlFromLeft: false,
+  anywhereMinContentIgnored: false,
+  breakWordShrinksMinContent: false,
+  breakAnywhereAlways: false,
+  emergencyBreakBeforeOpportunity: false,
+  wordBreakBreakWordIgnored: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
