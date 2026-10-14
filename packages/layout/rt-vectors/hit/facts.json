@@ -769,6 +769,8 @@
     "radius-replaced-rtl": "border-radius on avatar, ring, thick, ellipse, ellipse-ring, corners, corners-ring, fill, hidden, tall: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-double": "border-radius on base, wide, thin, three, circle, ellipse, corners, alpha, clip: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-double-rtl": "border-radius on base, wide, thin, three, circle, ellipse, corners, alpha, clip: hit testing through rounded corners is not modelled yet (PNT1)",
+    "resize-values": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "resize-values-rtl": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "shadow-rounded": "border-radius on simple, pill, circle, mixed, spread, ring, bordered: hit testing through rounded corners is not modelled yet (PNT1)",
     "shadow-rounded-rtl": "border-radius on simple, pill, circle, mixed, spread, ring, bordered: hit testing through rounded corners is not modelled yet (PNT1)",
     "shadow-inset": "border-radius on round, both, circle: hit testing through rounded corners is not modelled yet (PNT1)",
