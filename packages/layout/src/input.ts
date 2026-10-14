@@ -332,6 +332,11 @@ export type LayoutStyle = {
   readonly aspectRatio: AspectRatioValue;
   readonly verticalAlign: VerticalAlignValue;
   readonly textOverflow: TextOverflow;
+  /**
+   * css-overflow-4 §4.2 -webkit-line-clamp on a block container (the compiler's display: -webkit-box line-clamp pattern, which
+   * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
+   */
+  readonly lineClamp: number;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */

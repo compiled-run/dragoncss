@@ -11,6 +11,7 @@ import type { CompilerFaults } from '../faults.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
+import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
@@ -321,6 +322,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeLetterSpacing(props, faults.zeroNotNormal);
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     blockify(props, parent === null ? null : parent.props, faults);
+    adjustLineClampDisplay(props);
     computeOverflowPair(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);

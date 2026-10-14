@@ -78,6 +78,8 @@ const SUBSET = [
   'text-overflow',
   // TXT2-e: text-transform (css-text-3 §2.1), after visibility, as LONGHANDS registers it.
   'text-transform',
+  // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after text-transform.
+  '-webkit-box-orient', '-webkit-line-clamp',
 ] as const;
 
 /**
@@ -139,6 +141,15 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   stroke: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
 };
 
+/**
+ * Initial and inherited fields webref leaves out (-webkit-box-orient has no entry of its own) or defers to line-clamp ("see
+ * individual properties"): Blink's css_properties.json5 values for the legacy line-clamp longhands (TXT2-g).
+ */
+const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string; readonly inherited: string } } = {
+  '-webkit-box-orient': { initial: 'horizontal', inherited: 'no' },
+  '-webkit-line-clamp': { initial: 'none', inherited: 'no' },
+};
+
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
 const typesByName = new Map(css.types.map((t) => [t.name, t]));
 // Functional notations such as <rgb()> are listed under webref's functions, keyed with their parentheses.
@@ -160,7 +171,7 @@ while (queue.length > 0) {
     if (p === undefined || (p.syntax === undefined && SYNTAX_OVERRIDES[next.name] === undefined)) throw new Error(`webref has no syntax for property ${next.name}`);
     const extension = SYNTAX_EXTENSIONS[next.name];
     syntax = SYNTAX_OVERRIDES[next.name] ?? (extension === undefined ? (p.syntax as string) : `${p.syntax} | ${extension}`);
-    properties.set(next.name, { ...p, syntax });
+    properties.set(next.name, { ...p, syntax, ...FIELD_OVERRIDES[next.name] });
   } else {
     if (types.has(next.name) || CSS_TREE_GENERICS.has(next.name)) continue;
     const t = next.name.endsWith('()') ? functionsByName.get(next.name) : typesByName.get(next.name);

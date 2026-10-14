@@ -1571,6 +1571,7 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
   const adv = atoms.map((a) => a.advance);
   const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available) : breakLines(ctx, ifc, adv, available);
   const rtl = directionOf(ctx, box) === 'rtl';
+  checkClampContext(ctx, box, ifc, atoms.length);
   const out: AtomicLine[] = [];
   let top = ZERO;
   for (let n = 0; n < broken.length; n++) {
@@ -1633,7 +1634,8 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
       const visibleEnd = it.at + (i - from);
       pieces.push({ leaf: it.leaf, start: it.at, visibleEnd, end: it.at + (through - from), x: penAt(ctx, ifc, adv, line, offset, from), width: spanWidth(ctx, ifc, adv, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: shiftsOf(line, from, i), paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO });
     }
-    const cut = truncates(ctx, box) ? truncatePieces(ctx, box, ifc, available, on, baseline, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd), pieces) : null;
+    const clamp = clampsLine(ctx, box, n, broken.length);
+    const cut = clamp || truncates(ctx, box) ? truncatePieces(ctx, box, ifc, available, on, baseline, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd), pieces, clamp && !ctx.faults.clampEllipsisMissingWhenLineFits) : null;
     // A <br>'s content area is its parent box's (Blink places the control item with the parent's text top and height).
     const breaks: number[] = [];
     const breakRects: Rect[] = [];
@@ -1684,13 +1686,50 @@ function truncates(ctx: Ctx, box: LayoutBox): boolean {
 }
 
 /**
+ * TXT2-g: a line-clamp container (lineClamp N, input.ts) lays out every line; the engine's port of Blink's legacy line clamp
+ * (block_layout_algorithm.cc BlockLineClampData) covers one inline formatting context of collapsible text and inline boxes, left
+ * to right. The compiler refuses the rest; these guard the engine's own inputs.
+ */
+function checkClampContext(ctx: Ctx, box: LayoutBox, ifc: Ifc, atomics: number): void {
+  if (box.style.lineClamp === 0) return;
+  if (directionOf(ctx, box) === 'rtl') unsupported('line-clamp', box.id, 'css-overflow-4 §4.2', `-webkit-line-clamp on the rtl block ${box.id} is not yet proven against Chrome`);
+  if (ifc.mode !== 'collapse') unsupported('line-clamp', box.id, 'css-overflow-4 §4.2', `-webkit-line-clamp on ${box.id}, whose white space is preserved, is not yet proven against Chrome`);
+  if (atomics > 0) unsupported('line-clamp', box.id, 'css-overflow-4 §4.2', `-webkit-line-clamp on ${box.id}, which holds an atomic inline, is not yet proven against Chrome`);
+}
+
+/**
+ * TXT2-g, InlineLayoutAlgorithm::GetLineClampState (kLineClampEllipsis at IsAtClampPoint): line N of a clamp container is truncated
+ * with an ellipsis even when it fits, when content follows it; with nothing after it Blink lays the container out again without the
+ * clamp (BlockLineClampData::ShouldRelayoutWithNoForcedTruncate), so the last line keeps no ellipsis. A negative lineClamp is a
+ * nested clamp (block.ts), whose container holds content after this box.
+ */
+function clampsLine(ctx: Ctx, box: LayoutBox, n: number, count: number): boolean {
+  const c = box.style.lineClamp;
+  const at = c < 0 ? -c : c;
+  if (at === 0 || n !== at - 1) return false;
+  return c < 0 || count > at || ctx.faults.clampEllipsisOnExactLastLine;
+}
+
+/** TXT2-g: the block size of a clamp container's lines, which ends after line N when content follows it (BlockLineClampData). */
+export function clampedLinesHeight(ctx: Ctx, box: LayoutBox, lines: readonly PlacedLine[]): LU {
+  const last = lines[lines.length - 1];
+  const full = last === undefined ? ZERO : add(last.top, last.height);
+  const c = box.style.lineClamp;
+  const at = c < 0 ? -c : c;
+  if (at === 0 || lines.length <= at || ctx.faults.clampHeightIncludesHiddenLines) return full;
+  const n = lines[at - 1] as PlacedLine;
+  return add(n.top, n.height);
+}
+
+/**
  * InlineLayoutAlgorithm::CreateLine: a line that overflows (LineBreaker::HandleOverflow; wider than the available width plus one
- * LayoutUnit) is truncated (truncate.ts): its pieces with their painted ranges and its ellipsis; null for a line that fits.
+ * LayoutUnit) is truncated (truncate.ts): its pieces with their painted ranges and its ellipsis; null for a line that fits. A
+ * clamped line (forced, TXT2-g) is truncated even when it fits: its ellipsis follows its content.
  */
 type Truncated = { readonly pieces: readonly LinePiece[]; readonly ellipsis: LineEllipsis | null };
 
-function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: readonly number[], baseline: LU, lineWidth: LU, pieces: readonly LinePiece[]): Truncated | null {
-  if (lineWidth <= add(available, fromRaw(1)) || pieces.length === 0) return null;
+function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: readonly number[], baseline: LU, lineWidth: LU, pieces: readonly LinePiece[], forced: boolean): Truncated | null {
+  if ((!forced && lineWidth <= add(available, fromRaw(1))) || pieces.length === 0) return null;
   for (const b of on) {
     if ((ifc.firstContent[b] as number) < 0) unsupported('text-overflow', (ifc.boxes[b] as InlineBox).id, 'css-overflow-4 §3.1', `the empty inline box ${(ifc.boxes[b] as InlineBox).id} is on a truncated line of ${box.id}`);
   }
@@ -1975,7 +2014,7 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
   placeTopFragments(inlineChildren(box), fragments, placed);
   const last = lines[lines.length - 1];
   const first = lines[0];
-  return { height: last === undefined ? ZERO : add(last.top, last.height), placed, firstBaseline: first === undefined ? null : first.baseline, lastBaseline: last === undefined ? null : last.baseline, lines: lines.length };
+  return { height: clampedLinesHeight(ctx, box, lines), placed, firstBaseline: first === undefined ? null : first.baseline, lastBaseline: last === undefined ? null : last.baseline, lines: lines.length };
 }
 
 // css-sizing-3 §5.1 with css-text-3 §5: max-content breaks only at <br>s, so it is the widest forced line; min-content takes every

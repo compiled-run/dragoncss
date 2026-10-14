@@ -4,6 +4,7 @@
 // rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values. The outline longhands are the
 // other: they are written only when an author declaration sets one (in any band or interaction state of the element), since
 // Chrome's UA :focus-visible rule (outline: auto 1px -webkit-focus-ring-color) draws the focus ring an explicit none would hide.
+// The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
 // colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
@@ -13,6 +14,8 @@ import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';
+import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';
+import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
 import { parseFamilyList } from '../fonts/family-list.ts';
@@ -173,7 +176,7 @@ export type WebAnimations = {
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
-export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true): WebEmit {
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true, webkitBoxEmittedAsFlowRoot = false): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
     const text = familyListText(v);
@@ -189,6 +192,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     // static value is the same: the parent's resolved colour).
     if (p === 'color' && underSource && r.origin === 'inherited') return '  color: inherit;';
     if (p === 'color' && r.origin === 'user-agent') return '  color: revert;';
+    // TXT2-g: a line-clamp container writes its authored -webkit-box (analysis/line-clamp.ts).
+    const legacy = p === 'display' ? webDisplayOf(el, { webkitBoxEmittedAsFlowRoot }) : null;
+    if (legacy !== null) return `  display: ${legacy};`;
     const v = r.value;
     // A folded order calculation that is not a whole number stays a calculation, which Chrome rounds as the engine does.
     if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
@@ -222,8 +228,11 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         const x = m.get(el.element.address);
         return x === undefined ? [] : [x];
       };
-      const outline = [el, ...inBands.flatMap(at), ...states.flatMap((list) => list.flatMap((st) => at(st.at)))].some(authorsOutline);
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
+      const resolutions = [el, ...inBands.flatMap(at), ...states.flatMap((list) => list.flatMap((st) => at(st.at)))];
+      const outline = resolutions.some(authorsOutline);
+      // TXT2-g: the line-clamp longhands are written for every resolution of the element or none (both are inert at their initial values).
+      const clamp = resolutions.some(writesLineClamp);
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).

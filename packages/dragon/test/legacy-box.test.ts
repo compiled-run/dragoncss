@@ -24,7 +24,6 @@ const VALID: { readonly [P in (typeof LEGACY_BOX_PROPERTIES)[number]]: readonly 
   '-webkit-box-direction': ['normal', 'reverse'],
   '-webkit-box-flex': ['0', '1', '2.5', '-1', 'calc(1 + 1)'],
   '-webkit-box-ordinal-group': ['1', '2', '10'],
-  '-webkit-box-orient': ['horizontal', 'vertical', 'inline-axis', 'block-axis'],
   '-webkit-box-pack': ['start', 'center', 'end', 'justify'],
 };
 const INVALID: readonly (readonly [string, string])[] = [

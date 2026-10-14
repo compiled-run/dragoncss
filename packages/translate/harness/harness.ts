@@ -642,7 +642,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'lineClamp', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -841,6 +841,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
+    lineClamp: num(f('lineClamp'), p('lineClamp')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -992,6 +993,7 @@ const FAULT_KEYS: readonly string[] = [
   'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
 ];
 
@@ -1065,6 +1067,9 @@ function decodeFaults(v: JsonValue): EngineFaults {
     preservedSpaceCollapsed: b('preservedSpaceCollapsed'),
     trailingPreWrapNotHanging: b('trailingPreWrapNotHanging'),
     breakSpacesHanging: b('breakSpacesHanging'),
+    clampHeightIncludesHiddenLines: b('clampHeightIncludesHiddenLines'),
+    clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
+    clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
   };
 }
 

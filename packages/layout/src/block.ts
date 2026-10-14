@@ -24,7 +24,7 @@ import {
 import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
 import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
-import { layoutInline } from './inline.ts';
+import { layoutInline, placeLines } from './inline.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
@@ -166,6 +166,12 @@ export type EngineFaults = {
   readonly trailingPreWrapNotHanging: boolean;
   /** TXT2-c: break-spaces spaces before a soft wrap opportunity hang, as pre-wrap spaces do. */
   readonly breakSpacesHanging: boolean;
+  /** TXT2-g: a line-clamp container's content height takes every line instead of ending after line N. */
+  readonly clampHeightIncludesHiddenLines: boolean;
+  /** TXT2-g: line N of a line-clamp container gets an ellipsis only when it overflows, not whenever content follows. */
+  readonly clampEllipsisMissingWhenLineFits: boolean;
+  /** TXT2-g: line N gets an ellipsis even when it is the last line (Blink relayouts without the clamp when nothing follows). */
+  readonly clampEllipsisOnExactLastLine: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -235,6 +241,9 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   preservedSpaceCollapsed: false,
   trailingPreWrapNotHanging: false,
   breakSpacesHanging: false,
+  clampHeightIncludesHiddenLines: false,
+  clampEllipsisMissingWhenLineFits: false,
+  clampEllipsisOnExactLastLine: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
@@ -579,8 +588,13 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let lastBaseline: LU | null = null;
   let lastBaselineFlex = '';
   const outOfFlow: OutOfFlow[] = [];
-  for (const kid of kids) {
-    if (kid.kind !== 'box' && kid.kind !== 'replaced') continue;
+  // TXT2-g: a line-clamp container counts the lines of its block children in order (BlockLineClampData::UpdateAfterLayout).
+  let clampLeft = box.style.lineClamp > 0 ? box.style.lineClamp : 0;
+  let clampedCursor: LU | null = null;
+  for (let k = 0; k < kids.length; k++) {
+    const child = kids[k] as LayoutBox['children'][number];
+    if (child.kind !== 'box' && child.kind !== 'replaced') continue;
+    let kid = child;
     if (kid.kind === 'box' && isOutOfFlow(ctx, kid)) {
       // CSS2 §10.3.7 static position (Blink HandleOutOfFlowPositioned): the parent's content start edge in its direction, at the
       // flow position, which includes the pending margins once the parent's block offset is fixed (measured).
@@ -607,6 +621,11 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       c = { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: '' };
     } else {
       inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction, container);
+      const clamp = clampLeft > 0 ? nestedClamp(ctx, box, kid, inline.borderBoxWidth, a.contentWidth, clampLeft, kids.slice(k + 1)) : null;
+      if (clamp !== null) {
+        clampLeft = clamp.left;
+        kid = clamp.kid;
+      }
       c = layoutContents(ctx, kid, {
         cbInline: a.contentWidth,
         borderBoxWidth: inline.borderBoxWidth,
@@ -632,6 +651,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       }
       cursor = add(y, c.frag.height);
       seen = true;
+      // The clamp container's content ends at the bottom of the child that clamped, its margins left out (FinishLayout, legacy).
+      if (kid.kind === 'box' && kid.style.lineClamp < 0 && clampedCursor === null && !ctx.faults.clampHeightIncludesHiddenLines) clampedCursor = cursor;
       strut = joinStruts(joinMargin(EMPTY_STRUT, inline.marginBottom), c.escapeBottom);
     }
     const at: Placed = { frag: c.frag, x: inline.x, y: add(a.origin.y, y) };
@@ -654,7 +675,27 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
   }
   if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow, lastBaseline, lastBaselineFlex };
+  if (clampedCursor !== null) return { cursor: clampedCursor, placed, escapeTop, endStrut: EMPTY_STRUT, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex };
   return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex };
+}
+
+/**
+ * TXT2-g, Blink's legacy line clamp through block children (BlockLineClampData, block_layout_algorithm.cc): a child whose lines
+ * reach the clamp point clamps after that line, with the ellipsis there when content follows it, in the child or after it in
+ * the container (a lineless box counts, UpdateAfterLayout); the child is laid out with lineClamp -N (inline.ts clampsLine). With
+ * nothing after the clamp point Blink lays the container out again without the clamp, so the child keeps its lines. The engine
+ * takes one level: a child is a block container of inline content in the container's formatting context.
+ */
+function nestedClamp(ctx: Ctx, box: LayoutBox, kid: LayoutBox, borderBoxWidth: LU, cbInline: LU, left: number, after: LayoutBox['children']): { readonly left: number; readonly kid: LayoutBox } {
+  if (kid.strut === null || kid.style.display !== 'block' || isScrollContainer(kid.style)) {
+    unsupported('line-clamp', kid.id, 'css-overflow-4 §4.2', `${kid.id} in the line-clamp container ${box.id} is not a block container of inline content in its formatting context`);
+  }
+  const pad = resolvePaddingWith(kid.style, cbInline, ctx.faults);
+  const bor = resolveBorder(kid.style, ctx.devicePixelRatio);
+  const lines = placeLines(ctx, kid, contentBox(borderBoxWidth, sumEdges(bor.left, bor.right, pad.left, pad.right))).length;
+  if (lines < left) return { left: left - lines, kid };
+  const follows = lines > left || after.some((n) => n.kind === 'replaced' || (n.kind === 'box' && !isOutOfFlow(ctx, n)));
+  return { left: 0, kid: follows ? { ...kid, style: { ...kid.style, lineClamp: -left } } : kid };
 }
 
 export type { Edges };

@@ -46,6 +46,7 @@ const complete = {
   textAlign: 'start',
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   textOverflow: 'clip',
+  lineClamp: 0,
   aspectRatio: { kind: 'auto' },
   grid: null,
   gridItem: null,

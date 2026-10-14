@@ -31,6 +31,7 @@ import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
+import { checkLineClamp } from './line-clamp.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
 /** A computed length or percentage of zero, as it serializes. */
@@ -762,6 +763,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
+    checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
