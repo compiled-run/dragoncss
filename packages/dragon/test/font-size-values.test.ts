@@ -73,6 +73,20 @@ describe("the minimum logical font size Chrome clamps a relative size to", () =>
     expect(errors('', 'small', '50%')).toEqual([]);
   });
 
+  it('treats an em size like a percentage: it keeps the parent keyword size relative, while rem and px are absolute', () => {
+    // Chrome's ConvertFontSize: a font-relative length but rem keeps the parent's absoluteness; any other length is absolute.
+    expect(errors('', 'x-small', '0.5em')).toEqual(CLAMPED);
+    expect(errors('', 'xx-small', '0.6em')).toEqual(CLAMPED);
+    expect(errors('', 'x-small', '0.6em')).toEqual([]);
+    expect(errors('', '9px', '0.5em')).toEqual([]);
+    expect(errors('', '0.5625em', '50%')).toEqual(CLAMPED);
+    expect(errors('font-size: 16px;', '0.5em', '50%')).toEqual([]);
+    expect(errors('', 'x-small', '0.3rem')).toEqual([]);
+    expect(errors('', 'x-small', '5px')).toEqual([]);
+    // A percentage under an em size under the initial medium is still relative to it.
+    expect(errors('', '0.5em', '50%')).toEqual(CLAMPED);
+  });
+
   it('plant keywordMinimumUnchecked: the clamped size is accepted', () => {
     expect(errors('', 'x-small', '50%', { ...NO_FAULTS, keywordMinimumUnchecked: true })).toEqual([]);
   });

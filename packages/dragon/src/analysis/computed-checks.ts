@@ -7,7 +7,7 @@ import { ProgramError } from '../lower/paint/types.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
-import { exactLayoutRatio, featureOf } from '../css/values.ts';
+import { exactLayoutRatio, featureOf, isMathValue } from '../css/values.ts';
 import type { CssValue, FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
@@ -585,6 +585,9 @@ function listMarkerOf(el: ResolvedElement): string | null {
   return type.kind === 'keyword' && type.value === 'none' ? null : valueToString(type);
 }
 
+/** Chrome's font-relative length units but rem (CSSPrimitiveValue::IsFontRelativeLength): a font-size in them keeps the parent's absoluteness. */
+const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 'rex', 'ch', 'rch', 'ic', 'ric', 'lh', 'rlh', 'cap', 'rcap']);
+
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
 // minimum logical font size clamps, and text without a real bundled face whose computed font-weight or font-style Chrome draws
@@ -604,11 +607,12 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const tag = el.element.tag;
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     const size = el.props.get('font-size') as ResolvedValue;
-    // A percentage and smaller or larger keep the parent's absoluteness (style_builder_converter.cc ConvertFontSize, 928-974); an
-    // <absolute-size> keyword is never absolute.
+    // A percentage, smaller, larger and a font-relative length other than rem (em, ex, ch, ic, lh, cap and their root forms) keep
+    // the parent's absoluteness; any other length and a math function are absolute (style_builder_converter.cc ConvertFontSize,
+    // 928-974); an <absolute-size> keyword is never absolute.
     const declared = size.origin === 'author' ? size.declared : null;
-    const relative = declared !== null && (declared.kind === 'percentage' || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')));
-    const absolute = declared !== null && declared.kind === 'length' ? true : size.origin === 'inherited' || size.origin === 'user-agent' || relative ? parentAbsolute : false;
+    const relative = declared !== null && (declared.kind === 'percentage' || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
+    const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
     const keyed = uaRows(ua, uaTagOf(tag)).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
