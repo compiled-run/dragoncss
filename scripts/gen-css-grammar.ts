@@ -88,10 +88,12 @@ const SUBSET = [
   'overflow-wrap', 'word-break', 'word-wrap',
   // TXT-FX: the text fill colour and stroke (compat §5), then the -webkit-text-stroke shorthand, after text-break, as LONGHANDS registers them.
   '-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke-width', '-webkit-text-stroke',
+  // TXT-FX: text-shadow (css-text-decor-4 §4), after the text fill and stroke, as LONGHANDS registers it.
+  'text-shadow',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
-  // TXT-FX: text-shadow (css-text-decor-4 §4), after the line clamp, as LONGHANDS registers it.
-  'text-shadow',
+  // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
+  'touch-action',
 ] as const;
 
 /**

@@ -13,6 +13,7 @@ import { SELECTION_VALUE_PARSERS } from './properties/selection.ts';
 import { parseBoxShadow } from './properties/shadow.ts';
 import { TEXT_SHADOW_VALUE_PARSERS } from './properties/text-shadow.ts';
 import { TEXT_TRANSFORM_VALUE_PARSERS } from './properties/text-transform.ts';
+import { TOUCH_ACTION_VALUE_PARSERS } from './properties/touch-action.ts';
 import { VISIBILITY_VALUE_PARSERS } from './properties/visibility.ts';
 import { parseBorderRadius, parseWebkitBorderRadius } from './shorthands/radius.ts';
 import type { ParsedValue } from './stylesheet.ts';
@@ -33,4 +34,5 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(TEXT_TRANSFORM_VALUE_PARSERS),
   ...Object.entries(LINE_CLAMP_VALUE_PARSERS),
   ...Object.entries(TEXT_SHADOW_VALUE_PARSERS),
+  ...Object.entries(TOUCH_ACTION_VALUE_PARSERS),
 ]);
