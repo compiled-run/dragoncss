@@ -29,6 +29,8 @@ import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { FONT_FEATURES_LONGHANDS } from '../../dragon/src/css/properties/font-features.ts';
 import { FONT_STRETCH_LONGHANDS } from '../../dragon/src/css/properties/font-stretch.ts';
+import { TEXT_FILL_STROKE_LONGHANDS } from '../../dragon/src/css/properties/text-fill-stroke.ts';
+import { TEXT_SHADOW_LONGHANDS } from '../../dragon/src/css/properties/text-shadow.ts';
 import { repoPath } from '../src/paths.ts';
 
 const SOURCE = { uri: 'dragon-source://test/font.css', revision: 'r1', hash: 'sha256:0' };
@@ -153,15 +155,16 @@ describe('the font-shorthand group', () => {
   // read no git history), each taken at BASE with git; a merge that moves BASE retakes them there and states why in its message.
   /** sha256 of "<path>\t<sha256 of the capture without the keys added since>" lines in path order, over every capture but TXT-W2's own. */
   // Retaken on master 285ce07960: #340 added an inherited-currentcolor shadow to the BASE fixture shadow-cascade (its 8 captures), the
-  // only BASE capture that changed once the keys below are stripped and the later groups left out.
-  const BASE_CAPTURES = { files: 3164, digest: '3cbc1a47bac6311636583c8ab7f997bab146850718a182de10a785fb8cb35f57' };
+  // only BASE capture that changed once the keys below are stripped and the later groups left out. Retaken again on the landing of #370,
+  // which adds -webkit-opacity rows to the BASE fixture opacity-cascade (its 8 captures).
+  const BASE_CAPTURES = { files: 3164, digest: 'ec8955ba043db575a4aa2c9c35f981ad79127ec588fcb962d95914ea80cb4899' };
   // TDEC-a adds the decoration longhands after TXT-W2; BASE has neither, so stripping both leaves BASE's digest.
   // The keys added since BASE: TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2's spacing, text-indent,
   // text-transform, text-overflow, overflow-wrap, word-break and line-clamp, INL's vertical-align, float and clear, user-select, resize
   // SVG-a's paint and touch-action; BASE has none of them, so stripping them leaves BASE's captures.
-  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width', 'touch-action', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS];
+  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width', 'touch-action', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...TEXT_FILL_STROKE_LONGHANDS];
   // The groups that landed after BASE and add files and layout cases only (each prefix matches no BASE case or capture).
-  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-|text-font-tuning-|text-font-size-|text-font-stretch-|text-font-features-|text-weight-ahem|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units)/;
+  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-|text-font-tuning-|text-font-size-|text-font-stretch-|text-font-features-|text-weight-ahem|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-shadow-none|text-fill-stroke-|alias-background|shadow-webkit-alias)/;
   it('every capture of BASE is unchanged but for the keys added since, which every node has', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])

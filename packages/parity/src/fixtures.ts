@@ -50,6 +50,7 @@ import { SVG } from './fixture-groups/svg.ts';
 import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
+import { TEXT_FILL_STROKE } from './fixture-groups/text-fill-stroke.ts';
 import { TEXT_FONT_FEATURES } from './fixture-groups/text-font-features.ts';
 import { TEXT_FONT_SIZE } from './fixture-groups/text-font-size.ts';
 import { TEXT_FONT_STRETCH } from './fixture-groups/text-font-stretch.ts';
@@ -59,6 +60,7 @@ import { TEXT_INDENT } from './fixture-groups/text-indent.ts';
 import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
+import { TEXT_SHADOW } from './fixture-groups/text-shadow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
@@ -173,6 +175,7 @@ export const GROUPS = {
   'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
+  'text-fill-stroke': TEXT_FILL_STROKE,
   'text-font-features': TEXT_FONT_FEATURES,
   'text-font-size': TEXT_FONT_SIZE,
   'text-font-stretch': TEXT_FONT_STRETCH,
@@ -182,6 +185,7 @@ export const GROUPS = {
   'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,
   'text-overflow': TEXT_OVERFLOW,
+  'text-shadow': TEXT_SHADOW,
   'text-spacing': TEXT_SPACING,
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
