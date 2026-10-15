@@ -41,11 +41,41 @@ const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VAL
 
 describe('the text fill colour and stroke', () => {
   it('expands -webkit-text-stroke to width and colour, an omitted one at its initial value', () => {
+    // A named colour resolves to its channels, as it does under color.
+    expect(parsed('color', 'red')).toEqual(['color: rgb(255, 0, 0)']);
     expect(parsed('-webkit-text-stroke', '0')).toEqual(['-webkit-text-stroke-width: 0px', '-webkit-text-stroke-color: currentcolor!']);
-    expect(parsed('-webkit-text-stroke', 'red')).toEqual(['-webkit-text-stroke-width: 0px!', '-webkit-text-stroke-color: red']);
-    expect(parsed('-webkit-text-stroke', 'blue 2px')).toEqual(['-webkit-text-stroke-width: 2px', '-webkit-text-stroke-color: blue']);
+    expect(parsed('-webkit-text-stroke', 'red')).toEqual(['-webkit-text-stroke-width: 0px!', '-webkit-text-stroke-color: rgb(255, 0, 0)']);
+    expect(parsed('-webkit-text-stroke', 'blue 2px')).toEqual(['-webkit-text-stroke-width: 2px', '-webkit-text-stroke-color: rgb(0, 0, 255)']);
     expect(parsed('-webkit-text-stroke', 'thin')).toEqual(['-webkit-text-stroke-width: thin', '-webkit-text-stroke-color: currentcolor!']);
     for (const v of ['red blue', '1px 2px', '-1px', 'auto']) expect(parsed('-webkit-text-stroke', v), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+  });
+
+  it('takes a colour function for the colour, in either order, and a calculation for the width', () => {
+    const W0 = '-webkit-text-stroke-width: 0px!';
+    for (const [v, w, c] of [
+      ['rgb(255 0 0)', W0, '-webkit-text-stroke-color: rgb(255, 0, 0)'],
+      ['rgb(255 0 0) 1px', '-webkit-text-stroke-width: 1px', '-webkit-text-stroke-color: rgb(255, 0, 0)'],
+      ['1px rgb(255 0 0)', '-webkit-text-stroke-width: 1px', '-webkit-text-stroke-color: rgb(255, 0, 0)'],
+      ['hsl(120 100% 25%)', W0, '-webkit-text-stroke-color: rgb(0, 128, 0)'],
+      ['hsl(120 100% 25%) thin', '-webkit-text-stroke-width: thin', '-webkit-text-stroke-color: rgb(0, 128, 0)'],
+      ['thin hsl(120 100% 25%)', '-webkit-text-stroke-width: thin', '-webkit-text-stroke-color: rgb(0, 128, 0)'],
+      ['#f00 calc(1px + 1px)', '-webkit-text-stroke-width: calc(1px + 1px)', '-webkit-text-stroke-color: rgb(255, 0, 0)'],
+    ] as const) expect(parsed('-webkit-text-stroke', v), v).toEqual([w, c]);
+  });
+
+  it('resolves the fill and stroke colour longhands like color, and refuses a colour outside the subset', () => {
+    expect(parsed('-webkit-text-fill-color', '#f00')).toEqual(['-webkit-text-fill-color: rgb(255, 0, 0)']);
+    expect(parsed('-webkit-text-fill-color', 'hsl(0 100% 50%)')).toEqual(['-webkit-text-fill-color: rgb(255, 0, 0)']);
+    expect(parsed('-webkit-text-stroke-color', 'rgb(0 0 255)')).toEqual(['-webkit-text-stroke-color: rgb(0, 0, 255)']);
+    expect(parsed('-webkit-text-fill-color', 'currentcolor')).toEqual(['-webkit-text-fill-color: currentcolor']);
+    expect(parsed('-webkit-text-fill-color', 'color-mix(in srgb, red, blue)')).toEqual(parsed('color', 'color-mix(in srgb, red, blue)'));
+    expect(parsed('-webkit-text-stroke-color', 'oklch(0.6 0.1 30)')).toEqual(parsed('color', 'oklch(0.6 0.1 30)'));
+    expect(parsed('color', 'oklch(0.6 0.1 30)')).not.toEqual(['color: oklch(0.6 0.1 30)']);
+  });
+
+  it('compiles a stroke colour given as a function in the shorthand, at width 0', () => {
+    for (const d of ['-webkit-text-stroke: rgb(255 0 0)', '-webkit-text-stroke: hsl(120 100% 25%) 0']) expect(errorsAt(d), d).toEqual([]);
+    expect(errorsAt('-webkit-text-stroke: rgb(255 0 0) 1px')).toEqual(REFUSED);
   });
 
   it('compiles a currentcolor fill and a zero-width stroke of any colour on every target', () => {
