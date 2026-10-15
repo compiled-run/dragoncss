@@ -14,6 +14,7 @@ import * as dragon from 'dragon';
 import { fixtureToInput } from '../src/fixture-reader.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { FONT_RESET_LONGHANDS } from '../../dragon/src/css/properties/text.ts';
+import { FONT_TUNING_LONGHANDS } from '../../dragon/src/css/properties/font-tuning.ts';
 import { fontShorthand, TEXT_SHORTHANDS } from '../../dragon/src/css/shorthands/text.ts';
 import type { ShorthandHandler } from '../../dragon/src/css/shorthands/shared.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
@@ -62,14 +63,15 @@ function planted(handler: ShorthandHandler, value: string): (readonly [string, s
 type Item = { readonly property: string; readonly value: string; readonly code: string | null; readonly longhands: readonly (readonly [string, string])[] };
 type Seen = { readonly parsed: boolean; readonly diff: readonly string[]; readonly reset: readonly string[] };
 
-const COMPARED = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...Object.keys(FONT_RESET_LONGHANDS)];
+const COMPARED = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...FONT_TUNING_LONGHANDS, ...Object.keys(FONT_RESET_LONGHANDS)];
 
 async function chromeSeen(sets: readonly (readonly Item[])[]): Promise<Seen[][]> {
   const browser = await chrome();
   try {
     const page = await browser.newPage();
-    // The parent's line-height, weight and font-synthesis are not initial, so a longhand Dragon fails to reset or inherit shows.
-    await page.setContent('<!DOCTYPE html><div id="p" style="line-height:7px;font-weight:700;font-synthesis:none;font-size:20px"><div id="a"></div><div id="c"></div></div>');
+    // The parent's line-height, weight, font-synthesis, kerning, optical sizing and language override are not initial, so a longhand
+    // Dragon fails to reset or inherit shows.
+    await page.setContent('<!DOCTYPE html><div id="p" style="line-height:7px;font-weight:700;font-synthesis:none;font-size:20px;font-kerning:none;font-optical-sizing:none;font-language-override:&quot;TRK&quot;"><div id="a"></div><div id="c"></div></div>');
     return (await page.evaluate(`(${JSON.stringify(sets)}).map((items) => items.map((it) => {
       const L = ${JSON.stringify(COMPARED)}, R = ${JSON.stringify(FONT_RESET_LONGHANDS)};
       const a = document.getElementById('a'), c = document.getElementById('c');
@@ -115,7 +117,7 @@ describe('the font and font-synthesis shorthands expand as Chrome 145 expands th
     expect(judge(real, seen as Seen[]).filter((p) => GRAMMAR_GAPS.includes(p))).toEqual(GRAMMAR_GAPS);
     // The production handler and the unfaulted builder agree on every accepted value.
     for (const it of real.filter((x) => x.property === 'font' && x.code === null)) expect(planted(fontShorthand(NO_FONT_FAULTS), it.value), it.value).toEqual([...it.longhands]);
-    expect(TEXT_SHORTHANDS.font.longhands).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family']);
+    expect(TEXT_SHORTHANDS.font.longhands).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', ...FONT_TUNING_LONGHANDS]);
     SHORTHAND_FAULTS.forEach((fault, i) => expect(judge(plantSets[i] as Item[], plantSeen[i] as Seen[]).length, fault).toBeGreaterThan(0));
     const refused = real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE').map((it) => `${it.code as string} ${it.property}: ${it.value}`);
     expect(refused).toEqual([
