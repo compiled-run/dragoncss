@@ -38,7 +38,7 @@ jobs:
       JAVA_HOME: /opt/homebrew/opt/openjdk@17
       ANDROID_HOME: /opt/homebrew/share/android-commandlinetools
       # Steps at a time. On the 3-core macos-26 runner the Chrome round of a landing (#341) did about 2400 s of step work in
-      # 1370 s at 2: nearly every step waits on profile-rows and then queues for a slot. 3 keeps one Chromium per core; if a
+      # 1370 s at 2: nearly every step waits on profile-rows and then queues for a slot. 3 is one browser per core; if a
       # round runs out of memory (7 GB), go back to 2.
       DRAGON_REGEN_JOBS: '3'
       HOMEBREW_NO_INSTALL_CLEANUP: '1'
