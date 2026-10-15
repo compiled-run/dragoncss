@@ -7,7 +7,7 @@ import type { Span } from '../types.ts';
 import { EFFECTS_VALUE_PARSERS } from './properties/effects.ts';
 import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
-import { RADIUS_VALUE_PARSERS } from './properties/radius.ts';
+import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
 import { SELECTION_VALUE_PARSERS } from './properties/selection.ts';
 import { parseBoxShadow } from './properties/shadow.ts';
@@ -23,6 +23,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(RADIUS_VALUE_PARSERS),
   ['border-radius', parseBorderRadius],
   ['-webkit-border-radius', parseWebkitBorderRadius],
+  ...Object.entries(LOGICAL_RADIUS_VALUE_PARSERS),
   ...Object.entries(EFFECTS_VALUE_PARSERS),
   ['box-shadow', parseBoxShadow],
   ...Object.entries(OUTLINE_VALUE_PARSERS),
