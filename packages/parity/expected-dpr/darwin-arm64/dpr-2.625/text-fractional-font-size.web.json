@@ -147,6 +147,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -287,6 +288,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -427,6 +429,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -607,6 +610,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -817,6 +821,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -957,6 +962,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -1097,6 +1103,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -1287,6 +1294,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -1427,6 +1435,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -1627,6 +1636,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -1767,6 +1777,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -1947,6 +1958,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -2157,6 +2169,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -2297,6 +2310,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -2437,6 +2451,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -2577,6 +2592,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -2737,6 +2753,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -2917,6 +2934,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -3057,6 +3075,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -3227,6 +3246,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -3397,6 +3417,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -3577,6 +3598,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -3717,6 +3739,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -3887,6 +3910,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -4027,6 +4051,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -4187,6 +4212,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -4347,6 +4373,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -4507,6 +4534,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -4707,6 +4735,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -4847,6 +4876,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -5017,6 +5047,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -5157,6 +5188,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
@@ -5317,6 +5349,7 @@
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
+        "touch-action": "auto",
         "clip": "auto"
       }
     },
