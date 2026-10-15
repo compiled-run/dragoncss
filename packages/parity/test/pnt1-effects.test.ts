@@ -334,13 +334,13 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
 
 // The cases of the rest of the corpus whose paint order PNT1 changes (every layer item gets a placement): the model in the Appendix E
 // order equals Chrome at every non-edge point. A case is left out only for paint the model does not draw, each named by modelOut and
-// pinned in OUT below, so a new case outside the model is seen: an image or a web view, a transform other than a whole-device-px
-// translation, a border style other than solid, or flow siblings the engine lays out in another order than the tree's (flex order and
+// pinned in OUT below, so a new case outside the model is seen: an image, a web view or background layers (gradients), a transform
+// other than a whole-device-px translation, a border style other than solid, or flow siblings the engine lays out in another order than the tree's (flex order and
 // reversed directions: Chrome paints them in order-modified document order, which the native views follow and the model does not).
 function modelOut(p: NativeProgram, viewport: { width: number; height: number }): string | null {
   for (const n of p.nodes) {
     for (const w of n.writes) {
-      if (w.kind === 'replaced-image' || w.kind === 'foreign-view') return `${n.id} draws ${w.kind}`;
+      if (w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'background-layers') return `${n.id} draws ${w.kind}`;
       if (w.kind === 'border-styles' && w.styles.some((x) => x !== 'solid' && x !== 'none' && x !== 'hidden')) return `${n.id} has a ${w.styles.join(' ')} border`;
     }
   }
@@ -369,7 +369,7 @@ function modelOut(p: NativeProgram, viewport: { width: number; height: number })
 
 /** The corpus cases outside the model (modelOut), pinned: a change here is a decision, not drift. */
 const OUT = [
-  'hit-order', 'hit-order-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'radius-replaced', 'radius-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
+  'alias-paint', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
   'transform-clip', 'transform-demo', 'transform-direction', 'transform-direction-rtl', 'transform-flex', 'transform-matrix', 'transform-nested',
   'transform-origin', 'transform-rotate', 'transform-scale', 'transform-text', 'transform-translate', 'transform-will-change', 'var-logical',
   'var-logical-rtl',
