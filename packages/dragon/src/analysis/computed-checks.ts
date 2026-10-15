@@ -19,6 +19,8 @@ import { checkWordBreak } from './break-all.ts';
 import type { Txt2lbFaults } from '../faults/txt2-lb.ts';
 import { TXT2_LB_FAULTS } from '../faults/txt2-lb.ts';
 import { checkLineBreak } from './line-break.ts';
+import type { Txt2IFaults } from '../faults/txt2-i.ts';
+import { TXT2_I_FAULTS } from '../faults/txt2-i.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -410,6 +412,29 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
   for (const t of targets) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${at} ${beside} is not proven against Chrome yet`, manual: `Remove the text-indent from ${el.element.address}, or put its text in a block of its own with text-indent.`, basis: 'computed-value' }));
+  }
+}
+
+// TXT2-i (css-text-3 §6.1): the engine always breaks as hyphens: manual, after a soft hyphen with a hyphen shown. auto is the same
+// in Chrome without a content language (notes/T149-txt2-spec.md R14), and none is the same on text without a soft hyphen; none on
+// text that holds one is refused for every target until the engine honours it. Planted fault noneSoftHyphenAccepted accepts it.
+function checkHyphens(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: Txt2IFaults): void {
+  const value = el.props.get('hyphens') as ResolvedValue;
+  if (faults.noneSoftHyphenAccepted || keywordOf(value) !== 'none') return;
+  for (const c of el.children) {
+    if (c.kind !== 'text' || !c.text.includes('\u00ad')) continue;
+    const id = `hyphens|${c.node.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: value.declaration !== null ? authored(value.declaration.valueSpan) : c.node.node.origin,
+        target: t,
+        message: `hyphens: none on text ${c.node.address}, which holds a soft hyphen (U+00AD): the engine breaks after it and shows a hyphen, which none forbids (TXT2-i)`,
+        manual: `Remove the soft hyphen from ${c.node.address}, or use hyphens: manual.`,
+        basis: 'computed-value',
+      }));
+    }
   }
 }
 
@@ -814,7 +839,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & Txt2dFaults & Txt2lbFaults = { ...GEN_B_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & Txt2dFaults & Txt2lbFaults & Txt2IFaults = { ...GEN_B_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_I_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -845,6 +870,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkWordBreak(el, targets, diagnostics, reported, shapedAt, faults);
       // TXT2-lb: line-break strictness over text no Chrome case proves (analysis/line-break.ts).
       checkLineBreak(el, targets, diagnostics, reported, shapedAt, faults);
+      checkHyphens(el, targets, diagnostics, reported, faults);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
