@@ -597,7 +597,7 @@ const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height'
  */
 const LINE_WIDTH = /^(border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-width)?|outline(-width)?|column-rule(-width)?)$/;
 /** Gaps take a percentage (css-align-3 §8.1) and Chrome accepts calc(10px + 5%) there, but the layout engine has no percentage gaps yet. */
-const GAP = /^(gap|row-gap|column-gap)$/;
+const GAP = /^(grid-)?(gap|row-gap|column-gap)$/;
 
 /**
  * A percentage that survives into the result makes a <line-width> or number calculation invalid (mathInvalidity); one Chrome
