@@ -2,6 +2,7 @@
 // Dragon takes a value as valid exactly when Chrome parses it, and each value it keeps sets every font-variant longhand as Chrome
 // computes it (the keywords in Chrome's order, normal for what a shorthand omits). The caps, position and emoji keywords and the
 // alternates functions parse in Chrome and are refused by Dragon, so only their validity is compared. Each planted reading must be caught.
+// One grammar gap is pinned: Chrome takes a repeated historical-forms, which Dragon refuses as invalid.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
@@ -93,7 +94,11 @@ describe('font-variant: Chrome 145 parsing', () => {
     } finally {
       await browser.close();
     }
-    expect(judge(real, seen[0] as Seen[])).toEqual([]);
+    // Chrome's alternates parser takes historical-forms more than once, outside the webref grammar: Dragon calls it invalid, an error
+    // that blocks the build, so it is a refusal and never an acceptance.
+    const GRAMMAR_GAPS = ['font-variant-alternates: historical-forms historical-forms: invalid, Chrome parses it'];
+    expect(judge(real, seen[0] as Seen[]).filter((p) => !GRAMMAR_GAPS.includes(p))).toEqual([]);
+    expect(judge(real, seen[0] as Seen[]).filter((p) => GRAMMAR_GAPS.includes(p))).toEqual(GRAMMAR_GAPS);
     expect(real.filter((it) => it.code === null).length).toBeGreaterThan(25);
     expect(real.filter((it) => it.code === 'DRAGON_UNSUPPORTED_VALUE').length).toBeGreaterThan(10);
     expect(real.filter((it) => it.code === 'DRAGON_CSS_INVALID_VALUE').length).toBeGreaterThan(15);
