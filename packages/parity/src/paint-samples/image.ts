@@ -332,8 +332,9 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
     const corners: { readonly at: Pt; readonly reach: number }[] = [];
     for (const sh of w.shapes) {
       const o = svgOutline(sh.path, map);
-      // A shape with fill: none paints no fill boundary, so its stroke band is one colour across the centreline.
-      if (sh.fill !== null) edges.push({ segments: o.fill, offset: 0 });
+      // A shape with fill: none, or a fill of alpha 0 (fill-opacity: 0), paints no fill boundary, so its stroke band is one colour
+      // across the centreline.
+      if (sh.fill !== null && sh.fill.alpha > 0) edges.push({ segments: o.fill, offset: 0 });
       if (sh.stroke !== null && sh.width > 0) {
         const half = (sh.width * m.a * dpr) / 2;
         edges.push({ segments: o.stroke, offset: half });
