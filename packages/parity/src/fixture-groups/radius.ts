@@ -1,7 +1,8 @@
 // Fixture group radius (PNT1, css-backgrounds-3 §5): border radii in px, em, rem and percentages, elliptical and per-corner radii,
 // each corner longhand on its own, -webkit-border-radius (Chrome's legacy two-value form) cascading with border-radius, the §5.5
 // clamp, rounded solid borders (one colour and per side), rounded overflow clips, and the cascade of the shorthand and the corner
-// longhands (var(), inherit, initial, unset), rounded img (circular, elliptical and per-corner radii, with and without a border,
+// longhands (var(), inherit, initial, unset), the flow-relative corners (css-logical-1 §7: each corner on its own, cascading
+// with the physical corners and border-radius both ways, inherit across a direction change), rounded img (circular, elliptical and per-corner radii, with and without a border,
 // object-fit cover, contain and fill, under overflow clip and hidden: the image clipped to the padding-edge curve), and rounded
 // double borders (four double sides of one width and opaque colour: Blink's two rings, a 1px double solid below 3 device px), in
 // both environment directions. radius-double-web holds a translucent rounded double border: native refuses it (its platform blend
@@ -20,6 +21,7 @@ export const RADIUS: readonly FixtureSpec[] = [
   both('radius-clamp'),
   both('radius-cascade'),
   both('radius-longhands'),
+  both('radius-logical'),
   both('radius-replaced'),
   both('radius-double'),
   both('radius-double-web'),
