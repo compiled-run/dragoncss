@@ -669,10 +669,22 @@ function atomicRefusal(id: string): string {
   return `${id} is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)`;
 }
 
+/**
+ * TXT2-g: Chrome hit tests the content past a -webkit-line-clamp clamp point by rules not measured yet. That content stays
+ * hittable in Chrome 145 (Blink hides it, LineClampData::IsHidden, only under the CSSLineClamp runtime feature), and in
+ * line-clamp-nested the hit table matches Chrome on n4c's text and at n4's right edge in the 1 px band above n4's clip edge
+ * (y 85 to 86, n4c laid out past the clamp point from y 86), but between them (x 20 to 27.5) Chrome names n4b under n4c's
+ * background where the hit table names n4c. Until that band is measured the hit lane refuses a line-clamp container by name.
+ */
+function clampRefusal(id: string): string {
+  return `${id} clamps its lines (-webkit-line-clamp), and Chrome hit tests the content past the clamp point by rules the hit table does not model yet (TXT2-g)`;
+}
+
 function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if (c.kind === 'box') {
+      if (c.style.lineClamp > 0) return clampRefusal(c.id);
       if (isAtomicInline(c)) return atomicRefusal(c.id);
       const r = boxHitRefusal(c);
       if (r !== null) return r;
@@ -681,7 +693,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
   return null;
 }
 
-/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a), and an atomic inline (INL2a) have no hit model yet. */
+/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a), an atomic inline (INL2a) and a line-clamp container (TXT2-g) have no hit model yet. */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }
@@ -699,7 +711,7 @@ function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
 /** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */
 export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
   // The named refusal comes first, so a case is refused for what hitRefusal names, not for whatever the walk meets before it
-  // (line-clamp-lines meets l7's Ahem p glyphs over several lines before l9's inline box).
+  // (line-clamp-lines' walk meets l7's Ahem p glyphs over several lines first).
   const refused = hitRefusal(input);
   if (refused !== null) throw new HitError(refused);
   const out = layout(input, measurer);

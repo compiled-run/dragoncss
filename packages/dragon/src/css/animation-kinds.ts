@@ -34,6 +34,7 @@ import { TEXT_INDENT_ANIMATION } from './animation-kinds/text-indent.ts';
 import { TEXT_OVERFLOW_ANIMATION } from './animation-kinds/text-overflow.ts';
 import { TEXT_SPACING_ANIMATION } from './animation-kinds/text-spacing.ts';
 import { TEXT_TRANSFORM_ANIMATION } from './animation-kinds/text-transform.ts';
+import { TOUCH_ACTION_ANIMATION } from './animation-kinds/touch-action.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
@@ -70,6 +71,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TEXT_OVERFLOW_ANIMATION,
   ...TEXT_SPACING_ANIMATION,
   ...TEXT_TRANSFORM_ANIMATION,
+  ...TOUCH_ACTION_ANIMATION,
   ...TRANSFORM_ANIMATION,
   ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
