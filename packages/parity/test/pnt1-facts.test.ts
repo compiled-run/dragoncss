@@ -8,10 +8,11 @@
 // no box kept under a clip).
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram, ProgramNode } from 'dragon';
-import { nativePrograms } from 'dragon';
+import { engineLayoutProjection, nativePrograms } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { FIXTURE_GROUPS, FIXTURES } from '../src/fixtures.ts';
-import { engineBoxes, nativeCompile } from '../src/native-host.ts';
+import { engineBoxes, nativeCompileOnce } from '../src/native-host.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 type Facts = { paintOrder: number; context: string | null; createsContext: boolean; layer: string; host: string | null; clipChain: readonly string[]; underClip: boolean };
 const factsOf = (n: ProgramNode): Facts | undefined => n.facts['stacking'] as Facts | undefined;
@@ -61,11 +62,19 @@ function emulate(p: NativeProgram): { order: string[]; index: Map<string, [strin
   return { order, index };
 }
 
+const refusedFaces = new Map<string, string>();
+
+// A case native refuses only for its real faces (deferred to TXT1a-2 phase R) gets the engine lowering instead; it is left out here.
 const programsOf = (spec: (typeof FIXTURES)[number]) =>
-  spec.kind !== 'layout' ? [] : casesOf(spec, fixtureInput(spec)).map((c) => {
-    const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
-    if (r.kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
-    return { id: c.id, p: r.programs.uikit };
+  spec.kind !== 'layout' ? [] : casesOf(spec, fixtureInput(spec)).flatMap((c) => {
+    const compiled = nativeCompileOnce(spec, c.environment.direction);
+    const r = nativePrograms(compiled, c.assignment);
+    if (r.kind !== 'ready') {
+      if (engineLayoutProjection(compiled, c.environment, c.assignment).kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
+      refusedFaces.set(c.id, r.reason);
+      return [];
+    }
+    return [{ id: c.id, p: r.programs.uikit }];
   });
 
 describe('PNT1 stacking facts (rt-hit.ts)', () => {
@@ -96,8 +105,13 @@ describe('PNT1 stacking facts (rt-hit.ts)', () => {
 
 describe('the device placement gives Appendix E order on every case', () => {
   const all = FIXTURES.flatMap(programsOf);
-  it('covers every layout case of the corpus', () => {
+  it('covers every layout case of the corpus but the shaped ones native refuses for their faces', () => {
     expect(all.length).toBeGreaterThan(400);
+    const layout = FIXTURES.flatMap((f) => (f.kind === 'layout' ? casesOf(f, fixtureInput(f)).map((c) => c.id) : []));
+    expect([...all.map((a) => a.id), ...refusedFaces.keys()].sort()).toEqual([...layout].sort());
+    expect(refusedFaces.size).toBeGreaterThan(0);
+    expect([...refusedFaces.keys()].filter((id) => !shapedCaseIds().has(id))).toEqual([]);
+    for (const [id, reason] of refusedFaces) expect(reason, id).toMatch(/^the (ios|android) target is blocked$/);
   });
   it('the emulated native order is the paint order, and every paint-order write expects its emulated [host, index]', () => {
     const problems: string[] = [];

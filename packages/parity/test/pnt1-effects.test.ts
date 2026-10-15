@@ -14,13 +14,14 @@ import { describe, expect, it } from 'vitest';
 import { opacityAlpha8, snapEdges } from '@dragon/layout';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
-import { androidProfile, borderDevicePx, createProjectWith, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
+import { androidProfile, borderDevicePx, createProjectWith, engineLayoutProjection, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS, FIXTURES as CORPUS } from '../src/fixtures.ts';
-import { expectedEngine, nativeCompile } from '../src/native-host.ts';
+import { expectedEngine, nativeCompile, nativeCompileOnce } from '../src/native-host.ts';
 import { casePoints, committedPixels, devicePoints, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 type Px = [number, number, number, number];
 
@@ -375,10 +376,17 @@ const OUT = [
 ];
 
 describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'s order', () => {
+  // A case native refuses only for its real faces (deferred to TXT1a-2 phase R) gets the engine lowering instead; it is left out here.
+  const refusedFaces = new Map<string, string>();
   const reached = CORPUS.filter((f) => f.kind === 'layout' && !GROUPS.some((g) => FIXTURE_GROUPS.find((x) => x.id === g)?.fixtures.includes(f))).flatMap((spec) =>
     casesOf(spec, fixtureInput(spec)).flatMap((c) => {
-      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
-      if (r.kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
+      const compiled = nativeCompileOnce(spec, c.environment.direction);
+      const r = nativePrograms(compiled, c.assignment);
+      if (r.kind !== 'ready') {
+        if (engineLayoutProjection(compiled, c.environment, c.assignment).kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
+        refusedFaces.set(c.id, r.reason);
+        return [];
+      }
       const p = r.programs.uikit;
       return p.nodes.some((n) => n.writes.some((w) => w.kind === 'paint-order')) ? [{ spec, c, p, out: modelOut(p, c.environment.viewport) }] : [];
     }),
@@ -386,6 +394,11 @@ describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'
   it('reaches the positioned, flex-abspos, context, phrasing and values cases, and leaves out exactly the pinned cases', () => {
     expect(reached.filter((r) => r.out === null).length).toBeGreaterThan(80);
     expect(reached.filter((r) => r.out !== null).map((r) => r.c.id).sort()).toEqual(OUT);
+  });
+  it('leaves out only shaped cases native refuses for their faces', () => {
+    expect(refusedFaces.size).toBeGreaterThan(0);
+    expect([...refusedFaces.keys()].filter((id) => !shapedCaseIds().has(id))).toEqual([]);
+    for (const [id, reason] of refusedFaces) expect(reason, id).toMatch(/^the (ios|android) target is blocked$/);
   });
   for (const { c, p, out } of reached) {
     if (out !== null) continue;
