@@ -177,6 +177,26 @@ describe('box-shadow: lowering and emission', () => {
     }
   });
 
+  it('a currentcolor shadow takes color: transparent as rgba(0, 0, 0, 0), declared there or reached through box-shadow: inherit', () => {
+    const cases: [string, string, string, { r: number; g: number; b: number; alpha: number }][] = [
+      ['.a { color: rgb(255, 0, 0); box-shadow: 0 0 0 4px currentcolor; } .b { color: transparent; box-shadow: inherit; }', 'b', 'rgba(0, 0, 0, 0) 0px 0px 0px 4px', { r: 0, g: 0, b: 0, alpha: 0 }],
+      ['.a { color: transparent; box-shadow: 0 0 0 4px currentcolor; }', 'a', 'rgba(0, 0, 0, 0) 0px 0px 0px 4px', { r: 0, g: 0, b: 0, alpha: 0 }],
+    ];
+    for (const [rules, id, want, color] of cases) {
+      const css = `body { margin: 0; } .a { width: 60px; height: 40px; } .b { width: 20px; height: 20px; } ${rules}`;
+      const input = inputFor(css, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]);
+      const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+      expect(c.diagnostics.filter((d) => d.severity === 'error'), rules).toEqual([]);
+      expect(explainOne(c, 'ios', id, 'box-shadow').value, rules).toBe(want);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(`${rules}: ${p.reason}`);
+      for (const b of ['uikit', 'android-views'] as const) {
+        const w = p.programs[b].nodes.find((n) => n.id === id)?.writes.find((x) => x.kind === 'box-shadow');
+        expect(w, `${rules} ${b}`).toEqual(expect.objectContaining({ shadows: [{ inset: false, x: 0, y: 0, blur: 0, spread: 4, color }] }));
+      }
+    }
+  });
+
   it('a hidden or collapsed box, own or inherited, gets no box-shadow write or facts on either backend; a visible descendant keeps its own', () => {
     for (const v of ['hidden', 'collapse']) {
       const p = programs(`.a { box-shadow: 0 0 0 4px red, inset 1px 1px blue; visibility: ${v}; } .b { box-shadow: 1px 1px green; visibility: visible; }`);

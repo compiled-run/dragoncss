@@ -1,6 +1,7 @@
 // Computed box-shadow (css-backgrounds-3 §7.1, css-values-4 §6, css-color-4 §4.4): every shadow length computes to px (em against
 // the element's font size, rem against the root's) and currentcolor to the element's computed color, as Chrome 145 serializes it.
 import type { Rgba8 } from '../../css/color.ts';
+import { TRANSPARENT } from '../../css/color.ts';
 import type { CssValue } from '../../css/stylesheet.ts';
 import type { Shadow, ShadowLength } from '../../css/properties/shadow.ts';
 import { SHADOW_LIST, shadowsOf, shadowValue } from '../../css/properties/shadow.ts';
@@ -102,9 +103,18 @@ const checkShadowedElement: PaintCheck = (el, targets, diagnostics, reported) =>
   }
 };
 
-// css-color-4 §4.4: currentcolor computes to itself, so an element that inherits a shadow list paints its currentcolor shadows in its
-// own color. Each computed list that resolved a currentcolor keeps its keyword form here, keyed by the value object inheritance copies.
+// css-color-4 §4.4: currentcolor computes to itself, so box-shadow: inherit resolves it against the inheriting element's color. The
+// computed list keeps its currentcolor form here, keyed by the value object inherit copies, and each element resolves it again.
 const CURRENT_COLOR_SOURCE = new WeakMap<CssValue, readonly Shadow[]>();
+
+/** The channels currentcolor takes: color's computed value, transparent as rgba(0, 0, 0, 0); null when color is not computed yet. */
+function ownColor(v: CssValue | undefined): Rgba8 | null {
+  if (v === undefined) return null;
+  if (v.kind === 'color') return v.value;
+  if (v.kind === 'keyword' && v.value === 'transparent') return TRANSPARENT;
+  // Every other color value (system colours, other colour spaces) is refused at its declaration, so it cannot reach here.
+  throw new Error(`color computed to ${JSON.stringify(v)}, which a currentcolor shadow cannot take`);
+}
 
 export const SHADOW_VALUES: PaintValues = {
   name: 'shadow',
@@ -112,15 +122,14 @@ export const SHADOW_VALUES: PaintValues = {
   compute: (props, ctx) => {
     const v = props.get('box-shadow');
     if (v === undefined || v.value.kind !== 'other' || v.value.type !== SHADOW_LIST) return;
-    const colorValue = props.get('color')?.value;
-    const own: Rgba8 | null = colorValue !== undefined && colorValue.kind === 'color' ? colorValue.value : null;
+    const own = ownColor(props.get('color')?.value);
     const shadows = CURRENT_COLOR_SOURCE.get(v.value) ?? shadowsOf(v.value);
     if (shadows === null) return;
     const source: Shadow[] = [];
     const out: Shadow[] = [];
     for (const s of shadows) {
       const [x, y, blur, spread] = [s.x, s.y, s.blur, s.spread].map((l) => computeLength(l, ctx));
-      // The font-size pre-pass has no font sizes and no color yet: it leaves the value as written.
+      // A pass without font sizes or without color leaves the value as written.
       if (x == null || y == null || blur == null || spread == null) return;
       if (s.color === 'currentcolor' && own === null) return;
       source.push({ color: s.color, x, y, blur, spread, inset: s.inset });
