@@ -23,6 +23,8 @@ import { layout } from '../src/fixture-groups/define.ts';
 import { FONT_FIXTURES, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { TEXT_WEIGHT } from '../src/fixture-groups/text-weight.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
+import { TEXT_FILL_STROKE_LONGHANDS } from '../../dragon/src/css/properties/text-fill-stroke.ts';
+import { TEXT_SHADOW_LONGHANDS } from '../../dragon/src/css/properties/text-shadow.ts';
 import { WHITE_SPACE } from '../src/fixture-groups/white-space.ts';
 import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-reference.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
@@ -52,10 +54,11 @@ function withoutWrapKeys(v: unknown): unknown {
  * With those 84 files put back at 6964e8a337 that tree still gives 690a1b3fdb… and 3c5abaa478….
  * The landing of #340 and #332 moves BASE again: #340 adds an inherited-currentcolor shadow to the BASE fixture shadow-cascade and #332
  * a hidden shape to svg-hidden, which changes their vectors, pixels and captures (and their -rtl twins) and nothing else, so both
- * digests are retaken on that landing's regenerated head.
+ * digests are retaken on that landing's regenerated head. The landing of #370 does the same: it adds -webkit-opacity rows to the BASE
+ * fixture opacity-cascade, which changes its vectors, pixels and captures (and its -rtl twin) and nothing else.
  */
-const BASE_OUTPUTS = { files: 13143, digest: 'e8b2ca0d4199dcdf50c6720d58a88de4a168ab91810669574cc77a25ac4565f3' };
-const BASE_CAPTURES = { files: 3354, digest: '4063b72a4b1cec622ed201aa957cce0bc9df96bb01187907d5bbcf2e9978312e' };
+const BASE_OUTPUTS = { files: 13143, digest: '5e7fe7b3a00581dad1178b58e59061a6ccca82fe36b90dc043d2dde36a7d9a7b' };
+const BASE_CAPTURES = { files: 3354, digest: 'f480435bce4d3a70e0dd6ef1d580071ad684a9f0c313ed3690fbf6e996caa95a' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -224,7 +227,7 @@ describe('the native refusals', () => {
 });
 
 /** Case id prefixes of the groups that landed after BASE beside those named in the filter below (see own). */
-const LATER_PREFIXES = ['atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'touch-action-values', 'radius-logical', 'grid-gap-units', 'ctx-proof-flex-gap-units'];
+const LATER_PREFIXES = ['atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'text-decoration-native-values', 'text-fill-stroke-', 'text-shadow-none', 'touch-action-values', 'radius-logical', 'grid-gap-units', 'ctx-proof-flex-gap-units', 'alias-background', 'shadow-webkit-alias'];
 
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
@@ -238,7 +241,7 @@ describe('BASE pins', () => {
   // The groups that landed after BASE and add files only: G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web,
   // resize-values, G3b's grid-baseline-axes, PNT's text-decoration-native-current, TXT2-g's line-clamp cases, PNT1's stacking-grid-items cases and touch-action-values. (PNT1's change to
   // three BASE fixtures is retaken in BASE_OUTPUTS and BASE_CAPTURES, not left out.)
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units)/.test(p);
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|text-fill-stroke-|text-shadow-none|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|alias-background|shadow-webkit-alias)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -267,8 +270,8 @@ describe('BASE pins', () => {
     // The migration exception is not a blanket pass: a leaf whose key is not 'normal' keeps the key and differs.
     expect(withoutWrapKeys({ kind: 'text', overflowWrap: 'anywhere', wordBreak: 'normal' })).toEqual({ kind: 'text', overflowWrap: 'anywhere' });
   });
-  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break, TXT2-g's -webkit-box-orient and -webkit-line-clamp, resize-values' resize, touch-action-values' touch-action. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action'];
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break, TXT2-g's -webkit-box-orient and -webkit-line-clamp, resize-values' resize, touch-action-values' touch-action, TXT-FX's text fill, stroke and shadow. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));
