@@ -9,6 +9,8 @@ export type CapturedTag = "html" | "body" | "div" | "p" | "h1" | "h2" | "h3" | "
 
 export const computed: { readonly [T in CapturedTag]: { readonly [property: string]: string } } = {
   "html": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -125,6 +127,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "body": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -241,6 +245,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "div": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -357,6 +363,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "p": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -473,6 +481,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "h1": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -589,6 +599,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "h2": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -705,6 +717,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "h3": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -821,6 +835,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "h4": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -937,6 +953,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "h5": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1053,6 +1071,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "h6": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1169,6 +1189,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "section": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1285,6 +1307,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "article": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1401,6 +1425,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "header": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1517,6 +1543,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "footer": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1633,6 +1661,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "nav": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1749,6 +1779,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "main": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1865,6 +1897,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "aside": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -1981,6 +2015,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "ul": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -2097,6 +2133,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "ol": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -2213,6 +2251,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "li": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -2329,6 +2369,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "blockquote": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -2445,6 +2487,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "figure": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -2561,6 +2605,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "figcaption": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -2677,6 +2723,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "address": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -2793,6 +2841,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "hr": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -2909,6 +2959,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "dl": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -3025,6 +3077,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "dt": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -3141,6 +3195,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "dd": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -3257,6 +3313,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "z-index": "auto",
   },
   "dragon-unstyled": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -3536,6 +3594,8 @@ export const elementKeySpecs: { readonly [K in ElementKey]: { readonly tag: stri
 /** computed, for the element keys. */
 export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [property: string]: string } } = {
   "button": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -3652,6 +3712,8 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "z-index": "auto",
   },
   "input": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -3768,6 +3830,8 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "z-index": "auto",
   },
   "input[type=range]": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -3884,6 +3948,8 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "z-index": "auto",
   },
   "a": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -4000,6 +4066,8 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "z-index": "auto",
   },
   "a[href]": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -4116,6 +4184,8 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "z-index": "auto",
   },
   "img": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -4232,6 +4302,8 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "z-index": "auto",
   },
   "span": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -4508,6 +4580,8 @@ export const replacedKeySpecs: { readonly [K in ReplacedKey]: { readonly tag: st
 /** computed, for the replaced keys. */
 export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [property: string]: string } } = {
   "iframe": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -4624,6 +4698,8 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "z-index": "auto",
   },
   "img[src]": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -4740,6 +4816,8 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "z-index": "auto",
   },
   "svg": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -4856,6 +4934,8 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "z-index": "auto",
   },
   "path": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -4972,6 +5052,8 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "z-index": "auto",
   },
   "rect": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -5088,6 +5170,8 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "z-index": "auto",
   },
   "circle": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -5285,6 +5369,8 @@ export const phrasingKeySpecs: { readonly [K in PhrasingKey]: { readonly tag: st
 /** computed, for the phrasing keys. */
 export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [property: string]: string } } = {
   "br": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -5401,6 +5487,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "strong": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -5517,6 +5605,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "b": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -5633,6 +5723,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "em": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -5749,6 +5841,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "i": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -5865,6 +5959,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "code": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -5981,6 +6077,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "small": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -6097,6 +6195,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "sub": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -6213,6 +6313,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "sup": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
@@ -6329,6 +6431,8 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "z-index": "auto",
   },
   "label": {
+    "-webkit-box-orient": "horizontal",
+    "-webkit-line-clamp": "none",
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",

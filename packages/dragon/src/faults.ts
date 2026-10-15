@@ -21,6 +21,7 @@ import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
 import { TXT2_C_FAULTS } from './faults/txt2-c.ts';
 import { TXT2_E_FAULTS } from './faults/txt2-e.ts';
+import { TXT2_G_FAULTS } from './faults/txt2-g.ts';
 import { TXT2B_FAULTS } from './faults/txt2b.ts';
 import { VALUES_FAULTS } from './faults/values.ts';
 
@@ -45,6 +46,7 @@ export const FAULT_GROUPS = {
   selectors: SELECTORS_FAULTS,
   'txt2-c': TXT2_C_FAULTS,
   'txt2-e': TXT2_E_FAULTS,
+  'txt2-g': TXT2_G_FAULTS,
   txt2b: TXT2B_FAULTS,
   values: VALUES_FAULTS,
 } as const;

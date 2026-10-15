@@ -663,7 +663,7 @@ export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group']);
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp']);
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);

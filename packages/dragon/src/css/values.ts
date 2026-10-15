@@ -417,7 +417,7 @@ export function featureOf(property: Longhand, v: CssValue, fonts?: FamilyKeyCont
     case 'percentage':
       return `${property}:<percentage>`;
     case 'number':
-      return property === 'order' ? `${property}:<integer>` : `${property}:<number>`;
+      return property === 'order' || property === '-webkit-line-clamp' ? `${property}:<integer>` : `${property}:<number>`;
     case 'family':
       return `${property}:${v.value}`;
     case 'color':

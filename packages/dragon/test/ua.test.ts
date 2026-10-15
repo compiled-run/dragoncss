@@ -124,6 +124,9 @@ describe('dependency boundaries', () => {
       "import { LONGHANDS } from '../css/properties.ts';",
       // PNT1 outline: the outline longhand names, to leave unauthored outlines to Chrome's UA :focus-visible rule.
       "import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';",
+      // TXT2-g: the line-clamp longhand names and the clamp container's authored display, from the resolved element alone.
+      "import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';",
+      "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.
       "import { familyListText } from '../css/values.ts';",

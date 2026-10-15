@@ -148,6 +148,7 @@
      "kind": "px",
      "value": 0
     },
+    "lineClamp": 0,
     "grid": null,
     "gridItem": null
    },
@@ -273,6 +274,7 @@
        "kind": "px",
        "value": 0
       },
+      "lineClamp": 0,
       "grid": null,
       "gridItem": null
      },
@@ -400,6 +402,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -528,6 +531,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -656,6 +660,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -786,6 +791,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -913,6 +919,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1085,6 +1092,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1257,6 +1265,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1430,6 +1439,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1558,6 +1568,7 @@
            "kind": "px",
            "value": 0
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1687,6 +1698,7 @@
            "kind": "px",
            "value": 0
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1815,6 +1827,7 @@
            "kind": "px",
            "value": 0
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1946,6 +1959,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -2072,6 +2086,7 @@
            "kind": "px",
            "value": 0
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -2200,6 +2215,7 @@
            "kind": "px",
            "value": 0
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },

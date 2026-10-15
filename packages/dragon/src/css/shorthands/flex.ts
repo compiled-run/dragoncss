@@ -48,6 +48,5 @@ export const FLEX_SHORTHANDS = {
   '-webkit-box-direction': legacyBox,
   '-webkit-box-flex': legacyBox,
   '-webkit-box-ordinal-group': legacyBox,
-  '-webkit-box-orient': legacyBox,
   '-webkit-box-pack': legacyBox,
 } as const satisfies { readonly [s: string]: ShorthandHandler };

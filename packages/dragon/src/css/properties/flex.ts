@@ -2,8 +2,9 @@
 import type { PropertyAspect } from '../properties.ts';
 
 // Chrome 145 reads these only under display -webkit-box and -webkit-inline-box (Blink ComputedStyle IsDeprecatedFlexbox), which
-// Dragon refuses (display-legacy.ts), so each is a surrogate shorthand that sets nothing (shorthands/flex.ts).
-export const LEGACY_BOX_PROPERTIES = ['-webkit-box-align', '-webkit-box-direction', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-box-orient', '-webkit-box-pack'] as const;
+// Dragon refuses (display-legacy.ts), so each is a surrogate shorthand that sets nothing (shorthands/flex.ts). -webkit-box-orient is
+// a longhand of the line-clamp family (properties/line-clamp.ts), which the line-clamp pattern reads.
+export const LEGACY_BOX_PROPERTIES = ['-webkit-box-align', '-webkit-box-direction', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-box-pack'] as const;
 
 export const FLEX_LONGHANDS = [
   'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
