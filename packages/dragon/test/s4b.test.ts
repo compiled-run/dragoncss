@@ -69,7 +69,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'stroke-width': ['2px', '5'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.
       'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
-      'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'] };
+      'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
+      // TXT-FX: text-shadow accepts none alone, so it is compared at none on both.
+      'text-shadow': ['none', 'none'] };
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const position = p === 'box-shadow' ? 'static' : 'relative';
