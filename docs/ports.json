@@ -3583,6 +3583,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/svg_object_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "b37fa398f4f6ae3e779e6e6615af6656f284ced0d630df0c828352eafe0b530c",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "134-184", "symbol": "SVGObjectPainter::PreparePaint", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "svgPaintAlpha", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
