@@ -94,6 +94,8 @@ const SUBSET = [
   '-webkit-box-orient', '-webkit-line-clamp',
   // TXT-FONTFEAT: font-stretch (css-fonts-4 §2.4), after the line clamp, as LONGHANDS registers it.
   'font-stretch',
+  // TXT-FONTFEAT: font-feature-settings and font-variation-settings (css-fonts-4 §6.12, §7.2), after the line clamp, as LONGHANDS registers them.
+  'font-feature-settings', 'font-variation-settings',
 ] as const;
 
 /**

@@ -22,6 +22,8 @@ import { checkFontTuning } from './font-tuning.ts';
 import type { TxtFstretchFaults } from '../faults/txt-fstretch.ts';
 import { TXT_FSTRETCH_FAULTS } from '../faults/txt-fstretch.ts';
 import { stretchPercent } from '../css/properties/font-stretch.ts';
+import type { TxtFfFaults } from '../faults/txt-ff.ts';
+import { TXT_FF_FAULTS } from '../faults/txt-ff.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -817,7 +819,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults = { ...GEN_B_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults = { ...GEN_B_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -849,6 +851,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       // TXT-FONTFEAT: kerning, optical sizing and language override over real faces (analysis/font-tuning.ts).
       checkFontTuning(el, targets, diagnostics, reported, shapedAt, faults);
       checkFontStretch(el, targets, diagnostics, reported, shapedAt, faults);
+      checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
@@ -1004,3 +1007,27 @@ function originOfElement(root: ResolvedElement, address: string): ResolvedElemen
   return hit.element.node.origin;
 }
 
+// TXT-FONTFEAT (css-fonts-4 §6.12, §7.2): Dragon applies no OpenType feature or variation axis, which leaves Chrome's glyphs alone only
+// in a face that has none (Ahem). A non-normal font-feature-settings or font-variation-settings over text in a real face is refused
+// for every target, once per text. Planted fault fontFeaturesOnRealFaceAccepted accepts it.
+function checkFontFeatures(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean, faults: TxtFfFaults): void {
+  if (faults.fontFeaturesOnRealFaceAccepted) return;
+  const set = (['font-feature-settings', 'font-variation-settings'] as const).filter((p) => keywordOf(el.props.get(p) as ResolvedValue) !== 'normal');
+  if (set.length === 0) return;
+  for (const c of el.children) {
+    if (c.kind !== 'text' || !shapedAt(c.node.address)) continue;
+    const id = `font-features|${c.node.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    const what = set.map((p) => `${p}: ${valueToString((el.props.get(p) as ResolvedValue).value)}`).join(' and ');
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: c.node.node.origin,
+        target: t,
+        message: `${what} reaches text ${c.node.address}, which is drawn in a real face: Dragon applies no OpenType feature or variation axis yet (TXT-FONTFEAT)`,
+        manual: `Set ${set.join(' and ')} to normal on the text of ${el.element.address}, or draw it in a face without features.`,
+        basis: 'computed-value',
+      }));
+    }
+  }
+}

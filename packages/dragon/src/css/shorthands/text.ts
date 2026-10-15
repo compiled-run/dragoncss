@@ -111,13 +111,14 @@ function fontParts(tokens: readonly CssNode[]): FontParts | null {
 }
 
 /** The font longhands Dragon models, which a CSS-wide keyword sets (Chrome 145 also sets the FONT_RESET_LONGHANDS). */
-const FONT_LONGHANDS: readonly Longhand[] = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-stretch', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS];
+const FONT_LONGHANDS: readonly Longhand[] = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-stretch', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, 'font-feature-settings', 'font-variation-settings'];
 const SYNTHESIS_LONGHANDS: readonly Longhand[] = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
 
 /**
  * css-fonts-4 §2.8 as Chrome 145 expands it: font sets font-style, font-weight, font-size, line-height (normal when no "/") and
  * font-family, sets or resets font-stretch, resets the font-variant longhands to normal (small-caps is refused, as font-variant-caps
- * refuses it), resets font-kerning, font-optical-sizing and font-language-override to their initial values, and resets the
+ * refuses it), resets font-kerning, font-optical-sizing and font-language-override to their initial values, resets font-feature-settings and
+ * font-variation-settings to normal, and resets the
  * FONT_RESET_LONGHANDS Dragon does not model, so the system fonts
  * are refused; it does not set font-synthesis. Chrome's parse rules beyond the grammar hold (font-style left and right, the
  * oblique angle range). The faults are the planted ones of fonts/faults.ts.
@@ -162,6 +163,8 @@ export function fontShorthand(faults: FontFaults = NO_FONT_FAULTS): ShorthandHan
       if (!faults.variantNotReset) out.push(...FONT_VARIANT_LONGHANDS.map((p) => implicit(p, kw('normal'))));
       // Chrome's font shorthand resets font-kerning, font-optical-sizing and font-language-override (properties/font-tuning.ts).
       if (!faults.tuningNotReset) out.push(...FONT_TUNING_LONGHANDS.map((p) => implicit(p, kw(FONT_TUNING_INITIAL[p]))));
+      // Chrome's font shorthand resets both settings (TXT-FONTFEAT, properties/font-features.ts).
+      if (!faults.featureSettingsNotReset) out.push(implicit('font-feature-settings', kw('normal')), implicit('font-variation-settings', kw('normal')));
       if (faults.synthesisResetByShorthand) out.push(...SYNTHESIS_LONGHANDS.map((p) => implicit(p, kw('auto'))));
       return out;
     },

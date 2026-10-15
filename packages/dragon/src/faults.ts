@@ -19,6 +19,7 @@ import { OVFL_FAULTS } from './faults/ovfl.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
 import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
+import { TXT_FF_FAULTS } from './faults/txt-ff.ts';
 import { TXT_FSTRETCH_FAULTS } from './faults/txt-fstretch.ts';
 import { TXT_FT_FAULTS } from './faults/txt-ft.ts';
 import { TXT_FV_FAULTS } from './faults/txt-fv.ts';
@@ -47,6 +48,7 @@ export const FAULT_GROUPS = {
   seld: SELD_FAULTS,
   'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,
+  'txt-ff': TXT_FF_FAULTS,
   'txt-fstretch': TXT_FSTRETCH_FAULTS,
   'txt-ft': TXT_FT_FAULTS,
   'txt-fv': TXT_FV_FAULTS,
