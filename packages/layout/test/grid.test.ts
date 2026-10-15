@@ -470,6 +470,11 @@ describe('baseline self-alignment in the inline axis and last baseline alignment
     expect(codeOf(box('a', { display: 'flex', alignSelf: 'last baseline' }, [glyph('a1', 10)]))).toBe('grid-last-baseline a');
     expect(codeOf(box('a', { alignSelf: 'last baseline' }, [glyph('a1', 10), box('a2', { display: 'flex' }, [glyph('a3', 10)])]))).toBe('grid-last-baseline a');
     expect(codeOf(box('a', { alignSelf: 'last baseline' }, [glyph('a1', 10), box('a2', {}, [box('a3', { display: 'grid', grid: one }, [glyph('a4', 10, { gridItem: autoItem })])])]))).toBe('grid-last-baseline a');
+    // Blink stops at a line-clamp container's clamp point, which is not modelled: the clamp container, as the item or its last child.
+    const clamp = { overflowX: 'hidden', overflowY: 'hidden', lineClamp: 2 } as const;
+    expect(codeOf(box('a', { ...clamp, alignSelf: 'last baseline' }, [glyph('a1', 10)]))).toBe('grid-last-baseline a');
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [box('a1', clamp, [glyph('a2', 10)])]))).toBe('grid-last-baseline a');
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [box('a1', clamp, [glyph('a2', 10)]), glyph('a3', 10)]))).toBe('ok');
     // An item that is itself a flex or grid container with no items has no last baseline, which is synthesized.
     expect(codeOf(box('a', { display: 'flex', alignSelf: 'last baseline', height: { kind: 'px', value: 10 } }))).toBe('ok');
     expect(codeOf(box('a', { display: 'grid', grid: one, alignSelf: 'last baseline', height: { kind: 'px', value: 10 } }))).toBe('ok');

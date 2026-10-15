@@ -616,6 +616,10 @@ type FlowResult = {
 
 // CSS2 §9.4.1 and §8.3.1: stacks block-level children, collapsing adjoining vertical margins. css-align-3 §9.1: the first
 // baseline is the first line box's, or the first in-flow child's that has one.
+// Blink stops propagating baselines past a line-clamp container's clamp point (block_layout_algorithm.cc 3575 and 3618,
+// IsPastClampPoint), which the flow here does not model: a clamp container that has a last baseline reports it as unmodelled.
+const clampsLines = (box: LayoutBox, last: LU | null): boolean => box.style.lineClamp > 0 && last !== null;
+
 function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = box.children;
   if (box.strut !== null) {
@@ -623,7 +627,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     const r = layoutInline(ctx, box, a.contentWidth, a.origin);
     // CSS2 §9.4.2: a formatting context with no line boxes (only empty inline boxes) is empty, so margins collapse through it.
     const last = r.lastBaseline === null ? null : add(a.origin.y, r.lastBaseline);
-    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [], lastBaseline: last, lastBaselineFlex: '', defaultLastBaseline: last, defaultLastBaselineFlex: '' };
+    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [], lastBaseline: last, lastBaselineFlex: '', defaultLastBaseline: clampsLines(box, last) ? null : last, defaultLastBaselineFlex: clampsLines(box, last) ? box.id : '' };
   }
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   const direction = directionOf(ctx, box);
@@ -732,6 +736,10 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     const offset = relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults);
     placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
     if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
+  }
+  if (clampsLines(box, defaultLastBaseline)) {
+    defaultLastBaseline = null;
+    defaultLastBaselineFlex = box.id;
   }
   if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow, lastBaseline, lastBaselineFlex, defaultLastBaseline, defaultLastBaselineFlex };
   if (clampedCursor !== null) return { cursor: clampedCursor, placed, escapeTop, endStrut: EMPTY_STRUT, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex, defaultLastBaseline, defaultLastBaselineFlex };

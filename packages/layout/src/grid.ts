@@ -1901,12 +1901,12 @@ function itemBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU {
 /**
  * Blink LogicalBoxFragment::LastBaseline (logical_box_fragment.h 61-70) of an item laid out by grid layout, whose baseline algorithm
  * is the default one (block_layout_algorithm.cc 3602-3650): the last line box's or the last in-flow child's own last baseline, kept
- * within the border box of a scroll container. The last baseline of a flex or grid container with items is not modelled, so an
- * item whose last baseline it would decide is refused; one with no items has none (flex_layout_algorithm.cc 80-142,
+ * within the border box of a scroll container. The last baseline of a flex or grid container with items, or of a line-clamp
+ * container (whose clamp point Blink stops at), is not modelled, so an item whose last baseline it would decide is refused; one with no items has none (flex_layout_algorithm.cc 80-142,
  * grid_baseline_accumulator.h 24-183).
  */
 function lastBaselineOf(item: GridItemData, r: GridItemLayout): LU | null {
-  if (r.lastBaselineFlex !== '') unsupported('grid-last-baseline', item.box.id, 'css-align-3 §9.1', `the last baseline of flex or grid container ${r.lastBaselineFlex} would give the last baseline of grid item ${item.box.id} (not yet supported)`);
+  if (r.lastBaselineFlex !== '') unsupported('grid-last-baseline', item.box.id, 'css-align-3 §9.1', `the last baseline of flex, grid or line-clamp container ${r.lastBaselineFlex} would give the last baseline of grid item ${item.box.id} (not yet supported)`);
   const b = r.lastBaseline;
   if (b === null) return null;
   return isScrollContainer(item.box.style) ? maxLu(ZERO, minLu(b, r.frag.height)) : b;
