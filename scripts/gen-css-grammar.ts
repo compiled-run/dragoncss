@@ -90,12 +90,14 @@ const SUBSET = [
   'font-variant-ligatures', 'font-variant-caps', 'font-variant-alternates', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-position', 'font-variant-emoji', 'font-variant',
   // css-fonts-4 §6.3, §7.1, §6.13: font-kerning, font-optical-sizing and font-language-override, after word-wrap, as LONGHANDS registers them.
   'font-kerning', 'font-optical-sizing', 'font-language-override',
+  // TXT-FONTFEAT: font-stretch (css-fonts-4 §2.4), before the line clamp, as LONGHANDS registers it.
+  'font-stretch',
+  // TXT-FONTFEAT: font-feature-settings and font-variation-settings (css-fonts-4 §6.12, §7.2), before the line clamp, as LONGHANDS registers them.
+  'font-feature-settings', 'font-variation-settings',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
-  // TXT-FONTFEAT: font-stretch (css-fonts-4 §2.4), after the line clamp, as LONGHANDS registers it.
-  'font-stretch',
-  // TXT-FONTFEAT: font-feature-settings and font-variation-settings (css-fonts-4 §6.12, §7.2), after the line clamp, as LONGHANDS registers them.
-  'font-feature-settings', 'font-variation-settings',
+  // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
+  'touch-action',
 ] as const;
 
 /**

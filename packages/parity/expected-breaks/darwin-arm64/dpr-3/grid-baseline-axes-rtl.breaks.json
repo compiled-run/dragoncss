@@ -28,6 +28,19 @@
     {"id":"f2:text0","data":"X","lines":1,"units":[0],"blank":[]},
     {"id":"f3a:text0","data":"X","lines":1,"units":[0],"blank":[]},
     {"id":"f3b:text0","data":"X X X","lines":3,"units":[0,0,1,1,2],"blank":[1,3]},
-    {"id":"o1:text0","data":"X","lines":1,"units":[0],"blank":[]}
+    {"id":"o1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"e1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"e2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"e3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"e4:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"m1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"m1a:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"m2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"m4:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"m4a:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"n:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"n1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"n2:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"n3:text0","data":"X","lines":1,"units":[0],"blank":[]}
   ]
 }

@@ -62,6 +62,7 @@ import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
+import { TOUCH_ACTION } from './fixture-groups/touch-action.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
@@ -184,6 +185,7 @@ export const GROUPS = {
   'text-spacing': TEXT_SPACING,
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
+  'touch-action': TOUCH_ACTION,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,

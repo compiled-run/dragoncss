@@ -264,7 +264,7 @@ export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner:
   { id: 'bidi-atomic', owner: 'INL2 bidi: UAX #9 resolution of an atomic inline at a paragraph edge in rtl', pattern: /DRAGON_UNSUPPORTED_BIDI: atomic inline \S+ in the rtl block \S+ has no letter on its (start|end) side/ },
   // G3 and G3b lay out first and last baseline alignment in both axes; the engine refuses only a grid item's last baseline that a
   // flex or grid container or a scroll container inside it would decide (grid.ts lastBaselineOf). No corpus case reaches it.
-  { id: 'last-baseline-source', owner: 'G3b follow-up: the last baseline of a flex, grid or scroll container as a grid item\'s last baseline', pattern: /^LayoutUnsupported grid-last-baseline: the last baseline of (flex or grid|scroll) container \S+ would give the last baseline of grid item \S+ \(not yet supported\)$/ },
+  { id: 'last-baseline-source', owner: 'G3b follow-up: the last baseline of a flex or grid container with items as a grid item\'s last baseline', pattern: /^LayoutUnsupported grid-last-baseline: the last baseline of flex or grid container \S+ would give the last baseline of grid item \S+ \(not yet supported\)$/ },
   { id: 'subgrid', owner: 'G5: subgrid', pattern: /subgrid/ },
   { id: 'writing-mode', owner: 'G-WM: vertical writing modes', pattern: /writing-mode/ },
   { id: 'sizing-keyword', owner: 'SIZE: min-content, max-content and fit-content as width', pattern: /width: (min-content|max-content|fit-content)/ },

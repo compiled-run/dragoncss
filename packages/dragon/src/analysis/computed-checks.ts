@@ -26,6 +26,8 @@ import type { TxtFfFaults } from '../faults/txt-ff.ts';
 import { TXT_FF_FAULTS } from '../faults/txt-ff.ts';
 import type { TxtFsFaults } from '../faults/txt-fs.ts';
 import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
+import type { TxtWFaults } from '../faults/txt-w.ts';
+import { TXT_W_FAULTS } from '../faults/txt-w.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -46,6 +48,7 @@ import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
 import { checkLineClamp } from './line-clamp.ts';
 import { checkResize } from './resize.ts';
+import { checkTouchAction } from './touch-action.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
 /** css-text-3 §8.1: whether a computed word-spacing adds space, anything but normal and 0px. */
@@ -586,7 +589,7 @@ function listMarkerOf(el: ResolvedElement): string | null {
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
 // minimum logical font size clamps, and text without a real bundled face whose computed font-weight or font-style Chrome draws
 // synthesized (Ahem under a heading, b, strong, em, i or address, or an author weight of 600 and up).
-function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtFsFaults): void {
+function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFsFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -654,7 +657,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         }
       }
     }
-    const synthetic = here ? [] : syntheticTextFont(el);
+    const synthetic = here ? [] : syntheticTextFont(el, faults);
     if (synthetic.length > 0) {
       const chain = [...ancestors, el];
       const sources = synthetic.map(({ property, text }) => {
@@ -683,11 +686,11 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
 }
 
 /** The computed font-weight and font-style Chrome synthesizes over a single regular face (600 and up, slope 14 and up), where font-synthesis allows it. */
-function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
+function syntheticTextFont(el: ResolvedElement, faults: TxtWFaults): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
   const out: { property: 'font-weight' | 'font-style'; text: string }[] = [];
   const font = textFontOfProps(el.props);
   const allowed = synthesisAllowedOf(el.props);
-  if (allowed.weight && font.weight >= 600) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
+  if (allowed.weight && font.weight >= (faults.ahemSyntheticBoldFrom700 ? 700 : 600)) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
   const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
   if (allowed.style && slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
   return out;
@@ -828,7 +831,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults = { ...GEN_B_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -844,6 +847,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkTouchAction(el, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);

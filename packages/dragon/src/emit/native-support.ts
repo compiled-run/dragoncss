@@ -2178,9 +2178,19 @@ export function checkedConversionSource(backend: NativeBackend): string {
   return backend === 'uikit' ? SWIFT_CHECKED : KOTLIN_CHECKED;
 }
 
-/** The digest of the emitted support code of a backend, recorded in the generated case headers. */
+const supportDigests = new Map<NativeBackend, string>();
+
+/**
+ * The digest of the emitted support code of a backend, recorded in the generated case headers. The support code is fixed for a
+ * build, so it is hashed once per backend: every compile's native digests read it, and rehashing was a quarter of a compile.
+ */
 export function supportDigest(backend: NativeBackend): string {
-  return sha256Hex(emitNativeSupport(backend).map((f) => `${f.path}\n${f.text}`).join('\n')).slice(0, 16);
+  let d = supportDigests.get(backend);
+  if (d === undefined) {
+    d = sha256Hex(emitNativeSupport(backend).map((f) => `${f.path}\n${f.text}`).join('\n')).slice(0, 16);
+    supportDigests.set(backend, d);
+  }
+  return d;
 }
 
 // ---------------------------------------------------------------- shared emission helpers
