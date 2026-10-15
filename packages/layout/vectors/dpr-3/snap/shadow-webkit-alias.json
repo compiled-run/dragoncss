@@ -75,17 +75,9 @@
    "height": 7680
   },
   {
-   "id": "rounded",
-   "parent": "stage",
-   "x": 38400,
-   "y": 17280,
-   "width": 11520,
-   "height": 7680
-  },
-  {
    "id": "parent",
    "parent": "stage",
-   "x": 55680,
+   "x": 38400,
    "y": 17280,
    "width": 6912,
    "height": 7680
@@ -182,28 +174,19 @@
    "height": 120
   },
   {
-   "id": "rounded",
+   "id": "parent",
    "left": 600,
    "top": 270,
-   "right": 780,
-   "bottom": 390,
-   "width": 180,
-   "height": 120
-  },
-  {
-   "id": "parent",
-   "left": 870,
-   "top": 270,
-   "right": 978,
+   "right": 708,
    "bottom": 390,
    "width": 108,
    "height": 120
   },
   {
    "id": "inherit",
-   "left": 888,
+   "left": 618,
    "top": 288,
-   "right": 960,
+   "right": 690,
    "bottom": 336,
    "width": 72,
    "height": 48
