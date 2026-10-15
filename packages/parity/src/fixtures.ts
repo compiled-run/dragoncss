@@ -60,6 +60,7 @@ import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TEXT_WORD_BREAK } from './fixture-groups/text-word-break.ts';
+import { TEXT_WRAP } from './fixture-groups/text-wrap.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
@@ -180,6 +181,7 @@ export const GROUPS = {
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
   'text-word-break': TEXT_WORD_BREAK,
+  'text-wrap': TEXT_WRAP,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,

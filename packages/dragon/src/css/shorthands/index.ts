@@ -15,6 +15,7 @@ import type { ShorthandHandler } from './shared.ts';
 import { TEXT_SHORTHANDS } from './text.ts';
 import { TEXT_BREAK_SHORTHANDS } from './text-break.ts';
 import { TEXT_DECORATION_SHORTHANDS } from './text-decoration.ts';
+import { TEXT_WRAP_SHORTHANDS } from './text-wrap.ts';
 import { WRITING_MODE_SHORTHANDS } from './writing-mode.ts';
 
 export type { ShorthandHandler } from './shared.ts';
@@ -36,6 +37,7 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...OUTLINE_SHORTHANDS,
   ...LISTS_SHORTHANDS,
   ...TEXT_BREAK_SHORTHANDS,
+  ...TEXT_WRAP_SHORTHANDS,
 };
 
 export function shorthandHandler(property: Shorthand): ShorthandHandler {
