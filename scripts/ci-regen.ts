@@ -7,7 +7,10 @@
 // Exit codes: 0 done (the regen commit pushed, or already at a fixed point), 1 failed, 2 usage or gh error, a cancelled run or a
 // run that is not the one asked for, 3 pending.
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { failedSteps, gh, repoOf, runIdOfDispatch } from './ci-test-files.ts';
 import { type CiJob, DEFAULT_REGEN_WAIT_S, parseJobs } from './land-devices-ci.ts';
 
@@ -69,6 +72,8 @@ export type Deps = {
   readonly log: (line: string) => void;
   /** A fresh token for one dispatch. */
   readonly nonce: () => string;
+  /** When this machine first waited to dispatch the given branch and head (now, the first time): --once polls share one wait. */
+  readonly since?: (key: string) => number;
 };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -134,28 +139,42 @@ export function findReusable(runs: readonly Run[], branch: string, head: string)
 export const REGEN_BRANCH_SLOTS = 2;
 export const LANDING_YIELD_S = 5400;
 export const SLOT_POLL_S = 120;
-const ACTIVE = new Set(['queued', 'in_progress', 'waiting', 'pending', 'requested']);
 
 /**
  * The branch regens (dispatched in branch mode) and the landing's runs (a pull request's regen label, a patch-mode regen, a device
- * lanes run) queued or running now: what regen-on-ci.yml's "Wait for a branch regen slot" counts, from one list of each workflow.
+ * lanes run) queued or running now: what regen-on-ci.yml's "Wait for a branch regen slot" counts, with the same per-status lists.
  */
 export function slotState(deps: Deps, repo: string): { readonly branch: number; readonly landing: number } {
-  const active = (workflow: string): Run[] => parseRuns(deps.gh(['api', `repos/${repo}/actions/workflows/${workflow}/runs?per_page=100`])).filter((r) => ACTIVE.has(r.status));
-  const regens = active(WORKFLOW);
-  const branch = regens.filter((r) => r.event === 'workflow_dispatch' && r.title.startsWith('regen of branch ')).length;
-  const landing = regens.filter((r) => r.event === 'pull_request' || (r.event === 'workflow_dispatch' && /^regen of [0-9a-f]{40}$/.test(r.title))).length + active('device-lanes.yml').length;
+  const seen = new Set<number>();
+  let branch = 0;
+  let landing = 0;
+  for (const st of ['queued', 'in_progress', 'waiting', 'pending']) {
+    for (const r of parseRuns(deps.gh(['api', `repos/${repo}/actions/workflows/${WORKFLOW}/runs?status=${st}&per_page=100`]))) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      if (r.event === 'workflow_dispatch' && r.title.startsWith('regen of branch ')) branch++;
+      else if (r.event === 'pull_request' || (r.event === 'workflow_dispatch' && /^regen of [0-9a-f]{40}$/.test(r.title))) landing++;
+    }
+    for (const r of parseRuns(deps.gh(['api', `repos/${repo}/actions/workflows/device-lanes.yml/runs?status=${st}&per_page=100`]))) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      landing++;
+    }
+  }
   return { branch, landing };
 }
 
 /**
- * Waits here, before dispatching, while a landing run is queued or running (at most LANDING_YIELD_S) or every branch regen slot is
- * taken; true once the dispatch may go. A dispatched run waits for its slot inside its resolve job, which holds a runner the whole
- * time: a few waiting runs filled the repository's concurrent jobs and queued the landing's own rounds. With --once it does not
- * wait (false: not dispatched yet). A failed listing dispatches anyway; the workflow's own wait still guards the runners.
+ * Waits here, before dispatching, while a landing run is queued or running or every branch regen slot is taken, for at most
+ * LANDING_YIELD_S from the first wait for this branch and head (shared by --once polls); then the dispatch goes and the run waits
+ * for its slot itself. A dispatched run waits inside its resolve job, which holds a runner the whole time: a few waiting runs
+ * filled the repository's concurrent jobs and queued the landing's own rounds. Returns 'go' at once, 'waited' after sleeping (the
+ * caller reads the head and the runs again), or 'pending' with --once (not dispatched). A failed listing dispatches anyway; the
+ * workflow's own wait still guards the runners.
  */
-export function waitForSlot(deps: Deps, repo: string, o: { readonly once: boolean; readonly pollS?: number }): boolean {
-  const t0 = deps.now();
+export function waitForSlot(deps: Deps, repo: string, key: string, o: { readonly once: boolean; readonly pollS?: number }): 'go' | 'waited' | 'pending' {
+  const t0 = deps.since?.(key) ?? deps.now();
+  let slept = false;
   let told = '';
   for (;;) {
     let s: { readonly branch: number; readonly landing: number };
@@ -163,18 +182,20 @@ export function waitForSlot(deps: Deps, repo: string, o: { readonly once: boolea
       s = slotState(deps, repo);
     } catch (e) {
       deps.log(`listing the queued and running regens failed (${e instanceof Error ? e.message : String(e)}); dispatching, and the run waits for its slot itself`);
-      return true;
+      return slept ? 'waited' : 'go';
     }
-    const waited = deps.now() - t0;
-    const why = s.landing > 0 && waited < LANDING_YIELD_S * 1000 ? `${s.landing} landing run(s) are queued or running` : s.branch >= REGEN_BRANCH_SLOTS && waited < LANDING_YIELD_S * 1000 ? `${s.branch} branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once)` : null;
-    if (why === null) return true;
+    const waiting = deps.now() - t0 < LANDING_YIELD_S * 1000;
+    const why = !waiting ? null : s.landing > 0 ? `${s.landing} landing run(s) are queued or running` : s.branch >= REGEN_BRANCH_SLOTS ? `${s.branch} branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once)` : null;
+    if (why === null) return slept ? 'waited' : 'go';
     if (o.once) {
-      deps.log(`PENDING (not dispatched): ${why}; poll again with the same command`);
-      return false;
+      deps.log(`PENDING (not dispatched): ${why}; run the same command again (it dispatches anyway ${LANDING_YIELD_S / 60} minutes after the first wait)`);
+      return 'pending';
     }
     if (why !== told) deps.log(`waiting to dispatch: ${why}`);
     told = why;
-    deps.sleep((o.pollS ?? SLOT_POLL_S) * 1000);
+    // Up to 30 s apart, so the waiters do not all dispatch on the same poll when a slot frees.
+    deps.sleep((o.pollS ?? SLOT_POLL_S) * 1000 + (Number.parseInt(deps.nonce().slice(0, 4), 16) % 30_000));
+    slept = true;
   }
 }
 
@@ -312,13 +333,23 @@ export function main(argv: readonly string[], deps: Deps, repo: () => string): n
     const r = repo();
     if (a.runId !== null) return waitFor(deps, r, a.runId, { branch: a.branch, head: a.head }, { once: a.once });
     // With --head, a run of that head is found even after its regen commit moved the branch on, so the same command polls it.
-    const head = a.head ?? branchHead(deps, r, a.branch);
-    const reuse = findReusable(listRuns(deps, r, a.from), a.branch, head);
-    if (reuse !== null) {
+    let head = a.head ?? branchHead(deps, r, a.branch);
+    const reused = (): number | null => {
+      const reuse = findReusable(listRuns(deps, r, a.from), a.branch, head);
+      if (reuse === null) return null;
       deps.log(`run ${reuse.id} already regenerates ${a.branch} at ${head}: ${reuse.url}`);
       return waitFor(deps, r, reuse.id, { branch: a.branch, head }, { once: a.once });
+    };
+    const first = reused();
+    if (first !== null) return first;
+    const slot = waitForSlot(deps, r, `${a.branch}@${head}`, { once: a.once });
+    if (slot === 'pending') return EXIT.pending;
+    if (slot === 'waited') {
+      // The branch may have moved, or another invocation dispatched this head, while this one waited.
+      head = a.head ?? branchHead(deps, r, a.branch);
+      const again = reused();
+      if (again !== null) return again;
     }
-    if (!waitForSlot(deps, r, { once: a.once })) return EXIT.pending;
     if (a.head !== null) {
       const now = branchHead(deps, r, a.branch);
       if (now !== a.head) throw new Error(`${a.branch} is at ${now}, not --head ${a.head}; push it first`);
@@ -341,6 +372,18 @@ if (import.meta.main) {
     now: () => Date.now(),
     log: (l) => console.log(l),
     nonce: () => randomBytes(6).toString('hex'),
+    since: (key) => {
+      const file = join(tmpdir(), `ci-regen-wait-${createHash('sha256').update(key).digest('hex').slice(0, 16)}`);
+      try {
+        const t = Number(readFileSync(file, 'utf8'));
+        if (Number.isFinite(t) && t > 0) return t;
+      } catch {
+        // First wait for this branch and head.
+      }
+      const now = Date.now();
+      writeFileSync(file, String(now));
+      return now;
+    },
   };
   process.exit(main(process.argv.slice(2), deps, repo));
 }
