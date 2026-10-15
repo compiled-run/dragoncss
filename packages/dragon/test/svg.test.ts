@@ -9,6 +9,7 @@ import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgShap
 import { createProjectWith, nativePrograms, NO_FAULTS, svgScenes } from '../src/internal.ts';
 import { svgShapePath } from '../src/lower/paint/image.ts';
 import { svgPaintAlpha } from '../src/css/color.ts';
+import { mathGrammarFor, mathInvalidity } from '../src/css/math.ts';
 import type { ComponentDefinition, ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
 import { div, inputFor, staticClass, DOC } from './helpers.ts';
 
@@ -308,5 +309,12 @@ describe('the svg model in a compile', () => {
     expect(paintAttributeValue('stroke-opacity', '30%')).toEqual({ ok: true, value: { kind: 'percentage', value: 30 } });
     expect(svgAttributeRefusal('rect', 'fill-opacity', '50%')).toBeNull();
     expect(svgAttributeRefusal('path', 'stroke-opacity', 'half')).toContain('is not a valid stroke-opacity');
+  });
+  it('SVG-opacity: a calculation in fill-opacity or stroke-opacity resolves to a number, as in opacity, and compiles', () => {
+    for (const p of ['fill-opacity', 'stroke-opacity']) expect(mathInvalidity('calc(0.25 + 0.5)', mathGrammarFor(p)), p).toBeNull();
+    const input = svgTree('svg { fill-opacity: calc(0.25 + 0.5); stroke-opacity: calc(0.1 * 2); }', (_r, o) => [shape(o, 'h', 'rect', [['width', '10'], ['height', '10'], ['stroke', 'rgb(0, 0, 0)']])]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.fillOpacity, x.strokeOpacity])).toEqual([[0.75, 0.2]]);
   });
 });
