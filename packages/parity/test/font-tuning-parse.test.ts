@@ -26,7 +26,9 @@ function item(p: string, v: string): Item {
 const VALUES: readonly (readonly [string, string])[] = [
   ...['auto', 'normal', 'none', 'NONE', 'Normal', 'auto none', 'off', '0', '"none"'].map((v) => ['font-kerning', v] as const),
   ...['auto', 'none', 'AUTO', 'normal', 'auto auto', '1'].map((v) => ['font-optical-sizing', v] as const),
-  ...['normal', '"TRK"', "'SRB'", '"DEU "', 'NORMAL', 'TRK', '"TRK" "SRB"', 'none', '0'].map((v) => ['font-language-override', v] as const),
+  ...['normal', '"TRK"', "'SRB'", '"DEU "', '"DE  "', '"T"', '"trk"', '"TR K"', '" TRK"', 'NORMAL', 'TRK', '"TRK" "SRB"', 'none', '0'].map((v) => ['font-language-override', v] as const),
+  // Dragon refuses a tag it does not read as Chrome does.
+  ...['""', '"ABCDE"', '"\u00c4BC"'].map((v) => ['font-language-override', v] as const),
 ];
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
@@ -34,6 +36,7 @@ function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
     const s = seen[i] as Seen;
     const at = `${it.p}: ${it.v}`;
     if (it.code === 'DRAGON_CSS_INVALID_VALUE') return s.parsed ? [`${at}: invalid, Chrome parses it`] : [];
+    if (it.code === 'DRAGON_UNSUPPORTED_VALUE') return s.parsed ? [] : [`${at}: refused, Chrome drops it`];
     if (it.code !== null) return [`${at}: unexpected ${it.code}`];
     if (!s.parsed) return [`${at}: accepted, Chrome drops it`];
     return it.value === s.value ? [] : [`${at}: Chrome computes ${s.value}, Dragon ${String(it.value)}`];

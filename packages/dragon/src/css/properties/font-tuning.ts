@@ -4,7 +4,9 @@
 // computes it, and refuses a value other than the initial one over text in a real face (analysis/font-tuning.ts), where Dragon's
 // shaping applies the face's defaults.
 import type { CssNode } from 'css-tree';
+import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Span } from '../../types.ts';
+import { spanOf } from '../ast.ts';
 import { asciiLower, serializeString } from '../escapes.ts';
 import type { PropertyAspect } from '../properties.ts';
 import type { ParsedValue } from '../stylesheet.ts';
@@ -33,13 +35,18 @@ export const FONT_TUNING_INITIAL: { readonly [P in FontTuningLonghand]: string }
 /** The CssValue type of a font-language-override string; its text is the string as Chrome serializes it. */
 export const LANGUAGE_OVERRIDE = 'language-override';
 
-/** font-language-override: normal, or one string (any string: Chrome keeps it as written). */
-function parseLanguageOverride(tokens: readonly CssNode[], _base: Span): ParsedValue {
+/** font-language-override: normal, or one string naming an OpenType language system: up to four printable ASCII characters, of
+ * which Chrome drops the trailing spaces; any other string is refused. */
+function parseLanguageOverride(tokens: readonly CssNode[], base: Span): ParsedValue {
   const t = tokens[0];
   if (tokens.length !== 1 || t === undefined) return { kind: 'invalid', reason: 'font-language-override is normal or a string' };
   if (t.type === 'Identifier' && asciiLower(String(t['name'])) === 'normal') return { kind: 'ok', longhands: [{ property: 'font-language-override', value: { kind: 'keyword', value: 'normal' }, explicit: true }] };
   if (t.type !== 'String') return { kind: 'invalid', reason: 'font-language-override is normal or a string' };
-  return { kind: 'ok', longhands: [{ property: 'font-language-override', value: { kind: 'other', type: LANGUAGE_OVERRIDE, text: serializeString(String(t['value'])) }, explicit: true }] };
+  const tag = String(t['value']);
+  if (!/^[\x20-\x7e]{1,4}$/.test(tag)) {
+    return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `font-language-override: ${serializeString(tag)} is unsupported: Dragon takes a language system tag of one to four printable ASCII characters`, manual: 'Write the OpenType language system tag, such as "TRK", or normal.' }) };
+  }
+  return { kind: 'ok', longhands: [{ property: 'font-language-override', value: { kind: 'other', type: LANGUAGE_OVERRIDE, text: serializeString(tag.replace(/ +$/, '')) }, explicit: true }] };
 }
 
 /** The value parser of the font-tuning family (the value hook, css/paint-parsers.ts); the keyword longhands take the generic path. */
