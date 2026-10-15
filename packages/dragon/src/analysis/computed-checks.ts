@@ -16,6 +16,9 @@ import { GEN_B_FAULTS } from '../faults/gen-b.ts';
 import type { Txt2dFaults } from '../faults/txt2-d.ts';
 import { TXT2_D_FAULTS } from '../faults/txt2-d.ts';
 import { checkWordBreak } from './break-all.ts';
+import type { Txt2lbFaults } from '../faults/txt2-lb.ts';
+import { TXT2_LB_FAULTS } from '../faults/txt2-lb.ts';
+import { checkLineBreak } from './line-break.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -811,7 +814,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & Txt2dFaults = { ...GEN_B_FAULTS, ...TXT2_D_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & Txt2dFaults & Txt2lbFaults = { ...GEN_B_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -840,6 +843,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkTextIndent(el, targets, diagnostics, reported);
       // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
       checkWordBreak(el, targets, diagnostics, reported, shapedAt, faults);
+      // TXT2-lb: line-break strictness over text no Chrome case proves (analysis/line-break.ts).
+      checkLineBreak(el, targets, diagnostics, reported, shapedAt, faults);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);

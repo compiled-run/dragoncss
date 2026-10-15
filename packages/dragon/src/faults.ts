@@ -23,6 +23,7 @@ import { TXT2_C_FAULTS } from './faults/txt2-c.ts';
 import { TXT2_D_FAULTS } from './faults/txt2-d.ts';
 import { TXT2_E_FAULTS } from './faults/txt2-e.ts';
 import { TXT2_G_FAULTS } from './faults/txt2-g.ts';
+import { TXT2_LB_FAULTS } from './faults/txt2-lb.ts';
 import { TXT2B_FAULTS } from './faults/txt2b.ts';
 import { VALUES_FAULTS } from './faults/values.ts';
 
@@ -49,6 +50,7 @@ export const FAULT_GROUPS = {
   'txt2-d': TXT2_D_FAULTS,
   'txt2-e': TXT2_E_FAULTS,
   'txt2-g': TXT2_G_FAULTS,
+  'txt2-lb': TXT2_LB_FAULTS,
   txt2b: TXT2B_FAULTS,
   values: VALUES_FAULTS,
 } as const;
