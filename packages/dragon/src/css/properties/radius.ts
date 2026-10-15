@@ -1,5 +1,7 @@
 // Border radii (css-backgrounds-3 §5.1): the four corner longhands, each one or two <length-percentage [0,∞]>. Chrome 145 computes
 // each length to px (em and rem included), keeps percentages, and serializes a corner whose two components are equal as one.
+// The flow-relative corners (css-logical-1 §7) are surrogates of one physical corner per direction, as properties/logical.ts's are,
+// so they are shorthands here: Chrome resolves them at cascade time (CSSDirectionAwareResolver), with the value copied unchanged.
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
@@ -11,12 +13,25 @@ import { normalizeUnit, unitEntry } from '../units.ts';
 import type { CssValue } from '../values.ts';
 
 export const RADIUS_LONGHANDS = ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'] as const;
-export const RADIUS_SHORTHANDS = ['border-radius', '-webkit-border-radius'] as const;
+export const RADIUS_SHORTHANDS = ['border-radius', '-webkit-border-radius', 'border-start-start-radius', 'border-start-end-radius', 'border-end-start-radius', 'border-end-end-radius'] as const;
 export const RADIUS_INHERITED: readonly (typeof RADIUS_LONGHANDS)[number][] = [];
 export const RADIUS_CONTAINER: readonly (typeof RADIUS_LONGHANDS)[number][] = [];
 export const RADIUS_TEXT_ROLE: readonly (typeof RADIUS_LONGHANDS)[number][] = [];
 
 export type RadiusLonghand = (typeof RADIUS_LONGHANDS)[number];
+export type LogicalRadius = Exclude<(typeof RADIUS_SHORTHANDS)[number], 'border-radius' | '-webkit-border-radius'>;
+
+/**
+ * css-logical-1 §7 in horizontal-tb: the physical corner of each flow-relative corner, per direction. Block start and end are top
+ * and bottom; inline start is left in ltr and right in rtl.
+ */
+export const LOGICAL_CORNERS: { readonly [P in LogicalRadius]: { readonly ltr: RadiusLonghand; readonly rtl: RadiusLonghand } } = {
+  'border-start-start-radius': { ltr: 'border-top-left-radius', rtl: 'border-top-right-radius' },
+  'border-start-end-radius': { ltr: 'border-top-right-radius', rtl: 'border-top-left-radius' },
+  'border-end-start-radius': { ltr: 'border-bottom-left-radius', rtl: 'border-bottom-right-radius' },
+  'border-end-end-radius': { ltr: 'border-bottom-right-radius', rtl: 'border-bottom-left-radius' },
+};
+export const LOGICAL_CORNER_PROPERTIES = Object.keys(LOGICAL_CORNERS) as LogicalRadius[];
 
 export const RADIUS_ASPECTS: { readonly [P in RadiusLonghand]: PropertyAspect } = {
   'border-top-left-radius': { layout: false, paint: true },
@@ -103,8 +118,8 @@ export function radiusToken(property: string, t: CssNode, base: Span): TokenResu
   return { invalid: `${generate(t)} is not a length or percentage` };
 }
 
-/** css-backgrounds-3 §5.1: a corner longhand is one or two components; one component sets both. */
-export function parseCorner(property: RadiusLonghand, tokens: readonly CssNode[], base: Span): ParsedValue {
+/** css-backgrounds-3 §5.1: a corner is one or two components; one component sets both. property names it in a refusal. */
+function cornerOf(property: RadiusLonghand | LogicalRadius, tokens: readonly CssNode[], base: Span): { readonly value: CssValue } | ParsedValue {
   if (tokens.length < 1 || tokens.length > 2) return { kind: 'invalid', reason: 'a corner radius is one or two lengths or percentages' };
   const parts: RadiusComponent[] = [];
   for (const t of tokens) {
@@ -114,7 +129,23 @@ export function parseCorner(property: RadiusLonghand, tokens: readonly CssNode[]
     parts.push(r.ok);
   }
   const h = parts[0] as RadiusComponent;
-  const longhands: LonghandValue[] = [{ property, value: cornerValue(h, parts[1] ?? h), explicit: true }];
+  return { value: cornerValue(h, parts[1] ?? h) };
+}
+
+/** A corner longhand's value. */
+export function parseCorner(property: RadiusLonghand, tokens: readonly CssNode[], base: Span): ParsedValue {
+  const c = cornerOf(property, tokens, base);
+  if (!('value' in c)) return c;
+  const longhands: LonghandValue[] = [{ property, value: c.value, explicit: true }];
+  return { kind: 'ok', longhands };
+}
+
+/** A flow-relative corner's value: one tagged value per direction, the cascade keeping the element's own (analysis/logical.ts). */
+export function parseLogicalCorner(property: LogicalRadius, tokens: readonly CssNode[], base: Span): ParsedValue {
+  const c = cornerOf(property, tokens, base);
+  if (!('value' in c)) return c;
+  const { ltr, rtl } = LOGICAL_CORNERS[property];
+  const longhands: LonghandValue[] = [{ property: ltr, value: c.value, explicit: true, direction: 'ltr' }, { property: rtl, value: c.value, explicit: true, direction: 'rtl' }];
   return { kind: 'ok', longhands };
 }
 
@@ -124,4 +155,12 @@ export const RADIUS_VALUE_PARSERS: { readonly [P in RadiusLonghand]: (tokens: re
   'border-top-right-radius': (tokens, base) => parseCorner('border-top-right-radius', tokens, base),
   'border-bottom-right-radius': (tokens, base) => parseCorner('border-bottom-right-radius', tokens, base),
   'border-bottom-left-radius': (tokens, base) => parseCorner('border-bottom-left-radius', tokens, base),
+};
+
+/** The value parsers of the flow-relative corners (the paint value hook, css/paint-parsers.ts). */
+export const LOGICAL_RADIUS_VALUE_PARSERS: { readonly [P in LogicalRadius]: (tokens: readonly CssNode[], base: Span) => ParsedValue } = {
+  'border-start-start-radius': (tokens, base) => parseLogicalCorner('border-start-start-radius', tokens, base),
+  'border-start-end-radius': (tokens, base) => parseLogicalCorner('border-start-end-radius', tokens, base),
+  'border-end-start-radius': (tokens, base) => parseLogicalCorner('border-end-start-radius', tokens, base),
+  'border-end-end-radius': (tokens, base) => parseLogicalCorner('border-end-end-radius', tokens, base),
 };

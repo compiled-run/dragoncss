@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { __unstable__loadDesignSystem, compile } from 'tailwindcss';
+import { type MemoStats, memoized } from '../../parity/src/chrome-memo.ts';
 
 /** The pinned tailwindcss version; the installed package must be exactly this one. */
 export const TAILWIND_VERSION = '4.3.3';
@@ -58,8 +59,23 @@ export async function utilities(): Promise<Utility[]> {
   });
 }
 
-/** The published CSS of utilities used together: a fresh compile of the entry sheet built for these classes, without the license banner. */
+/** This module, whose code decides a published sheet: the memo key reads it (chrome-memo.ts). */
+const PUBLISHED_CODE = ['packages/tailwind-sweep/src/tailwind.ts'];
+
+/** Remembered and fresh published sheets of this thread (chrome-memo.ts). */
+export const PUBLISHED_MEMO: MemoStats = { hits: 0, misses: 0 };
+
+/**
+ * The published CSS of utilities used together: a fresh compile of the entry sheet built for these classes, without the license
+ * banner. It depends only on the pinned Tailwind and the classes, so under pnpm regen (DRAGON_CHROME_MEMO=1) it is remembered
+ * beside regen's cache: a third of the sweep's compile time was Tailwind rebuilding the same sheets on every compiler change.
+ */
 export async function publishedCss(classes: readonly string[]): Promise<string> {
+  const parts = { tailwind: TAILWIND_VERSION, entry: ENTRY_CSS, classes };
+  return (await memoized('tw-published', parts, PUBLISHED_CODE, PUBLISHED_MEMO, async () => Buffer.from(await buildPublished(classes)))).toString('utf8');
+}
+
+async function buildPublished(classes: readonly string[]): Promise<string> {
   const css = (await compile(ENTRY_CSS, OPTIONS)).build([...classes]);
   const banner = /^\/\*! tailwindcss v[^*]*\*\/\n/.exec(css);
   if (banner === null) throw new Error(`${classes.join(' ')}: the built CSS has no license banner`);
