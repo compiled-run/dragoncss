@@ -155,11 +155,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "normal",
-        "font-variation-settings": "normal"
+        "font-variation-settings": "normal",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -307,11 +308,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "normal",
-        "font-variation-settings": "normal"
+        "font-variation-settings": "normal",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -459,11 +461,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "\"liga\"",
-        "font-variation-settings": "normal"
+        "font-variation-settings": "normal",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -641,11 +644,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "\"kern\" 0, \"liga\" 0, \"smcp\", \"ss01\" 3, \"tnum\"",
-        "font-variation-settings": "normal"
+        "font-variation-settings": "normal",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -823,11 +827,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "normal",
-        "font-variation-settings": "\"wght\" 500"
+        "font-variation-settings": "\"wght\" 500",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -975,11 +980,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "normal",
-        "font-variation-settings": "\"wght\" 500"
+        "font-variation-settings": "\"wght\" 500",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -1157,11 +1163,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "\"dlig\"",
-        "font-variation-settings": "\"opsz\" 12.5, \"wdth\" 75"
+        "font-variation-settings": "\"opsz\" 12.5, \"wdth\" 75",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -1329,11 +1336,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "normal",
-        "font-variation-settings": "normal"
+        "font-variation-settings": "normal",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -1501,11 +1509,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "\"c2sc\"",
-        "font-variation-settings": "normal"
+        "font-variation-settings": "normal",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -1653,11 +1662,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "\"c2sc\"",
-        "font-variation-settings": "normal"
+        "font-variation-settings": "normal",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
@@ -1835,11 +1845,12 @@
         "font-kerning": "auto",
         "font-optical-sizing": "auto",
         "font-language-override": "normal",
-        "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none",
         "font-stretch": "100%",
         "font-feature-settings": "\"c2sc\"",
-        "font-variation-settings": "normal"
+        "font-variation-settings": "normal",
+        "-webkit-box-orient": "horizontal",
+        "-webkit-line-clamp": "none",
+        "touch-action": "auto"
       }
     },
     {
