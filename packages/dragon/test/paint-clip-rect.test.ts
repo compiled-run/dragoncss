@@ -32,7 +32,10 @@ function compileInput(input: FrontEndResult, targets: Targets = { ios: { minimum
   return createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
 }
 
-const tree = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'XX'), div(r, 'b', ['b'])])])];
+// Text sits beside the clipped box, in its own block: text inside a hidden box is refused natively (accessibility, below).
+const tree = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'])]), div(r, 't', ['t'], [text(r, 't-t', 'XX')])])];
+// The visually-hidden pattern: text in the clipped box (a-t), and text in a box inside it (b-t).
+const textTree = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'XX'), div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])];
 const input = (css: string) => inputFor(BASE + css, tree);
 const compile = (css: string, targets?: Targets) => compileInput(input(css), targets);
 const errors = (c: { diagnostics: readonly Diagnostic[] }): Diagnostic[] => c.diagnostics.filter((d) => d.severity === 'error');
@@ -131,6 +134,12 @@ describe('clip: native refusals', () => {
       expectCatalogued(errs);
     }
   });
+  it('refuses an em or rem edge whose font size has no build-time value, saying so (not that the rect is not empty)', () => {
+    const errs = clipErrors(compile('.a { position: absolute; font-size: 1vw; clip: rect(0, 0em, 0, 0); }', NATIVE));
+    expect(errs.map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    expect(errs.find((d) => d.target === 'ios')?.message).toBe('a has clip: rect(0px, 0em, 0px, 0px), whose em edge has no build-time font size to compute it against; ios needs every clip edge in px at build time');
+    expectCatalogued(errs);
+  });
   it('refuses an empty rect beside a view outside the box view, or on a box that is not visible, and names it', () => {
     const cases: readonly [string, RegExp][] = [
       ['.a { box-shadow: 0 0 0 2px red; }', /it has a box-shadow, drawn by a companion view beside the box view/],
@@ -147,6 +156,25 @@ describe('clip: native refusals', () => {
     }
     // A z-index 0 or one that does not apply (a static box outside a flex or grid container) keeps the layer inside the box view.
     for (const css of ['.b { position: relative; z-index: 0; }', '.b { z-index: 3; }', '.b { outline: 0px solid red; }', '.b { outline-style: none; }']) expect(clipErrors(compile(HIDDEN + css)), css).toEqual([]);
+  });
+  it('refuses an empty rect whose subtree has text, which Chrome keeps in the accessibility tree and a hidden native view drops', () => {
+    // Only text views are native accessibility elements (native-support.ts: accessibilityLabel, contentDescription), and a hidden
+    // UIView, or an Android view under an INVISIBLE ancestor (View.isVisibleToUser), leaves the accessibility tree.
+    const both = (css: string) => clipErrors(compileInput(inputFor(BASE + css, textTree), { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }));
+    const errs = both(HIDDEN);
+    expect(errs.map((d) => [d.code, d.target]).sort()).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(errs.find((d) => d.target === 'ios')?.message).toBe("a has clip: rect(0px, 0px, 0px, 0px), which hides it whole, but its text a:text0 stays in Chrome's accessibility tree and screen readers read it; ios hides the box view, and UIKit leaves a hidden view out of the accessibility tree, so VoiceOver would not read it");
+    expect(errs.find((d) => d.target === 'android')?.message).toMatch(/its text a:text0 stays in Chrome's accessibility tree .*; android makes the box view invisible, and a view under an invisible, transparent or empty-clip-bounds ancestor is not visible to the user \(View\.isVisibleToUser\), so TalkBack would skip it$/);
+    expectCatalogued(errs);
+    // Text deeper in the subtree is found too; text under display: none is in no accessibility tree.
+    const deep = clipErrors(compileInput(inputFor(BASE + HIDDEN, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])]), NATIVE));
+    expect(deep.map((d) => d.message)).toEqual(expect.arrayContaining([expect.stringContaining('its text b:text0 stays')]));
+    const none = clipErrors(compileInput(inputFor(`${BASE + HIDDEN} .b { display: none; }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])]), NATIVE));
+    expect(none).toEqual([]);
+    // Web draws clip itself and keeps the text accessible: no refusal there.
+    expect(both(HIDDEN).some((d) => d.target === 'web')).toBe(false);
+    // The native write is made only for a box with no text (the lowering's input is the accepted compile).
+    expect(errors(compile(HIDDEN, NATIVE))).toEqual([]);
   });
 });
 

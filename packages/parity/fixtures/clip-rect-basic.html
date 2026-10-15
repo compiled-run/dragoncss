@@ -2,6 +2,7 @@
 <html data-dragon-id="html">
 <head>
 <style>
+/* No text inside a clipped box: native targets refuse it, since a hidden native view leaves the accessibility tree. */
 body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
 .stage { position: relative; height: 230px; padding: 8px 16px; background-color: rgb(236, 240, 244); }
 .row { position: relative; height: 40px; margin-bottom: 6px; background-color: rgb(250, 200, 60); }
@@ -28,7 +29,7 @@ body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
 <div data-dragon-id="row1" class="row">
 <div data-dragon-id="cut-a" class="box c0"><div data-dragon-id="cut-a-k" class="k"></div></div>
 <div data-dragon-id="cut-b" class="box c1"><div data-dragon-id="cut-b-out" class="out"></div></div>
-<div data-dragon-id="cut-c" class="box c2"><div data-dragon-id="cut-c-k" class="k">XX</div></div>
+<div data-dragon-id="cut-c" class="box c2"><div data-dragon-id="cut-c-k" class="k"></div></div>
 <div data-dragon-id="cut-d" class="box c3"></div>
 </div>
 <div data-dragon-id="row2" class="row">
@@ -43,7 +44,7 @@ body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
 <div data-dragon-id="keep-auto" class="box keep-auto"><div data-dragon-id="keep-auto-k" class="k"></div></div>
 <div data-dragon-id="keep-init" class="box keep-init"></div>
 </div>
-<div data-dragon-id="row4" class="row"><div data-dragon-id="t1">XXXX</div><div data-dragon-id="cut-sr" class="sr">XXXXXX</div><div data-dragon-id="t2">XX</div></div>
+<div data-dragon-id="row4" class="row"><div data-dragon-id="t1">XXXX</div><div data-dragon-id="cut-sr" class="sr"><div data-dragon-id="cut-sr-k" class="k"></div></div><div data-dragon-id="t2">XX</div></div>
 </div>
 </body>
 </html>

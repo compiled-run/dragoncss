@@ -1,8 +1,9 @@
 // MASK-CLIP clip on the host: the clip-rect fixtures' points against the committed Chrome PNGs at every device DPR. The paint model
 // of pnt1-radius (paint-model.ts: boxes in tree order, overflow clips of ancestors, Skia's source-over) leaves out a box with an
 // empty clip rect write and every box inside it, as the device hides the box view and every view inside it; an Ahem glyph's points
-// show the text colour when its text view sits outside every hidden box, and the backdrop when it sits inside one. Every colour and
-// glyph point must equal Chrome exactly. Two model faults must each disagree with Chrome somewhere in every case: the clip ignored
+// show the text colour when its text view sits outside every hidden box. No text sits inside one: native targets refuse that, since
+// a hidden native view leaves the accessibility tree and Chrome keeps clipped text in it. Every colour and glyph point must equal
+// Chrome exactly. Two model faults must each disagree with Chrome somewhere in every case: the clip ignored
 // (the device plant clip-rect-ignored) and only the box's own paint hidden, its descendants still painting.
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram, ProgramNode } from 'dragon';
@@ -99,7 +100,7 @@ describe('MASK-CLIP clip: the paint model at every sample point equals the commi
           const v = judge(c.id, p, c.environment.viewport, 'none');
           expect(v.problems).toEqual([]);
           expect(v.cutPoints, 'points on clipped boxes and their descendants').toBeGreaterThan(0);
-          expect(v.hiddenGlyphPoints, 'glyph points of clipped text').toBeGreaterThan(0);
+          expect(v.hiddenGlyphPoints, 'glyph points of clipped text (refused natively)').toBe(0);
           if (spec.id === 'clip-rect-basic') expect(v.glyphPoints - v.hiddenGlyphPoints, 'glyph points of text beside a clipped box').toBeGreaterThan(0);
           for (const fault of ['ignored', 'own'] as const) expect(judge(c.id, p, c.environment.viewport, fault).problems.length, fault).toBeGreaterThan(0);
         }

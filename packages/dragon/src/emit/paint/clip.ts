@@ -1,7 +1,9 @@
 // css-overflow-3 §3: overflow hidden hosts the box's children in a Dragon clip view over its padding box (the container factory
 // makes it; the after-layout hook sets its frame from the engine's border widths at the device scale).
 // css-masking-1 §5.1: a clip rect() that is empty at every size hides the box view (isHidden, View.INVISIBLE), and with it every
-// view inside it, through the one runtime writer dragonClipRectEmpty; the readback is 1 when the box view is hidden.
+// view inside it, through the one runtime writer dragonClipRectEmpty; the readback is 1 when the box view is hidden. A hidden or
+// invisible view leaves the accessibility tree, so analysis refuses the write where the subtree has text (the only native
+// accessibility elements), which Chrome keeps there (analysis/paint-values/clip.ts).
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 
