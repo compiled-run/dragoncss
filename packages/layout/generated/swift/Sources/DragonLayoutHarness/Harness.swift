@@ -1635,20 +1635,19 @@ enum HS {
   static let s1628 = JsString("the font data measurer measures the bundled Ahem, not ")
   static let s1629 = JsString("the item fits but the break is at ")
   static let s1630 = JsString("the last baseline of flex container ")
-  static let s1631 = JsString("the last baseline of flex or grid container ")
-  static let s1632 = JsString("the last baseline of scroll container ")
-  static let s1633 = JsString("the line breaker made no progress at item ")
-  static let s1634 = JsString("the preserved control character U+")
-  static let s1635 = JsString("the preserved white space of ")
-  static let s1636 = JsString("the rendered table has no node ")
-  static let s1637 = JsString("the rendered table of ")
-  static let s1638 = JsString("the rest fits but the break is at ")
-  static let s1639 = JsString("the shape transcript has no face ")
-  static let s1640 = JsString("the shape transcript holds no call ")
-  static let s1641 = JsString("the tables have no element")
-  static let s1642 = JsString("the text result [")
-  static let s1643 = JsString("the trig table has no entry for ")
-  static let s1644 = JsString("third_party/blink/renderer/platform/fonts/font_description.cc lines 268-279 at 145.0.7632.6 (EffectiveFontSize: floorf(size * PrecisionMultiplier()) / PrecisionMultiplier()) with font_cache_key.h line 53 (kFontSizePrecisionMultiplier = 100). The code is not platform-specific, but the rule is measured only on darwin-arm64 (notes/T035-slice-4a.md), so it is keyed there.")
+  static let s1631 = JsString("the last baseline of flex, grid or line-clamp container ")
+  static let s1632 = JsString("the line breaker made no progress at item ")
+  static let s1633 = JsString("the preserved control character U+")
+  static let s1634 = JsString("the preserved white space of ")
+  static let s1635 = JsString("the rendered table has no node ")
+  static let s1636 = JsString("the rendered table of ")
+  static let s1637 = JsString("the rest fits but the break is at ")
+  static let s1638 = JsString("the shape transcript has no face ")
+  static let s1639 = JsString("the shape transcript holds no call ")
+  static let s1640 = JsString("the tables have no element")
+  static let s1641 = JsString("the text result [")
+  static let s1642 = JsString("the trig table has no entry for ")
+  static let s1643 = JsString("third_party/blink/renderer/platform/fonts/font_description.cc lines 268-279 at 145.0.7632.6 (EffectiveFontSize: floorf(size * PrecisionMultiplier()) / PrecisionMultiplier()) with font_cache_key.h line 53 (kFontSizePrecisionMultiplier = 100). The code is not platform-specific, but the rule is measured only on darwin-arm64 (notes/T035-slice-4a.md), so it is keyed there.")
   static let s_tileSize = JsString("tileSize")
   static let s_top = JsString("top")
   static let s_touch = JsString("touch")
@@ -1660,11 +1659,11 @@ enum HS {
   static let s_touchPressed = JsString("touchPressed")
   static let s_touchReleased = JsString("touchReleased")
   static let s_trailing = JsString("trailing")
-  static let s1656 = JsString("trailing characters")
+  static let s1655 = JsString("trailing characters")
   static let s_trailingPreWrapNotHanging = JsString("trailingPreWrapNotHanging")
   static let s_trailingSpacingDropped = JsString("trailingSpacingDropped")
   static let s_transform = JsString("transform")
-  static let s1660 = JsString("transition script state ")
+  static let s1659 = JsString("transition script state ")
   static let s_translate = JsString("translate")
   static let s_translateX = JsString("translateX")
   static let s_translateY = JsString("translateY")
@@ -1680,20 +1679,20 @@ enum HS {
   static let s_underline = JsString("underline")
   static let s_unit = JsString("unit")
   static let s_unitsPerEm = JsString("unitsPerEm")
-  static let s1676 = JsString("unknown function ")
-  static let s1677 = JsString("unknown gradient plant ")
-  static let s1678 = JsString("unknown operation ")
+  static let s1675 = JsString("unknown function ")
+  static let s1676 = JsString("unknown gradient plant ")
+  static let s1677 = JsString("unknown operation ")
   static let s_unlisted = JsString("unlisted")
   static let s_unpremultiplied = JsString("unpremultiplied")
   static let s_unsupported = JsString("unsupported")
-  static let s1682 = JsString("unterminated string")
+  static let s1681 = JsString("unterminated string")
   static let s_untruncatedFontSize = JsString("untruncatedFontSize")
   static let s_updated = JsString("updated")
   static let s_value = JsString("value")
   static let s_values = JsString("values")
   static let s_vertical_align = JsString("vertical-align")
-  static let s1688 = JsString("vertical-align other than baseline on ")
-  static let s1689 = JsString("vertical-align other than baseline on atomic inline ")
+  static let s1687 = JsString("vertical-align other than baseline on ")
+  static let s1688 = JsString("vertical-align other than baseline on atomic inline ")
   static let s_verticalAlign = JsString("verticalAlign")
   static let s_viewport = JsString("viewport")
   static let s_viewportDirection = JsString("viewportDirection")
@@ -1703,17 +1702,17 @@ enum HS {
   static let s_viewportUnits = JsString("viewportUnits")
   static let s_viewportUnitsUnceiled = JsString("viewportUnitsUnceiled")
   static let s_visible = JsString("visible")
-  static let s1699 = JsString("white-space-collapse: ")
-  static let s1700 = JsString("white-space-collapse: break-spaces in the real face of ")
+  static let s1698 = JsString("white-space-collapse: ")
+  static let s1699 = JsString("white-space-collapse: break-spaces in the real face of ")
   static let s_whiteSpaceCollapse = JsString("whiteSpaceCollapse")
-  static let s1702 = JsString("whole px expected, got ")
+  static let s1701 = JsString("whole px expected, got ")
   static let s_wholePixelPositions = JsString("wholePixelPositions")
   static let s_width = JsString("width")
-  static let s1705 = JsString("with preserved white space")
-  static let s1706 = JsString("with text-align: justify")
-  static let s1707 = JsString("with text-overflow: ellipsis")
+  static let s1704 = JsString("with preserved white space")
+  static let s1705 = JsString("with text-align: justify")
+  static let s1706 = JsString("with text-overflow: ellipsis")
   static let s_word_break = JsString("word-break")
-  static let s1709 = JsString("word-break: ")
+  static let s1708 = JsString("word-break: ")
   static let s_word_spacing = JsString("word-spacing")
   static let s_wordBreak = JsString("wordBreak")
   static let s_wordBreakBreakWordIgnored = JsString("wordBreakBreakWordIgnored")
@@ -1736,9 +1735,9 @@ enum HS {
   static let s_zoomCssPx = JsString("zoomCssPx")
   static let s_zoomFontSize = JsString("zoomFontSize")
   static let s_zoomViewportPx = JsString("zoomViewportPx")
-  static let s1732 = JsString("\u{2010}")
-  static let s1733 = JsString("\u{2026}")
-  static let s1734 = JsString("\u{fffc}")
+  static let s1731 = JsString("\u{2010}")
+  static let s1732 = JsString("\u{2026}")
+  static let s1733 = JsString("\u{fffc}")
 }
 
 /// One of: JsonArr, JsonBool, JsonNull, JsonNum, JsonObj.
@@ -2075,7 +2074,7 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
         let ch: Double = try harness_peek(c)
         // ts: packages/translate/harness/harness.ts:224
         if (ch == -1.0) {
-          try harness_fail(HS.s1682)
+          try harness_fail(HS.s1681)
         }
         c.pos += 1.0
         // ts: packages/translate/harness/harness.ts:226
@@ -2296,7 +2295,7 @@ func harness_parseJson(_ text: JsString) throws -> any U_JsonArr_JsonBool_JsonNu
   try harness_skipWs(c)
   // ts: packages/translate/harness/harness.ts:354
   if (c.pos != jsLength(cps)) {
-    try harness_fail(HS.s1656)
+    try harness_fail(HS.s1655)
   }
   return v
 }
@@ -3293,7 +3292,7 @@ func harness_replayShaper(_ calls: JsArray<ReplayCall>) throws -> GlyphShaper {
         }
       }
     }
-    try harness_fail(jsConcat(HS.s1640, face, HS.s2, jsNumberToString(size), HS.s13, jsNumberToString(start), HS.s190, jsNumberToString(end), HS.s186, text))
+    try harness_fail(jsConcat(HS.s1639, face, HS.s2, jsNumberToString(size), HS.s13, jsNumberToString(start), HS.s190, jsNumberToString(end), HS.s186, text))
 })
 }
 
@@ -3306,7 +3305,7 @@ func harness_replayMeasurer(_ s: Shaping, _ faults: EngineFaults) throws -> Text
     let f: ReplayFace? = s.faces.get(family)
     // ts: packages/translate/harness/harness.ts:1226
     if (f == nil) {
-      try harness_fail(jsConcat(HS.s1639, family))
+      try harness_fail(jsConcat(HS.s1638, family))
     }
     return try jsUnwrap(f)
   }
@@ -3624,7 +3623,7 @@ func harness_unitsResult(_ name: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
     let mode: JsString = try harness_lit(jsUnwrap(v), JsArray<JsString>([HS.s_space_between, HS.s_space_around, HS.s_space_evenly]), HS.s168)
     return try units_distributedOffset(mode, harness_arg(a, 2.0), harness_arg(a, 3.0), harness_arg(a, 4.0))
   default:
-    try harness_fail(jsConcat(HS.s1676, name))
+    try harness_fail(jsConcat(HS.s1675, name))
   }
 }
 
@@ -4031,7 +4030,7 @@ func harness_tableTrig(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_Json
         }
       }
     }
-    try harness_fail(jsConcat(HS.s1643, hostBitsHex(r)))
+    try harness_fail(jsConcat(HS.s1642, hostBitsHex(r)))
   }
   return Trig({ (r: Double) throws -> Double in
     return try find(r).sin
@@ -4395,7 +4394,7 @@ func harness_libraryResult(_ op: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
   case HS.s_rt_interaction:
     return try harness_rtInteractionResult(a)
   default:
-    try harness_fail(jsConcat(HS.s1678, op))
+    try harness_fail(jsConcat(HS.s1677, op))
   }
 }
 

@@ -1798,7 +1798,7 @@ public func shaping_hyphenWidth(_ item: ShapeItem) throws -> any U_LineResult_ok
     }
     return try shaping_shapeItem((made as! ItemResult_okTrue).item)
   }
-  var r: ShapeResult = try own(S.s982)
+  var r: ShapeResult = try own(S.s981)
   // ts: packages/layout/src/shaping.ts:790
   if ((r.missing >= 0.0) || (jsLength(r.runs) == 0.0)) {
     try r = own(S.s156)
@@ -1877,7 +1877,7 @@ public func shaping_lineView(_ item: ShapeItem, _ paragraph: ShapeResult, _ star
   if (candidate >= rangeEnd) {
     // ts: packages/layout/src/shaping.ts:848
     if (breakOffset != rangeEnd) {
-      return LineResult_okFalse(false, jsConcat(S.s942, jsNumberToString(breakOffset)))
+      return LineResult_okFalse(false, jsConcat(S.s941, jsNumberToString(breakOffset)))
     }
     let missing: Double = try shaping_missingIn(JsArray<ShapeResult>([lineStart]))
     // ts: packages/layout/src/shaping.ts:850
@@ -2881,7 +2881,7 @@ public func shaping_breakItemLines(_ items: JsArray<any U_BreakItem_br_BreakItem
       }
       // ts: packages/layout/src/shaping.ts:1631
       if ((line.nextItem == curItem) && (line.nextOffset == curOffset)) {
-        throw try BreakFailure(jsConcat(S.s937, jsNumberToString(curItem)))
+        throw try BreakFailure(jsConcat(S.s936, jsNumberToString(curItem)))
       }
       _ = jsPush(lines, line)
       curItem = line.nextItem
