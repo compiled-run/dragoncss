@@ -71,7 +71,9 @@ the PM to do it. Never work around a refusal. Start a lane session on its PR's b
   head) or `head <sha>` ("already at a fixed point; no commit"); 1 failed, printing the failing step and its error; 2 error
   (a usage or gh error, a cancelled run, a run that is not the one asked for); 3 pending. It prints the run id; poll again
   with `pnpm ci:regen <branch> --run <id> --once`, or run the first command again: with the same `--head` it finds the same
-  run by its name, even after the run's regen commit moved the branch on.
+  run by its name, even after the run's regen commit moved the branch on. While a landing runs or both branch regen slots are
+  taken it does not dispatch yet (`PENDING (not dispatched)`, exit 3, no run id): run the first command again later; it
+  dispatches anyway 90 minutes after its first wait.
   After exit 0, `git pull --ff-only`. Never push while the run is in progress (it would fail with "moved during the run"
   and push nothing). If it fails, fix the cause, push, and run it again. If the runners are down, wait and say so in your
   receipt. Find a lane's regen runs after a pause:
