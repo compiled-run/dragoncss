@@ -90,6 +90,8 @@ const SUBSET = [
   'line-break',
   // css-text-4 §5.1: text-wrap-style, then the text-wrap shorthand, after text-break, as LONGHANDS registers them.
   'text-wrap-style', 'text-wrap',
+  // css-text-3 §7.2: text-align-last, after word-wrap, as LONGHANDS registers it.
+  'text-align-last',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // TXT2-i: hyphens (css-text-3 §6.1), after the line clamp, as LONGHANDS registers it.
@@ -148,6 +150,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink TextWrapStyle (css_properties.json5 keywords): auto, balance, pretty and stable; css-text-4's avoid-orphans is not
   // parsed in Chrome 145. Pinned by packages/parity/test/text-wrap-parse.test.ts.
   'text-wrap-style': 'auto | balance | stable | pretty',
+  // Blink TextAlignLast (css_properties.json5 keywords): css-text-3's match-parent is not a Chrome 145 value. Pinned by
+  // packages/parity/test/text-align-last-parse.test.ts.
+  'text-align-last': 'auto | start | end | left | right | center | justify',
   // Blink WordBreak (css_properties.json5 keywords): css-text-4's manual is not parsed in Chrome 145 (notes/T149-txt2-spec.md R2).
   'word-break': 'normal | break-all | keep-all | break-word | auto-phrase',
   // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.
