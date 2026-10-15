@@ -304,6 +304,20 @@ describe('pnpm regen chain', () => {
     expect(v.ran).toEqual(['gen', 'rows', 'other']);
   });
 
+  it('starts the free step whose last recorded run was longest first, never one an earlier pending step conflicts with', async () => {
+    const v = new World(SOURCES, IMPL);
+    const seed = (step: string, ms: number): void => v.store.put(step, 'an older key', { outputs: {}, inputs: {}, restorable: false, ms });
+    seed('rows', 900);
+    seed('other', 500);
+    await regen(CHAIN, { ...opts, jobs: 1 }, v.io());
+    // rows was the longest, but it reads gen's output, so it waits for gen; other, the longest free step, starts first.
+    expect(v.ran).toEqual(['other', 'gen', 'rows']);
+    const w = new World(SOURCES, IMPL);
+    await regen(CHAIN, { ...opts, jobs: 1 }, w.io());
+    expect(w.ran).toEqual(['gen', 'rows', 'other']);
+    expect([...w.store.entries.values()].every((e) => e.ms === 0)).toBe(true);
+  });
+
   it('fails a step that writes outside its declared outputs, and one that exits non-zero, recording no entry for it', async () => {
     const w = new World(SOURCES, { gen: (f) => f.set('data/c', 'edited') });
     const r = await regen([CHAIN[0]!], opts, w.io());
@@ -617,6 +631,8 @@ describe('regen cache entries', () => {
     expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: 'nope' }, inputs: {}, restorable: true }))).toBeNull();
     expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: blob }, inputs: {}, restorable: 'yes' }))).toBeNull();
     expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: blob }, inputs: { b: blob }, restorable: true }))).toEqual({ outputs: { a: blob }, inputs: { b: blob }, restorable: true });
+    expect(parseEntry(JSON.stringify({ version: 2, outputs: {}, inputs: {}, restorable: true, ms: 1500 }))).toEqual({ outputs: {}, inputs: {}, restorable: true, ms: 1500 });
+    expect(parseEntry(JSON.stringify({ version: 2, outputs: {}, inputs: {}, restorable: true, ms: 'slow' }))).toEqual({ outputs: {}, inputs: {}, restorable: true });
   });
 
   it('stores entries as files any worktree can read, and prunes old ones', () => {
