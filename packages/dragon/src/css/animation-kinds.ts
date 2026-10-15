@@ -14,6 +14,7 @@ import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
 import { FLOAT_ANIMATION } from './animation-kinds/float.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
+import { LINE_BREAK_ANIMATION } from './animation-kinds/line-break.ts';
 import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
@@ -50,6 +51,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FLOAT_ANIMATION,
   ...GRID_ANIMATION,
   ...INLINE_ANIMATION,
+  ...LINE_BREAK_ANIMATION,
   ...LINE_CLAMP_ANIMATION,
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,

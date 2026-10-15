@@ -53,6 +53,7 @@ import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
 import { TEXT_INDENT } from './fixture-groups/text-indent.ts';
 import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { TEXT_LINE_BREAK } from './fixture-groups/text-line-break.ts';
 import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
@@ -170,6 +171,7 @@ export const GROUPS = {
   'text-indent': TEXT_INDENT,
   'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,
+  'text-line-break': TEXT_LINE_BREAK,
   'text-overflow': TEXT_OVERFLOW,
   'text-spacing': TEXT_SPACING,
   'text-transform': TEXT_TRANSFORM,
