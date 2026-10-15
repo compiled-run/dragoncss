@@ -5,7 +5,8 @@ import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
 export const ALIASES: readonly FixtureSpec[] = [
-  // -webkit-background-clip alone, in both orders with background-clip, after the background shorthand and with !important.
+  // -webkit-background-clip alone, in both orders with background-clip, after the background shorthand and with !important, on
+  // boxes with an opaque solid border and no padding: native refuses a clip that would show what is behind the box (BG2c).
   both('alias-background'),
   layout('alias-flex'),
   both('alias-logical'),
