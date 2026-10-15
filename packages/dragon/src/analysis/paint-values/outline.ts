@@ -85,8 +85,8 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
 };
 
 /**
- * Why a layer item of the stacking tree (lower/paint/stacking.ts: a positioned box, a flex item with a z-index, a box with opacity
- * below 1, a transform, or will-change: transform or opacity) paints in a layer of its own rather than in its context's flow.
+ * Why a layer item of the stacking tree (lower/paint/stacking.ts: a positioned box, a flex or grid item with a z-index, a box with
+ * opacity below 1, a transform, or will-change: transform or opacity) paints in a layer of its own rather than in its context's flow.
  */
 function layerReason(el: ResolvedElement): string {
   const position = keywordOf(el, 'position');
@@ -95,9 +95,9 @@ function layerReason(el: ResolvedElement): string {
   if (opacity !== null && opacity < 1) return `opacity: ${opacity}`;
   if (transformsDescendants(el)) return 'a transform';
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
-  // A static box's z-index makes it a layer item only as a flex item (resolvedStackTree), the one reason left.
+  // A static box's z-index makes it a layer item only as a flex or grid item (resolvedStackTree), the one reason left.
   const z = zIndexOf((el.props.get('z-index') as ResolvedValue).value);
-  if (z !== null) return `z-index: ${z} on a flex item`;
+  if (z !== null) return `z-index: ${z} on a flex or grid item`;
   throw new Error(`${el.element.address}: a layer item with no reason to be one`);
 }
 

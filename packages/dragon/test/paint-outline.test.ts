@@ -170,10 +170,11 @@ describe('outline: the native targets draw every style but auto, the side painte
       ['.q { position: absolute; width: 5px; height: 5px; }', 'q has position: absolute'],
       ['.q { height: 5px; transform: translateX(2px); }', 'q has a transform'],
       // Master's stacking tree (lower/paint/stacking.ts) also makes these layer items: opacity below 1, will-change: opacity, and
-      // a z-index on a flex item.
+      // a z-index on a flex or grid item.
       ['.q { height: 5px; opacity: 0.5; }', 'q has opacity: 0.5'],
       ['.q { height: 5px; will-change: opacity; }', 'q has will-change: opacity'],
-      ['body { display: flex; } .q { height: 5px; z-index: 2; }', 'q has z-index: 2 on a flex item'],
+      ['body { display: flex; } .q { height: 5px; z-index: 2; }', 'q has z-index: 2 on a flex or grid item'],
+      ['body { display: grid; } .q { height: 5px; z-index: 2; }', 'q has z-index: 2 on a flex or grid item'],
     ] as const;
     for (const [css, what] of layers) {
       const c = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);

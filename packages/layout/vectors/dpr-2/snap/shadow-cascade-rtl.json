@@ -89,6 +89,22 @@
    "y": 11520,
    "width": 7680,
    "height": 5120
+  },
+  {
+   "id": "cc-parent",
+   "parent": "stage",
+   "x": 12032,
+   "y": 11520,
+   "width": 5120,
+   "height": 5120
+  },
+  {
+   "id": "cc-inherit",
+   "parent": "cc-parent",
+   "x": 1024,
+   "y": 1024,
+   "width": 3072,
+   "height": 2048
   }
  ],
  "output": [
@@ -190,6 +206,24 @@
    "bottom": 260,
    "width": 120,
    "height": 80
+  },
+  {
+   "id": "cc-parent",
+   "left": 188,
+   "top": 180,
+   "right": 268,
+   "bottom": 260,
+   "width": 80,
+   "height": 80
+  },
+  {
+   "id": "cc-inherit",
+   "left": 204,
+   "top": 196,
+   "right": 252,
+   "bottom": 228,
+   "width": 48,
+   "height": 32
   }
  ]
 }
