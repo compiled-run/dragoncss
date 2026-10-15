@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 158,
-  "errors": 153,
+  "diagnostics": 172,
+  "errors": 167,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -156,8 +156,8 @@
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 5,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 5,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 22,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 22,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 29,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 29,
    "DRAGON_UNSUPPORTED_VALUE [web]": 4
   },
   "perTarget": {
@@ -183,7 +183,7 @@
      "DRAGON_UNSUPPORTED_FONT": 25,
      "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 22
+     "DRAGON_UNSUPPORTED_VALUE": 29
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -200,7 +200,7 @@
      "DRAGON_UNSUPPORTED_FONT": 25,
      "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 22
+     "DRAGON_UNSUPPORTED_VALUE": 29
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -215,11 +215,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 254,
+  "supportedBothTargets": 248,
   "supportedWeb": 274,
-  "supportedIos": 254,
-  "supportedAndroid": 254,
-  "supportPercent": 87.9,
+  "supportedIos": 248,
+  "supportedAndroid": 248,
+  "supportPercent": 85.8,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -304,7 +304,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 60,
    "B-unwrapped": 60,
-   "C-context": 115
+   "C-context": 129
   }
  },
  "features": {
@@ -835,9 +835,11 @@
    "property": "transition",
    "value": "margin-right 0.5s ease",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 33,
@@ -1027,9 +1029,11 @@
    "property": "transition",
    "value": "all 0.3s ease",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 49,
@@ -1359,9 +1363,11 @@
    "property": "animation",
    "value": "album-spin 20s linear infinite",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 76,
@@ -1371,9 +1377,11 @@
    "property": "animation-play-state",
    "value": "paused",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 77,
@@ -1496,9 +1504,11 @@
    "property": "animation-play-state",
    "value": "running",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 87,
@@ -2774,9 +2784,11 @@
    "property": "transition",
    "value": "color 0.2s ease,\n\t\ttransform 0.2s ease",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 191,
@@ -5304,6 +5316,82 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@961-983|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 961,
+    "end": 983,
+    "line": 67,
+    "column": 14,
+    "text": "margin-right 0.5s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@961-983|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 961,
+    "end": 983,
+    "line": 67,
+    "column": 14,
+    "text": "margin-right 0.5s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1589-1602|transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1589,
+    "end": 1602,
+    "line": 97,
+    "column": 14,
+    "text": "all 0.3s ease"
+   },
+   "message": "transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1589-1602|transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1589,
+    "end": 1602,
+    "line": 97,
+    "column": 14,
+    "text": "all 0.3s ease"
+   },
+   "message": "transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1614-1616|page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -5437,6 +5525,82 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2418-2448|animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2418,
+    "end": 2448,
+    "line": 145,
+    "column": 13,
+    "text": "album-spin 20s linear infinite"
+   },
+   "message": "animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2418-2448|animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2418,
+    "end": 2448,
+    "line": 145,
+    "column": 13,
+    "text": "album-spin 20s linear infinite"
+   },
+   "message": "animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2473-2479|animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2473,
+    "end": 2479,
+    "line": 146,
+    "column": 24,
+    "text": "paused"
+   },
+   "message": "animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2473-2479|animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2473,
+    "end": 2479,
+    "line": 146,
+    "column": 24,
+    "text": "paused"
+   },
+   "message": "animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNPROVEN_CONTEXT|android|css@2514-2678|background-image on page/song-call/record: Chrome paints the background of this rounded box into a bleed-avoidance layer (kBackgroundBleedClipLayer: a border radius with a border not every side of which is opaque and solid, or with a background colour or more than one layer), whose origin in each cc tile is the anti-aliased clip's coverage bounds; that origin starts the dither and the shader matrix, and the native targets do not model it (BG2c)",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
@@ -5545,6 +5709,44 @@
     "text": "0 28px 70px var(--shadow-strong),\n\t\tinset 0 0 0 0.7rem rgba(255, 255, 255, 0.02),\n\t\tinset 0 0 2.5rem rgba(255, 255, 255, 0.05)"
    },
    "message": "page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3006-3013|animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3006,
+    "end": 3013,
+    "line": 164,
+    "column": 24,
+    "text": "running"
+   },
+   "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3006-3013|animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3006,
+    "end": 3013,
+    "line": 164,
+    "column": 24,
+    "text": "running"
+   },
+   "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -5931,6 +6133,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5976,
+    "end": 6014,
+    "line": 339,
+    "column": 3,
+    "text": "color 0.2s ease,\n\t\ttransform 0.2s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5976,
+    "end": 6014,
+    "line": 339,
+    "column": 3,
+    "text": "color 0.2s ease,\n\t\ttransform 0.2s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6382-6415|page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6058,6 +6298,44 @@
     "text": "0.2rem"
    },
    "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8334-8355|at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8334,
+    "end": 8355,
+    "line": 488,
+    "column": 1,
+    "text": "@keyframes album-spin"
+   },
+   "message": "at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8334-8355|at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8334,
+    "end": 8355,
+    "line": 488,
+    "column": 1,
+    "text": "@keyframes album-spin"
+   },
+   "message": "at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
