@@ -50,9 +50,12 @@ function withoutWrapKeys(v: unknown): unknown {
  * the BASE fixtures outline-3d, outline-dashed and radius-double (into its own outline-web and radius-double-web), which changes their
  * vectors, pixels and captures (84 files with their -rtl twins) and nothing else, so both digests are retaken on master 344627d93a.
  * With those 84 files put back at 6964e8a337 that tree still gives 690a1b3fdb… and 3c5abaa478….
+ * The landing of #340 and #332 moves BASE again: #340 adds an inherited-currentcolor shadow to the BASE fixture shadow-cascade and #332
+ * a hidden shape to svg-hidden, which changes their vectors, pixels and captures (and their -rtl twins) and nothing else, so both
+ * digests are retaken on that landing's regenerated head.
  */
-const BASE_OUTPUTS = { files: 13143, digest: 'a760209e420b71138667226b7ff36e41792201f5900138fe306b06d93310725b' };
-const BASE_CAPTURES = { files: 3354, digest: '7890a54aa480561d16640dce565ea0f955c602a16d92a0ca4cdc0140fa9533ec' };
+const BASE_OUTPUTS = { files: 13143, digest: 'e8b2ca0d4199dcdf50c6720d58a88de4a168ab91810669574cc77a25ac4565f3' };
+const BASE_CAPTURES = { files: 3354, digest: '4063b72a4b1cec622ed201aa957cce0bc9df96bb01187907d5bbcf2e9978312e' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -221,7 +224,7 @@ describe('the native refusals', () => {
 });
 
 /** Case id prefixes of the groups that landed after BASE beside those named in the filter below (see own). */
-const LATER_PREFIXES = ['atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-'];
+const LATER_PREFIXES = ['atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items'];
 
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
@@ -233,9 +236,9 @@ describe('BASE pins', () => {
   // files are left out as TXT-W1's are (they add files only, and change none of BASE's).
   // TXT2-a's text-break cases are left out the same way.
   // The groups that landed after BASE and add files only: G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web,
-  // resize-values, G3b's grid-baseline-axes, PNT's text-decoration-native-current and TXT2-g's line-clamp cases. (PNT1's change to
+  // resize-values, G3b's grid-baseline-axes, PNT's text-decoration-native-current, TXT2-g's line-clamp cases and PNT1's stacking-grid-items cases. (PNT1's change to
   // three BASE fixtures is retaken in BASE_OUTPUTS and BASE_CAPTURES, not left out.)
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-)/.test(p);
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
