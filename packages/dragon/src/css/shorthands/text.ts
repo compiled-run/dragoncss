@@ -1,5 +1,6 @@
 // css-text-4 §3: white-space sets white-space-collapse and text-wrap-mode (white-space-trim is not a Dragon longhand). css-fonts-4
 // §2.8 and §7.1: the font and font-synthesis shorthands, as Chrome 145 parses and expands them (TXT-W2).
+import { FONT_VARIANT_LONGHANDS } from '../properties/font-variant.ts';
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import type { FontFaults } from '../../fonts/faults.ts';
@@ -109,12 +110,13 @@ function fontParts(tokens: readonly CssNode[]): FontParts | null {
 }
 
 /** The font longhands Dragon models, which a CSS-wide keyword sets (Chrome 145 also sets the FONT_RESET_LONGHANDS). */
-const FONT_LONGHANDS: readonly Longhand[] = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family'];
+const FONT_LONGHANDS: readonly Longhand[] = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', ...FONT_VARIANT_LONGHANDS];
 const SYNTHESIS_LONGHANDS: readonly Longhand[] = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
 
 /**
  * css-fonts-4 §2.8 as Chrome 145 expands it: font sets font-style, font-weight, font-size, line-height (normal when no "/") and
- * font-family, and resets the FONT_RESET_LONGHANDS Dragon does not model, so small-caps, a non-normal stretch and the system fonts
+ * font-family, resets the font-variant longhands to normal (small-caps is refused, as font-variant-caps refuses it), and resets
+ * the FONT_RESET_LONGHANDS Dragon does not model, so a non-normal stretch and the system fonts
  * are refused; it does not set font-synthesis. Chrome's parse rules beyond the grammar hold (font-style left and right, the
  * oblique angle range). The faults are the planted ones of fonts/faults.ts.
  */
@@ -136,7 +138,7 @@ export function fontShorthand(faults: FontFaults = NO_FONT_FAULTS): ShorthandHan
         if (v !== null && 'invalid' in v) return refuse(parts.style[1] as CssNode, `font: ${v.invalid}`, 'DRAGON_CSS_INVALID_VALUE');
         if (v !== null && 'refused' in v) return refuse(parts.style[1] as CssNode, `font: ${v.refused}`);
       }
-      if (parts.variant !== null) return refuse(parts.variant, 'font: small-caps sets font-variant-caps, which Dragon does not model', 'DRAGON_UNSUPPORTED_VALUE', 'Leave small-caps out of the font shorthand.');
+      if (parts.variant !== null) return refuse(parts.variant, 'font: small-caps sets font-variant-caps: small-caps, which makes Chrome draw small capitals, which Dragon does not draw yet', 'DRAGON_UNSUPPORTED_VALUE', 'Leave small-caps out of the font shorthand.');
       if (parts.stretch !== null) return refuse(parts.stretch, `font: ${generate(parts.stretch)} sets font-stretch, which Dragon does not model`, 'DRAGON_UNSUPPORTED_VALUE', 'Leave the width keyword out of the font shorthand.');
       return null;
     },
@@ -152,6 +154,8 @@ export function fontShorthand(faults: FontFaults = NO_FONT_FAULTS): ShorthandHan
       if (parts.lineHeight !== null) out.push(explicit('line-height', toValue(parts.lineHeight, 'line-height')));
       else if (!faults.lineHeightNotReset) out.push(implicit('line-height', kw('normal')));
       out.push(explicit('font-family', familyValue(parts.family)));
+      // Chrome's font shorthand resets every font-variant longhand (properties/font-variant.ts).
+      if (!faults.variantNotReset) out.push(...FONT_VARIANT_LONGHANDS.map((p) => implicit(p, kw('normal'))));
       if (faults.synthesisResetByShorthand) out.push(...SYNTHESIS_LONGHANDS.map((p) => implicit(p, kw('auto'))));
       return out;
     },

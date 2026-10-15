@@ -14,6 +14,7 @@ import * as dragon from 'dragon';
 import { fixtureToInput } from '../src/fixture-reader.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { FONT_RESET_LONGHANDS } from '../../dragon/src/css/properties/text.ts';
+import { FONT_VARIANT_LONGHANDS } from '../../dragon/src/css/properties/font-variant.ts';
 import { fontShorthand, TEXT_SHORTHANDS } from '../../dragon/src/css/shorthands/text.ts';
 import type { ShorthandHandler } from '../../dragon/src/css/shorthands/shared.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
@@ -62,14 +63,14 @@ function planted(handler: ShorthandHandler, value: string): (readonly [string, s
 type Item = { readonly property: string; readonly value: string; readonly code: string | null; readonly longhands: readonly (readonly [string, string])[] };
 type Seen = { readonly parsed: boolean; readonly diff: readonly string[]; readonly reset: readonly string[] };
 
-const COMPARED = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...Object.keys(FONT_RESET_LONGHANDS)];
+const COMPARED = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...FONT_VARIANT_LONGHANDS, ...Object.keys(FONT_RESET_LONGHANDS)];
 
 async function chromeSeen(sets: readonly (readonly Item[])[]): Promise<Seen[][]> {
   const browser = await chrome();
   try {
     const page = await browser.newPage();
-    // The parent's line-height, weight and font-synthesis are not initial, so a longhand Dragon fails to reset or inherit shows.
-    await page.setContent('<!DOCTYPE html><div id="p" style="line-height:7px;font-weight:700;font-synthesis:none;font-size:20px"><div id="a"></div><div id="c"></div></div>');
+    // The parent's line-height, weight, font-synthesis and font-variant are not initial, so a longhand Dragon fails to reset or inherit shows.
+    await page.setContent('<!DOCTYPE html><div id="p" style="line-height:7px;font-weight:700;font-synthesis:none;font-size:20px;font-variant:no-common-ligatures tabular-nums jis04 historical-forms small-caps sub"><div id="a"></div><div id="c"></div></div>');
     return (await page.evaluate(`(${JSON.stringify(sets)}).map((items) => items.map((it) => {
       const L = ${JSON.stringify(COMPARED)}, R = ${JSON.stringify(FONT_RESET_LONGHANDS)};
       const a = document.getElementById('a'), c = document.getElementById('c');
@@ -115,7 +116,7 @@ describe('the font and font-synthesis shorthands expand as Chrome 145 expands th
     expect(judge(real, seen as Seen[]).filter((p) => GRAMMAR_GAPS.includes(p))).toEqual(GRAMMAR_GAPS);
     // The production handler and the unfaulted builder agree on every accepted value.
     for (const it of real.filter((x) => x.property === 'font' && x.code === null)) expect(planted(fontShorthand(NO_FONT_FAULTS), it.value), it.value).toEqual([...it.longhands]);
-    expect(TEXT_SHORTHANDS.font.longhands).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family']);
+    expect(TEXT_SHORTHANDS.font.longhands).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', ...FONT_VARIANT_LONGHANDS]);
     SHORTHAND_FAULTS.forEach((fault, i) => expect(judge(plantSets[i] as Item[], plantSeen[i] as Seen[]).length, fault).toBeGreaterThan(0));
     const refused = real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE').map((it) => `${it.code as string} ${it.property}: ${it.value}`);
     expect(refused).toEqual([
@@ -147,14 +148,21 @@ describe('the font-shorthand group', () => {
   // BASE is master af67457777 (#262, which landed TXT-W1). The pins are digests (PIN-DERIVE: CI checks out the head alone, so they
   // read no git history), each taken at BASE with git; a merge that moves BASE retakes them there and states why in its message.
   /** sha256 of "<path>\t<sha256 of the capture without the keys added since>" lines in path order, over every capture but TXT-W2's own. */
-  const BASE_CAPTURES = { files: 3164, digest: '212927bd75ad77ec1c87160f5dad064452cf959f9ee8ef38bfc9572d9f33fc45' };
+  // Retaken on master 285ce07960: #340 added an inherited-currentcolor shadow to the BASE fixture shadow-cascade (its 8 captures), the
+  // only BASE capture that changed once the keys below are stripped and the later groups left out.
+  const BASE_CAPTURES = { files: 3164, digest: '3cbc1a47bac6311636583c8ab7f997bab146850718a182de10a785fb8cb35f57' };
   // TDEC-a adds the decoration longhands after TXT-W2; BASE has neither, so stripping both leaves BASE's digest.
-  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS];
+  // The keys added since BASE: TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2's spacing, text-indent,
+  // text-transform, text-overflow, overflow-wrap, word-break and line-clamp, INL's vertical-align, float and clear, user-select, resize
+  // and SVG-a's paint; BASE has none of them, so stripping them leaves BASE's captures.
+  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width', ...FONT_VARIANT_LONGHANDS];
+  // The groups that landed after BASE and add files and layout cases only (each prefix matches no BASE case or capture).
+  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-)/;
   it('every capture of BASE is unchanged but for the keys added since, which every node has', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
       .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/')))
-      .filter((p) => p.endsWith('.json') && !/(^|\/)font-shorthand-/.test(p)).sort();
+      .filter((p) => p.endsWith('.json') && !/(^|\/)font-shorthand-/.test(p) && !LATER.test(p)).sort();
     const lacking: string[] = [];
     const lines = paths.map((p) => {
       const c = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
@@ -175,7 +183,7 @@ describe('the font-shorthand group', () => {
     // Groups after the per-feature split run in id order (fixtures.ts), so the font-shorthand group sits among them.
     expect(FIXTURE_GROUPS.some((g) => g.id === 'font-shorthand')).toBe(true);
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
-    const base = ids.filter((id) => !added.includes(id));
+    const base = ids.filter((id) => !added.includes(id) && !LATER.test(id));
     // BASE's FIXTURES hold 778 layout cases.
     expect(base.length).toBe(778);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('42a7d7b6b83d9843d09b712fd88325a0d88f54ed82f0954fe5e79c54753da1dc');
