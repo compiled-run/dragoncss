@@ -522,7 +522,18 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
     }
-    if (t.wordBreak !== 'normal' && t.wordBreak !== 'break-word') unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: ${t.wordBreak} on ${t.id} (TXT2-d)`);
+    // TXT2-d (notes/T149-txt2-spec.md R15): keep-all changes nothing outside CJK, which the script gate keeps out; break-all is laid
+    // out over ASCII letters, digits and spaces alone, the text whose break-all opportunities Chrome is proven on (breakAllOpportunities).
+    if (t.wordBreak === 'auto-phrase') unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: ${t.wordBreak} on ${t.id} (TXT2-d)`);
+    if ((t.wordBreak === 'break-all' || t.wordBreak === 'keep-all') && t.font.family !== AHEM_FACE_ID) {
+      unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: ${t.wordBreak} on ${t.id}, which is in a real face: it is proven over Ahem only (TXT2-d)`);
+    }
+    if (t.wordBreak === 'break-all') {
+      for (const ch of t.text) {
+        const cp = ch.codePointAt(0) as number;
+        if (cp !== SPACE && !isAsciiAlphanumeric(cp)) unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: break-all on ${t.id}, which holds U+${cp.toString(16).toUpperCase()}: break-all is laid out over ASCII letters, digits and spaces only (TXT2-d)`);
+      }
+    }
     if (first !== undefined && (t.overflowWrap !== first.overflowWrap || t.wordBreak !== first.wordBreak)) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-3 §5.2, §5.5', `text runs with different overflow-wrap or word-break in one formatting context of ${box.id}`);
     }
@@ -542,7 +553,8 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   if (strut === null) throw new Error(`${box.id} has inline content and no strut; validateLayoutInput rejects this input`);
   const starts: number[] = [];
   const wrap = first === undefined || first.textWrapMode === 'wrap';
-  const boundaries = boundariesOf(ctx, box, items, wrap, shaped, mode, starts);
+  const breakAll = first !== undefined && first.wordBreak === 'break-all' && !ctx.faults.breakAllIgnored;
+  const boundaries = boundariesOf(ctx, box, items, wrap, shaped, mode, starts, breakAll);
   const graphemeItems: number[] = [];
   const graphemes = wrap && (anywhere || minAnywhere) ? graphemeBoundariesOf(items, graphemeItems) : [];
   return {
@@ -734,8 +746,8 @@ function afterCloses(items: readonly Item[], i: number): number {
 }
 
 /** Adds the soft boundaries of one run of text (the item indices of its characters) to out. */
-function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, out: Boundary[], starts: number[]): void {
-  for (const p of opportunities(ctx, box, run.map((i) => (items[i] as Item).cp), wrap, shaped, mode)) {
+function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, out: Boundary[], starts: number[], breakAll: boolean): void {
+  for (const p of opportunities(ctx, box, run.map((i) => (items[i] as Item).cp), wrap, shaped, mode, breakAll)) {
     out.push({ at: afterCloses(items, run[p - 1] as number), forced: false });
     starts.push(run[p] as number);
   }
@@ -748,24 +760,24 @@ function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run
  * opportunity between two characters becomes a boundary after the close tags that follow the first (Blink moves a break before a
  * close tag after it) and before any open tag. A <br> forces a boundary after it and the close tags that follow it.
  */
-function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, starts: number[]): Boundary[] {
+function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, starts: number[], breakAll: boolean): Boundary[] {
   const out: Boundary[] = [];
   let run: number[] = [];
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Item;
     if (it.kind === 'char' || it.kind === 'atomic') run.push(i);
     else if ((it.kind === 'br' && !ctx.faults.brIgnored) || it.kind === 'nl') {
-      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts, breakAll);
       run = [];
       out.push({ at: afterCloses(items, i), forced: true });
     } else if (ctx.faults.breakAtBoxBoundary && wrap && run.length > 0 && (it.kind === 'open' || it.kind === 'close')) {
       // Planted fault breakAtBoxBoundary: a soft wrap opportunity at every box boundary inside text.
-      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts, breakAll);
       run = [];
       out.push({ at: it.kind === 'open' ? i : afterCloses(items, i), forced: false });
     }
   }
-  addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts);
+  addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts, breakAll);
   // One boundary per place, in item order; a forced one wins over a soft one at the same place.
   const ordered = [...out].sort((x, y) => (x.at !== y.at ? x.at - y.at : x.forced === y.forced ? 0 : x.forced ? -1 : 1));
   const sorted: Boundary[] = [];
@@ -779,7 +791,7 @@ function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: bo
 }
 
 /** The soft wrap opportunities of one run of text: code point positions where a line may start (ahemOpportunities). */
-function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse): number[] {
+function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, breakAll: boolean): number[] {
   const out: number[] = [];
   if (cps.length === 0) return out;
   if (ctx.faults.spaceOnlyBreaks) {
@@ -793,7 +805,24 @@ function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: b
   }
   const faults: LineBreakFaults = { breakAfterSolidus: ctx.faults.breakAfterSolidus, noHyphenDigitBreak: ctx.faults.noHyphenDigitBreak };
   const base = shaped ? latinOpportunities(box, cps, wrap, faults) : atomicOpportunities(box, cps, wrap, ctx.faults.noBreakAroundAtomic, faults);
-  return wrap && mode === 'break-spaces' ? withEverySpace(cps, base) : base;
+  const spaced = wrap && mode === 'break-spaces' ? withEverySpace(cps, base) : base;
+  return wrap && breakAll ? breakAllOpportunities(cps, spaced) : spaced;
+}
+
+/**
+ * word-break: break-all (css-text-3 §5.2, notes/T149-txt2-spec.md R15): letters and numbers break as ideographs (UAX #14 AL and NU
+ * as ID, so LB31 allows a break between any two), on top of the normal opportunities. Only ASCII letters, digits and spaces reach
+ * it (prepareInline refuses the rest). Planted fault breakAllIgnored lays break-all out as normal.
+ */
+export function breakAllOpportunities(cps: readonly number[], base: readonly number[]): number[] {
+  const out: number[] = [];
+  let k = 0;
+  for (let i = 1; i < cps.length; i++) {
+    while (k < base.length && (base[k] as number) < i) k++;
+    const listed = k < base.length && (base[k] as number) === i;
+    if (listed || (isAsciiAlphanumeric(cps[i - 1] as number) && isAsciiAlphanumeric(cps[i] as number))) out.push(i);
+  }
+  return out;
 }
 
 /**

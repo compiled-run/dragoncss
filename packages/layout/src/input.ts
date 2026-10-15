@@ -384,7 +384,7 @@ export type WhiteSpaceCollapse = 'collapse' | 'preserve' | 'preserve-breaks' | '
 export type TextWrapMode = 'wrap' | 'nowrap';
 /** css-text-3 §5.5 overflow-wrap (word-wrap is its alias). */
 export type OverflowWrap = 'normal' | 'break-word' | 'anywhere';
-/** css-text-3 §5.2 word-break; break-all, keep-all and auto-phrase are refused (code word-break, TXT2-d). */
+/** css-text-3 §5.2 word-break; auto-phrase, and break-all over anything but ASCII letters, digits and spaces, are refused (code word-break, TXT2-d). */
 export type WordBreak = 'normal' | 'break-all' | 'keep-all' | 'break-word' | 'auto-phrase';
 
 /** A text run with every inherited text property written on it by the compiler (goal.md principle 3). */
