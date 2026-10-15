@@ -146,7 +146,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -285,7 +286,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -424,7 +426,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -583,7 +586,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -742,7 +746,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -881,7 +886,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -1020,7 +1026,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -1179,7 +1186,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -1318,7 +1326,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -1477,7 +1486,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -1616,7 +1626,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -1775,7 +1786,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -1934,7 +1946,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -2073,7 +2086,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -2212,7 +2226,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -2371,7 +2386,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -2510,7 +2526,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -2649,7 +2666,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -2808,7 +2826,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -2947,7 +2966,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -3106,7 +3126,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -3265,7 +3286,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -3404,7 +3426,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -3563,7 +3586,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -3702,7 +3726,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
@@ -3881,7 +3906,8 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "text-shadow": "none"
       }
     },
     {
