@@ -555,7 +555,8 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(calls).toHaveLength(5);
     for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.mode != 'patch' }}"`);
     expect(round).toContain('save_cache: { type: boolean, required: false, default: true }');
-    expect(round).toMatch(/- name: Save the regen cache\n {8}if: success\(\) && inputs\.save_cache\n {8}uses: actions\/cache\/save@v4/);
+    // ...and only on the last round, the one whose other side would change nothing (each round's store holds the earlier ones).
+    expect(round).toMatch(/- name: Save the regen cache\n {8}if: success\(\) && inputs\.save_cache && steps\.next\.outputs\.next == 'false'\n {8}uses: actions\/cache\/save@v4/);
     // setup-node's pnpm cache saves in a post step: off unless the round may save (#220 review).
     expect([...round.matchAll(/\n {10}cache: ([^\n]+)/g)].map((m) => m[1])).toEqual(["${{ inputs.save_cache && 'pnpm' || '' }}"]);
     // Every cache step that saves (actions/cache or actions/cache/save) is gated on save_cache.
