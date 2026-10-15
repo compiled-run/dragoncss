@@ -294,17 +294,18 @@ export type UnorderedItem = { readonly id: string; readonly container: string; r
  * The layer items whose order-modified place Dragon cannot prove, in a container whose items set an order other than 0. 'deep':
  * Blink sorts a layer by order only when its layout parent or grandparent is the container
  * (paint_layer_stacking_node.cc ChildOfFlexboxOrGridOrGridLanesParentOrGrandparent), so an item deeper inside, with no layer item
- * above it at depth 1 or 2, keeps a place the stack tree's sort does not give; wrapped tells a depth 2 node that may sit in an
- * anonymous block of its parent (inline-level). 'fraction': an order calculation that is not a whole 32-bit integer, which Blink
+ * above it at depth 1 or 2, keeps a place the stack tree's sort does not give; wrapped tells a depth 2 node that Blink does not
+ * compare with the container's items: one that may sit in an anonymous block of its parent (inline-level), or whose parent is
+ * itself a flex or grid container (Blink takes the parent as the item, of the inner container). 'fraction': an order calculation that is not a whole 32-bit integer, which Blink
  * rounds and clamps (ComputeInteger) and the stack tree compares unrounded. 'barrier': a clipping box below an item's child, which
  * Blink gives a paint layer of its own among the sorted ones (overflow clip) that OrderLessThan never moves, and the stable sort
  * then keeps the layer items on either side of it in tree order; the stack tree has no node for that layer.
  */
-export function unorderedItems(root: StackNode, wrapped: (n: StackNode) => boolean): readonly UnorderedItem[] {
+export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: StackNode) => boolean): readonly UnorderedItem[] {
   const out: UnorderedItem[] = [];
   const whole = (o: number): boolean => Number.isInteger(o) && o >= -2147483648 && o <= 2147483647;
-  const visit = (n: StackNode, container: string, depth: number, fraction: boolean): void => {
-    const deep = depth >= 3 || (depth === 2 && wrapped(n));
+  const visit = (n: StackNode, parent: StackNode, container: string, depth: number, fraction: boolean): void => {
+    const deep = depth >= 3 || (depth === 2 && wrapped(n, parent));
     if (isItem(n, false) && (deep || fraction)) {
       out.push({ id: n.id, container, kind: fraction ? 'fraction' : 'deep' });
       return;
@@ -312,11 +313,11 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode) => boole
     // A layer item at depth 1 or 2 is the layer Blink sorts, and the items inside it follow it.
     if (isItem(n, false)) return;
     if (n.clips && deep) out.push({ id: n.id, container, kind: 'barrier' });
-    for (const c of n.children) visit(c, container, depth + 1, fraction);
+    for (const c of n.children) visit(c, n, container, depth + 1, fraction);
   };
   const walk = (n: StackNode): void => {
     const orders = n.children.map((c) => c.order ?? 0);
-    if (orders.some((o) => o !== 0)) for (const c of n.children) visit(c, n.id, 1, !orders.every(whole));
+    if (orders.some((o) => o !== 0)) for (const c of n.children) visit(c, n, n.id, 1, !orders.every(whole));
     for (const c of n.children) walk(c);
   };
   walk(root);

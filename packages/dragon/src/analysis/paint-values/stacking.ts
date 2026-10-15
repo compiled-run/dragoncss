@@ -71,7 +71,7 @@ export function checkStackingClips(el: ResolvedElement, propagated: ResolvedElem
   walk(el);
   const tree = resolvedStackTree(el, propagated);
   const inlineLevel = (n: StackNode): boolean => ['inline', 'inline-block', 'inline-flex', 'inline-grid'].includes(keyword(byId.get(n.id) ?? el, 'display'));
-  for (const { id, container, kind: reason } of unorderedItems(tree, (n) => !n.text && inlineLevel(n))) {
+  for (const { id, container, kind: reason } of unorderedItems(tree, (n, parent) => (!n.text && inlineLevel(n)) || FLEX_OR_GRID.includes(keyword(byId.get(parent.id) ?? el, 'display')))) {
     const at = byId.get(id);
     if (at === undefined) throw new Error(`${id}: an unordered stacking item that is not an element`);
     for (const t of targets) {

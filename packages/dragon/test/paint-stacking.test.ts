@@ -206,6 +206,23 @@ describe('stacking: refusals on the native targets', () => {
     const child = compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'a', ['a'], [div(r, 'z', ['z'])]), div(r, 'b', [])])]);
     expect(child.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
+  it('an item\'s child under an item that is itself a flex or grid container is refused (Blink compares it within the inner container), a block item\'s child compiles', () => {
+    const tree = (r: SourceRef) => [div(r, 'g', ['g'], [div(r, 'a', ['a'], [div(r, 'a1', ['a1'])]), div(r, 'b', ['b'])])];
+    const css = (d: string) => `.g { display: grid; } .a { order: 1; display: ${d}; grid-area: 1 / 1; } .a1 { position: relative; z-index: 1; width: 30px; height: 20px; } .b { grid-area: 1 / 1; z-index: 1; width: 30px; height: 20px; }`;
+    for (const d of ['grid', 'flex']) {
+      const errs = compile(css(d), tree).diagnostics.filter((x) => x.severity === 'error');
+      expect(errs.map((x) => [x.code, x.target]), d).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+      expect(errs[0]?.message, d).toMatch(/^a1 is a layer item inside g, whose items set order, below an item's child/);
+      expectCatalogued(errs);
+    }
+    expect(compile(css('block'), tree).diagnostics.filter((x) => x.severity === 'error')).toEqual([]);
+    // A clip there is a layer Blink does not sort past either.
+    const clip = compile('.g { display: grid; } .x { order: 1; z-index: 1; height: 10px; } .a { display: flex; } .p { overflow: hidden; height: 5px; } .y { z-index: 1; height: 10px; }', (r) => [div(r, 'g', ['g'], [div(r, 'x', ['x']), div(r, 'a', ['a'], [div(r, 'p', ['p'])]), div(r, 'y', ['y'])])]);
+    const ce = clip.diagnostics.filter((x) => x.severity === 'error');
+    expect(ce.map((x) => [x.code, x.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(ce[0]?.message).toMatch(/^p clips inside g, whose items set order, below an item's child/);
+    expectCatalogued(ce);
+  });
   it('a z-index grid item beside an order calculation Chrome rounds is refused on ios only; a whole order compiles', () => {
     const tree = (r: SourceRef) => [div(r, 'g', ['g'], [div(r, 'a', ['a']), div(r, 'b', ['b'])])];
     const fraction = compile('.g { display: grid; } .a { order: calc(1.4); height: 10px; z-index: 1; } .b { order: calc(1.2); height: 10px; }', tree);
