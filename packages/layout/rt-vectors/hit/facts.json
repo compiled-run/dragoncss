@@ -820,6 +820,8 @@
     "text-transform-keywords": "s1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-transform-keywords-rtl": "s1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-transform-text": "brk is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "touch-action-values": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "touch-action-values-rtl": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "transform-rotate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-scale": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-translate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
