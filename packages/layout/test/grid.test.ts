@@ -502,3 +502,30 @@ describe('baseline self-alignment in the inline axis and last baseline alignment
     expect(lastBaseline(glyph('a2', 10, clip))).toEqual([[64, 960], [0, 1280]]);
   });
 });
+
+describe('percentages in a grid item\'s padding and margins while its auto column is measured (Blink ComputePadding, ComputePhysicalMargins)', () => {
+  const two = gridStyle({ templateColumns: [{ count: 2, sizes: [AUTO] }], explicitColumnCount: 2 });
+  const xx = (id: string, over: Parameters<typeof box>[1]): LayoutBox => box(id, over, [text(`${id}:t`, 'XX')]);
+  const start = (items: readonly LayoutBox[]): LayoutBox => {
+    const g = grid(two, items, 200);
+    return { ...g, style: { ...g.style, justifyContent: 'start' } };
+  };
+  const calc = (pixels: number, percent: number, range: 'all' | 'non-negative') => ({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: pixels }, { kind: 'percent', value: percent }] }, range }) as const;
+  const columns = (m: ReturnType<typeof boxesOf>): number[] => ['a', 'b'].map((id) => m.get(id)?.x ?? NaN);
+
+  it('resolves a calculated padding against zero for the contribution, so its length part widens the column, then against the area', () => {
+    const m = boxesOf(start([xx('a', { paddingLeft: calc(10, 5, 'non-negative') }), xx('b', {})]));
+    // a's column is 10px + 20px of text; laid out in it, a's padding is 10px + 5% of 30px.
+    expect(columns(m)).toEqual([0, 30 * 64]);
+    expect(m.get('a:t')?.x).toBe(11.5 * 64);
+  });
+
+  it('resolves a percentage or calculated margin against zero for the contribution, not against LayoutUnit(-1)', () => {
+    const m = boxesOf(start([xx('a', { marginLeft: { kind: 'percent', value: 10 } }), xx('b', {})]));
+    expect(columns(m)).toEqual([2 * 64, 20 * 64]);
+    expect(m.get('a')?.width).toBe(18 * 64);
+    const c = boxesOf(start([xx('a', { marginLeft: calc(4, 10, 'all') }), xx('b', {})]));
+    // The column is 4px + 20px; laid out in it, a's margin is 4px + 10% of 24px.
+    expect(columns(c)).toEqual([Math.trunc(6.4 * 64), 24 * 64]);
+  });
+});
