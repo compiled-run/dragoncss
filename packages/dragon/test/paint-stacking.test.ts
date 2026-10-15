@@ -9,7 +9,7 @@ import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { nativeString, STACKING_EMITTER } from '../src/emit/paint/stacking.ts';
 import { stringLit } from '../src/emit/native-support.ts';
 import type { StackNode } from '../src/lower/paint/stacking.ts';
-import { layoutStackTree, STACKING_LOWERING, stackingOf } from '../src/lower/paint/stacking.ts';
+import { layoutStackTree, STACKING_LOWERING, stackingOf, unorderedItems } from '../src/lower/paint/stacking.ts';
 import { zIndexValue } from '../src/css/properties/effects.ts';
 import type { LayoutBox, LayoutNode } from '@dragon/layout';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
@@ -26,8 +26,8 @@ function declare(value: string): { declaration: Declaration | null; diagnostics:
   return { declaration: rules[0]?.declarations[0] ?? null, diagnostics, css };
 }
 
-type Opts = { position?: StackNode['position']; z?: number; opacity?: number; transformed?: boolean; clips?: boolean };
-const n = (id: string, o: Opts, ...children: StackNode[]): StackNode => ({ id, position: o.position ?? 'static', z: o.z ?? null, opacity: o.opacity ?? 1, transformed: o.transformed ?? false, clips: o.clips ?? false, text: false, children });
+type Opts = { position?: StackNode['position']; z?: number; opacity?: number; transformed?: boolean; clips?: boolean; order?: number };
+const n = (id: string, o: Opts, ...children: StackNode[]): StackNode => ({ id, position: o.position ?? 'static', z: o.z ?? null, opacity: o.opacity ?? 1, transformed: o.transformed ?? false, clips: o.clips ?? false, text: false, children, ...(o.order === undefined ? {} : { order: o.order }) });
 const t = (id: string): StackNode => ({ id, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: true, children: [] });
 
 describe('z-index: parse and computed values (Chrome 145 getComputedStyle)', () => {
@@ -104,6 +104,28 @@ describe('Appendix E paint order', () => {
     const s = stackingOf(n('html', {}, n('flex', {}, n('i1', { z: 3 }), n('i2', {}))));
     expect(s.order).toEqual(['html', 'flex', 'i2', 'i1']);
   });
+  it('layer items of one z paint in order-modified document order (Blink ForAllChildrenSortedByOrder), an item\'s child with it', () => {
+    const s = stackingOf(n('html', {}, n('g', {}, n('a', { z: 1, order: 2 }), n('b', { z: 1, order: 1 }, n('bc', { position: 'relative' })), n('c', { z: 1 }), n('d', {}, n('dc', { position: 'relative', z: 1 })))));
+    expect(s.order).toEqual(['html', 'g', 'd', 'c', 'dc', 'b', 'bc', 'a']);
+    expect(s.native).toEqual(s.order);
+    expect([...s.writes].map(([id, w]) => [id, w.rank])).toEqual([['a', 3], ['b', 2], ['bc', 0], ['c', 0], ['dc', 1]]);
+  });
+  it('lists a layer item deeper than an item\'s child of a container whose items set order, unless a layer item above it holds it', () => {
+    const deep = n('html', {}, n('g', {}, n('a', { order: 1 }, n('a1', {}, n('x', { position: 'relative', z: 1 }))), n('b', { order: 0 }, n('b1', { position: 'relative' }, n('y', { position: 'relative', z: 1 })))));
+    expect(unorderedItems(deep, () => false)).toEqual([{ id: 'x', container: 'g', kind: 'deep' }]);
+    // order 0 everywhere sorts nothing; an inline-level child of an item may sit in an anonymous block (depth 3 in Blink).
+    expect(unorderedItems(n('html', {}, n('g', {}, n('a', { order: 0 }, n('a1', {}, n('x', { z: 1 }))))), () => false)).toEqual([]);
+    expect(unorderedItems(n('html', {}, n('g', {}, n('a', { order: 1 }, n('x', { position: 'relative' })), n('b', { order: 0 }))), (x) => x.id === 'x')).toEqual([{ id: 'x', container: 'g', kind: 'deep' }]);
+    // A clipping box below an item's child has a Blink layer the order sort cannot move b past (a, p, b keep tree order).
+    const barrier = n('html', {}, n('g', {}, n('a', { order: 1, z: 1 }), n('m', {}, n('m1', {}, n('p', { clips: true }))), n('b', { z: 1 })));
+    expect(unorderedItems(barrier, () => false)).toEqual([{ id: 'p', container: 'g', kind: 'barrier' }]);
+    expect(unorderedItems(n('html', {}, n('g', {}, n('a', { order: 1, z: 1 }), n('m', {}, n('p', { clips: true })), n('b', { z: 1 }))), () => false)).toEqual([]);
+    // An order Blink rounds or clamps (1.4 and 1.2 both paint as 1) leaves every layer item of the container unproven.
+    for (const o of [1.4, 3e9]) {
+      const fraction = n('html', {}, n('g', {}, n('a', { order: o, z: 1 }), n('b', { order: 1.2, z: 1 }, n('c', { position: 'relative' })), n('d', {})));
+      expect(unorderedItems(fraction, () => false), String(o)).toEqual([{ id: 'a', container: 'g', kind: 'fraction' }, { id: 'b', container: 'g', kind: 'fraction' }]);
+    }
+  });
   it('an absolute box escapes an overflow clip that is not its containing block, and stays under one that is', () => {
     const escaping = stackingOf(n('html', {}, n('row', { position: 'relative' }, n('clip', { clips: true }, n('d', { position: 'absolute', z: 3 })), n('l', {}))));
     expect(escaping.facts.get('d')).toMatchObject({ host: 'html', clipChain: [], underClip: false });
@@ -174,6 +196,43 @@ describe('stacking: refusals on the native targets', () => {
     expect(ee[0]?.message).toMatch(/^i is not clipped by c in Chrome \(its containing block is outside it\)/);
     expectCatalogued([...oe, ...ee]);
   });
+  it('a z-index box deeper than an item\'s child in a grid whose items set order is refused on ios only; an item\'s child compiles', () => {
+    const css = '.g { display: grid; } .a { order: 1; height: 10px; } .z { position: relative; z-index: 1; height: 5px; }';
+    const deep = compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'a', ['a'], [div(r, 'a1', [], [div(r, 'z', ['z'])])]), div(r, 'b', [])])]);
+    const errs = deep.diagnostics.filter((d) => d.severity === 'error');
+    expect(errs.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(errs[0]?.message).toMatch(/^z is a layer item inside g, whose items set order, below an item's child/);
+    expectCatalogued(errs);
+    const child = compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'a', ['a'], [div(r, 'z', ['z'])]), div(r, 'b', [])])]);
+    expect(child.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+  it('an item\'s child under an item that is itself a flex or grid container is refused (Blink compares it within the inner container), a block item\'s child compiles', () => {
+    const tree = (r: SourceRef) => [div(r, 'g', ['g'], [div(r, 'a', ['a'], [div(r, 'a1', ['a1'])]), div(r, 'b', ['b'])])];
+    const css = (d: string) => `.g { display: grid; } .a { order: 1; display: ${d}; grid-area: 1 / 1; } .a1 { position: relative; z-index: 1; width: 30px; height: 20px; } .b { grid-area: 1 / 1; z-index: 1; width: 30px; height: 20px; }`;
+    for (const d of ['grid', 'flex']) {
+      const errs = compile(css(d), tree).diagnostics.filter((x) => x.severity === 'error');
+      expect(errs.map((x) => [x.code, x.target]), d).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+      expect(errs[0]?.message, d).toMatch(/^a1 is a layer item inside g, whose items set order, below an item's child/);
+      expectCatalogued(errs);
+    }
+    expect(compile(css('block'), tree).diagnostics.filter((x) => x.severity === 'error')).toEqual([]);
+    // A clip there is a layer Blink does not sort past either.
+    const clip = compile('.g { display: grid; } .x { order: 1; z-index: 1; height: 10px; } .a { display: flex; } .p { overflow: hidden; height: 5px; } .y { z-index: 1; height: 10px; }', (r) => [div(r, 'g', ['g'], [div(r, 'x', ['x']), div(r, 'a', ['a'], [div(r, 'p', ['p'])]), div(r, 'y', ['y'])])]);
+    const ce = clip.diagnostics.filter((x) => x.severity === 'error');
+    expect(ce.map((x) => [x.code, x.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(ce[0]?.message).toMatch(/^p clips inside g, whose items set order, below an item's child/);
+    expectCatalogued(ce);
+  });
+  it('a z-index grid item beside an order calculation Chrome rounds is refused on ios only; a whole order compiles', () => {
+    const tree = (r: SourceRef) => [div(r, 'g', ['g'], [div(r, 'a', ['a']), div(r, 'b', ['b'])])];
+    const fraction = compile('.g { display: grid; } .a { order: calc(1.4); height: 10px; z-index: 1; } .b { order: calc(1.2); height: 10px; }', tree);
+    const errs = fraction.diagnostics.filter((d) => d.severity === 'error');
+    expect(errs.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(errs[0]?.message).toMatch(/^a is a layer item inside g, whose items set an order that is not a whole 32-bit integer/);
+    expectCatalogued(errs);
+    const whole = compile('.g { display: grid; } .a { order: calc(2 / 2); height: 10px; z-index: 1; } .b { order: 2; height: 10px; }', tree);
+    expect(whole.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
   it('a z-index auto box under such a clip, a z-index box whose clip is not its containing block, and one that nothing paints after compile', () => {
     for (const css of ['.clip { overflow: hidden; height: 20px; } .d { position: relative; height: 30px; }', '.row { position: relative; } .clip { overflow: hidden; height: 20px; } .d { position: absolute; z-index: 2; height: 30px; }', '.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; }']) {
       const c = compile(css, (r) => [div(r, 'row', ['row'], [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])])])]);
@@ -223,6 +282,22 @@ describe('stacking: lowering and emission', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     return p.programs;
   };
+  it('a static flex or grid item with a z-index is a layer item under every flex and grid display (Blink StyleAdjuster)', () => {
+    for (const display of ['flex', 'inline-flex', 'grid', 'inline-grid']) {
+      const p = programs(`body { font: 10px/10px Ahem; } .c { display: ${display}; } .i { width: 10px; height: 10px; z-index: 1; } .j { width: 10px; height: 10px; margin-left: -5px; }`, (r) => [div(r, 'c', ['c'], [div(r, 'i', ['i']), div(r, 'j', ['j'])])]);
+      const i = p.uikit.nodes.find((x) => x.id === 'i');
+      expect(i?.writes.filter((w) => w.kind === 'paint-order'), display).toEqual([expect.objectContaining({ host: 'html', bucket: 2, rank: 0 })]);
+      expect(i?.facts['stacking'], display).toMatchObject({ createsContext: true, layer: 'positive' });
+    }
+  });
+  it('orders z-index ties among grid items by order, as the analysis tree does', () => {
+    const p = programs('.g { display: grid; grid-template-columns: 10px 10px; } .a { order: 1; height: 10px; z-index: 1; } .b { height: 10px; z-index: 1; }', (r) => [div(r, 'g', ['g'], [div(r, 'a', ['a']), div(r, 'b', ['b'])])]);
+    const rank = (id: string): number | undefined => {
+      const w = p.uikit.nodes.find((x) => x.id === id)?.writes.find((x) => x.kind === 'paint-order');
+      return w?.kind === 'paint-order' ? w.rank : undefined;
+    };
+    expect([rank('b'), rank('a')]).toEqual([0, 1]);
+  });
   it('writes the placement of every layer item and publishes stacking facts on every box', () => {
     const p = programs('.a { height: 10px; } .z { position: relative; top: 5px; height: 10px; z-index: 1; }', (r) => [div(r, 'a', ['a'], [div(r, 'z', ['z'])]), div(r, 'b', ['a'])]);
     const z = p.uikit.nodes.find((x) => x.id === 'z');
