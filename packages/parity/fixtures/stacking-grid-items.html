@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.stage { height: 252px; padding-top: 8px; padding-inline-start: 16px; }
+.row { height: 30px; margin-bottom: 10px; }
+.grid { display: grid; grid-template-columns: 40px 40px; }
+.cell { display: grid; grid-template-columns: 60px; grid-template-rows: 30px; }
+.one { grid-area: 1 / 1; }
+.ig { display: inline-grid; grid-template-columns: 30px 30px; }
+.if { display: inline-flex; }
+.flex { display: flex; }
+.box { width: 30px; height: 20px; }
+.z1 { z-index: 1; }
+.zn { z-index: -1; }
+.pull20 { margin-inline-start: -20px; }
+.pull30 { margin-inline-start: -30px; }
+.s10 { margin-inline-start: 10px; }
+.s20 { margin-inline-start: 20px; }
+.o1 { order: 1; }
+.o2 { order: 2; }
+.red { background-color: rgb(220, 40, 40); }
+.teal { background-color: rgb(0, 150, 150); }
+.gold { background-color: rgb(250, 200, 0); }
+.blue { background-color: rgb(40, 80, 220); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="g" class="row grid"><div data-dragon-id="g-a" class="z1 red"></div><div data-dragon-id="g-b" class="pull30 teal"></div></div>
+<div data-dragon-id="c" class="row cell"><div data-dragon-id="c-f" class="one box gold"></div><div data-dragon-id="c-n" class="one zn blue"></div></div>
+<div data-dragon-id="ig-line" class="row"><span data-dragon-id="ig" class="ig"><span data-dragon-id="ig-a" class="box z1 red"></span><span data-dragon-id="ig-b" class="box pull20 teal"></span></span></div>
+<div data-dragon-id="if-line" class="row"><span data-dragon-id="if" class="if"><span data-dragon-id="if-a" class="box z1 red"></span><span data-dragon-id="if-b" class="box pull20 teal"></span></span></div>
+<div data-dragon-id="o" class="row cell"><div data-dragon-id="o-a" class="one box z1 o2 red"></div><div data-dragon-id="o-b" class="one box z1 o1 s10 teal"></div><div data-dragon-id="o-c" class="one box z1 s20 gold"></div></div>
+<div data-dragon-id="f" class="row flex"><div data-dragon-id="f-a" class="box z1 o1 pull20 red"></div><div data-dragon-id="f-b" class="box z1 teal"></div></div>
+</div>
+</body>
+</html>
