@@ -103,6 +103,62 @@ describe('border-radius: parse and computed values (Chrome 145 getComputedStyle)
   });
 });
 
+describe('flow-relative corners (css-logical-1 §7, horizontal-tb): each sets one physical corner by the element\'s direction', () => {
+  // [declarations, the four physical corners in ltr, then in rtl]; Chrome parity is radius-logical (fixture-groups/radius.ts).
+  const cases: [string, string[], string[]][] = [
+    ['border-start-start-radius: 10px', ['10px', '0px', '0px', '0px'], ['0px', '10px', '0px', '0px']],
+    ['border-start-end-radius: 10px 4px', ['0px', '10px 4px', '0px', '0px'], ['10px 4px', '0px', '0px', '0px']],
+    ['border-end-start-radius: 25%', ['0px', '0px', '0px', '25%'], ['0px', '0px', '25%', '0px']],
+    ['border-end-end-radius: 1em 1rem', ['0px', '0px', '20px 16px', '0px'], ['0px', '0px', '0px', '20px 16px']],
+    ['border-start-start-radius: 9px; border-top-left-radius: 2px', ['2px', '0px', '0px', '0px'], ['2px', '9px', '0px', '0px']],
+    ['border-top-left-radius: 2px; border-start-start-radius: 9px', ['9px', '0px', '0px', '0px'], ['2px', '9px', '0px', '0px']],
+    ['border-radius: 3px; border-end-end-radius: 8px', ['3px', '3px', '8px', '3px'], ['3px', '3px', '3px', '8px']],
+    ['border-end-end-radius: 8px; border-radius: 3px', ['3px', '3px', '3px', '3px'], ['3px', '3px', '3px', '3px']],
+    ['--r: 6px 2px; border-start-end-radius: var(--r)', ['0px', '6px 2px', '0px', '0px'], ['6px 2px', '0px', '0px', '0px']],
+    ['border-radius: 5px; border-start-start-radius: initial', ['0px', '5px', '5px', '5px'], ['5px', '0px', '5px', '5px']],
+  ];
+  for (const [decl, ltr, rtl] of cases) {
+    it(`${decl}: ltr ${ltr.join(' | ')}, rtl ${rtl.join(' | ')}`, () => {
+      for (const [dir, want] of [['ltr', ltr], ['rtl', rtl]] as const) {
+        const { c } = compile(`.a { width: 100px; height: 50px; direction: ${dir}; ${decl}; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+        expect(c.diagnostics.filter((d) => d.severity === 'error'), dir).toEqual([]);
+        for (const target of ['web', 'ios', 'android'] as const) expect(CORNERS.map((p) => explainOne(c, target, 'a', p).value), `${dir} ${target}`).toEqual(want);
+      }
+    });
+  }
+
+  it('inherit maps on the child by its own direction, then takes that physical corner of the parent', () => {
+    const { c } = compile('.a { direction: rtl; border-start-start-radius: 7px; border-top-left-radius: 3px; } .b { direction: ltr; border-start-start-radius: inherit; }');
+    expect(CORNERS.map((p) => explainOne(c, 'ios', 'a', p).value)).toEqual(['3px', '7px', '0px', '0px']);
+    expect(CORNERS.map((p) => explainOne(c, 'ios', 'b', p).value)).toEqual(['3px', '0px', '0px', '0px']);
+  });
+
+  it('a value parses as the corner longhand\'s does, and a refusal names the flow-relative property', () => {
+    for (const v of ['-1px', '10px / 20px', '1px 2px 3px', '5']) {
+      const { declaration, diagnostics } = declare('border-end-end-radius', v);
+      expect(declaration, v).toBeNull();
+      expect(diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    }
+    for (const [v, span] of [['calc(10px + 5%)', 'calc(10px + 5%)'], ['2vw 4px', '2vw'], ['1ex', '1ex'], ['4px env(safe-area-inset-top)', 'env(safe-area-inset-top)']]) {
+      const { declaration, diagnostics, css } = declare('border-start-end-radius', v as string);
+      expect(declaration, v).toBeNull();
+      expect(diagnostics.map((d) => d.code), v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+      expect(diagnostics[0]?.message.startsWith('border-start-end-radius: '), v).toBe(true);
+      expect(spanOf(css, diagnostics[0] as Diagnostic)).toBe(span);
+      expectCatalogued(diagnostics);
+    }
+  });
+
+  it('each direction gets one tagged value, a CSS-wide keyword included, and a var() value keeps both sides for substitution', () => {
+    const tagged = (p: string, v: string) => declare(p, v).declaration?.longhands.map((l) => `${l.property}@${String(l.direction)}`);
+    expect(tagged('border-start-start-radius', '1px')).toEqual(['border-top-left-radius@ltr', 'border-top-right-radius@rtl']);
+    expect(tagged('border-start-end-radius', 'unset')).toEqual(['border-top-right-radius@ltr', 'border-top-left-radius@rtl']);
+    expect(tagged('border-end-start-radius', '1px 2px')).toEqual(['border-bottom-left-radius@ltr', 'border-bottom-right-radius@rtl']);
+    expect(tagged('border-end-end-radius', 'revert')).toEqual(['border-bottom-right-radius@ltr', 'border-bottom-left-radius@rtl']);
+    expect(declare('border-end-end-radius', 'var(--x)').declaration?.pending?.sides).toEqual({ ltr: ['border-bottom-right-radius'], rtl: ['border-bottom-left-radius'] });
+  });
+});
+
 describe('border-radius: refusals', () => {
   it('a calculation, a viewport unit and a font-metric unit in a radius are DRAGON_UNSUPPORTED_VALUE on the token', () => {
     for (const [p, v, span] of [['border-radius', 'calc(10px + 5%)', 'calc(10px + 5%)'], ['border-top-left-radius', '2vw 4px', '2vw'], ['border-radius', '1ex', '1ex'], ['border-radius', '10px / min(5px, 2%)', 'min(5px, 2%)']]) {
