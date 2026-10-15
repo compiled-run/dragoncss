@@ -461,16 +461,44 @@ describe('baseline self-alignment in the inline axis and last baseline alignment
     expect(rects(boxesOf(packed(grid(two, items2))), ['a', 'b'])).toEqual([[0, 640, 640, 640], [640, 0, 1280, 1280]]);
   });
 
-  it('refuses a last baseline that a flex container or a scroll container would give (grid-last-baseline)', () => {
+  it('refuses a last baseline that a flex or grid container with items would give (grid-last-baseline)', () => {
     const one = gridStyle({ templateColumns: [{ count: 1, sizes: [AUTO] }], explicitColumnCount: 1 });
     const codeOf = (item: LayoutBox): string => {
       const r = layout(input(box('root', {}, [grid(one, [item])])), ahemMeasurer);
       return r.kind === 'ok' ? 'ok' : `${r.unsupported.code} ${r.unsupported.nodeId}`;
     };
     expect(codeOf(box('a', { display: 'flex', alignSelf: 'last baseline' }, [glyph('a1', 10)]))).toBe('grid-last-baseline a');
-    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [glyph('a1', 10), glyph('a2', 10, { overflowX: 'hidden', overflowY: 'hidden' })]))).toBe('grid-last-baseline a');
-    // A scroll container earlier in the item does not decide it, and first baseline never asks for it.
-    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [glyph('a1', 10, { overflowX: 'hidden', overflowY: 'hidden' }), glyph('a2', 10)]))).toBe('ok');
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [glyph('a1', 10), box('a2', { display: 'flex' }, [glyph('a3', 10)])]))).toBe('grid-last-baseline a');
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [glyph('a1', 10), box('a2', {}, [box('a3', { display: 'grid', grid: one }, [glyph('a4', 10, { gridItem: autoItem })])])]))).toBe('grid-last-baseline a');
+    // Blink stops at a line-clamp container's clamp point, which is not modelled: the clamp container, as the item or its last child.
+    const clamp = { overflowX: 'hidden', overflowY: 'hidden', lineClamp: 2 } as const;
+    expect(codeOf(box('a', { ...clamp, alignSelf: 'last baseline' }, [glyph('a1', 10)]))).toBe('grid-last-baseline a');
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [box('a1', clamp, [glyph('a2', 10)])]))).toBe('grid-last-baseline a');
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [box('a1', clamp, [glyph('a2', 10)]), glyph('a3', 10)]))).toBe('ok');
+    // An item that is itself a flex or grid container with no items has no last baseline, which is synthesized.
+    expect(codeOf(box('a', { display: 'flex', alignSelf: 'last baseline', height: { kind: 'px', value: 10 } }))).toBe('ok');
+    expect(codeOf(box('a', { display: 'grid', grid: one, alignSelf: 'last baseline', height: { kind: 'px', value: 10 } }))).toBe('ok');
+    // A flex container earlier in the item does not decide it, and first baseline never asks for it.
+    expect(codeOf(box('a', { alignSelf: 'last baseline' }, [box('a1', { display: 'flex' }, [glyph('a2', 10)]), glyph('a3', 10)]))).toBe('ok');
     expect(codeOf(box('a', { display: 'flex', alignSelf: 'baseline' }, [glyph('a1', 10)]))).toBe('ok');
+  });
+
+  it('takes a scroll container child\'s own last baseline, and skips a child with none, as Blink\'s default baseline algorithm does', () => {
+    const two = gridStyle({ templateColumns: [{ count: 2, sizes: [px(30)] }], explicitColumnCount: 2 });
+    const clip = { overflowX: 'hidden', overflowY: 'hidden', height: { kind: 'px', value: 5 } } as const;
+    const tall = { height: { kind: 'px', value: 5 } } as const;
+    // a's y and height, and b's (a 20px glyph, 4px from its last baseline to its bottom), in a row aligned by last baseline.
+    const lastBaseline = (last: LayoutBox): number[][] => {
+      const g = grid(two, [box('a', { gridItem: autoItem }, [glyph('a1', 10), last]), glyph('b', 20, { gridItem: autoItem })]);
+      return rects(boxesOf({ ...g, style: { ...g.style, alignItems: 'last baseline' } }), ['a', 'b']).map((r) => [r[1] as number, r[3] as number]);
+    };
+    // An empty scroll container, flex or grid container has no last baseline: a1's stands, 8px down a's 15px, so 7px to its bottom;
+    // b gets a 3px shim and the row is 23px, with a at its end.
+    for (const last of [box('a2', clip), box('a2', { ...tall, display: 'flex' }), box('a2', { ...tall, display: 'grid', grid: two })]) {
+      expect(lastBaseline(last), last.style.display).toEqual([[512, 960], [0, 1280]]);
+    }
+    // A scroll container with lines gives its last line's baseline kept within its border box (8px down a2, clamped to its 5px), so
+    // a's is at its bottom: b's 4px decides, a gets a 4px shim and ends 4px above the 20px row's end.
+    expect(lastBaseline(glyph('a2', 10, clip))).toEqual([[64, 960], [0, 1280]]);
   });
 });

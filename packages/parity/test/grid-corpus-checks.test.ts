@@ -47,7 +47,8 @@ describe('refusal classification', () => {
   it('owns the engine\'s grid-last-baseline refusal under last-baseline-source, and no other baseline refusal', () => {
     const r = (what: string): string => `LayoutUnsupported grid-last-baseline: the last baseline of ${what} container e3 would give the last baseline of grid item e1 (not yet supported)`;
     expect(classifyOutcome('k', { kind: 'refused', reasons: [r('flex or grid')] })).toEqual({ kind: 'refused', category: 'last-baseline-source' });
-    expect(classifyOutcome('k', { kind: 'refused', reasons: [r('scroll')] })).toEqual({ kind: 'refused', category: 'last-baseline-source' });
+    // A scroll container child gives its own last baseline, so the engine no longer refuses one.
+    expect(classifyOutcome('k', { kind: 'refused', reasons: [r('scroll')] })).toMatchObject({ kind: 'problem' });
     expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_LOWERING_FAILED: justify-self: last baseline on e1 has no layout mapping'] })).toMatchObject({ kind: 'problem' });
     expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_LOWERING_FAILED: align-items: last baseline on e0 has no layout mapping (expected normal; last baseline aligns grid items only)'] })).toMatchObject({ kind: 'problem' });
   });
