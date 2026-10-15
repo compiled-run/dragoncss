@@ -16,6 +16,7 @@ import { isAnimationProperty } from './properties/animation.ts';
 import { ANIMATION_ALIASES } from './aliases/animation.ts';
 import { BOX_ALIASES } from './aliases/box.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
+import { HYPHENS_ALIASES } from './aliases/hyphens.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
 import { SELECTION_ALIASES } from './aliases/selection.ts';
@@ -26,6 +27,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   animation: ANIMATION_ALIASES,
   box: BOX_ALIASES,
   flex: FLEX_ALIASES,
+  hyphens: HYPHENS_ALIASES,
   logical: LOGICAL_ALIASES,
   radius: RADIUS_ALIASES,
   selection: SELECTION_ALIASES,

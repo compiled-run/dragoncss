@@ -8,5 +8,7 @@ export const ALIASES: readonly FixtureSpec[] = [
   layout('alias-flex'),
   both('alias-logical'),
   layout('alias-paint'),
+  // TXT2-i: -webkit-hyphens alone and in both orders with hyphens.
+  both('alias-text'),
   reject('reject-alias-legacy-parsing', 'DRAGON_UNSUPPORTED_VALUE', 'perspective(100)', '-webkit-transform: perspective(100) is unsupported: Chrome parses -webkit-transform with legacy rules'),
 ];
