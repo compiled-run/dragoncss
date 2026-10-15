@@ -55,6 +55,7 @@ import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
+import { TEXT_TAB_SIZE } from './fixture-groups/text-tab-size.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
@@ -172,6 +173,7 @@ export const GROUPS = {
   'text-latin': TEXT_LATIN,
   'text-overflow': TEXT_OVERFLOW,
   'text-spacing': TEXT_SPACING,
+  'text-tab-size': TEXT_TAB_SIZE,
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
   transforms: TRANSFORMS,
