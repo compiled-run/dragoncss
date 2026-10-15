@@ -66,6 +66,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('overflow.ts'), name: 'scrollMetricsWithFaults' },
     // OVFL-B: each scroll container's offset range in device px, which the native scroll views clamp to.
     { file: at('overflow.ts'), name: 'scrollRanges' },
+    // TXT2-g: the line-clamp containers' children as the layout clamped them, whose lines the native text views place.
+    { file: at('line-clamp.ts'), name: 'clampedInput' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;

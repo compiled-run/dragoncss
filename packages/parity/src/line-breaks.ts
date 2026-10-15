@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, fromCssPx, layout, inlineLeaves, leafFontOf, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
+import { absoluteRects, clampedInput, fromCssPx, layout, inlineLeaves, leafFontOf, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
 import type { TextTransform } from 'dragon';
 import { applyTextTransform, NO_FAULTS } from 'dragon';
 import { dprLabel } from './dpr.ts';
@@ -56,7 +56,8 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const snappedList = snapEdges(boxes);
   const snapped = new Map(boxes.map((b, i) => [b.id, snappedList[i] as EngineLine['snapped']]));
   // Resolved with the layout's own measurer (layout.ts resolvedInput), so ex, ch, cap and lh of a real face read that face.
-  const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
+  // TXT2-g: with each line-clamp container's children as the layout clamped them (line-clamp.ts clampedInput), as a device does.
+  const zoomed = clampedInput(resolvedInput(input, measurer, NO_ENGINE_FAULTS), boxes, measurer);
   const zBoxes = new Map<string, LayoutBox>();
   const zParent = new Map<string, string>();
   // A text leaf's container is the block container of its inline formatting context, through any inline boxes.
@@ -481,7 +482,7 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
   let result = try layout_layout(input, measurer)
   guard let ok = result as? LayoutResult_ok else { return "refused" }
   let boxes = ok.boxes.items
-  let zoomed = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
+  let zoomed = try lineClamp_clampedInput(try layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
   var zBoxes: [String: LayoutBox] = [:]
   var zParent: [String: String] = [:]
   var replaced: Set<String> = []
@@ -573,7 +574,7 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   val result = layout_layout(input, measurer)
   val ok = result as? LayoutResult_ok ?: return "refused"
   val boxes = ok.boxes
-  val zoomed = layout_zoomInput(input, block_NO_ENGINE_FAULTS)
+  val zoomed = lineClamp_clampedInput(layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
   val zBoxes = HashMap<String, LayoutBox>()
   val zParent = HashMap<String, String>()
   val replaced = HashSet<String>()

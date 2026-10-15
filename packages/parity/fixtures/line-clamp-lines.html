@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; width: 55px; margin-bottom: 2px; }
+.one { -webkit-line-clamp: 1; }
+.wide { width: 100px; }
+.pad { padding: 3px 7px 2px 5px; border: 1px solid #000; }
+.line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; width: 100px; margin-bottom: 2px; }
+.s { font-size: 5px; }
+.f { display: flex; margin-bottom: 2px; }
+.ib { display: -webkit-inline-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; width: 55px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="l1" class="c">XX XX XX XX XX XX XX XX</div>
+<div data-dragon-id="l2" class="c">XX XX XX XX</div>
+<div data-dragon-id="l3" class="c">XX XX</div>
+<div data-dragon-id="l4" class="c pad">XX XX XX XX XX XX</div>
+<div data-dragon-id="l5" class="c">XX XXXXXXXXXX XX</div>
+<div data-dragon-id="l6" class="c one wide">XXX XXXXXXXX</div>
+<div data-dragon-id="l7" class="line-clamp-3">Truncated text that runs over the box and keeps on going past it</div>
+<div data-dragon-id="l9" class="c one">XX <span data-dragon-id="l9s" class="s">XXXX XXXX XXXX XXXX</span></div>
+<div data-dragon-id="l10" class="c one">XX XX XX</div>
+<div data-dragon-id="l11" class="f"><div data-dragon-id="l11a" class="ib">XX XX XX XX XX XX</div></div>
+</body>
+</html>

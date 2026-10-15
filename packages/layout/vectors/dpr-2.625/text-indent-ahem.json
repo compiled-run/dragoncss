@@ -148,6 +148,7 @@
      "kind": "px",
      "value": 0
     },
+    "lineClamp": 0,
     "grid": null,
     "gridItem": null
    },
@@ -273,6 +274,7 @@
        "kind": "px",
        "value": 0
       },
+      "lineClamp": 0,
       "grid": null,
       "gridItem": null
      },
@@ -399,6 +401,7 @@
          "kind": "px",
          "value": 25
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -569,6 +572,7 @@
          "kind": "px",
          "value": -15
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -739,6 +743,7 @@
          "kind": "percent",
          "value": 10
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -909,6 +914,7 @@
          "kind": "px",
          "value": 15
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1092,6 +1098,7 @@
          },
          "range": "all"
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1262,6 +1269,7 @@
          "kind": "px",
          "value": 25
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1477,6 +1485,7 @@
          "kind": "px",
          "value": 25
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1647,6 +1656,7 @@
          "kind": "px",
          "value": 25
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1817,6 +1827,7 @@
          "kind": "px",
          "value": 25
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1983,6 +1994,7 @@
            "kind": "px",
            "value": 25
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -2182,6 +2194,7 @@
          "kind": "px",
          "value": -9999
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -2352,6 +2365,7 @@
          "kind": "px",
          "value": 25
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -2477,6 +2491,7 @@
            "kind": "px",
            "value": 25
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -2648,6 +2663,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -2786,6 +2802,7 @@
            "kind": "px",
            "value": 20
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -2957,6 +2974,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -3095,6 +3113,7 @@
            "kind": "percent",
            "value": 10
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -3266,6 +3285,7 @@
          "kind": "px",
          "value": 20
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -3436,6 +3456,7 @@
          "kind": "px",
          "value": 0
         },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -3561,6 +3582,7 @@
            "kind": "px",
            "value": 25
           },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },

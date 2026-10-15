@@ -26,6 +26,7 @@ import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
+import { LINE_CLAMP } from './fixture-groups/line-clamp.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
@@ -142,6 +143,7 @@ export const GROUPS = {
   inline: INLINE,
   'inline-tags': INLINE_TAGS,
   interaction: INTERACTION,
+  'line-clamp': LINE_CLAMP,
   'list-items': LIST_ITEMS,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
