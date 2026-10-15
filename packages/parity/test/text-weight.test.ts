@@ -23,18 +23,23 @@ import { layout } from '../src/fixture-groups/define.ts';
 import { FONT_FIXTURES, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { TEXT_WEIGHT } from '../src/fixture-groups/text-weight.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
+import { FONT_VARIANT_LONGHANDS } from '../../dragon/src/css/properties/font-variant.ts';
 import { WHITE_SPACE } from '../src/fixture-groups/white-space.ts';
 import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-reference.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration). */
+/**
+ * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration), and every
+ * LayoutStyle's lineClamp removed where it is 0 (the TXT2-g migration: a style is the object that carries textOverflow).
+ */
 function withoutWrapKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(withoutWrapKeys);
   if (typeof v !== 'object' || v === null) return v;
   const o = v as Record<string, unknown>;
   const leaf = o['kind'] === 'text';
-  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal')).map(([k, x]) => [k, withoutWrapKeys(x)]));
+  const style = 'textOverflow' in o;
+  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
 }
 
 /**
@@ -42,10 +47,16 @@ function withoutWrapKeys(v: unknown): unknown {
  * pins recompute; BASE_OUTPUTS is retaken on TXT2-b word-spacing's regenerated head, whose vectors carry wordSpacing (px 0), and again
  * on TXT2-h text-indent's regenerated head, whose vectors carry textIndent (px 0) and differ from TXT2-b's in nothing else (13144 files, b60ff3dc48…). TXT2-a, stacked on TXT2-h, reads that same tree with its text-break
  * files and the vectors README left out and each vector without the TXT2-a TextLeaf keys at 'normal' (it has none), so the pinned bytes
- * are that head's.
+ * are that head's (690a1b3fdb…, captures 3c5abaa478…). PNT1 (c3bc6ce193) then moved BASE on purpose: it took the translucent boxes out of
+ * the BASE fixtures outline-3d, outline-dashed and radius-double (into its own outline-web and radius-double-web), which changes their
+ * vectors, pixels and captures (84 files with their -rtl twins) and nothing else, so both digests are retaken on master 344627d93a.
+ * With those 84 files put back at 6964e8a337 that tree still gives 690a1b3fdb… and 3c5abaa478….
+ * The landing of #340 and #332 moves BASE again: #340 adds an inherited-currentcolor shadow to the BASE fixture shadow-cascade and #332
+ * a hidden shape to svg-hidden, which changes their vectors, pixels and captures (and their -rtl twins) and nothing else, so both
+ * digests are retaken on that landing's regenerated head.
  */
-const BASE_OUTPUTS = { files: 13143, digest: '690a1b3fdb6551a8ad15a051a214cf0ab9ba8e66610c75f73509fd350f644331' };
-const BASE_CAPTURES = { files: 3354, digest: '3c5abaa478b11a6d660b219456339a48567a78b9f2a76c6677975fdc9d21fbd7' };
+const BASE_OUTPUTS = { files: 13143, digest: 'e8b2ca0d4199dcdf50c6720d58a88de4a168ab91810669574cc77a25ac4565f3' };
+const BASE_CAPTURES = { files: 3354, digest: '4063b72a4b1cec622ed201aa957cce0bc9df96bb01187907d5bbcf2e9978312e' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -213,6 +224,9 @@ describe('the native refusals', () => {
   });
 });
 
+/** Case id prefixes of the groups that landed after BASE beside those named in the filter below (see own). */
+const LATER_PREFIXES = ['atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'text-font-variant-'];
+
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
   // no git history): each is the sha256 of "<path>\t<sha256 of its content>" lines in path order, over every file but TXT-W1's own
@@ -222,7 +236,10 @@ describe('BASE pins', () => {
   // text-justify cases landed after BASE, and so did TXT2-b's word-spacing, TXT2-h's text-indent and the svg-colors cases (#297): their own
   // files are left out as TXT-W1's are (they add files only, and change none of BASE's).
   // TXT2-a's text-break cases are left out the same way.
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|text-break-)/.test(p);
+  // The groups that landed after BASE and add files only: G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web,
+  // resize-values, G3b's grid-baseline-axes, PNT's text-decoration-native-current, TXT2-g's line-clamp cases and PNT1's stacking-grid-items cases. (PNT1's change to
+  // three BASE fixtures is retaken in BASE_OUTPUTS and BASE_CAPTURES, not left out.)
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|text-font-variant-)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -235,12 +252,12 @@ describe('BASE pins', () => {
     // TXT-W2's font-shorthand cases are its own too, as the digests below exclude them; TXT2-c's white-space layout cases and TXT2's
     // text-justify cases landed after BASE.
     const later = WHITE_SPACE.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-') && !id.startsWith('text-word-spacing-') && !id.startsWith('text-indent-') && !id.startsWith('svg-colors') && !id.startsWith('text-break-'));
+    const base = ids.filter((id) => !added.includes(id) && !id.startsWith('font-shorthand-') && !later.includes(id) && !id.startsWith('text-justify-') && !id.startsWith('text-word-spacing-') && !id.startsWith('text-indent-') && !id.startsWith('svg-colors') && !id.startsWith('text-break-') && !LATER_PREFIXES.some((p) => id.startsWith(p)));
     // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 828 BASE layout cases.
     expect(base.length).toBe(828);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('913a57ff7fbe0dd1f9eb9b3fc119cd82889e581ec4a9f6e628b0d675a73febf3');
   });
-  it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE (vectors up to the TXT2-a TextLeaf keys)', () => {
+  it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE (vectors up to the TXT2-a TextLeaf keys and the TXT2-g lineClamp)', () => {
     // TXT2-a gives every text leaf overflowWrap and wordBreak, so a vector is digested as its JSON with both removed where they are
     // 'normal' (every other byte of it is still pinned), and the vectors README (a format document, not a vector) documents the keys.
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
@@ -251,8 +268,8 @@ describe('BASE pins', () => {
     // The migration exception is not a blanket pass: a leaf whose key is not 'normal' keeps the key and differs.
     expect(withoutWrapKeys({ kind: 'text', overflowWrap: 'anywhere', wordBreak: 'normal' })).toEqual({ kind: 'text', overflowWrap: 'anywhere' });
   });
-  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break'];
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break, TXT2-g's -webkit-box-orient and -webkit-line-clamp, resize-values' resize. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', ...FONT_VARIANT_LONGHANDS];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));
