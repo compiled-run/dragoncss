@@ -130,6 +130,54 @@ export function findReusable(runs: readonly Run[], branch: string, head: string)
   return null;
 }
 
+/** regen-on-ci.yml's own REGEN_BRANCH_SLOTS and LANDING_YIELD_SECONDS: the branch regens it lets run at once, and how long one waits for a landing. */
+export const REGEN_BRANCH_SLOTS = 2;
+export const LANDING_YIELD_S = 5400;
+export const SLOT_POLL_S = 120;
+const ACTIVE = new Set(['queued', 'in_progress', 'waiting', 'pending', 'requested']);
+
+/**
+ * The branch regens (dispatched in branch mode) and the landing's runs (a pull request's regen label, a patch-mode regen, a device
+ * lanes run) queued or running now: what regen-on-ci.yml's "Wait for a branch regen slot" counts, from one list of each workflow.
+ */
+export function slotState(deps: Deps, repo: string): { readonly branch: number; readonly landing: number } {
+  const active = (workflow: string): Run[] => parseRuns(deps.gh(['api', `repos/${repo}/actions/workflows/${workflow}/runs?per_page=100`])).filter((r) => ACTIVE.has(r.status));
+  const regens = active(WORKFLOW);
+  const branch = regens.filter((r) => r.event === 'workflow_dispatch' && r.title.startsWith('regen of branch ')).length;
+  const landing = regens.filter((r) => r.event === 'pull_request' || (r.event === 'workflow_dispatch' && /^regen of [0-9a-f]{40}$/.test(r.title))).length + active('device-lanes.yml').length;
+  return { branch, landing };
+}
+
+/**
+ * Waits here, before dispatching, while a landing run is queued or running (at most LANDING_YIELD_S) or every branch regen slot is
+ * taken; true once the dispatch may go. A dispatched run waits for its slot inside its resolve job, which holds a runner the whole
+ * time: a few waiting runs filled the repository's concurrent jobs and queued the landing's own rounds. With --once it does not
+ * wait (false: not dispatched yet). A failed listing dispatches anyway; the workflow's own wait still guards the runners.
+ */
+export function waitForSlot(deps: Deps, repo: string, o: { readonly once: boolean; readonly pollS?: number }): boolean {
+  const t0 = deps.now();
+  let told = '';
+  for (;;) {
+    let s: { readonly branch: number; readonly landing: number };
+    try {
+      s = slotState(deps, repo);
+    } catch (e) {
+      deps.log(`listing the queued and running regens failed (${e instanceof Error ? e.message : String(e)}); dispatching, and the run waits for its slot itself`);
+      return true;
+    }
+    const waited = deps.now() - t0;
+    const why = s.landing > 0 && waited < LANDING_YIELD_S * 1000 ? `${s.landing} landing run(s) are queued or running` : s.branch >= REGEN_BRANCH_SLOTS && waited < LANDING_YIELD_S * 1000 ? `${s.branch} branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once)` : null;
+    if (why === null) return true;
+    if (o.once) {
+      deps.log(`PENDING (not dispatched): ${why}; poll again with the same command`);
+      return false;
+    }
+    if (why !== told) deps.log(`waiting to dispatch: ${why}`);
+    told = why;
+    deps.sleep((o.pollS ?? SLOT_POLL_S) * 1000);
+  }
+}
+
 /** Dispatches a branch regen of `head` and returns its run: from the dispatch's answer, else found by its run-name. */
 export function dispatch(deps: Deps, repo: string, a: Args, head: string, appearS = 180): { readonly runId: number; readonly nonce: string } {
   const nonce = deps.nonce();
@@ -270,6 +318,7 @@ export function main(argv: readonly string[], deps: Deps, repo: () => string): n
       deps.log(`run ${reuse.id} already regenerates ${a.branch} at ${head}: ${reuse.url}`);
       return waitFor(deps, r, reuse.id, { branch: a.branch, head }, { once: a.once });
     }
+    if (!waitForSlot(deps, r, { once: a.once })) return EXIT.pending;
     if (a.head !== null) {
       const now = branchHead(deps, r, a.branch);
       if (now !== a.head) throw new Error(`${a.branch} is at ${now}, not --head ${a.head}; push it first`);
