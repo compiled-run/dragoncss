@@ -8,6 +8,7 @@ import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/ele
 import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgShapeEmpty } from '../src/analysis/elements/svg.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, svgScenes } from '../src/internal.ts';
 import { svgShapePath } from '../src/lower/paint/image.ts';
+import { svgPaintAlpha } from '../src/css/color.ts';
 import type { ComponentDefinition, ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
 import { div, inputFor, staticClass, DOC } from './helpers.ts';
 
@@ -124,7 +125,7 @@ describe('the svg model in a compile', () => {
     const user = compile(input, false);
     expect(errors(user)).toEqual([]);
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
-    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
+    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
   it('refuses on native, and compiles for web, a shape Chrome fades, a visible shape in a hidden <svg> and an <svg> Chrome does not clip: native draws a shape opaque or not at all, with its <svg>, and clips to the box', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '40']])];
@@ -281,5 +282,31 @@ describe('the svg model in a compile', () => {
     const e = errors(compile(input, true));
     expect(e.filter((m) => m.includes('stroke-width: 10% on <circle> c is unsupported')).length).toBeGreaterThan(0);
     expect(e.filter((m) => m.includes('display: list-item on <li> li generates a disc marker')).length).toBeGreaterThan(0);
+  });
+  it('SVG-opacity: fill-opacity and stroke-opacity compute to a clamped number, inherit, and scale the fill and stroke alpha byte on native', () => {
+    const input = svgTree('svg { fill-opacity: 40%; stroke-opacity: 2; } .h { fill-opacity: 0.5; stroke-opacity: -1; }', (_r, o) => [
+      { ...shape(o, 'h', 'rect', [['width', '10'], ['height', '10'], ['fill', 'rgb(200, 40, 40)'], ['stroke', 'rgba(0, 0, 0, 0.5)']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'h' }, o)] },
+      shape(o, 'i', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4'], ['fill', 'rgb(0, 0, 255)'], ['stroke', 'rgb(0, 128, 0)']]),
+      shape(o, 'a', 'circle', [['cx', '6'], ['cy', '6'], ['r', '2'], ['fill-opacity', '0.25'], ['stroke-opacity', '75%'], ['stroke', 'rgb(0, 0, 0)']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.fillOpacity, x.strokeOpacity])).toEqual([['h', 0.5, 0], ['i', 0.4, 1], ['a', 0.25, 0.75]]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => [x.fill?.alpha ?? null, x.stroke?.alpha ?? null]) : null, backend).toEqual([[128, 0], [102, 255], [64, 191]]);
+    }
+    expect(svgPaintAlpha(255, 0.5)).toBe(128);
+    expect(svgPaintAlpha(128, 0.5)).toBe(64);
+    expect(svgPaintAlpha(255, 1)).toBe(255);
+    expect(svgPaintAlpha(255, 0)).toBe(0);
+  });
+  it('SVG-opacity: the presentation attributes parse as the properties do; an invalid one is refused, as Chrome ignores it', () => {
+    expect(paintAttributeValue('fill-opacity', '0.5')).toEqual({ ok: true, value: { kind: 'number', value: 0.5 } });
+    expect(paintAttributeValue('stroke-opacity', '30%')).toEqual({ ok: true, value: { kind: 'percentage', value: 30 } });
+    expect(svgAttributeRefusal('rect', 'fill-opacity', '50%')).toBeNull();
+    expect(svgAttributeRefusal('path', 'stroke-opacity', 'half')).toContain('is not a valid stroke-opacity');
   });
 });

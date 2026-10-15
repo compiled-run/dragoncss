@@ -4,7 +4,7 @@
 // CSS-wide keyword.
 import type { CssNode } from 'css-tree';
 import type { Span } from '../types.ts';
-import { EFFECTS_VALUE_PARSERS } from './properties/effects.ts';
+import { EFFECTS_VALUE_PARSERS, parseOpacityValue } from './properties/effects.ts';
 import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { RADIUS_VALUE_PARSERS } from './properties/radius.ts';
@@ -25,6 +25,9 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ['border-radius', parseBorderRadius],
   ['-webkit-border-radius', parseWebkitBorderRadius],
   ...Object.entries(EFFECTS_VALUE_PARSERS),
+  // SVG-opacity: fill-opacity and stroke-opacity take opacity's <opacity-value>.
+  ['fill-opacity', (tokens, base) => parseOpacityValue('fill-opacity', tokens, base)],
+  ['stroke-opacity', (tokens, base) => parseOpacityValue('stroke-opacity', tokens, base)],
   ['box-shadow', parseBoxShadow],
   ...Object.entries(OUTLINE_VALUE_PARSERS),
   ...Object.entries(VISIBILITY_VALUE_PARSERS),

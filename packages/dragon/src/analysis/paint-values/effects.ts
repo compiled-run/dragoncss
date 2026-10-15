@@ -44,12 +44,15 @@ function checkOpacity(el: ResolvedElement, targets: readonly string[], diagnosti
 
 export const EFFECTS_VALUES: PaintValues = {
   name: 'effects',
+  // SVG-opacity: fill-opacity and stroke-opacity compute as opacity does (css-fill-stroke-3 §3.4, §4.4).
   compute: (props) => {
-    const v = props.get('opacity');
-    if (v === undefined || (v.value.kind !== 'number' && v.value.kind !== 'percentage')) return;
-    const n = opacityOf(v.value);
-    if (n === null) return;
-    props.set('opacity', { ...v, value: { kind: 'number', value: n } });
+    for (const p of ['opacity', 'fill-opacity', 'stroke-opacity'] as const) {
+      const v = props.get(p);
+      if (v === undefined || (v.value.kind !== 'number' && v.value.kind !== 'percentage')) continue;
+      const n = opacityOf(v.value);
+      if (n === null) continue;
+      props.set(p, { ...v, value: { kind: 'number', value: n } });
+    }
   },
   // The fractional-opacity refusal is lane-gated, so project.ts runs checkTranslucent itself, not checkComputed.
   check: null,
