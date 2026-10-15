@@ -453,8 +453,11 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
 
 // ---------------------------------------------------------------------------------------------------------------- the cache
 
-/** A recorded run: the outputs it left, and whether they may be restored without running (it wrote all of them, read none). */
-export type Entry = { readonly outputs: Readonly<Record<string, string>>; readonly restorable: boolean; readonly inputs: Readonly<Record<string, string>> };
+/**
+ * A recorded run: the outputs it left, and whether they may be restored without running (it wrote all of them, read none). ms is
+ * how long the run took, which orders the next run's steps (longest first); entries recorded before it have none.
+ */
+export type Entry = { readonly outputs: Readonly<Record<string, string>>; readonly restorable: boolean; readonly inputs: Readonly<Record<string, string>>; readonly ms?: number };
 
 export type Store = {
   readonly get: (step: string, key: string) => Entry | null;
@@ -472,10 +475,11 @@ export function parseEntry(text: string): Entry | null {
     return null;
   }
   if (typeof v !== 'object' || v === null) return null;
-  const e = v as { version?: unknown; outputs?: unknown; restorable?: unknown; inputs?: unknown };
+  const e = v as { version?: unknown; outputs?: unknown; restorable?: unknown; inputs?: unknown; ms?: unknown };
   const isMap = (m: unknown): m is Record<string, string> => typeof m === 'object' && m !== null && !Array.isArray(m) && Object.values(m).every((b) => typeof b === 'string' && /^[0-9a-f]{40,64}$/.test(b));
   if (e.version !== 2 || !isMap(e.outputs) || !isMap(e.inputs) || typeof e.restorable !== 'boolean') return null;
-  return { outputs: e.outputs, restorable: e.restorable, inputs: e.inputs };
+  const entry = { outputs: e.outputs, restorable: e.restorable, inputs: e.inputs };
+  return typeof e.ms === 'number' && Number.isFinite(e.ms) && e.ms >= 0 ? { ...entry, ms: e.ms } : entry;
 }
 
 /** Entries as files <dir>/<step>/<key>.json, written atomically, so worktrees and parallel runs share them safely. */
@@ -588,6 +592,9 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
   if (skip.size === steps.length) return fail('every step is skipped');
   if (skip.size > 0) io.log(`not run (--skip or --only): ${steps.filter((s) => skip.has(s.name)).map((s) => s.name).join(', ')}`);
   const jobs = Math.max(1, opts.jobs ?? DEFAULT_JOBS);
+  // Each step's last recorded run time: of the steps free to start, the longest starts first, so a long step near the end of the
+  // list (tw-sweep) does not start last and run on alone after the rest have finished. No record counts as 0 (list order).
+  const cost = new Map(steps.map((s) => [s.name, io.store.latest(s.name)?.ms ?? 0]));
   const start = io.snapshot();
   const t0 = io.now();
   // Entries recorded by this run: --force trusts only these.
@@ -647,7 +654,7 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
         const afterInputs = inputsOf(s, tree);
         if (afterInputs.key !== before.key) io.log(`${s.name}: its inputs changed while it ran; not recorded, it runs again next pass`);
         else {
-          const entry: Entry = { outputs, restorable: !check.readOwn && untouched.length === 0, inputs: before.blobs };
+          const entry: Entry = { outputs, restorable: !check.readOwn && untouched.length === 0, inputs: before.blobs, ms: io.now() - ts };
           io.store.put(s.name, before.key, entry);
           session.set(`${s.name}\0${before.key}`, entry);
         }
@@ -658,11 +665,12 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
       return null;
     };
     while ((pending.length > 0 && error === null) || running.size > 0) {
-      // Start, in order, every pending step that no earlier pending or running step conflicts with.
+      // Start every pending step that no earlier pending or running step conflicts with, the longest recorded first.
       let started = true;
       while (started && error === null && running.size < jobs) {
         started = false;
-        for (let i = 0; i < pending.length; i++) {
+        const order = pending.map((_, i) => i).sort((a, b) => (cost.get(pending[b]!.name) ?? 0) - (cost.get(pending[a]!.name) ?? 0) || a - b);
+        for (const i of order) {
           const s = pending[i]!;
           let ins: Inputs;
           let blocked: boolean;
