@@ -7,6 +7,7 @@ import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { valueToString } from '../src/analysis/computed.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
+import { UNCAPTURED_LONGHANDS } from '../src/ua/datasets.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
@@ -49,6 +50,13 @@ describe('the text fill colour and stroke', () => {
 
   it('compiles a currentcolor fill and a zero-width stroke of any colour on every target', () => {
     for (const d of ['-webkit-text-fill-color: currentcolor', '-webkit-text-stroke-width: 0', '-webkit-text-stroke: 0 red', '-webkit-text-stroke-color: blue', '-webkit-text-stroke: green', '-webkit-text-fill-color: currentColor; color: red']) expect(errorsAt(d), d).toEqual([]);
+  });
+
+  it('leaves the fill and stroke colours out of the UA capture, so text under any color keeps a currentcolor fill', () => {
+    // Chrome's getComputedStyle reports the fill as the resolved color (rgb(0, 0, 0) on html), which a UA row would pin.
+    for (const p of ['-webkit-text-fill-color', '-webkit-text-stroke-color']) expect(UNCAPTURED_LONGHANDS, p).toContain(p);
+    expect(UNCAPTURED_LONGHANDS).not.toContain('-webkit-text-stroke-width');
+    for (const d of ['color: red', 'color: blue; -webkit-text-stroke-width: 0']) expect(errorsAt(d), d).toEqual([]);
   });
 
   it('refuses another fill colour or a wider stroke over text on every target', () => {
