@@ -1,9 +1,9 @@
 // Fixture group shadow (PNT1, css-backgrounds-3 §7.1): outer shadows (offsets, blur, spread, negative spread, several per box, a
 // transparent box), shadows of rounded, pill, oval and per-corner rounded boxes (the corner correction of the spread), inset
 // shadows (square, rounded, bordered, offset, full-cover), the cascade (em, rem, mm and pt lengths, currentcolor, var(), a list,
-// none, inherit), and the calibration set the shadow allowance is measured on (blurs 1 to 16 px, rounded, oval and inset shapes,
-// five colours over a light and a dark backdrop), in both environment directions. A calculation or a viewport unit in a shadow is
-// refused.
+// none, inherit, and an inherited currentcolor shadow that paints in the inheriting element's color), and the calibration set the
+// shadow allowance is measured on (blurs 1 to 16 px, rounded, oval and inset shapes, five colours over a light and a dark
+// backdrop), in both environment directions. A calculation or a viewport unit in a shadow is refused.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
