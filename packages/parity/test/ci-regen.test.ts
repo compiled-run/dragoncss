@@ -6,7 +6,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, type Run, runTitle } from '../../../scripts/ci-regen.ts';
+import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, LANDING_YIELD_S, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, REGEN_BRANCH_SLOTS, type Run, runTitle, SLOT_POLL_S } from '../../../scripts/ci-regen.ts';
 import { regenTitle } from '../../../scripts/land-devices-ci.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -21,7 +21,7 @@ const regenCommit = (o: { sha?: string; parent?: string; url?: string; base?: st
 const pushJob = (pushed: boolean) => ({ id: 9, name: 'push', status: 'completed', conclusion: 'success', steps: [{ name: PUSH_STEP, status: 'completed', conclusion: 'success' }, { name: FIXED_STEP, status: 'completed', conclusion: pushed ? 'skipped' : 'success' }] });
 
 /** A fake gh: the run moves through the given states, one per view. */
-function fake(o: { states?: object[]; jobs?: object[]; commits?: object[]; head?: string; listed?: object[]; dispatchAnswer?: string; annotations?: object[] | 'fail' } = {}) {
+function fake(o: { states?: object[]; jobs?: object[]; commits?: object[]; head?: string; listed?: object[]; devices?: object[]; dispatchAnswer?: string; annotations?: object[] | 'fail' } = {}) {
   const calls: string[] = [];
   const logs: string[] = [];
   let views = 0;
@@ -33,7 +33,13 @@ function fake(o: { states?: object[]; jobs?: object[]; commits?: object[]; head?
       const path = args[1] === '-X' ? args[3] : args[1];
       if (args[2] === 'POST') return o.dispatchAnswer ?? JSON.stringify({ workflow_run_id: 77 });
       if (path === `repos/${REPO}/branches/${BR}`) return JSON.stringify({ name: BR, commit: { sha: o.head ?? HEAD } });
-      if (path?.startsWith(`repos/${REPO}/actions/workflows/regen-on-ci.yml/runs?`)) return JSON.stringify({ workflow_runs: o.listed ?? [] });
+      // Like GitHub, a status= filter lists only the runs in that status.
+      const only = (runs: object[]) => {
+        const st = /[?&]status=([a-z_]+)/.exec(path ?? '')?.[1];
+        return st === undefined ? runs : runs.filter((r) => (r as { status?: string }).status === st);
+      };
+      if (path?.startsWith(`repos/${REPO}/actions/workflows/regen-on-ci.yml/runs?`)) return JSON.stringify({ workflow_runs: only(o.listed ?? []) });
+      if (path?.startsWith(`repos/${REPO}/actions/workflows/device-lanes.yml/runs?`)) return JSON.stringify({ workflow_runs: only(o.devices ?? []) });
       if (path === `repos/${REPO}/actions/runs/77`) return JSON.stringify(rawRun(states[Math.min(views++, states.length - 1)] as object));
       if (path === `repos/${REPO}/actions/runs/77/jobs?filter=latest&per_page=100`) return JSON.stringify({ jobs: o.jobs ?? [pushJob(false)] });
       if (path === `repos/${REPO}/commits?sha=${BR}&per_page=100`) return JSON.stringify(o.commits ?? []);
@@ -94,10 +100,10 @@ describe('pnpm ci:regen finding the run', () => {
     let lists = 0;
     const f = fake({ dispatchAnswer: '', states: [{ status: 'in_progress', conclusion: null }] });
     const gh = f.deps.gh;
-    const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('/runs?') ? JSON.stringify({ workflow_runs: ++lists > 2 ? [rawRun({ status: 'queued', conclusion: null }), ...others] : others }) : gh(a)) };
+    const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('/runs?status=') ? JSON.stringify({ workflow_runs: [] }) : a[1]?.includes('regen-on-ci.yml/runs?') ? JSON.stringify({ workflow_runs: ++lists > 2 ? [rawRun({ status: 'queued', conclusion: null }), ...others] : others }) : gh(a)) };
     expect(main([BR, '--once'], deps, () => REPO)).toBe(EXIT.pending);
     expect(f.logs).toContain(`dispatched regen-on-ci.yml from master for ${BR} at ${HEAD} (${NONCE}): run 77`);
-    // The first list is the reuse check; the dispatch's own lookup waits until its run-name appears.
+    // The first list is the reuse check (the slot check's lists, by status, find nothing running); the dispatch's own lookup waits until its run-name appears.
     expect(lists).toBe(3);
   });
   it('reuses the newest run of this branch and head while it runs or after it succeeded, and dispatches again after a failure', () => {
@@ -136,6 +142,95 @@ describe('pnpm ci:regen finding the run', () => {
     const other = fake();
     expect(other.run([BR, '--run', '77', '--head', NEW])).toBe(EXIT.error);
     expect(other.logs.at(-1)).toContain(`not ${BR} at ${NEW}`);
+  });
+});
+
+describe('pnpm ci:regen waiting for a slot before it dispatches', () => {
+  const other = (id: number, o: object = {}) => rawRun({ id, display_title: runTitle(`lane/o${id}`, NEW, NONCE), status: 'in_progress', conclusion: null, ...o });
+  const posted = (calls: string[]) => calls.some((c) => c.includes('/dispatches'));
+  it('dispatches at once when no landing runs and a branch slot is free', () => {
+    const f = fake({ listed: [other(1), other(2, { status: 'completed', conclusion: 'success' })], states: [{ status: 'queued', conclusion: null }] });
+    expect(f.run([BR, '--once'])).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(true);
+    expect(f.logs.some((l) => l.startsWith('waiting to dispatch'))).toBe(false);
+  });
+  it('with --once does not dispatch while every slot is taken, and says to poll again', () => {
+    const f = fake({ listed: [other(1), other(2, { status: 'queued' })] });
+    expect(f.run([BR, '--once'])).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(false);
+    expect(f.logs.at(-1)).toBe(`PENDING (not dispatched): 2 branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once); run the same command again (it dispatches anyway ${LANDING_YIELD_S / 60} minutes after the first wait)`);
+  });
+  it('waits while a landing run (a label run, a patch-mode regen or a device lanes run) is queued or running, then dispatches', () => {
+    for (const landing of [{ listed: [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })] }, { listed: [rawRun({ id: 3, display_title: `regen of ${NEW}`, status: 'queued', conclusion: null })] }, { devices: [rawRun({ id: 3, path: '.github/workflows/device-lanes.yml', display_title: 'device lanes', status: 'in_progress', conclusion: null })] }]) {
+      const f = fake({ ...landing, states: [{ status: 'queued', conclusion: null }] });
+      let polls = 0;
+      const gh = f.deps.gh;
+      const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('/runs?') && ++polls > 18 ? JSON.stringify({ workflow_runs: [] }) : gh(a)) };
+      expect(main([BR, '--once'], { ...deps }, () => REPO)).toBe(EXIT.pending);
+      expect(posted(f.calls)).toBe(false);
+      expect(main([BR], deps, () => REPO)).not.toBe(EXIT.error);
+      expect(f.logs).toContain('waiting to dispatch: 1 landing run(s) are queued or running');
+      expect(posted(f.calls)).toBe(true);
+      expect(f.deps.now()).toBeGreaterThanOrEqual(SLOT_POLL_S * 1000);
+    }
+  });
+  it('stops waiting for a landing after LANDING_YIELD_S and dispatches; the run waits for its slot itself', () => {
+    const f = fake({ listed: [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })], states: [{ status: 'completed', conclusion: 'success' }] });
+    f.run([BR]);
+    expect(posted(f.calls)).toBe(true);
+    expect(f.deps.now()).toBeGreaterThanOrEqual(LANDING_YIELD_S * 1000);
+  });
+  it('with --once dispatches anyway once LANDING_YIELD_S has passed since the first wait for this head', () => {
+    const f = fake({ listed: [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })], states: [{ status: 'queued', conclusion: null }] });
+    const first = new Map<string, number>();
+    const since = (k: string) => first.get(k) ?? (first.set(k, f.deps.now()), f.deps.now());
+    const forget = (k: string) => void first.delete(k);
+    expect(main([BR, '--once'], { ...f.deps, since, forget }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(false);
+    expect([...first.keys()]).toEqual([`${BR}@${HEAD}`]);
+    f.deps.sleep(LANDING_YIELD_S * 1000);
+    expect(main([BR, '--once'], { ...f.deps, since, forget }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(true);
+    expect([...first.keys()]).toEqual([]);
+  });
+  it('starts the shared wait only at a busy poll, and forgets it once the dispatch goes', () => {
+    const recorded: string[] = [];
+    const free = fake({ states: [{ status: 'queued', conclusion: null }] });
+    expect(main([BR, '--once'], { ...free.deps, since: (k) => (recorded.push(k), 0), forget: (k) => void recorded.push(`forget ${k}`) }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(free.calls)).toBe(true);
+    expect(recorded).toEqual([]);
+  });
+  it('after waiting, reads the branch head again and reuses a run another invocation dispatched meanwhile', () => {
+    const f = fake({ head: NEW, states: [{ status: 'queued', conclusion: null }] });
+    let polls = 0;
+    let heads = 0;
+    const gh = f.deps.gh;
+    const busy = [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })];
+    const deps: Deps = {
+      ...f.deps,
+      gh: (a) => {
+        if (a[1] === `repos/${REPO}/branches/${BR}`) return JSON.stringify({ name: BR, commit: { sha: ++heads > 1 ? NEW : HEAD } });
+        if (a[1]?.includes('regen-on-ci.yml/runs?')) return JSON.stringify({ workflow_runs: ++polls === 1 ? [] : polls <= 5 ? busy : [rawRun({ id: 78, display_title: runTitle(BR, NEW, 'ffffffffffff'), status: 'in_progress', conclusion: null })] });
+        return gh(a);
+      },
+    };
+    main([BR], deps, () => REPO);
+    expect(heads).toBe(2);
+    expect(posted(f.calls)).toBe(false);
+    expect(f.logs).toContain(`run 78 already regenerates ${BR} at ${NEW}: ${URL}`);
+  });
+  it('dispatches when listing the runs fails', () => {
+    const f = fake({ states: [{ status: 'queued', conclusion: null }] });
+    const gh = f.deps.gh;
+    const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('device-lanes.yml') ? (() => { throw new Error('HTTP 502'); })() : gh(a)) };
+    expect(main([BR, '--once'], deps, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(true);
+    expect(f.logs[0]).toMatch(/^listing the queued and running regens failed \(HTTP 502\); dispatching/);
+  });
+  it('uses regen-on-ci.yml\'s own slot count and landing yield', () => {
+    const yml = readFileSync(repoPath('.github/workflows/regen-on-ci.yml'), 'utf8');
+    expect(yml).toContain(`REGEN_BRANCH_SLOTS: '${REGEN_BRANCH_SLOTS}'`);
+    expect(yml).toContain(`LANDING_YIELD_SECONDS: '${LANDING_YIELD_S}'`);
   });
 });
 
