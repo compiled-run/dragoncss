@@ -145,8 +145,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -284,8 +297,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -423,8 +449,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -562,8 +601,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -701,8 +753,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -840,8 +905,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -979,8 +1057,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -1118,8 +1209,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -1257,8 +1361,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -1396,8 +1513,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -1535,8 +1665,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -1674,8 +1817,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -1813,8 +1969,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -1952,8 +2121,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -2091,8 +2273,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -2230,8 +2425,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -2369,8 +2577,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -2508,8 +2729,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -2647,8 +2881,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -2786,8 +3033,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -2925,8 +3185,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -3064,8 +3337,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -3203,8 +3489,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -3342,8 +3641,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -3481,8 +3793,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -3620,8 +3945,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -3759,8 +4097,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -3898,8 +4249,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -4037,8 +4401,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -4176,8 +4553,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -4315,8 +4705,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -4454,8 +4857,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -4593,8 +5009,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -4752,8 +5181,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -4911,8 +5353,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -5050,8 +5505,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -5189,8 +5657,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -5348,8 +5829,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -5487,8 +5981,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -5626,8 +6133,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -5765,8 +6285,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -5904,8 +6437,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -6043,8 +6589,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -6182,8 +6741,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -6321,8 +6893,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -6460,8 +7045,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -6599,8 +7197,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -6738,8 +7349,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -6877,8 +7501,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -7016,8 +7653,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -7155,8 +7805,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -7314,8 +7977,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -7453,8 +8129,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -7592,8 +8281,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -7731,8 +8433,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -7870,8 +8585,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     },
     {
@@ -8009,8 +8737,21 @@
         "text-indent": "0px",
         "overflow-wrap": "normal",
         "word-break": "normal",
+        "font-variant-ligatures": "normal",
+        "font-variant-caps": "normal",
+        "font-variant-alternates": "normal",
+        "font-variant-numeric": "normal",
+        "font-variant-east-asian": "normal",
+        "font-variant-position": "normal",
+        "font-variant-emoji": "normal",
+        "font-kerning": "auto",
+        "font-optical-sizing": "auto",
+        "font-language-override": "normal",
         "-webkit-box-orient": "horizontal",
-        "-webkit-line-clamp": "none"
+        "-webkit-line-clamp": "none",
+        "font-stretch": "100%",
+        "font-feature-settings": "normal",
+        "font-variation-settings": "normal"
       }
     }
   ]
