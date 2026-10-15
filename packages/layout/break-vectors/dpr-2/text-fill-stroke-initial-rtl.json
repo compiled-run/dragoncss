@@ -1,0 +1,13 @@
+{
+  "case": "text-fill-stroke-initial-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"cc:text0","lines":[[0,5]]},
+    {"id":"s0:text0","lines":[[0,5]]},
+    {"id":"inh:text0","lines":[[0,4]]},
+    {"id":"sw:text0","lines":[[0,4]]},
+    {"id":"sh:text0","lines":[[0,4]]},
+    {"id":"ra:text0","lines":[[0,5]]},
+    {"id":"rb:text0","lines":[[0,3]]}
+  ]
+}

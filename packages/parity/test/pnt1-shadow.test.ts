@@ -152,7 +152,7 @@ function measure(caseId: string, list: readonly Box[], p: import('dragon').Nativ
 
 describe('PNT1 shadow: the TS reference against Chrome at every clear shadow pixel (the measured allowance)', () => {
   it('covers the shadow fixtures and the calibration set in both directions', () => {
-    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'calib-shadow-blur', 'calib-shadow-colors']);
+    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'shadow-webkit-alias', 'calib-shadow-blur', 'calib-shadow-colors']);
   });
   const all: Measure = { max: 0, pixels: 0, worst: '' };
   const plainAll: Measure = { max: 0, pixels: 0, worst: '' };
