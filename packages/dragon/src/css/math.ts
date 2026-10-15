@@ -669,7 +669,8 @@ const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 /** opacity is <number> | <percentage> (css-color-4 §3.2); Chrome resolves a calculation in it as a number or a percentage. */
 // stroke-width takes a unitless number too (SVG's quirk, Chrome StrokeWidth::ParseSingleValue).
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'stroke-width']);
+// tab-size is <number> | <length> (css-text-3 §4.2); its parser (properties/tab-size.ts) refuses every calculation.
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'stroke-width', 'tab-size']);
 /** Properties whose syntax is a plain <length> without being a line width (css-ui-4 §3.4 outline-offset). */
 const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset']);
 

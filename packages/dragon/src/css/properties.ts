@@ -36,6 +36,7 @@ import { TEXT_BREAK_ASPECTS, TEXT_BREAK_CONTAINER, TEXT_BREAK_INHERITED, TEXT_BR
 import { LINE_BREAK_ASPECTS, LINE_BREAK_CONTAINER, LINE_BREAK_INHERITED, LINE_BREAK_LONGHANDS, LINE_BREAK_SHORTHANDS, LINE_BREAK_TEXT_ROLE } from './properties/line-break.ts';
 import { HYPHENS_ASPECTS, HYPHENS_CONTAINER, HYPHENS_INHERITED, HYPHENS_LONGHANDS, HYPHENS_SHORTHANDS, HYPHENS_TEXT_ROLE } from './properties/hyphens.ts';
 import { TEXT_WRAP_ASPECTS, TEXT_WRAP_CONTAINER, TEXT_WRAP_INHERITED, TEXT_WRAP_LONGHANDS, TEXT_WRAP_SHORTHANDS, TEXT_WRAP_TEXT_ROLE } from './properties/text-wrap.ts';
+import { TAB_SIZE_ASPECTS, TAB_SIZE_CONTAINER, TAB_SIZE_INHERITED, TAB_SIZE_LONGHANDS, TAB_SIZE_SHORTHANDS, TAB_SIZE_TEXT_ROLE } from './properties/tab-size.ts';
 import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
 
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
@@ -116,6 +117,8 @@ const FAMILIES = [
   family('line-clamp', LINE_CLAMP_LONGHANDS, LINE_CLAMP_SHORTHANDS, LINE_CLAMP_INHERITED, LINE_CLAMP_ASPECTS, LINE_CLAMP_CONTAINER, LINE_CLAMP_TEXT_ROLE),
   // TXT2-i (css-text-3 §6.1): hyphens and the -webkit-hyphens alias, after line-clamp.
   family('hyphens', HYPHENS_LONGHANDS, HYPHENS_SHORTHANDS, HYPHENS_INHERITED, HYPHENS_ASPECTS, HYPHENS_CONTAINER, HYPHENS_TEXT_ROLE),
+  // TXT2-c3 (css-text-3 §4.2): tab-size, after line-clamp; preserved tabs stay refused ('tab-stop').
+  family('tab-size', TAB_SIZE_LONGHANDS, TAB_SIZE_SHORTHANDS, TAB_SIZE_INHERITED, TAB_SIZE_ASPECTS, TAB_SIZE_CONTAINER, TAB_SIZE_TEXT_ROLE),
 ] as const;
 
 export type Longhand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<infer L, string> ? L : never) : never;

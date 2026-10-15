@@ -94,6 +94,8 @@ const SUBSET = [
   '-webkit-box-orient', '-webkit-line-clamp',
   // TXT2-i: hyphens (css-text-3 §6.1), after the line clamp, as LONGHANDS registers it.
   'hyphens',
+  // TXT2-c3: tab-size (css-text-3 §4.2), after the line clamp, as LONGHANDS registers it.
+  'tab-size',
 ] as const;
 
 /**
