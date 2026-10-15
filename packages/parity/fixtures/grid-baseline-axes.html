@@ -39,6 +39,9 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 .fg { display: grid; grid-template-columns: 30px 30px; align-items: last baseline; }
 .pos { position: relative; height: 40px; grid-template-rows: 40px; }
 .abs { position: absolute; width: 8px; height: 6px; }
+.clip5 { overflow: hidden; height: 5px; }
+.fx5 { display: flex; height: 5px; }
+.gd5 { display: grid; height: 5px; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -51,5 +54,8 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 <div data-dragon-id="t" class="r ai-last fixed2"><div data-dragon-id="t1" class="f13">X</div><div data-dragon-id="t2" class="half"></div><div data-dragon-id="t3" class="clip">X X X</div><div data-dragon-id="t4" class="span2 f17">XX XX</div></div>
 <div data-dragon-id="f" class="fx"><div data-dragon-id="f1" class="fg"><div data-dragon-id="f1a" class="pb7">X</div><div data-dragon-id="f1b" class="f17">X</div></div><div data-dragon-id="f2">X</div><div data-dragon-id="f3" class="fg"><div data-dragon-id="f3a" class="f20 as-base">X</div><div data-dragon-id="f3b" class="f13">X X X</div></div></div>
 <div data-dragon-id="o" class="r pos ai-last ji-last"><div data-dragon-id="o1">X</div><div data-dragon-id="o2" class="abs"></div><div data-dragon-id="o3" class="abs js-base as-base"></div></div>
+<div data-dragon-id="e" class="r ai-last"><div data-dragon-id="e1">X<div data-dragon-id="e1a" class="clip5"></div></div><div data-dragon-id="e2">X<div data-dragon-id="e2a" class="fx5"></div></div><div data-dragon-id="e3">X<div data-dragon-id="e3a" class="gd5"></div></div><div data-dragon-id="e4" class="f20">X</div></div>
+<div data-dragon-id="m" class="r ai-last"><div data-dragon-id="m1">X<div data-dragon-id="m1a" class="clip5">X</div></div><div data-dragon-id="m2" class="f20">X</div><div data-dragon-id="m3" class="fx5 as-last"></div><div data-dragon-id="m4">XX XX<div data-dragon-id="m4a" class="clip5 f13">X X</div><div data-dragon-id="m4b" class="clip5"></div></div></div>
+<div data-dragon-id="n" class="r ai-last">XX XX<span data-dragon-id="n1" class="as-last f17">X</span><span data-dragon-id="n2" class="f13">X X</span><span data-dragon-id="n3" class="as-last pb7">X</span></div>
 </body>
 </html>

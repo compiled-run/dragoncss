@@ -88,6 +88,8 @@ const SUBSET = [
   'overflow-wrap', 'word-break', 'word-wrap',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
+  // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
+  'touch-action',
 ] as const;
 
 /**
