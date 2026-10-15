@@ -7,8 +7,8 @@ import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
-const project = (faults: CompilerFaults) =>
-  createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults, profiles: 'derive', direction: 'ltr' });
+const project = (faults: CompilerFaults, profiles: 'derive' | 'enforce' = 'derive') =>
+  createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults, profiles, direction: 'ltr' });
 
 function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], children: TreeNode[] = []): ElementNode {
   const origin: Origin = { kind: 'authored', span: { source: ref, start: 0, end: 0 } };
@@ -18,9 +18,9 @@ function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], chi
 const body = (r: SourceRef): TreeNode[] => [el(r, 'a', 'div', ['w'], [text(r, 't', 'XX XX')])];
 
 /** Each error as `<target> <code>` for Ahem text at the given font-weight declaration. */
-function errorsAt(weight: string, faults: CompilerFaults = NO_FAULTS): string[] {
+function errorsAt(weight: string, faults: CompilerFaults = NO_FAULTS, profiles: 'derive' | 'enforce' = 'derive'): string[] {
   const css = `body { font-family: Ahem; font-size: 10px; } .w { font-weight: ${weight}; }`;
-  const c = project(faults).compile(inputFor(css, body));
+  const c = project(faults, profiles).compile(inputFor(css, body));
   return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
 }
 
@@ -43,5 +43,10 @@ describe('font-weight over Ahem on native', () => {
     }
     expect(errorsAt('700', plant)).toEqual(REFUSED);
     expect(errorsAt('599', plant)).toEqual([]);
+  });
+
+  it('the shipped support rows (enforce mode) accept the weights text-weight-ahem proves and still refuse 700', () => {
+    for (const w of ['300', '400', '500', 'lighter']) expect(errorsAt(w, NO_FAULTS, 'enforce'), w).toEqual([]);
+    expect(errorsAt('700', NO_FAULTS, 'enforce')).toEqual(REFUSED);
   });
 });
