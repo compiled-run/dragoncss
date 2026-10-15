@@ -41,6 +41,4 @@ export const FONT_RESET_LONGHANDS = {
   'font-language-override': 'normal',
   'font-kerning': 'auto',
   'font-optical-sizing': 'auto',
-  'font-feature-settings': 'normal',
-  'font-variation-settings': 'normal',
 } as const;

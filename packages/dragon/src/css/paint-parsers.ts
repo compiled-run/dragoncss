@@ -5,6 +5,7 @@
 import type { CssNode } from 'css-tree';
 import type { Span } from '../types.ts';
 import { EFFECTS_VALUE_PARSERS } from './properties/effects.ts';
+import { FONT_FEATURES_VALUE_PARSERS } from './properties/font-features.ts';
 import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { RADIUS_VALUE_PARSERS } from './properties/radius.ts';
@@ -31,4 +32,5 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(RESIZE_VALUE_PARSERS),
   ...Object.entries(TEXT_TRANSFORM_VALUE_PARSERS),
   ...Object.entries(LINE_CLAMP_VALUE_PARSERS),
+  ...Object.entries(FONT_FEATURES_VALUE_PARSERS),
 ]);

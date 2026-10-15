@@ -88,6 +88,8 @@ const SUBSET = [
   'overflow-wrap', 'word-break', 'word-wrap',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
+  // TXT-FONTFEAT: font-feature-settings and font-variation-settings (css-fonts-4 §6.12, §7.2), after the line clamp, as LONGHANDS registers them.
+  'font-feature-settings', 'font-variation-settings',
 ] as const;
 
 /**
