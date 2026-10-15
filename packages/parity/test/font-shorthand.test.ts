@@ -150,8 +150,9 @@ describe('the font-shorthand group', () => {
   // read no git history), each taken at BASE with git; a merge that moves BASE retakes them there and states why in its message.
   /** sha256 of "<path>\t<sha256 of the capture without the keys added since>" lines in path order, over every capture but TXT-W2's own. */
   // Retaken on master 285ce07960: #340 added an inherited-currentcolor shadow to the BASE fixture shadow-cascade (its 8 captures), the
-  // only BASE capture that changed once the keys below are stripped and the later groups left out.
-  const BASE_CAPTURES = { files: 3164, digest: '3cbc1a47bac6311636583c8ab7f997bab146850718a182de10a785fb8cb35f57' };
+  // only BASE capture that changed once the keys below are stripped and the later groups left out. Retaken again on the landing of #370,
+  // which adds -webkit-opacity rows to the BASE fixture opacity-cascade (its 8 captures).
+  const BASE_CAPTURES = { files: 3164, digest: 'ec8955ba043db575a4aa2c9c35f981ad79127ec588fcb962d95914ea80cb4899' };
   // TDEC-a adds the decoration longhands after TXT-W2; BASE has neither, so stripping both leaves BASE's digest.
   // The keys added since BASE: TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2's spacing, text-indent,
   // text-transform, text-overflow, overflow-wrap, word-break and line-clamp, INL's vertical-align, float and clear, user-select, resize

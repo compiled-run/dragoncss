@@ -54,10 +54,11 @@ function withoutWrapKeys(v: unknown): unknown {
  * With those 84 files put back at 6964e8a337 that tree still gives 690a1b3fdb… and 3c5abaa478….
  * The landing of #340 and #332 moves BASE again: #340 adds an inherited-currentcolor shadow to the BASE fixture shadow-cascade and #332
  * a hidden shape to svg-hidden, which changes their vectors, pixels and captures (and their -rtl twins) and nothing else, so both
- * digests are retaken on that landing's regenerated head.
+ * digests are retaken on that landing's regenerated head. The landing of #370 does the same: it adds -webkit-opacity rows to the BASE
+ * fixture opacity-cascade, which changes its vectors, pixels and captures (and its -rtl twin) and nothing else.
  */
-const BASE_OUTPUTS = { files: 13143, digest: 'e8b2ca0d4199dcdf50c6720d58a88de4a168ab91810669574cc77a25ac4565f3' };
-const BASE_CAPTURES = { files: 3354, digest: '4063b72a4b1cec622ed201aa957cce0bc9df96bb01187907d5bbcf2e9978312e' };
+const BASE_OUTPUTS = { files: 13143, digest: '5e7fe7b3a00581dad1178b58e59061a6ccca82fe36b90dc043d2dde36a7d9a7b' };
+const BASE_CAPTURES = { files: 3354, digest: 'f480435bce4d3a70e0dd6ef1d580071ad684a9f0c313ed3690fbf6e996caa95a' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
