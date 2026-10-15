@@ -1889,6 +1889,29 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/paint_layer_stacking_node.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "CSS 2.2 Appendix E and css-flexbox-1 §5.4 / css-grid-2 §4.4 (order-modified document order paints flex and grid items), and Chrome observation (the stacking-grid-items capture)",
+        "proof": [
+          "packages/dragon/test/paint-stacking.test.ts",
+          "packages/parity/test/pnt1-effects.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Lesser General Public License",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights; Copyright (C) 1998 Netscape Communications Corporation.",
+      "fileSha256": "a154a9adff47bed8a017a422ce9610e99fbd736575f6a060179d560f836ba2fe",
+      "headerSha256": "2d4e2c75cdcc941b2678905cdd9e86452777675ca31d6799e6574449f2724c63",
+      "ranges": [
+        { "lines": "1-425", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/paint/stacking.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/paint-values/stacking.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/paint/decoration_line_painter.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
