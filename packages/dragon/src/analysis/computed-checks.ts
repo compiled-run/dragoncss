@@ -13,6 +13,8 @@ import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import { GEN_B_FAULTS } from '../faults/gen-b.ts';
+import type { TxtFillFaults } from '../faults/txt-fill.ts';
+import { TXT_FILL_FAULTS } from '../faults/txt-fill.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -801,7 +803,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults = GEN_B_FAULTS): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtFillFaults = { ...GEN_B_FAULTS, ...TXT_FILL_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -828,6 +830,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
+      checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
@@ -844,6 +847,36 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
   checkTextTransform(root, targets, diagnostics, reported);
+}
+
+// TXT-FX (compat §5): glyphs are painted in color and no stroke is drawn, which is what Chrome draws for a fill colour of currentcolor
+// and a stroke of width 0 in any colour. Any other fill colour or a wider stroke over the element's text is refused for every
+// target, once per text. Planted faults textFillColorAccepted and textStrokeAccepted accept them.
+function checkTextFillStroke(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: TxtFillFaults): void {
+  const fill = el.props.get('-webkit-text-fill-color') as ResolvedValue;
+  const width = el.props.get('-webkit-text-stroke-width') as ResolvedValue;
+  const problems: string[] = [];
+  if (!faults.textFillColorAccepted && keywordOf(fill) !== 'currentcolor') problems.push(`-webkit-text-fill-color: ${valueToString(fill.value)}, a fill other than currentcolor (Dragon paints glyphs in color)`);
+  const zero = (width.value.kind === 'length' || width.value.kind === 'number') && width.value.value === 0;
+  if (!faults.textStrokeAccepted && !zero) problems.push(`-webkit-text-stroke-width: ${valueToString(width.value)}, a stroke Dragon does not draw`);
+  if (problems.length === 0) return;
+  // Located at the element's own declaration when it has one, else at the text.
+  const declared = [fill, width].find((v) => v.origin !== 'inherited' && v.declaration !== null);
+  for (const c of el.children) {
+    if (c.kind !== 'text') continue;
+    const id = `text-fill-stroke|${c.node.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: declared?.declaration ? authored(declared.declaration.valueSpan) : c.node.node.origin,
+        target: t,
+        message: `text ${c.node.address} takes ${problems.join(', and ')} (TXT-FX)`,
+        manual: `Give the text of ${el.element.address} -webkit-text-fill-color: currentcolor and -webkit-text-stroke-width: 0, and set color instead.`,
+        basis: 'computed-value',
+      }));
+    }
+  }
 }
 
 /** The largest device scale a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies below it. */
