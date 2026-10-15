@@ -19,7 +19,6 @@
     {"id":"abs:text0","data":"X","lines":1,"units":[0],"blank":[]},
     {"id":"t:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
     {"id":"t:text1","data":" X","lines":1,"units":[0,0],"blank":[]},
-    {"id":"sp:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
-    {"id":"gone:text0","data":"X","lines":0,"units":[-1],"blank":[]}
+    {"id":"sp:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
   ]
 }

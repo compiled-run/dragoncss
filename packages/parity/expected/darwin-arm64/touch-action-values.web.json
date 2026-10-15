@@ -3579,16 +3579,6 @@
         "-webkit-line-clamp": "none",
         "touch-action": "pan-y"
       }
-    },
-    {
-      "id": "gone:text0",
-      "kind": "text",
-      "hasBox": false,
-      "x": 0,
-      "y": 0,
-      "width": 0,
-      "height": 0,
-      "computed": null
     }
   ]
 }
