@@ -1,6 +1,7 @@
 // Fixture group text-decoration (TDEC-a, notes/T148J-tdec.md): the values every target refuses, and text-decoration-native (TDEC-b),
 // the decorations iOS and Android draw, proven on device pixels by the decoration points (paint-samples/text-decoration.ts): Ahem
-// solid underlines (skip-ink none, crossing the glyphs; skip-ink auto at 15px, clipped round them), a line-through, px and percent
+// solid underlines (skip-ink none, crossing the glyphs, one at a written text-underline-position: auto; skip-ink auto at 15px,
+// clipped round them), a line-through, px and percent
 // thicknesses and offsets, an overline, a transparent line and an inline box's underline, in both directions. The other decorated
 // cases are in the web-only lane (fixture-groups/fonts.ts), where the decoration capture proves every decoration pixel.
 // text-decoration-native-current: currentcolor lines (implicit and written) in the decorating box's colour, and none, which draws
