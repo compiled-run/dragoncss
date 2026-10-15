@@ -9,7 +9,7 @@ import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/prop
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
 import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
-import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
+import { LOGICAL_CORNER_PROPERTIES, RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 
@@ -51,7 +51,7 @@ const SUBSET = [
   'pointer-events',
   // Border radii (PNT1), after pointer-events, as LONGHANDS registers them, then their shorthands.
   ...RADIUS_LONGHANDS,
-  'border-radius', '-webkit-border-radius',
+  'border-radius', '-webkit-border-radius', ...LOGICAL_CORNER_PROPERTIES,
   // Box shadows (PNT1), after the radii.
   'box-shadow',
   // Outlines (PNT1), after the radius family, as LONGHANDS registers them, then their shorthand.

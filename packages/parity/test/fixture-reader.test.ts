@@ -221,6 +221,7 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-overflow-body': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.b { overflow: hidden; }\n</style>\n</head>\n<body data-dragon-id=\"body\" class=\"b\">\n<div data-dragon-id=\"a\">XX</div>\n</body>\n</html>\n",
   'reject-overflow-scroll': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.a { width: 20px; height: 10px; overflow: scroll; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\">XX</div>\n</body>\n</html>\n",
   'reject-context-root-overflow': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nhtml { overflow-x: hidden; }\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.a { width: 50px; height: 20px; background-color: #ccc; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\"></div>\n</body>\n</html>\n",
+  'reject-logical-radius': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.a { border-start-start-radius: 4px; width: 20px; height: 10px; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\"></div>\n</body>\n</html>\n",
 };
 
 // BASE fixtures a later package retargeted on purpose (V1 of the value model supports vw and calc(), so its rejects moved to
