@@ -8,7 +8,7 @@
 // every failure is printed and written to out/device-failures-<target>.json. Either rewrites out/lanes.json, keeping the committed
 // records of lanes not run now when they still describe the configuration. --target limits --run-device to one target. pnpm run
 // parity:devices is parity:lanes -- --run-host --run-device. Internal: --prebuild <target> builds the app with reuse.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { deviceJobs, EarlyBoots, earlySpecs, lanesArgs, prebuildApps } from '../device-jobs.ts';
 import type { HostSource } from '../device-lanes.ts';
 import { allRunFailures, failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
@@ -20,6 +20,27 @@ import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
 import { nativeTargets } from '../targets.ts';
 import type { HostRun } from '../lanes.ts';
+
+/**
+ * One line on where a host lane's time went: its wall time, and the build and run seconds of the P1 and extended corpora from the
+ * reports the host CLI writes (packages/translate/out, ignored by git); the rest of the wall is the corpora it builds first.
+ */
+function hostTiming(target: string, cli: string, t0: number): string {
+  const name = cli === 'native:swift' ? 'swift' : 'kotlin';
+  const parts = (['', '-extended'] as const).flatMap((suffix) => {
+    try {
+      const file = repoPath(`packages/translate/out/report-${name}${suffix}.json`);
+      // A report from an earlier run (this one failed before writing) says nothing about this run.
+      if (statSync(file).mtimeMs < t0) return [];
+      const r = JSON.parse(readFileSync(file, 'utf8')) as { buildSeconds?: unknown; runSeconds?: unknown };
+      if (typeof r.buildSeconds !== 'number' || typeof r.runSeconds !== 'number') return [];
+      return [`${suffix === '' ? 'P1' : 'extended'} build ${r.buildSeconds.toFixed(0)} s, run ${r.runSeconds.toFixed(0)} s`];
+    } catch {
+      return [];
+    }
+  });
+  return `parity:lanes --run-host: ${target} host lane done after ${((Date.now() - t0) / 1000).toFixed(0)} s${parts.length === 0 ? '' : ` (${parts.join('; ')})`}`;
+}
 
 const parsed = lanesArgs(process.argv.slice(2));
 if ('error' in parsed) {
@@ -95,7 +116,14 @@ if (runHost || runDevice) {
     // The apps build in their own processes while the host lanes run; a target whose build failed runs no devices and fails the run.
     const builds = runDevice ? prebuildApps(mine.map((t) => t.target), (l) => console.log(l)) : Promise.resolve([]);
     const h0 = Date.now();
-    const hostRuns = runHost ? Promise.all(targets.map(async (t) => host.set(t.target, await runHostLane(t)))).then(() => console.log(`parity:lanes --run-host: host lanes done in ${((Date.now() - h0) / 1000).toFixed(0)} s`)) : null;
+    const hostRuns = runHost
+      ? Promise.all(
+          targets.map(async (t) => {
+            host.set(t.target, await runHostLane(t));
+            console.log(hostTiming(t.target, t.hostCli, h0));
+          }),
+        ).then(() => console.log(`parity:lanes --run-host: host lanes done in ${((Date.now() - h0) / 1000).toFixed(0)} s`))
+      : null;
     // Judged below, after the devices are stopped; a host run a device waits on is handed its failure.
     hostRuns?.catch(() => undefined);
     const hostPhase = (async () => {
