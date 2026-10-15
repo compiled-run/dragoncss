@@ -7,7 +7,9 @@ import { emitNativeSupport } from 'dragon';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { ClipEdges } from '../src/css/properties/clip-rect.ts';
-import { clipsEverything } from '../src/css/properties/clip-rect.ts';
+import { CLIP_RECT_LONGHANDS, clipsEverything } from '../src/css/properties/clip-rect.ts';
+import { LONGHANDS } from '../src/css/properties.ts';
+import { TOUCH_ACTION_LONGHANDS } from '../src/css/properties/touch-action.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { applyPlant } from '../src/emit/native-support.ts';
@@ -45,6 +47,12 @@ function programs(css: string) {
 const HIDDEN = '.a { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); } ';
 
 describe('clip: parse and computed values (Chrome 145 Clip::ParseSingleValue and getComputedStyle)', () => {
+  it('follows touch-action, last', () => {
+    expect([...CLIP_RECT_LONGHANDS]).toEqual(['clip']);
+    expect(LONGHANDS[LONGHANDS.indexOf('clip') - 1]).toBe(TOUCH_ACTION_LONGHANDS[TOUCH_ACTION_LONGHANDS.length - 1]);
+    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('clip');
+  });
+
   it('computes auto, and each rect() edge to px with auto kept, as Chrome serializes it with commas', () => {
     // On web, which draws every rect (a rect that is not empty is refused on native only).
     const at = (css: string) => explainOne(compile(`.a { position: absolute; ${css} }`), 'web', 'a', 'clip').value;
