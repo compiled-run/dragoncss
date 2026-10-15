@@ -1962,9 +1962,11 @@
         { "lines": "2541-2562", "symbol": "NeedsOverflowClipForReplacedContents", "source": "cited" },
         { "lines": "2651-2670", "symbol": "NeedsInnerBorderRadiusClip", "source": "cited" },
         { "lines": "2744-2770", "symbol": "AdjustRoundedClipForOverflowClipMargin", "source": "cited" },
-        { "lines": "2772-2815", "symbol": "UpdateInnerBorderRadiusClip", "source": "cited" }
+        { "lines": "2772-2815", "symbol": "UpdateInnerBorderRadiusClip", "source": "cited" },
+        { "lines": "2381-2405", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateCssClip", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/clip.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": null, "use": "reference" },
         { "file": "packages/parity/src/paint-samples/replaced-geometry.ts", "symbol": null, "use": "reference" }
         ]
@@ -3579,7 +3581,9 @@
         { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8525-8531", "symbol": "Resize::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8533-8552", "symbol": "Resize::ApplyValue", "source": "located" },
-        { "lines": "12421-12434", "symbol": "WordSpacing::CSSValueFromComputedStyleInternal", "source": "located" }
+        { "lines": "12421-12434", "symbol": "WordSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "2322-2361", "symbol": "Clip::ParseSingleValue", "source": "located" },
+        { "lines": "2363-2381", "symbol": "Clip::CSSValueFromComputedStyleInternal", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
@@ -3589,7 +3593,8 @@
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeWordSpacing", "use": "port" },
         { "file": "packages/dragon/src/css/properties/text-spacing.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/clip-rect.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

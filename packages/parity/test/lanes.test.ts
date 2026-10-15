@@ -17,6 +17,7 @@ import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
+import { CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
@@ -243,7 +244,7 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases, the GRID cases, the visibility cases (T150a) and the svg cases (SVG-a2)', () => {
+  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases, the GRID cases, the visibility cases (T150a), the clip cases (MASK-CLIP) and the svg cases (SVG-a2)', () => {
     const refusals = hitRefusedCases();
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
@@ -255,6 +256,7 @@ describe('committed out/lanes.json', () => {
     expect(refused.filter((id) => GRID_OUT.includes(id)).sort()).toEqual([...GRID_OUT].sort());
     expect(refused.filter((id) => VISIBILITY_OUT.includes(id)).sort()).toEqual([...VISIBILITY_OUT].sort());
     expect(refused.filter((id) => SVG_OUT.includes(id)).sort()).toEqual([...SVG_OUT].sort());
+    expect(refused.filter((id) => CLIP_RECT_OUT.includes(id)).sort()).toEqual([...CLIP_RECT_OUT].sort());
     for (const r of refusals) {
       if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
@@ -262,6 +264,7 @@ describe('committed out/lanes.json', () => {
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
       else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
+      else if (CLIP_RECT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_RECT_REASON);
       else if (TRANSFORM_NAMED.includes(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
     }
