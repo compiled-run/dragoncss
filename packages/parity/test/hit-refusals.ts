@@ -21,6 +21,8 @@ export const INLINE_OUT: readonly string[] = [
   'text-decoration-native', 'text-decoration-native-rtl',
   // resize-values holds an inline box (sp, resize on an inline span).
   'resize-values', 'resize-values-rtl',
+  // TXT2-g's line-clamp-lines holds an inline box (l9s, a clamped line ending inside a span).
+  'line-clamp-lines',
   // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];
