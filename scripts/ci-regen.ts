@@ -8,7 +8,7 @@
 // run that is not the one asked for, 3 pending.
 import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { failedSteps, gh, repoOf, runIdOfDispatch } from './ci-test-files.ts';
@@ -74,6 +74,8 @@ export type Deps = {
   readonly nonce: () => string;
   /** When this machine first waited to dispatch the given branch and head (now, the first time): --once polls share one wait. */
   readonly since?: (key: string) => number;
+  /** Forgets that wait once the dispatch goes, so a later dispatch of the same head (a retry) waits afresh. */
+  readonly forget?: (key: string) => void;
 };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -173,20 +175,26 @@ export function slotState(deps: Deps, repo: string): { readonly branch: number; 
  * workflow's own wait still guards the runners.
  */
 export function waitForSlot(deps: Deps, repo: string, key: string, o: { readonly once: boolean; readonly pollS?: number }): 'go' | 'waited' | 'pending' {
-  const t0 = deps.since?.(key) ?? deps.now();
+  let t0: number | null = null;
   let slept = false;
   let told = '';
+  const go = (): 'go' | 'waited' => {
+    if (t0 !== null) deps.forget?.(key);
+    return slept ? 'waited' : 'go';
+  };
   for (;;) {
     let s: { readonly branch: number; readonly landing: number };
     try {
       s = slotState(deps, repo);
     } catch (e) {
       deps.log(`listing the queued and running regens failed (${e instanceof Error ? e.message : String(e)}); dispatching, and the run waits for its slot itself`);
-      return slept ? 'waited' : 'go';
+      return go();
     }
-    const waiting = deps.now() - t0 < LANDING_YIELD_S * 1000;
-    const why = !waiting ? null : s.landing > 0 ? `${s.landing} landing run(s) are queued or running` : s.branch >= REGEN_BRANCH_SLOTS ? `${s.branch} branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once)` : null;
-    if (why === null) return slept ? 'waited' : 'go';
+    const busy = s.landing > 0 ? `${s.landing} landing run(s) are queued or running` : s.branch >= REGEN_BRANCH_SLOTS ? `${s.branch} branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once)` : null;
+    // The wait starts at the first busy poll (kept across --once polls), never at a dispatch that did not wait.
+    if (busy !== null) t0 ??= deps.since?.(key) ?? deps.now();
+    const why = busy !== null && t0 !== null && deps.now() - t0 < LANDING_YIELD_S * 1000 ? busy : null;
+    if (why === null) return go();
     if (o.once) {
       deps.log(`PENDING (not dispatched): ${why}; run the same command again (it dispatches anyway ${LANDING_YIELD_S / 60} minutes after the first wait)`);
       return 'pending';
@@ -363,6 +371,9 @@ export function main(argv: readonly string[], deps: Deps, repo: () => string): n
   }
 }
 
+/** Where `since` keeps the first wait for a branch and head. */
+const waitFile = (key: string): string => join(tmpdir(), `ci-regen-wait-${createHash('sha256').update(key).digest('hex').slice(0, 16)}`);
+
 if (import.meta.main) {
   let r = '';
   const repo = (): string => (r ||= repoOf(process.env['GH_REPO'], execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' })));
@@ -373,7 +384,7 @@ if (import.meta.main) {
     log: (l) => console.log(l),
     nonce: () => randomBytes(6).toString('hex'),
     since: (key) => {
-      const file = join(tmpdir(), `ci-regen-wait-${createHash('sha256').update(key).digest('hex').slice(0, 16)}`);
+      const file = waitFile(key);
       try {
         const t = Number(readFileSync(file, 'utf8'));
         if (Number.isFinite(t) && t > 0) return t;
@@ -384,6 +395,7 @@ if (import.meta.main) {
       writeFileSync(file, String(now));
       return now;
     },
+    forget: (key) => rmSync(waitFile(key), { force: true }),
   };
   process.exit(main(process.argv.slice(2), deps, repo));
 }

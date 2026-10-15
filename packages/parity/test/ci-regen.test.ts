@@ -184,12 +184,21 @@ describe('pnpm ci:regen waiting for a slot before it dispatches', () => {
     const f = fake({ listed: [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })], states: [{ status: 'queued', conclusion: null }] });
     const first = new Map<string, number>();
     const since = (k: string) => first.get(k) ?? (first.set(k, f.deps.now()), f.deps.now());
-    expect(main([BR, '--once'], { ...f.deps, since }, () => REPO)).toBe(EXIT.pending);
+    const forget = (k: string) => void first.delete(k);
+    expect(main([BR, '--once'], { ...f.deps, since, forget }, () => REPO)).toBe(EXIT.pending);
     expect(posted(f.calls)).toBe(false);
-    f.deps.sleep(LANDING_YIELD_S * 1000);
-    expect(main([BR, '--once'], { ...f.deps, since }, () => REPO)).toBe(EXIT.pending);
-    expect(posted(f.calls)).toBe(true);
     expect([...first.keys()]).toEqual([`${BR}@${HEAD}`]);
+    f.deps.sleep(LANDING_YIELD_S * 1000);
+    expect(main([BR, '--once'], { ...f.deps, since, forget }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(true);
+    expect([...first.keys()]).toEqual([]);
+  });
+  it('starts the shared wait only at a busy poll, and forgets it once the dispatch goes', () => {
+    const recorded: string[] = [];
+    const free = fake({ states: [{ status: 'queued', conclusion: null }] });
+    expect(main([BR, '--once'], { ...free.deps, since: (k) => (recorded.push(k), 0), forget: (k) => void recorded.push(`forget ${k}`) }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(free.calls)).toBe(true);
+    expect(recorded).toEqual([]);
   });
   it('after waiting, reads the branch head again and reuses a run another invocation dispatched meanwhile', () => {
     const f = fake({ head: NEW, states: [{ status: 'queued', conclusion: null }] });
