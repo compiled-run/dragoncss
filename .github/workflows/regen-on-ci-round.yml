@@ -171,8 +171,12 @@ jobs:
           if-no-files-found: warn
           # The store is zstd already; zipping it again only costs time.
           compression-level: 0
+      # Only the last round saves: each round's store holds every earlier round's entries, and a save packs the whole store
+      # again (about 85 s per round on the critical path, and 1.6 GB of the repo's cache quota per round). regen-on-ci.yml runs
+      # no further round when this one left the other side nothing to do (next false), when it changed nothing (after chrome-1,
+      # which host-1 follows regardless), or when it is chrome-3, the last round there is.
       - name: Save the regen cache
-        if: success() && inputs.save_cache
+        if: success() && inputs.save_cache && (steps.next.outputs.next == 'false' || (steps.regen.outputs.changed == 'false' && inputs.name != 'chrome-1') || inputs.name == 'chrome-3')
         uses: actions/cache/save@v4
         with:
           path: .git/dragon-regen/v2

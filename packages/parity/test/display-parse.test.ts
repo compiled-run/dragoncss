@@ -1,6 +1,7 @@
 // The display grammar against Chrome 145: every keyword, and every two- and three-keyword list over the multi-keyword set, is
-// accepted by Dragon exactly when Chrome parses it, and an accepted value computes in Chrome as Dragon's value does. Refused
-// single keywords are exactly -webkit-box and -webkit-inline-box. Three planted readings must each be caught by the same comparison.
+// accepted by Dragon exactly when Chrome parses it, and an accepted value computes in Chrome as Dragon's value does. No single
+// keyword is refused: since TXT2-g the parser keeps -webkit-box and -webkit-inline-box (analysis decides the -webkit-line-clamp
+// container from the specified display and refuses the legacy box elsewhere). Three planted readings must each be caught by the same comparison.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
@@ -32,7 +33,7 @@ const SINGLE = [
 const PAIR = ['block', 'inline', 'run-in', 'flow', 'flow-root', 'table', 'flex', 'grid', 'ruby', 'math', 'grid-lanes', 'list-item', '-webkit-box', '-webkit-flex', 'inline-block', 'none', 'contents', 'table-cell'];
 const TRIPLE = ['block', 'inline', 'run-in', 'flow', 'flow-root', 'flex', 'math', 'list-item', 'table'];
 const VALUES = [...SINGLE, ...PAIR.flatMap((a) => PAIR.map((b) => `${a} ${b}`)), ...TRIPLE.flatMap((a) => TRIPLE.flatMap((b) => TRIPLE.map((c) => `${a} ${b} ${c}`)))];
-const REFUSED = ['-webkit-box', '-webkit-inline-box', '-WEBKIT-BOX'];
+const LEGACY_BOX = ['-webkit-box', '-webkit-inline-box', '-WEBKIT-BOX'];
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {
@@ -51,12 +52,12 @@ function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
 describe('display: Chrome 145 parsing and computed values', () => {
   type Browser = { newPage(): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown> }>; close(): Promise<void> };
 
-  it('Dragon accepts exactly the values Chrome parses, computes them alike, refuses only the legacy box, and the plants are caught', async () => {
+  it('Dragon accepts exactly the values Chrome parses, computes them alike, keeps the legacy box, and the plants are caught', async () => {
     const real = VALUES.map(item);
     const planted: { readonly name: string; readonly items: Item[] }[] = [
       { name: 'webkitFlexAsBlock', items: real.filter((it) => /^-webkit-(inline-)?flex$/i.test(it.v)).map((it) => ({ ...it, value: 'block' })) },
       { name: 'runInAccepted', items: real.filter((it) => it.v === 'run-in').map((it) => ({ ...it, code: null, value: 'run-in' })) },
-      { name: 'webkitBoxInvalid', items: real.filter((it) => REFUSED.includes(it.v)).map((it) => ({ ...it, code: 'DRAGON_CSS_INVALID_VALUE' })) },
+      { name: 'webkitBoxInvalid', items: real.filter((it) => LEGACY_BOX.includes(it.v)).map((it) => ({ ...it, code: 'DRAGON_CSS_INVALID_VALUE' })) },
     ];
     for (const p of planted) expect(p.items.length, p.name).toBeGreaterThan(0);
     const sets = [real, ...planted.map((p) => p.items)];
@@ -80,8 +81,9 @@ describe('display: Chrome 145 parsing and computed values', () => {
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
     const refused = real.filter((it) => it.code === 'DRAGON_UNSUPPORTED_VALUE');
-    expect(refused.filter((it) => it.v.split(' ').length === 1).map((it) => it.v)).toEqual(REFUSED);
-    for (const it of refused) expect(it.message, it.v).toMatch(it.v.includes(' ') ? /^multi-token value / : /^display: -webkit-(inline-)?box is unsupported: it selects Chrome's legacy -webkit-box layout/);
+    expect(refused.filter((it) => it.v.split(' ').length === 1).map((it) => it.v)).toEqual([]);
+    for (const it of refused) expect(it.message, it.v).toMatch(/^multi-token value /);
+    expect(real.filter((it) => LEGACY_BOX.includes(it.v)).map((it) => [it.v, it.value])).toEqual([['-webkit-box', '-webkit-box'], ['-webkit-inline-box', '-webkit-inline-box'], ['-WEBKIT-BOX', '-webkit-box']]);
     // Chrome parses the four legacy keywords, and Dragon accepts -webkit-flex and -webkit-inline-flex as flex and inline-flex.
     expect(real.filter((it) => /^-webkit-(inline-)?flex$/i.test(it.v)).map((it) => [it.v, it.value])).toEqual([['-webkit-flex', 'flex'], ['-webkit-inline-flex', 'inline-flex'], ['-Webkit-Inline-Flex', 'inline-flex']]);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));

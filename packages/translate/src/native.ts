@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { availableParallelism, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Corpus, Split, Suite } from './corpus.ts';
 import { canonicalNan, sameResult, split } from './corpus.ts';
@@ -18,12 +18,6 @@ export const OUT = join(ROOT, 'packages/translate/out');
 
 export const SWIFT_FLAGS = ['-O', '-wmo', '-suppress-warnings', '-module-name', 'DragonHarness'];
 export const KOTLIN_FLAGS = ['-nowarn', '-include-runtime'];
-/**
- * Host builds only (the device build shares SWIFT_FLAGS): -wmo still optimizes the whole module at once, then LLVM generates code
- * for each source file on its own thread instead of one. In the cache key as the flag alone: the thread count splits the work, not
- * the code.
- */
-export const SWIFT_HOST_FLAGS = ['-num-threads', String(availableParallelism())];
 
 export type Mismatch = { readonly index: number; readonly input: string; readonly expected: string; readonly got: string };
 /** Why a suite's process ended early, or null when it exited 0: a timeout at SUITE_TIMEOUT_MS, a crash (signal) or a non-zero exit. */
@@ -161,7 +155,7 @@ function failBuild(work: string, message: string): never {
 /** Compiles the Swift harness; returns the binary. Cached on sources, flags and compiler version. */
 export function buildSwift(tool: SwiftTool, files: Files): { binary: string; seconds: number; cached: boolean } {
   // The version line names no target triple, and a binary runs only on the OS and architecture it was built for.
-  const key = filesKey(files, [...SWIFT_FLAGS, '-num-threads', tool.version, `${process.platform}-${process.arch}`]);
+  const key = filesKey(files, [...SWIFT_FLAGS, tool.version, `${process.platform}-${process.arch}`]);
   const dir = join(BUILD_CACHE, 'swift', key);
   const binary = join(dir, 'harness');
   if (hit(dir, binary)) return { binary, seconds: 0, cached: true };
@@ -175,7 +169,7 @@ export function buildSwift(tool: SwiftTool, files: Files): { binary: string; sec
   withToolTmp((env) => {
     const alone = run(tool.swiftc, ['-typecheck', '-parse-as-library', '-module-name', 'DragonLayout', ...engine], env);
     if (!alone.ok) failBuild(work, `swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
-    const r = run(tool.swiftc, [...SWIFT_FLAGS, ...SWIFT_HOST_FLAGS, ...srcs, '-o', join(work, 'harness')], env);
+    const r = run(tool.swiftc, [...SWIFT_FLAGS, ...srcs, '-o', join(work, 'harness')], env);
     if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
   });
   publish(work, dir);

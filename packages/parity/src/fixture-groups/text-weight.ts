@@ -22,6 +22,8 @@ export const TEXT_WEIGHT: readonly FixtureSpec[] = [
   layout('text-weight-nested-italic', ['ltr', 'rtl']),
   // The text contexts the north star's h3 and h4 font-weight sits in: flex items, anonymous flex items and inline boxes.
   layout('text-weight-contexts', ['ltr', 'rtl']),
+  // Ahem at weights Chrome draws with its one regular face (below 600, and lighter): every target lays it out, native included.
+  layout('text-weight-ahem', ['ltr', 'rtl']),
   reject('reject-text-weight-style-left', 'DRAGON_CSS_INVALID_VALUE', 'left', '"left" is not a valid value for font-style: Chrome 145 does not parse font-style: left'),
   reject('reject-text-weight-zero', 'DRAGON_CSS_INVALID_VALUE', '0', '"0" is not a valid value for font-weight'),
   reject('reject-text-weight-oblique-range', 'DRAGON_CSS_INVALID_VALUE', 'oblique 91deg', '"oblique 91deg" is not a valid value for font-style: Chrome parses an oblique angle only when its number is in [-90, 90]'),
