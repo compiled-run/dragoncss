@@ -13,6 +13,9 @@ import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import { GEN_B_FAULTS } from '../faults/gen-b.ts';
+import type { TxtFstretchFaults } from '../faults/txt-fstretch.ts';
+import { TXT_FSTRETCH_FAULTS } from '../faults/txt-fstretch.ts';
+import { stretchPercent } from '../css/properties/font-stretch.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -801,7 +804,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults = GEN_B_FAULTS): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtFstretchFaults = { ...GEN_B_FAULTS, ...TXT_FSTRETCH_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -828,6 +831,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
+      checkFontStretch(el, targets, diagnostics, reported, shapedAt, faults);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
@@ -844,6 +848,30 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
   checkTextTransform(root, targets, diagnostics, reported);
+}
+
+// TXT-FONTFEAT (css-fonts-4 §2.4): font-stretch selects a face by width and is never synthesized, so it leaves Chrome's glyphs alone
+// in a one-face family at 100% (Ahem). Dragon matches no face by width, so a width other than 100% over text in a real face is
+// refused for every target, once per text. Planted fault fontStretchOnRealFaceAccepted accepts it.
+function checkFontStretch(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean, faults: TxtFstretchFaults): void {
+  if (faults.fontStretchOnRealFaceAccepted) return;
+  const v = el.props.get('font-stretch') as ResolvedValue;
+  if (stretchPercent(v.value) === 100) return;
+  for (const c of el.children) {
+    if (c.kind !== 'text' || !shapedAt(c.node.address)) continue;
+    const id = `font-stretch|${c.node.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: c.node.node.origin,
+        target: t,
+        message: `font-stretch: ${valueToString(v.value)} reaches text ${c.node.address}, which is drawn in a real face: Dragon matches no face by width yet (TXT-FONTFEAT)`,
+        manual: `Set font-stretch to normal on the text of ${el.element.address}, or draw it in a one-face family such as Ahem.`,
+        basis: 'computed-value',
+      }));
+    }
+  }
 }
 
 /** The largest device scale a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies below it. */

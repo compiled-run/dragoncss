@@ -36,7 +36,6 @@ export const FONT_RESET_LONGHANDS = {
   'font-variant-alternates': 'normal',
   'font-variant-position': 'normal',
   'font-variant-emoji': 'normal',
-  'font-stretch': '100%',
   'font-size-adjust': 'none',
   'font-language-override': 'normal',
   'font-kerning': 'auto',

@@ -236,9 +236,10 @@ const WHITE_SPACE_AHEM_IDS = ['white-space-preserve', 'white-space-wrap'];
 /**
  * TXT2 text-align: justify (fixture-groups/text-justify.ts), TXT2-b word-spacing (fixture-groups/text-spacing.ts), TXT2-h text-indent
  * (fixture-groups/text-indent.ts) and TXT2-a overflow-wrap and word-break (fixture-groups/text-break.ts), after BASE: their Ahem cases
- * lower natively, their real-face ones are shaped. svg-colors (#297, fixture-groups/svg.ts) landed after BASE too and lowers natively.
+ * lower natively, their real-face ones are shaped. svg-colors (#297, fixture-groups/svg.ts) landed after BASE too and lowers natively, as
+ * does text-font-stretch-ahem (fixture-groups/text-font-stretch.ts).
  */
-const LATER_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl', 'text-break-ahem', 'text-break-ahem-rtl'];
+const LATER_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl', 'text-break-ahem', 'text-break-ahem-rtl', 'text-font-stretch-ahem', 'text-font-stretch-ahem-rtl'];
 const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-indent-latin', 'text-indent-latin-rtl', 'text-break-lato'];
 
 const specOf = (id: string): FixtureSpec => {
