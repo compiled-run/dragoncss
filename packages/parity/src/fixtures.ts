@@ -5,6 +5,7 @@ import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
+import { BG_POSITION } from './fixture-groups/bg-position.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASC_LAYER } from './fixture-groups/casc-layer.ts';
@@ -123,6 +124,7 @@ export const GROUPS = {
   'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
+  'bg-position': BG_POSITION,
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
   casc: CASC,
