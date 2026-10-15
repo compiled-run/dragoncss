@@ -147,14 +147,21 @@ describe('the font-shorthand group', () => {
   // BASE is master af67457777 (#262, which landed TXT-W1). The pins are digests (PIN-DERIVE: CI checks out the head alone, so they
   // read no git history), each taken at BASE with git; a merge that moves BASE retakes them there and states why in its message.
   /** sha256 of "<path>\t<sha256 of the capture without the keys added since>" lines in path order, over every capture but TXT-W2's own. */
-  const BASE_CAPTURES = { files: 3164, digest: '212927bd75ad77ec1c87160f5dad064452cf959f9ee8ef38bfc9572d9f33fc45' };
+  // Retaken on master 285ce07960: #340 added an inherited-currentcolor shadow to the BASE fixture shadow-cascade (its 8 captures), the
+  // only BASE capture that changed once the keys below are stripped and the later groups left out.
+  const BASE_CAPTURES = { files: 3164, digest: '3cbc1a47bac6311636583c8ab7f997bab146850718a182de10a785fb8cb35f57' };
   // TDEC-a adds the decoration longhands after TXT-W2; BASE has neither, so stripping both leaves BASE's digest.
-  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS];
+  // The keys added since BASE: TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2's spacing, text-indent,
+  // text-transform, text-overflow, overflow-wrap, word-break and line-clamp, INL's vertical-align, float and clear, user-select, resize
+  // and SVG-a's paint; BASE has none of them, so stripping them leaves BASE's captures.
+  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width'];
+  // The groups that landed after BASE and add files and layout cases only (each prefix matches no BASE case or capture).
+  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-size-)/;
   it('every capture of BASE is unchanged but for the keys added since, which every node has', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
       .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/')))
-      .filter((p) => p.endsWith('.json') && !/(^|\/)font-shorthand-/.test(p)).sort();
+      .filter((p) => p.endsWith('.json') && !/(^|\/)font-shorthand-/.test(p) && !LATER.test(p)).sort();
     const lacking: string[] = [];
     const lines = paths.map((p) => {
       const c = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
@@ -175,7 +182,7 @@ describe('the font-shorthand group', () => {
     // Groups after the per-feature split run in id order (fixtures.ts), so the font-shorthand group sits among them.
     expect(FIXTURE_GROUPS.some((g) => g.id === 'font-shorthand')).toBe(true);
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
-    const base = ids.filter((id) => !added.includes(id));
+    const base = ids.filter((id) => !added.includes(id) && !LATER.test(id));
     // BASE's FIXTURES hold 778 layout cases.
     expect(base.length).toBe(778);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('42a7d7b6b83d9843d09b712fd88325a0d88f54ed82f0954fe5e79c54753da1dc');
