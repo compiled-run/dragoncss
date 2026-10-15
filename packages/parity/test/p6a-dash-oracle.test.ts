@@ -11,6 +11,7 @@ import { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, snapEdges } fro
 import type { NativeProgram, ProgramWrite } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
 import { DPRS } from '../src/dpr.ts';
+import { TRANSFORM_NAMED } from './hit-refusals.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { expectedEngine, nativeCases } from '../src/native-host.ts';
 import { committedPixels, glyphLines } from '../src/pixel-reference.ts';
@@ -408,7 +409,7 @@ describe('the solid border reference against Chrome 145 (T116: same-colour sides
   it('leaves out only cases of the transforms group, each with a transform write', () => {
     const out = withStyle((x) => x === 'solid' || x === 'dashed' || x === 'dotted').filter(transformed).map((nc) => nc.case.id);
     expect(out.length).toBeGreaterThan(0);
-    for (const id of out) expect(id, id).toMatch(/^transform-/);
+    for (const id of out) if (!TRANSFORM_NAMED.includes(id.replace(/-rtl$/, '').split('#')[0] as string)) expect(id, id).toMatch(/^transform-/);
   });
   it('covers the border-join fixture and the earlier solid-border cases', () => {
     expect(solid.map((nc) => nc.case.id)).toEqual(expect.arrayContaining(['border-join', 'tree-projected-text#3']));

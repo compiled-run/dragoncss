@@ -11,10 +11,11 @@ import type { IdentityManifest } from '../src/hit-capture.ts';
 import { GROUPS } from '../src/fixtures.ts';
 import { IDENTITY_MANIFEST, IDENTITY_ROOTS, IDENTITY_RULED, parseHitCaptureArgs, withoutPointerEvents } from '../src/hit-capture.ts';
 import { repoPath } from '../src/paths.ts';
+import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
 
 const manifest = JSON.parse(readFileSync(repoPath(IDENTITY_MANIFEST), 'utf8')) as IdentityManifest;
 
-const FIXTURE_IDS = new Set(Object.values(GROUPS).flatMap((g) => g.map((f) => f.id)));
+const FIXTURE_IDS = new Set([...Object.values(GROUPS).flatMap((g) => g.map((f) => f.id)), ...FONT_FIXTURES.map((f) => f.spec.id)]);
 
 /** The registered fixture a capture or emitted file is a case of (its name less the ~ixN, #N and -rtl case suffixes), or null. */
 function fixtureOf(path: string): string | null {

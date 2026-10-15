@@ -236,6 +236,9 @@ export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; 
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
   'packages/parity/emitted/media-range-rtl.css': { sha256: '281d321b2c05e0d1a2b7d810eafdb11b3f5e3c76baba447b983f23716ae4bd1f', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
   'packages/parity/emitted/background-shorthand-colors.css': { sha256: 'e90b930ed6d4e52dd6ce50dc627d86c0a6f59ff34020814daf20ee2e11bc0fc9', ruling: 'BG2 (#235): the background shorthand emits its layer longhands as written' },
+  'packages/parity/emitted/block-elements-defaults.css': { sha256: '696839213b1a2705dff1aaf7f65d509b59ef72e08e485b506eeb41b1009612ad', ruling: 'TDEC-a (#281): a colour from the UA origin is emitted as color: revert' },
+  'packages/parity/emitted/block-elements-defaults-rtl.css': { sha256: '390d7e3e153523d64636f997abaf84a730daf2b712d90a28797d00cd749ba425', ruling: 'TDEC-a (#281): a colour from the UA origin is emitted as color: revert' },
+  'packages/parity/emitted/block-elements-font-size.css': { sha256: '39ae170da38fbb239e73f3e65a8c86b125447385c9eafe1fcd8172100c5bb011', ruling: 'TDEC-a (#281): a colour from the UA origin is emitted as color: revert' },
 };
 
 /**
@@ -243,7 +246,7 @@ export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; 
  * longhands, which every capture and emitted rule gained after the base was written, so the base files must differ from it by
  * exactly these keys and pointer-events.
  */
-const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow', 'outline-color', 'outline-style', 'outline-width', 'outline-offset'];
+const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', 'font-weight', 'font-style'];
 const JSON_KEYS = new RegExp(`,\\n[ ]*"(${KEYS_SINCE_BASE.join('|')})": "[^"]*"`, 'g');
 const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`, 'gm');
 /**
@@ -261,6 +264,20 @@ const CSS_USER_SELECT = /^[ ]*user-select: (?:auto|none);\n/gm;
 /** resize, also added after the base, at its initial none only: any other value stays in the text. */
 const JSON_RESIZE = /,\n[ ]*"resize": "none"/g;
 const CSS_RESIZE = /^[ ]*resize: none;\n/gm;
+/**
+ * The text longhands added after the base (TXT-W1's font-synthesis, TDEC-a's text-decoration, vertical-align, float, clear, the TXT2
+ * spacing, wrap, indent and line-clamp longhands), each at its initial value only; text-decoration-color at any value, as it computes to color.
+ */
+const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
+  ['font-synthesis-weight', 'auto'], ['font-synthesis-style', 'auto'], ['font-synthesis-small-caps', 'auto'],
+  ['text-decoration-line', 'none'], ['text-decoration-style', 'solid'], ['text-decoration-color', '[^"\\n;]*'], ['text-decoration-thickness', 'auto'],
+  ['text-underline-offset', 'auto'], ['text-underline-position', 'auto'], ['text-decoration-skip-ink', 'auto'],
+  ['vertical-align', 'baseline'], ['float', 'none'], ['clear', 'none'], ['letter-spacing', 'normal'], ['word-spacing', '0px'],
+  ['text-overflow', 'clip'], ['text-transform', 'none'], ['text-indent', '0px'], ['overflow-wrap', 'normal'], ['word-break', 'normal'],
+  ['-webkit-box-orient', 'horizontal'], ['-webkit-line-clamp', 'none'],
+];
+const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
+const CSS_TEXT = new RegExp(`^[ ]*(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
 
 /**
  * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
@@ -305,12 +322,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(genB, '').replace(SVG_JSON, '');
+    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(genB, '').replace(SVG_JSON, '');
     return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }
