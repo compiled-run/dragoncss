@@ -1,0 +1,11 @@
+{
+  "case": "clip-rect-basic-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"cut-c-k:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t1:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"cut-sr:text0","data":"XXXXXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

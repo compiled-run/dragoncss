@@ -1,0 +1,9 @@
+{
+  "case": "clip-rect-nested-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"cut-i2:text0","lines":[[0,1]]},
+    {"id":"cut-ctx-t:text0","lines":[[0,2]]},
+    {"id":"cut-text:text0","lines":[[0,7]]}
+  ]
+}
