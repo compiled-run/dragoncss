@@ -13,6 +13,8 @@ body { margin: 0; --shadow-strong: rgba(0, 0, 0, 0.48); }
 .parent { box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.4); background-color: #ccddee; padding: 6px; }
 .child { width: 24px; height: 16px; background-color: #884422; }
 .unit { box-shadow: 0 0 2mm 1pt rgba(0, 0, 0, 0.5); }
+.cc-parent { box-shadow: 0 0 0 4px currentcolor, 2px 2px 4px rgba(0, 0, 0, 0.3); color: #ff0000; background-color: #ccddee; padding: 8px; }
+.cc-child { box-shadow: inherit; color: #0000ff; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -24,6 +26,7 @@ body { margin: 0; --shadow-strong: rgba(0, 0, 0, 0.48); }
 <div data-dragon-id="none" class="b none"></div>
 <div data-dragon-id="parent" class="parent"><div data-dragon-id="inherit" class="child inherit"></div></div>
 <div data-dragon-id="unit" class="b unit"></div>
+<div data-dragon-id="cc-parent" class="cc-parent"><div data-dragon-id="cc-inherit" class="child cc-child"></div></div>
 </div>
 </body>
 </html>
