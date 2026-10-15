@@ -11,6 +11,7 @@ import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { isSvgShapeTag } from '../elements/svg.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
 
@@ -33,7 +34,8 @@ const checkInlineVisibility: PaintCheck = (el, targets, diagnostics, reported) =
   const own = elementPaintsOwn(el);
   const walk = (parent: ResolvedElement): void => {
     for (const c of parent.children) {
-      if (c.kind !== 'element' || !isInlineBox(c)) continue;
+      // An SVG shape is the content of its <svg>, never a box (elements/svg.ts), so its visibility is no text run's.
+      if (c.kind !== 'element' || isSvgShapeTag(c.element.tag) || !isInlineBox(c)) continue;
       if (elementPaintsOwn(c) !== own) {
         const v = c.props.get('visibility') as ResolvedValue;
         const origin = v.declaration === null ? c.element.node.origin : authored(v.declaration.valueSpan);

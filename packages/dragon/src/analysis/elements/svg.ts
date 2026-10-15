@@ -8,6 +8,7 @@ import { parsePathData, parseSvgLength, parseViewBox } from './svg-path.ts';
 import type { SvgShape, ViewBox } from '@dragon/layout';
 import type { Rgba8 } from '../../css/color.ts';
 import { TRANSPARENT } from '../../css/color.ts';
+import { opacityOf } from '../../css/properties/effects.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { CssValue, Declaration } from '../../css/stylesheet.ts';
 import { parseValue } from '../../css/stylesheet.ts';
@@ -168,7 +169,8 @@ export function shapeOf(tag: string, attributes: ReadonlyMap<string, string>): S
 export type SvgPaint = { readonly kind: 'none' } | { readonly kind: 'color'; readonly color: Rgba8 };
 
 /** One drawn shape of an <svg>: its address, geometry in user units, and paint. strokeWidth is in user units (px before the viewBox). */
-export type SvgShapeScene = { readonly address: string; readonly tag: string; readonly shape: SvgShape; readonly fill: SvgPaint; readonly stroke: SvgPaint; readonly strokeWidth: number };
+/** painted: whether Chrome paints the shape (svgShapePainted); one it does not still has its box and bbox. */
+export type SvgShapeScene = { readonly address: string; readonly tag: string; readonly shape: SvgShape; readonly fill: SvgPaint; readonly stroke: SvgPaint; readonly strokeWidth: number; readonly painted: boolean };
 
 /** An <svg>'s drawing: its viewBox and its shapes in paint order. */
 export type SvgScene = { readonly address: string; readonly viewBox: ViewBox | null; readonly shapes: readonly SvgShapeScene[] };
@@ -195,7 +197,20 @@ export function svgShapeEmpty(shape: SvgShape): boolean {
   return shape.segments.length === 0;
 }
 
-/** The scene of a resolved <svg>; null for any other element. A shape with display: none has no box and is left out. */
+/**
+ * Whether Chrome paints a shape: not at visibility hidden or collapse (collapse is hidden off tables, css-display-3 §4), and not at
+ * a computed opacity of 0 (or below, which clamps to 0), where the shape's layer is fully transparent.
+ */
+export function svgShapePainted(el: ResolvedElement): boolean {
+  const visibility = (el.props.get('visibility') as ResolvedValue).value;
+  if (!(visibility.kind === 'keyword' && visibility.value === 'visible')) return false;
+  return opacityOf((el.props.get('opacity') as ResolvedValue).value) !== 0;
+}
+
+/**
+ * The scene of a resolved <svg>; null for any other element. A shape with display: none has no box and is left out; one Chrome does
+ * not paint (svgShapePainted) keeps its box and bbox, marked unpainted, and draws nothing.
+ */
 export function svgSceneOf(el: ResolvedElement): SvgScene | null {
   if (el.element.tag !== SVG_TAG) return null;
   const shapes: SvgShapeScene[] = [];
@@ -208,7 +223,7 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
     const sw = (c.props.get('stroke-width') as ResolvedValue).value;
     const strokeWidth = sw.kind === 'length' && sw.unit === 'px' ? sw.value : sw.kind === 'number' ? sw.value : null;
     if (strokeWidth === null) throw new Error(`${c.element.address}: stroke-width did not compute to px`);
-    shapes.push({ address: c.element.address, tag: c.element.tag, shape, fill: paintOf(c, 'fill'), stroke: paintOf(c, 'stroke'), strokeWidth });
+    shapes.push({ address: c.element.address, tag: c.element.tag, shape, fill: paintOf(c, 'fill'), stroke: paintOf(c, 'stroke'), strokeWidth, painted: svgShapePainted(c) });
   }
   return { address: el.element.address, viewBox: viewBoxOf(el.element.attributes), shapes };
 }
