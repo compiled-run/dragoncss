@@ -31,9 +31,6 @@ export const TEXT_FAMILY_ASPECTS: { readonly [P in (typeof TEXT_FAMILY_LONGHANDS
 export const FONT_RESET_LONGHANDS = {
   'font-stretch': '100%',
   'font-size-adjust': 'none',
-  'font-language-override': 'normal',
-  'font-kerning': 'auto',
-  'font-optical-sizing': 'auto',
   'font-feature-settings': 'normal',
   'font-variation-settings': 'normal',
 } as const;
