@@ -68,7 +68,10 @@ function judge(caseId: string, p: NativeProgram, viewport: { width: number; heig
       const kind = ruleKind(pt.rule);
       if (kind === 'edge') continue;
       const backdrop = modelAt(list, pt.x, pt.y);
-      const ink = kind === 'glyph' ? { text: glyphText(pt.rule) } : inks.find(({ g }) => pt.x >= g.left && pt.x + 1 <= g.right && pt.y >= g.top && pt.y + 1 <= g.bottom);
+      // A glyph point is its own glyph's ink unless that text is hidden; then (as at any other point) whatever painted glyph covers
+      // it, such as the next line's text under an absolutely positioned box at its static position.
+      const own = kind === 'glyph' ? { text: glyphText(pt.rule) } : undefined;
+      const ink = own !== undefined && !hidden.has(own.text) ? own : inks.find(({ g, text }) => !hidden.has(text) && pt.x >= g.left && pt.x + 1 <= g.right && pt.y >= g.top && pt.y + 1 <= g.bottom);
       const paints = ink !== undefined && !hidden.has(ink.text);
       const want: Rgba = ink !== undefined && paints ? over(backdrop, textColour(p, ink.text)) : backdrop;
       if (kind === 'glyph') {
