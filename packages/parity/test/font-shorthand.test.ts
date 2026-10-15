@@ -64,15 +64,15 @@ function planted(handler: ShorthandHandler, value: string): (readonly [string, s
 type Item = { readonly property: string; readonly value: string; readonly code: string | null; readonly longhands: readonly (readonly [string, string])[] };
 type Seen = { readonly parsed: boolean; readonly diff: readonly string[]; readonly reset: readonly string[] };
 
-const COMPARED = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...FONT_VARIANT_LONGHANDS, ...Object.keys(FONT_RESET_LONGHANDS), ...FONT_TUNING_LONGHANDS];
+const COMPARED = ['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'font-stretch', ...FONT_VARIANT_LONGHANDS, ...Object.keys(FONT_RESET_LONGHANDS), ...FONT_TUNING_LONGHANDS];
 
 async function chromeSeen(sets: readonly (readonly Item[])[]): Promise<Seen[][]> {
   const browser = await chrome();
   try {
     const page = await browser.newPage();
-    // The parent's line-height, weight, font-synthesis, font-variant, kerning, optical sizing and language override are not initial,
+    // The parent's line-height, weight, font-synthesis, font-stretch, font-variant, kerning, optical sizing and language override are not initial,
     // so a longhand Dragon fails to reset or inherit shows.
-    await page.setContent('<!DOCTYPE html><div id="p" style="line-height:7px;font-weight:700;font-synthesis:none;font-size:20px;font-variant:no-common-ligatures tabular-nums jis04 historical-forms small-caps sub;font-kerning:none;font-optical-sizing:none;font-language-override:&quot;TRK&quot;"><div id="a"></div><div id="c"></div></div>');
+    await page.setContent('<!DOCTYPE html><div id="p" style="line-height:7px;font-weight:700;font-synthesis:none;font-size:20px;font-stretch:expanded;font-variant:no-common-ligatures tabular-nums jis04 historical-forms small-caps sub;font-kerning:none;font-optical-sizing:none;font-language-override:&quot;TRK&quot;"><div id="a"></div><div id="c"></div></div>');
     return (await page.evaluate(`(${JSON.stringify(sets)}).map((items) => items.map((it) => {
       const L = ${JSON.stringify(COMPARED)}, R = ${JSON.stringify(FONT_RESET_LONGHANDS)};
       const a = document.getElementById('a'), c = document.getElementById('c');
@@ -101,7 +101,7 @@ const judge = (items: readonly Item[], seen: readonly Seen[]): string[] => items
 });
 
 describe('the font and font-synthesis shorthands expand as Chrome 145 expands them', () => {
-  it('the grammar table, invalid values and the reset of every longhand; the three plants are caught', async () => {
+  it('the grammar table, invalid values and the reset of every longhand; the plants are caught', async () => {
     const real: Item[] = [
       ...FONT.map((v) => ({ property: 'font', value: v, ...declare('font', v) })),
       ...SYNTHESIS.map((v) => ({ property: 'font-synthesis', value: v, ...declare('font-synthesis', v) })),
@@ -118,12 +118,12 @@ describe('the font and font-synthesis shorthands expand as Chrome 145 expands th
     expect(judge(real, seen as Seen[]).filter((p) => GRAMMAR_GAPS.includes(p))).toEqual(GRAMMAR_GAPS);
     // The production handler and the unfaulted builder agree on every accepted value.
     for (const it of real.filter((x) => x.property === 'font' && x.code === null)) expect(planted(fontShorthand(NO_FONT_FAULTS), it.value), it.value).toEqual([...it.longhands]);
-    expect(TEXT_SHORTHANDS.font.longhands).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS]);
+    expect(TEXT_SHORTHANDS.font.longhands).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-stretch', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS]);
     SHORTHAND_FAULTS.forEach((fault, i) => expect(judge(plantSets[i] as Item[], plantSeen[i] as Seen[]).length, fault).toBeGreaterThan(0));
     const refused = real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE').map((it) => `${it.code as string} ${it.property}: ${it.value}`);
     expect(refused).toEqual([
       'DRAGON_UNSUPPORTED_VALUE font: oblique 2turn 12px x', 'DRAGON_UNSUPPORTED_VALUE font: small-caps 12px x',
-      'DRAGON_UNSUPPORTED_VALUE font: condensed 12px x', 'DRAGON_UNSUPPORTED_VALUE font: normal small-caps 12px x', 'DRAGON_UNSUPPORTED_VALUE font: ultra-expanded 12px x',
+      'DRAGON_UNSUPPORTED_VALUE font: normal small-caps 12px x',
       'DRAGON_UNSUPPORTED_VALUE font: caption', 'DRAGON_UNSUPPORTED_VALUE font: menu', 'DRAGON_UNSUPPORTED_VALUE font: icon', 'DRAGON_UNSUPPORTED_VALUE font: message-box',
       'DRAGON_UNSUPPORTED_VALUE font: small-caption', 'DRAGON_UNSUPPORTED_VALUE font: status-bar', 'DRAGON_UNSUPPORTED_VALUE font: oblique calc(20deg) 12px x',
     ]);

@@ -92,6 +92,8 @@ const SUBSET = [
   'font-kerning', 'font-optical-sizing', 'font-language-override',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
+  // TXT-FONTFEAT: font-stretch (css-fonts-4 §2.4), after the line clamp, as LONGHANDS registers it.
+  'font-stretch',
 ] as const;
 
 /**
@@ -167,6 +169,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
 const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string; readonly inherited: string } } = {
   '-webkit-box-orient': { initial: 'horizontal', inherited: 'no' },
   '-webkit-line-clamp': { initial: 'none', inherited: 'no' },
+  // webref lists font-stretch as a legacy alias of css-fonts-4's font-width, without fields; Chrome 145 has no font-width and keeps
+  // font-stretch a longhand, initial normal, inherited (css-fonts-4 §2.4).
+  'font-stretch': { initial: 'normal', inherited: 'yes' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

@@ -50,6 +50,7 @@ import { SVG } from './fixture-groups/svg.ts';
 import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
+import { TEXT_FONT_STRETCH } from './fixture-groups/text-font-stretch.ts';
 import { TEXT_FONT_TUNING } from './fixture-groups/text-font-tuning.ts';
 import { TEXT_FONT_VARIANT } from './fixture-groups/text-font-variant.ts';
 import { TEXT_INDENT } from './fixture-groups/text-indent.ts';
@@ -169,6 +170,7 @@ export const GROUPS = {
   'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
+  'text-font-stretch': TEXT_FONT_STRETCH,
   'text-font-tuning': TEXT_FONT_TUNING,
   'text-font-variant': TEXT_FONT_VARIANT,
   'text-indent': TEXT_INDENT,
