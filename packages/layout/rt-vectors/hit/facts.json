@@ -752,6 +752,8 @@
     "stacking-escape-rtl": "stacking context on e-d, e-lb, e-ov1, e-ov2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "stacking-transform": "transform on t-t1, t-t2: hit testing through transforms is SELD-R2b (T146)",
     "stacking-transform-rtl": "transform on t-t1, t-t2: hit testing through transforms is SELD-R2b (T146)",
+    "stacking-grid-items": "stacking context on g-a, c-n, ig-a, if-a, o-a, o-b, o-c, f-a, f-b: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-grid-items-rtl": "stacking context on g-a, c-n, ig-a, if-a, o-a, o-b, o-c, f-a, f-b: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "gradient-rounded": "border-radius on record, track, round, pill, ring: hit testing through rounded corners is not modelled yet (PNT1)",
     "gradient-rounded-rtl": "border-radius on record, track, round, pill, ring: hit testing through rounded corners is not modelled yet (PNT1)",
     "gradient-north-star": "border-radius on track: hit testing through rounded corners is not modelled yet (PNT1)",

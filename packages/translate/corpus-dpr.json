@@ -38,13 +38,13 @@
   "engineInline": 4500,
   "engineOverflow": 3000,
   "snapGenerated": 20000,
-  "snapVectors": 2301,
+  "snapVectors": 2307,
   "cases": {
-    "vectors-m2": 581,
-    "vectors-dpr": 2517,
-    "engine-dpr": 2517,
+    "vectors-m2": 583,
+    "vectors-dpr": 2523,
+    "engine-dpr": 2523,
     "units-m2": 120000,
-    "snap": 22301,
+    "snap": 22307,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
@@ -54,25 +54,25 @@
     "text-latin": 160
   },
   "engineSplit": {
-    "ok": 2510,
-    "unsupported": 7,
+    "ok": 2514,
+    "unsupported": 9,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "1dbd552f50cd94599e65c9b38493e438f4d013b83b08eb4aaf11a8cb830abe31",
-    "vectors-dpr": "0136bc20b86e5908953f7591cf6c0dd8c304d16e8570540e7fc4ac2afd309302",
-    "engine-dpr": "40af0b1bb06088a53c747256f8ea29c3385e747720bea9da07596e7f10dece74",
+    "vectors-m2": "55b569648e7d6013c73e6640c58a050dcbe6f9a62b2cb279b7b8ed87bf8cbd6e",
+    "vectors-dpr": "4fbaf19b045a5ea7bccf2afe1b6220dce13f237fc64e46fe42acf7932c3f80c8",
+    "engine-dpr": "37816d4f5d0018e1d69f9be42724dcd27ce6ef4e712954111346ced3077eee1e",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "db4c4da3c20381cbf32588316033d56a36f7ae03f3ac7ca5319d772c305e788b",
+    "snap": "88e92d1fb30665dc1d0d041982faf010fc7aa54c1d25e3817d9f43bc8fb8ac4b",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
     "calc-goldens": "556a75bf474da3c709524f61155fbf51410aff5f64c3386b43f79a2ec8dd53e0",
-    "engine-calc": "90eae88e03275beb362777440d5ef004e66b621ca412b5b554736bf506fd2787",
+    "engine-calc": "d557288d5b0e7533c6908e6571b3b08781f6e4e65ffeca956104c06a70303d56",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
     "engine-inline": "188fd4eca62e782e70380e26d97fc505c88152fdc8d31d1ab6e2d75efdc323ae",
     "engine-overflow": "5fa23d48a16343fcfc3660a53bdec5ee3481fb900355477397ae223abc7359a4",
     "text-latin": "e3179fdfe095cfbdf97cd1446da934ae57e8ea0b8be2cfcd79cc97fe70ae9df8"
   },
-  "digest": "d4c0423af403f2bb037295ebd895cb1804038beb5e54bdba2dec471842a6669d"
+  "digest": "cc51ce05a025b6c211286b2a6aa96455e82f4dcfe5c497c10dfd443f61a609e5"
 }
