@@ -224,7 +224,7 @@ describe('the native refusals', () => {
 });
 
 /** Case id prefixes of the groups that landed after BASE beside those named in the filter below (see own). */
-const LATER_PREFIXES = ['atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'touch-action-values'];
+const LATER_PREFIXES = ['atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'touch-action-values', 'radius-logical'];
 
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
@@ -238,7 +238,7 @@ describe('BASE pins', () => {
   // The groups that landed after BASE and add files only: G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web,
   // resize-values, G3b's grid-baseline-axes, PNT's text-decoration-native-current, TXT2-g's line-clamp cases, PNT1's stacking-grid-items cases and touch-action-values. (PNT1's change to
   // three BASE fixtures is retaken in BASE_OUTPUTS and BASE_CAPTURES, not left out.)
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|touch-action-values)/.test(p);
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|touch-action-values|radius-logical)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
