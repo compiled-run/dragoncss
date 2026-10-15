@@ -698,6 +698,10 @@ function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
 
 /** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */
 export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
+  // The named refusal comes first, so a case is refused for what hitRefusal names, not for whatever the walk meets before it
+  // (line-clamp-lines meets l7's Ahem p glyphs over several lines before l9's inline box).
+  const refused = hitRefusal(input);
+  if (refused !== null) throw new HitError(refused);
   const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
   const zoomed = hitZoomed(input, measurer);
