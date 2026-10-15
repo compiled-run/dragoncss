@@ -306,7 +306,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const rootFontSize = resolvedRoot === null ? null : pxOf((resolvedRoot.props.get('font-size') as ResolvedValue).value);
     // The UA em defaults below read the element's computed font-size, so an author em or rem font-size is made px first.
     const fontSize = new Map<Longhand, ResolvedValue>([['font-size', props.get('font-size') as ResolvedValue]]);
-    computeLengths(fontSize, parentFontSize, rootFontSize);
+    computeLengths(fontSize, parentFontSize, rootFontSize, faults);
     props.set('font-size', fontSize.get('font-size') as ResolvedValue);
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent, revertedProps);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
@@ -322,7 +322,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, { ...set, value: { ...set.value, text: envAsZero(set.value.text) } });
       }
     }
-    computeLengths(props, parentFontSize, rootFontSize);
+    computeLengths(props, parentFontSize, rootFontSize, faults);
     computeLetterSpacing(props, faults.zeroNotNormal);
     computeWordSpacing(props, faults.wordNormalNotZero);
     computeFontStretch(props);

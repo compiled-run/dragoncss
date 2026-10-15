@@ -12,6 +12,8 @@ import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
+import type { TxtFsFaults } from '../faults/txt-fs.ts';
+import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { textFontsOf, uaRows } from '../ua/datasets.ts';
 import type { SynthesisAllowed, TextFontValue } from '../fonts/weight.ts';
@@ -178,6 +180,16 @@ export function pxOf(v: CssValue): number | null {
 }
 
 /**
+ * css-fonts-4 §2.5 <absolute-size> as Chrome 145 computes it at its default medium size of 16px: Chrome's own table (a Chrome
+ * observation, checked by the text-font-size-values fixture), not the spec's scaling factors (which give 9.6, 12, 14.2...). The size
+ * does not depend on the parent. Chrome uses another row for the generic monospace alone, which Dragon's web output never names: a
+ * pinned monospace is written as its bundled family.
+ */
+const ABSOLUTE_SIZE_PX: { readonly [k: string]: number } = { 'xx-small': 9, 'x-small': 10, small: 13, medium: 16, large: 18, 'x-large': 24, 'xx-large': 32, 'xxx-large': 48 };
+/** The plant absoluteSizeSpecTable: css-fonts-4 §2.5's scaling factors (3/5, 3/4, 8/9, 1, 6/5, 3/2, 2, 3) of 16px. */
+const SPEC_ABSOLUTE_SIZE_PX: { readonly [k: string]: number } = { 'xx-small': 9.6, 'x-small': 12, small: 128 / 9, medium: 16, large: 19.2, 'x-large': 24, 'xx-large': 32, 'xxx-large': 48 };
+
+/**
  * css-values-4 §6: every length an author declared in a registered unit other than px computes to px. font-size goes first: its
  * em is the parent's computed font-size and its rem the root's, the initial font-size on the root itself (§6.1.1); Blink keeps
  * the result as a float (FontDescription); the compiler keeps double, since rounding lives in the engine and css/color.ts
@@ -185,7 +197,7 @@ export function pxOf(v: CssValue): number | null {
  * element's own computed font-size and rem against the root's (rootFontSize null: this element is the root). Inherited values
  * are already px. rem uses text scale 1 (docs/decisions.md, Text scale).
  */
-export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSize: number | null, rootFontSize: number | null): void {
+export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSize: number | null, rootFontSize: number | null, faults: TxtFsFaults = TXT_FS_FAULTS): void {
   const toPx = (p: Longhand, em: number | null, rem: number | null): void => {
     const v = props.get(p) as ResolvedValue;
     if (v.value.kind !== 'length' || v.value.unit === CANONICAL_LENGTH_UNIT) return;
@@ -200,6 +212,13 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   const fs = props.get('font-size') as ResolvedValue;
   if (fs.value.kind === 'keyword' && (fs.value.value === 'smaller' || fs.value.value === 'larger') && parentFontSize !== null) {
     props.set('font-size', { ...fs, value: { kind: 'length', value: fs.value.value === 'smaller' ? parentFontSize / 1.2 : parentFontSize * 1.2, unit: CANONICAL_LENGTH_UNIT } });
+  }
+  const kw = fs.value.kind === 'keyword' ? (faults.absoluteSizeSpecTable ? SPEC_ABSOLUTE_SIZE_PX : ABSOLUTE_SIZE_PX)[fs.value.value] : undefined;
+  if (kw !== undefined) props.set('font-size', { ...fs, value: { kind: 'length', value: kw, unit: CANONICAL_LENGTH_UNIT } });
+  // style_builder_converter.cc ConvertFontSize (928-974): a percentage is that share of the parent's computed size.
+  const of = faults.fontSizePercentOfRoot ? (rootFontSize ?? parentFontSize) : parentFontSize;
+  if (fs.value.kind === 'percentage' && of !== null) {
+    props.set('font-size', { ...fs, value: { kind: 'length', value: (fs.value.value * of) / 100, unit: CANONICAL_LENGTH_UNIT } });
   }
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
