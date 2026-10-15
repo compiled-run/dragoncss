@@ -1,10 +1,11 @@
 // CSS2 Appendix E paint order on the fixed tree (T046 §1): stacking contexts, their layers, and native hosting. A stacking context
-// is the root, a positioned box or flex item with an integer z-index, a box with opacity below 1, or a transformed box (a transform,
-// or will-change: transform or opacity; css-transforms-1 §3, css-will-change-1 §3), which paints in the z-index 0 layer. Its
-// layer items are the positioned boxes and stacking contexts it holds, not counting those inside a nested stacking context: z < 0
-// in (z, tree) order, then z-index auto or 0 in tree order, then z > 0 in (z, tree) order. Every box of normal flow paints as one
-// unit with its flow descendants, the model the native nesting draws. A layer item is re-hosted under the view where its layer
-// paints: its stacking context for z < 0 and z > 0, else the nearest positioned z-index auto ancestor inside that context (whose
+// is the root, a positioned box or flex or grid item with an integer z-index, a box with opacity below 1, or a transformed box (a
+// transform, or will-change: transform or opacity; css-transforms-1 §3, css-will-change-1 §3), which paints in the z-index 0 layer.
+// Its layer items are the positioned boxes and stacking contexts it holds, not counting those inside a nested stacking context:
+// z < 0 in (z, tree) order, then z-index auto or 0 in tree order, then z > 0 in (z, tree) order, where tree order puts a flex or
+// grid container's in-flow items in order-modified document order (Blink paint_layer_stacking_node.cc ForAllChildrenSortedByOrder;
+// unorderedItems lists the items that sort cannot place). Every box of normal flow paints as one unit with its flow descendants,
+// the model the native nesting draws. A layer item is re-hosted under the view where its layer paints: its stacking context for z < 0 and z > 0, else the nearest positioned z-index auto ancestor inside that context (whose
 // positioned descendants follow it in tree order), and it is sorted there after the flow children. A re-hosting that would take a
 // box out of an overflow clip in its containing-block chain stays under the clip instead (EMS has no clip-chain hook), which is
 // Chrome's order everywhere but where the box overlaps content painted after the clipper; a box that needs it, and whose native order
@@ -24,8 +25,10 @@ export type StackNode = {
   readonly id: string;
   /** fixed and sticky come from the resolved tree only (the engine refuses them; POSX-f): both always make a stacking context. */
   readonly position: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
-  /** The z-index when it applies (a positioned box or a flex item), else null. */
+  /** The z-index when it applies (a positioned box, or a flex or grid item: Blink StyleAdjuster), else null. */
   readonly z: number | null;
+  /** An in-flow flex or grid item's order, which sorts it among its siblings (unorderedItems: whole); absent (0) for other nodes. */
+  readonly order?: number;
   readonly opacity: number;
   /** A transform, or will-change: transform or opacity: a stacking context in the z-index 0 layer. */
   readonly transformed: boolean;
@@ -78,6 +81,8 @@ type Info = {
   readonly node: StackNode;
   readonly parent: Info | null;
   readonly index: number;
+  /** The node's index in order-modified preorder: each node's children stably sorted by order. */
+  seq: number;
   readonly sc: boolean;
   readonly item: boolean;
 };
@@ -116,7 +121,7 @@ export function stackingOf(root: StackNode): Stacking {
   const build = (n: StackNode, parent: Info | null): Info => {
     if (infos.has(n.id)) throw new ProgramError(`${n.id}: the stacking tree holds the id twice`);
     const r = parent === null;
-    const info: Info = { node: n, parent, index: all.length, sc: createsContext(n, r), item: isItem(n, r) };
+    const info: Info = { node: n, parent, index: all.length, seq: -1, sc: createsContext(n, r), item: isItem(n, r) };
     infos.set(n.id, info);
     all.push(info);
     for (const c of n.children) build(c, info);
@@ -124,6 +129,12 @@ export function stackingOf(root: StackNode): Stacking {
   };
   const top = build(root, null);
   const kids = (i: Info): Info[] => i.node.children.map((c) => infos.get(c.id) as Info);
+  let seq = 0;
+  const number = (i: Info): void => {
+    i.seq = seq++;
+    for (const c of [...kids(i)].sort((a, b) => (a.node.order ?? 0) - (b.node.order ?? 0))) number(c);
+  };
+  number(top);
   const contextOf = (i: Info): Info | null => {
     for (let p = i.parent; p !== null; p = p.parent) if (p.sc) return p;
     return null;
@@ -144,7 +155,7 @@ export function stackingOf(root: StackNode): Stacking {
     return out.sort((a, b) => {
       const [la, za] = key(a);
       const [lb, zb] = key(b);
-      return la - lb || za - zb || a.index - b.index;
+      return la - lb || za - zb || a.seq - b.seq;
     });
   };
 
@@ -277,7 +288,46 @@ export function stackingOf(root: StackNode): Stacking {
   return { facts, writes, order, native, clipped };
 }
 
+export type UnorderedItem = { readonly id: string; readonly container: string; readonly kind: 'deep' | 'fraction' | 'barrier' };
+
+/**
+ * The layer items whose order-modified place Dragon cannot prove, in a container whose items set an order other than 0. 'deep':
+ * Blink sorts a layer by order only when its layout parent or grandparent is the container
+ * (paint_layer_stacking_node.cc ChildOfFlexboxOrGridOrGridLanesParentOrGrandparent), so an item deeper inside, with no layer item
+ * above it at depth 1 or 2, keeps a place the stack tree's sort does not give; wrapped tells a depth 2 node that Blink does not
+ * compare with the container's items: one that may sit in an anonymous block of its parent (inline-level), or whose parent is
+ * itself a flex or grid container (Blink takes the parent as the item, of the inner container). 'fraction': an order calculation that is not a whole 32-bit integer, which Blink
+ * rounds and clamps (ComputeInteger) and the stack tree compares unrounded. 'barrier': a clipping box below an item's child, which
+ * Blink gives a paint layer of its own among the sorted ones (overflow clip) that OrderLessThan never moves, and the stable sort
+ * then keeps the layer items on either side of it in tree order; the stack tree has no node for that layer.
+ */
+export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: StackNode) => boolean): readonly UnorderedItem[] {
+  const out: UnorderedItem[] = [];
+  const whole = (o: number): boolean => Number.isInteger(o) && o >= -2147483648 && o <= 2147483647;
+  const visit = (n: StackNode, parent: StackNode, container: string, depth: number, fraction: boolean): void => {
+    const deep = depth >= 3 || (depth === 2 && wrapped(n, parent));
+    if (isItem(n, false) && (deep || fraction)) {
+      out.push({ id: n.id, container, kind: fraction ? 'fraction' : 'deep' });
+      return;
+    }
+    // A layer item at depth 1 or 2 is the layer Blink sorts, and the items inside it follow it.
+    if (isItem(n, false)) return;
+    if (n.clips && deep) out.push({ id: n.id, container, kind: 'barrier' });
+    for (const c of n.children) visit(c, n, container, depth + 1, fraction);
+  };
+  const walk = (n: StackNode): void => {
+    const orders = n.children.map((c) => c.order ?? 0);
+    if (orders.some((o) => o !== 0)) for (const c of n.children) visit(c, n, n.id, 1, !orders.every(whole));
+    for (const c of n.children) walk(c);
+  };
+  walk(root);
+  return [...new Map(out.map((x) => [x.id, x])).values()];
+}
+
 // ---------------------------------------------------------------- the lowering
+
+/** The displays whose children are flex or grid items, whose z-index applies when static (Blink StyleAdjuster). */
+export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', 'inline-grid'];
 
 /** Whether an element's transform or will-change makes it a stacking context (css-transforms-1 §3, css-will-change-1 §3). */
 export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity');
@@ -295,7 +345,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
     if (!anonymous && el === null) throw new ProgramError(`${b.id}: no resolved element for the layout box`);
     return el;
   };
-  const own = (b: LayoutNode | InlineBox, el: ResolvedElement | null, parentFlex: boolean, children: readonly StackNode[]): StackNode => {
+  const own = (b: LayoutNode | InlineBox, el: ResolvedElement | null, item: boolean, children: readonly StackNode[]): StackNode => {
     const get = (p: 'z-index' | 'opacity'): ResolvedValue | null => (el === null ? null : (el.props.get(p) ?? null));
     const zv = get('z-index');
     const ov = get('opacity');
@@ -305,7 +355,8 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
     return {
       id: b.id,
       position: b.style.position,
-      z: b.style.position !== 'static' || parentFlex ? z : null,
+      z: b.style.position !== 'static' || item ? z : null,
+      ...(item && b.style.position !== 'absolute' ? { order: b.style.order } : {}),
       opacity,
       transformed: el !== null && transformedForStacking(el),
       // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), and overflow never applies to an inline box.
@@ -315,11 +366,11 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
     };
   };
   const content = (c: InlineChild): StackNode[] => (c.kind === 'inline' ? [own(c, elementOf(c), false, []), ...c.children.flatMap(content)] : [leaf(c.id)]);
-  const node = (b: LayoutNode, parentFlex: boolean): StackNode => {
+  const node = (b: LayoutNode, item: boolean): StackNode => {
     const el = elementOf(b);
-    const flex = b.style.display === 'flex';
-    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'replaced' ? [node(c, flex)] : content(c)));
-    return own(b, el, parentFlex, children);
+    const container = FLEX_OR_GRID.includes(b.style.display);
+    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
+    return own(b, el, item, children);
   };
   return node(root, false);
 }
