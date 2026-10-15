@@ -86,6 +86,8 @@ const SUBSET = [
   'text-indent',
   // TXT2-a: overflow-wrap and word-break (css-text-3 §5.2, §5.5), then the word-wrap alias, as LONGHANDS registers them.
   'overflow-wrap', 'word-break', 'word-wrap',
+  // TXT-FX: the text fill colour and stroke (compat §5), then the -webkit-text-stroke shorthand, after text-break, as LONGHANDS registers them.
+  '-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke-width', '-webkit-text-stroke',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
 ] as const;
