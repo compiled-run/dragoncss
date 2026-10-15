@@ -670,8 +670,9 @@ const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 /** opacity is <number> | <percentage> (css-color-4 §3.2); Chrome resolves a calculation in it as a number or a percentage. */
 // stroke-width takes a unitless number too (SVG's quirk, Chrome StrokeWidth::ParseSingleValue).
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'stroke-width']);
-/** Properties whose syntax is a plain <length> without being a line width (css-ui-4 §3.4 outline-offset). */
-const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset']);
+/** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
+ * stroke width), and text-shadow's lengths (Blink TextShadow). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {

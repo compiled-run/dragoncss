@@ -1,0 +1,13 @@
+{
+  "case": "text-decoration-native-values-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"v1:text0","lines":[[0,5]]},
+    {"id":"v2:text0","lines":[[0,5]]},
+    {"id":"v3:text0","lines":[[0,5]]},
+    {"id":"v4:text0","lines":[[0,5]]},
+    {"id":"v5:text0","lines":[[0,5]]},
+    {"id":"v6:text0","lines":[[0,5]]},
+    {"id":"v7:text0","lines":[[0,5]]}
+  ]
+}
