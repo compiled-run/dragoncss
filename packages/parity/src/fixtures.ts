@@ -18,6 +18,7 @@ import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
+import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
@@ -144,6 +145,7 @@ export const GROUPS = {
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
+  filter: FILTER,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
   gradients: GRADIENTS,

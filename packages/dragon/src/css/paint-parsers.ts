@@ -6,6 +6,7 @@ import type { CssNode } from 'css-tree';
 import type { Span } from '../types.ts';
 import { CLIP_RECT_VALUE_PARSERS } from './properties/clip-rect.ts';
 import { EFFECTS_VALUE_PARSERS, parseOpacityValue } from './properties/effects.ts';
+import { FILTER_VALUE_PARSERS } from './properties/filter.ts';
 import { FONT_VARIANT_VALUE_PARSERS } from './properties/font-variant.ts';
 import { FONT_TUNING_VALUE_PARSERS } from './properties/font-tuning.ts';
 import { FONT_STRETCH_VALUE_PARSERS } from './properties/font-stretch.ts';
@@ -47,6 +48,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(FONT_STRETCH_VALUE_PARSERS),
   ...Object.entries(FONT_FEATURES_VALUE_PARSERS),
   ...Object.entries(TEXT_SHADOW_VALUE_PARSERS),
+  ...Object.entries(FILTER_VALUE_PARSERS),
   ...Object.entries(TOUCH_ACTION_VALUE_PARSERS),
   ...Object.entries(CLIP_RECT_VALUE_PARSERS),
 ]);
