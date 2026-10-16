@@ -144,7 +144,7 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
  * PNT1), whose layers rt-hit.ts orders as z-index auto, a case with an <svg> until SVG-a2 models its shapes, and one whose program
  * rounds a corner until the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is ever silently
  * mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not
- * model them yet; so is a case with a box its empty clip rect hides (MASK-CLIP).
+ * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP).
  */
 export function hitRefusal(n: NativeCase): string | null {
   const nodes = n.programs.uikit.nodes;
@@ -154,6 +154,10 @@ export function hitRefusal(n: NativeCase): string | null {
   // does not model yet.
   const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty')).map((x) => x.id);
   if (cut.length > 0) return `clip on ${cut.join(', ')}: hit testing past a box its clip rect hides is not modelled yet (MASK-CLIP)`;
+  // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
+  // hit test does not model yet.
+  const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset')).map((x) => x.id);
+  if (clipped.length > 0) return `clip-path on ${clipped.join(', ')}: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)`;
   // PNT1: a stacking context below the root paints its layer in z-order, which rt-hit.ts does not order yet.
   const contexts = nodes.filter((x) => x.parent !== null && (x.facts['stacking'] as { readonly createsContext?: boolean } | undefined)?.createsContext === true).map((x) => x.id);
   if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)`;

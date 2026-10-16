@@ -2,6 +2,7 @@
 // Chrome 145 serializes it; the webref initial auto of outline-color is Chrome's currentcolor. Lengths are already px here.
 import type { Rgba8 } from '../../css/color.ts';
 import { serializeColor } from '../../css/color.ts';
+import { hasClipPath } from '../../css/properties/clip-path.ts';
 import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from '../../lower/paint/colors.ts';
@@ -95,6 +96,7 @@ function layerReason(el: ResolvedElement): string {
   if (opacity !== null && opacity < 1) return `opacity: ${opacity}`;
   if (transformsDescendants(el)) return 'a transform';
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
+  if (hasClipPath(el)) return 'a clip-path';
   // A static box's z-index makes it a layer item only as a flex or grid item (resolvedStackTree), the one reason left.
   const z = zIndexOf((el.props.get('z-index') as ResolvedValue).value);
   if (z !== null) return `z-index: ${z} on a flex or grid item`;

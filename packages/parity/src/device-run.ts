@@ -112,6 +112,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // (kid-*) vanish when the writer hides the box view itself.
   'visibility-ignored': ['visibility-basic'],
   'visibility-subtree': ['visibility-basic'],
+  // MASK-CLIP: clip-path-basic's clip edges (rule clip:<id>:path-*) show the box's paint outside the inset rect when the writer is ignored.
+  'clip-path-ignored': ['clip-path-basic'],
   // TDEC-b: text-decoration-native's decoration points (rule decoration:<text>:...) see each decoration plant.
   'decoration-above-text': ['text-decoration-native'],
   'decoration-snap-css-px': ['text-decoration-native'],
@@ -141,6 +143,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'gradient-offset-1': /^gradient:/,
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  'clip-path-ignored': /^clip:cut-[^:]+:path-/,
   'svg-stroke-first': /^svg:/,
   'svg-even-odd': /^svg:/,
   'svg-stroke-unscaled': /^svg:/,

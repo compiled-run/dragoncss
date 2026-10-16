@@ -50,10 +50,10 @@ function programs(css: string) {
 const HIDDEN = '.a { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); } ';
 
 describe('clip: parse and computed values (Chrome 145 Clip::ParseSingleValue and getComputedStyle)', () => {
-  it('follows touch-action, last', () => {
+  it('follows touch-action, before clip-path', () => {
     expect([...CLIP_RECT_LONGHANDS]).toEqual(['clip']);
     expect(LONGHANDS[LONGHANDS.indexOf('clip') - 1]).toBe(TOUCH_ACTION_LONGHANDS[TOUCH_ACTION_LONGHANDS.length - 1]);
-    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('clip');
+    expect(LONGHANDS[LONGHANDS.indexOf('clip') + 1]).toBe('clip-path');
   });
 
   it('computes auto, and each rect() edge to px with auto kept, as Chrome serializes it with commas', () => {
