@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; flex-wrap: wrap; width: 400px; column-gap: 6px; row-gap: 6px; }
+.b { width: 70px; height: 40px; border: 3px solid #123; padding: 4px 6px 2px 8px; background-color: #eee; background-image: linear-gradient(#fa0, #05a); background-size: 30px 20px; background-repeat: no-repeat; }
+.rt { background-position: right top; }
+.rb { background-position: right bottom; }
+.lb { background-position: left bottom; }
+.cb { background-position: bottom; }
+.rc { background-position: right; }
+.tr { background-position: top right; }
+.bl { background-position: bottom left; }
+.lh { background-position-x: right; background-position-y: bottom; }
+.sh { background: linear-gradient(90deg, #fa0, #05a) right bottom / 30px 20px no-repeat #eee; }
+.two { background-image: linear-gradient(#fa0, #05a), radial-gradient(#0a5, #50a); background-position: right top, left bottom; }
+.oc { background-origin: content-box; background-size: 50% 50%; background-position: right bottom; }
+.ob { background-origin: border-box; background-size: 40px 25px; background-position: bottom right; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="rt" class="b rt"></div>
+<div data-dragon-id="rb" class="b rb"></div>
+<div data-dragon-id="lb" class="b lb"></div>
+<div data-dragon-id="cb" class="b cb"></div>
+<div data-dragon-id="rc" class="b rc"></div>
+<div data-dragon-id="tr" class="b tr"></div>
+<div data-dragon-id="bl" class="b bl"></div>
+<div data-dragon-id="lh" class="b lh"></div>
+<div data-dragon-id="sh" class="b sh"></div>
+<div data-dragon-id="two" class="b two"></div>
+<div data-dragon-id="oc" class="b oc"></div>
+<div data-dragon-id="ob" class="b ob"></div>
+</div>
+</body>
+</html>
