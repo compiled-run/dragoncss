@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { DeviceSet } from '../src/device-lanes.ts';
 import type { DeviceRun, LanesFile } from '../src/lanes.ts';
 import { deviceEvidence, evidenceProblems } from '../src/device-evidence.ts';
-import { fileStatusProblems, LANES_JSON, lanesFile, readLanesFile, runRecordProblems, staleCovers, staleEvidence, staleLanes } from '../src/lanes.ts';
+import { fileStatusProblems, LANES_JSON, lanesFile, readLanesFile, evidenceBehind, runRecordProblems, staleCovers, staleLanes } from '../src/lanes.ts';
 import type { TargetConfig } from '../src/targets.ts';
 import { nativeTargets } from '../src/targets.ts';
 
@@ -97,18 +97,32 @@ describe('the evidence stamp (finding 4131217867)', () => {
     expect(evidenceProblems(undefined, cur)).toEqual(['the record has no evidence stamp']);
     expect(evidenceProblems({ ...cur, app: 'd'.repeat(64) }, cur)).toEqual(['app dddddddddddd is not the current cccccccccccc']);
   });
-  it('the committed device lanes carry the current stamp: the code, reference data and app they were made and judged with', () => {
-    expect(staleEvidence(committed)).toEqual([]);
-    for (const t of committed.targets) for (const l of t.lanes.filter((x) => x.where === 'device' && x.state !== 'not run')) expect(l.evidence, `${t.target} ${l.lane}`).toEqual(deviceEvidence(t.target));
+  it('every committed device lane that ran carries the stamp of the code, reference data and app it was made and judged with', () => {
+    for (const t of committed.targets) {
+      for (const l of t.lanes.filter((x) => x.where === 'device' && x.state !== 'not run')) {
+        expect(l.evidence, `${t.target} ${l.lane}`).not.toBeNull();
+        for (const k of ['laneCode', 'referenceData', 'app'] as const) expect(l.evidence?.[k], `${t.target} ${l.lane} ${k}`).toMatch(/^[0-9a-f]{64}$/);
+      }
+    }
+    // Behind is not stale: the profiles read these records until the scheduled device run on master replaces them.
+    for (const p of evidenceBehind(committed)) expect(p).toContain('evidence is stale');
   });
-  it('a device lane without the current stamp is not carried (no grandfathering); host lanes are carried as before', () => {
+  it('async device lanes: a device lane behind the current stamp is carried with the stamp it was run with, and named behind', () => {
     for (const drop of ['missing', 'changed'] as const) {
       const f = clone() as Mutable<LanesFile>;
       for (const t of f.targets) for (const l of t.lanes) if (l.where === 'device') (l as { evidence: unknown }).evidence = drop === 'missing' ? null : { ...(l.evidence as object), laneCode: '0'.repeat(64) };
-      expect(staleEvidence(f as LanesFile).length).toBeGreaterThan(0);
+      expect(evidenceBehind(f as LanesFile).length).toBeGreaterThan(0);
+      expect(staleLanes(f as LanesFile, targets)).toEqual(staleLanes(committed, targets));
       const out = lanesFile(targets, [], new Map(), null, new Map(), f as LanesFile);
       for (const t of out.targets) {
-        for (const l of t.lanes) expect(l.state, `${drop} ${t.target} ${l.lane}`).toBe(l.where === 'host' ? 'pass' : 'not run');
+        for (const l of t.lanes) {
+          const was = f.targets.find((x) => x.target === t.target)?.lanes.find((x) => x.lane === l.lane);
+          if (l.where === 'host') expect(l.state, `${drop} ${t.target} ${l.lane}`).toBe('pass');
+          else {
+            expect(l.state, `${drop} ${t.target} ${l.lane}`).toBe(was?.state);
+            expect(l.evidence, `${drop} ${t.target} ${l.lane}`).toEqual(was?.state === 'not run' ? null : was?.evidence);
+          }
+        }
       }
     }
   });

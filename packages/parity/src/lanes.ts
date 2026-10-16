@@ -598,8 +598,10 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
           if (d.vectors === null) return hosts(laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null));
           return hosts(laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence));
         }
-        // A device lane is carried only with the current evidence stamp: same lane code, reference data and app source.
-        if (keep && evidenceProblems(kept.evidence, deviceEvidence(t.target)).length === 0) return { ...kept, device: kept.device ?? null };
+        // Async device lanes: a device lane's record is carried as the last device evidence until the scheduled device run on master
+        // (device-refresh.yml) replaces it. It keeps the evidence stamp it was run with, so evidenceBehind names the records a
+        // tree's sources have moved past; only a change to the lane's configured cases (staleLanes) drops it.
+        if (keep) return { ...kept, device: kept.device ?? null };
         return laneRecord(l, 'not run', DEVICE_NOT_RUN, null);
       }),
       referenceProof: reference?.find((r) => r.target === t.target)?.rows.map(({ failures: _f, ...row }) => row) ?? carried?.targets.find((x) => x.target === t.target)?.referenceProof ?? null,
@@ -714,8 +716,12 @@ export function staleLanes(f: LanesFile, targets: readonly TargetConfig[]): stri
   return out;
 }
 
-/** Device lanes of a file whose evidence stamp is not the current one (missing stamps included); lanes not run are skipped. */
-export function staleEvidence(f: LanesFile): string[] {
+/**
+ * Device lanes of a file whose evidence stamp is not the current one (missing stamps included); lanes not run are skipped. These
+ * records are behind the tree, not stale: they stay the device evidence until the scheduled device run replaces them, and only
+ * that run and the landing driver's device step read this.
+ */
+export function evidenceBehind(f: LanesFile): string[] {
   const out: string[] = [];
   for (const t of f.targets) {
     for (const l of t.lanes) {
