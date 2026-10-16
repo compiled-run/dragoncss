@@ -174,6 +174,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -341,6 +342,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -508,6 +510,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -675,6 +678,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -872,6 +876,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1069,6 +1074,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1266,6 +1272,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1463,6 +1470,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1650,6 +1658,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1847,6 +1856,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2034,6 +2044,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2221,6 +2232,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2388,6 +2400,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2555,6 +2568,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2722,6 +2736,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2889,6 +2904,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3086,6 +3102,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3283,6 +3300,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3450,6 +3468,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3617,6 +3636,7 @@
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
         "clip": "auto",
+        "clip-path": "none",
         "writing-mode": "horizontal-tb"
       }
     }

@@ -173,7 +173,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -339,7 +340,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -505,7 +507,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -671,7 +674,8 @@
         "-webkit-box-orient": "vertical",
         "-webkit-line-clamp": "2",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -837,7 +841,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1023,7 +1028,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1209,7 +1215,8 @@
         "-webkit-box-orient": "vertical",
         "-webkit-line-clamp": "3",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1375,7 +1382,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1561,7 +1569,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1747,7 +1756,8 @@
         "-webkit-box-orient": "vertical",
         "-webkit-line-clamp": "2",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1913,7 +1923,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2129,7 +2140,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2315,7 +2327,8 @@
         "-webkit-box-orient": "vertical",
         "-webkit-line-clamp": "2",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2481,7 +2494,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2667,7 +2681,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2853,7 +2868,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3039,7 +3055,8 @@
         "-webkit-box-orient": "vertical",
         "-webkit-line-clamp": "3",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3205,7 +3222,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3391,7 +3409,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3607,7 +3626,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
