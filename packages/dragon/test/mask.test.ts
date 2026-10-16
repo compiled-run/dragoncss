@@ -67,6 +67,8 @@ describe('mask', () => {
     expect(parsed('-webkit-mask-image: None')).toEqual(['mask-image: none']);
     expect(parsed('-webkit-mask-size: auto')).toEqual(['mask-size: auto']);
     expect(parsed('-webkit-mask-clip: border-box')).toEqual(['mask-clip: border-box']);
+    expect(parsed('-webkit-mask-composite: ADD')).toEqual(['mask-composite: add']);
+    expect(parsed('-webkit-mask-composite: source-over')).toEqual(['mask-composite: source-over']);
     expect(parsed('mask-position: 0% 0%')).toEqual(['-webkit-mask-position-x: 0%', '-webkit-mask-position-y: 0%']);
     expect(parsed('-webkit-mask-position: 0% 0%')).toEqual(['-webkit-mask-position-x: 0%', '-webkit-mask-position-y: 0%']);
     expect(parsed('mask: none')).toEqual(INITIAL_DECLS);
@@ -82,15 +84,10 @@ describe('mask', () => {
     expect(parsed('mask-repeat: inherit')).toEqual(['mask-repeat: inherit']);
   });
 
-  it('refuses every -webkit-mask-composite value but a CSS-wide keyword, which Chrome parses with legacy rules', () => {
-    for (const v of ['add', 'source-over', 'var(--c)', '\\61 dd']) expect(parsed(`-webkit-mask-composite: ${v}`), v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
-    for (const v of ['inherit', 'INITIAL', 'unset', 'revert']) expect(parsed(`-webkit-mask-composite: ${v}`), v).toEqual([`mask-composite: ${v.toLowerCase()}`]);
-  });
-
   it('accepts the initial values on every target, from every name and through the CSS-wide keywords', () => {
     expect(errorsAt(INITIAL_DECLS.join('; '))).toEqual([]);
     expect(errorsAt('mask: none; -webkit-mask: none; mask-position: 0% 0%; -webkit-mask-position: 0% 0%')).toEqual([]);
-    expect(errorsAt('-webkit-mask-image: none; -webkit-mask-repeat: repeat; -webkit-mask-size: auto; -webkit-mask-clip: border-box; -webkit-mask-origin: border-box')).toEqual([]);
+    expect(errorsAt('-webkit-mask-image: none; -webkit-mask-repeat: repeat; -webkit-mask-size: auto; -webkit-mask-clip: border-box; -webkit-mask-origin: border-box; -webkit-mask-composite: add')).toEqual([]);
     for (const k of ['inherit', 'initial', 'unset']) expect(errorsAt(['mask', 'mask-position', '-webkit-mask-composite', '-webkit-mask-repeat', '-webkit-mask-position-y'].map((p) => `${p}: ${k}`).join('; ')), k).toEqual([]);
     // A later initial value wins over an earlier mask, from either name, as in Chrome.
     expect(errorsAt('mask-repeat: no-repeat; -webkit-mask-repeat: repeat')).toEqual([]);

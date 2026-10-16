@@ -629,8 +629,7 @@
         { "file": "packages/parity/test/place-computed.test.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/aliases.ts", "symbol": "legacyAliasRefusal", "use": "reference" }
+        { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

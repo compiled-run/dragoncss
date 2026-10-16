@@ -1,7 +1,7 @@
 // The mask parse against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES; Blink's MaskImage through MaskSize, Mask and
 // MaskPosition parsers): Dragon drops no value Chrome keeps, through every mask name and its -webkit- alias, and every value Dragon
 // accepts computes in Chrome to the nine mask longhands' initial values, as Dragon's own longhands do. Every other value is kept and
-// then refused (MASK-CLIP, computed-checks.ts checkMask), or refused at parse (-webkit-mask-composite), so only the accepted values'
+// then refused (MASK-CLIP, computed-checks.ts checkMask), so only the accepted values'
 // computed values are compared. Each planted reading must be caught.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
@@ -49,7 +49,7 @@ function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {
     const s = seen[i] as Seen;
     if (it.code === 'DRAGON_CSS_INVALID_VALUE') return s.parsed ? [`${it.name}: ${it.v}: invalid, Chrome parses it`] : [];
-    if (it.code !== null) return it.code === 'DRAGON_UNSUPPORTED_VALUE' ? [] : [`${it.name}: ${it.v}: unexpected ${it.code}`];
+    if (it.code !== null) return [`${it.name}: ${it.v}: unexpected ${it.code}`];
     if (it.longhands === null) return [];
     if (!s.parsed) return [`${it.name}: ${it.v}: accepted, Chrome drops it`];
     return s.authored !== s.dragon ? [`${it.name}: ${it.v}: Chrome computes ${s.authored}, Dragon's longhands compute ${s.dragon}`] : [];
@@ -64,7 +64,7 @@ describe('mask: Chrome 145 parsing', () => {
     const initial = (p: string, text: string): (readonly [string, string])[] => [[p, text]];
     const planted: { readonly name: string; readonly items: Item[] }[] = [
       { name: 'listDropped', items: [{ name: 'mask-image', v: 'url(m.svg)', code: 'DRAGON_CSS_INVALID_VALUE', longhands: null }] },
-      { name: 'aliasCompositeAccepted', items: [{ name: '-webkit-mask-composite', v: 'add', code: null, longhands: initial('mask-composite', 'add') }] },
+      { name: 'aliasCompositeDropped', items: [{ name: '-webkit-mask-composite', v: 'add', code: 'DRAGON_CSS_INVALID_VALUE', longhands: null }] },
       { name: 'unitlessZeroReadAsInitial', items: [{ name: '-webkit-mask-position-x', v: '0', code: null, longhands: initial('-webkit-mask-position-x', '0%') }] },
       { name: 'oneValuePositionReadAsInitial', items: [{ name: 'mask-position', v: '0%', code: null, longhands: [['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%']] }] },
       { name: 'imageListReadAsNone', items: [{ name: 'mask-image', v: 'none, none', code: null, longhands: initial('mask-image', 'none') }] },
@@ -91,7 +91,7 @@ describe('mask: Chrome 145 parsing', () => {
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
-    expect(real.filter((it) => it.longhands !== null).length).toBe(34);
+    expect(real.filter((it) => it.longhands !== null).length).toBe(36);
     expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThan(80);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
   }, 120_000);

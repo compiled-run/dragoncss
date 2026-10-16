@@ -173,8 +173,8 @@ describe('legacy aliases parse as their property', () => {
     expect(kf('-webkit-transform: rotate(5deg)')).toEqual(kf('transform: rotate(5deg)'));
     // transform itself keeps its own parse: a unitless perspective() is invalid there, as in Chrome.
     expect(parsed('transform: perspective(100)').diagnostics.map((d) => d[0])).toEqual(['DRAGON_CSS_INVALID_VALUE']);
-    // Every other alias but -webkit-mask-composite (test/mask.test.ts) parses no value differently.
-    for (const [alias] of ALIASES) if (alias !== '-webkit-transform' && alias !== '-webkit-mask-composite') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
+    // Every other alias parses no value differently.
+    for (const [alias] of ALIASES) if (alias !== '-webkit-transform') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
   });
   it('an alias in a keyframe block sets its property', () => {
     const frames = (body: string) => {

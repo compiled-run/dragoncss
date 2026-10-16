@@ -13,8 +13,6 @@
 // The animation family's targets are the transition and animation list properties, which stay out of LONGHANDS (T065 option B).
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
-import { asciiLower } from './escapes.ts';
-import { CSS_WIDE } from './values.ts';
 import type { AnimLonghand } from './properties/animation.ts';
 import { isAnimationProperty } from './properties/animation.ts';
 import { ANIMATION_ALIASES } from './aliases/animation.ts';
@@ -62,10 +60,6 @@ export function resolveAlias(name: string): string {
  * unitless perspective() length; a var(), env() or escape could spell one, so the value text is checked as written.
  */
 export function legacyAliasRefusal(alias: string, source: string): string | null {
-  // MaskComposite under its alias takes only the prefixed compositing operators (css_parsing_utils.cc ConsumePrefixedMaskComposite).
-  if (alias === '-webkit-mask-composite' && !CSS_WIDE.has(asciiLower(source.trim()))) {
-    return 'Chrome parses -webkit-mask-composite with legacy rules (the prefixed compositing operators, without add), and Dragon parses only mask-composite';
-  }
   if (alias !== '-webkit-transform' || !/perspective|var\(|env\(|\\/i.test(source)) return null;
   return 'Chrome parses -webkit-transform with legacy rules (a unitless perspective() length), and Dragon parses only transform';
 }
