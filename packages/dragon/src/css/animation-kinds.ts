@@ -12,6 +12,7 @@ import { BOX_ANIMATION } from './animation-kinds/box.ts';
 import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
+import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
 import { FLOAT_ANIMATION } from './animation-kinds/float.ts';
 import { FONT_FEATURES_ANIMATION } from './animation-kinds/font-features.ts';
@@ -57,6 +58,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...CLIP_PATH_ANIMATION,
   ...CLIP_RECT_ANIMATION,
   ...EFFECTS_ANIMATION,
+  ...FILTER_ANIMATION,
   ...FLEX_ANIMATION,
   ...FLOAT_ANIMATION,
   ...FONT_FEATURES_ANIMATION,
