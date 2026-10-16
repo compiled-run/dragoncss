@@ -209,6 +209,8 @@ export type InternalRecord = {
   readonly laneOnlyNative: readonly ('ios' | 'android')[];
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
   readonly images: ReadonlyMap<string, Uint8Array>;
+  /** TXT-W: the ahemObliqueUnsheared plant, which the native lowering reads (native-program.ts textPaint). */
+  readonly obliqueUnsheared: boolean;
 };
 
 /**
@@ -1530,6 +1532,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       },
       laneOnlyNative,
       images: images === null ? new Map() : images.bytes,
+      obliqueUnsheared: options.faults.ahemObliqueUnsheared,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
