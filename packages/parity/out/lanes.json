@@ -595,13 +595,10 @@
           },
           "device": null,
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -630,7 +627,10 @@
               }
             ],
             "corpora": "3b39d61137dd01a02b5b1cd6e55838b3a74bf0bc4204c0be0489351bcf304528"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-frames",
@@ -690,7 +690,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "8827b198b6d50e8d78239cba612afeb49ae954dc3ee2e7a97ac3d2c9dda0047a",
+                "dumpsSha256": "7ff47a636fdcd3dafdcd50cd4237a400ac0ba3075005ad4e4cf44f95e8d65fb6",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -727,7 +727,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "580484a9926d0140177ef3bd52733d0fb5a5fbd5aa2d337b8215a05aa19fff9e",
+                "dumpsSha256": "16e96eda4dd3669793ee6c6bae501ff5b446a0ca61ae2e3c84b895d83b5ff5b3",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -737,13 +737,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -760,13 +757,16 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-applied",
           "where": "device",
-          "state": "fail",
-          "reason": "56 failures (applied 56)",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 2,
@@ -820,11 +820,9 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "8827b198b6d50e8d78239cba612afeb49ae954dc3ee2e7a97ac3d2c9dda0047a",
-                "failures": 28,
-                "failuresByKind": {
-                  "applied": 28
-                }
+                "dumpsSha256": "7ff47a636fdcd3dafdcd50cd4237a400ac0ba3075005ad4e4cf44f95e8d65fb6",
+                "failures": 0,
+                "failuresByKind": {}
               },
               {
                 "dpr": 2,
@@ -859,188 +857,20 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "580484a9926d0140177ef3bd52733d0fb5a5fbd5aa2d337b8215a05aa19fff9e",
-                "failures": 28,
-                "failuresByKind": {
-                  "applied": 28
-                }
+                "dumpsSha256": "16e96eda4dd3669793ee6c6bae501ff5b446a0ca61ae2e3c84b895d83b5ff5b3",
+                "failures": 0,
+                "failuresByKind": {}
               }
             ],
-            "failuresByKind": {
-              "applied": 56
-            },
-            "firstFailures": [
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-a",
-                "kind": "applied",
-                "detail": "cut-a: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-b",
-                "kind": "applied",
-                "detail": "cut-b: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-c",
-                "kind": "applied",
-                "detail": "cut-c: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-d",
-                "kind": "applied",
-                "detail": "cut-d: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-e",
-                "kind": "applied",
-                "detail": "cut-e: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-f",
-                "kind": "applied",
-                "detail": "cut-f: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-g",
-                "kind": "applied",
-                "detail": "cut-g: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-h",
-                "kind": "applied",
-                "detail": "cut-h: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 3,
-                "node": "cut-sr",
-                "kind": "applied",
-                "detail": "cut-sr: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-a",
-                "kind": "applied",
-                "detail": "cut-a: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-b",
-                "kind": "applied",
-                "detail": "cut-b: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-c",
-                "kind": "applied",
-                "detail": "cut-c: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-d",
-                "kind": "applied",
-                "detail": "cut-d: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-e",
-                "kind": "applied",
-                "detail": "cut-e: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-f",
-                "kind": "applied",
-                "detail": "cut-f: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-g",
-                "kind": "applied",
-                "detail": "cut-g: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-h",
-                "kind": "applied",
-                "detail": "cut-h: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 3,
-                "node": "cut-sr",
-                "kind": "applied",
-                "detail": "cut-sr: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-nested",
-                "dpr": 3,
-                "node": "cut-flex",
-                "kind": "applied",
-                "detail": "cut-flex: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-nested",
-                "dpr": 3,
-                "node": "cut-pos",
-                "kind": "applied",
-                "detail": "cut-pos: applied key visibility is not expected"
-              }
-            ],
+            "failuresByKind": {},
+            "firstFailures": [],
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -1057,7 +887,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-lines",
@@ -1117,7 +950,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "8827b198b6d50e8d78239cba612afeb49ae954dc3ee2e7a97ac3d2c9dda0047a",
+                "dumpsSha256": "7ff47a636fdcd3dafdcd50cd4237a400ac0ba3075005ad4e4cf44f95e8d65fb6",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1154,7 +987,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "580484a9926d0140177ef3bd52733d0fb5a5fbd5aa2d337b8215a05aa19fff9e",
+                "dumpsSha256": "16e96eda4dd3669793ee6c6bae501ff5b446a0ca61ae2e3c84b895d83b5ff5b3",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1164,13 +997,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -1187,7 +1017,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-pixels",
@@ -1247,7 +1080,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "8827b198b6d50e8d78239cba612afeb49ae954dc3ee2e7a97ac3d2c9dda0047a",
+                "dumpsSha256": "7ff47a636fdcd3dafdcd50cd4237a400ac0ba3075005ad4e4cf44f95e8d65fb6",
                 "failures": 75,
                 "failuresByKind": {
                   "pixel": 75
@@ -1286,7 +1119,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "580484a9926d0140177ef3bd52733d0fb5a5fbd5aa2d337b8215a05aa19fff9e",
+                "dumpsSha256": "16e96eda4dd3669793ee6c6bae501ff5b446a0ca61ae2e3c84b895d83b5ff5b3",
                 "failures": 56,
                 "failuresByKind": {
                   "pixel": 56
@@ -1476,13 +1309,10 @@
             ]
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -1499,7 +1329,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-states",
@@ -1606,13 +1439,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -1629,7 +1459,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-hit",
@@ -1736,13 +1569,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -1759,7 +1589,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-anim",
@@ -2031,13 +1864,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -2054,7 +1884,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-traces",
@@ -2161,13 +1994,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "87ef854311199566ce66c110ca0be8c07ea365dc18864efe5e9f2764e2962e5f"
+            "app": "68aea38fa8589657a349b40005510f7744102a6583051175a7abe75b3a7f64c4"
           },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -2184,7 +2014,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         }
       ],
       "referenceProof": [
@@ -2886,13 +2719,10 @@
           },
           "device": null,
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -2921,7 +2751,10 @@
               }
             ],
             "corpora": "3b39d61137dd01a02b5b1cd6e55838b3a74bf0bc4204c0be0489351bcf304528"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-frames",
@@ -2988,7 +2821,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "1481c7c0b3aa358af5729c20dbfc2e14f5bbe87e60b538cf004c4de1249af072",
+                "dumpsSha256": "efb39b0cbb3c7710a39a4b4529d20659abe3974635bfa67815e589a4fdbe5fb3",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3026,7 +2859,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "54983ff5564083469e54d9988d8098930a6756526ab436202d7592c660235aad",
+                "dumpsSha256": "6a1ae52401b5ccf1e74d76b246508563665329ef48405e6f20ff1934ff924134",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3064,7 +2897,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "db88ad118765470b6933bf91a2b43143af8c462502cd2cdbfe6aa8c7e0270909",
+                "dumpsSha256": "51d1a33c076221ac331696438e99a49e981de8847a7c9eb6b7ce0b5e1b15e6d1",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -3074,13 +2907,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -3103,13 +2933,16 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-applied",
           "where": "device",
-          "state": "fail",
-          "reason": "84 failures (applied 84)",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 2,
@@ -3170,11 +3003,9 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "1481c7c0b3aa358af5729c20dbfc2e14f5bbe87e60b538cf004c4de1249af072",
-                "failures": 28,
-                "failuresByKind": {
-                  "applied": 28
-                }
+                "dumpsSha256": "efb39b0cbb3c7710a39a4b4529d20659abe3974635bfa67815e589a4fdbe5fb3",
+                "failures": 0,
+                "failuresByKind": {}
               },
               {
                 "dpr": 2.625,
@@ -3210,11 +3041,9 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "54983ff5564083469e54d9988d8098930a6756526ab436202d7592c660235aad",
-                "failures": 28,
-                "failuresByKind": {
-                  "applied": 28
-                }
+                "dumpsSha256": "6a1ae52401b5ccf1e74d76b246508563665329ef48405e6f20ff1934ff924134",
+                "failures": 0,
+                "failuresByKind": {}
               },
               {
                 "dpr": 3,
@@ -3250,188 +3079,20 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "db88ad118765470b6933bf91a2b43143af8c462502cd2cdbfe6aa8c7e0270909",
-                "failures": 28,
-                "failuresByKind": {
-                  "applied": 28
-                }
+                "dumpsSha256": "51d1a33c076221ac331696438e99a49e981de8847a7c9eb6b7ce0b5e1b15e6d1",
+                "failures": 0,
+                "failuresByKind": {}
               }
             ],
-            "failuresByKind": {
-              "applied": 84
-            },
-            "firstFailures": [
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-a",
-                "kind": "applied",
-                "detail": "cut-a: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-b",
-                "kind": "applied",
-                "detail": "cut-b: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-c",
-                "kind": "applied",
-                "detail": "cut-c: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-d",
-                "kind": "applied",
-                "detail": "cut-d: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-e",
-                "kind": "applied",
-                "detail": "cut-e: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-f",
-                "kind": "applied",
-                "detail": "cut-f: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-g",
-                "kind": "applied",
-                "detail": "cut-g: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-h",
-                "kind": "applied",
-                "detail": "cut-h: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic",
-                "dpr": 2,
-                "node": "cut-sr",
-                "kind": "applied",
-                "detail": "cut-sr: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-a",
-                "kind": "applied",
-                "detail": "cut-a: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-b",
-                "kind": "applied",
-                "detail": "cut-b: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-c",
-                "kind": "applied",
-                "detail": "cut-c: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-d",
-                "kind": "applied",
-                "detail": "cut-d: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-e",
-                "kind": "applied",
-                "detail": "cut-e: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-f",
-                "kind": "applied",
-                "detail": "cut-f: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-g",
-                "kind": "applied",
-                "detail": "cut-g: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-h",
-                "kind": "applied",
-                "detail": "cut-h: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-basic-rtl",
-                "dpr": 2,
-                "node": "cut-sr",
-                "kind": "applied",
-                "detail": "cut-sr: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-nested",
-                "dpr": 2,
-                "node": "cut-flex",
-                "kind": "applied",
-                "detail": "cut-flex: applied key visibility is not expected"
-              },
-              {
-                "lane": "device-applied",
-                "case": "clip-rect-nested",
-                "dpr": 2,
-                "node": "cut-pos",
-                "kind": "applied",
-                "detail": "cut-pos: applied key visibility is not expected"
-              }
-            ],
+            "failuresByKind": {},
+            "firstFailures": [],
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -3454,7 +3115,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-lines",
@@ -3521,7 +3185,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "1481c7c0b3aa358af5729c20dbfc2e14f5bbe87e60b538cf004c4de1249af072",
+                "dumpsSha256": "efb39b0cbb3c7710a39a4b4529d20659abe3974635bfa67815e589a4fdbe5fb3",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3559,7 +3223,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "54983ff5564083469e54d9988d8098930a6756526ab436202d7592c660235aad",
+                "dumpsSha256": "6a1ae52401b5ccf1e74d76b246508563665329ef48405e6f20ff1934ff924134",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3597,7 +3261,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "db88ad118765470b6933bf91a2b43143af8c462502cd2cdbfe6aa8c7e0270909",
+                "dumpsSha256": "51d1a33c076221ac331696438e99a49e981de8847a7c9eb6b7ce0b5e1b15e6d1",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -3607,13 +3271,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -3636,7 +3297,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-pixels",
@@ -3703,7 +3367,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "1481c7c0b3aa358af5729c20dbfc2e14f5bbe87e60b538cf004c4de1249af072",
+                "dumpsSha256": "efb39b0cbb3c7710a39a4b4529d20659abe3974635bfa67815e589a4fdbe5fb3",
                 "failures": 48,
                 "failuresByKind": {
                   "pixel": 48
@@ -3743,7 +3407,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "54983ff5564083469e54d9988d8098930a6756526ab436202d7592c660235aad",
+                "dumpsSha256": "6a1ae52401b5ccf1e74d76b246508563665329ef48405e6f20ff1934ff924134",
                 "failures": 60,
                 "failuresByKind": {
                   "pixel": 60
@@ -3783,7 +3447,7 @@
                   "d": 23262,
                   "breaks": 4117
                 },
-                "dumpsSha256": "db88ad118765470b6933bf91a2b43143af8c462502cd2cdbfe6aa8c7e0270909",
+                "dumpsSha256": "51d1a33c076221ac331696438e99a49e981de8847a7c9eb6b7ce0b5e1b15e6d1",
                 "failures": 63,
                 "failuresByKind": {
                   "pixel": 63
@@ -3980,13 +3644,10 @@
             ]
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -4009,7 +3670,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-states",
@@ -4162,13 +3826,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -4191,7 +3852,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-hit",
@@ -4344,13 +4008,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -4373,7 +4034,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-anim",
@@ -4693,13 +4357,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -4722,7 +4383,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         },
         {
           "lane": "device-traces",
@@ -4896,13 +4560,10 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "b66d20b7e653047f4992174e0361fc13664bcbe699b75dafe8e8bb378be2138b",
+            "laneCode": "9005f689c32b3daf7396377edfbfd16e04f624b20c02f1daa08b14a8571c6ea6",
             "referenceData": "1825b5b5dd1d09b8f7752587ebeb54c33c2bf190b29589d913a1cc46073239b7",
-            "app": "62fdd79e9f9b3a82e67056a4d1934128ac9254e5b006a80ac889582630ea2684"
+            "app": "d01c0746ec8fc5e0022261f6904bc0917225d8724d82642b0df2e53cd5afd1b5"
           },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38865711620"
-          ],
           "ran": {
             "sets": [
               {
@@ -4925,7 +4586,10 @@
               }
             ],
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-          }
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38885876099"
+          ]
         }
       ],
       "referenceProof": [
