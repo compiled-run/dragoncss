@@ -183,8 +183,8 @@ const LINE_ORDER = ['underline', 'overline', 'line-through'];
 
 /**
  * css-text-decor-4 as Chrome 145 parses it, and the values TDEC-a draws (notes/T148J-tdec.md): text-decoration-line is one value
- * of up to three lines, kept in Chrome's order; blink, spelling-error and grammar-error, styles other than solid, from-font, and an
- * underline position other than auto are refused; <line-width> thickness keywords and skip-ink all are not Chrome values. undefined
+ * of up to three lines, kept in Chrome's order; blink, spelling-error and grammar-error, from-font, and an underline position other
+ * than auto are refused (a drawn style other than solid or double is refused per decorated text, computed-checks checkDecorations); <line-width> thickness keywords and skip-ink all are not Chrome values. undefined
  * when the property is not a decoration longhand this rules on.
  */
 export function textDecorationValue(property: string, tokens: readonly CssNode[]): PairValue | undefined {
@@ -198,8 +198,6 @@ export function textDecorationValue(property: string, tokens: readonly CssNode[]
       if (tokens.length < 2) return null;
       return { kind: 'keyword', value: LINE_ORDER.filter((l) => names.includes(l)).join(' ') };
     }
-    case 'text-decoration-style':
-      return one !== '' && one !== 'solid' ? { refused: `text-decoration-style: ${one} is drawn by TDEC-c` } : null;
     case 'text-decoration-thickness':
       if (one === 'thin' || one === 'medium' || one === 'thick') return { invalid: `Chrome 145 does not parse text-decoration-thickness: ${one}` };
       return one === 'from-font' ? { refused: 'text-decoration-thickness: from-font reads the font\'s underline metrics, which TDEC-c measures' } : null;
