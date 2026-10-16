@@ -75,6 +75,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/decoration_line_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/outline_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/paint_property_tree_builder.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/core/paint/svg_object_painter.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_decoration_info.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_fragment_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_painter.cc`: Copyright 2017 The Chromium Authors
