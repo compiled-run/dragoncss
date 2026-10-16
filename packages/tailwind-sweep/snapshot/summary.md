@@ -37,11 +37,10 @@ As published (before the shell pre-pass), the sheet compiles for web 4372, ios 4
 |---|---:|---:|---:|---:|
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
 | `value oklch()` | 5720 | 5720 | 5720 | 20 |
+| `at-rule @supports` | 1192 | 1192 | 1192 | 6 |
 | `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
-| `at-rule @supports` | 902 | 902 | 902 | 5 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |
-| `property filter` | 351 | 351 | 351 | 10 |
 | `value box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-o` | 298 | 298 | 298 | 2 |
 | `property accent-color` | 292 | 292 | 292 | 2 |
 | `property caret-color` | 291 | 291 | 291 | 1 |
@@ -61,6 +60,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4372, ios 4
 | `property scroll-margin-left` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-right` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-top` | 70 | 70 | 70 | 4 |
+| `profile filter:<filter-value-list>` | 59 | 59 | 59 | 9 |
 | `value calc()` | 52 | 52 | 52 | 4 |
 | `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
 | `property cursor` | 36 | 0 | 0 | 36 |
