@@ -676,7 +676,10 @@ export function runRecordProblems(f: LanesFile): string[] {
         for (const s of lx.device.sets) {
           if (!f.sharedDprs.includes(s.dpr)) continue;
           const t = ly.device.sets.find((z) => z.dpr === s.dpr);
+          // A lane carried over a changed case list on one target ran other cases than a fresh run on the other: no count to compare.
+          const lists = [lx, ly].map((r) => r.ran?.sets.find((z) => z.dpr === s.dpr)?.list);
           if (t === undefined) out.push(`run records: ${lx.lane} at DPR ${s.dpr} ran on ${x.target} but not on ${y.target}`);
+          else if (lists[0] !== undefined && lists[1] !== undefined && lists[0] !== lists[1]) continue;
           else if (t.cases !== s.cases) out.push(`run records: ${lx.lane} at DPR ${s.dpr}: ${x.target} ${s.cases} cases, ${y.target} ${t.cases}`);
           else if (JSON.stringify(Object.keys(t.compared)) !== JSON.stringify(Object.keys(s.compared))) out.push(`run records: ${lx.lane} at DPR ${s.dpr}: the targets compare different checks`);
         }

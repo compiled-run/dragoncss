@@ -171,6 +171,18 @@ describe('per-case carry (async device lanes over a changed case list)', () => {
       }
     }
   });
+  it('run-record parity compares case counts only where both targets ran the same case list', () => {
+    const f = JSON.parse(JSON.stringify(base)) as Mutable<LanesFile>;
+    const android = f.targets.find((t) => t.target === 'android')!.lanes.find((l) => l.lane === 'device-frames')!;
+    // A fresh android run over a grown list against an ios record carried over the old one.
+    const grownList = 'f'.repeat(64);
+    (f as unknown as { caseLists: Record<string, string[]> }).caseLists[grownList] = ['zz-new-fixture'];
+    (android as { ran: unknown }).ran = { ...android.ran!, sets: android.ran!.sets.map((s) => ({ ...s, list: grownList })) };
+    for (const s of android.device!.sets) (s as { cases: number }).cases += 1;
+    expect(runRecordProblems(f as LanesFile).filter((p) => p.includes('device-frames'))).toEqual([]);
+    (android as { ran: unknown }).ran = base.targets.find((t) => t.target === 'android')!.lanes.find((l) => l.lane === 'device-frames')!.ran;
+    expect(runRecordProblems(f as LanesFile).some((p) => /device-frames at DPR \d+: (ios|android) \d+ cases/.test(p))).toBe(true);
+  });
   it('a changed DPR set or corpus is still stale', () => {
     const fewer: TargetConfig[] = targets.map((t) => ({ ...t, lanes: t.lanes.map((l) => (l.lane !== 'device-frames' ? l : { ...l, sets: l.sets.slice(1) })) }));
     expect(staleLanes(base, fewer).some((p) => /device-frames does not match the configured case list/.test(p))).toBe(true);
