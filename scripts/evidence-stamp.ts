@@ -1,11 +1,11 @@
 // pnpm evidence:stamp [--compare <ref>]: the device evidence stamp of this tree (device-evidence.ts), per native target.
 // --compare exits 0 when the device evidence committed on <ref> (its lanes.json) is current for this tree, so a device run here
 // would be judged with the same lane code, reference data and app; 1 when it is not (each reason printed); 2 on any error.
-// The landing driver (scripts/land.ts) runs the device lanes only on exit 1.
+// The scheduled device run on master (device-refresh.yml) runs the device lanes only on exit 1.
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { deviceEvidence } from '../packages/parity/src/device-evidence.ts';
-import { LANES_JSON, type LanesFile, staleEvidence, staleLanes } from '../packages/parity/src/lanes.ts';
+import { LANES_JSON, type LanesFile, evidenceBehind, staleLanes } from '../packages/parity/src/lanes.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import { NATIVE_TARGETS, nativeTargets } from '../packages/parity/src/targets.ts';
 
@@ -35,7 +35,7 @@ export const parseLanesForStamp = (v: unknown, what: string): LanesFile => {
  * tree's stamp, the file describes the current lane configuration, and every native target has device evidence at all.
  */
 export const stampProblems = (file: LanesFile): string[] => {
-  const problems = [...staleLanes(file, nativeTargets()), ...staleEvidence(file)];
+  const problems = [...staleLanes(file, nativeTargets()), ...evidenceBehind(file)];
   for (const target of NATIVE_TARGETS) {
     const t = file.targets.find((x) => x.target === target);
     if (t !== undefined && !t.lanes.some((l) => l.where === 'device' && l.state !== 'not run')) problems.push(`${LANES_JSON}: ${target} has no device lane that ran`);

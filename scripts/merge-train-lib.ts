@@ -480,6 +480,8 @@ export const deviceRunWrote = (mtimeMs: number, startedMs: number): boolean =>
 
 /** `pnpm run parity:lanes` on the committed file prints one "STALE <why>" line per stale lane or evidence. */
 export const staleLines = (out: string): string[] => out.split('\n').filter((l) => l.startsWith('STALE ')).map((l) => l.slice(6));
+/** parity:lanes's BEHIND lines: device records whose evidence stamp is not this tree's (async device lanes carry them). */
+export const behindLines = (out: string): string[] => out.split('\n').filter((l) => l.startsWith('BEHIND ')).map((l) => l.slice(7));
 
 // The steps of one position after its merge, in order. The second regen rebuilds what reads the device run's lanes.json
 // (native-lanes.ts), so the position's regen commit carries it; judge-devices compares the run with the base's evidence.
