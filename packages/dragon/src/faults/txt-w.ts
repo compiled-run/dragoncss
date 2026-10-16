@@ -3,6 +3,8 @@
 export type TxtWFaults = {
   /** Native accepts Ahem text at a computed font-weight of 600 to 699, which Chrome draws in synthetic bold. */
   readonly ahemSyntheticBoldFrom700: boolean;
+  /** Native draws Ahem text Chrome draws in synthetic oblique upright: the native program gets no shear write. */
+  readonly ahemObliqueUnsheared: boolean;
 };
 
-export const TXT_W_FAULTS: TxtWFaults = { ahemSyntheticBoldFrom700: false };
+export const TXT_W_FAULTS: TxtWFaults = { ahemSyntheticBoldFrom700: false, ahemObliqueUnsheared: false };

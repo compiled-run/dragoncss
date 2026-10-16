@@ -605,6 +605,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'border-widths':
       case 'text-color':
         break;
+      case 'synthetic-oblique':
+        // TXT-W: the state runtime's text record carries no shear; a sheared run is drawn from the static program only.
+        throw new StateEmitError(`${n.id}: a synthetic oblique in a state program has no state-node write (TXT-W shears glyphs on the static program only)`);
       case 'transform':
         // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);

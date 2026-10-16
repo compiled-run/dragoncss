@@ -41,7 +41,7 @@ import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, svgPaintRefusal, svgShapePainted } from './elements/svg.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
-import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
+import { serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
@@ -614,8 +614,8 @@ const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 're
 
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
-// minimum logical font size clamps, and text without a real bundled face whose computed font-weight or font-style Chrome draws
-// synthesized (Ahem under a heading, b, strong, em, i or address, or an author weight of 600 and up).
+// minimum logical font size clamps, and text without a real bundled face whose computed font-weight Chrome draws synthesized (Ahem
+// under a heading, b or strong, or an author weight of 600 and up).
 function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFsFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
@@ -697,13 +697,13 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       for (const c of el.children) {
         // TXT1a-2: a real bundled face at the computed weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
         if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
-        // Web synthesizes the bold or oblique itself; every configured native target draws the regular face.
+        // Web synthesizes the bold itself; every configured native target draws the regular face.
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
           once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
             origin: c.node.node.origin,
             target: t,
-            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
-            manual: `Give ${c.node.address} a font-weight below 600 and a font-style below oblique 14deg, or a font family with a bundled face of that weight and style.`,
+            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)`,
+            manual: `Give ${c.node.address} a font-weight below 600, or a font family with a bundled face of that weight.`,
           })));
         }
       }
@@ -713,15 +713,13 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
   walk(root, [], false, false);
 }
 
-/** The computed font-weight and font-style Chrome synthesizes over a single regular face (600 and up, slope 14 and up), where font-synthesis allows it. */
-function syntheticTextFont(el: ResolvedElement, faults: TxtWFaults): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
-  const out: { property: 'font-weight' | 'font-style'; text: string }[] = [];
-  const font = textFontOfProps(el.props);
-  const allowed = synthesisAllowedOf(el.props);
-  if (allowed.weight && font.weight >= (faults.ahemSyntheticBoldFrom700 ? 700 : 600)) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
-  const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
-  if (allowed.style && slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
-  return out;
+/**
+ * The computed font-weight Chrome synthesizes over a single regular face (600 and up), where font-synthesis-weight allows it. Its
+ * synthetic oblique is drawn natively: the native program shears the glyphs as Skia does (native-program.ts textPaint).
+ */
+function syntheticTextFont(el: ResolvedElement, faults: TxtWFaults): { readonly property: 'font-weight'; readonly text: string }[] {
+  const weight = textFontOfProps(el.props).weight;
+  return synthesisAllowedOf(el.props).weight && weight >= (faults.ahemSyntheticBoldFrom700 ? 700 : 600) ? [{ property: 'font-weight', text: serializeFontWeight(weight) }] : [];
 }
 
 /** The support profile each target is checked against, or null when the profiles are not enforced. */

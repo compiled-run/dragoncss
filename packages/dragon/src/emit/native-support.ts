@@ -317,6 +317,8 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonColor = DragonRGBA8(0, 0, 0, 255)
   public private(set) var dragonTextColor: UIColor? = nil
   public private(set) var dragonFont: UIFont? = nil
+  /// TXT-W: the synthetic oblique's shear (x per unit of height above the baseline), 0 for upright glyphs; Chrome's is Skia's skewX(-1/4).
+  public private(set) var dragonGlyphShear: Double = 0
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
   private let glyphLayer = DragonGlyphLayer()
@@ -345,6 +347,13 @@ public final class DragonTextView: UIView, DragonNodeView {
     accessibilityLabel = text
   }
 
+  /// The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's.
+  public func dragonSetGlyphShear(_ shear: Double) {
+    dragonGlyphShear = shear
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
+  }
+
   /// The engine's data at the device scale: the instance font and the placed lines.
   public func dragonConfigure(font: UIFont, lines: [DragonLineSpec], scale: Double) {
     dragonFont = font
@@ -366,7 +375,10 @@ public final class DragonTextView: UIView, DragonNodeView {
   func dragonInkFrame() -> CGRect {
     var r = bounds
     if let font = dragonFont {
-      let box = CTFontGetBoundingBox(font as CTFont)
+      // A sheared glyph's ink reaches shear times its height above (right) and below (left) the baseline.
+      let upright = CTFontGetBoundingBox(font as CTFont)
+      let k = CGFloat(dragonGlyphShear)
+      let box = CGRect(x: upright.minX + min(k * upright.minY, k * upright.maxY), y: upright.minY, width: upright.width + abs(k) * upright.height, height: upright.height)
       func y(_ l: DragonLineSpec) -> CGFloat { return CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale) }
       func ink(_ xs: [Double], _ y: CGFloat, _ b: CGRect) {
         guard let lo = xs.min(), let hi = xs.max() else { return }
@@ -401,6 +413,8 @@ public final class DragonTextView: UIView, DragonNodeView {
       ctx.textMatrix = .identity
       ctx.translateBy(x: 0, y: CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale))
       ctx.scaleBy(x: 1, y: -1)
+      // y is up from the baseline here and every glyph origin is at y 0, so the shear moves only the outlines.
+      if dragonGlyphShear != 0 { ctx.concatenate(CGAffineTransform(a: 1, b: 0, c: CGFloat(dragonGlyphShear), d: 1, tx: 0, ty: 0)) }
       let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
       if !l.glyphs.isEmpty { CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx) }
       if !l.ellipsisGlyphs.isEmpty {
@@ -412,10 +426,12 @@ public final class DragonTextView: UIView, DragonNodeView {
   }
 
   public func dragonApplied() -> DumpJsonObject {
-    return [
+    var out: DumpJsonObject = [
       ("font", dragonFont.map { DumpJson.object([("name", .string($0.fontName)), ("pointSize", .number(Double($0.pointSize)))]) } ?? .null),
       ("foregroundColor", dragonColorJson(dragonTextColor)),
     ]
+    if dragonGlyphShear != 0 { out.append(("glyphShear", .number(dragonGlyphShear))) }
+    return out
   }
 }
 `;
@@ -1268,6 +1284,9 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var specs: List<DragonLineSpec> = emptyList()
     private set
+  /** TXT-W: the synthetic oblique's shear (x per unit of height above the baseline), 0 for upright glyphs; Chrome's is Skia's skewX(-1/4). */
+  var dragonGlyphShear = 0.0
+    private set
   private var font: android.graphics.fonts.Font? = null
 
   /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
@@ -1276,6 +1295,12 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     dragonFamily = family
     dragonColor = color
     contentDescription = text
+  }
+
+  /** The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's. */
+  fun dragonSetGlyphShear(shear: Double) {
+    dragonGlyphShear = shear
+    invalidate()
   }
 
   /** The engine's data at the device scale: the instance text size and the placed lines. */
@@ -1297,9 +1322,14 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
         val positions = FloatArray(2 * glyphs.size)
         for (k in glyphs.indices) {
           positions[2 * k] = (xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
-          positions[2 * k + 1] = y
+          positions[2 * k + 1] = 0f
         }
+        // The origin is on the baseline (y down), so the shear moves only the outlines: x - shear * y, Skia's skewX(-shear).
+        canvas.save()
+        canvas.translate(0f, y)
+        if (dragonGlyphShear != 0.0) canvas.skew((-dragonGlyphShear).toFloat(), 0f)
         canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, p)
+        canvas.restore()
       }
       draw(l.glyphs, l.xs, paint)
       if (l.ellipsisGlyphs.isNotEmpty()) draw(l.ellipsisGlyphs, l.ellipsisXs, TextPaint(paint).apply { textSize = l.ellipsisSize.toFloat() })
@@ -1311,7 +1341,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     return listOf(
       Pair("textPaint.typeface", if (face != null && face === DragonBridge.shared(context).typeface) DumpJson.Obj(listOf(Pair("typeface", DumpJson.Str("dragon:" + dragonFamily)), Pair("textSize", DumpJson.Num(paint.textSize.toDouble())))) else DumpJson.Null),
       Pair("textPaint.color", dragonColorJson(paint.color)),
-    )
+    ) + (if (dragonGlyphShear != 0.0) listOf(Pair("glyphShear", DumpJson.Num(dragonGlyphShear))) else emptyList())
   }
 }
 `;
