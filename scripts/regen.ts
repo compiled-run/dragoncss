@@ -142,6 +142,7 @@ export const STEPS: readonly Step[] = placeSteps(LEGACY_STEPS, REGEN_FEATURES);
 /** Regen outputs a merge must not keep from one side: wpt fail entries carry a hand-written reason, deviation and issue. */
 export const MERGE_BY_HAND: readonly { readonly path: string; readonly why: string }[] = [
   { path: 'packages/wpt/expectations/web.json', why: 'fail entries keep a hand-written reason, deviation and issue across runs' },
+  { path: 'packages/parity/out/lanes.json', why: 'its device records come only from device runs, so merge=dragon-lanes (scripts/lanes-merge.ts) keeps the side that changed them' },
 ];
 
 /** Tracked outputs under the generated shapes of .macroscope/ignore.md that regen does not rebuild, and what produces them. */
@@ -1027,7 +1028,13 @@ async function main(): Promise<void> {
   } catch {
     // Unset: git config exits 1.
   }
-  if (driver !== 'true') console.log('regen: run pnpm setup:git once so merges keep generated files instead of stopping on them');
+  let lanesDriver = '';
+  try {
+    lanesDriver = git(['-C', root, 'config', '--get', 'merge.dragon-lanes.driver']).trim();
+  } catch {
+    // Unset.
+  }
+  if (driver !== 'true' || lanesDriver === '') console.log('regen: run pnpm setup:git once so merges keep generated files (and lanes.json\'s newer device records) instead of stopping on them');
   const io = localIo(root, storeDir, logDir, machine ?? MACHINE);
   const r = await regen(STEPS, opts, io);
   writeFileSync(join(logDir, 'last-run.json'), `${JSON.stringify(r.records, null, 1)}\n`);
