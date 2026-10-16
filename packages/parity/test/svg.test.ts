@@ -13,7 +13,7 @@ import { DPRS } from '../src/dpr.ts';
 import { pixelAt } from '../src/native-compare.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { casePoints, committedPixels } from '../src/pixel-reference.ts';
-import { svgOutline } from '../src/paint-samples/image.ts';
+import { strokeFeatures, svgOutline } from '../src/paint-samples/image.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import type { SvgFaults } from '../src/svg-compare.ts';
 import { chromeViewBoxTransform, compareSvg, NO_SVG_FAULTS, shapeClientRect } from '../src/svg-compare.ts';
@@ -90,7 +90,7 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     return out;
   };
   it('every shape of every case equals Chrome as doubles', async () => {
-    expect(runs.length).toBe(14);
+    expect(runs.length).toBe(16);
     expect(await problems(NO_SVG_FAULTS)).toEqual([]);
   });
   it('no SVG shape records inline line fragments: its computed display is inline, but SVG lays it out (capture.ts)', async () => {
@@ -157,6 +157,27 @@ describe('the svg sample points (SVG-a2) against the committed Chrome pixels', (
     expect(closed.stroke.length).toBe(3);
     expect(closed.vertices).toEqual([id(0, 0), id(10, 0), id(10, 10)]);
   });
+  it('SVG-stroke: the stroke outline ends at each cap and join as SVG 2 draws it, and a miter at its limit is left unmodelled', () => {
+    const P = (x: number, y: number) => ({ x, y });
+    const line = [[P(0, 0), P(100, 0)]] as const;
+    const r = (e: readonly (readonly { x: number; y: number }[])[]) => e.map((s) => s.map((q) => [Math.round(q.x * 1000) / 1000 + 0, Math.round(q.y * 1000) / 1000 + 0]));
+    expect(r(strokeFeatures(line, 10, 'butt', 'miter', 4).edges)).toEqual([[[0, -10], [0, 10]], [[100, 10], [100, -10]]]);
+    expect(r(strokeFeatures(line, 10, 'square', 'miter', 4).edges)).toEqual([[[0, -10], [-10, -10]], [[-10, -10], [-10, 10]], [[-10, 10], [0, 10]], [[100, 10], [110, 10]], [[110, 10], [110, -10]], [[110, -10], [100, -10]]]);
+    expect(strokeFeatures(line, 10, 'round', 'miter', 4).edges).toEqual([]);
+    // Inside a square cap and outside a butt one, and past every cap, at each end.
+    expect(r([strokeFeatures(line, 10, 'butt', 'miter', 4).probes])).toEqual([[[-5, 0], [-6, -9], [-6, 9], [-15, 0], [105, 0], [106, 9], [106, -9], [115, 0]]]);
+    // A right-angle join: the miter ratio is the square root of two, so the tip is half that far past the vertex.
+    const vee = [[P(0, 0), P(50, 50)], [P(50, 50), P(100, 0)]] as const;
+    const joins = (join: 'miter' | 'round' | 'bevel', limit: number) => strokeFeatures(vee, 10, 'round', join, limit);
+    expect(r(joins('miter', 4).edges)).toEqual([[[42.929, 57.071], [50, 64.142]], [[50, 64.142], [57.071, 57.071]]]);
+    expect(r(joins('miter', 1.2).edges)).toEqual([[[42.929, 57.071], [57.071, 57.071]]]);
+    expect(r(joins('bevel', 4).edges)).toEqual([[[42.929, 57.071], [57.071, 57.071]]]);
+    expect(joins('round', 4).edges).toEqual([]);
+    expect(joins('miter', 4).discs).toEqual([]);
+    expect(r([joins('miter', 4).probes.slice(4, 6)])).toEqual([[[50, 58.536], [50, 62.071]]]);
+    const atLimit = joins('miter', Math.SQRT2);
+    expect([atLimit.edges, atLimit.discs.map((d) => [d.at, Math.round(d.reach * 1000) / 1000])]).toEqual([[], [[P(50, 50), 14.142]]]);
+  });
   it('an svg-shapes write on a box with no replaced geometry throws instead of sampling nothing', () => {
     const n = svgCases[0];
     if (n === undefined) throw new Error('no svg case');
@@ -168,7 +189,7 @@ describe('the svg sample points (SVG-a2) against the committed Chrome pixels', (
     expect(() => casePoints(broken, n.case.environment.viewport, 2)).toThrow(/^wrap: an svg-shapes write on a box with no replaced paint geometry at DPR 2$/);
   });
   it('every svg point at every DPR sits in one solid colour in Chrome: its 3x3 neighbourhood is one pixel value', () => {
-    expect(svgCases.length).toBe(14);
+    expect(svgCases.length).toBe(16);
     for (const n of svgCases) {
       for (const dpr of DPRS) {
         const img = committedPixels(n.case.id, dpr);

@@ -104,6 +104,8 @@ const SUBSET = [
   'touch-action',
   // MASK-CLIP: clip (css-masking-1 §5.1), after touch-action, as LONGHANDS registers it.
   'clip',
+  // MASK-CLIP: clip-path (css-masking-1 §6.1), after clip, as LONGHANDS registers it.
+  'clip-path',
 ] as const;
 
 /**
@@ -128,6 +130,11 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
  * packages/parity/test/display-parse.test.ts.
  */
 const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  // Blink ClipPath::ParseSingleValue (longhands_custom.cc), ConsumeBasicShapeCircle and ConsumeBasicShapeEllipse (css_parsing_utils.cc):
+  // a circle or ellipse radius is a non-negative <length-percentage>, closest-side or farthest-side (webref's <radial-size> drops a
+  // lone percentage), rect() is ConsumeBasicShapeRect's (webref's <rect()> resolves to clip's comma form), and the reference box is
+  // ConsumeGeometryBox's (no half-border-box).
+  'clip-path': "none | <url> | [ [ inset( <length-percentage>{1,4} [ round <'border-radius'> ]? ) | circle( [ <length-percentage [0,∞]> | closest-side | farthest-side ]? [ at <position> ]? ) | ellipse( [ [ <length-percentage [0,∞]> | closest-side | farthest-side ]{2} ]? [ at <position> ]? ) | <polygon()> | <path()> | <shape()> | rect( [ <length-percentage> | auto ]{4} [ round <'border-radius'> ]? ) | <xywh()> ] || [ border-box | padding-box | content-box | margin-box | fill-box | stroke-box | view-box ] ]",
   // Blink Clip::ParseSingleValue (longhands_custom.cc): auto, or rect() with four <length> or auto edges separated all by commas
   // or all by whitespace; webref's <rect()> resolves to css-shapes' basic shape as well as css-masking's comma form.
   clip: 'auto | rect( [ <length> | auto ]{4} ) | rect( [ <length> | auto ]#{4} )',
@@ -176,6 +183,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ParsePaintStroke (fill and stroke): webref's <paint> has no <color>; Chrome 145 parses SVG 1.1's <paint>.
   fill: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
   stroke: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
+  // Blink StrokeLinejoin (css_properties.json5 keywords): miter, bevel and round; webref's crop, arcs and fallback do not parse in
+  // Chrome 145.
+  'stroke-linejoin': 'miter | bevel | round',
+  // Blink StrokeMiterlimit::ParseSingleValue: ConsumeNumber with ValueRange::kNonNegative.
+  'stroke-miterlimit': '<number [0,∞]>',
 };
 
 /**

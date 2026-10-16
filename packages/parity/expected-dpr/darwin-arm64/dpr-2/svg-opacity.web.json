@@ -139,6 +139,10 @@
         "stroke-width": "1px",
         "fill-opacity": "1",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -167,7 +171,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -299,6 +304,10 @@
         "stroke-width": "1px",
         "fill-opacity": "1",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -327,7 +336,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -459,6 +469,10 @@
         "stroke-width": "4px",
         "fill-opacity": "1",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -487,7 +501,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -619,6 +634,10 @@
         "stroke-width": "4px",
         "fill-opacity": "1",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -647,7 +666,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -779,6 +799,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.5",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -807,7 +831,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -955,6 +980,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.25",
         "stroke-opacity": "0.6",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -983,7 +1012,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -1131,6 +1161,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.8",
         "stroke-opacity": "0.3",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -1159,7 +1193,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -1307,6 +1342,10 @@
         "stroke-width": "4px",
         "fill-opacity": "1",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -1335,7 +1374,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1467,6 +1507,10 @@
         "stroke-width": "4px",
         "fill-opacity": "1",
         "stroke-opacity": "0",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -1495,7 +1539,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -1643,6 +1688,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -1671,7 +1720,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -1819,6 +1869,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.5",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -1847,7 +1901,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -1995,6 +2050,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.4",
         "stroke-opacity": "0.7",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -2023,7 +2082,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2155,6 +2215,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.4",
         "stroke-opacity": "0.7",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -2183,7 +2247,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -2331,6 +2396,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.4",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -2359,7 +2428,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -2507,6 +2577,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.75",
         "stroke-opacity": "0.7",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -2535,7 +2609,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -2683,6 +2758,10 @@
         "stroke-width": "4px",
         "fill-opacity": "1",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -2711,7 +2790,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2843,6 +2923,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.35",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -2871,7 +2955,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -3019,6 +3104,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.6",
         "stroke-opacity": "0.25",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -3047,7 +3136,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [
@@ -3195,6 +3285,10 @@
         "stroke-width": "4px",
         "fill-opacity": "0.9",
         "stroke-opacity": "1",
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "miter",
+        "stroke-miterlimit": "4",
+        "fill-rule": "nonzero",
         "letter-spacing": "normal",
         "word-spacing": "0px",
         "text-overflow": "clip",
@@ -3223,7 +3317,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       },
       "svg": {
         "bbox": [

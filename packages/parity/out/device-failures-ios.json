@@ -40,230 +40,6 @@
   "detail": "edge:c1:left:clear at 26,75: native [0,0,255,255], Chrome [51,51,51,255] (channel delta limit 0)"
  },
  {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-a",
-  "kind": "applied",
-  "detail": "cut-a: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-b",
-  "kind": "applied",
-  "detail": "cut-b: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-c",
-  "kind": "applied",
-  "detail": "cut-c: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-d",
-  "kind": "applied",
-  "detail": "cut-d: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-e",
-  "kind": "applied",
-  "detail": "cut-e: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-f",
-  "kind": "applied",
-  "detail": "cut-f: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-g",
-  "kind": "applied",
-  "detail": "cut-g: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-h",
-  "kind": "applied",
-  "detail": "cut-h: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 3,
-  "node": "cut-sr",
-  "kind": "applied",
-  "detail": "cut-sr: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-a",
-  "kind": "applied",
-  "detail": "cut-a: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-b",
-  "kind": "applied",
-  "detail": "cut-b: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-c",
-  "kind": "applied",
-  "detail": "cut-c: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-d",
-  "kind": "applied",
-  "detail": "cut-d: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-e",
-  "kind": "applied",
-  "detail": "cut-e: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-f",
-  "kind": "applied",
-  "detail": "cut-f: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-g",
-  "kind": "applied",
-  "detail": "cut-g: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-h",
-  "kind": "applied",
-  "detail": "cut-h: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 3,
-  "node": "cut-sr",
-  "kind": "applied",
-  "detail": "cut-sr: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 3,
-  "node": "cut-flex",
-  "kind": "applied",
-  "detail": "cut-flex: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 3,
-  "node": "cut-pos",
-  "kind": "applied",
-  "detail": "cut-pos: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 3,
-  "node": "cut-ctx",
-  "kind": "applied",
-  "detail": "cut-ctx: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 3,
-  "node": "cut-t",
-  "kind": "applied",
-  "detail": "cut-t: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 3,
-  "node": "cut-inner",
-  "kind": "applied",
-  "detail": "cut-inner: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 3,
-  "node": "cut-flex",
-  "kind": "applied",
-  "detail": "cut-flex: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 3,
-  "node": "cut-pos",
-  "kind": "applied",
-  "detail": "cut-pos: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 3,
-  "node": "cut-ctx",
-  "kind": "applied",
-  "detail": "cut-ctx: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 3,
-  "node": "cut-t",
-  "kind": "applied",
-  "detail": "cut-t: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 3,
-  "node": "cut-inner",
-  "kind": "applied",
-  "detail": "cut-inner: applied key visibility is not expected"
- },
- {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
@@ -285,7 +61,7 @@
   "dpr": 3,
   "node": "svg:s1:5",
   "kind": "pixel",
-  "detail": "svg:s1:5 at 270,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:5 at 210,20: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -293,23 +69,23 @@
   "dpr": 3,
   "node": "svg:s1:6",
   "kind": "pixel",
-  "detail": "svg:s1:6 at 300,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:6 at 270,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s1:73",
+  "node": "svg:s1:7",
   "kind": "pixel",
-  "detail": "svg:s1:73 at 150,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:7 at 300,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s1:74",
+  "node": "svg:s1:8",
   "kind": "pixel",
-  "detail": "svg:s1:74 at 180,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:8 at 330,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -317,7 +93,7 @@
   "dpr": 3,
   "node": "svg:s1:75",
   "kind": "pixel",
-  "detail": "svg:s1:75 at 270,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:75 at 150,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -325,7 +101,7 @@
   "dpr": 3,
   "node": "svg:s1:76",
   "kind": "pixel",
-  "detail": "svg:s1:76 at 300,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:76 at 180,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -333,7 +109,15 @@
   "dpr": 3,
   "node": "svg:s1:77",
   "kind": "pixel",
-  "detail": "svg:s1:77 at 137,59: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:77 at 210,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 3,
+  "node": "svg:s1:78",
+  "kind": "pixel",
+  "detail": "svg:s1:78 at 270,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -341,7 +125,15 @@
   "dpr": 3,
   "node": "svg:s1:79",
   "kind": "pixel",
-  "detail": "svg:s1:79 at 179,17: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:79 at 300,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 3,
+  "node": "svg:s1:80",
+  "kind": "pixel",
+  "detail": "svg:s1:80 at 330,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -349,7 +141,7 @@
   "dpr": 3,
   "node": "svg:s1:81",
   "kind": "pixel",
-  "detail": "svg:s1:81 at 221,59: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:81 at 137,59: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -357,7 +149,7 @@
   "dpr": 3,
   "node": "svg:s1:83",
   "kind": "pixel",
-  "detail": "svg:s1:83 at 179,101: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:83 at 179,17: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -365,7 +157,7 @@
   "dpr": 3,
   "node": "svg:s1:85",
   "kind": "pixel",
-  "detail": "svg:s1:85 at 257,59: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:85 at 221,59: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -373,7 +165,7 @@
   "dpr": 3,
   "node": "svg:s1:87",
   "kind": "pixel",
-  "detail": "svg:s1:87 at 299,17: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:87 at 179,101: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -381,7 +173,7 @@
   "dpr": 3,
   "node": "svg:s1:89",
   "kind": "pixel",
-  "detail": "svg:s1:89 at 341,59: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:89 at 257,59: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -389,23 +181,39 @@
   "dpr": 3,
   "node": "svg:s1:91",
   "kind": "pixel",
-  "detail": "svg:s1:91 at 299,101: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:91 at 299,17: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s3:76",
+  "node": "svg:s1:93",
   "kind": "pixel",
-  "detail": "svg:s3:76 at 86,322: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+  "detail": "svg:s1:93 at 341,59: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s3:78",
+  "node": "svg:s1:95",
   "kind": "pixel",
-  "detail": "svg:s3:78 at 268,291: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+  "detail": "svg:s1:95 at 299,101: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 3,
+  "node": "svg:s3:77",
+  "kind": "pixel",
+  "detail": "svg:s3:77 at 86,322: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 3,
+  "node": "svg:s3:79",
+  "kind": "pixel",
+  "detail": "svg:s3:79 at 268,291: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -565,7 +373,7 @@
   "dpr": 3,
   "node": "svg:s1:5",
   "kind": "pixel",
-  "detail": "svg:s1:5 at 1110,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:5 at 1050,20: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -573,23 +381,23 @@
   "dpr": 3,
   "node": "svg:s1:6",
   "kind": "pixel",
-  "detail": "svg:s1:6 at 1140,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:6 at 1110,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s1:73",
+  "node": "svg:s1:7",
   "kind": "pixel",
-  "detail": "svg:s1:73 at 990,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:7 at 1140,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s1:74",
+  "node": "svg:s1:8",
   "kind": "pixel",
-  "detail": "svg:s1:74 at 1020,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:8 at 1170,20: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -597,7 +405,7 @@
   "dpr": 3,
   "node": "svg:s1:75",
   "kind": "pixel",
-  "detail": "svg:s1:75 at 1110,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:75 at 990,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -605,7 +413,7 @@
   "dpr": 3,
   "node": "svg:s1:76",
   "kind": "pixel",
-  "detail": "svg:s1:76 at 1140,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:76 at 1020,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -613,7 +421,15 @@
   "dpr": 3,
   "node": "svg:s1:77",
   "kind": "pixel",
-  "detail": "svg:s1:77 at 977,59: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:77 at 1050,100: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 3,
+  "node": "svg:s1:78",
+  "kind": "pixel",
+  "detail": "svg:s1:78 at 1110,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -621,7 +437,15 @@
   "dpr": 3,
   "node": "svg:s1:79",
   "kind": "pixel",
-  "detail": "svg:s1:79 at 1019,17: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:79 at 1140,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 3,
+  "node": "svg:s1:80",
+  "kind": "pixel",
+  "detail": "svg:s1:80 at 1170,100: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -629,7 +453,7 @@
   "dpr": 3,
   "node": "svg:s1:81",
   "kind": "pixel",
-  "detail": "svg:s1:81 at 1061,59: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:81 at 977,59: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -637,7 +461,7 @@
   "dpr": 3,
   "node": "svg:s1:83",
   "kind": "pixel",
-  "detail": "svg:s1:83 at 1019,101: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
+  "detail": "svg:s1:83 at 1019,17: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -645,7 +469,7 @@
   "dpr": 3,
   "node": "svg:s1:85",
   "kind": "pixel",
-  "detail": "svg:s1:85 at 1097,59: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:85 at 1061,59: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -653,7 +477,7 @@
   "dpr": 3,
   "node": "svg:s1:87",
   "kind": "pixel",
-  "detail": "svg:s1:87 at 1139,17: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:87 at 1019,101: native [79,85,96,255], Chrome [80,86,96,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -661,7 +485,7 @@
   "dpr": 3,
   "node": "svg:s1:89",
   "kind": "pixel",
-  "detail": "svg:s1:89 at 1181,59: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:89 at 1097,59: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -669,23 +493,39 @@
   "dpr": 3,
   "node": "svg:s1:91",
   "kind": "pixel",
-  "detail": "svg:s1:91 at 1139,101: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:91 at 1139,17: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s3:76",
+  "node": "svg:s1:93",
   "kind": "pixel",
-  "detail": "svg:s3:76 at 926,322: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+  "detail": "svg:s1:93 at 1181,59: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s3:78",
+  "node": "svg:s1:95",
   "kind": "pixel",
-  "detail": "svg:s3:78 at 1108,291: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+  "detail": "svg:s1:95 at 1139,101: native [83,125,129,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 3,
+  "node": "svg:s3:77",
+  "kind": "pixel",
+  "detail": "svg:s3:77 at 926,322: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 3,
+  "node": "svg:s3:79",
+  "kind": "pixel",
+  "detail": "svg:s3:79 at 1108,291: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -870,230 +710,6 @@
   "node": "outside:c2",
   "kind": "pixel",
   "detail": "outside:c2 at 31,51: native [0,0,255,255], Chrome [51,51,51,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-a",
-  "kind": "applied",
-  "detail": "cut-a: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-b",
-  "kind": "applied",
-  "detail": "cut-b: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-c",
-  "kind": "applied",
-  "detail": "cut-c: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-d",
-  "kind": "applied",
-  "detail": "cut-d: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-e",
-  "kind": "applied",
-  "detail": "cut-e: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-f",
-  "kind": "applied",
-  "detail": "cut-f: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-g",
-  "kind": "applied",
-  "detail": "cut-g: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-h",
-  "kind": "applied",
-  "detail": "cut-h: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic",
-  "dpr": 2,
-  "node": "cut-sr",
-  "kind": "applied",
-  "detail": "cut-sr: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-a",
-  "kind": "applied",
-  "detail": "cut-a: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-b",
-  "kind": "applied",
-  "detail": "cut-b: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-c",
-  "kind": "applied",
-  "detail": "cut-c: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-d",
-  "kind": "applied",
-  "detail": "cut-d: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-e",
-  "kind": "applied",
-  "detail": "cut-e: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-f",
-  "kind": "applied",
-  "detail": "cut-f: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-g",
-  "kind": "applied",
-  "detail": "cut-g: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-h",
-  "kind": "applied",
-  "detail": "cut-h: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-basic-rtl",
-  "dpr": 2,
-  "node": "cut-sr",
-  "kind": "applied",
-  "detail": "cut-sr: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 2,
-  "node": "cut-flex",
-  "kind": "applied",
-  "detail": "cut-flex: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 2,
-  "node": "cut-pos",
-  "kind": "applied",
-  "detail": "cut-pos: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 2,
-  "node": "cut-ctx",
-  "kind": "applied",
-  "detail": "cut-ctx: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 2,
-  "node": "cut-t",
-  "kind": "applied",
-  "detail": "cut-t: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested",
-  "dpr": 2,
-  "node": "cut-inner",
-  "kind": "applied",
-  "detail": "cut-inner: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 2,
-  "node": "cut-flex",
-  "kind": "applied",
-  "detail": "cut-flex: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 2,
-  "node": "cut-pos",
-  "kind": "applied",
-  "detail": "cut-pos: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 2,
-  "node": "cut-ctx",
-  "kind": "applied",
-  "detail": "cut-ctx: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 2,
-  "node": "cut-t",
-  "kind": "applied",
-  "detail": "cut-t: applied key visibility is not expected"
- },
- {
-  "lane": "device-applied",
-  "case": "clip-rect-nested-rtl",
-  "dpr": 2,
-  "node": "cut-inner",
-  "kind": "applied",
-  "detail": "cut-inner: applied key visibility is not expected"
  },
  {
   "lane": "device-pixels",

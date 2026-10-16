@@ -42,7 +42,8 @@ public func dragonVisibility(_ v: DragonBoxView, _ value: String, _ canvas: Bool
 /// box view itself is hidden, and the count of the box's native paints still shown (a background that is not the canvas's, text
 /// views).
 public func dragonAppliedVisibility(_ v: DragonBoxView) -> DumpJsonObject {
-  if v.dragonVisibilityValue == "visible" && v.dragonVisible && !v.isHidden { return [] }
+  // A box view hidden by an empty clip rect (MASK-CLIP, clip.ts) is the clip module's readback, not this one's.
+  if v.dragonVisibilityValue == "visible" && v.dragonVisible && (!v.isHidden || v.dragonClipRectEmpty) { return [] }
   var shown = v.backgroundColor == nil || v.dragonVisibilityCanvas ? 0 : 1
   for t in v.dragonTextLeaves where !t.isHidden { shown += 1 }
   return [("visibility", .array([.string(v.dragonVisibilityValue), .number(v.dragonVisible ? 0 : 1), .number(v.isHidden ? 1 : 0), .number(Double(shown))]))]
@@ -87,7 +88,8 @@ fun dragonVisibility(v: DragonBoxView, value: String, canvas: Boolean) {
  * view itself is hidden, and the count of the box's native paints still shown (a background that is not the canvas's, text views).
  */
 fun dragonAppliedVisibility(v: DragonBoxView): List<Pair<String, DumpJson>> {
-  if (v.dragonVisibilityValue == "visible" && v.dragonVisible && v.visibility == View.VISIBLE) return emptyList()
+  // A box view made invisible by an empty clip rect (MASK-CLIP, clip.ts) is the clip module's readback, not this one's.
+  if (v.dragonVisibilityValue == "visible" && v.dragonVisible && (v.visibility == View.VISIBLE || v.dragonClipRectEmpty)) return emptyList()
   var shown = if (v.background == null || v.dragonVisibilityCanvas) 0 else 1
   for (t in v.dragonTextLeaves) if (t.visibility == View.VISIBLE) shown++
   return listOf(Pair("visibility", DumpJson.Arr(listOf(DumpJson.Str(v.dragonVisibilityValue), DumpJson.Num(if (v.dragonVisible) 0.0 else 1.0), DumpJson.Num(if (v.visibility == View.VISIBLE) 0.0 else 1.0), DumpJson.Num(shown.toDouble())))))

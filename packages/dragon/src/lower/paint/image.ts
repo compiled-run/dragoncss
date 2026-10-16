@@ -7,7 +7,7 @@
 import type { ObjectFit } from '@dragon/layout';
 import { svgPaintAlpha, type Rgba8 } from '../../css/color.ts';
 import { svgSceneOf, svgShapeEmpty } from '../../analysis/elements/svg.ts';
-import type { SvgPaint, SvgShapeScene } from '../../analysis/elements/svg.ts';
+import type { SvgFillRule, SvgLineCap, SvgLineJoin, SvgPaint, SvgShapeScene } from '../../analysis/elements/svg.ts';
 import { base64Encode } from '../../images/compile.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -29,9 +29,19 @@ export type ImageWrite = {
 
 /**
  * One shape of an svg-shapes write: its outline as verb-coded user-unit numbers (0 move x y, 1 line x y, 2 quad x1 y1 x y, 3 cubic
- * x1 y1 x2 y2 x y, 4 close, 5 circle cx cy r), its fill and stroke (null for none) and its stroke width in user units.
+ * x1 y1 x2 y2 x y, 4 close, 5 circle cx cy r), its fill and stroke (null for none), its stroke width in user units, and (SVG-stroke)
+ * its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule.
  */
-export type SvgShapeData = { readonly path: readonly number[]; readonly fill: Rgba8 | null; readonly stroke: Rgba8 | null; readonly width: number };
+export type SvgShapeData = {
+  readonly path: readonly number[];
+  readonly fill: Rgba8 | null;
+  readonly stroke: Rgba8 | null;
+  readonly width: number;
+  readonly cap: SvgLineCap;
+  readonly join: SvgLineJoin;
+  readonly miterLimit: number;
+  readonly fillRule: SvgFillRule;
+};
 
 export type SvgShapesWrite = {
   readonly kind: 'svg-shapes';
@@ -50,7 +60,7 @@ export function svgShapePath(s: SvgShapeScene): number[] {
   return g.segments.flatMap((v) => (v.kind === 'move' ? [0, v.x, v.y] : v.kind === 'line' ? [1, v.x, v.y] : v.kind === 'quad' ? [2, v.x1, v.y1, v.x, v.y] : v.kind === 'cubic' ? [3, v.x1, v.y1, v.x2, v.y2, v.x, v.y] : [4]));
 }
 
-const SVG_PAINT = 'each shape filled (non-zero) then stroked (butt caps, miter joins, miter limit 4) in its paint, antialiased, through the viewBox transform of the snapped content box, clipped to it (the UA overflow: hidden)';
+const SVG_PAINT = 'each shape filled (its fill-rule) then stroked (its stroke-linecap, stroke-linejoin and stroke-miterlimit) in its paint, antialiased, through the viewBox transform of the snapped content box, clipped to it (the UA overflow: hidden)';
 
 const IMAGE_PAINT = 'the PNG decoded once at build (sRGB, unpremultiplied source); drawn into the engine destination rect snapped to device px, clipped to the snapped content box';
 
@@ -66,7 +76,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView android.graphics.Paths drawn with Canvas.drawPath (Paint FILL, then STROKE): ${SVG_PAINT}` },
     },
   },
-  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity'] },
+  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule'] },
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
@@ -74,7 +84,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       // Nor is one Chrome does not paint (hidden, or opacity 0).
       if (scene === null) throw new ProgramError(`${box.id}: an svg leaf without a scene`);
       const v = scene.viewBox;
-      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth })) }];
+      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth, cap: sh.cap, join: sh.join, miterLimit: sh.miterLimit, fillRule: sh.fillRule })) }];
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
