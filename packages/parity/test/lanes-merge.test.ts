@@ -2,7 +2,7 @@
 // changed each device lane record and dump fault rows, never ours by default (which dragon-generated did, reverting a newer
 // device run when a branch merged master); host parts stay ours for regen to rebuild.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -42,29 +42,47 @@ describe('lanes-merge', () => {
     expect(() => mergeLanesFile(base, '{', ours)).toThrow(/ours is not JSON/);
     expect(() => mergeLanesFile(base, ours, '{"targets":[{"target":"ios"}]}')).toThrow(/theirs is not/);
   });
+  it('a side regen reset to not run (stale there) yields to the other side\'s device run, and lanes or targets only theirs has are kept', () => {
+    const reset = file({ ...rec('device-frames', 'device', 'not run', null), reason: 'run pnpm run parity:lanes' }, host);
+    const ran = file(rec('device-frames', 'device', 'pass', 'new'), host);
+    expect(parsed(mergeLanesFile(base, reset, ran)).targets[0]!.lanes[1]!.evidence).toEqual({ laneCode: 'new' });
+    expect(parsed(mergeLanesFile(base, ran, reset)).targets[0]!.lanes[1]!.evidence).toEqual({ laneCode: 'new' });
+    // Both sides reset: either.
+    expect(parsed(mergeLanesFile(base, reset, reset)).targets[0]!.lanes[1]!.state).toBe('not run');
+    const extra = JSON.parse(ran) as { targets: { target: string; lanes: Rec[] }[] };
+    extra.targets[0]!.lanes.push(rec('device-hit', 'device', 'pass', 'new'));
+    extra.targets.push({ target: 'android', lanes: [rec('device-frames', 'device', 'pass', 'new')] });
+    const m = parsed(mergeLanesFile(base, base, `${JSON.stringify(extra)}\n`));
+    expect(m.targets[0]!.lanes.map((l) => l.lane)).toEqual(['layout-vectors-host', 'device-frames', 'device-hit']);
+    expect(m.targets).toHaveLength(2);
+  });
   it('runs as git\'s merge driver for lanes.json, registered by setup:git and marked in .gitattributes', () => {
     expect(MERGE_DRIVERS).toContainEqual(['merge.dragon-lanes.driver', LANES_MERGE_DRIVER]);
     const marked = execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-lanes)'], { cwd: repoPath('.'), encoding: 'utf8' }).split('\0').filter((p) => p !== '');
     expect(marked).toEqual(['packages/parity/out/lanes.json']);
     const dir = mkdtempSync(join(tmpdir(), 'lanes-merge-'));
-    const git = (...args: string[]): string => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-    git('init', '-q', '-b', 'main');
-    git('config', 'user.name', 't');
-    git('config', 'user.email', 't@t');
-    git('config', 'merge.dragon-lanes.driver', `node ${repoPath('scripts/lanes-merge.ts')} %O %A %B %P`);
-    writeFileSync(join(dir, '.gitattributes'), 'lanes.json merge=dragon-lanes\n');
-    writeFileSync(join(dir, 'lanes.json'), base);
-    git('add', '.');
-    git('commit', '-q', '-m', 'base');
-    git('checkout', '-q', '-b', 'master-side');
-    writeFileSync(join(dir, 'lanes.json'), file(rec('device-frames', 'device', 'fail', 'new'), host, [{ dpr: 2 }]));
-    git('commit', '-q', '-am', 'device run');
-    git('checkout', '-q', 'main');
-    writeFileSync(join(dir, 'lanes.json'), file(rec('device-frames', 'device', 'pass', 'old'), { ...host, reason: 'regen' }, [{ dpr: 2 }]));
-    git('commit', '-q', '-am', 'branch regen');
-    git('merge', '-q', '--no-edit', 'master-side');
-    const m = parsed(readFileSync(join(dir, 'lanes.json'), 'utf8'));
-    expect(m.targets[0]!.lanes[1]!.evidence).toEqual({ laneCode: 'new' });
-    expect(m.targets[0]!.lanes[0]!.reason).toBe('regen');
+    try {
+      const git = (...args: string[]): string => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      git('init', '-q', '-b', 'main');
+      git('config', 'user.name', 't');
+      git('config', 'user.email', 't@t');
+      git('config', 'merge.dragon-lanes.driver', `node ${repoPath('scripts/lanes-merge.ts')} %O %A %B %P`);
+      writeFileSync(join(dir, '.gitattributes'), 'lanes.json merge=dragon-lanes\n');
+      writeFileSync(join(dir, 'lanes.json'), base);
+      git('add', '.');
+      git('commit', '-q', '-m', 'base');
+      git('checkout', '-q', '-b', 'master-side');
+      writeFileSync(join(dir, 'lanes.json'), file(rec('device-frames', 'device', 'fail', 'new'), host, [{ dpr: 2 }]));
+      git('commit', '-q', '-am', 'device run');
+      git('checkout', '-q', 'main');
+      writeFileSync(join(dir, 'lanes.json'), file(rec('device-frames', 'device', 'pass', 'old'), { ...host, reason: 'regen' }, [{ dpr: 2 }]));
+      git('commit', '-q', '-am', 'branch regen');
+      git('merge', '-q', '--no-edit', 'master-side');
+      const m = parsed(readFileSync(join(dir, 'lanes.json'), 'utf8'));
+      expect(m.targets[0]!.lanes[1]!.evidence).toEqual({ laneCode: 'new' });
+      expect(m.targets[0]!.lanes[0]!.reason).toBe('regen');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

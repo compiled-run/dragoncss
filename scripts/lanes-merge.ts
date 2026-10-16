@@ -42,6 +42,10 @@ const laneOf = (t: Obj | undefined, lane: string): Obj | undefined => (t === und
 /** Three-way pick of one device-written value: the side that changed it, either when both agree, else a conflict. */
 const pick = <T>(at: string, o: T, a: T, b: T, key: (x: T) => unknown): T => {
   const [ko, ka, kb] = [key(o), key(a), key(b)];
+  // A record regen reset to not run (stale on that side) holds no device run: the other side's run wins, and regen drops it if stale.
+  const noRun = (x: T): boolean => isObj(x) && x['state'] === 'not run' && (x['evidence'] ?? null) === null;
+  if (noRun(a) && !noRun(b)) return b;
+  if (noRun(b) && !noRun(a)) return a;
   if (same(ka, kb) || same(kb, ko)) return a;
   if (same(ka, ko)) return b;
   throw new Refuse(`${at}: both sides hold a different device run`);
@@ -62,9 +66,13 @@ export function mergeLanesFile(base: string, ours: string, theirs: string): stri
       if (lb === undefined) return la;
       return pick(`${name} ${name2}`, laneOf(to, name2), la, lb, runOf);
     });
+    // A device lane only theirs has (added on their side) keeps its record; regen orders and rebuilds the rest.
+    for (const lb of tb['lanes'] as Obj[]) if (lb['where'] === 'device' && laneOf(ta, lb['lane'] as string) === undefined) lanes.push(lb);
     const dumpFaults = pick(`${name} dump faults`, to?.['dumpFaults'] ?? null, ta['dumpFaults'] ?? null, tb['dumpFaults'] ?? null, (x) => x);
     return { ...ta, lanes, dumpFaults };
   });
+  // A target only theirs has keeps its records.
+  for (const tb of b['targets'] as Obj[]) if (targetOf(a, tb['target'] as string) === undefined) targets.push(tb);
   const lists = { ...((b['caseLists'] as Obj | undefined) ?? {}), ...((a['caseLists'] as Obj | undefined) ?? {}) };
   const merged: Obj = { ...a, targets };
   if (a['caseLists'] !== undefined || b['caseLists'] !== undefined) merged['caseLists'] = Object.fromEntries(Object.keys(lists).sort().map((k) => [k, lists[k]]));

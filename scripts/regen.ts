@@ -1028,7 +1028,13 @@ async function main(): Promise<void> {
   } catch {
     // Unset: git config exits 1.
   }
-  if (driver !== 'true') console.log('regen: run pnpm setup:git once so merges keep generated files instead of stopping on them');
+  let lanesDriver = '';
+  try {
+    lanesDriver = git(['-C', root, 'config', '--get', 'merge.dragon-lanes.driver']).trim();
+  } catch {
+    // Unset.
+  }
+  if (driver !== 'true' || lanesDriver === '') console.log('regen: run pnpm setup:git once so merges keep generated files (and lanes.json\'s newer device records) instead of stopping on them');
   const io = localIo(root, storeDir, logDir, machine ?? MACHINE);
   const r = await regen(STEPS, opts, io);
   writeFileSync(join(logDir, 'last-run.json'), `${JSON.stringify(r.records, null, 1)}\n`);
