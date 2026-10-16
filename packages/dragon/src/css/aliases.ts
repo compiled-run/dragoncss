@@ -5,7 +5,8 @@
 // is listed only when its property is a Dragon longhand or shorthand and Chrome parses the two alike, or legacyAliasRefusal
 // refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing,
 // css_parsing_utils.cc ConsumePerspective). The other aliases Chrome parses with UseAliasParsing (-webkit-perspective,
-// -webkit-background-*, -webkit-mask-*, -webkit-appearance) wait for their property's lane, -webkit-border-radius is the radius
+// -webkit-background-origin, -webkit-background-size, -webkit-mask-*, -webkit-appearance) wait for their property's lane,
+// -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
 // family's own shorthand (properties/radius.ts), -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
 // and grid-column-gap are already shorthands of the grid family (properties/grid.ts).
 // The animation family's targets are the transition and animation list properties, which stay out of LONGHANDS (T065 option B).
@@ -14,21 +15,27 @@ import { isLonghand, isShorthand } from './properties.ts';
 import type { AnimLonghand } from './properties/animation.ts';
 import { isAnimationProperty } from './properties/animation.ts';
 import { ANIMATION_ALIASES } from './aliases/animation.ts';
+import { BACKGROUND_LAYERS_ALIASES } from './aliases/background-layers.ts';
 import { BOX_ALIASES } from './aliases/box.ts';
+import { EFFECTS_ALIASES } from './aliases/effects.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
 import { SELECTION_ALIASES } from './aliases/selection.ts';
+import { SHADOW_ALIASES } from './aliases/shadow.ts';
 import { TRANSFORM_ALIASES } from './aliases/transform.ts';
 
 /** Each family's aliases, one line per family, sorted by family id (test/registry-claims.test.ts). */
 export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: string]: Longhand | Shorthand | AnimLonghand | 'transition' | 'animation' } } = {
   animation: ANIMATION_ALIASES,
+  'background-layers': BACKGROUND_LAYERS_ALIASES,
   box: BOX_ALIASES,
+  effects: EFFECTS_ALIASES,
   flex: FLEX_ALIASES,
   logical: LOGICAL_ALIASES,
   radius: RADIUS_ALIASES,
   selection: SELECTION_ALIASES,
+  shadow: SHADOW_ALIASES,
   transform: TRANSFORM_ALIASES,
 };
 
