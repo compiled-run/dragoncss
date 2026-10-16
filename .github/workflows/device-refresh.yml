@@ -1,0 +1,178 @@
+# Async device lanes (Jack, 2026-10-14): pull requests merge on the fast checks, and the iOS and Android device lanes run here, on
+# master, every two hours and on demand. When master's committed device evidence is behind its sources (pnpm evidence:stamp), this
+# runs device-lanes.yml on master's head (judged against the records it replaces), commits the new records to
+# device-refresh/<sha>, regenerates that branch on CI (regen-on-ci.yml branch mode, which writes the profiles from the new records
+# and starts ci.yml on its commit), reports native coverage (pnpm coverage:rank), and merges the branch into master through a
+# pull request once its checks pass. A lane that judges differently from the records it replaces opens an issue naming the commits
+# merged since those records were run, and fails this run, after the new records are merged.
+# Never pushes master directly; a merge it cannot make (master moved into a conflict, a rule that wants a review) leaves the pull
+# request open, named in the summary.
+name: device-refresh
+run-name: device refresh of master
+on:
+  schedule:
+    - cron: '23 */2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+  pull-requests: write
+  issues: write
+concurrency:
+  group: device-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # The device run takes about 40 minutes and the regen about 45; a queue for macOS runners can add hours.
+    timeout-minutes: 480
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Check out master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - name: Set up pnpm 10.33.2
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - name: Set up Node 24.15.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Is master's device evidence behind its sources
+        id: stamp
+        run: |
+          set -uo pipefail
+          sha=$(git rev-parse HEAD)
+          node --conditions=dragon-internal scripts/evidence-stamp.ts --compare HEAD
+          code=$?
+          case "$code" in
+            0) behind=false ;;
+            1) behind=true ;;
+            *) echo "::error::pnpm evidence:stamp exited $code"; exit 1 ;;
+          esac
+          # The commit the current records were run on: the subject of the commit that last wrote a device failure list.
+          rec=$(git log -1 --format=%H -- packages/parity/out/device-failures-ios.json packages/parity/out/device-failures-android.json)
+          prev=$(git log -1 --format=%s "$rec" | sed -nE 's/^Record device lanes of ([0-9a-f]{7,40}).*/\1/p')
+          prev=$(git rev-parse --verify -q "${prev:-$rec}^{commit}" || echo "$rec")
+          { echo "sha=$sha"; echo "behind=$behind"; echo "prev=$prev"; } >> "$GITHUB_OUTPUT"
+          echo "device-refresh: master $sha; records of $prev; behind: $behind" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Run the device lanes on master's head
+        id: devices
+        if: steps.stamp.outputs.behind == 'true'
+        env:
+          SHA: ${{ steps.stamp.outputs.sha }}
+        run: |
+          set -euo pipefail
+          t0=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          gh workflow run device-lanes.yml --repo "$REPO" --ref master -f sha="$SHA" -f judge=true
+          id=""
+          for _ in $(seq 1 60); do
+            id=$(gh api "repos/$REPO/actions/workflows/device-lanes.yml/runs?event=workflow_dispatch&per_page=30" \
+              -q "[.workflow_runs[] | select(.display_title == \"device lanes of $SHA\" and .created_at >= \"$t0\")][0].id // empty")
+            [ -z "$id" ] || break
+            sleep 10
+          done
+          [ -n "$id" ] || { echo "::error::the dispatched device run of $SHA did not appear"; exit 1; }
+          echo "run=$id" >> "$GITHUB_OUTPUT"
+          echo "device-refresh: device lanes run https://github.com/$REPO/actions/runs/$id" | tee -a "$GITHUB_STEP_SUMMARY"
+          gh run watch "$id" --repo "$REPO" --interval 60 > /dev/null || true
+          conclusion=$(gh api "repos/$REPO/actions/runs/$id" -q .conclusion)
+          # Only the comparison may fail: a lane that judges differently from the records it replaces. Anything else is no verdict.
+          failed=$(gh api "repos/$REPO/actions/runs/$id/jobs?per_page=100" -q '[.jobs[] | .steps[]? | select(.conclusion == "failure") | .name] | join("\n")')
+          if [ "$conclusion" = success ]; then
+            judged=same
+          elif [ "$failed" = "Compare every device lane with the committed records" ]; then
+            judged=differs
+          else
+            echo "::error::device run $id ended $conclusion; failed steps: ${failed:-none}"
+            exit 1
+          fi
+          echo "judged=$judged" >> "$GITHUB_OUTPUT"
+          gh run download "$id" --repo "$REPO" -n device-records -D "$RUNNER_TEMP/records"
+          gh run view "$id" --repo "$REPO" --log-failed > "$RUNNER_TEMP/compare.log" 2>&1 || true
+      - name: Commit the records to a refresh branch
+        id: branch
+        if: steps.stamp.outputs.behind == 'true'
+        env:
+          SHA: ${{ steps.stamp.outputs.sha }}
+          RUN: ${{ steps.devices.outputs.run }}
+        run: |
+          set -euo pipefail
+          branch="device-refresh/${SHA:0:12}"
+          for f in lanes.json device-failures-ios.json device-failures-android.json; do
+            test -f "$RUNNER_TEMP/records/$f" || { echo "::error::device-records has no $f"; exit 1; }
+            cp "$RUNNER_TEMP/records/$f" "packages/parity/out/$f"
+          done
+          git checkout -q -b "$branch"
+          git add packages/parity/out
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Record device lanes of $SHA (run $RUN)" -m "device-refresh.yml: https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID"
+          git push -q origin "HEAD:refs/heads/$branch"
+          { echo "name=$branch"; echo "head=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"
+      - name: Regenerate the branch on CI (profiles from the new records)
+        if: steps.stamp.outputs.behind == 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+          HEAD_SHA: ${{ steps.branch.outputs.head }}
+        run: node scripts/ci-regen.ts "$BRANCH" --head "$HEAD_SHA"
+      - name: Native coverage of the refreshed tree
+        id: coverage
+        if: steps.stamp.outputs.behind == 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+        run: |
+          set -euo pipefail
+          git fetch -q origin "$BRANCH"
+          git checkout -q --detach FETCH_HEAD
+          echo "head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          pnpm install --frozen-lockfile
+          pnpm -s coverage:rank --out "$RUNNER_TEMP/coverage.md"
+          sed -n 6,9p "$RUNNER_TEMP/coverage.md" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Merge the refresh into master once its checks pass
+        if: steps.stamp.outputs.behind == 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+          HEAD_SHA: ${{ steps.coverage.outputs.head }}
+          SHA: ${{ steps.stamp.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # regen-on-ci dispatches ci.yml on the commit it pushes; a branch already at its fixed point gets it dispatched here.
+          state=""
+          for i in $(seq 1 90); do
+            state=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?check_name=checks" -q '[.check_runs[] | .conclusion // "pending"] | if length == 0 then "none" elif any(. == "pending") then "pending" elif all(. == "success") then "success" else "failure" end')
+            if [ "$state" = none ] && [ "$i" = 3 ]; then gh workflow run ci.yml --repo "$REPO" --ref "$BRANCH"; fi
+            case "$state" in success|failure) break ;; esac
+            sleep 60
+          done
+          [ "$state" = success ] || { echo "::error::checks on $HEAD_SHA: $state; the refresh branch $BRANCH is not merged"; exit 1; }
+          body=$(printf 'The device lanes of %s (scheduled device run), the profiles regenerated from them, and native coverage:\n\n%s\n\nRun: https://github.com/%s/actions/runs/%s\n' "$SHA" "$(sed -n 6,9p "$RUNNER_TEMP/coverage.md")" "$REPO" "$GITHUB_RUN_ID")
+          pr=$(gh api "repos/$REPO/pulls" -f title="Device lanes of ${SHA:0:12}" -f head="$BRANCH" -f base=master -f body="$body" -q .number)
+          echo "device-refresh: pull request #$pr" | tee -a "$GITHUB_STEP_SUMMARY"
+          if gh api -X PUT "repos/$REPO/pulls/$pr/merge" -f merge_method=merge -f sha="$HEAD_SHA" > /dev/null; then
+            echo "device-refresh: merged #$pr into master" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::#$pr could not be merged (master moved into a conflict, or a rule wants a review); it stays open"
+          fi
+      - name: Name the commits behind a changed device verdict
+        if: steps.devices.outputs.judged == 'differs'
+        env:
+          SHA: ${{ steps.stamp.outputs.sha }}
+          PREV: ${{ steps.stamp.outputs.prev }}
+          RUN: ${{ steps.devices.outputs.run }}
+        run: |
+          set -euo pipefail
+          commits=$(git log --first-parent --format='- %h %s' "$PREV..$SHA")
+          n=$(printf '%s\n' "$commits" | grep -c . || true)
+          if [ "$n" = 1 ]; then who="The one commit merged since the last device records:"; else who="The $n commits merged since the last device records (one of them changed the verdict):"; fi
+          lines=$(grep -E 'differ|judge|now|was' "$RUNNER_TEMP/compare.log" | sed -E 's/^[^\t]*\t[^\t]*\t[0-9T:.-]+Z //' | head -60 || true)
+          body=$(printf 'A device lane on master judges differently from the records of %s.\n\n%s\n%s\n\nComparison (device run https://github.com/%s/actions/runs/%s):\n```\n%s\n```\n' "$PREV" "$who" "$commits" "$REPO" "$RUN" "$lines")
+          url=$(gh api "repos/$REPO/issues" -f title="Device lanes changed between ${PREV:0:12} and ${SHA:0:12}" -f body="$body" -q .html_url)
+          echo "::error::a device lane changed its verdict between $PREV and $SHA: $url"
+          exit 1
