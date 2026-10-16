@@ -835,6 +835,8 @@
     "svg-colors-rtl": "<svg> s1, s2, s3, s4: hit testing an svg's shapes comes with SVG-a2",
     "svg-opacity": "<svg> s1, s2, s3, s4: hit testing an svg's shapes comes with SVG-a2",
     "svg-opacity-rtl": "<svg> s1, s2, s3, s4: hit testing an svg's shapes comes with SVG-a2",
+    "svg-stroke": "<svg> s1, s2, s3, s4: hit testing an svg's shapes comes with SVG-a2",
+    "svg-stroke-rtl": "<svg> s1, s2, s3, s4: hit testing an svg's shapes comes with SVG-a2",
     "text-break-ahem": "i1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-break-ahem-rtl": "i1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-decoration-native": "n7s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",

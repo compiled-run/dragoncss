@@ -5,6 +5,6 @@
 export type NativeLanesVerdict = { readonly recorded: boolean; readonly stale: readonly string[]; readonly notPassing: readonly string[] };
 
 export const NATIVE_LANES: { readonly ios: NativeLanesVerdict; readonly android: NativeLanesVerdict } = {
-  ios: { recorded: true, stale: [], notPassing: ["layout-vectors-device not run (run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked)", "device-pixels fail (131 failures (pixel 131))", "device-anim fail (52 failures (device-record 52))"] },
-  android: { recorded: true, stale: [], notPassing: ["layout-vectors-device not run (run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked)", "device-pixels fail (171 failures (pixel 171))", "device-anim fail (55 failures (device-record 52, frame-chrome 3))", "device-traces fail (2 failures (trace-mismatch 2))"] },
+  ios: { recorded: true, stale: [], notPassing: ["layout-vectors-device not run (run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked)", "device-pixels fail (139 failures (pixel 139))", "device-anim fail (52 failures (device-record 52))"] },
+  android: { recorded: true, stale: [], notPassing: ["layout-vectors-device not run (run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked)", "device-pixels fail (183 failures (pixel 183))", "device-anim fail (55 failures (device-record 52, frame-chrome 3))", "device-traces fail (2 failures (trace-mismatch 2))"] },
 };
