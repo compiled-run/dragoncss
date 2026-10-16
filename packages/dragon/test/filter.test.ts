@@ -55,7 +55,8 @@ describe('filter', () => {
     expect(errorsAt('-webkit-filter: none')).toEqual([]);
     expect(errorsAt('filter: initial')).toEqual([]);
     expect(errorsAt('filter: inherit')).toEqual([]);
-    // The later declaration wins between the alias and its property, as in Chrome.
+    // The later declaration wins between the alias and its property, as in Chrome, so checkFilter passes it (an enforced support
+    // profile still refuses the declared list itself, as it checks every declaration).
     expect(errorsAt('filter: blur(2px); -webkit-filter: none')).toEqual([]);
     expect(errorsAt('-webkit-filter: blur(2px); filter: none')).toEqual([]);
   });
