@@ -167,7 +167,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -327,7 +328,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -487,7 +489,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -667,7 +670,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -847,7 +851,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "pan-x pan-y",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1027,7 +1032,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "pan-x pan-y",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1207,7 +1213,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1387,7 +1394,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "pan-x pan-y",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1567,7 +1575,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "pan-x pan-y",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1747,7 +1756,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -1907,7 +1917,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2087,7 +2098,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2267,7 +2279,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2427,7 +2440,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2607,7 +2621,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2787,7 +2802,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "pan-x pan-y",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -2947,7 +2963,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3127,7 +3144,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3307,7 +3325,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3467,7 +3486,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "manipulation",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3647,7 +3667,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -3847,7 +3868,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "none",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     },
     {
@@ -4037,7 +4059,8 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "pan-y",
-        "clip": "auto"
+        "clip": "auto",
+        "clip-path": "none"
       }
     }
   ]

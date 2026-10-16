@@ -1,0 +1,9 @@
+{
+  "case": "clip-path-basic-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,4]]},
+    {"id":"cut-u-t:text0","lines":[[0,2]]},
+    {"id":"cut-j-t:text0","lines":[[0,2]]}
+  ]
+}
