@@ -1,12 +1,12 @@
 # Async device lanes (Jack, 2026-10-14): pull requests merge on the fast checks, and the iOS and Android device lanes run here, on
 # master, every two hours and on demand. When master's committed device evidence is behind its sources (pnpm evidence:stamp), this
 # runs device-lanes.yml on master's head (judged against the records it replaces), commits the new records to
-# device-refresh/<sha>, regenerates that branch on CI (regen-on-ci.yml branch mode, which writes the profiles from the new records
+# device-refresh/<sha>-<run>, regenerates that branch on CI (regen-on-ci.yml branch mode, which writes the profiles from the new records
 # and starts ci.yml on its commit), reports native coverage (pnpm coverage:rank), and merges the branch into master through a
 # pull request once its checks pass. A lane that judges differently from the records it replaces opens an issue naming the commits
-# merged since those records were run, and fails this run, after the new records are merged.
-# Never pushes master directly; a merge it cannot make (master moved into a conflict, a rule that wants a review) leaves the pull
-# request open, named in the summary.
+# merged since those records were run, and fails this run, whether or not the new records merged.
+# Never pushes master directly, and never merges while a landing runs (land.yml, or the land-lock tag); a master that moved
+# past the device run is merged into the refresh branch and regenerated first. A merge it cannot make fails the run.
 name: device-refresh
 run-name: device refresh of master
 on:
@@ -106,7 +106,8 @@ jobs:
           RUN: ${{ steps.devices.outputs.run }}
         run: |
           set -euo pipefail
-          branch="device-refresh/${SHA:0:12}"
+          # One branch per run: a run that failed after pushing leaves its branch, which a later run must not collide with.
+          branch="device-refresh/${SHA:0:12}-$GITHUB_RUN_ID"
           for f in lanes.json device-failures-ios.json device-failures-android.json; do
             test -f "$RUNNER_TEMP/records/$f" || { echo "::error::device-records has no $f"; exit 1; }
             cp "$RUNNER_TEMP/records/$f" "packages/parity/out/$f"
@@ -140,29 +141,66 @@ jobs:
         if: steps.stamp.outputs.behind == 'true'
         env:
           BRANCH: ${{ steps.branch.outputs.name }}
-          HEAD_SHA: ${{ steps.coverage.outputs.head }}
+          HEAD0: ${{ steps.coverage.outputs.head }}
           SHA: ${{ steps.stamp.outputs.sha }}
         run: |
           set -euo pipefail
-          # regen-on-ci dispatches ci.yml on the commit it pushes; a branch already at its fixed point gets it dispatched here.
-          state=""
-          for i in $(seq 1 90); do
-            state=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?check_name=checks" -q '[.check_runs[] | .conclusion // "pending"] | if length == 0 then "none" elif any(. == "pending") then "pending" elif all(. == "success") then "success" else "failure" end')
-            if [ "$state" = none ] && [ "$i" = 3 ]; then gh workflow run ci.yml --repo "$REPO" --ref "$BRANCH"; fi
-            case "$state" in success|failure) break ;; esac
-            sleep 60
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # Checks of a head: regen-on-ci dispatches ci.yml on the commit it pushes; a branch already at its fixed point gets it here.
+          checks_of() {
+            local head=$1 state="" i
+            for i in $(seq 1 90); do
+              state=$(gh api "repos/$REPO/commits/$head/check-runs?check_name=checks" -q '[.check_runs[] | .conclusion // "pending"] | if length == 0 then "none" elif any(. == "pending") then "pending" elif all(. == "success") then "success" else "failure" end')
+              if [ "$state" = none ] && [ "$i" = 3 ]; then gh workflow run ci.yml --repo "$REPO" --ref "$BRANCH"; fi
+              case "$state" in success|failure) break ;; esac
+              sleep 60
+            done
+            [ "$state" = success ] || { echo "::error::checks on $head: $state; the refresh branch $BRANCH is not merged"; return 1; }
+          }
+          # The landing driver judges each position against master's tree, so the refresh never merges while a landing runs.
+          landing() {
+            [ -n "$(git ls-remote origin refs/tags/land-lock)" ] && return 0
+            local n
+            n=$(gh api "repos/$REPO/actions/workflows/land.yml/runs?per_page=20" -q '[.workflow_runs[] | select(.status != "completed")] | length' 2>/dev/null || echo 0)
+            [ "$n" != 0 ]
+          }
+          head=$HEAD0
+          checks_of "$head"
+          for round in 1 2 3; do
+            for _ in $(seq 1 120); do landing || break; sleep 60; done
+            if landing; then echo "::error::a landing kept running for two hours; the refresh branch $BRANCH is not merged"; exit 1; fi
+            git fetch -q origin master
+            # master moved past the device run's commit: bring it in and regenerate, so master stays at a regen fixed point.
+            if ! git merge-base --is-ancestor origin/master "$head"; then
+              [ "$round" != 3 ] || { echo "::error::master kept moving; the refresh branch $BRANCH is not merged"; exit 1; }
+              git checkout -q --detach "$head"
+              git merge -q --no-edit origin/master || { echo "::error::master conflicts with the refresh branch $BRANCH"; exit 1; }
+              git push -q origin "HEAD:refs/heads/$BRANCH"
+              node scripts/ci-regen.ts "$BRANCH" --head "$(git rev-parse HEAD)"
+              git fetch -q origin "$BRANCH"
+              head=$(git rev-parse FETCH_HEAD)
+              checks_of "$head"
+              continue
+            fi
+            break
           done
-          [ "$state" = success ] || { echo "::error::checks on $HEAD_SHA: $state; the refresh branch $BRANCH is not merged"; exit 1; }
+          # Earlier refresh pull requests left open are superseded by this one.
+          for old in $(gh api "repos/$REPO/pulls?state=open&base=master&per_page=100" -q '.[] | select(.head.ref | startswith("device-refresh/")) | .number'); do
+            gh api -X PATCH "repos/$REPO/pulls/$old" -f state=closed > /dev/null || true
+          done
           body=$(printf 'The device lanes of %s (scheduled device run), the profiles regenerated from them, and native coverage:\n\n%s\n\nRun: https://github.com/%s/actions/runs/%s\n' "$SHA" "$(sed -n 6,9p "$RUNNER_TEMP/coverage.md")" "$REPO" "$GITHUB_RUN_ID")
           pr=$(gh api "repos/$REPO/pulls" -f title="Device lanes of ${SHA:0:12}" -f head="$BRANCH" -f base=master -f body="$body" -q .number)
           echo "device-refresh: pull request #$pr" | tee -a "$GITHUB_STEP_SUMMARY"
-          if gh api -X PUT "repos/$REPO/pulls/$pr/merge" -f merge_method=merge -f sha="$HEAD_SHA" > /dev/null; then
+          if gh api -X PUT "repos/$REPO/pulls/$pr/merge" -f merge_method=merge -f sha="$head" > /dev/null; then
             echo "device-refresh: merged #$pr into master" | tee -a "$GITHUB_STEP_SUMMARY"
           else
-            echo "::warning::#$pr could not be merged (master moved into a conflict, or a rule wants a review); it stays open"
+            echo "::error::#$pr could not be merged (master moved into a conflict, or a rule wants a review); it stays open"
+            exit 1
           fi
       - name: Name the commits behind a changed device verdict
-        if: steps.devices.outputs.judged == 'differs'
+        # Reported even when the refresh did not merge: a changed verdict is likely to fail the refreshed tree's checks.
+        if: ${{ !cancelled() && steps.devices.outputs.judged == 'differs' }}
         env:
           SHA: ${{ steps.stamp.outputs.sha }}
           PREV: ${{ steps.stamp.outputs.prev }}

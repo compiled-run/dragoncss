@@ -110,6 +110,7 @@ import {
   type PrState,
   predictPosition,
   staleLines,
+  behindLines,
   treeMatches,
 } from './merge-train-lib.ts';
 import { SETUP_GIT_CONFIG } from './floor-merge.ts';
@@ -475,6 +476,7 @@ const evidenceAt = (commit: string): ReturnType<typeof parseDeviceEvidence> => {
 // whose note is returned for the landing's record.
 // `ran`: the tree's parity:lanes as land-checks.yml ran it (LAND_TRUSTED); null runs it here.
 type LanesRun = { status: number | null; signal: string | null; stdout: string; stderr: string; error?: string };
+// Sync device step only: records behind this tree after a device run (a target the run missed) count as stale.
 const judgeDevices = (master: string, startedMs: number | null, onCi = false, ran: LanesRun | null = null): { problems: string[]; rebaseline: string | null } => {
   const local = (path: string): unknown => JSON.parse(readInTree(WT, path));
   const before = evidenceAt(master);
@@ -499,7 +501,7 @@ const judgeDevices = (master: string, startedMs: number | null, onCi = false, ra
   if (arch.problem !== null) return { problems: [arch.problem], rebaseline: null };
   if (arch.rebaseline) log(`  LAND_ARCH_REBASELINE: #${pr} may change device lane architectures, with master's states and exact failure sets`);
   const auto = !arch.rebaseline && onCi ? ciArchRebaseline(before, after) : { rebaseline: false, changes: [] };
-  const problems = deviceRunProblems(before, after, staleLines(lanes.stdout), { rebaseline: arch.rebaseline || auto.rebaseline });
+  const problems = deviceRunProblems(before, after, [...staleLines(lanes.stdout), ...behindLines(lanes.stdout)], { rebaseline: arch.rebaseline || auto.rebaseline });
   if (!auto.rebaseline) return { problems, rebaseline: arch.rebaseline ? `LAND_ARCH_REBASELINE=${pr}` : null };
   const note = `Android ABI rebaseline on CI (${[...androidAbis(before)].join(', ')} -> ${[...androidAbis(after)].join(', ')}) for ${auto.changes.length} device set(s)`;
   log(`  !!! ARCHITECTURE REBASELINE (LAND_DEVICES=${DEVICES_ON}): the CI device run's Android records are of another image ABI than the previous position's; ${problems.length === 0 ? 'every lane keeps its state and exact failures, so they replace them' : 'refused, a verdict differs'}:\n    ${auto.changes.join('\n    ')}`);

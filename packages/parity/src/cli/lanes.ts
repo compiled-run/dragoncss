@@ -180,8 +180,9 @@ if (runHost || runDevice) {
     const stale = staleLanes(committed, targets);
     for (const s of stale) console.log(`STALE ${s}`);
     if (stale.length > 0) exit = 1;
-    // Async device lanes: records behind this tree's sources stay the device evidence until the scheduled device run on master.
-    for (const s of evidenceBehind(committed)) console.log(`BEHIND ${s} (the scheduled device run on master replaces it)`);
+    // Async device lanes: records behind this tree's sources stay the device evidence until the scheduled device run on master
+    // (device-refresh.yml) replaces them; the landing driver's sync device step reads these lines as stale.
+    for (const s of evidenceBehind(committed)) console.log(`BEHIND ${s}`);
     file = committed;
   }
 }

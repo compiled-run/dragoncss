@@ -79,7 +79,7 @@ import {
   withRetry,
   worktreesOf,
 } from '../../../scripts/land-lib.ts';
-import { commitRegen, deviceRunProblems, failuresJson, type Member, memberTip, mergeMember, parseDeviceEvidence, planPositions, predictPosition, tipProblem, treeMatches } from '../../../scripts/merge-train-lib.ts';
+import { behindLines, commitRegen, deviceRunProblems, failuresJson, type Member, memberTip, mergeMember, parseDeviceEvidence, planPositions, predictPosition, tipProblem, treeMatches } from '../../../scripts/merge-train-lib.ts';
 import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 import { type CheckRun, type Git, ignoreAt, regenOnlyProblems } from '../../../scripts/pr-review-vouch.ts';
 import { parseLanesForStamp, stampProblems } from '../../../scripts/evidence-stamp.ts';
@@ -1596,6 +1596,8 @@ describe('LAND_DEVICE_STEP (async device lanes, Jack 2026-10-14)', () => {
     expect(finish).toContain("let runDevices = DEVICE_STEP === 'sync' && stamp === 1;");
     expect(finish).toContain("if (DEVICE_STEP === 'sync' && !runDevices) {");
     expect(finish).toContain('if (prepared) carryDeviceRecords(prev, e, commands);');
+    expect(src).toContain('[...staleLines(lanes.stdout), ...behindLines(lanes.stdout)]');
+    expect(behindLines('STALE a\nBEHIND x: ios device-frames evidence is stale\nios:')).toEqual(['x: ios device-frames evidence is stale']);
   });
 });
 
