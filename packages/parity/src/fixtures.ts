@@ -12,6 +12,7 @@ import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
 import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CHARSET } from './fixture-groups/charset.ts';
+import { CLIP_PATH } from './fixture-groups/clip-path.ts';
 import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
@@ -138,6 +139,7 @@ export const GROUPS = {
   'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
   charset: CHARSET,
+  'clip-path': CLIP_PATH,
   'clip-rect': CLIP_RECT,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,

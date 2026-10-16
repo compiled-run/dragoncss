@@ -67,6 +67,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       visibility: ['hidden', 'collapse'],
       // MASK-CLIP: two rects on a relatively positioned box, where clip does not apply.
       clip: ['rect(0, 0, 0, 0)', 'rect(1px 2px 3px 4px)'],
+      // MASK-CLIP: two clip-path insets that never cut into the border box, as a box with text takes natively.
+      'clip-path': ['inset(0)', 'inset(-2px 0 0 -10%)'],
       // SVG-a1: two stroke widths; SVG-opacity: two fill and stroke opacities.
       'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.

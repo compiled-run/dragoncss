@@ -17,7 +17,7 @@ import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, STACKING_OUT, STACK
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
-import { CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
+import { CLIP_PATH_OUT, CLIP_PATH_REASON, CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
@@ -258,6 +258,7 @@ describe('committed out/lanes.json', () => {
     expect(refused.filter((id) => VISIBILITY_OUT.includes(id)).sort()).toEqual([...VISIBILITY_OUT].sort());
     expect(refused.filter((id) => SVG_OUT.includes(id)).sort()).toEqual([...SVG_OUT].sort());
     expect(refused.filter((id) => CLIP_RECT_OUT.includes(id)).sort()).toEqual([...CLIP_RECT_OUT].sort());
+    expect(refused.filter((id) => CLIP_PATH_OUT.includes(id)).sort()).toEqual([...CLIP_PATH_OUT].sort());
     for (const r of refusals) {
       if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
@@ -266,6 +267,7 @@ describe('committed out/lanes.json', () => {
       else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
       else if (CLIP_RECT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_RECT_REASON);
+      else if (CLIP_PATH_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_PATH_REASON);
       else if (CLAMP_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLAMP_REASON);
       else if (TRANSFORM_NAMED.includes(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);

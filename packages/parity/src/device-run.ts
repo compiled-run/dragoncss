@@ -99,6 +99,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'visibility-subtree': ['visibility-basic'],
   // MASK-CLIP: clip-rect-basic's clipped boxes (ids cut-*) paint their backgrounds when the writer is ignored.
   'clip-rect-ignored': ['clip-rect-basic'],
+  // MASK-CLIP: clip-path-basic's clip edges (rule clip:<id>:path-*) show the box's paint outside the inset rect when the writer is ignored.
+  'clip-path-ignored': ['clip-path-basic'],
   // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
   // are filled and stroked in distinct colours with strokes wide enough to sample.
   'svg-stroke-first': ['svg-paint', 'svg-basic'],
@@ -136,6 +138,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'visibility-ignored': /^interior:hid-/,
   'visibility-subtree': /^interior:kid-/,
   'clip-rect-ignored': /^interior:cut-/,
+  'clip-path-ignored': /^clip:cut-[^:]+:path-/,
   'svg-stroke-first': /^svg:/,
   'svg-even-odd': /^svg:/,
   'svg-stroke-unscaled': /^svg:/,

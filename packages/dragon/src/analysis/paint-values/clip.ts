@@ -11,7 +11,15 @@
 // under an ancestor's clip bounds that leave nothing (ViewGroup.getChildVisibleRect), so TalkBack skips it. Only text views are
 // accessibility elements natively (native-support.ts), so a subtree without text loses nothing there. An em or rem edge whose font
 // size has no build-time value is refused for that.
+// clip-path (css-masking-1 §6.1): an inset() edge computes to px (em and rem as above), a percentage stays a percentage of the
+// border box's width or height. Chrome clips the box's own paint and every descendant, positioned ones included, to the inset rect.
+// Natively Dragon clips the box view and the views inside it to that rect after layout. Refused on the native targets: the root and
+// body, an inline box (whose fragments clip one by one), the box's own box-shadow and an outline in the subtree (views outside the
+// box view), and text in the subtree when an edge is positive, since that clip can cut the text out of sight while Chrome keeps it in
+// the accessibility tree and the native accessibility tree of a clipped view is not proven yet.
 import type { Longhand } from '../../css/properties.ts';
+import type { InsetEdges } from '../../css/properties/clip-path.ts';
+import { clipPathEdges, insetEdgesOf, insetValue } from '../../css/properties/clip-path.ts';
 import type { ClipEdges } from '../../css/properties/clip-rect.ts';
 import { appliedClipEdges, clipEdgesOf, clipHidesBox, clipRectValue } from '../../css/properties/clip-rect.ts';
 import { zIndexOf } from '../../css/properties/effects.ts';
@@ -115,15 +123,85 @@ const checkClip: PaintCheck = (el, targets, diagnostics, reported) => {
   }
 };
 
+/** The inset() edges with em and rem computed to px against the element's font sizes; null while one has no build-time base. */
+function computeInsets(edges: InsetEdges, ctx: PaintValueContext): InsetEdges | null {
+  const out = edges.map((e) => {
+    if (e.unit === CANONICAL_LENGTH_UNIT || e.unit === '%') return e;
+    if ((e.unit === 'em' && ctx.em === null) || (e.unit === 'rem' && ctx.rem === null)) return undefined;
+    const px = lengthToPx(e.value, e.unit, { em: ctx.em ?? 0, rem: ctx.rem ?? 0 });
+    return px === null ? undefined : { value: px, unit: CANONICAL_LENGTH_UNIT };
+  });
+  return out.some((e) => e === undefined) ? null : (out as unknown as InsetEdges);
+}
+
+/** Why a clip-path clip would lose what Chrome clips with the box, or null: the first such fact, the box's own before its subtree's. */
+function clipPathRefusal(el: ResolvedElement, edges: InsetEdges): { readonly fact: string; readonly manual: string } | null {
+  const at = el.element.address;
+  const tag = el.element.tag;
+  if (tag === 'html' || tag === 'body') return { fact: `it is <${tag}>, whose background is the canvas's, which Chrome does not clip`, manual: `Move the clip-path from <${tag}> to a box inside it.` };
+  const display = keywordOf(el, 'display');
+  if (display === 'inline') return { fact: 'it is an inline box, whose content the native runtime places beside its view, not in it, until INL1b', manual: `Give ${at} display: inline-block or block, or move the clip-path to a block.` };
+  const shadow = el.props.get('box-shadow')?.value;
+  if (shadow !== undefined && !(shadow.kind === 'keyword' && shadow.value === 'none')) return { fact: 'it has a box-shadow, drawn by a companion view beside the box view, outside the clip', manual: `Move the box-shadow of ${at} to a wrapper, or remove it.` };
+  const outline = (e: ResolvedElement, root: boolean): string | null => {
+    if (keywordOf(e, 'display') === 'none') return null;
+    if (paintedOutlineStyle(e) !== null) return root ? 'it has' : `${e.element.address} has`;
+    for (const c of e.children) {
+      const found = c.kind === 'element' ? outline(c, false) : null;
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  const ringed = outline(el, true);
+  if (ringed !== null) return { fact: `${ringed} an outline, which Dragon draws in the root view, outside the clip`, manual: `Remove the outline inside ${at}, or the clip-path.` };
+  // A clip that can cut into the border box can hide text whole. Chrome keeps clipped text in the accessibility tree; until a device
+  // run proves the native clip keeps it there too (VoiceOver, TalkBack), the native targets refuse such a clip over text.
+  const cuts = edges.some((e) => e.value > 0);
+  const text = cuts ? textInside(el) : null;
+  if (text !== null) return { fact: `its text ${text} can be clipped out of sight, which Chrome keeps in its accessibility tree and screen readers read; the native accessibility tree of a clipped view is not proven yet`, manual: `Clip a box without text, or use insets of 0 or less, which never cut into the border box.` };
+  return null;
+}
+
+const checkClipPath: PaintCheck = (el, targets, diagnostics, reported) => {
+  const edges = clipPathEdges(el);
+  if (edges === null) return;
+  const v = el.props.get('clip-path') as ResolvedValue;
+  const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  const at = el.element.address;
+  const shape = valueToString(v.value);
+  const unresolved = edges.find((e) => e.unit !== CANONICAL_LENGTH_UNIT && e.unit !== '%');
+  const refusal = unresolved === undefined ? clipPathRefusal(el, edges) : null;
+  if (unresolved === undefined && refusal === null) return;
+  for (const t of targets) {
+    if (t === 'web') continue;
+    const id = `${t}|clip-path|${at}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    const message = unresolved !== undefined
+      ? `${at} has clip-path: ${shape}, whose ${unresolved.unit} edge has no build-time font size to compute it against; ${t} needs every inset edge in px or % at build time`
+      : `${at} has clip-path: ${shape}, but ${(refusal as { fact: string }).fact}; ${t} clips the box view and the views inside it only`;
+    const manual = unresolved !== undefined ? `Write the inset edges of ${at} in px or %, or give the font size they depend on a build-time value.` : (refusal as { manual: string }).manual;
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+  }
+};
+
 export const CLIP_VALUES: PaintValues = {
   name: 'clip',
   compute: (props, ctx) => {
     const v = props.get('clip');
-    if (v === undefined) return;
-    const edges = clipEdgesOf(v.value);
-    if (edges === null) return;
-    const computed = computeEdges(edges, ctx);
-    if (computed !== null) props.set('clip', { ...v, value: clipRectValue(computed) });
+    if (v !== undefined) {
+      const edges = clipEdgesOf(v.value);
+      const computed = edges === null ? null : computeEdges(edges, ctx);
+      if (computed !== null) props.set('clip', { ...v, value: clipRectValue(computed) });
+    }
+    const p = props.get('clip-path');
+    if (p === undefined) return;
+    const insets = insetEdgesOf(p.value);
+    const computed = insets === null ? null : computeInsets(insets, ctx);
+    if (computed !== null) props.set('clip-path', { ...p, value: insetValue(computed) });
   },
-  check: checkClip,
+  check: (el, targets, diagnostics, reported, propagated) => {
+    checkClip(el, targets, diagnostics, reported, propagated);
+    checkClipPath(el, targets, diagnostics, reported, propagated);
+  },
 };

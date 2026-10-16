@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Every edge, inset and percentage is a multiple of 8 CSS px, a whole device px at DPR 2, 3 and 2.625, so no clip edge is antialiased. */
+/* Text sits only where no inset cuts into its box: native targets refuse a clip that can cut into a box with text. */
+body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
+.stage { position: relative; height: 280px; padding: 8px; background-color: rgb(236, 240, 244); }
+.row { position: relative; height: 64px; margin-bottom: 8px; background-color: rgb(250, 200, 60); }
+.box { position: absolute; top: 0; width: 64px; height: 48px; background-color: rgb(40, 90, 200); border: 8px solid rgb(20, 20, 20); }
+.k { width: 40px; height: 16px; background-color: rgb(30, 160, 80); }
+.out { width: 104px; height: 24px; margin-top: 32px; background-color: rgb(200, 40, 120); }
+.a { left: 8px; }
+.b { left: 104px; }
+.c { left: 200px; }
+.d { left: 296px; }
+.c0 { clip-path: inset(8px); }
+.c1 { clip-path: inset(0); }
+.c2 { clip-path: inset(16px 8px 0 24px); }
+.c3 { clip-path: inset(25% 10%); }
+.c4 { clip-path: inset(-8px); }
+.c5 { clip-path: inset(1em 0.5em); }
+.c6 { clip-path: inset(50%); }
+.c7 { --c: inset(8px 16px); clip-path: var(--c); }
+.c8 { clip-path: INSET(8PX 0 16PX) border-box; }
+.c9 { clip-path: inset(0 -8px 0 0); }
+.keep-none { clip-path: none; }
+.keep-init { clip-path: inset(8px); clip-path: initial; }
+.flexrow { display: flex; column-gap: 16px; }
+.stat { width: 64px; height: 48px; background-color: rgb(120, 40, 160); border: 8px solid rgb(90, 50, 20); clip-path: inset(8px 16px); }
+.stat0 { clip-path: inset(0); }
+.t { width: 64px; height: 48px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="cut-a" class="box a c0"><div data-dragon-id="cut-a-k" class="k"></div></div>
+<div data-dragon-id="cut-b" class="box b c1"><div data-dragon-id="cut-b-out" class="out"></div></div>
+<div data-dragon-id="cut-c" class="box c c2"><div data-dragon-id="cut-c-k" class="k"></div></div>
+<div data-dragon-id="cut-d" class="box d c3"><div data-dragon-id="cut-d-k" class="k"></div></div>
+</div>
+<div data-dragon-id="row2" class="row">
+<div data-dragon-id="cut-e" class="box a c4"><div data-dragon-id="cut-e-out" class="out"></div></div>
+<div data-dragon-id="cut-f" class="box b c5"><div data-dragon-id="cut-f-k" class="k"></div></div>
+<div data-dragon-id="cut-g" class="box c c6"><div data-dragon-id="cut-g-k" class="k"></div></div>
+<div data-dragon-id="cut-h" class="box d c7"></div>
+</div>
+<div data-dragon-id="row3" class="row">
+<div data-dragon-id="cut-i" class="box a c8"><div data-dragon-id="cut-i-k" class="k"></div></div>
+<div data-dragon-id="keep-none" class="box b keep-none"><div data-dragon-id="keep-none-k" class="k"></div></div>
+<div data-dragon-id="keep-init" class="box c keep-init"></div>
+<div data-dragon-id="cut-j" class="box d c9"><div data-dragon-id="cut-j-t">XX</div><div data-dragon-id="cut-j-out" class="out"></div></div>
+</div>
+<div data-dragon-id="row4" class="row flexrow">
+<div data-dragon-id="cut-s" class="stat"><div data-dragon-id="cut-s-k" class="k"></div></div>
+<div data-dragon-id="t1" class="t">XXXX</div>
+<div data-dragon-id="cut-u" class="stat stat0"><div data-dragon-id="cut-u-t">XX</div></div>
+</div>
+</div>
+</body>
+</html>
