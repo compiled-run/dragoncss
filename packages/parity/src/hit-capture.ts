@@ -293,12 +293,12 @@ const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
  */
 const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
 /**
- * SVG-a1's svg family (fill, stroke, stroke-width), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * SVG-a1's svg family (fill, stroke, stroke-width, and SVG-opacity's fill-opacity and stroke-opacity), also added after the identity base, at its initial values only, in LONGHANDS order:
  * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
  * family's own values).
  */
-const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"/g;
-const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n/gm;
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1")?/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n)?/gm;
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**

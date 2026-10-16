@@ -7,4 +7,7 @@ export const SVG_ANIMATION: { readonly [P in (typeof SVG_LONGHANDS)[number]]: An
   fill: UNADMITTED,
   stroke: UNADMITTED,
   'stroke-width': UNADMITTED,
+  // SVG-opacity: both interpolate in Chrome as numbers; no animation package admits them yet.
+  'fill-opacity': UNADMITTED,
+  'stroke-opacity': UNADMITTED,
 };
