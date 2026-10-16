@@ -96,7 +96,9 @@ describe('TXT-W: text-style-ahem\'s sheared glyphs equal the committed Chrome pi
         expect(compiled.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code} ${d.message}`)).toEqual([]);
         const p = nativePrograms(compiled, c.assignment);
         if (p.kind !== 'ready') throw new Error(`${c.id}: ${p.reason}`);
-        expect(p.programs['android-views'].nodes.map((n) => n.writes.filter((w) => w.kind === 'synthetic-oblique'))).toEqual(p.programs.uikit.nodes.map((n) => n.writes.filter((w) => w.kind === 'synthetic-oblique')));
+        // The two backends shear the same texts by the same amount (each write's key and detail name its own backend's call).
+        const shears = (prog: NativeProgram): string[] => prog.nodes.flatMap((n) => n.writes.flatMap((w) => (w.kind === 'synthetic-oblique' ? [`${n.id} ${w.shear}`] : [])));
+        expect(shears(p.programs['android-views'])).toEqual(shears(p.programs.uikit));
         return p.programs.uikit;
       };
       const real = programOf(NO_FAULTS);
