@@ -15,7 +15,8 @@ import { expectedEngine } from '../src/native-host.ts';
 export type Rgba = readonly [number, number, number, number];
 /** A replaced image's paint rects (device px) and decoded pixels. */
 export type ModelImage = { readonly paint: ReplacedPaint; readonly pixels: RgbaImage };
-export type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[]; readonly radii: readonly number[] | null; readonly image?: ModelImage };
+/** size: the layout border-box size in device px before snapping (what percentages resolve against). */
+export type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[]; readonly radii: readonly number[] | null; readonly size?: readonly [number, number]; readonly image?: ModelImage };
 
 /** SkMulDiv255Round. */
 const mul255 = (a: number, b: number): number => {
@@ -73,8 +74,9 @@ export function boxes(p: NativeProgram, viewport: { width: number; height: numbe
     const paint = paints.get(r.id);
     if (w !== undefined && paint === undefined) throw new Error(`${r.id}: an image write with no replaced paint`);
     const radii = shape !== null && hasRoundedCorner(shape.slice(0, 8)) ? shape : null;
-    if (w === undefined || w.kind !== 'replaced-image' || paint === undefined) list.push({ node: n, l: s.left, t: s.top, r: s.right, b: s.bottom, border, radii });
-    else list.push({ node: n, l: s.left, t: s.top, r: s.right, b: s.bottom, border, radii, image: { paint, pixels: decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d))) } });
+    const size: [number, number] = [r.width / LU_PER_PX, r.height / LU_PER_PX];
+    if (w === undefined || w.kind !== 'replaced-image' || paint === undefined) list.push({ node: n, l: s.left, t: s.top, r: s.right, b: s.bottom, border, radii, size });
+    else list.push({ node: n, l: s.left, t: s.top, r: s.right, b: s.bottom, border, radii, size, image: { paint, pixels: decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d))) } });
   });
   return list;
 }
