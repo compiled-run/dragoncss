@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "width": 51200,
-   "height": 34173
+   "height": 27263
   },
   {
    "id": "body",
@@ -16,14 +16,14 @@
    "x": 0,
    "y": 0,
    "width": 51200,
-   "height": 33917
+   "height": 27007
   },
   {
    "id": "rs1",
    "parent": "body",
    "x": 0,
    "y": 0,
-   "width": 19200,
+   "width": 6400,
    "height": 768
   },
   {
@@ -55,7 +55,7 @@
    "parent": "body",
    "x": 0,
    "y": 1024,
-   "width": 19200,
+   "width": 6400,
    "height": 768
   },
   {
@@ -87,7 +87,7 @@
    "parent": "body",
    "x": 0,
    "y": 2048,
-   "width": 19200,
+   "width": 6400,
    "height": 768
   },
   {
@@ -216,7 +216,7 @@
    "x": 0,
    "y": 11135,
    "width": 7680,
-   "height": 5376
+   "height": 1792
   },
   {
    "id": "cs1-a",
@@ -246,9 +246,9 @@
    "id": "cs2",
    "parent": "body",
    "x": 0,
-   "y": 16767,
+   "y": 13183,
    "width": 7680,
-   "height": 3302
+   "height": 1792
   },
   {
    "id": "cs2-a",
@@ -278,9 +278,9 @@
    "id": "cs3",
    "parent": "body",
    "x": 0,
-   "y": 20325,
+   "y": 15231,
    "width": 7680,
-   "height": 3608
+   "height": 1792
   },
   {
    "id": "cs3-a",
@@ -310,7 +310,7 @@
    "id": "cm1",
    "parent": "body",
    "x": 0,
-   "y": 24189,
+   "y": 17279,
    "width": 15360,
    "height": 3072
   },
@@ -342,7 +342,7 @@
    "id": "cm2",
    "parent": "body",
    "x": 0,
-   "y": 27517,
+   "y": 20607,
    "width": 15360,
    "height": 3072
   },
@@ -374,7 +374,7 @@
    "id": "cm3",
    "parent": "body",
    "x": 0,
-   "y": 30845,
+   "y": 23935,
    "width": 15360,
    "height": 3072
   },
@@ -409,26 +409,26 @@
    "left": 0,
    "top": 0,
    "right": 800,
-   "bottom": 534,
+   "bottom": 426,
    "width": 800,
-   "height": 534
+   "height": 426
   },
   {
    "id": "body",
    "left": 0,
    "top": 0,
    "right": 800,
-   "bottom": 530,
+   "bottom": 422,
    "width": 800,
-   "height": 530
+   "height": 422
   },
   {
    "id": "rs1",
    "left": 0,
    "top": 0,
-   "right": 300,
+   "right": 100,
    "bottom": 12,
-   "width": 300,
+   "width": 100,
    "height": 12
   },
   {
@@ -462,9 +462,9 @@
    "id": "rs2",
    "left": 0,
    "top": 16,
-   "right": 300,
+   "right": 100,
    "bottom": 28,
-   "width": 300,
+   "width": 100,
    "height": 12
   },
   {
@@ -498,9 +498,9 @@
    "id": "rs3",
    "left": 0,
    "top": 32,
-   "right": 300,
+   "right": 100,
    "bottom": 44,
-   "width": 300,
+   "width": 100,
    "height": 12
   },
   {
@@ -643,9 +643,9 @@
    "left": 0,
    "top": 174,
    "right": 120,
-   "bottom": 258,
+   "bottom": 202,
    "width": 120,
-   "height": 84
+   "height": 28
   },
   {
    "id": "cs1-a",
@@ -677,23 +677,68 @@
   {
    "id": "cs2",
    "left": 0,
-   "top": 262,
+   "top": 206,
    "right": 120,
-   "bottom": 314,
+   "bottom": 234,
    "width": 120,
-   "height": 52
+   "height": 28
   },
   {
    "id": "cs2-a",
    "left": 0,
-   "top": 262,
+   "top": 206,
    "right": 40,
-   "bottom": 274,
+   "bottom": 218,
    "width": 40,
    "height": 12
   },
   {
    "id": "cs2-b",
+   "left": 0,
+   "top": 226,
+   "right": 40,
+   "bottom": 238,
+   "width": 40,
+   "height": 12
+  },
+  {
+   "id": "cs2-c",
+   "left": 0,
+   "top": 246,
+   "right": 40,
+   "bottom": 258,
+   "width": 40,
+   "height": 12
+  },
+  {
+   "id": "cs3",
+   "left": 0,
+   "top": 238,
+   "right": 120,
+   "bottom": 266,
+   "width": 120,
+   "height": 28
+  },
+  {
+   "id": "cs3-a",
+   "left": 0,
+   "top": 238,
+   "right": 40,
+   "bottom": 250,
+   "width": 40,
+   "height": 12
+  },
+  {
+   "id": "cs3-b",
+   "left": 0,
+   "top": 260,
+   "right": 40,
+   "bottom": 272,
+   "width": 40,
+   "height": 12
+  },
+  {
+   "id": "cs3-c",
    "left": 0,
    "top": 282,
    "right": 40,
@@ -702,155 +747,110 @@
    "height": 12
   },
   {
-   "id": "cs2-c",
-   "left": 0,
-   "top": 302,
-   "right": 40,
-   "bottom": 314,
-   "width": 40,
-   "height": 12
-  },
-  {
-   "id": "cs3",
-   "left": 0,
-   "top": 318,
-   "right": 120,
-   "bottom": 374,
-   "width": 120,
-   "height": 56
-  },
-  {
-   "id": "cs3-a",
-   "left": 0,
-   "top": 318,
-   "right": 40,
-   "bottom": 330,
-   "width": 40,
-   "height": 12
-  },
-  {
-   "id": "cs3-b",
-   "left": 0,
-   "top": 340,
-   "right": 40,
-   "bottom": 352,
-   "width": 40,
-   "height": 12
-  },
-  {
-   "id": "cs3-c",
-   "left": 0,
-   "top": 362,
-   "right": 40,
-   "bottom": 374,
-   "width": 40,
-   "height": 12
-  },
-  {
    "id": "cm1",
    "left": 0,
-   "top": 378,
+   "top": 270,
    "right": 240,
-   "bottom": 426,
+   "bottom": 318,
    "width": 240,
    "height": 48
   },
   {
    "id": "cm1-a",
    "left": 0,
-   "top": 378,
+   "top": 270,
    "right": 40,
-   "bottom": 390,
+   "bottom": 282,
    "width": 40,
    "height": 12
   },
   {
    "id": "cm1-b",
    "left": 0,
-   "top": 414,
+   "top": 306,
    "right": 40,
-   "bottom": 426,
+   "bottom": 318,
    "width": 40,
    "height": 12
   },
   {
    "id": "cm1-c",
    "left": 132,
-   "top": 378,
+   "top": 270,
    "right": 172,
-   "bottom": 390,
+   "bottom": 282,
    "width": 40,
    "height": 12
   },
   {
    "id": "cm2",
    "left": 0,
-   "top": 430,
+   "top": 322,
    "right": 240,
-   "bottom": 478,
+   "bottom": 370,
    "width": 240,
    "height": 48
   },
   {
    "id": "cm2-a",
    "left": 0,
-   "top": 430,
+   "top": 322,
    "right": 40,
-   "bottom": 442,
+   "bottom": 334,
    "width": 40,
    "height": 12
   },
   {
    "id": "cm2-b",
    "left": 0,
-   "top": 450,
+   "top": 342,
    "right": 40,
-   "bottom": 462,
+   "bottom": 354,
    "width": 40,
    "height": 12
   },
   {
    "id": "cm2-c",
    "left": 140,
-   "top": 430,
+   "top": 322,
    "right": 180,
-   "bottom": 442,
+   "bottom": 334,
    "width": 40,
    "height": 12
   },
   {
    "id": "cm3",
    "left": 0,
-   "top": 482,
+   "top": 374,
    "right": 240,
-   "bottom": 530,
+   "bottom": 422,
    "width": 240,
    "height": 48
   },
   {
    "id": "cm3-a",
    "left": 0,
-   "top": 482,
+   "top": 374,
    "right": 40,
-   "bottom": 494,
+   "bottom": 386,
    "width": 40,
    "height": 12
   },
   {
    "id": "cm3-b",
    "left": 0,
-   "top": 504,
+   "top": 396,
    "right": 40,
-   "bottom": 516,
+   "bottom": 408,
    "width": 40,
    "height": 12
   },
   {
    "id": "cm3-c",
    "left": 128,
-   "top": 482,
+   "top": 374,
    "right": 168,
-   "bottom": 494,
+   "bottom": 386,
    "width": 40,
    "height": 12
   }
