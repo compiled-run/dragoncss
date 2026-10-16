@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox, LayoutStyle } from '@dragon/layout';
 import type { FrontEndResult } from '../src/index.ts';
+import type { SourceRef, TreeNode } from '../src/types.ts';
 import { createProject } from '../src/index.ts';
 import { applyFix, CATALOGUE, compiledFeatures, createProjectWith, iosLayoutProjection, LONGHANDS, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, textTopology, WEB_CSS_PATH } from '../src/internal.ts';
 import { initialValue } from '../src/analysis/resolve.ts';
@@ -67,6 +68,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       visibility: ['hidden', 'collapse'],
       // MASK-CLIP: two rects on a relatively positioned box, where clip does not apply.
       clip: ['rect(0, 0, 0, 0)', 'rect(1px 2px 3px 4px)'],
+      // MASK-CLIP: two clip-path insets, on boxes without text (natively a clip-path over any text is refused, below).
+      'clip-path': ['inset(0)', 'inset(-2px 0 0 -10%)'],
       // SVG-a1: two stroke widths; SVG-opacity: two fill and stroke opacities; SVG-stroke: two caps, joins, miter limits and fill rules.
       'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
       'stroke-linecap': ['round', 'square'], 'stroke-linejoin': ['bevel', 'round'], 'stroke-miterlimit': ['1', '10'], 'fill-rule': ['evenodd', 'nonzero'],
@@ -79,11 +82,13 @@ describe("rec1 colour_rows: the 'paint' role", () => {
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const position = p === 'box-shadow' ? 'static' : 'relative';
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: ${position}; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
+      // A clip-path over text is refused natively (the accessibility rule), so its boxes hold an empty block instead of text.
+      const inner = (r: SourceRef, id: string): TreeNode => (p === 'clip-path' ? div(r, id, []) : text(r, id, 'XX XX'));
+      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: ${position}; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [inner(r, 'at')]), div(r, 'b', ['x', 'b'], [inner(r, 'bt')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);
-      expect(JSON.stringify(a.children).replaceAll('a:text0', 'b:text0'), p).toBe(JSON.stringify(b.children));
+      expect(JSON.stringify(a.children).replaceAll('a:text0', 'b:text0').replaceAll('"id":"at"', '"id":"bt"'), p).toBe(JSON.stringify(b.children));
     }
   });
   it('(iii) colour conversion stays in css/color.ts', () => {
