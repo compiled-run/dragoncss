@@ -24,8 +24,8 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # The device run takes about 40 minutes and the regen about 45; a queue for macOS runners can add hours.
-    timeout-minutes: 480
+    # The device run takes about 40 minutes and the regen about 45; GitHub-hosted jobs stop at 6 hours, so this ends just before.
+    timeout-minutes: 350
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
@@ -162,14 +162,14 @@ jobs:
           landing() {
             [ -n "$(git ls-remote origin refs/tags/land-lock)" ] && return 0
             local n
-            n=$(gh api "repos/$REPO/actions/workflows/land.yml/runs?per_page=20" -q '[.workflow_runs[] | select(.status != "completed")] | length' 2>/dev/null || echo 0)
+            n=$(gh api "repos/$REPO/actions/workflows/land.yml/runs?per_page=20" -q '[.workflow_runs[] | select(.status != "completed")] | length' 2>/dev/null || echo unknown)
             [ "$n" != 0 ]
           }
           head=$HEAD0
           checks_of "$head"
           for round in 1 2 3; do
-            for _ in $(seq 1 120); do landing || break; sleep 60; done
-            if landing; then echo "::error::a landing kept running for two hours; the refresh branch $BRANCH is not merged"; exit 1; fi
+            for _ in $(seq 1 45); do landing || break; sleep 60; done
+            if landing; then echo "::error::a landing kept running for 45 minutes; the refresh branch $BRANCH is not merged"; exit 1; fi
             git fetch -q origin master
             # master moved past the device run's commit: bring it in and regenerate, so master stays at a regen fixed point.
             if ! git merge-base --is-ancestor origin/master "$head"; then
@@ -199,8 +199,8 @@ jobs:
             exit 1
           fi
       - name: Name the commits behind a changed device verdict
-        # Reported even when the refresh did not merge: a changed verdict is likely to fail the refreshed tree's checks.
-        if: ${{ !cancelled() && steps.devices.outputs.judged == 'differs' }}
+        # Reported even when the refresh did not merge or the job timed out: a changed verdict is likely to fail the refreshed tree's checks.
+        if: ${{ always() && steps.devices.outputs.judged == 'differs' }}
         env:
           SHA: ${{ steps.stamp.outputs.sha }}
           PREV: ${{ steps.stamp.outputs.prev }}
