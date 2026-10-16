@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 import type { DeviceSet } from '../src/device-lanes.ts';
 import type { DeviceRun, LanesFile } from '../src/lanes.ts';
 import { deviceEvidence, evidenceProblems } from '../src/device-evidence.ts';
-import { fileStatusProblems, LANES_JSON, lanesFile, readLanesFile, evidenceBehind, runRecordProblems, staleCovers, staleLanes } from '../src/lanes.ts';
+import { deviceCoverageProblems, deviceEvidence as rowEvidence } from '../src/profile-rows.ts';
+import { casesNotRun, fileStatusProblems, LANES_JSON, lanesFile, readLanesFile, evidenceBehind, ranIds, runRecordProblems, staleCovers, staleLanes } from '../src/lanes.ts';
 import type { TargetConfig } from '../src/targets.ts';
 import { nativeTargets } from '../src/targets.ts';
 
@@ -125,5 +126,67 @@ describe('the evidence stamp (finding 4131217867)', () => {
         }
       }
     }
+  });
+});
+
+describe('per-case carry (async device lanes over a changed case list)', () => {
+  // The committed records, carried once so every device lane names the cases it ran (RanCases).
+  const base = lanesFile(targets, [], new Map(), null, new Map(), committed);
+  // The configuration after a landing adds a case to every device lane of both targets and drops one.
+  const grown: TargetConfig[] = targets.map((t) => ({ ...t, lanes: t.lanes.map((l) => (l.where !== 'device' ? l : { ...l, sets: l.sets.map((x) => ({ ...x, ids: [...x.ids.slice(1), 'zz-new-fixture'] })) })) }));
+  const dropped = (t: TargetConfig): string => t.lanes.find((l) => l.lane === 'device-frames')!.sets[0]!.ids[0]!;
+
+  it('a device lane that ran records its case lists, and a record without RanCases whose case list is current gains them', () => {
+    expect(staleLanes(base, targets)).toEqual([]);
+    expect(casesNotRun(base, targets)).toEqual([]);
+    for (const t of base.targets) {
+      for (const l of t.lanes.filter((x) => x.where === 'device' && x.state !== 'not run')) {
+        for (const s of l.ran?.sets ?? []) expect(base.caseLists?.[s.list], `${t.target} ${l.lane} DPR ${s.dpr}`).toBeDefined();
+        expect(l.ran, `${t.target} ${l.lane}`).toBeDefined();
+      }
+    }
+  });
+  it('a changed case list is not stale: the lane is carried, names the cases it did not run, and those cases prove nothing', () => {
+    expect(staleLanes(base, grown).filter((p) => /device|vectors-device/.test(p) && !/host/.test(p))).toEqual([]);
+    const behind = casesNotRun(base, grown);
+    expect(behind.length).toBeGreaterThan(0);
+    for (const b of behind) expect(b).toMatch(/has not run 1 configured case\(s\): zz-new-fixture$/);
+    const out = lanesFile(grown, [], new Map(), null, new Map(), base);
+    for (const t of out.targets) {
+      const before = base.targets.find((x) => x.target === t.target)!;
+      for (const l of t.lanes.filter((x) => x.where === 'device')) {
+        const was = before.lanes.find((x) => x.lane === l.lane)!;
+        expect(l.state, `${t.target} ${l.lane}`).toBe(was.state);
+        expect(l.ran, `${t.target} ${l.lane}`).toEqual(was.ran);
+        if (l.state !== 'not run') for (const s of l.ran?.sets ?? []) expect(ranIds(out, l, s.dpr)?.has('zz-new-fixture')).toBe(false);
+      }
+    }
+    for (const c of grown) {
+      expect(deviceCoverageProblems(out, c)).toEqual([]);
+      const ev = rowEvidence(c.target, out, [], grown, []);
+      for (const l of ev.lanes) {
+        if (!l.perCase) continue;
+        expect(l.cases.has('zz-new-fixture'), `${c.target} ${l.lane}`).toBe(false);
+        expect(l.cases.has(dropped(c)), `${c.target} ${l.lane}`).toBe(false);
+      }
+    }
+  });
+  it('run-record parity compares case counts only where both targets ran the same case list', () => {
+    const f = JSON.parse(JSON.stringify(base)) as Mutable<LanesFile>;
+    const android = f.targets.find((t) => t.target === 'android')!.lanes.find((l) => l.lane === 'device-frames')!;
+    // A fresh android run over a grown list against an ios record carried over the old one.
+    const grownList = 'f'.repeat(64);
+    (f as unknown as { caseLists: Record<string, string[]> }).caseLists[grownList] = ['zz-new-fixture'];
+    (android as { ran: unknown }).ran = { ...android.ran!, sets: android.ran!.sets.map((s) => ({ ...s, list: grownList })) };
+    for (const s of android.device!.sets) (s as { cases: number }).cases += 1;
+    expect(runRecordProblems(f as LanesFile).filter((p) => p.includes('device-frames'))).toEqual([]);
+    (android as { ran: unknown }).ran = base.targets.find((t) => t.target === 'android')!.lanes.find((l) => l.lane === 'device-frames')!.ran;
+    expect(runRecordProblems(f as LanesFile).some((p) => /device-frames at DPR \d+: (ios|android) \d+ cases/.test(p))).toBe(true);
+  });
+  it('a changed DPR set or corpus is still stale', () => {
+    const fewer: TargetConfig[] = targets.map((t) => ({ ...t, lanes: t.lanes.map((l) => (l.lane !== 'device-frames' ? l : { ...l, sets: l.sets.slice(1) })) }));
+    expect(staleLanes(base, fewer).some((p) => /device-frames does not match the configured case list/.test(p))).toBe(true);
+    const corpora: TargetConfig[] = targets.map((t) => ({ ...t, lanes: t.lanes.map((l) => (l.lane !== 'layout-vectors-device' ? l : { ...l, corpora: l.corpora.slice(1) })) }));
+    expect(staleLanes(base, corpora).some((p) => /layout-vectors-device does not match the configured case list/.test(p))).toBe(true);
   });
 });
