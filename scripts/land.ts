@@ -1,6 +1,6 @@
 // Continuous landing driver (owner decision 2026-10-03, process review): lands a queue of reviewed PRs in batches (runBatches in
-// land-lib.ts). Each PR gets a position on the one before it, with its own regen and device evidence (the device run is skipped
-// only when the position's evidence stamp equals the previous position's), typecheck, regen-only and floors checks; the batch's
+// land-lib.ts). Each PR gets a position on the one before it, with its own regen and (LAND_DEVICE_STEP=sync only; async, the
+// default, keeps master's device records for device-refresh.yml to replace) device evidence, typecheck, regen-only and floors checks; the batch's
 // top position is proved once by the full test, and its prefixes are bisected when that fails. Then each PR in order is pushed,
 // passes CI, pr:review and a Claude correctness review while Macroscope is at its limit, and merges pinned with
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
@@ -65,6 +65,8 @@ import {
   hostAbi,
   parseLandModes,
   parseMaxInflight,
+  parseDeviceStep,
+  type DeviceStep,
   serializeFatal,
   preparedDifference,
   preparedFits,
@@ -229,6 +231,8 @@ let CI_APPEAR_S = 0;
 let QUIET_MAX_S = 0;
 // LAND_DEVICES=ci runs a position's device lanes on GitHub runners (device-lanes.yml) instead of under the local device lease.
 let DEVICES_ON: CiMode = 'local';
+// LAND_DEVICE_STEP (parseDeviceStep): async, the default, never runs the device lanes in a landing.
+let DEVICE_STEP: DeviceStep = 'async';
 let DEVICES_WAIT_S = 0;
 // LAND_TEST=ci proves each tree with full-test.yml on GitHub runners instead of pnpm test on this Mac.
 let TEST_ON: CiMode = 'local';
@@ -960,6 +964,18 @@ const treeChecks = (prev: string, checks: TreeCheck[], devicesRun: number | null
   }
 };
 
+// Writes the previous position's device records into WT where they differ, and regenerates the tree on them.
+const carryDeviceRecords = (prev: string, e: Entry, commands: string[]): void => {
+  const outs = [LANES_JSON, failuresJson('ios'), failuresJson('android')];
+  refuseRecordSymlinks([prev], outs);
+  const differ = outs.filter((p) => git(['show', `${prev}:${p}`]).toString('utf8') !== readInTree(WT, p));
+  if (differ.length === 0) return;
+  for (const p of outs) writeInTree(WT, p, git(['show', `${prev}:${p}`]));
+  log(`  carried the previous position's device records (${differ.join(', ')}); regenerating on them`);
+  regenTree('regen-carried', 'regen', attribute('regen', { trees: TREES, prev, pr: e.pr }));
+  commands.push(regenRan);
+};
+
 /**
  * A position from its regenerated tree in WT on: typecheck, the device step against the previous position, the regen commit and
  * its checks. `prepared`: the tree was regenerated in parallel from the same sources, so the previous position's device records
@@ -984,22 +1000,21 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     if (r.error !== undefined || (r.status !== 0 && r.status !== 1)) failed('stamp', r, 'pnpm evidence:stamp');
     stamp = r.status;
   }
-  let runDevices = stamp === 1;
-  if (!runDevices && prepared) {
+  if (DEVICE_STEP === 'async') {
+    // Async device lanes: the position keeps the previous position's device records (carried, as the one-by-one merge carries
+    // them, when it was prepared in parallel) and lands on the fast checks; device-refresh.yml runs the lanes on master.
+    if (prepared) carryDeviceRecords(prev, e, commands);
+    device = stamp === 0 ? 'skipped: the evidence stamp equals the previous position\'s' : 'not run (async device lanes): the records are behind this tree until device-refresh.yml runs the lanes on master';
+  }
+  let runDevices = DEVICE_STEP === 'sync' && stamp === 1;
+  if (DEVICE_STEP === 'sync' && !runDevices && prepared) {
     // Equal stamps: the one-by-one build's merge would have carried the previous position's device records into this tree, so
     // they are carried here, and the tree regenerated to its fixed point on them.
-    const outs = [LANES_JSON, failuresJson('ios'), failuresJson('android')];
-    refuseRecordSymlinks([prev], outs);
-    const differ = outs.filter((p) => git(['show', `${prev}:${p}`]).toString('utf8') !== readInTree(WT, p));
-    if (differ.length > 0) {
-      for (const p of outs) writeInTree(WT, p, git(['show', `${prev}:${p}`]));
-      log(`  carried the previous position's device records (${differ.join(', ')}); regenerating on them`);
-      regenTree('regen-carried', 'regen', attribute('regen', { trees: TREES, prev, pr: e.pr }));
-      commands.push(regenRan);
-      if (TRUSTED) lanesRan = asLanes(treeChecks(prev, ['lanes'], null, attribute('tree-checks', { trees: TREES, prev, pr: e.pr })).result.lanes!);
-    }
+    const before = commands.length;
+    carryDeviceRecords(prev, e, commands);
+    if (TRUSTED && commands.length > before) lanesRan = asLanes(treeChecks(prev, ['lanes'], null, attribute('tree-checks', { trees: TREES, prev, pr: e.pr })).result.lanes!);
   }
-  if (!runDevices) {
+  if (DEVICE_STEP === 'sync' && !runDevices) {
     // Equal stamps: the regen carried the previous position's device records; they must judge exactly as its.
     const { problems } = judgeDevices(prev, null, false, lanesRan);
     if (problems.length > 0) {
@@ -1629,6 +1644,7 @@ const setUp = (): void => {
   CHECKS_WAIT_S = seconds('LAND_CHECKS_WAIT', 150 * 60 + 900);
   OUTAGE_EJECT = parseOutageEject(env['LAND_OUTAGE_EJECT']);
   DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', DEFAULT_DEVICES_WAIT_S);
+  DEVICE_STEP = parseDeviceStep(env['LAND_DEVICE_STEP']);
   TEST_WAIT_S = seconds('LAND_TEST_WAIT', DEFAULT_TEST_WAIT_S);
   REGEN_WAIT_S = seconds('LAND_REGEN_WAIT', DEFAULT_REGEN_WAIT_S);
   CI_START_S = seconds('LAND_CI_START', 900);

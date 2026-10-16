@@ -57,8 +57,9 @@ jobs:
             1) behind=true ;;
             *) echo "::error::pnpm evidence:stamp exited $code"; exit 1 ;;
           esac
-          # The commit the current records were run on: the subject of the commit that last wrote a device failure list.
-          rec=$(git log -1 --format=%H -- packages/parity/out/device-failures-ios.json packages/parity/out/device-failures-android.json)
+          # The commit the current records were run on: named by the last device record commit's subject, else that commit itself.
+          rec=$(git log -1 --format=%H -E --grep='^Record device lanes (of|from)' -- packages/parity/out/lanes.json)
+          [ -n "$rec" ] || rec=$(git log -1 --format=%H -- packages/parity/out/device-failures-ios.json packages/parity/out/device-failures-android.json)
           prev=$(git log -1 --format=%s "$rec" | sed -nE 's/^Record device lanes of ([0-9a-f]{7,40}).*/\1/p')
           prev=$(git rev-parse --verify -q "${prev:-$rec}^{commit}" || echo "$rec")
           { echo "sha=$sha"; echo "behind=$behind"; echo "prev=$prev"; } >> "$GITHUB_OUTPUT"
@@ -172,6 +173,7 @@ jobs:
           n=$(printf '%s\n' "$commits" | grep -c . || true)
           if [ "$n" = 1 ]; then who="The one commit merged since the last device records:"; else who="The $n commits merged since the last device records (one of them changed the verdict):"; fi
           lines=$(grep -E 'differ|judge|now|was' "$RUNNER_TEMP/compare.log" | sed -E 's/^[^\t]*\t[^\t]*\t[0-9T:.-]+Z //' | head -60 || true)
+          # shellcheck disable=SC2016
           body=$(printf 'A device lane on master judges differently from the records of %s.\n\n%s\n%s\n\nComparison (device run https://github.com/%s/actions/runs/%s):\n```\n%s\n```\n' "$PREV" "$who" "$commits" "$REPO" "$RUN" "$lines")
           url=$(gh api "repos/$REPO/issues" -f title="Device lanes changed between ${PREV:0:12} and ${SHA:0:12}" -f body="$body" -q .html_url)
           echo "::error::a device lane changed its verdict between $PREV and $SHA: $url"

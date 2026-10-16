@@ -14,7 +14,7 @@ import type { HostSource } from '../device-lanes.ts';
 import { allRunFailures, failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
 import { requireDeviceLease, stopStartedNow } from '../device-run.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
-import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleCovers, staleEvidence, staleLanes, writeLanesFile } from '../lanes.ts';
+import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, evidenceBehind, staleCovers, staleLanes, writeLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
@@ -177,9 +177,11 @@ if (runHost || runDevice) {
     console.log(`parity:lanes: ${LANES_JSON} is absent; host lanes are not run (pnpm run parity:lanes -- --run-host)`);
     file = lanesFile(targets, problems, new Map(), null);
   } else {
-    const stale = [...staleLanes(committed, targets), ...staleEvidence(committed)];
+    const stale = staleLanes(committed, targets);
     for (const s of stale) console.log(`STALE ${s}`);
     if (stale.length > 0) exit = 1;
+    // Async device lanes: records behind this tree's sources stay the device evidence until the scheduled device run on master.
+    for (const s of evidenceBehind(committed)) console.log(`BEHIND ${s} (the scheduled device run on master replaces it)`);
     file = committed;
   }
 }

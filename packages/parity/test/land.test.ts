@@ -20,6 +20,7 @@ import {
   CiOutage,
   hostAbi,
   normalAbi,
+  parseDeviceStep,
   parseLandModes,
   parseMaxInflight,
   serializeFatal,
@@ -1579,6 +1580,22 @@ describe('floors may only rise (the landing commit against master)', () => {
       const t = readFileSync(repoPath(f), 'utf8');
       expect(floorRegressions(f, t, t), f).toEqual([]);
     }
+  });
+});
+
+describe('LAND_DEVICE_STEP (async device lanes, Jack 2026-10-14)', () => {
+  it('is async or sync, unset is async, and anything else stops the driver before it starts', () => {
+    expect(parseDeviceStep(undefined)).toBe('async');
+    for (const v of ['async', 'sync'] as const) expect(parseDeviceStep(v)).toBe(v);
+    for (const bad of ['', 'ASYNC', 'on', ' sync']) expect(() => parseDeviceStep(bad), bad).toThrow(`land: LAND_DEVICE_STEP must be async or sync, not ${JSON.stringify(bad)}`);
+  });
+  it('under async a position never runs the device lanes, and a prepared one carries the previous position\'s records', () => {
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    expect(src).toContain("DEVICE_STEP = parseDeviceStep(env['LAND_DEVICE_STEP']);");
+    const finish = src.slice(src.indexOf('const finishPosition'), src.indexOf('// Regen\'s declared outputs'));
+    expect(finish).toContain("let runDevices = DEVICE_STEP === 'sync' && stamp === 1;");
+    expect(finish).toContain("if (DEVICE_STEP === 'sync' && !runDevices) {");
+    expect(finish).toContain('if (prepared) carryDeviceRecords(prev, e, commands);');
   });
 });
 

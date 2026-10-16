@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
 import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
 import type { LanesFile } from './lanes.ts';
-import { readLanesFile, staleEvidence, staleLanes } from './lanes.ts';
+import { readLanesFile, staleLanes } from './lanes.ts';
 import { repoPath } from './paths.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import type { NativeTarget, TargetConfig } from './targets.ts';
@@ -247,14 +247,15 @@ export function deviceCoverageProblems(lanes: LanesFile, c: TargetConfig): strin
 }
 
 /**
- * One native target's verdict from the committed record (pure): stale is staleLanes and staleEvidence over that target alone;
+ * One native target's verdict from the committed record (pure): stale is staleLanes over that target alone (device records behind
+ * the tree's sources stay its evidence until the scheduled device run on master replaces them);
  * notPassing names a failed lane parity, every lane not passing, a device lane whose recorded sets do not cover the configured
  * DPRs and cases, and, when all of that passes, why the target's device evidence (its failure list against the record) is unavailable.
  */
 export function nativeVerdict(target: NativeTarget, lanes: LanesFile | null, failures: readonly LaneFailure[] | null, configured: readonly TargetConfig[]): NativeVerdict {
   if (lanes === null) return { recorded: false, stale: [], notPassing: [] };
   const mine = configured.filter((x) => x.target === target);
-  const stale = [...staleLanes(lanes, mine), ...staleEvidence({ ...lanes, targets: lanes.targets.filter((x) => x.target === target) })];
+  const stale = staleLanes(lanes, mine);
   const c = mine[0];
   const notPassing = [
     ...(lanes.parity.pass ? [] : [`lane parity (${lanes.parity.problems.join('; ')})`]),
@@ -337,12 +338,12 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
   return v as LanesFile;
 }
 
-/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes plus staleEvidence), each target's failure list and verdict. */
+/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes; records behind the tree are not stale), each target's failure list and verdict. */
 export function committedLanes(): { readonly lanes: LanesFile | null; readonly stale: readonly string[]; readonly evidence: (target: NativeTarget) => DeviceEvidence; readonly verdict: (target: NativeTarget) => NativeVerdict } {
   const raw = readLanesFile();
   const lanes = raw === null ? null : checkedLanes(raw, 'packages/parity/out/lanes.json');
   const configured = nativeTargets();
-  const stale = lanes === null ? [] : [...staleLanes(lanes, configured), ...staleEvidence(lanes)];
+  const stale = lanes === null ? [] : staleLanes(lanes, configured);
   const failuresOf = (target: NativeTarget): readonly LaneFailure[] | null => {
     const path = repoPath(`packages/parity/out/device-failures-${target}.json`);
     return existsSync(path) ? checkedFailures(JSON.parse(readFileSync(path, 'utf8')) as unknown, `packages/parity/out/device-failures-${target}.json`) : null;
