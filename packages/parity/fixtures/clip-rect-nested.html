@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* No text inside a clipped box: native targets refuse it, since a hidden native view leaves the accessibility tree. */
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
+.stage { position: relative; height: 200px; padding: 8px; background-color: rgb(236, 240, 244); }
+.wrap { position: relative; width: 300px; height: 80px; margin-bottom: 8px; overflow: hidden; background-color: rgb(250, 200, 60); border: 2px solid rgb(120, 40, 20); }
+.cut { position: absolute; left: 10px; top: 10px; width: 120px; height: 50px; background-color: rgb(40, 90, 200); clip: rect(0, 0, 0, 0); }
+.ctx { z-index: 2; }
+.flex { display: flex; column-gap: 4px; }
+.i { width: 30px; height: 20px; background-color: rgb(30, 160, 80); }
+.pos { position: absolute; left: 100px; top: 30px; width: 80px; height: 40px; background-color: rgb(200, 40, 120); }
+.z0 { position: relative; z-index: 0; width: 50px; height: 15px; background-color: rgb(90, 50, 20); }
+.op { opacity: 0.5; width: 50px; height: 15px; background-color: rgb(20, 20, 20); }
+.inner { position: absolute; left: 20px; top: 5px; width: 40px; height: 30px; background-color: rgb(230, 230, 120); clip: rect(0, 0, 0, 0); }
+.cut-r { left: 160px; }
+.cut-t { left: 170px; background-color: rgb(200, 40, 40); }
+.sib { position: absolute; left: 60px; top: 20px; width: 90px; height: 40px; background-color: rgb(120, 220, 220); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="w1" class="wrap">
+<div data-dragon-id="cut-flex" class="cut flex"><div data-dragon-id="cut-i1" class="i"></div><div data-dragon-id="cut-i2" class="i"></div></div>
+<div data-dragon-id="cut-pos" class="cut cut-r"><div data-dragon-id="cut-pos-k" class="pos"></div><div data-dragon-id="cut-z0" class="z0"></div><div data-dragon-id="cut-op" class="op"></div></div>
+</div>
+<div data-dragon-id="w2" class="wrap">
+<div data-dragon-id="sib" class="sib"></div>
+<div data-dragon-id="cut-ctx" class="cut ctx"><div data-dragon-id="cut-inner" class="inner"><div data-dragon-id="cut-inner-k" class="i"></div></div><div data-dragon-id="cut-ctx-k" class="i"></div></div>
+<div data-dragon-id="cut-t" class="cut cut-t"><div data-dragon-id="cut-t-k" class="i"></div></div>
+</div>
+</div>
+</body>
+</html>

@@ -153,7 +153,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -299,7 +300,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -445,7 +447,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -611,7 +614,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -777,7 +781,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "pan-x pan-y"
+        "touch-action": "pan-x pan-y",
+        "clip": "auto"
       }
     },
     {
@@ -943,7 +948,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "pan-x pan-y"
+        "touch-action": "pan-x pan-y",
+        "clip": "auto"
       }
     },
     {
@@ -1109,7 +1115,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -1275,7 +1282,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "pan-x pan-y"
+        "touch-action": "pan-x pan-y",
+        "clip": "auto"
       }
     },
     {
@@ -1441,7 +1449,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "pan-x pan-y"
+        "touch-action": "pan-x pan-y",
+        "clip": "auto"
       }
     },
     {
@@ -1607,7 +1616,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -1753,7 +1763,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -1919,7 +1930,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2085,7 +2097,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -2231,7 +2244,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -2397,7 +2411,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2563,7 +2578,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "pan-x pan-y"
+        "touch-action": "pan-x pan-y",
+        "clip": "auto"
       }
     },
     {
@@ -2709,7 +2725,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -2875,7 +2892,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -3041,7 +3059,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -3187,7 +3206,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "manipulation"
+        "touch-action": "manipulation",
+        "clip": "auto"
       }
     },
     {
@@ -3353,7 +3373,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -3539,7 +3560,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "none"
+        "touch-action": "none",
+        "clip": "auto"
       }
     },
     {
@@ -3715,7 +3737,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "pan-y"
+        "touch-action": "pan-y",
+        "clip": "auto"
       }
     }
   ]

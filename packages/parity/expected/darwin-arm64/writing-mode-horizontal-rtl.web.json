@@ -154,6 +154,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -301,6 +302,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -448,6 +450,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -595,6 +598,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -772,6 +776,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -949,6 +954,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1126,6 +1132,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1303,6 +1310,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1470,6 +1478,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1647,6 +1656,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1814,6 +1824,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1981,6 +1992,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2128,6 +2140,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2275,6 +2288,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2422,6 +2436,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2569,6 +2584,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2746,6 +2762,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2923,6 +2940,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3070,6 +3088,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3217,6 +3236,7 @@
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
         "touch-action": "auto",
+        "clip": "auto",
         "writing-mode": "horizontal-tb"
       }
     }

@@ -102,6 +102,8 @@ const SUBSET = [
   '-webkit-box-orient', '-webkit-line-clamp',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
   'touch-action',
+  // MASK-CLIP: clip (css-masking-1 §5.1), after touch-action, as LONGHANDS registers it.
+  'clip',
 ] as const;
 
 /**
@@ -126,6 +128,9 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
  * packages/parity/test/display-parse.test.ts.
  */
 const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  // Blink Clip::ParseSingleValue (longhands_custom.cc): auto, or rect() with four <length> or auto edges separated all by commas
+  // or all by whitespace; webref's <rect()> resolves to css-shapes' basic shape as well as css-masking's comma form.
+  clip: 'auto | rect( [ <length> | auto ]{4} ) | rect( [ <length> | auto ]#{4} )',
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',

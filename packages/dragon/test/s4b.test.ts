@@ -65,6 +65,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'background-image': ['none', 'none, none'], 'background-position-x': ['0%', 'right 4px'], 'background-position-y': ['0%', '25%'], 'background-size': ['auto', 'cover'], 'background-repeat': ['repeat', 'no-repeat'], 'background-attachment': ['scroll', 'scroll, scroll'], 'background-origin': ['padding-box', 'content-box'], 'background-clip': ['border-box', 'padding-box'],
       // T150a: visibility's two keywords that paint nothing.
       visibility: ['hidden', 'collapse'],
+      // MASK-CLIP: two rects on a relatively positioned box, where clip does not apply.
+      clip: ['rect(0, 0, 0, 0)', 'rect(1px 2px 3px 4px)'],
       // SVG-a1: two stroke widths; SVG-opacity: two fill and stroke opacities.
       'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.

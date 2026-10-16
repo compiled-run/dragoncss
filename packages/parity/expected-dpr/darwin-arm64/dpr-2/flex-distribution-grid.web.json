@@ -153,7 +153,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -299,7 +300,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -445,7 +447,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -591,7 +594,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -737,7 +741,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -883,7 +888,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -1029,7 +1035,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -1175,7 +1182,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -1321,7 +1329,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -1467,7 +1476,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -1613,7 +1623,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -1759,7 +1770,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -1905,7 +1917,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2051,7 +2064,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2197,7 +2211,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2343,7 +2358,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2489,7 +2505,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2635,7 +2652,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2781,7 +2799,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -2927,7 +2946,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -3073,7 +3093,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -3219,7 +3240,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -3365,7 +3387,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -3511,7 +3534,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -3657,7 +3681,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -3803,7 +3828,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -3949,7 +3975,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -4095,7 +4122,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -4241,7 +4269,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -4387,7 +4416,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -4533,7 +4563,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -4679,7 +4710,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -4825,7 +4857,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -4971,7 +5004,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -5117,7 +5151,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -5263,7 +5298,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -5409,7 +5445,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -5555,7 +5592,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -5701,7 +5739,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -5847,7 +5886,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -5993,7 +6033,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -6139,7 +6180,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -6285,7 +6327,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -6431,7 +6474,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -6577,7 +6621,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -6723,7 +6768,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -6869,7 +6915,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -7015,7 +7062,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -7161,7 +7209,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -7307,7 +7356,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -7453,7 +7503,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -7599,7 +7650,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -7745,7 +7797,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -7891,7 +7944,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -8037,7 +8091,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -8183,7 +8238,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -8329,7 +8385,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -8475,7 +8532,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -8621,7 +8679,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -8767,7 +8826,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -8913,7 +8973,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -9059,7 +9120,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -9205,7 +9267,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -9351,7 +9414,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -9497,7 +9561,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -9643,7 +9708,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -9789,7 +9855,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -9935,7 +10002,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -10081,7 +10149,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -10227,7 +10296,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -10373,7 +10443,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -10519,7 +10590,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -10665,7 +10737,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -10811,7 +10884,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -10957,7 +11031,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -11103,7 +11178,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -11249,7 +11325,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -11395,7 +11472,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -11541,7 +11619,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -11687,7 +11766,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -11833,7 +11913,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -11979,7 +12060,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -12125,7 +12207,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -12271,7 +12354,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -12417,7 +12501,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -12563,7 +12648,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -12709,7 +12795,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -12855,7 +12942,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -13001,7 +13089,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -13147,7 +13236,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -13293,7 +13383,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -13439,7 +13530,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -13585,7 +13677,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -13731,7 +13824,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -13877,7 +13971,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -14023,7 +14118,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -14169,7 +14265,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -14315,7 +14412,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -14461,7 +14559,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -14607,7 +14706,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -14753,7 +14853,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -14899,7 +15000,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -15045,7 +15147,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -15191,7 +15294,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -15337,7 +15441,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -15483,7 +15588,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -15629,7 +15735,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -15775,7 +15882,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -15921,7 +16029,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -16067,7 +16176,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -16213,7 +16323,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -16359,7 +16470,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -16505,7 +16617,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -16651,7 +16764,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -16797,7 +16911,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -16943,7 +17058,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -17089,7 +17205,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -17235,7 +17352,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -17381,7 +17499,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -17527,7 +17646,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -17673,7 +17793,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -17819,7 +17940,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -17965,7 +18087,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -18111,7 +18234,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -18257,7 +18381,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -18403,7 +18528,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -18549,7 +18675,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -18695,7 +18822,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -18841,7 +18969,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -18987,7 +19116,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -19133,7 +19263,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -19279,7 +19410,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -19425,7 +19557,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -19571,7 +19704,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -19717,7 +19851,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -19863,7 +19998,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -20009,7 +20145,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -20155,7 +20292,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -20301,7 +20439,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -20447,7 +20586,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -20593,7 +20733,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -20739,7 +20880,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -20885,7 +21027,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -21031,7 +21174,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -21177,7 +21321,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -21323,7 +21468,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -21469,7 +21615,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -21615,7 +21762,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -21761,7 +21909,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -21907,7 +22056,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -22053,7 +22203,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -22199,7 +22350,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -22345,7 +22497,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -22491,7 +22644,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -22637,7 +22791,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -22783,7 +22938,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -22929,7 +23085,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -23075,7 +23232,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -23221,7 +23379,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -23367,7 +23526,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -23513,7 +23673,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -23659,7 +23820,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -23805,7 +23967,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -23951,7 +24114,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -24097,7 +24261,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -24243,7 +24408,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -24389,7 +24555,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -24535,7 +24702,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -24681,7 +24849,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     },
     {
@@ -24827,7 +24996,8 @@
         "text-shadow": "none",
         "-webkit-box-orient": "horizontal",
         "-webkit-line-clamp": "none",
-        "touch-action": "auto"
+        "touch-action": "auto",
+        "clip": "auto"
       }
     }
   ]
