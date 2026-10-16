@@ -3535,178 +3535,6 @@
            "children": [
             {
              "kind": "box",
-             "id": "cut-j-t",
-             "boxType": "element",
-             "style": {
-              "display": "block",
-              "position": "static",
-              "top": {
-               "kind": "auto"
-              },
-              "right": {
-               "kind": "auto"
-              },
-              "bottom": {
-               "kind": "auto"
-              },
-              "left": {
-               "kind": "auto"
-              },
-              "overflowX": "visible",
-              "overflowY": "visible",
-              "direction": "ltr",
-              "boxSizing": "content-box",
-              "width": {
-               "kind": "auto"
-              },
-              "height": {
-               "kind": "auto"
-              },
-              "minWidth": {
-               "kind": "auto"
-              },
-              "minHeight": {
-               "kind": "auto"
-              },
-              "maxWidth": {
-               "kind": "none"
-              },
-              "maxHeight": {
-               "kind": "none"
-              },
-              "marginTop": {
-               "kind": "px",
-               "value": 0
-              },
-              "marginRight": {
-               "kind": "px",
-               "value": 0
-              },
-              "marginBottom": {
-               "kind": "px",
-               "value": 0
-              },
-              "marginLeft": {
-               "kind": "px",
-               "value": 0
-              },
-              "paddingTop": {
-               "kind": "px",
-               "value": 0
-              },
-              "paddingRight": {
-               "kind": "px",
-               "value": 0
-              },
-              "paddingBottom": {
-               "kind": "px",
-               "value": 0
-              },
-              "paddingLeft": {
-               "kind": "px",
-               "value": 0
-              },
-              "borderTopWidth": {
-               "kind": "px",
-               "value": 0
-              },
-              "borderRightWidth": {
-               "kind": "px",
-               "value": 0
-              },
-              "borderBottomWidth": {
-               "kind": "px",
-               "value": 0
-              },
-              "borderLeftWidth": {
-               "kind": "px",
-               "value": 0
-              },
-              "flexDirection": "row",
-              "flexWrap": "nowrap",
-              "flexGrow": 0,
-              "flexShrink": 1,
-              "flexBasis": {
-               "kind": "auto"
-              },
-              "order": 0,
-              "justifyContent": "normal",
-              "alignItems": "normal",
-              "alignSelf": "auto",
-              "alignContent": "normal",
-              "rowGap": {
-               "kind": "normal"
-              },
-              "columnGap": {
-               "kind": "normal"
-              },
-              "textAlign": "start",
-              "aspectRatio": {
-               "kind": "auto"
-              },
-              "verticalAlign": {
-               "kind": "keyword",
-               "value": "baseline"
-              },
-              "textOverflow": "clip",
-              "textIndent": {
-               "kind": "px",
-               "value": 0
-              },
-              "lineClamp": 0,
-              "grid": null,
-              "gridItem": null
-             },
-             "strut": {
-              "font": {
-               "family": "Ahem",
-               "size": 16,
-               "specifiedSize": {
-                "kind": "px",
-                "value": 16
-               },
-               "absoluteSize": true
-              },
-              "lineHeight": {
-               "kind": "px",
-               "value": 16
-              }
-             },
-             "children": [
-              {
-               "kind": "text",
-               "id": "cut-j-t:text0",
-               "text": "XX",
-               "font": {
-                "family": "Ahem",
-                "size": 16,
-                "specifiedSize": {
-                 "kind": "px",
-                 "value": 16
-                },
-                "absoluteSize": true
-               },
-               "lineHeight": {
-                "kind": "px",
-                "value": 16
-               },
-               "whiteSpaceCollapse": "collapse",
-               "textWrapMode": "wrap",
-               "letterSpacing": {
-                "kind": "px",
-                "value": 0
-               },
-               "wordSpacing": {
-                "kind": "px",
-                "value": 0
-               },
-               "overflowWrap": "normal",
-               "wordBreak": "normal"
-              }
-             ]
-            },
-            {
-             "kind": "box",
              "id": "cut-j-out",
              "boxType": "element",
              "style": {
@@ -4529,7 +4357,7 @@
            "children": [
             {
              "kind": "box",
-             "id": "cut-u-t",
+             "id": "cut-u-k",
              "boxType": "element",
              "style": {
               "display": "block",
@@ -4551,10 +4379,12 @@
               "direction": "ltr",
               "boxSizing": "content-box",
               "width": {
-               "kind": "auto"
+               "kind": "px",
+               "value": 40
               },
               "height": {
-               "kind": "auto"
+               "kind": "px",
+               "value": 16
               },
               "minWidth": {
                "kind": "auto"
@@ -4651,53 +4481,8 @@
               "grid": null,
               "gridItem": null
              },
-             "strut": {
-              "font": {
-               "family": "Ahem",
-               "size": 16,
-               "specifiedSize": {
-                "kind": "px",
-                "value": 16
-               },
-               "absoluteSize": true
-              },
-              "lineHeight": {
-               "kind": "px",
-               "value": 16
-              }
-             },
-             "children": [
-              {
-               "kind": "text",
-               "id": "cut-u-t:text0",
-               "text": "XX",
-               "font": {
-                "family": "Ahem",
-                "size": 16,
-                "specifiedSize": {
-                 "kind": "px",
-                 "value": 16
-                },
-                "absoluteSize": true
-               },
-               "lineHeight": {
-                "kind": "px",
-                "value": 16
-               },
-               "whiteSpaceCollapse": "collapse",
-               "textWrapMode": "wrap",
-               "letterSpacing": {
-                "kind": "px",
-                "value": 0
-               },
-               "wordSpacing": {
-                "kind": "px",
-                "value": 0
-               },
-               "overflowWrap": "normal",
-               "wordBreak": "normal"
-              }
-             ]
+             "strut": null,
+             "children": []
             }
            ]
           }
@@ -4816,27 +4601,11 @@
    "height": 10752
   },
   {
-   "id": "cut-u-t",
+   "id": "cut-u-k",
    "parent": "cut-u",
    "x": 1344,
    "y": 1344,
-   "width": 10752,
-   "height": 2688
-  },
-  {
-   "id": "cut-u-t:text0",
-   "parent": "cut-u-t",
-   "x": 0,
-   "y": 0,
-   "width": 5376,
-   "height": 2688
-  },
-  {
-   "id": "cut-u-t:text0:line0",
-   "parent": "cut-u-t:text0",
-   "x": 0,
-   "y": 0,
-   "width": 5376,
+   "width": 6720,
    "height": 2688
   },
   {
@@ -5008,34 +4777,10 @@
    "height": 10752
   },
   {
-   "id": "cut-j-t",
-   "parent": "cut-j",
-   "x": 1344,
-   "y": 1344,
-   "width": 10752,
-   "height": 2688
-  },
-  {
-   "id": "cut-j-t:text0",
-   "parent": "cut-j-t",
-   "x": 0,
-   "y": 0,
-   "width": 5376,
-   "height": 2688
-  },
-  {
-   "id": "cut-j-t:text0:line0",
-   "parent": "cut-j-t:text0",
-   "x": 0,
-   "y": 0,
-   "width": 5376,
-   "height": 2688
-  },
-  {
    "id": "cut-j-out",
    "parent": "cut-j",
    "x": 1344,
-   "y": 9408,
+   "y": 6720,
    "width": 17472,
    "height": 4032
   }

@@ -107,27 +107,11 @@
    "height": 10752
   },
   {
-   "id": "cut-u-t",
+   "id": "cut-u-k",
    "parent": "cut-u",
    "x": 1344,
    "y": 1344,
-   "width": 10752,
-   "height": 2688
-  },
-  {
-   "id": "cut-u-t:text0",
-   "parent": "cut-u-t",
-   "x": 0,
-   "y": 0,
-   "width": 5376,
-   "height": 2688
-  },
-  {
-   "id": "cut-u-t:text0:line0",
-   "parent": "cut-u-t:text0",
-   "x": 0,
-   "y": 0,
-   "width": 5376,
+   "width": 6720,
    "height": 2688
   },
   {
@@ -299,34 +283,10 @@
    "height": 10752
   },
   {
-   "id": "cut-j-t",
-   "parent": "cut-j",
-   "x": 1344,
-   "y": 1344,
-   "width": 10752,
-   "height": 2688
-  },
-  {
-   "id": "cut-j-t:text0",
-   "parent": "cut-j-t",
-   "x": 0,
-   "y": 0,
-   "width": 5376,
-   "height": 2688
-  },
-  {
-   "id": "cut-j-t:text0:line0",
-   "parent": "cut-j-t:text0",
-   "x": 0,
-   "y": 0,
-   "width": 5376,
-   "height": 2688
-  },
-  {
    "id": "cut-j-out",
    "parent": "cut-j",
    "x": 1344,
-   "y": 9408,
+   "y": 6720,
    "width": 17472,
    "height": 4032
   }
@@ -450,30 +410,12 @@
    "height": 168
   },
   {
-   "id": "cut-u-t",
+   "id": "cut-u-k",
    "left": 504,
    "top": 609,
-   "right": 672,
+   "right": 609,
    "bottom": 651,
-   "width": 168,
-   "height": 42
-  },
-  {
-   "id": "cut-u-t:text0",
-   "left": 504,
-   "top": 609,
-   "right": 588,
-   "bottom": 651,
-   "width": 84,
-   "height": 42
-  },
-  {
-   "id": "cut-u-t:text0:line0",
-   "left": 504,
-   "top": 609,
-   "right": 588,
-   "bottom": 651,
-   "width": 84,
+   "width": 105,
    "height": 42
   },
   {
@@ -666,38 +608,11 @@
    "height": 168
   },
   {
-   "id": "cut-j-t",
-   "left": 819,
-   "top": 420,
-   "right": 987,
-   "bottom": 462,
-   "width": 168,
-   "height": 42
-  },
-  {
-   "id": "cut-j-t:text0",
-   "left": 819,
-   "top": 420,
-   "right": 903,
-   "bottom": 462,
-   "width": 84,
-   "height": 42
-  },
-  {
-   "id": "cut-j-t:text0:line0",
-   "left": 819,
-   "top": 420,
-   "right": 903,
-   "bottom": 462,
-   "width": 84,
-   "height": 42
-  },
-  {
    "id": "cut-j-out",
    "left": 819,
-   "top": 546,
+   "top": 504,
    "right": 1092,
-   "bottom": 609,
+   "bottom": 567,
    "width": 273,
    "height": 63
   }
