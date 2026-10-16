@@ -5,7 +5,7 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { deviceEvidence } from '../packages/parity/src/device-evidence.ts';
-import { LANES_JSON, type LanesFile, evidenceBehind, staleLanes } from '../packages/parity/src/lanes.ts';
+import { casesNotRun, LANES_JSON, type LanesFile, evidenceBehind, staleLanes } from '../packages/parity/src/lanes.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import { NATIVE_TARGETS, nativeTargets } from '../packages/parity/src/targets.ts';
 
@@ -32,10 +32,10 @@ export const parseLanesForStamp = (v: unknown, what: string): LanesFile => {
 
 /**
  * Why the device evidence committed in `file` is not current for this tree; empty when every device lane that ran carries this
- * tree's stamp, the file describes the current lane configuration, and every native target has device evidence at all.
+ * tree's stamp and ran every configured case, the file describes the current lane configuration, and every native target has device evidence at all.
  */
 export const stampProblems = (file: LanesFile): string[] => {
-  const problems = [...staleLanes(file, nativeTargets()), ...evidenceBehind(file)];
+  const problems = [...staleLanes(file, nativeTargets()), ...evidenceBehind(file), ...casesNotRun(file, nativeTargets())];
   for (const target of NATIVE_TARGETS) {
     const t = file.targets.find((x) => x.target === target);
     if (t !== undefined && !t.lanes.some((l) => l.where === 'device' && l.state !== 'not run')) problems.push(`${LANES_JSON}: ${target} has no device lane that ran`);
