@@ -633,6 +633,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'visibility':
         // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
         throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
+      case 'clip-rect-empty':
+        // MASK-CLIP: a state record holds no clip write; the empty clip rect hides the box on the static program only.
+        throw new StateEmitError(`${n.id}: a clip rect in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

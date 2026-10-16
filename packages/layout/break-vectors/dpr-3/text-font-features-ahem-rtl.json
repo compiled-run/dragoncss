@@ -1,0 +1,13 @@
+{
+  "case": "text-font-features-ahem-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"liga:text0","lines":[[0,7],[7,9]]},
+    {"id":"many:text0","lines":[[0,6],[6,10]]},
+    {"id":"inh:text0","lines":[[0,7],[7,9]]},
+    {"id":"both:text0","lines":[[0,6]]},
+    {"id":"reset:text0","lines":[[0,6]]},
+    {"id":"ra:text0","lines":[[0,6],[6,8]]},
+    {"id":"rb:text0","lines":[[0,3]]}
+  ]
+}

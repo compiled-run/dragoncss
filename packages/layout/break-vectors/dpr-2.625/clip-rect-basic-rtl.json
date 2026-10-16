@@ -1,0 +1,8 @@
+{
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,4]]},
+    {"id":"t2:text0","lines":[[0,2]]}
+  ]
+}

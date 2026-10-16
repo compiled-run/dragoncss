@@ -3,16 +3,16 @@
 // action). Native views pan every scroll view in every direction it scrolls and zoom nothing,
 // so on iOS and Android a computed touch-action is compiled only when it allows every pan direction: auto, manipulation and pan-x
 // pan-y, which differ from each other only in pinch and double-tap zoom, neither of which native output has. Any other value is
-// refused where it applies: the spec applies touch-action to every element but a non-replaced inline box, a table row, column or
-// their groups, and a box that generates none (display contents or none) has no area a touch could start on.
+// refused where it applies. Chrome applies touch-action to every element but a display: inline box other than an <img> or an outer
+// <svg> (an inline <iframe> included), a table row, row group, column or column group (a table header or footer group keeps it), and
+// a box that generates none (display contents or none), which has no area a touch could start on.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { touchActionPans } from '../css/properties/touch-action.ts';
 import type { Diagnostic } from '../types.ts';
 import type { ResolvedValue } from './computed.ts';
-import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement } from './resolve.ts';
 
-const IGNORED_DISPLAY: readonly string[] = ['contents', 'none', 'table-row', 'table-row-group', 'table-header-group', 'table-footer-group', 'table-column', 'table-column-group'];
+const IGNORED_DISPLAY: readonly string[] = ['contents', 'none', 'table-row', 'table-row-group', 'table-column', 'table-column-group'];
 
 /** Refuses, per native target, a touch-action on el that stops a pan direction, where Chrome applies it. */
 export function checkTouchAction(el: ResolvedElement, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
@@ -24,7 +24,7 @@ export function checkTouchAction(el: ResolvedElement, nativeTargets: readonly st
   const display = el.props.get('display') as ResolvedValue | undefined;
   const d = display?.value.kind === 'keyword' ? display.value.value : null;
   if (d !== null && IGNORED_DISPLAY.includes(d)) return;
-  if (d === 'inline' && !isReplacedTag(el.element.tag) && el.element.tag !== 'svg') return;
+  if (d === 'inline' && el.element.tag !== 'img' && el.element.tag !== 'svg') return;
   for (const t of nativeTargets) {
     const id = `${t}|touch-action|${el.element.address}`;
     if (reported.has(id)) continue;

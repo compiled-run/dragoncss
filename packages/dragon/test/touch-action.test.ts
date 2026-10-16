@@ -8,6 +8,7 @@ import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
 import { LINE_CLAMP_LONGHANDS } from '../src/css/properties/line-clamp.ts';
+import { CLIP_RECT_LONGHANDS } from '../src/css/properties/clip-rect.ts';
 import { TOUCH_ACTION_LONGHANDS, touchActionPans } from '../src/css/properties/touch-action.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE } from '../src/css/animation-kinds/kinds.ts';
@@ -33,10 +34,11 @@ function compile(css: string, targets: Targets = { web: {} }, tag = 'div') {
 const errors = (c: ReturnType<typeof compile>): Diagnostic[] => c.diagnostics.filter((d) => d.severity === 'error');
 
 describe('touch-action: registry and parse', () => {
-  it('follows line-clamp, last, not inherited, with no layout or paint aspect, discrete, initial auto', () => {
+  it('follows line-clamp and precedes clip, not inherited, with no layout or paint aspect, discrete, initial auto', () => {
     expect([...TOUCH_ACTION_LONGHANDS]).toEqual(['touch-action']);
     expect(LONGHANDS[LONGHANDS.indexOf('touch-action') - 1]).toBe(LINE_CLAMP_LONGHANDS[LINE_CLAMP_LONGHANDS.length - 1]);
-    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('touch-action');
+    // FAMILIES runs line-clamp, touch-action, clip-rect (properties.ts).
+    expect(LONGHANDS[LONGHANDS.indexOf('touch-action') + 1]).toBe(CLIP_RECT_LONGHANDS[0]);
     expect(INHERITED.has('touch-action')).toBe(false);
     expect(PROPERTY_ASPECTS['touch-action']).toEqual({ layout: false, paint: false });
     expect(ANIMATION_KINDS['touch-action']).toBe(DISCRETE);
@@ -102,6 +104,16 @@ describe('touch-action on native', () => {
   it('Chrome ignores it on a non-replaced inline box, a table row, display contents or none, so native compiles it there', () => {
     for (const css of ['.a { display: inline; touch-action: none; } .b { display: inline; }', '.a { display: contents; touch-action: none; }', '.a { display: none; touch-action: pan-y; }', '.a { display: table-row; touch-action: none; }']) {
       expect(errors(compile(css, NATIVE)).filter((d) => d.message.includes('touch-action')), css).toEqual([]);
+    }
+  });
+
+  it('Chrome ignores it on an inline <iframe>, which it does not count as replaced here, so native compiles it there', () => {
+    expect(errors(compile('.a { display: inline; touch-action: none; }', NATIVE, 'iframe')).filter((d) => d.message.includes('touch-action'))).toEqual([]);
+  });
+
+  it('Chrome keeps it on a table header or footer group, so native refuses none there', () => {
+    for (const d of ['table-header-group', 'table-footer-group']) {
+      expect(errors(compile(`.a { display: ${d}; touch-action: none; }`, NATIVE)).filter((x) => x.message.includes('touch-action')).length, d).toBe(2);
     }
   });
 

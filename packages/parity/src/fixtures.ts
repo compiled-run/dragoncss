@@ -12,6 +12,7 @@ import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
 import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CHARSET } from './fixture-groups/charset.ts';
+import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
@@ -51,6 +52,11 @@ import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
 import { TEXT_FILL_STROKE } from './fixture-groups/text-fill-stroke.ts';
+import { TEXT_FONT_FEATURES } from './fixture-groups/text-font-features.ts';
+import { TEXT_FONT_SIZE } from './fixture-groups/text-font-size.ts';
+import { TEXT_FONT_STRETCH } from './fixture-groups/text-font-stretch.ts';
+import { TEXT_FONT_TUNING } from './fixture-groups/text-font-tuning.ts';
+import { TEXT_FONT_VARIANT } from './fixture-groups/text-font-variant.ts';
 import { TEXT_INDENT } from './fixture-groups/text-indent.ts';
 import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
@@ -132,6 +138,7 @@ export const GROUPS = {
   'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
   charset: CHARSET,
+  'clip-rect': CLIP_RECT,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
@@ -171,6 +178,11 @@ export const GROUPS = {
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
   'text-fill-stroke': TEXT_FILL_STROKE,
+  'text-font-features': TEXT_FONT_FEATURES,
+  'text-font-size': TEXT_FONT_SIZE,
+  'text-font-stretch': TEXT_FONT_STRETCH,
+  'text-font-tuning': TEXT_FONT_TUNING,
+  'text-font-variant': TEXT_FONT_VARIANT,
   'text-indent': TEXT_INDENT,
   'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,

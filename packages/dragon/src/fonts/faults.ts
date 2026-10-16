@@ -48,6 +48,14 @@ export type FontFaults = {
   readonly synthesisResetByShorthand: boolean;
   /** font: inherit (any CSS-wide keyword) sets every font longhand Dragon models but line-height. */
   readonly inheritNotAllLonghands: boolean;
+  /** The font shorthand leaves the font-variant longhands alone (Chrome's resets each to normal). */
+  readonly variantNotReset: boolean;
+  /** The font shorthand leaves font-kerning, font-optical-sizing and font-language-override alone (Chrome's resets each). */
+  readonly tuningNotReset: boolean;
+  /** The font shorthand without a width keyword leaves font-stretch alone (Chrome's resets it to normal). */
+  readonly stretchNotReset: boolean;
+  /** The font shorthand leaves font-feature-settings and font-variation-settings alone (Chrome's resets both to normal). */
+  readonly featureSettingsNotReset: boolean;
 };
 
 export const NO_FONT_FAULTS: FontFaults = {
@@ -74,6 +82,10 @@ export const NO_FONT_FAULTS: FontFaults = {
   lineHeightNotReset: false,
   synthesisResetByShorthand: false,
   inheritNotAllLonghands: false,
+  variantNotReset: false,
+  tuningNotReset: false,
+  stretchNotReset: false,
+  featureSettingsNotReset: false,
 };
 
 export type FontFaultName = keyof FontFaults;
@@ -85,7 +97,7 @@ export const CAPTURE_FAULTS: readonly FontFaultName[] = [
 ];
 export const UNIT_FAULTS: readonly FontFaultName[] = ['remoteUrlAccepted', 'manifestOrderSensitive', 'skipUnreadableSrc', 'fenceDisabled'];
 /** The font shorthand faults (TXT-W2, css/shorthands/text.ts fontShorthand), each caught against Chrome by font-shorthand.test.ts. */
-export const SHORTHAND_FAULTS: readonly FontFaultName[] = ['lineHeightNotReset', 'synthesisResetByShorthand', 'inheritNotAllLonghands'];
+export const SHORTHAND_FAULTS: readonly FontFaultName[] = ['lineHeightNotReset', 'synthesisResetByShorthand', 'inheritNotAllLonghands', 'variantNotReset', 'tuningNotReset', 'stretchNotReset', 'featureSettingsNotReset'];
 /** The computed font-weight and font-style faults (TXT-W1, fonts/weight.ts), each caught against Chrome by text-weight.test.ts. */
 export const WEIGHT_FAULTS: readonly FontFaultName[] = ['bolderBandEdge', 'lighterBandEdge', 'weightNotInherited', 'obliqueAngleDropped', 'syntheticBoldThreshold700', 'quarterUnitRounding'];
 

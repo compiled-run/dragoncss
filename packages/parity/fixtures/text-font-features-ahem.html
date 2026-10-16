@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 60px; margin-bottom: 2px; }
+.liga { font-feature-settings: "liga" 1; }
+.many { font-feature-settings: "liga" off, "kern" 0, "smcp", "tnum" on, "ss01" 3; }
+.wght { font-variation-settings: "wght" 500; }
+.both { font-feature-settings: "dlig"; font-variation-settings: "wdth" 75, "opsz" 12.5; }
+.reset { font-feature-settings: "smcp"; font: 10px/1 Ahem; }
+.row { display: flex; width: 120px; font-feature-settings: "c2sc"; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="liga" class="w liga">fi ffl XX</div>
+<div data-dragon-id="many" class="w many">Ab cd XX X</div>
+<div data-dragon-id="wght" class="w wght"><div data-dragon-id="inh">XX XXX XX</div></div>
+<div data-dragon-id="both" class="w both">XXX XX</div>
+<div data-dragon-id="reset" class="w reset">X XX X</div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="ra" class="w">XX XX XX</div><div data-dragon-id="rb">X X</div></div>
+</body>
+</html>

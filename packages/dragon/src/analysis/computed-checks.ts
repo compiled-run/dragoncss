@@ -7,12 +7,25 @@ import { ProgramError } from '../lower/paint/types.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
-import { exactLayoutRatio, featureOf } from '../css/values.ts';
+import { exactLayoutRatio, featureOf, isMathValue } from '../css/values.ts';
 import type { CssValue, FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import { GEN_B_FAULTS } from '../faults/gen-b.ts';
+import type { TxtFvFaults } from '../faults/txt-fv.ts';
+import { TXT_FV_FAULTS } from '../faults/txt-fv.ts';
+import { checkFontVariant } from './font-variant.ts';
+import type { TxtFtFaults } from '../faults/txt-ft.ts';
+import { TXT_FT_FAULTS } from '../faults/txt-ft.ts';
+import { checkFontTuning } from './font-tuning.ts';
+import type { TxtFstretchFaults } from '../faults/txt-fstretch.ts';
+import { TXT_FSTRETCH_FAULTS } from '../faults/txt-fstretch.ts';
+import { stretchPercent } from '../css/properties/font-stretch.ts';
+import type { TxtFfFaults } from '../faults/txt-ff.ts';
+import { TXT_FF_FAULTS } from '../faults/txt-ff.ts';
+import type { TxtFsFaults } from '../faults/txt-fs.ts';
+import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
 import type { TxtFillFaults } from '../faults/txt-fill.ts';
 import { TXT_FILL_FAULTS } from '../faults/txt-fill.ts';
 import type { TxtFxFaults } from '../faults/txt-fx.ts';
@@ -596,11 +609,14 @@ function listMarkerOf(el: ResolvedElement): string | null {
   return type.kind === 'keyword' && type.value === 'none' ? null : valueToString(type);
 }
 
+/** Chrome's font-relative length units but rem (CSSPrimitiveValue::IsFontRelativeLength): a font-size in them keeps the parent's absoluteness. */
+const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 'rex', 'ch', 'rch', 'ic', 'ric', 'lh', 'rlh', 'cap', 'rcap']);
+
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
 // minimum logical font size clamps, and text without a real bundled face whose computed font-weight or font-style Chrome draws
 // synthesized (Ahem under a heading, b, strong, em, i or address, or an author weight of 600 and up).
-function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults): void {
+function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFsFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -615,7 +631,12 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const tag = el.element.tag;
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     const size = el.props.get('font-size') as ResolvedValue;
-    const absolute = size.origin === 'author' && size.declared !== null && size.declared.kind === 'length' ? true : size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : false;
+    // A percentage, smaller, larger and a font-relative length other than rem (em, ex, ch, ic, lh, cap and their root forms) keep
+    // the parent's absoluteness; any other length and a math function are absolute (style_builder_converter.cc ConvertFontSize,
+    // 928-974); an <absolute-size> keyword is never absolute.
+    const declared = size.origin === 'author' ? size.declared : null;
+    const relative = declared !== null && (declared.kind === 'percentage' || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
+    const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
     const keyed = uaRows(ua, uaTagOf(tag)).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
@@ -643,6 +664,9 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       }
       if (size.origin === 'user-agent' && size.value.kind === 'length' && size.value.unit === 'px' && size.value.value < ua.minimumLogicalFontSize && !parentAbsolute) {
         perTarget(el, 'font-size', `font-size: ${valueToString(size.value)} on <${tag}> ${el.element.address} comes from Chrome's user-agent stylesheet and is below Chrome's minimum logical font size (${ua.minimumLogicalFontSize}px), which Chrome clamps depending on the device pixel ratio`, `Set a px font-size on <${tag}> ${el.element.address} or one of its ancestors.`);
+      }
+      if (relative && !faults.keywordMinimumUnchecked && size.value.kind === 'length' && size.value.unit === 'px' && size.value.value < ua.minimumLogicalFontSize && !parentAbsolute) {
+        perTarget(el, 'font-size', `font-size: ${valueToString(size.value)} on <${tag}> ${el.element.address} is below Chrome's minimum logical font size (${ua.minimumLogicalFontSize}px) and has no px size above it, which Chrome clamps depending on the device pixel ratio`, `Set a px font-size on <${tag}> ${el.element.address} or one of its ancestors.`);
       }
     }
     if (!here) {
@@ -835,7 +859,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFillFaults & TxtFxFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -864,6 +888,12 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
+      // TXT-FONTFEAT: font-variant features over real faces (analysis/font-variant.ts).
+      checkFontVariant(el, targets, diagnostics, reported, shapedAt, faults);
+      // TXT-FONTFEAT: kerning, optical sizing and language override over real faces (analysis/font-tuning.ts).
+      checkFontTuning(el, targets, diagnostics, reported, shapedAt, faults);
+      checkFontStretch(el, targets, diagnostics, reported, shapedAt, faults);
+      checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
       checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
@@ -881,6 +911,30 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
   checkTextTransform(root, targets, diagnostics, reported);
+}
+
+// TXT-FONTFEAT (css-fonts-4 §2.4): font-stretch selects a face by width and is never synthesized, so it leaves Chrome's glyphs alone
+// in a one-face family at 100% (Ahem). Dragon matches no face by width, so a width other than 100% over text in a real face is
+// refused for every target, once per text. Planted fault fontStretchOnRealFaceAccepted accepts it.
+function checkFontStretch(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean, faults: TxtFstretchFaults): void {
+  if (faults.fontStretchOnRealFaceAccepted) return;
+  const v = el.props.get('font-stretch') as ResolvedValue;
+  if (stretchPercent(v.value) === 100) return;
+  for (const c of el.children) {
+    if (c.kind !== 'text' || !shapedAt(c.node.address)) continue;
+    const id = `font-stretch|${c.node.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: c.node.node.origin,
+        target: t,
+        message: `font-stretch: ${valueToString(v.value)} reaches text ${c.node.address}, which is drawn in a real face: Dragon matches no face by width yet (TXT-FONTFEAT)`,
+        manual: `Set font-stretch to normal on the text of ${el.element.address}, or draw it in a one-face family such as Ahem.`,
+        basis: 'computed-value',
+      }));
+    }
+  }
 }
 
 // TXT-FX (compat §5): glyphs are painted in color and no stroke is drawn, which is what Chrome draws for a fill colour of currentcolor
@@ -1026,3 +1080,27 @@ function originOfElement(root: ResolvedElement, address: string): ResolvedElemen
   return hit.element.node.origin;
 }
 
+// TXT-FONTFEAT (css-fonts-4 §6.12, §7.2): Dragon applies no OpenType feature or variation axis, which leaves Chrome's glyphs alone only
+// in a face that has none (Ahem). A non-normal font-feature-settings or font-variation-settings over text in a real face is refused
+// for every target, once per text. Planted fault fontFeaturesOnRealFaceAccepted accepts it.
+function checkFontFeatures(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean, faults: TxtFfFaults): void {
+  if (faults.fontFeaturesOnRealFaceAccepted) return;
+  const set = (['font-feature-settings', 'font-variation-settings'] as const).filter((p) => keywordOf(el.props.get(p) as ResolvedValue) !== 'normal');
+  if (set.length === 0) return;
+  for (const c of el.children) {
+    if (c.kind !== 'text' || !shapedAt(c.node.address)) continue;
+    const id = `font-features|${c.node.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    const what = set.map((p) => `${p}: ${valueToString((el.props.get(p) as ResolvedValue).value)}`).join(' and ');
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: c.node.node.origin,
+        target: t,
+        message: `${what} reaches text ${c.node.address}, which is drawn in a real face: Dragon applies no OpenType feature or variation axis yet (TXT-FONTFEAT)`,
+        manual: `Set ${set.join(' and ')} to normal on the text of ${el.element.address}, or draw it in a face without features.`,
+        basis: 'computed-value',
+      }));
+    }
+  }
+}
