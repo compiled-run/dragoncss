@@ -163,22 +163,6 @@
    "height": 1920
   },
   {
-   "id": "cut-c-k:text0",
-   "parent": "cut-c-k",
-   "x": 0,
-   "y": 0,
-   "width": 3840,
-   "height": 1920
-  },
-  {
-   "id": "cut-c-k:text0:line0",
-   "parent": "cut-c-k:text0",
-   "x": 0,
-   "y": 0,
-   "width": 3840,
-   "height": 1920
-  },
-  {
    "id": "cut-d",
    "parent": "row1",
    "x": 48768,
@@ -259,19 +243,11 @@
    "height": 192
   },
   {
-   "id": "cut-sr:text0",
+   "id": "cut-sr-k",
    "parent": "cut-sr",
    "x": 0,
    "y": 0,
-   "width": 11520,
-   "height": 1920
-  },
-  {
-   "id": "cut-sr:text0:line0",
-   "parent": "cut-sr:text0",
-   "x": 0,
-   "y": 0,
-   "width": 11520,
+   "width": 7680,
    "height": 1920
   },
   {
@@ -465,24 +441,6 @@
    "height": 30
   },
   {
-   "id": "cut-c-k:text0",
-   "left": 573,
-   "top": 48,
-   "right": 633,
-   "bottom": 78,
-   "width": 60,
-   "height": 30
-  },
-  {
-   "id": "cut-c-k:text0:line0",
-   "left": 573,
-   "top": 48,
-   "right": 633,
-   "bottom": 78,
-   "width": 60,
-   "height": 30
-  },
-  {
    "id": "cut-d",
    "left": 810,
    "top": 39,
@@ -573,21 +531,12 @@
    "height": 3
   },
   {
-   "id": "cut-sr:text0",
+   "id": "cut-sr-k",
    "left": 45,
    "top": 465,
-   "right": 225,
+   "right": 165,
    "bottom": 495,
-   "width": 180,
-   "height": 30
-  },
-  {
-   "id": "cut-sr:text0:line0",
-   "left": 45,
-   "top": 465,
-   "right": 225,
-   "bottom": 495,
-   "width": 180,
+   "width": 120,
    "height": 30
   },
   {
