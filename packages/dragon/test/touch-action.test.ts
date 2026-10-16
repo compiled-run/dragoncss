@@ -107,6 +107,16 @@ describe('touch-action on native', () => {
     }
   });
 
+  it('Chrome ignores it on an inline <iframe>, which it does not count as replaced here, so native compiles it there', () => {
+    expect(errors(compile('.a { display: inline; touch-action: none; }', NATIVE, 'iframe')).filter((d) => d.message.includes('touch-action'))).toEqual([]);
+  });
+
+  it('Chrome keeps it on a table header or footer group, so native refuses none there', () => {
+    for (const d of ['table-header-group', 'table-footer-group']) {
+      expect(errors(compile(`.a { display: ${d}; touch-action: none; }`, NATIVE)).filter((x) => x.message.includes('touch-action')).length, d).toBe(2);
+    }
+  });
+
   it('an inline-block or a replaced inline box with none is refused', () => {
     expect(errors(compile('.a { display: inline-block; touch-action: none; }', NATIVE)).length).toBe(2);
     expect(errors(compile('.a { touch-action: none; }', NATIVE, 'img')).filter((d) => d.message.includes('touch-action')).length).toBe(2);
