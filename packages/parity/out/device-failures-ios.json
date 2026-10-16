@@ -40,6 +40,230 @@
   "detail": "edge:c1:left:clear at 26,75: native [0,0,255,255], Chrome [51,51,51,255] (channel delta limit 0)"
  },
  {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-a",
+  "kind": "applied",
+  "detail": "cut-a: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-b",
+  "kind": "applied",
+  "detail": "cut-b: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-c",
+  "kind": "applied",
+  "detail": "cut-c: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-d",
+  "kind": "applied",
+  "detail": "cut-d: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-e",
+  "kind": "applied",
+  "detail": "cut-e: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-f",
+  "kind": "applied",
+  "detail": "cut-f: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-g",
+  "kind": "applied",
+  "detail": "cut-g: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-h",
+  "kind": "applied",
+  "detail": "cut-h: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 3,
+  "node": "cut-sr",
+  "kind": "applied",
+  "detail": "cut-sr: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-a",
+  "kind": "applied",
+  "detail": "cut-a: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-b",
+  "kind": "applied",
+  "detail": "cut-b: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-c",
+  "kind": "applied",
+  "detail": "cut-c: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-d",
+  "kind": "applied",
+  "detail": "cut-d: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-e",
+  "kind": "applied",
+  "detail": "cut-e: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-f",
+  "kind": "applied",
+  "detail": "cut-f: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-g",
+  "kind": "applied",
+  "detail": "cut-g: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-h",
+  "kind": "applied",
+  "detail": "cut-h: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 3,
+  "node": "cut-sr",
+  "kind": "applied",
+  "detail": "cut-sr: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 3,
+  "node": "cut-flex",
+  "kind": "applied",
+  "detail": "cut-flex: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 3,
+  "node": "cut-pos",
+  "kind": "applied",
+  "detail": "cut-pos: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 3,
+  "node": "cut-ctx",
+  "kind": "applied",
+  "detail": "cut-ctx: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 3,
+  "node": "cut-t",
+  "kind": "applied",
+  "detail": "cut-t: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 3,
+  "node": "cut-inner",
+  "kind": "applied",
+  "detail": "cut-inner: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 3,
+  "node": "cut-flex",
+  "kind": "applied",
+  "detail": "cut-flex: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 3,
+  "node": "cut-pos",
+  "kind": "applied",
+  "detail": "cut-pos: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 3,
+  "node": "cut-ctx",
+  "kind": "applied",
+  "detail": "cut-ctx: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 3,
+  "node": "cut-t",
+  "kind": "applied",
+  "detail": "cut-t: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 3,
+  "node": "cut-inner",
+  "kind": "applied",
+  "detail": "cut-inner: applied key visibility is not expected"
+ },
+ {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
@@ -646,6 +870,230 @@
   "node": "outside:c2",
   "kind": "pixel",
   "detail": "outside:c2 at 31,51: native [0,0,255,255], Chrome [51,51,51,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-a",
+  "kind": "applied",
+  "detail": "cut-a: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-b",
+  "kind": "applied",
+  "detail": "cut-b: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-c",
+  "kind": "applied",
+  "detail": "cut-c: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-d",
+  "kind": "applied",
+  "detail": "cut-d: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-e",
+  "kind": "applied",
+  "detail": "cut-e: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-f",
+  "kind": "applied",
+  "detail": "cut-f: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-g",
+  "kind": "applied",
+  "detail": "cut-g: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-h",
+  "kind": "applied",
+  "detail": "cut-h: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic",
+  "dpr": 2,
+  "node": "cut-sr",
+  "kind": "applied",
+  "detail": "cut-sr: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-a",
+  "kind": "applied",
+  "detail": "cut-a: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-b",
+  "kind": "applied",
+  "detail": "cut-b: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-c",
+  "kind": "applied",
+  "detail": "cut-c: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-d",
+  "kind": "applied",
+  "detail": "cut-d: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-e",
+  "kind": "applied",
+  "detail": "cut-e: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-f",
+  "kind": "applied",
+  "detail": "cut-f: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-g",
+  "kind": "applied",
+  "detail": "cut-g: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-h",
+  "kind": "applied",
+  "detail": "cut-h: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-basic-rtl",
+  "dpr": 2,
+  "node": "cut-sr",
+  "kind": "applied",
+  "detail": "cut-sr: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 2,
+  "node": "cut-flex",
+  "kind": "applied",
+  "detail": "cut-flex: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 2,
+  "node": "cut-pos",
+  "kind": "applied",
+  "detail": "cut-pos: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 2,
+  "node": "cut-ctx",
+  "kind": "applied",
+  "detail": "cut-ctx: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 2,
+  "node": "cut-t",
+  "kind": "applied",
+  "detail": "cut-t: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested",
+  "dpr": 2,
+  "node": "cut-inner",
+  "kind": "applied",
+  "detail": "cut-inner: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 2,
+  "node": "cut-flex",
+  "kind": "applied",
+  "detail": "cut-flex: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 2,
+  "node": "cut-pos",
+  "kind": "applied",
+  "detail": "cut-pos: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 2,
+  "node": "cut-ctx",
+  "kind": "applied",
+  "detail": "cut-ctx: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 2,
+  "node": "cut-t",
+  "kind": "applied",
+  "detail": "cut-t: applied key visibility is not expected"
+ },
+ {
+  "lane": "device-applied",
+  "case": "clip-rect-nested-rtl",
+  "dpr": 2,
+  "node": "cut-inner",
+  "kind": "applied",
+  "detail": "cut-inner: applied key visibility is not expected"
  },
  {
   "lane": "device-pixels",
