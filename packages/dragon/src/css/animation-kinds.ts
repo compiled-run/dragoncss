@@ -9,9 +9,14 @@ import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_LAYERS_ANIMATION } from './animation-kinds/background-layers.ts';
 import { BORDER_ANIMATION } from './animation-kinds/border.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
+import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
 import { FLOAT_ANIMATION } from './animation-kinds/float.ts';
+import { FONT_FEATURES_ANIMATION } from './animation-kinds/font-features.ts';
+import { FONT_STRETCH_ANIMATION } from './animation-kinds/font-stretch.ts';
+import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
+import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
 import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
@@ -48,9 +53,14 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...BACKGROUND_LAYERS_ANIMATION,
   ...BORDER_ANIMATION,
   ...BOX_ANIMATION,
+  ...CLIP_RECT_ANIMATION,
   ...EFFECTS_ANIMATION,
   ...FLEX_ANIMATION,
   ...FLOAT_ANIMATION,
+  ...FONT_FEATURES_ANIMATION,
+  ...FONT_STRETCH_ANIMATION,
+  ...FONT_TUNING_ANIMATION,
+  ...FONT_VARIANT_ANIMATION,
   ...GRID_ANIMATION,
   ...INLINE_ANIMATION,
   ...LINE_CLAMP_ANIMATION,

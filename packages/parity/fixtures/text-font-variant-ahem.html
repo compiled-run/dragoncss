@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 65px; }
+.lig { font-variant-ligatures: no-common-ligatures discretionary-ligatures; }
+.none { font-variant-ligatures: none; }
+.num { font-variant-numeric: tabular-nums slashed-zero ordinal; }
+.ea { font-variant-east-asian: full-width ruby jis04; }
+.alt { font-variant-alternates: historical-forms; }
+.sh { font-variant: no-contextual oldstyle-nums proportional-width historical-forms; }
+.reset { font: 12px Ahem; }
+.row { display: flex; width: 40px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="w lig">Ab cd XX X</div>
+<div data-dragon-id="b" class="w none">Ab cd XX X</div>
+<div data-dragon-id="c" class="w num">XX XXX XX</div>
+<div data-dragon-id="d" class="w ea">XX XXX XX</div>
+<div data-dragon-id="e" class="w alt">XX XXX XX</div>
+<div data-dragon-id="f" class="w sh">XX <span data-dragon-id="f1" class="reset">XXX</span> XX</div>
+<div data-dragon-id="r" class="row sh"><div data-dragon-id="r1">XXX XX</div><div data-dragon-id="r2" class="none">XX</div></div>
+</body>
+</html>
