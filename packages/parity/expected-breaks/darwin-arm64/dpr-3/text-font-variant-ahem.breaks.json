@@ -1,0 +1,17 @@
+{
+  "case": "text-font-variant-ahem",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","data":"Ab cd XX X","lines":2,"units":[0,0,0,0,0,0,1,1,1,1],"blank":[5]},
+    {"id":"b:text0","data":"Ab cd XX X","lines":2,"units":[0,0,0,0,0,0,1,1,1,1],"blank":[5]},
+    {"id":"c:text0","data":"XX XXX XX","lines":2,"units":[0,0,0,0,0,0,0,1,1],"blank":[6]},
+    {"id":"d:text0","data":"XX XXX XX","lines":2,"units":[0,0,0,0,0,0,0,1,1],"blank":[6]},
+    {"id":"e:text0","data":"XX XXX XX","lines":2,"units":[0,0,0,0,0,0,0,1,1],"blank":[6]},
+    {"id":"f:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[2]},
+    {"id":"f:text1","data":" XX","lines":1,"units":[0,0,0],"blank":[0]},
+    {"id":"f1:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"r1:text0","data":"XXX XX","lines":2,"units":[0,0,0,0,1,1],"blank":[3]},
+    {"id":"r2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

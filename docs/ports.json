@@ -697,9 +697,12 @@
       "headerSha256": "8344006ca2b0ef81dcc0bb8f77b6545e0d86cb9b232146f5ad5966ed7dd3de6c",
       "ranges": [
         { "lines": "1961-1994", "symbol": null, "source": "cited" },
-        { "lines": "1107-1185", "symbol": null, "source": "cited" }
+        { "lines": "1107-1185", "symbol": null, "source": "cited" },
+        { "lines": "928-974", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "checkUserAgentDefaults", "use": "port" },
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeLengths", "use": "port" },
         { "file": "packages/dragon/src/fonts/weight.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/chrome-deviations-dpr.ts", "symbol": "dprChromeDeviations", "use": "reference" }
       ]

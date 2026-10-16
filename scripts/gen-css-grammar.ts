@@ -86,7 +86,15 @@ const SUBSET = [
   'text-indent',
   // TXT2-a: overflow-wrap and word-break (css-text-3 §5.2, §5.5), then the word-wrap alias, as LONGHANDS registers them.
   'overflow-wrap', 'word-break', 'word-wrap',
-  // TXT-FX: the text fill colour and stroke (compat §5), then the -webkit-text-stroke shorthand, after text-break, as LONGHANDS registers them.
+  // css-fonts-4 §6.4-§6.11: the font-variant longhands, then the font-variant shorthand, after word-wrap, as LONGHANDS registers them.
+  'font-variant-ligatures', 'font-variant-caps', 'font-variant-alternates', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-position', 'font-variant-emoji', 'font-variant',
+  // css-fonts-4 §6.3, §7.1, §6.13: font-kerning, font-optical-sizing and font-language-override, after word-wrap, as LONGHANDS registers them.
+  'font-kerning', 'font-optical-sizing', 'font-language-override',
+  // TXT-FONTFEAT: font-stretch (css-fonts-4 §2.4), before the line clamp, as LONGHANDS registers it.
+  'font-stretch',
+  // TXT-FONTFEAT: font-feature-settings and font-variation-settings (css-fonts-4 §6.12, §7.2), before the line clamp, as LONGHANDS registers them.
+  'font-feature-settings', 'font-variation-settings',
+  // TXT-FX: the text fill colour and stroke (compat §5), then the -webkit-text-stroke shorthand, after the font families, as LONGHANDS registers them.
   '-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke-width', '-webkit-text-stroke',
   // TXT-FX: text-shadow (css-text-decor-4 §4), after the text fill and stroke, as LONGHANDS registers it.
   'text-shadow',
@@ -172,6 +180,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
 const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string; readonly inherited: string } } = {
   '-webkit-box-orient': { initial: 'horizontal', inherited: 'no' },
   '-webkit-line-clamp': { initial: 'none', inherited: 'no' },
+  // webref lists font-stretch as a legacy alias of css-fonts-4's font-width, without fields; Chrome 145 has no font-width and keeps
+  // font-stretch a longhand, initial normal, inherited (css-fonts-4 §2.4).
+  'font-stretch': { initial: 'normal', inherited: 'yes' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
