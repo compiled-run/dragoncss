@@ -7,5 +7,7 @@ export const CTX_PROOF: readonly FixtureSpec[] = [
   both('ctx-proof-auto-margins'),
   both('ctx-proof-auto-insets'),
   both('ctx-proof-auto-flex'),
+  // A single-line container's cross-axis gap is inert (css-align-3 §8.1 puts it only between flex lines), so those rows prove it
+  // is ignored, as inert-layout's do, on a line its items overflow, where the multi-line twin breaks into lines and applies it.
   both('ctx-proof-flex-gap-units'),
 ];
