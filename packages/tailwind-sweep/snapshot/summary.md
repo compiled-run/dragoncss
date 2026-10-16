@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4676 (20.1%) | 18609 (79.9%) | 1 | 0 | 0 |
-| ios | 4655 (20.0%) | 18590 (79.8%) | 1 | 0 | 40 |
-| android | 4655 (20.0%) | 18590 (79.8%) | 1 | 0 | 40 |
+| web | 4678 (20.1%) | 18607 (79.9%) | 1 | 0 | 0 |
+| ios | 4657 (20.0%) | 18588 (79.8%) | 1 | 0 | 40 |
+| android | 4657 (20.0%) | 18588 (79.8%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4381, ios 4401 and android 4401 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4383, ios 4403 and android 4403 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -29,7 +29,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4381, ios 4
 | transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
 | interactivity | 1246 | 12 / 1234 / 0 / 0 / 0 | 11 / 1197 / 0 / 0 / 38 | 11 / 1197 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
-| accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 2 / 0 / 0 / 2 | 0 / 2 / 0 / 0 / 2 |
+| accessibility | 4 | 2 / 2 / 0 / 0 / 0 | 2 / 0 / 0 / 0 / 2 | 2 / 0 / 0 / 0 / 2 |
 
 ## Largest refusal groups (first blocking diagnostic)
 
