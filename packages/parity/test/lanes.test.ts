@@ -9,7 +9,7 @@ import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
 import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts';
 import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
 import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
-import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
+import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, ranIds, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
 import { ANIM_LANE, HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
 import { traceScriptIds } from '../src/trace-lane.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
@@ -222,7 +222,8 @@ describe('committed out/lanes.json', () => {
     expect(staleLanes(f, targets)).toEqual([]);
     expect(readFileSync(repoPath('packages/parity/out/lanes.json'), 'utf8')).toBe(lanesJsonText(f));
     expect(f.parity).toEqual({ pass: true, problems: [] });
-    expect(JSON.stringify(f)).not.toMatch(/Seconds|Ms"|timing/);
+    // caseLists holds case ids (anim-timing-*), which are names, not timings.
+    expect(JSON.stringify({ ...f, caseLists: undefined })).not.toMatch(/Seconds|Ms"|timing/);
   });
   it('host lanes pass on both targets with both digests; every device lane is not run; the reference proof passes', () => {
     if (f === null) return;
@@ -303,7 +304,8 @@ describe('committed out/lanes.json', () => {
         const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : vectorCaseIds().length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
-          expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(cases);
+          // A record carried over a changed case list (async device lanes) ran the cases its RanCases names, not today's.
+          expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(l.ran === undefined ? cases : (ranIds(f, l, s.dpr)?.size ?? -1));
           if (l.lane === HIT_LANE || l.lane === TRACE_LANE) expect([s.compared.a, s.compared.b > 0, s.compared.c, s.compared.d, s.compared.breaks], `${t.target} ${l.lane} ${s.dpr}`).toEqual([0, true, 0, 0, 0]);
           else expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0, `${t.target} ${l.lane} ${s.dpr}`).toBe(true);
         }
