@@ -1098,6 +1098,7 @@
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "buildItem", "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "columnIntrinsicBlockSize", "use": "port" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "reference" },
         { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
@@ -1146,6 +1147,7 @@
         { "lines": "24-183", "symbol": "GridBaselineAccumulator", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "reference" },
         { "file": "packages/layout/src/grid.ts", "symbol": "placeItems", "use": "port" }
       ]
     },
@@ -1556,6 +1558,7 @@
         { "lines": "33-40", "symbol": "LogicalBoxFragment::SynthesizedBaseline", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "ContentsResult", "use": "reference" },
         { "file": "packages/layout/src/grid.ts", "symbol": "firstBaselineOrSynthesize", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "inlineBaseline", "use": "port" },
@@ -3565,6 +3568,36 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/properties/computed_style_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "26d7fea5a7c5666cfa2385183c04412dd581ea80fec265ec1914dd07e0ebaf8c",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "2381-2413", "symbol": "ComputedStyleUtils::TouchActionFlagsToCSSValue", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/properties/touch-action.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/svg_object_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "b37fa398f4f6ae3e779e6e6615af6656f284ced0d630df0c828352eafe0b530c",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "134-184", "symbol": "SVGObjectPainter::PreparePaint", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "svgPaintAlpha", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -3579,6 +3612,9 @@
         { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8525-8531", "symbol": "Resize::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8533-8552", "symbol": "Resize::ApplyValue", "source": "located" },
+        { "lines": "10363-10381", "symbol": "ConsumePan", "source": "located" },
+        { "lines": "10386-10416", "symbol": "TouchAction::ParseSingleValue", "source": "located" },
+        { "lines": "10418-10424", "symbol": "TouchAction::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "12421-12434", "symbol": "WordSpacing::CSSValueFromComputedStyleInternal", "source": "located" }
       ],
       "dragon": [
@@ -3589,7 +3625,8 @@
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeWordSpacing", "use": "port" },
         { "file": "packages/dragon/src/css/properties/text-spacing.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/touch-action.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

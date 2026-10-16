@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+html { font-size: 16px; }
+body { margin: 0; }
+.row { display: flex; flex-wrap: wrap; width: 380px; padding: 4px; column-gap: 6px; row-gap: 6px; margin-bottom: 4px; background-color: #f4efe6; }
+.ltr { direction: ltr; }
+.rtl { direction: rtl; }
+.c { width: 56px; height: 36px; background-color: #2f6f9f; }
+.ss { border-start-start-radius: 18px; }
+.se { border-start-end-radius: 24px 10px; background-color: #b5462f; }
+.es { border-end-start-radius: 40%; background-color: #5f8f2f; }
+.ee { border-end-end-radius: 1.25em 0.5rem; font-size: 12px; background-color: #7a3fa0; }
+.all { border-start-start-radius: 4px; border-start-end-radius: 10px; border-end-end-radius: 16px 8px; border-end-start-radius: 50% 25%; background-color: #c08a1e; }
+.phys-after { border-start-start-radius: 26px; border-top-left-radius: 4px; background-color: #1e9c8a; }
+.log-after { border-top-left-radius: 4px; border-top-right-radius: 4px; border-start-start-radius: 22px 8px; background-color: #a0305a; }
+.short-log { border-radius: 6px; border-end-end-radius: 20px; background-color: #50607a; }
+.log-short { border-end-end-radius: 20px; border-radius: 6px; background-color: #8a6a3a; }
+.bordered { border: 5px solid #1a1a2e; border-start-end-radius: 16px 8px; border-end-start-radius: 12px; background-color: #e8d36a; }
+.vars { --r: 14px; border-end-start-radius: var(--r); border-start-end-radius: var(--r) 6px; background-color: #3a7a5a; }
+.wide { border-radius: 12px; border-start-start-radius: initial; border-end-end-radius: unset; background-color: #6a2f2f; }
+.par { border-start-start-radius: 12px; border-end-end-radius: 8px; padding: 4px; width: 56px; height: 36px; background-color: #9fb4c8; }
+.kid { border-start-start-radius: inherit; border-end-end-radius: inherit; width: 40px; height: 24px; background-color: #2f3f9f; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row-ltr" class="row ltr">
+<div data-dragon-id="l-ss" class="c ss"></div>
+<div data-dragon-id="l-se" class="c se"></div>
+<div data-dragon-id="l-es" class="c es"></div>
+<div data-dragon-id="l-ee" class="c ee"></div>
+<div data-dragon-id="l-all" class="c all"></div>
+<div data-dragon-id="l-phys-after" class="c phys-after"></div>
+<div data-dragon-id="l-log-after" class="c log-after"></div>
+<div data-dragon-id="l-short-log" class="c short-log"></div>
+<div data-dragon-id="l-log-short" class="c log-short"></div>
+<div data-dragon-id="l-bordered" class="c bordered"></div>
+<div data-dragon-id="l-vars" class="c vars"></div>
+<div data-dragon-id="l-wide" class="c wide"></div>
+</div>
+<div data-dragon-id="row-rtl" class="row rtl">
+<div data-dragon-id="r-ss" class="c ss"></div>
+<div data-dragon-id="r-se" class="c se"></div>
+<div data-dragon-id="r-es" class="c es"></div>
+<div data-dragon-id="r-ee" class="c ee"></div>
+<div data-dragon-id="r-all" class="c all"></div>
+<div data-dragon-id="r-phys-after" class="c phys-after"></div>
+<div data-dragon-id="r-log-after" class="c log-after"></div>
+<div data-dragon-id="r-short-log" class="c short-log"></div>
+<div data-dragon-id="r-log-short" class="c log-short"></div>
+<div data-dragon-id="r-bordered" class="c bordered"></div>
+<div data-dragon-id="r-vars" class="c vars"></div>
+<div data-dragon-id="r-wide" class="c wide"></div>
+</div>
+<div data-dragon-id="row-inherit" class="row">
+<div data-dragon-id="p1" class="par rtl"><div data-dragon-id="k1" class="kid ltr"></div></div>
+<div data-dragon-id="p2" class="par ltr"><div data-dragon-id="k2" class="kid rtl"></div></div>
+<div data-dragon-id="p3" class="par rtl"><div data-dragon-id="k3" class="kid"></div></div>
+<div data-dragon-id="p4" class="par"><div data-dragon-id="k4" class="kid"></div></div>
+</div>
+</body>
+</html>

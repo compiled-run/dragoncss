@@ -1,7 +1,8 @@
 // Fixture group effects (PNT1): opacity (css-color-4 §14.1) and z-index with CSS2 Appendix E paint order.
 // opacity: the values the native targets draw, 0 and 1, on boxes that would fold (a background alone) and that would composite as a
 // layer (a background with a child, text, a border, a nested group, text alone), with percentages, a clamped 1.5 and -2, and the
-// cascade (inherit, var(), calc(), a negative value, 500%, initial). A fractional opacity is refused natively (platform compositing
+// cascade (inherit, var(), calc(), a negative value, 500%, initial, and the -webkit-opacity alias alone and in both orders with
+// opacity). A fractional opacity is refused natively (platform compositing
 // rounds unlike Skia; package PNT1-opacity-b), and every layout fixture compiles natively, so none is here; the host paint model
 // still pins Chrome's fractional composite bytes (pnt1-effects.test). Every group sits clear of the cc raster tile seams at DPR 2, 3
 // and 2.625 in both directions (x in 16-48, 64-96 or 104-136 css px, y below 168). opacity-web holds the fractional cases (0.3,

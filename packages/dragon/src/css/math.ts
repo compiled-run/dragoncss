@@ -597,7 +597,7 @@ const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height'
  */
 const LINE_WIDTH = /^(border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-width)?|outline(-width)?|column-rule(-width)?)$/;
 /** Gaps take a percentage (css-align-3 §8.1) and Chrome accepts calc(10px + 5%) there, but the layout engine has no percentage gaps yet. */
-const GAP = /^(gap|row-gap|column-gap)$/;
+const GAP = /^(grid-)?(gap|row-gap|column-gap)$/;
 
 /**
  * A percentage that survives into the result makes a <line-width> or number calculation invalid (mathInvalidity); one Chrome
@@ -667,11 +667,12 @@ const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink',
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
-/** opacity is <number> | <percentage> (css-color-4 §3.2); Chrome resolves a calculation in it as a number or a percentage. */
+/** opacity, fill-opacity and stroke-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
 // stroke-width takes a unitless number too (SVG's quirk, Chrome StrokeWidth::ParseSingleValue).
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'stroke-width']);
-/** Properties whose syntax is a plain <length> without being a line width (css-ui-4 §3.4 outline-offset). */
-const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset']);
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width']);
+/** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
+ * stroke width), and text-shadow's lengths (Blink TextShadow). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {

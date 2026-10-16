@@ -9,7 +9,7 @@ import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/prop
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
 import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
-import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
+import { LOGICAL_CORNER_PROPERTIES, RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 
@@ -51,7 +51,7 @@ const SUBSET = [
   'pointer-events',
   // Border radii (PNT1), after pointer-events, as LONGHANDS registers them, then their shorthands.
   ...RADIUS_LONGHANDS,
-  'border-radius', '-webkit-border-radius',
+  'border-radius', '-webkit-border-radius', ...LOGICAL_CORNER_PROPERTIES,
   // Box shadows (PNT1), after the radii.
   'box-shadow',
   // Outlines (PNT1), after the radius family, as LONGHANDS registers them, then their shorthand.
@@ -86,8 +86,14 @@ const SUBSET = [
   'text-indent',
   // TXT2-a: overflow-wrap and word-break (css-text-3 §5.2, §5.5), then the word-wrap alias, as LONGHANDS registers them.
   'overflow-wrap', 'word-break', 'word-wrap',
+  // TXT-FX: the text fill colour and stroke (compat §5), then the -webkit-text-stroke shorthand, after text-break, as LONGHANDS registers them.
+  '-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke-width', '-webkit-text-stroke',
+  // TXT-FX: text-shadow (css-text-decor-4 §4), after the text fill and stroke, as LONGHANDS registers it.
+  'text-shadow',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
+  // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
+  'touch-action',
 ] as const;
 
 /**
@@ -141,6 +147,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'word-break': 'normal | break-all | keep-all | break-word | auto-phrase',
   // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.
   'text-transform': 'none | capitalize | uppercase | lowercase | math-auto',
+  // Blink TextShadow::ParseSingleValue: ConsumeShadow with AllowInsetAndSpread::kForbid, so a text shadow takes no spread and no
+  // inset, unlike webref's <shadow>. Pinned against Chrome by packages/parity/test/text-shadow-parse.test.ts.
+  'text-shadow': 'none | [ <color>? && [ <length>{2} <length [0,∞]>? ] ]#',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',

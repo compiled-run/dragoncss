@@ -5,7 +5,7 @@
 // the bitmap into the engine's destination rect, clipped to the content box (layout paint.ts replacedPaint). UIImageView
 // contentMode and ImageView ScaleType are not used: neither expresses object-position.
 import type { ObjectFit } from '@dragon/layout';
-import type { Rgba8 } from '../../css/color.ts';
+import { svgPaintAlpha, type Rgba8 } from '../../css/color.ts';
 import { svgSceneOf, svgShapeEmpty } from '../../analysis/elements/svg.ts';
 import type { SvgPaint, SvgShapeScene } from '../../analysis/elements/svg.ts';
 import { base64Encode } from '../../images/compile.ts';
@@ -40,7 +40,7 @@ export type SvgShapesWrite = {
   readonly shapes: readonly SvgShapeData[];
 };
 
-const paintColor = (p: SvgPaint): Rgba8 | null => (p.kind === 'none' ? null : p.color);
+const paintColor = (p: SvgPaint, opacity: number): Rgba8 | null => (p.kind === 'none' ? null : opacity === 1 ? p.color : { ...p.color, alpha: svgPaintAlpha(p.color.alpha, opacity) });
 
 /** A shape's outline as verb-coded numbers (SvgShapeData.path). A rect is its four sides, closed, as Blink builds it. */
 export function svgShapePath(s: SvgShapeScene): number[] {
@@ -66,7 +66,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView android.graphics.Paths drawn with Canvas.drawPath (Paint FILL, then STROKE): ${SVG_PAINT}` },
     },
   },
-  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width'] },
+  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity'] },
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
@@ -74,7 +74,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       // Nor is one Chrome does not paint (hidden, or opacity 0).
       if (scene === null) throw new ProgramError(`${box.id}: an svg leaf without a scene`);
       const v = scene.viewBox;
-      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill), stroke: paintColor(sh.stroke), width: sh.strokeWidth })) }];
+      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth })) }];
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
