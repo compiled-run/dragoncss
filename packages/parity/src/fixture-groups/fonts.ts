@@ -74,6 +74,8 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout' && f.id !== 'text-weight-ahem'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem' && f.id !== 'text-word-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin'), ...TEXT_INDENT.filter((f) => f.id === 'text-indent-latin'), ...TEXT_BREAK.filter((f) => f.id === 'text-break-lato')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
   // INL2a: the refusal of an atomic inline beside real-font text.
   ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
+  // TXT-FONTFEAT: font-stretch is accepted over Ahem, so the font shorthand's width keyword is refused over a real face.
+  ['reject-font-shorthand-stretch', FONT_REFERENCE_MAP],
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */
