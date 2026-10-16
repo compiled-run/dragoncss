@@ -852,6 +852,11 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   if (alpha !== 0 && alpha !== 1 && keywordOf(el.props.get('visibility') as ResolvedValue) === 'visible') {
     refuse('opacity', opacity.declaration === null ? el.element.node.origin : authored(opacity.declaration.valueSpan), `opacity: ${valueToString(opacity.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn opaque or not at all there until the SVG structure package SVG-b`, `Set opacity on the <svg>, or give <${tag}> ${el.element.address} opacity 0 or 1.`, native);
   }
+  // SVG-stroke: a calculation Dragon cannot fold to a number (typed division) keeps its refused text, which the shape cannot draw.
+  const miter = el.props.get('stroke-miterlimit') as ResolvedValue;
+  if (isRefusedMath(miter.value)) {
+    refuse('stroke-miterlimit', miter.declaration === null ? el.element.node.origin : authored(miter.declaration.valueSpan), `stroke-miterlimit: ${valueToString(miter.value)} on <${tag}> ${el.element.address} is unsupported`, 'Write stroke-miterlimit as a number, or a calculation of numbers.');
+  }
   // SVG-stroke: a round or square cap on a zero-length subpath (svgZeroLengthSubpath) is a dot or square in Chrome, oriented as
   // SVG 2 §13.6.6 says; native orients it by its own rules, so a stroked shape with one is refused there.
   const cap = el.props.get('stroke-linecap') as ResolvedValue;

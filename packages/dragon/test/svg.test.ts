@@ -346,6 +346,23 @@ describe('the svg model in a compile', () => {
     }
     expect(mathInvalidity('calc(2 * 3)', mathGrammarFor('stroke-miterlimit'))).toBeNull();
   });
+  it('SVG-stroke: a miter limit of 0 (unitless or an attribute) computes to the number 0, a negative calculation clamps to 0 as Chrome clamps it, and a typed division is refused, never thrown at lowering', () => {
+    const cases: [string, [string, string][]][] = [['path { stroke-miterlimit: 0; }', []], ['', [['stroke-miterlimit', '0']]], ['path { stroke-miterlimit: calc(-1); }', []], ['path { stroke-miterlimit: calc(2 - 5); }', []]];
+    for (const [css, attrs] of cases) {
+      const c = compile(svgTree(css, (_r, o) => [shape(o, 'i', 'path', [['d', 'M2 2 L20 2 L2 20'], ['stroke', 'rgb(0, 0, 0)'], ...attrs])]), true);
+      expect(errors(c), css).toEqual([]);
+      expect(svgScenes(c, [])?.[0]?.shapes.map((x) => x.miterLimit), css).toEqual([0]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      for (const backend of ['uikit', 'android-views'] as const) {
+        const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+        expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => x.miterLimit) : null, `${backend} ${css}`).toEqual([0]);
+      }
+    }
+    const divided = errors(compile(svgTree('path { stroke-miterlimit: calc(1px / 1px); }', (_r, o) => [shape(o, 'i', 'path', [['d', 'M2 2 L20 2 L2 20'], ['stroke', 'rgb(0, 0, 0)']])]), false));
+    const message = 'stroke-miterlimit: calc(1px/1px) /* it divides by a length, which is typed arithmetic (css-values-4 §10.9), not supported */ on <path> i is unsupported';
+    expect(divided.sort()).toEqual(['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${message}`));
+  });
   it('SVG-stroke: a zero-length subpath is one that draws without leaving its start, control points included; a lone moveto is not', () => {
     const path = (d: string) => {
       const p = parsePathData(d);
