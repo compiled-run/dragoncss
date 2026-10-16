@@ -16,7 +16,9 @@ export const FONT_SHORTHAND: readonly FixtureSpec[] = [
   // prove native rows).
   layout('font-shorthand-inherit', ['ltr', 'rtl']),
   reject('reject-font-shorthand-small-caps', 'DRAGON_UNSUPPORTED_VALUE', 'small-caps', 'font: small-caps sets font-variant-caps'),
-  reject('reject-font-shorthand-stretch', 'DRAGON_UNSUPPORTED_VALUE', 'condensed', 'font: condensed sets font-stretch'),
+  // The shorthand's width keyword sets font-stretch, which TXT-FONTFEAT accepts over Ahem and refuses over a real face (computed-checks.ts
+  // checkFontStretch), so this reject draws its text in Lato.
+  reject('reject-font-shorthand-stretch', 'DRAGON_UNSUPPORTED_VALUE', 'XX', 'font-stretch: 75% reaches text d:text0, which is drawn in a real face'),
   reject('reject-font-shorthand-system', 'DRAGON_UNSUPPORTED_VALUE', 'caption', 'font: caption is a system font'),
   reject('reject-font-shorthand-left', 'DRAGON_CSS_INVALID_VALUE', 'left', 'Chrome 145 does not parse font-style: left in the font shorthand'),
   reject('reject-font-shorthand-synthesis-position', 'DRAGON_CSS_INVALID_VALUE', 'position', 'Chrome 145 does not parse font-synthesis: position'),

@@ -18,6 +18,7 @@ import { ANIMATION_ALIASES } from './aliases/animation.ts';
 import { BACKGROUND_LAYERS_ALIASES } from './aliases/background-layers.ts';
 import { BOX_ALIASES } from './aliases/box.ts';
 import { EFFECTS_ALIASES } from './aliases/effects.ts';
+import { FILTER_ALIASES } from './aliases/filter.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
 import { FONT_FEATURES_ALIASES } from './aliases/font-features.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
@@ -32,6 +33,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   'background-layers': BACKGROUND_LAYERS_ALIASES,
   box: BOX_ALIASES,
   effects: EFFECTS_ALIASES,
+  filter: FILTER_ALIASES,
   flex: FLEX_ALIASES,
   'font-features': FONT_FEATURES_ALIASES,
   logical: LOGICAL_ALIASES,
