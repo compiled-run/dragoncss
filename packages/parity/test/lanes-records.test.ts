@@ -130,15 +130,30 @@ describe('the evidence stamp (finding 4131217867)', () => {
 });
 
 describe('per-case carry (async device lanes over a changed case list)', () => {
+  // The configuration the committed device records ran. A landing that adds fixtures merges before the scheduled device run on
+  // master runs them, so the committed records can be behind the configured case lists; these checks hold over what they ran.
+  const ranTargets: TargetConfig[] = targets.map((t) => {
+    const ft = committed.targets.find((x) => x.target === t.target);
+    return {
+      ...t,
+      lanes: t.lanes.map((l) => {
+        const rec = ft?.lanes.find((x) => x.lane === l.lane);
+        if (l.where !== 'device' || rec === undefined) return l;
+        return { ...l, sets: l.sets.map((x) => ({ ...x, ids: [...(ranIds(committed, rec, x.dpr) ?? x.ids)] })) };
+      }),
+    };
+  });
   // The committed records, carried once so every device lane names the cases it ran (RanCases).
-  const base = lanesFile(targets, [], new Map(), null, new Map(), committed);
-  // The configuration after a landing adds a case to every device lane of both targets and drops one.
-  const grown: TargetConfig[] = targets.map((t) => ({ ...t, lanes: t.lanes.map((l) => (l.where !== 'device' ? l : { ...l, sets: l.sets.map((x) => ({ ...x, ids: [...x.ids.slice(1), 'zz-new-fixture'] })) })) }));
+  const base = lanesFile(ranTargets, [], new Map(), null, new Map(), committed);
+  // A device lane the committed records did not run (stale and reset, say by a changed corpus) has nothing to carry.
+  const ran = (target: string, lane: string): boolean => base.targets.find((x) => x.target === target)?.lanes.find((x) => x.lane === lane)?.state !== 'not run';
+  // The configuration after a landing adds a case to every device lane that ran, of both targets, and drops one.
+  const grown: TargetConfig[] = ranTargets.map((t) => ({ ...t, lanes: t.lanes.map((l) => (l.where !== 'device' || !ran(t.target, l.lane) ? l : { ...l, sets: l.sets.map((x) => ({ ...x, ids: [...x.ids.slice(1), 'zz-new-fixture'] })) })) }));
   const dropped = (t: TargetConfig): string => t.lanes.find((l) => l.lane === 'device-frames')!.sets[0]!.ids[0]!;
 
   it('a device lane that ran records its case lists, and a record without RanCases whose case list is current gains them', () => {
     expect(staleLanes(base, targets)).toEqual([]);
-    expect(casesNotRun(base, targets)).toEqual([]);
+    expect(casesNotRun(base, ranTargets)).toEqual([]);
     for (const t of base.targets) {
       for (const l of t.lanes.filter((x) => x.where === 'device' && x.state !== 'not run')) {
         for (const s of l.ran?.sets ?? []) expect(base.caseLists?.[s.list], `${t.target} ${l.lane} DPR ${s.dpr}`).toBeDefined();
