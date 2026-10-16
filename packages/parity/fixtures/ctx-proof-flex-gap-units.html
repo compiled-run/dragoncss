@@ -3,11 +3,12 @@
 <head>
 <style>
 body { margin: 0; font-family: Ahem; font-size: 10px; }
-.rs { display: flex; width: 150px; margin-bottom: 2px; }
+.rs { display: flex; width: 50px; margin-bottom: 2px; }
 .rm { display: flex; flex-wrap: wrap; width: 70px; margin-bottom: 2px; }
-.cs { display: flex; flex-direction: column; width: 60px; margin-bottom: 2px; }
+.cs { display: flex; flex-direction: column; width: 60px; height: 14px; margin-bottom: 2px; }
 .cm { display: flex; flex-direction: column; flex-wrap: wrap; width: 120px; height: 24px; margin-bottom: 2px; }
 .i { width: 20px; height: 6px; }
+.rs > .i, .cs > .i { flex-shrink: 0; }
 .u1 { gap: 0.75rem; }
 .u2 { font-size: 13px; row-gap: 0.3em; column-gap: 1.5em; }
 .u3 { row-gap: 1.7vh; column-gap: 2vw; }

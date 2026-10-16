@@ -19,7 +19,8 @@ import type { ResolvedElement } from '../resolve.ts';
 export const SVG_TAG = 'svg';
 
 /** The presentation attributes Dragon maps to its svg property family (SVG 2 §6.6); author rules beat them. */
-export const SVG_PAINT_ATTRIBUTES: readonly ('fill' | 'stroke' | 'stroke-width')[] = ['fill', 'stroke', 'stroke-width'];
+export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity';
+export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity'];
 
 /** The attributes each SVG tag compiles: its geometry, the paint presentation attributes, and xmlns (no effect in HTML). */
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
@@ -35,8 +36,6 @@ const SVG_ATTRIBUTE_OWNERS: { readonly [name: string]: string } = {
   preserveAspectRatio: 'the SVG transform package SVG-transform',
   rx: 'the SVG structure package SVG-b (rounded rects)',
   ry: 'the SVG structure package SVG-b (rounded rects)',
-  'fill-opacity': 'the SVG opacity package SVG-opacity',
-  'stroke-opacity': 'the SVG opacity package SVG-opacity',
   opacity: 'the SVG opacity package SVG-opacity',
   'stroke-dasharray': 'the SVG dash package SVG-dash',
   'stroke-dashoffset': 'the SVG dash package SVG-dash',
@@ -73,7 +72,7 @@ export function svgPaintRefusal(property: string, v: CssValue): string | null {
 }
 
 /** A presentation attribute's value as its property's CSS value, or why it does not compile. */
-export function paintAttributeValue(property: 'fill' | 'stroke' | 'stroke-width', text: string): { readonly ok: true; readonly value: CssValue } | { readonly ok: false; readonly reason: string } {
+export function paintAttributeValue(property: SvgPaintAttribute, text: string): { readonly ok: true; readonly value: CssValue } | { readonly ok: false; readonly reason: string } {
   let node: CssNode;
   try {
     node = parse(text, { context: 'value', positions: true });
@@ -101,9 +100,9 @@ export function paintAttributeValue(property: 'fill' | 'stroke' | 'stroke-width'
 export function svgAttributeRefusal(tag: string, name: string, text: string): string | null {
   if (!svgAttributeHandled(tag, name)) return null;
   if ((SVG_PAINT_ATTRIBUTES as readonly string[]).includes(name)) {
-    const v = paintAttributeValue(name as 'fill' | 'stroke' | 'stroke-width', text);
+    const v = paintAttributeValue(name as SvgPaintAttribute, text);
     if (!v.ok) return v.reason;
-    return v.value.kind === 'percentage' ? 'a percentage stroke-width is relative to the viewport diagonal, which is not built yet (package SVG-units)' : null;
+    return name === 'stroke-width' && v.value.kind === 'percentage' ? 'a percentage stroke-width is relative to the viewport diagonal, which is not built yet (package SVG-units)' : null;
   }
   if (name === 'xmlns') return text === 'http://www.w3.org/2000/svg' ? null : 'an xmlns other than the SVG namespace';
   if (name === 'viewBox') return parseViewBox(text) === null ? 'a viewBox must be four numbers with a positive width and height (Chrome ignores any other)' : null;
@@ -170,10 +169,17 @@ export type SvgPaint = { readonly kind: 'none' } | { readonly kind: 'color'; rea
 
 /** One drawn shape of an <svg>: its address, geometry in user units, and paint. strokeWidth is in user units (px before the viewBox). */
 /** painted: whether Chrome paints the shape (svgShapePainted); one it does not still has its box and bbox. */
-export type SvgShapeScene = { readonly address: string; readonly tag: string; readonly shape: SvgShape; readonly fill: SvgPaint; readonly stroke: SvgPaint; readonly strokeWidth: number; readonly painted: boolean };
+export type SvgShapeScene = { readonly address: string; readonly tag: string; readonly shape: SvgShape; readonly fill: SvgPaint; readonly stroke: SvgPaint; readonly strokeWidth: number; readonly fillOpacity: number; readonly strokeOpacity: number; readonly painted: boolean };
 
 /** An <svg>'s drawing: its viewBox and its shapes in paint order. */
 export type SvgScene = { readonly address: string; readonly viewBox: ViewBox | null; readonly shapes: readonly SvgShapeScene[] };
+
+/** A shape's computed fill-opacity or stroke-opacity, in [0, 1]. */
+function opacityOfProp(el: ResolvedElement, p: 'fill-opacity' | 'stroke-opacity'): number {
+  const v = (el.props.get(p) as ResolvedValue).value;
+  if (v.kind !== 'number') throw new Error(`${el.element.address}: ${p} did not compute to a number`);
+  return v.value;
+}
 
 function paintOf(el: ResolvedElement, p: 'fill' | 'stroke'): SvgPaint {
   const v = (el.props.get(p) as ResolvedValue).value;
@@ -223,7 +229,7 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
     const sw = (c.props.get('stroke-width') as ResolvedValue).value;
     const strokeWidth = sw.kind === 'length' && sw.unit === 'px' ? sw.value : sw.kind === 'number' ? sw.value : null;
     if (strokeWidth === null) throw new Error(`${c.element.address}: stroke-width did not compute to px`);
-    shapes.push({ address: c.element.address, tag: c.element.tag, shape, fill: paintOf(c, 'fill'), stroke: paintOf(c, 'stroke'), strokeWidth, painted: svgShapePainted(c) });
+    shapes.push({ address: c.element.address, tag: c.element.tag, shape, fill: paintOf(c, 'fill'), stroke: paintOf(c, 'stroke'), strokeWidth, fillOpacity: opacityOfProp(c, 'fill-opacity'), strokeOpacity: opacityOfProp(c, 'stroke-opacity'), painted: svgShapePainted(c) });
   }
   return { address: el.element.address, viewBox: viewBoxOf(el.element.attributes), shapes };
 }

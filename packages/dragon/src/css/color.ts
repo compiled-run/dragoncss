@@ -287,3 +287,12 @@ export function insetOutsetTones(c: Rgba8): [Rgba8, Rgba8] {
   const bright = f32(c.r / 255) >= f32(150 / 255) || f32(c.g / 255) >= f32(92 / 255);
   return [bright || contrastRatio(c, dark) >= f32(1.75) ? c : lightColor(c), dark];
 }
+
+/**
+ * SVG-opacity: a shape's fill or stroke alpha byte with its fill-opacity or stroke-opacity applied as Chrome does
+ * (SVGObjectPainter::PreparePaint, svg_object_painter.cc): the colour's alpha times the opacity in float, which Skia rounds to the
+ * alpha byte it blits.
+ */
+export function svgPaintAlpha(alpha: number, opacity: number): number {
+  return Math.round(Math.fround(Math.fround(alpha / 255) * Math.fround(opacity)) * 255);
+}

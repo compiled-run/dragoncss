@@ -65,8 +65,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'background-image': ['none', 'none, none'], 'background-position-x': ['0%', 'right 4px'], 'background-position-y': ['0%', '25%'], 'background-size': ['auto', 'cover'], 'background-repeat': ['repeat', 'no-repeat'], 'background-attachment': ['scroll', 'scroll, scroll'], 'background-origin': ['padding-box', 'content-box'], 'background-clip': ['border-box', 'padding-box'],
       // T150a: visibility's two keywords that paint nothing.
       visibility: ['hidden', 'collapse'],
-      // SVG-a1: two stroke widths.
-      'stroke-width': ['2px', '5'],
+      // SVG-a1: two stroke widths; SVG-opacity: two fill and stroke opacities.
+      'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.
       'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
       'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
