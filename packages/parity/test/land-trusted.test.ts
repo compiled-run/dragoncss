@@ -119,6 +119,7 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
     const git = runs.find((r) => r.startsWith('git config rerere'))!;
     expect(git).toContain(`git config merge.dragon-floor.driver "node '$GITHUB_WORKSPACE/scripts/floor-merge.ts' %O %A %B %P"`);
     expect(git).toContain(`git config merge.dragon-sorted.driver "node '$GITHUB_WORKSPACE/scripts/sorted-merge.ts' %O %A %B %P"`);
+    expect(git).toContain(`git config merge.dragon-lanes.driver "node '$GITHUB_WORKSPACE/scripts/lanes-merge.ts' %O %A %B %P"`);
     const names = steps.map((st) => /- name: (.*)/.exec(st)![1]);
     expect(names.indexOf('Make the trusted checkout read-only')).toBe(names.indexOf('Land one batch') - 1);
   });

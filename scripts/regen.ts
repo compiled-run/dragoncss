@@ -142,6 +142,7 @@ export const STEPS: readonly Step[] = placeSteps(LEGACY_STEPS, REGEN_FEATURES);
 /** Regen outputs a merge must not keep from one side: wpt fail entries carry a hand-written reason, deviation and issue. */
 export const MERGE_BY_HAND: readonly { readonly path: string; readonly why: string }[] = [
   { path: 'packages/wpt/expectations/web.json', why: 'fail entries keep a hand-written reason, deviation and issue across runs' },
+  { path: 'packages/parity/out/lanes.json', why: 'its device records come only from device runs, so merge=dragon-lanes (scripts/lanes-merge.ts) keeps the side that changed them' },
 ];
 
 /** Tracked outputs under the generated shapes of .macroscope/ignore.md that regen does not rebuild, and what produces them. */
