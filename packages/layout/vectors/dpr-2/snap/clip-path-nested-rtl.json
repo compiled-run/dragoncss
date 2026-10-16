@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 37888
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 37888
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 37888
+  },
+  {
+   "id": "w1",
+   "parent": "stage",
+   "x": 1024,
+   "y": 1024,
+   "width": 49152,
+   "height": 16384
+  },
+  {
+   "id": "cut-flow",
+   "parent": "w1",
+   "x": 35840,
+   "y": 1024,
+   "width": 12288,
+   "height": 8192
+  },
+  {
+   "id": "cut-flow-k",
+   "parent": "cut-flow",
+   "x": 7168,
+   "y": 0,
+   "width": 5120,
+   "height": 2048
+  },
+  {
+   "id": "over",
+   "parent": "w1",
+   "x": 39936,
+   "y": 7168,
+   "width": 8192,
+   "height": 4096
+  },
+  {
+   "id": "w2",
+   "parent": "stage",
+   "x": 1024,
+   "y": 18432,
+   "width": 49152,
+   "height": 16384
+  },
+  {
+   "id": "cut-oh",
+   "parent": "w1",
+   "x": 17408,
+   "y": 2048,
+   "width": 12288,
+   "height": 8192
+  },
+  {
+   "id": "cut-oh-wide",
+   "parent": "cut-oh",
+   "x": -3072,
+   "y": 1024,
+   "width": 14336,
+   "height": 3072
+  },
+  {
+   "id": "cut-zc",
+   "parent": "w1",
+   "x": 32768,
+   "y": 2048,
+   "width": 12288,
+   "height": 8192
+  },
+  {
+   "id": "cut-z1",
+   "parent": "cut-zc",
+   "x": 8192,
+   "y": 0,
+   "width": 6144,
+   "height": 12288
+  },
+  {
+   "id": "cut-flow-abs",
+   "parent": "cut-flow",
+   "x": -26624,
+   "y": 5120,
+   "width": 8192,
+   "height": 6144
+  },
+  {
+   "id": "cut-outer",
+   "parent": "w2",
+   "x": 2048,
+   "y": 2048,
+   "width": 20480,
+   "height": 12288
+  },
+  {
+   "id": "cut-rad",
+   "parent": "w2",
+   "x": 35840,
+   "y": 2048,
+   "width": 10240,
+   "height": 10240
+  },
+  {
+   "id": "cut-inner",
+   "parent": "cut-outer",
+   "x": 3072,
+   "y": 3072,
+   "width": 20480,
+   "height": 6144
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 592,
+   "width": 800,
+   "height": 592
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 592,
+   "width": 800,
+   "height": 592
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 592,
+   "width": 800,
+   "height": 592
+  },
+  {
+   "id": "w1",
+   "left": 16,
+   "top": 16,
+   "right": 784,
+   "bottom": 272,
+   "width": 768,
+   "height": 256
+  },
+  {
+   "id": "cut-flow",
+   "left": 576,
+   "top": 32,
+   "right": 768,
+   "bottom": 160,
+   "width": 192,
+   "height": 128
+  },
+  {
+   "id": "cut-flow-k",
+   "left": 688,
+   "top": 32,
+   "right": 768,
+   "bottom": 64,
+   "width": 80,
+   "height": 32
+  },
+  {
+   "id": "over",
+   "left": 640,
+   "top": 128,
+   "right": 768,
+   "bottom": 192,
+   "width": 128,
+   "height": 64
+  },
+  {
+   "id": "w2",
+   "left": 16,
+   "top": 288,
+   "right": 784,
+   "bottom": 544,
+   "width": 768,
+   "height": 256
+  },
+  {
+   "id": "cut-oh",
+   "left": 288,
+   "top": 48,
+   "right": 480,
+   "bottom": 176,
+   "width": 192,
+   "height": 128
+  },
+  {
+   "id": "cut-oh-wide",
+   "left": 240,
+   "top": 64,
+   "right": 464,
+   "bottom": 112,
+   "width": 224,
+   "height": 48
+  },
+  {
+   "id": "cut-zc",
+   "left": 528,
+   "top": 48,
+   "right": 720,
+   "bottom": 176,
+   "width": 192,
+   "height": 128
+  },
+  {
+   "id": "cut-z1",
+   "left": 656,
+   "top": 48,
+   "right": 752,
+   "bottom": 240,
+   "width": 96,
+   "height": 192
+  },
+  {
+   "id": "cut-flow-abs",
+   "left": 160,
+   "top": 112,
+   "right": 288,
+   "bottom": 208,
+   "width": 128,
+   "height": 96
+  },
+  {
+   "id": "cut-outer",
+   "left": 48,
+   "top": 320,
+   "right": 368,
+   "bottom": 512,
+   "width": 320,
+   "height": 192
+  },
+  {
+   "id": "cut-rad",
+   "left": 576,
+   "top": 320,
+   "right": 736,
+   "bottom": 480,
+   "width": 160,
+   "height": 160
+  },
+  {
+   "id": "cut-inner",
+   "left": 96,
+   "top": 368,
+   "right": 416,
+   "bottom": 464,
+   "width": 320,
+   "height": 96
+  }
+ ]
+}

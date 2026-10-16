@@ -5,7 +5,7 @@
 // other: they are written only when an author declaration sets one (in any band or interaction state of the element), since
 // Chrome's UA :focus-visible rule (outline: auto 1px -webkit-focus-ring-color) draws the focus ring an explicit none would hide.
 // The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
-// clip is written only where it is not auto, its initial value, which no Chrome UA rule sets.
+// clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
 // colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
@@ -46,6 +46,12 @@ function writesInsets(el: ResolvedElement): boolean {
 function writesClip(el: ResolvedElement): boolean {
   const v = (el.props.get('clip') as ResolvedValue).value;
   return !(v.kind === 'keyword' && v.value === 'auto');
+}
+
+/** Whether an element's clip-path is not none, its initial value. */
+function writesClipPath(el: ResolvedElement): boolean {
+  const v = (el.props.get('clip-path') as ResolvedValue).value;
+  return !(v.kind === 'keyword' && v.value === 'none');
 }
 
 /**
@@ -241,7 +247,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const clamp = resolutions.some(writesLineClamp);
       // MASK-CLIP: clip is written for every resolution of the element or none.
       const clip = resolutions.some(writesClip);
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip')).map((p) => declLine(el, p, under));
+      const clipPath = resolutions.some(writesClipPath);
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path')).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).
