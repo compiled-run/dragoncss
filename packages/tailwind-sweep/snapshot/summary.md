@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4667 (20.0%) | 18618 (80.0%) | 1 | 0 | 0 |
-| ios | 4646 (20.0%) | 18599 (79.9%) | 1 | 0 | 40 |
-| android | 4646 (20.0%) | 18599 (79.9%) | 1 | 0 | 40 |
+| web | 4672 (20.1%) | 18613 (79.9%) | 1 | 0 | 0 |
+| ios | 4621 (19.8%) | 18624 (80.0%) | 1 | 0 | 40 |
+| android | 4621 (19.8%) | 18624 (80.0%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4372, ios 4392 and android 4392 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4377, ios 4381 and android 4381 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -20,12 +20,12 @@ As published (before the shell pre-pass), the sheet compiles for web 4372, ios 4
 | sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
 | typography | 261 | 169 / 92 / 0 / 0 / 0 | 168 / 93 / 0 / 0 / 0 | 168 / 93 / 0 / 0 / 0 |
 | colours | 14842 | 100 / 14742 / 0 / 0 / 0 | 100 / 14742 / 0 / 0 / 0 | 100 / 14742 / 0 / 0 / 0 |
-| backgrounds | 151 | 19 / 132 / 0 / 0 / 0 | 19 / 132 / 0 / 0 / 0 | 19 / 132 / 0 / 0 / 0 |
+| backgrounds | 151 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 |
 | borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
 | effects | 1178 | 49 / 1129 / 0 / 0 / 0 | 30 / 1148 / 0 / 0 / 0 | 30 / 1148 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
-| transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
+| transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
 | transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
 | interactivity | 1246 | 12 / 1234 / 0 / 0 / 0 | 11 / 1197 / 0 / 0 / 38 | 11 / 1197 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
