@@ -279,26 +279,92 @@ export function svgOutline(path: readonly number[], map: (x: number, y: number) 
 /** Turns below this (radians) are a flattened curve's own steps, not joins. */
 const JOIN_TURN = (5 * Math.PI) / 180;
 
+/** A miter ratio within this share of the miter limit is too close to call: Skia's and the platforms' float tests may differ. */
+const MITER_LIMIT_MARGIN = 0.01;
+
+type Cap = 'butt' | 'round' | 'square';
+type Join = 'miter' | 'round' | 'bevel';
+
 /**
- * Where a stroke reaches past half its width: a miter join reaches half / sin(theta / 2) from its vertex (theta the angle between
- * the two segments), at most 4 half widths (the miter limit), and a butt cap's corners half a width times the square root of two.
+ * SVG-stroke: the geometry a stroke adds at its ends and joins, past the band half its width either side of the centreline (whose
+ * edge svgPointsOf finds by distance, which is also the edge of a round cap or join).
+ *
+ * - edges: the straight edges of the stroke outline there. A butt cap ends at the line across its end point; a square cap at the
+ *   three sides of the half-width square past it. A bevel join is the line between the two outer corners; a miter join meets at
+ *   its tip, half / sin(theta / 2) from the vertex (theta the angle between the segments), and is cut to a bevel past the miter
+ *   limit (SVG 2 §13.6.4, as Skia's SkStroke and CoreGraphics both draw it).
+ * - discs: where the outline is not modelled (a zero-length step, or a miter ratio within MITER_LIMIT_MARGIN of the limit), a disc
+ *   that holds every outline the stroke could have there.
+ * - probes: points inside a square cap and outside a butt or round one, past every cap, inside a miter tip and outside a bevel,
+ *   and inside a round join and outside a bevel, where a cap, join or limit drawn wrong shows.
  */
-function strokeCorners(segments: readonly Segment[], half: number): { readonly at: Pt; readonly reach: number }[] {
-  const out: { at: Pt; reach: number }[] = [];
+export function strokeFeatures(segments: readonly Segment[], half: number, cap: Cap, join: Join, miterLimit: number): { readonly edges: Segment[]; readonly discs: { readonly at: Pt; readonly reach: number }[]; readonly probes: Pt[] } {
+  const edges: Segment[] = [];
+  const discs: { at: Pt; reach: number }[] = [];
+  const probes: Pt[] = [];
   const same = (a: Pt, b: Pt): boolean => a.x === b.x && a.y === b.y;
+  const unit = (s: Segment): Pt | null => {
+    const len = Math.hypot(s[1].x - s[0].x, s[1].y - s[0].y);
+    return len === 0 ? null : { x: (s[1].x - s[0].x) / len, y: (s[1].y - s[0].y) / len };
+  };
+  const at = (o: Pt, ...terms: (readonly [Pt, number])[]): Pt => terms.reduce((p, [v, k]) => ({ x: p.x + v.x * k, y: p.y + v.y * k }), o);
+  // An end point and the direction the path leaves it in.
+  const end = (e: Pt, d: Pt | null): void => {
+    if (d === null) {
+      discs.push({ at: e, reach: half * Math.SQRT2 });
+      return;
+    }
+    const n = { x: -d.y, y: d.x };
+    if (cap === 'butt') edges.push([at(e, [n, half]), at(e, [n, -half])]);
+    if (cap === 'square') {
+      const [a, b, c, f] = [at(e, [n, half]), at(e, [n, half], [d, half]), at(e, [n, -half], [d, half]), at(e, [n, -half])];
+      edges.push([a, b], [b, c], [c, f]);
+    }
+    probes.push(at(e, [d, half * 0.5]), at(e, [d, half * 0.6], [n, half * 0.9]), at(e, [d, half * 0.6], [n, -half * 0.9]), at(e, [d, half * 1.5]));
+  };
   segments.forEach((s, i) => {
     const prev = segments.find((q) => same(q[1], s[0]) && q !== s);
     if (prev === undefined) {
-      out.push({ at: s[0], reach: half * Math.SQRT2 });
+      const d = unit(s);
+      end(s[0], d === null ? null : { x: -d.x, y: -d.y });
     } else {
-      const a1 = Math.atan2(prev[1].y - prev[0].y, prev[1].x - prev[0].x);
-      const a2 = Math.atan2(s[1].y - s[0].y, s[1].x - s[0].x);
-      const turn = Math.abs(Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1)));
-      if (turn > JOIN_TURN) out.push({ at: s[0], reach: half * Math.min(4, 1 / Math.max(Math.sin((Math.PI - turn) / 2), 1e-9)) });
+      const a = unit(prev);
+      const b = unit(s);
+      if (a === null || b === null) {
+        discs.push({ at: s[0], reach: half * Math.max(Math.SQRT2, join === 'miter' ? miterLimit : 1) });
+      } else {
+        const cross = a.x * b.y - a.y * b.x;
+        const turn = Math.abs(Math.atan2(cross, a.x * b.x + a.y * b.y));
+        if (turn > JOIN_TURN) {
+          // The outer side is opposite the turn: the right of the path for a positive cross product, else its left.
+          const side = cross > 0 ? -1 : 1;
+          const n1 = { x: -a.y * side, y: a.x * side };
+          const n2 = { x: -b.y * side, y: b.x * side };
+          const v = s[0];
+          const [p1, p2] = [at(v, [n1, half]), at(v, [n2, half])];
+          const bl = Math.hypot(n1.x + n2.x, n1.y + n2.y);
+          const ratio = 1 / Math.max(Math.sin((Math.PI - turn) / 2), 1e-9);
+          if (bl < 1e-9 || (join === 'miter' && Math.abs(ratio - miterLimit) <= MITER_LIMIT_MARGIN * miterLimit)) {
+            // A path that doubles back, or a miter at its limit: nothing modelled, so a disc holds whatever is drawn.
+            discs.push({ at: v, reach: half * Math.max(Math.SQRT2, join === 'miter' ? Math.min(ratio, miterLimit * (1 + MITER_LIMIT_MARGIN)) : 1) });
+          } else {
+            const bis = { x: (n1.x + n2.x) / bl, y: (n1.y + n2.y) / bl };
+            if (join === 'miter' && ratio < miterLimit) {
+              const tip = at(v, [bis, half * ratio]);
+              edges.push([p1, tip], [tip, p2]);
+            } else if (join !== 'round') {
+              edges.push([p1, p2]);
+            }
+            // Inside a round join and outside its bevel (the bevel's middle is half cos(turn / 2) from the vertex); inside a miter tip.
+            probes.push(at(v, [bis, (half * (1 + Math.cos(turn / 2))) / 2]));
+            if (ratio > 1.2) probes.push(at(v, [bis, (half * (1 + ratio)) / 2]));
+          }
+        }
+      }
     }
-    if (!segments.some((q, j) => j !== i && same(q[0], s[1]))) out.push({ at: s[1], reach: half * Math.SQRT2 });
+    if (!segments.some((q, j) => j !== i && same(q[0], s[1]))) end(s[1], unit(s));
   });
-  return out;
+  return { edges, discs, probes };
 }
 
 function distanceToSegment(p: Pt, [a, b]: Segment): number {
@@ -310,9 +376,10 @@ function distanceToSegment(p: Pt, [a, b]: Segment): number {
 }
 
 /**
- * The svg points of a case: a grid over each svg's content box, and points a quarter stroke width either side of each wide stroke's
- * centreline, kept where the pixel is SVG_CLEAR_DEVICE_PX clear of every fill boundary, both stroke edges (half the device stroke
- * width each side of the centreline), every vertex's miter reach and the content box, inside the raster and under no later box.
+ * The svg points of a case: a grid over each svg's content box, points a quarter stroke width either side of each wide stroke's
+ * centreline, and the cap and join probes of strokeFeatures, kept where the pixel is SVG_CLEAR_DEVICE_PX clear of every fill
+ * boundary, both stroke edges (half the device stroke width each side of the centreline), every cap and join edge and unmodelled
+ * disc, and the content box, inside the raster and under no later box.
  * Chrome's pixel there is one shape's solid paint or the svg's backdrop.
  */
 export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
@@ -330,6 +397,7 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
     const map = (x: number, y: number): Pt => ({ x: c.x + dpr * (m.a * x + m.e), y: c.y + dpr * (m.d * y + m.f) });
     const edges: { readonly segments: Segment[]; readonly offset: number }[] = [];
     const corners: { readonly at: Pt; readonly reach: number }[] = [];
+    const probes: Pt[] = [];
     for (const sh of w.shapes) {
       const o = svgOutline(sh.path, map);
       // A shape with fill: none, or a fill of alpha 0 (fill-opacity: 0), paints no fill boundary, so its stroke band is one colour
@@ -338,7 +406,10 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
       if (sh.stroke !== null && sh.width > 0) {
         const half = (sh.width * m.a * dpr) / 2;
         edges.push({ segments: o.stroke, offset: half });
-        corners.push(...strokeCorners(o.stroke, half));
+        const f = strokeFeatures(o.stroke, half, sh.cap, sh.join, sh.miterLimit);
+        if (f.edges.length > 0) edges.push({ segments: f.edges, offset: 0 });
+        corners.push(...f.discs);
+        probes.push(...f.probes);
       }
     }
     let k = 0;
@@ -374,6 +445,8 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
         for (const side of sh.fill === null ? [1, 0, -1] : [1, -1]) tryPixel(Math.floor(mid.x + side * nx * (half / 2) - 0.5), Math.floor(mid.y + side * ny * (half / 2) - 0.5));
       }
     }
+    // SVG-stroke: at each cap and join, the points where another cap, join or miter limit would paint a different colour.
+    for (const q of probes) tryPixel(Math.floor(q.x), Math.floor(q.y));
   }
   return out;
 }
