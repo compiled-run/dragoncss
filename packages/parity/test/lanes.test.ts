@@ -222,7 +222,8 @@ describe('committed out/lanes.json', () => {
     expect(staleLanes(f, targets)).toEqual([]);
     expect(readFileSync(repoPath('packages/parity/out/lanes.json'), 'utf8')).toBe(lanesJsonText(f));
     expect(f.parity).toEqual({ pass: true, problems: [] });
-    expect(JSON.stringify(f)).not.toMatch(/Seconds|Ms"|timing/);
+    // caseLists holds case ids (anim-timing-*), which are names, not timings.
+    expect(JSON.stringify({ ...f, caseLists: undefined })).not.toMatch(/Seconds|Ms"|timing/);
   });
   it('host lanes pass on both targets with both digests; every device lane is not run; the reference proof passes', () => {
     if (f === null) return;
