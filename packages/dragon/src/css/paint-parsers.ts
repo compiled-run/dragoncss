@@ -17,6 +17,7 @@ import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
 import { SELECTION_VALUE_PARSERS } from './properties/selection.ts';
+import { SVG_DASH_VALUE_PARSERS } from './properties/svg-dash.ts';
 import { parseBoxShadow } from './properties/shadow.ts';
 import { TEXT_SHADOW_VALUE_PARSERS } from './properties/text-shadow.ts';
 import { TEXT_TRANSFORM_VALUE_PARSERS } from './properties/text-transform.ts';
@@ -37,6 +38,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   // SVG-opacity: fill-opacity and stroke-opacity take opacity's <opacity-value>.
   ['fill-opacity', (tokens, base) => parseOpacityValue('fill-opacity', tokens, base)],
   ['stroke-opacity', (tokens, base) => parseOpacityValue('stroke-opacity', tokens, base)],
+  ...Object.entries(SVG_DASH_VALUE_PARSERS),
   ['box-shadow', parseBoxShadow],
   ...Object.entries(OUTLINE_VALUE_PARSERS),
   ...Object.entries(VISIBILITY_VALUE_PARSERS),

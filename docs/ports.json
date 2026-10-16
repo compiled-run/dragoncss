@@ -3641,6 +3641,8 @@
         { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8525-8531", "symbol": "Resize::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8533-8552", "symbol": "Resize::ApplyValue", "source": "located" },
+        { "lines": "9615-9643", "symbol": "StrokeDasharray::ParseSingleValue", "source": "located" },
+        { "lines": "9654-9662", "symbol": "StrokeDashoffset::ParseSingleValue", "source": "located" },
         { "lines": "9689-9695", "symbol": "StrokeMiterlimit::ParseSingleValue", "source": "located" },
         { "lines": "10363-10381", "symbol": "ConsumePan", "source": "located" },
         { "lines": "10386-10416", "symbol": "TouchAction::ParseSingleValue", "source": "located" },

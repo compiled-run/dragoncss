@@ -16,4 +16,7 @@ export const SVG_ANIMATION: { readonly [P in (typeof SVG_LONGHANDS)[number]]: An
   'stroke-linejoin': DISCRETE,
   'stroke-miterlimit': UNADMITTED,
   'fill-rule': DISCRETE,
+  // SVG-dash: both interpolate in Chrome (css_properties.json5 interpolable); no animation package admits them yet.
+  'stroke-dasharray': UNADMITTED,
+  'stroke-dashoffset': UNADMITTED,
 };

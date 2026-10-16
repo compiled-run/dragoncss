@@ -40,7 +40,8 @@ import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
-import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
 import { serializeFontWeight } from '../fonts/weight.ts';
@@ -820,7 +821,7 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
  * SVG-a1: an <svg> with a viewBox and an auto width or height is sized from the viewBox ratio and the available width, which the
  * engine does not do for a replaced box without a natural size yet (package SVG-ratio). A shape's geometry comes from its
  * attributes only: a CSS width, height or transform on it, which Chrome would apply as a geometry property, is refused, and so is
- * a percentage stroke-width (relative to the viewport diagonal).
+ * a percentage stroke-width, stroke-dasharray or stroke-dashoffset (relative to the viewport diagonal).
  */
 function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string, on: readonly string[] = targets): void => {
@@ -839,8 +840,10 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} a colour or none.`);
   }
   const sw = el.props.get('stroke-width') as ResolvedValue;
-  if (sw.value.kind === 'percentage') {
-    refuse('stroke-width', sw.declaration === null ? el.element.node.origin : authored(sw.declaration.valueSpan), `stroke-width: ${valueToString(sw.value)} on <${tag}> ${el.element.address} is unsupported: a percentage stroke-width is relative to the viewport diagonal, which is not built yet (package SVG-units)`, 'Give stroke-width in px or as a number.');
+  for (const p of ['stroke-width', 'stroke-dasharray', 'stroke-dashoffset'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const why = svgPercentageRefusal(p, v.value);
+    if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} in px or as numbers.`);
   }
   if (tag === 'svg') {
     const auto = (['width', 'height'] as const).filter((p) => keywordOf(el.props.get(p) as ResolvedValue) === 'auto');
@@ -884,6 +887,24 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   const shape = shapeOf(tag, el.element.attributes);
   if (keywordOf(cap) !== 'butt' && stroked && shape !== null && svgZeroLengthSubpath(shape)) {
     refuse('zero-length-cap', cap.declaration === null ? el.element.node.origin : authored(cap.declaration.valueSpan), `stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address}, whose path has a zero-length subpath, is not supported on native: Chrome draws its cap as a dot or square that native does not orient the same way yet`, `Give <${tag}> ${el.element.address} stroke-linecap: butt, or draw the dot as a <circle>.`, native);
+  }
+  // SVG-dash: a calculated stroke-dashoffset keeps its text (values.ts), which the shape's dash phase cannot use yet.
+  const dashOffset = el.props.get('stroke-dashoffset') as ResolvedValue;
+  if (dashOffset.value.kind === 'other') {
+    refuse('dashoffset-calc', dashOffset.declaration === null ? el.element.node.origin : authored(dashOffset.declaration.valueSpan), `stroke-dashoffset: ${valueToString(dashOffset.value)} on <${tag}> ${el.element.address} is unsupported: a calculated stroke-dashoffset is not resolved yet (package SVG-units)`, 'Give stroke-dashoffset in px or as a number.');
+  }
+  // SVG-dash: a dashed stroke starts at the shape's first point and runs in its direction. A circle's is Skia's oval start in
+  // Chrome and the platform's ellipse start on native, which nothing proves the same yet; and a zero-length dash with a round or
+  // square cap is a dot or square, which native orients by its own rules (as a zero-length subpath's, above).
+  const dashValue = el.props.get('stroke-dasharray') as ResolvedValue;
+  const dashes = dashArrayOf(dashValue.value);
+  const dashed = stroked && dashes !== 'percentage' && dashes.reduce((a, b) => a + b, 0) > 0;
+  const dashOrigin = dashValue.declaration === null ? el.element.node.origin : authored(dashValue.declaration.valueSpan);
+  if (dashed && tag === 'circle') {
+    refuse('dash-circle', dashOrigin, `stroke-dasharray: ${valueToString(dashValue.value)} on <circle> ${el.element.address} is not supported on native: where the dashes of a circle start is not proven against Chrome yet`, `Draw the circle as a <path> to dash it, or remove stroke-dasharray from <circle> ${el.element.address}.`, native);
+  }
+  if (dashed && keywordOf(cap) !== 'butt' && (dashes as readonly number[]).includes(0)) {
+    refuse('dash-zero-cap', dashOrigin, `stroke-dasharray: ${valueToString(dashValue.value)} with stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address} is not supported on native: a zero-length dash is a dot or square that native does not orient the same way yet`, `Give every dash a length, or give <${tag}> ${el.element.address} stroke-linecap: butt.`, native);
   }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;
