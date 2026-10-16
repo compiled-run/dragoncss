@@ -57,8 +57,11 @@ export function isMathValue(v: CssValue): boolean {
 
 export const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, rgb(), rgba(), hsl(), hsla(), transparent or currentcolor.';
 
+/** The text fill and stroke properties that take a <color> (compat §5): the shorthand's width tokens are kept apart below. */
+const TEXT_STROKE_COLOR_BEARING: ReadonlySet<string> = new Set(['-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke']);
+
 function isColorBearing(property: string): boolean {
-  return property === 'color' || property === 'fill' || property === 'stroke' || property === 'text-decoration-color' || property === 'text-decoration' || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
+  return property === 'color' || property === 'fill' || property === 'stroke' || property === 'text-decoration-color' || property === 'text-decoration' || TEXT_STROKE_COLOR_BEARING.has(property) || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
 }
 
 /**
@@ -75,6 +78,10 @@ export function tokenValue(node: CssNode, property: string): CssValue | string {
   // css-backgrounds-3 §3.1: a calculation in a border shorthand is its <line-width>, typed as the border-*-width longhands are.
   if (node.type === 'Function' && MATH_VALUE_FUNCTIONS.has(asciiLower(String(node['name']))) && BORDER_SHORTHAND.test(property)) {
     return mathValue(node, asciiLower(String(node['name'])), 'border-top-width');
+  }
+  // compat §5.4: a calculation in -webkit-text-stroke is its <line-width>, typed as -webkit-text-stroke-width is.
+  if (node.type === 'Function' && MATH_VALUE_FUNCTIONS.has(asciiLower(String(node['name']))) && property === '-webkit-text-stroke') {
+    return mathValue(node, asciiLower(String(node['name'])), '-webkit-text-stroke-width');
   }
   if (node.type === 'Identifier') {
     const name = asciiLower(String(node['name']));

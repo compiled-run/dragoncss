@@ -16,12 +16,16 @@ body { margin: 0; --o: 0; }
 .big { opacity: 500%; }
 .initial { opacity: 0; }
 .initial.reset { opacity: initial; }
+.wk { -webkit-opacity: 0; }
+.wk-last { opacity: 1; -webkit-opacity: 0; }
+.wk-first { -webkit-opacity: 0; opacity: 1; }
 </style>
 </head>
 <body data-dragon-id="body">
 <div data-dragon-id="stage" class="stage">
 <div data-dragon-id="row1" class="row"><div data-dragon-id="op-parent" class="c parent"><div data-dragon-id="op-inherit" class="inherit"></div></div><div data-dragon-id="sp1a" class="s16"></div><div data-dragon-id="op-var" class="c var"></div><div data-dragon-id="sp1b" class="s8"></div><div data-dragon-id="op-calc" class="c calc"></div></div>
 <div data-dragon-id="row2" class="row"><div data-dragon-id="op-neg" class="c neg"></div><div data-dragon-id="sp2a" class="s16"></div><div data-dragon-id="op-big" class="c big"></div><div data-dragon-id="sp2b" class="s8"></div><div data-dragon-id="op-initial" class="c initial reset"></div></div>
+<div data-dragon-id="row3" class="row"><div data-dragon-id="op-wk" class="c wk"></div><div data-dragon-id="sp3a" class="s16"></div><div data-dragon-id="op-wk-last" class="c wk-last"></div><div data-dragon-id="sp3b" class="s8"></div><div data-dragon-id="op-wk-first" class="c wk-first"></div></div>
 </div>
 </body>
 </html>

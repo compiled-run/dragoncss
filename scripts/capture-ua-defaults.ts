@@ -85,7 +85,7 @@ type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, stri
 const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS, ...PHRASING_KEY_SPECS };
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
 const TEXT_FONT_PROPERTIES = ['font-weight', 'font-style'] as const;
-/** Every longhand but those only the dataset holds (uncaptured.ts: the text-font rows' and font-synthesis's). */
+/** Every longhand but those only the dataset holds (uncaptured.ts: the text-font rows', font-synthesis's, text-decoration's and the text fill and stroke colours). */
 const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(UNCAPTURED_LONGHANDS as readonly string[]).includes(p));
 const BORDER_KEYWORDS = ['thin', 'medium', 'thick'] as const;
 const SYSTEM_COLORS = [
