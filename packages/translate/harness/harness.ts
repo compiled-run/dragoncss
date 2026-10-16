@@ -670,6 +670,7 @@ function trackBreadth(v: JsonValue, path: string): TrackBreadth {
   if (k === 'auto') return { kind: 'auto' };
   if (k === 'min-content') return { kind: 'min-content' };
   if (k === 'max-content') return { kind: 'max-content' };
+  if (k === 'calc') return lengthCalc(v, path);
   return fail(`${path}: unknown kind ${k}`);
 }
 
@@ -683,6 +684,7 @@ function trackSize(v: JsonValue, path: string): TrackSize {
   if (k === 'fit-content') {
     const limit = field(obj(v, ['kind', 'limit'], path), 'limit', path);
     const lk = kindOf(limit, `${path}.limit`);
+    if (lk === 'calc') return { kind: 'fit-content', limit: lengthCalc(limit, `${path}.limit`) };
     const value = numField(obj(limit, ['kind', 'value'], `${path}.limit`), 'value', `${path}.limit`);
     if (lk === 'px') return { kind: 'fit-content', limit: { kind: 'px', value } };
     if (lk === 'percent') return { kind: 'fit-content', limit: { kind: 'percent', value } };
