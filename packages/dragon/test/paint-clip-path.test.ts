@@ -1,7 +1,7 @@
 // MASK-CLIP clip-path: the longhand (none or inset() with one to four length-or-percentage edges and no round, not inherited, initial
 // none, lengths computed to px and percentages kept, serialized in Chrome's shortest form), the refusals (every other shape, a url(),
 // another reference box, a round, a calculation or a viewport unit, on every target; natively, a clip beside a view outside the box
-// view, on an inline box, on html or body, and a clip that can cut into a box with text), the stacking context it makes, the lowering
+// view, on an inline box, on html or body, and a clip over a box with text), the stacking context it makes, the lowering
 // (one write per box with an inset, after the other clip writes) and the emitted native code (the writers, the rect, the readback and
 // the plant).
 import { describe, expect, it } from 'vitest';
@@ -144,18 +144,25 @@ describe('clip-path: native refusals', () => {
     const body = errors(compile('body { clip-path: inset(1px); }', NATIVE)).filter((d) => d.message.includes('has clip-path'));
     expect(body.map((d) => d.message)).toEqual(expect.arrayContaining([expect.stringMatching(/it is <body>, whose background is the canvas's/)]));
   });
-  it('refuses, natively, a clip that can cut into a box with text, which Chrome keeps in the accessibility tree; an inset of 0 or less never cuts in', () => {
+  it('refuses, natively, a clip over any text, which Chrome keeps in the accessibility tree; an inset of 0 or less hides overflowing and positioned text too', () => {
     const run = (css: string) => clipErrors(compileInput(inputFor(BASE + css, textTree), ALL));
-    for (const v of ['inset(1px)', 'inset(0 0 0 10%)', 'inset(-2px 0 1px)', 'inset(50%)']) {
+    for (const v of ['inset(1px)', 'inset(0 0 0 10%)', 'inset(-2px 0 1px)', 'inset(50%)', 'inset(0)', 'inset(-4px)', 'inset(0 -1% 0 -2px)']) {
       const errs = run(`.a { clip-path: ${v}; }`);
       expect(errs.map((d) => [d.code, d.target]).sort(), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
       expect(errs[0]?.message, v).toMatch(/but its text a:text0 can be clipped out of sight, which Chrome keeps in its accessibility tree and screen readers read/);
+      expect(errs[0]?.fix, v).toMatchObject({ manual: 'Clip a box without text, or move the text out of a.' });
       expectCatalogued(errs);
     }
-    for (const v of ['inset(0)', 'inset(-4px)', 'inset(0 -1% 0 -2px)']) expect(run(`.a { clip-path: ${v}; }`), v).toEqual([]);
+    // The review's repros: text Chrome clips away under an inset of 0 or less, positioned out of the box or overflowing it.
+    const deepTree = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])];
+    for (const css of ['.a { clip-path: inset(0); } .b { position: absolute; top: 100px; }', '.a { clip-path: inset(-2px); } .b { margin-top: 60px; }']) {
+      const errs = clipErrors(compileInput(inputFor(BASE + css, deepTree), ALL));
+      expect(errs.map((d) => d.target).sort(), css).toEqual(['android', 'ios']);
+      expect(errs[0]?.message, css).toContain('its text b:text0 can be clipped out of sight');
+    }
     // Text under display: none is in no accessibility tree; text deeper in the subtree is found too.
-    expect(clipErrors(compileInput(inputFor(`${BASE} .a { clip-path: inset(1px); } .b { display: none; }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])]), NATIVE))).toEqual([]);
-    const deep = clipErrors(compileInput(inputFor(`${BASE} .a { clip-path: inset(1px); }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])]), NATIVE));
+    expect(clipErrors(compileInput(inputFor(`${BASE} .a { clip-path: inset(1px); } .b { display: none; }`, deepTree), NATIVE))).toEqual([]);
+    const deep = clipErrors(compileInput(inputFor(`${BASE} .a { clip-path: inset(1px); }`, deepTree), NATIVE));
     expect(deep.map((d) => d.message)).toEqual(expect.arrayContaining([expect.stringContaining('its text b:text0 can be clipped')]));
   });
 });

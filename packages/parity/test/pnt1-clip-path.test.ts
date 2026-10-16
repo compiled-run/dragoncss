@@ -107,7 +107,7 @@ describe('MASK-CLIP clip-path: the paint model at every sample point equals the 
           const v = judge(c.id, p, c.environment.viewport, 'none');
           expect(v.problems).toEqual([]);
           expect(v.clipPoints, 'points across the clip edges').toBeGreaterThan(0);
-          if (spec.id === 'clip-path-basic') expect(v.glyphPoints, 'glyph points of text in a clipped box and beside one').toBeGreaterThan(0);
+          if (spec.id === 'clip-path-basic') expect(v.glyphPoints, 'glyph points of text beside the clipped boxes').toBeGreaterThan(0);
           for (const fault of ['ignored', 'own'] as const) expect(judge(c.id, p, c.environment.viewport, fault).problems.length, fault).toBeGreaterThan(0);
         }
       });

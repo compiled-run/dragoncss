@@ -15,8 +15,9 @@
 // border box's width or height. Chrome clips the box's own paint and every descendant, positioned ones included, to the inset rect.
 // Natively Dragon clips the box view and the views inside it to that rect after layout. Refused on the native targets: the root and
 // body, an inline box (whose fragments clip one by one), the box's own box-shadow and an outline in the subtree (views outside the
-// box view), and text in the subtree when an edge is positive, since that clip can cut the text out of sight while Chrome keeps it in
-// the accessibility tree and the native accessibility tree of a clipped view is not proven yet.
+// box view), and any text in the subtree: the clip covers every descendant, overflowing text and positioned descendants included, so
+// any inset can cut text out of sight while Chrome keeps it in the accessibility tree, and the native accessibility tree of a
+// clipped view is not proven yet.
 import type { Longhand } from '../../css/properties.ts';
 import type { InsetEdges } from '../../css/properties/clip-path.ts';
 import { clipPathEdges, insetEdgesOf, insetValue } from '../../css/properties/clip-path.ts';
@@ -135,7 +136,7 @@ function computeInsets(edges: InsetEdges, ctx: PaintValueContext): InsetEdges | 
 }
 
 /** Why a clip-path clip would lose what Chrome clips with the box, or null: the first such fact, the box's own before its subtree's. */
-function clipPathRefusal(el: ResolvedElement, edges: InsetEdges): { readonly fact: string; readonly manual: string } | null {
+function clipPathRefusal(el: ResolvedElement): { readonly fact: string; readonly manual: string } | null {
   const at = el.element.address;
   const tag = el.element.tag;
   if (tag === 'html' || tag === 'body') return { fact: `it is <${tag}>, whose background is the canvas's, which Chrome does not clip`, manual: `Move the clip-path from <${tag}> to a box inside it.` };
@@ -154,11 +155,11 @@ function clipPathRefusal(el: ResolvedElement, edges: InsetEdges): { readonly fac
   };
   const ringed = outline(el, true);
   if (ringed !== null) return { fact: `${ringed} an outline, which Dragon draws in the root view, outside the clip`, manual: `Remove the outline inside ${at}, or the clip-path.` };
-  // A clip that can cut into the border box can hide text whole. Chrome keeps clipped text in the accessibility tree; until a device
-  // run proves the native clip keeps it there too (VoiceOver, TalkBack), the native targets refuse such a clip over text.
-  const cuts = edges.some((e) => e.value > 0);
-  const text = cuts ? textInside(el) : null;
-  if (text !== null) return { fact: `its text ${text} can be clipped out of sight, which Chrome keeps in its accessibility tree and screen readers read; the native accessibility tree of a clipped view is not proven yet`, manual: `Clip a box without text, or use insets of 0 or less, which never cut into the border box.` };
+  // The clip covers every descendant, text that overflows the border box and positioned descendants included, so even an inset of 0
+  // or less can hide text whole. Chrome keeps clipped text in the accessibility tree; until a device run proves the native clip keeps
+  // it there too (VoiceOver, TalkBack), the native targets refuse a clip-path over any text, as they refuse clip: rect().
+  const text = textInside(el);
+  if (text !== null) return { fact: `its text ${text} can be clipped out of sight, which Chrome keeps in its accessibility tree and screen readers read; the native accessibility tree of a clipped view is not proven yet`, manual: `Clip a box without text, or move the text out of ${at}.` };
   return null;
 }
 
@@ -170,7 +171,7 @@ const checkClipPath: PaintCheck = (el, targets, diagnostics, reported) => {
   const at = el.element.address;
   const shape = valueToString(v.value);
   const unresolved = edges.find((e) => e.unit !== CANONICAL_LENGTH_UNIT && e.unit !== '%');
-  const refusal = unresolved === undefined ? clipPathRefusal(el, edges) : null;
+  const refusal = unresolved === undefined ? clipPathRefusal(el) : null;
   if (unresolved === undefined && refusal === null) return;
   for (const t of targets) {
     if (t === 'web') continue;

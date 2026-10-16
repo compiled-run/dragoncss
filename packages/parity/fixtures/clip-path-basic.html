@@ -3,7 +3,7 @@
 <head>
 <style>
 /* Every edge, inset and percentage is a multiple of 8 CSS px, a whole device px at DPR 2, 3 and 2.625, so no clip edge is antialiased. */
-/* Text sits only where no inset cuts into its box: native targets refuse a clip that can cut into a box with text. */
+/* Text sits only beside the clipped boxes: native targets refuse a clip-path over a box with text. */
 body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
 .stage { position: relative; height: 280px; padding: 8px; background-color: rgb(236, 240, 244); }
 .row { position: relative; height: 64px; margin-bottom: 8px; background-color: rgb(250, 200, 60); }
@@ -50,12 +50,12 @@ body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
 <div data-dragon-id="cut-i" class="box a c8"><div data-dragon-id="cut-i-k" class="k"></div></div>
 <div data-dragon-id="keep-none" class="box b keep-none"><div data-dragon-id="keep-none-k" class="k"></div></div>
 <div data-dragon-id="keep-init" class="box c keep-init"></div>
-<div data-dragon-id="cut-j" class="box d c9"><div data-dragon-id="cut-j-t">XX</div><div data-dragon-id="cut-j-out" class="out"></div></div>
+<div data-dragon-id="cut-j" class="box d c9"><div data-dragon-id="cut-j-out" class="out"></div></div>
 </div>
 <div data-dragon-id="row4" class="row flexrow">
 <div data-dragon-id="cut-s" class="stat"><div data-dragon-id="cut-s-k" class="k"></div></div>
 <div data-dragon-id="t1" class="t">XXXX</div>
-<div data-dragon-id="cut-u" class="stat stat0"><div data-dragon-id="cut-u-t">XX</div></div>
+<div data-dragon-id="cut-u" class="stat stat0"><div data-dragon-id="cut-u-k" class="k"></div></div>
 </div>
 </div>
 </body>

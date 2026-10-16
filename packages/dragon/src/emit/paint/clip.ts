@@ -7,7 +7,8 @@
 // css-masking-1 §6.1: clip-path: inset() stores its edges through dragonSetClipPath; after every layout the clip rect is the snapped
 // border box inset by each edge (px times the scale, plus its percentage of the layout width or height), in device px (clipPathRect).
 // UIKit masks the box view's layer with an opaque layer over the rect; Android clips the canvas of the box view's draw, around its own
-// paint and its children's. Neither touches the views' visibility, so no view leaves the accessibility tree.
+// paint and its children's. Neither touches the views' visibility; analysis still refuses a clip-path over any text, since the native
+// accessibility tree of clipped text is not proven yet.
 import type { InsetEdge } from '../../css/properties/clip-path.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
