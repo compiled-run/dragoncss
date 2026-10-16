@@ -14,7 +14,7 @@ import type { HostSource } from '../device-lanes.ts';
 import { allRunFailures, failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
 import { requireDeviceLease, stopStartedNow } from '../device-run.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
-import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, evidenceBehind, staleCovers, staleLanes, writeLanesFile } from '../lanes.ts';
+import { casesNotRun, checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, evidenceBehind, staleCovers, staleLanes, writeLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
@@ -181,8 +181,9 @@ if (runHost || runDevice) {
     for (const s of stale) console.log(`STALE ${s}`);
     if (stale.length > 0) exit = 1;
     // Async device lanes: records behind this tree's sources stay the device evidence until the scheduled device run on master
-    // (device-refresh.yml) replaces them; the landing driver's sync device step reads these lines as stale.
-    for (const s of evidenceBehind(committed)) console.log(`BEHIND ${s}`);
+    // (device-refresh.yml) replaces them, and cases a carried lane did not run wait for it; the landing driver's sync device step reads
+    // these lines as stale.
+    for (const s of [...evidenceBehind(committed), ...casesNotRun(committed, targets)]) console.log(`BEHIND ${s}`);
     file = committed;
   }
 }
