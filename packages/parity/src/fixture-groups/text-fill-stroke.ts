@@ -7,5 +7,5 @@ import { both, reject } from './define.ts';
 
 export const TEXT_FILL_STROKE: readonly FixtureSpec[] = [
   both('text-fill-stroke-initial'),
-  reject('reject-text-fill-color', 'DRAGON_UNSUPPORTED_VALUE', 'red', 'text f:text0 takes -webkit-text-fill-color: red'),
+  reject('reject-text-fill-color', 'DRAGON_UNSUPPORTED_VALUE', 'red', 'text f:text0 takes -webkit-text-fill-color: rgb(255, 0, 0)'),
 ];
