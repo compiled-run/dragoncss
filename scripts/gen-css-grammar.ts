@@ -176,6 +176,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ParsePaintStroke (fill and stroke): webref's <paint> has no <color>; Chrome 145 parses SVG 1.1's <paint>.
   fill: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
   stroke: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
+  // Blink StrokeLinejoin (css_properties.json5 keywords): miter, bevel and round; webref's crop, arcs and fallback do not parse in
+  // Chrome 145.
+  'stroke-linejoin': 'miter | bevel | round',
+  // Blink StrokeMiterlimit::ParseSingleValue: ConsumeNumber with ValueRange::kNonNegative.
+  'stroke-miterlimit': '<number [0,∞]>',
 };
 
 /**

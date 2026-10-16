@@ -1,7 +1,7 @@
 // SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): an inline <svg> is a replaced box (elements/replaced.ts) whose
 // content is its <path>, <rect> and
 // <circle> children. This module holds what the compiler reads from their attributes: the geometry attributes, the presentation
-// attributes fill, stroke and stroke-width (and the svg's width and height), the viewBox, and the refusals of everything else.
+// attributes of the svg property family (and the svg's width and height), the viewBox, and the refusals of everything else.
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { parsePathData, parseSvgLength, parseViewBox } from './svg-path.ts';
@@ -19,8 +19,8 @@ import type { ResolvedElement } from '../resolve.ts';
 export const SVG_TAG = 'svg';
 
 /** The presentation attributes Dragon maps to its svg property family (SVG 2 §6.6); author rules beat them. */
-export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity';
-export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity'];
+export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule';
+export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule'];
 
 /** The attributes each SVG tag compiles: its geometry, the paint presentation attributes, and xmlns (no effect in HTML). */
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
@@ -39,10 +39,6 @@ const SVG_ATTRIBUTE_OWNERS: { readonly [name: string]: string } = {
   opacity: 'the SVG opacity package SVG-opacity',
   'stroke-dasharray': 'the SVG dash package SVG-dash',
   'stroke-dashoffset': 'the SVG dash package SVG-dash',
-  'stroke-linecap': 'the SVG stroke package SVG-stroke',
-  'stroke-linejoin': 'the SVG stroke package SVG-stroke',
-  'stroke-miterlimit': 'the SVG stroke package SVG-stroke',
-  'fill-rule': 'the SVG stroke package SVG-stroke',
   'clip-path': 'the clipping package MASK-CLIP',
   mask: 'the clipping package MASK-CLIP',
   'pathLength': 'the SVG dash package SVG-dash',
@@ -169,7 +165,26 @@ export type SvgPaint = { readonly kind: 'none' } | { readonly kind: 'color'; rea
 
 /** One drawn shape of an <svg>: its address, geometry in user units, and paint. strokeWidth is in user units (px before the viewBox). */
 /** painted: whether Chrome paints the shape (svgShapePainted); one it does not still has its box and bbox. */
-export type SvgShapeScene = { readonly address: string; readonly tag: string; readonly shape: SvgShape; readonly fill: SvgPaint; readonly stroke: SvgPaint; readonly strokeWidth: number; readonly fillOpacity: number; readonly strokeOpacity: number; readonly painted: boolean };
+export type SvgShapeScene = {
+  readonly address: string;
+  readonly tag: string;
+  readonly shape: SvgShape;
+  readonly fill: SvgPaint;
+  readonly stroke: SvgPaint;
+  readonly strokeWidth: number;
+  readonly fillOpacity: number;
+  readonly strokeOpacity: number;
+  /** SVG-stroke: the computed stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule. */
+  readonly cap: SvgLineCap;
+  readonly join: SvgLineJoin;
+  readonly miterLimit: number;
+  readonly fillRule: SvgFillRule;
+  readonly painted: boolean;
+};
+
+export type SvgLineCap = 'butt' | 'round' | 'square';
+export type SvgLineJoin = 'miter' | 'round' | 'bevel';
+export type SvgFillRule = 'nonzero' | 'evenodd';
 
 /** An <svg>'s drawing: its viewBox and its shapes in paint order. */
 export type SvgScene = { readonly address: string; readonly viewBox: ViewBox | null; readonly shapes: readonly SvgShapeScene[] };
@@ -179,6 +194,13 @@ function opacityOfProp(el: ResolvedElement, p: 'fill-opacity' | 'stroke-opacity'
   const v = (el.props.get(p) as ResolvedValue).value;
   if (v.kind !== 'number') throw new Error(`${el.element.address}: ${p} did not compute to a number`);
   return v.value;
+}
+
+/** A shape's computed keyword of a property, checked against the keywords Chrome parses for it. */
+function keywordOfProp<K extends string>(el: ResolvedElement, p: 'stroke-linecap' | 'stroke-linejoin' | 'fill-rule', keywords: readonly K[]): K {
+  const v = (el.props.get(p) as ResolvedValue).value;
+  if (v.kind !== 'keyword' || !(keywords as readonly string[]).includes(v.value)) throw new Error(`${el.element.address}: ${p} did not compute to one of ${keywords.join(', ')}`);
+  return v.value as K;
 }
 
 function paintOf(el: ResolvedElement, p: 'fill' | 'stroke'): SvgPaint {
@@ -201,6 +223,39 @@ export function svgShapeEmpty(shape: SvgShape): boolean {
   if (shape.kind === 'rect') return shape.width === 0 || shape.height === 0;
   if (shape.kind === 'circle') return shape.r === 0;
   return shape.segments.length === 0;
+}
+
+/**
+ * Whether a shape has a zero-length subpath: one that draws (a line, curve or close after its moveto) without leaving its start
+ * point, control points included. SVG 2 §13.6.6 strokes it as a dot or square when the cap is round or square; native draws such
+ * a cap with its own orientation rules, which nothing proves against Chrome yet. A lone moveto is not stroked (SVG 2 §9.5.1).
+ */
+export function svgZeroLengthSubpath(shape: SvgShape): boolean {
+  if (shape.kind !== 'path') return false;
+  let start: { x: number; y: number } | null = null;
+  let draws = false;
+  let zero = true;
+  const at = (x: number, y: number): boolean => start !== null && x === start.x && y === start.y;
+  for (const v of shape.segments) {
+    if (v.kind === 'move') {
+      if (draws && zero) return true;
+      start = { x: v.x, y: v.y };
+      draws = false;
+      zero = true;
+      continue;
+    }
+    draws = true;
+    if (v.kind === 'line') zero &&= at(v.x, v.y);
+    else if (v.kind === 'quad') zero &&= at(v.x1, v.y1) && at(v.x, v.y);
+    else if (v.kind === 'cubic') zero &&= at(v.x1, v.y1) && at(v.x2, v.y2) && at(v.x, v.y);
+    else {
+      // A close ends the subpath; a command after it starts a new one at the same point.
+      if (zero) return true;
+      draws = false;
+      zero = true;
+    }
+  }
+  return draws && zero;
 }
 
 /**
@@ -229,13 +284,29 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
     const sw = (c.props.get('stroke-width') as ResolvedValue).value;
     const strokeWidth = sw.kind === 'length' && sw.unit === 'px' ? sw.value : sw.kind === 'number' ? sw.value : null;
     if (strokeWidth === null) throw new Error(`${c.element.address}: stroke-width did not compute to px`);
-    shapes.push({ address: c.element.address, tag: c.element.tag, shape, fill: paintOf(c, 'fill'), stroke: paintOf(c, 'stroke'), strokeWidth, fillOpacity: opacityOfProp(c, 'fill-opacity'), strokeOpacity: opacityOfProp(c, 'stroke-opacity'), painted: svgShapePainted(c) });
+    const miter = (c.props.get('stroke-miterlimit') as ResolvedValue).value;
+    if (miter.kind !== 'number') throw new Error(`${c.element.address}: stroke-miterlimit did not compute to a number`);
+    shapes.push({
+      address: c.element.address,
+      tag: c.element.tag,
+      shape,
+      fill: paintOf(c, 'fill'),
+      stroke: paintOf(c, 'stroke'),
+      strokeWidth,
+      fillOpacity: opacityOfProp(c, 'fill-opacity'),
+      strokeOpacity: opacityOfProp(c, 'stroke-opacity'),
+      cap: keywordOfProp(c, 'stroke-linecap', ['butt', 'round', 'square'] as const),
+      join: keywordOfProp(c, 'stroke-linejoin', ['miter', 'round', 'bevel'] as const),
+      miterLimit: miter.value,
+      fillRule: keywordOfProp(c, 'fill-rule', ['nonzero', 'evenodd'] as const),
+      painted: svgShapePainted(c),
+    });
   }
   return { address: el.element.address, viewBox: viewBoxOf(el.element.attributes), shapes };
 }
 
 /**
- * The stand-in declaration of an SVG paint presentation attribute (fill, stroke, stroke-width), located at the attribute (its
+ * The stand-in declaration of an SVG paint presentation attribute (SVG_PAINT_ATTRIBUTES), located at the attribute (its
  * element's start tag), or null for any other hint. Its value then reaches the profile check (usedKeys) as a CSS declaration's does.
  */
 export function svgHintDeclaration(el: LinkedElement, property: Longhand, value: CssValue): Declaration | null {

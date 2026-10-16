@@ -499,49 +499,81 @@
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 2.625,
-  "node": "svg:s1:4",
+  "node": "svg:s1:6",
   "kind": "pixel",
-  "detail": "svg:s1:4 at 262,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:6 at 236,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 2.625,
-  "node": "svg:s1:72",
+  "node": "svg:s1:7",
   "kind": "pixel",
-  "detail": "svg:s1:72 at 262,87: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:7 at 262,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 2.625,
-  "node": "svg:s1:81",
+  "node": "svg:s1:8",
   "kind": "pixel",
-  "detail": "svg:s1:81 at 225,52: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:8 at 288,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 2.625,
-  "node": "svg:s1:83",
+  "node": "svg:s1:78",
   "kind": "pixel",
-  "detail": "svg:s1:83 at 262,15: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:78 at 236,87: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 2.625,
-  "node": "svg:s1:85",
+  "node": "svg:s1:79",
   "kind": "pixel",
-  "detail": "svg:s1:85 at 298,52: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:79 at 262,87: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 2.625,
-  "node": "svg:s1:87",
+  "node": "svg:s1:80",
   "kind": "pixel",
-  "detail": "svg:s1:87 at 262,88: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:80 at 288,87: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 2.625,
+  "node": "svg:s1:89",
+  "kind": "pixel",
+  "detail": "svg:s1:89 at 225,52: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 2.625,
+  "node": "svg:s1:91",
+  "kind": "pixel",
+  "detail": "svg:s1:91 at 262,15: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 2.625,
+  "node": "svg:s1:93",
+  "kind": "pixel",
+  "detail": "svg:s1:93 at 298,52: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 2.625,
+  "node": "svg:s1:95",
+  "kind": "pixel",
+  "detail": "svg:s1:95 at 262,88: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -683,49 +715,81 @@
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 2.625,
-  "node": "svg:s1:4",
+  "node": "svg:s1:6",
   "kind": "pixel",
-  "detail": "svg:s1:4 at 997,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:6 at 971,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 2.625,
-  "node": "svg:s1:72",
+  "node": "svg:s1:7",
   "kind": "pixel",
-  "detail": "svg:s1:72 at 997,87: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:7 at 997,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 2.625,
-  "node": "svg:s1:81",
+  "node": "svg:s1:8",
   "kind": "pixel",
-  "detail": "svg:s1:81 at 960,52: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:8 at 1023,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 2.625,
-  "node": "svg:s1:83",
+  "node": "svg:s1:78",
   "kind": "pixel",
-  "detail": "svg:s1:83 at 997,15: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:78 at 971,87: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 2.625,
-  "node": "svg:s1:85",
+  "node": "svg:s1:79",
   "kind": "pixel",
-  "detail": "svg:s1:85 at 1033,52: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:79 at 997,87: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 2.625,
-  "node": "svg:s1:87",
+  "node": "svg:s1:80",
   "kind": "pixel",
-  "detail": "svg:s1:87 at 997,88: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:80 at 1023,87: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 2.625,
+  "node": "svg:s1:89",
+  "kind": "pixel",
+  "detail": "svg:s1:89 at 960,52: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 2.625,
+  "node": "svg:s1:91",
+  "kind": "pixel",
+  "detail": "svg:s1:91 at 997,15: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 2.625,
+  "node": "svg:s1:93",
+  "kind": "pixel",
+  "detail": "svg:s1:93 at 1033,52: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 2.625,
+  "node": "svg:s1:95",
+  "kind": "pixel",
+  "detail": "svg:s1:95 at 997,88: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -907,49 +971,49 @@
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s1:5",
-  "kind": "pixel",
-  "detail": "svg:s1:5 at 270,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "svg-opacity",
-  "dpr": 3,
   "node": "svg:s1:6",
   "kind": "pixel",
-  "detail": "svg:s1:6 at 300,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:6 at 270,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s1:75",
+  "node": "svg:s1:7",
   "kind": "pixel",
-  "detail": "svg:s1:75 at 270,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:7 at 300,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s1:76",
+  "node": "svg:s1:8",
   "kind": "pixel",
-  "detail": "svg:s1:76 at 300,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:8 at 330,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s1:85",
+  "node": "svg:s1:78",
   "kind": "pixel",
-  "detail": "svg:s1:85 at 257,59: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:78 at 270,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s1:87",
+  "node": "svg:s1:79",
   "kind": "pixel",
-  "detail": "svg:s1:87 at 299,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:79 at 300,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 3,
+  "node": "svg:s1:80",
+  "kind": "pixel",
+  "detail": "svg:s1:80 at 330,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -957,7 +1021,7 @@
   "dpr": 3,
   "node": "svg:s1:89",
   "kind": "pixel",
-  "detail": "svg:s1:89 at 341,59: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:89 at 257,59: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -965,15 +1029,23 @@
   "dpr": 3,
   "node": "svg:s1:91",
   "kind": "pixel",
-  "detail": "svg:s1:91 at 299,101: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:91 at 299,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
-  "node": "svg:s3:76",
+  "node": "svg:s1:93",
   "kind": "pixel",
-  "detail": "svg:s3:76 at 86,322: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+  "detail": "svg:s1:93 at 341,59: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 3,
+  "node": "svg:s1:95",
+  "kind": "pixel",
+  "detail": "svg:s1:95 at 299,101: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -981,7 +1053,7 @@
   "dpr": 3,
   "node": "svg:s3:77",
   "kind": "pixel",
-  "detail": "svg:s3:77 at 271,350: native [40,19,40,255], Chrome [39,19,39,255] (channel delta limit 0)"
+  "detail": "svg:s3:77 at 86,322: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -989,7 +1061,7 @@
   "dpr": 3,
   "node": "svg:s3:78",
   "kind": "pixel",
-  "detail": "svg:s3:78 at 268,291: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+  "detail": "svg:s3:78 at 271,350: native [40,19,40,255], Chrome [39,19,39,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -997,7 +1069,15 @@
   "dpr": 3,
   "node": "svg:s3:79",
   "kind": "pixel",
-  "detail": "svg:s3:79 at 327,296: native [40,19,40,255], Chrome [39,19,39,255] (channel delta limit 0)"
+  "detail": "svg:s3:79 at 268,291: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity",
+  "dpr": 3,
+  "node": "svg:s3:80",
+  "kind": "pixel",
+  "detail": "svg:s3:80 at 327,296: native [40,19,40,255], Chrome [39,19,39,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -1139,49 +1219,49 @@
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s1:5",
-  "kind": "pixel",
-  "detail": "svg:s1:5 at 1110,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "svg-opacity-rtl",
-  "dpr": 3,
   "node": "svg:s1:6",
   "kind": "pixel",
-  "detail": "svg:s1:6 at 1140,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:6 at 1110,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s1:75",
+  "node": "svg:s1:7",
   "kind": "pixel",
-  "detail": "svg:s1:75 at 1110,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:7 at 1140,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s1:76",
+  "node": "svg:s1:8",
   "kind": "pixel",
-  "detail": "svg:s1:76 at 1140,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:8 at 1170,20: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s1:85",
+  "node": "svg:s1:78",
   "kind": "pixel",
-  "detail": "svg:s1:85 at 1097,59: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:78 at 1110,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s1:87",
+  "node": "svg:s1:79",
   "kind": "pixel",
-  "detail": "svg:s1:87 at 1139,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:79 at 1140,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 3,
+  "node": "svg:s1:80",
+  "kind": "pixel",
+  "detail": "svg:s1:80 at 1170,100: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -1189,7 +1269,7 @@
   "dpr": 3,
   "node": "svg:s1:89",
   "kind": "pixel",
-  "detail": "svg:s1:89 at 1181,59: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:89 at 1097,59: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -1197,15 +1277,23 @@
   "dpr": 3,
   "node": "svg:s1:91",
   "kind": "pixel",
-  "detail": "svg:s1:91 at 1139,101: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+  "detail": "svg:s1:91 at 1139,17: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
   "case": "svg-opacity-rtl",
   "dpr": 3,
-  "node": "svg:s3:76",
+  "node": "svg:s1:93",
   "kind": "pixel",
-  "detail": "svg:s3:76 at 926,322: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+  "detail": "svg:s1:93 at 1181,59: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 3,
+  "node": "svg:s1:95",
+  "kind": "pixel",
+  "detail": "svg:s1:95 at 1139,101: native [83,125,128,255], Chrome [82,125,128,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -1213,7 +1301,7 @@
   "dpr": 3,
   "node": "svg:s3:77",
   "kind": "pixel",
-  "detail": "svg:s3:77 at 1111,350: native [40,19,40,255], Chrome [39,19,39,255] (channel delta limit 0)"
+  "detail": "svg:s3:77 at 926,322: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -1221,7 +1309,7 @@
   "dpr": 3,
   "node": "svg:s3:78",
   "kind": "pixel",
-  "detail": "svg:s3:78 at 1108,291: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+  "detail": "svg:s3:78 at 1111,350: native [40,19,40,255], Chrome [39,19,39,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -1229,7 +1317,15 @@
   "dpr": 3,
   "node": "svg:s3:79",
   "kind": "pixel",
-  "detail": "svg:s3:79 at 1167,296: native [40,19,40,255], Chrome [39,19,39,255] (channel delta limit 0)"
+  "detail": "svg:s3:79 at 1108,291: native [77,77,77,255], Chrome [76,76,76,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "svg-opacity-rtl",
+  "dpr": 3,
+  "node": "svg:s3:80",
+  "kind": "pixel",
+  "detail": "svg:s3:80 at 1167,296: native [40,19,40,255], Chrome [39,19,39,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",

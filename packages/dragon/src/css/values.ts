@@ -32,7 +32,7 @@ export const CSS_WIDE: ReadonlySet<string> = new Set(['inherit', 'initial', 'uns
 export const LINE_STYLES: ReadonlySet<string> = new Set(['none', 'hidden', 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset']);
 export const LINE_WIDTH_KEYWORDS: ReadonlySet<string> = new Set(['thin', 'medium', 'thick', 'hairline']);
 /** Properties whose unitless numbers stay numbers; elsewhere a unitless zero is a length. */
-const NUMBER_PROPERTIES: ReadonlySet<string> = new Set<string>(['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight']);
+const NUMBER_PROPERTIES: ReadonlySet<string> = new Set<string>(['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight', 'stroke-miterlimit']);
 
 export const kw = (value: string): CssValue => ({ kind: 'keyword', value });
 
@@ -133,7 +133,8 @@ export const REFUSED_MATH_PREFIX = 'refused ';
 function mathValue(node: CssNode, name: string, property: string): CssValue {
   const text = generate(node);
   const refused = (reason: string): CssValue => ({ kind: 'other', type: `${REFUSED_MATH_PREFIX}${name}()`, text: `${text} /* ${reason} */` });
-  // css-values-4 §10.10: a top-level result is clamped to the property's range; flex-grow and flex-shrink take [0,∞].
+  // css-values-4 §10.10: a top-level result is clamped to the property's range; flex-grow, flex-shrink and stroke-miterlimit take
+  // [0,∞] (Chrome StrokeMiterlimit::ParseSingleValue, ValueRange::kNonNegative).
   const nonNegative = (v: number): number => (v < 0 ? 0 : v);
   if (property === 'flex') {
     const n = parseMath(text, { type: 'number' });
@@ -145,7 +146,7 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
   if (!parsed.ok) return refused(parsed.reason);
   if (context.type === 'number') {
     const folded = foldNumber(parsed.node);
-    const value = property === 'flex-grow' || property === 'flex-shrink' ? nonNegative(folded) : folded;
+    const value = property === 'flex-grow' || property === 'flex-shrink' || property === 'stroke-miterlimit' ? nonNegative(folded) : folded;
     return { kind: 'number', value };
   }
   return { kind: 'other', type: mathHasEnv(parsed.node) ? ENV_VALUE_TYPE : `${name}()`, text };
