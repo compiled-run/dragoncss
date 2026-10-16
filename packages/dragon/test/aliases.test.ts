@@ -44,6 +44,14 @@ const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'box-shadow': ['1px 2px 3px red', 'inset 0 0 0 2px rgb(0 0 0 / 50%), 3px 3px currentcolor', 'none', '1px 2px calc(1px + 1px)', '1vw 0', '1px'],
   opacity: ['0', '50%', '0.5', '1.5', 'calc(50% + 10%)'],
   'user-select': ['none', 'TEXT', 'all', 'contain'],
+  mask: ['none', 'NONE', 'url(m.svg) no-repeat center / contain', 'none, none'],
+  'mask-clip': ['border-box', 'padding-box', 'no-clip'],
+  'mask-composite': ['add', 'exclude, add'],
+  'mask-image': ['none', 'linear-gradient(black, transparent)', 'url(m.svg), none'],
+  'mask-origin': ['border-box', 'content-box'],
+  'mask-position': ['0% 0%', 'center', '10px 20%, left top'],
+  'mask-repeat': ['repeat', 'no-repeat', 'repeat-x, space round'],
+  'mask-size': ['auto', 'cover', '10px auto'],
   'align-content': ['center', 'space-between', 'first baseline'],
   'align-items': ['flex-end', 'last baseline', 'safe center'],
   'align-self': ['auto', 'stretch', 'baseline'],
@@ -112,7 +120,7 @@ const COMMON = ['inherit', 'initial', 'unset', 'revert', 'var(--x)', 'var(--x, 1
 
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(68);
+    expect(ALIASES.length).toBe(76);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
@@ -165,8 +173,8 @@ describe('legacy aliases parse as their property', () => {
     expect(kf('-webkit-transform: rotate(5deg)')).toEqual(kf('transform: rotate(5deg)'));
     // transform itself keeps its own parse: a unitless perspective() is invalid there, as in Chrome.
     expect(parsed('transform: perspective(100)').diagnostics.map((d) => d[0])).toEqual(['DRAGON_CSS_INVALID_VALUE']);
-    // Every other alias parses no value differently.
-    for (const [alias] of ALIASES) if (alias !== '-webkit-transform') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
+    // Every other alias but -webkit-mask-composite (test/mask.test.ts) parses no value differently.
+    for (const [alias] of ALIASES) if (alias !== '-webkit-transform' && alias !== '-webkit-mask-composite') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
   });
   it('an alias in a keyframe block sets its property', () => {
     const frames = (body: string) => {
@@ -269,8 +277,9 @@ describe('profile diagnostics name the alias as written', () => {
 
 describe('the alias fixtures cover every alias', () => {
   it('each alias appears in a fixture of the aliases group or its property\'s group, or the animation ones in the anim-webkit frame fixture', () => {
-    // shadow-webkit-alias (shadow group) and opacity-cascade (effects group) hold the paint aliases where their pixel tests read them.
-    const html = ['alias-background', 'alias-flex', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
+    // shadow-webkit-alias (shadow group), opacity-cascade (effects group) and mask-initial (mask group) hold the paint aliases where
+    // their pixel tests read them.
+    const html = ['alias-background', 'alias-flex', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'mask-initial'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
     const frames = readFileSync(new URL('../../parity/fixtures/anim-webkit/view.css', import.meta.url), 'utf8');
     for (const [alias] of ALIASES) expect((alias.includes('-transition') || alias.includes('-animation') ? frames : html).includes(`${alias}:`), alias).toBe(true);
     expect(frames).toContain('@-webkit-keyframes');

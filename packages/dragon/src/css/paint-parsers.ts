@@ -12,6 +12,7 @@ import { FONT_TUNING_VALUE_PARSERS } from './properties/font-tuning.ts';
 import { FONT_STRETCH_VALUE_PARSERS } from './properties/font-stretch.ts';
 import { FONT_FEATURES_VALUE_PARSERS } from './properties/font-features.ts';
 import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
+import { MASK_VALUE_PARSERS } from './properties/mask.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
@@ -51,4 +52,5 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(TOUCH_ACTION_VALUE_PARSERS),
   ...Object.entries(CLIP_RECT_VALUE_PARSERS),
   ...Object.entries(CLIP_PATH_VALUE_PARSERS),
+  ...Object.entries(MASK_VALUE_PARSERS),
 ]);
