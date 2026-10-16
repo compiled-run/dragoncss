@@ -851,6 +851,8 @@
     "text-spacing-ahem-rtl": "spaced is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-word-spacing-ahem": "spaced is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-word-spacing-ahem-rtl": "spaced is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "text-style-ahem": "em is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "text-style-ahem-rtl": "em is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-transform-keywords": "s1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-transform-keywords-rtl": "s1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-transform-text": "brk is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",
