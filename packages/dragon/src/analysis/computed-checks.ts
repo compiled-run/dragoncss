@@ -38,7 +38,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
-import { isSvgShapeTag, svgPaintRefusal, svgShapePainted } from './elements/svg.ts';
+import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
@@ -851,6 +851,19 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   const alpha = opacityOf(opacity.value);
   if (alpha !== 0 && alpha !== 1 && keywordOf(el.props.get('visibility') as ResolvedValue) === 'visible') {
     refuse('opacity', opacity.declaration === null ? el.element.node.origin : authored(opacity.declaration.valueSpan), `opacity: ${valueToString(opacity.value)} on <${tag}> ${el.element.address} is not supported on native: a shape is drawn opaque or not at all there until the SVG structure package SVG-b`, `Set opacity on the <svg>, or give <${tag}> ${el.element.address} opacity 0 or 1.`, native);
+  }
+  // SVG-stroke: a calculation Dragon cannot fold to a number (typed division) keeps its refused text, which the shape cannot draw.
+  const miter = el.props.get('stroke-miterlimit') as ResolvedValue;
+  if (isRefusedMath(miter.value)) {
+    refuse('stroke-miterlimit', miter.declaration === null ? el.element.node.origin : authored(miter.declaration.valueSpan), `stroke-miterlimit: ${valueToString(miter.value)} on <${tag}> ${el.element.address} is unsupported`, 'Write stroke-miterlimit as a number, or a calculation of numbers.');
+  }
+  // SVG-stroke: a round or square cap on a zero-length subpath (svgZeroLengthSubpath) is a dot or square in Chrome, oriented as
+  // SVG 2 §13.6.6 says; native orients it by its own rules, so a stroked shape with one is refused there.
+  const cap = el.props.get('stroke-linecap') as ResolvedValue;
+  const stroked = keywordOf(el.props.get('stroke') as ResolvedValue) !== 'none' && !((sw.value.kind === 'length' || sw.value.kind === 'number') && sw.value.value === 0);
+  const shape = shapeOf(tag, el.element.attributes);
+  if (keywordOf(cap) !== 'butt' && stroked && shape !== null && svgZeroLengthSubpath(shape)) {
+    refuse('zero-length-cap', cap.declaration === null ? el.element.node.origin : authored(cap.declaration.valueSpan), `stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address}, whose path has a zero-length subpath, is not supported on native: Chrome draws its cap as a dot or square that native does not orient the same way yet`, `Give <${tag}> ${el.element.address} stroke-linecap: butt, or draw the dot as a <circle>.`, native);
   }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;
