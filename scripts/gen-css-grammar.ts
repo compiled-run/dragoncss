@@ -181,6 +181,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'stroke-linejoin': 'miter | bevel | round',
   // Blink StrokeMiterlimit::ParseSingleValue: ConsumeNumber with ValueRange::kNonNegative.
   'stroke-miterlimit': '<number [0,∞]>',
+  // Blink StrokeDasharray::ParseSingleValue: none, or non-negative lengths, percentages or (SVG attribute mode) numbers, each
+  // followed by an optional comma; webref's <dasharray> takes the same, written here as comma-separated runs.
+  'stroke-dasharray': 'none | [ [ <length-percentage [0,∞]> | <number [0,∞]> ]+ ]#',
+  // Blink StrokeDashoffset::ParseSingleValue: any length or percentage, or (SVG attribute mode) a number.
+  'stroke-dashoffset': '<length-percentage> | <number>',
 };
 
 /**
