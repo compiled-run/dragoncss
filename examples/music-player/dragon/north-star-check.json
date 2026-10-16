@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 172,
-  "errors": 167,
+  "diagnostics": 168,
+  "errors": 163,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -156,8 +156,8 @@
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 5,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 5,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 29,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 29,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 27,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 27,
    "DRAGON_UNSUPPORTED_VALUE [web]": 4
   },
   "perTarget": {
@@ -183,7 +183,7 @@
      "DRAGON_UNSUPPORTED_FONT": 25,
      "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 29
+     "DRAGON_UNSUPPORTED_VALUE": 27
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -200,7 +200,7 @@
      "DRAGON_UNSUPPORTED_FONT": 25,
      "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 29
+     "DRAGON_UNSUPPORTED_VALUE": 27
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -215,11 +215,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 248,
+  "supportedBothTargets": 249,
   "supportedWeb": 274,
-  "supportedIos": 248,
-  "supportedAndroid": 248,
-  "supportPercent": 85.8,
+  "supportedIos": 249,
+  "supportedAndroid": 249,
+  "supportPercent": 86.2,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -302,9 +302,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 60,
-   "B-unwrapped": 60,
-   "C-context": 129
+   "A-authored": 58,
+   "B-unwrapped": 58,
+   "C-context": 127
   }
  },
  "features": {
@@ -3586,11 +3586,9 @@
    "property": "text-underline-offset",
    "value": "0.2rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 257,
@@ -4571,46 +4569,6 @@
     "A-authored",
     "B-unwrapped",
     "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); supported text-underline-offset values: <length-px> or <percentage>",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); supported text-underline-offset values: <length-px> or <percentage>",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); supported text-underline-offset values: <length-px> or <percentage>",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); supported text-underline-offset values: <length-px> or <percentage>",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
    ]
   },
   {
@@ -6260,44 +6218,6 @@
     "text": "fixed"
    },
    "message": "position: fixed is unsupported (support profile m1-s5); in block/ltr use static",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
    "viaRelated": false,
    "passes": [
     "C-context"
