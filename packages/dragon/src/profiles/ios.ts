@@ -2030,8 +2030,12 @@ const ROWS_2: readonly ProfileRow[] = [
   { feature: "font-variant-ligatures:normal", context: "text-in-inline/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "normal", context: "text-in-inline/rtl", cases: ["text-font-tuning-ahem-rtl", "text-font-variant-ahem-rtl"] }] },
   { feature: "font-variant-numeric:<font-variant-list>", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<font-variant-list>", context: "text-in-block/ltr", cases: ["text-font-variant-ahem"] }] },
   { feature: "font-variant-numeric:<font-variant-list>", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<font-variant-list>", context: "text-in-block/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
+  { feature: "font-variant-numeric:diagonal-fractions", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "diagonal-fractions", context: "text-in-block/ltr", cases: ["text-font-variant-ahem"] }] },
+  { feature: "font-variant-numeric:diagonal-fractions", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "diagonal-fractions", context: "text-in-block/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
   { feature: "font-variant-numeric:inherit", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "inherit", context: "text-in-block/ltr", cases: ["font-shorthand-inherit"] }] },
   { feature: "font-variant-numeric:inherit", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "inherit", context: "text-in-block/rtl", cases: ["font-shorthand-inherit-rtl"] }] },
+  { feature: "font-variant-numeric:lining-nums", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "lining-nums", context: "text-in-block/ltr", cases: ["text-font-variant-ahem"] }] },
+  { feature: "font-variant-numeric:lining-nums", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "lining-nums", context: "text-in-block/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
   { feature: "font-variant-numeric:normal", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "normal", context: "text-in-block/ltr", cases: ["font-shorthand-inherit", "text-font-features-ahem", "text-font-size-values-ahem", "text-font-stretch-ahem"] }] },
   { feature: "font-variant-numeric:normal", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "normal", context: "text-in-block/rtl", cases: ["font-shorthand-inherit-rtl", "text-font-features-ahem-rtl", "text-font-size-values-ahem-rtl", "text-font-stretch-ahem-rtl"] }] },
   { feature: "font-variant-numeric:normal", context: "text-in-inline/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "normal", context: "text-in-inline/ltr", cases: ["text-font-tuning-ahem", "text-font-variant-ahem"] }] },
@@ -2040,6 +2044,16 @@ const ROWS_2: readonly ProfileRow[] = [
   { feature: "font-variant-numeric:oldstyle-nums", context: "text-beside-inline/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "oldstyle-nums", context: "text-beside-inline/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
   { feature: "font-variant-numeric:oldstyle-nums", context: "text-in-flex-item/row/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "oldstyle-nums", context: "text-in-flex-item/row/ltr", cases: ["text-font-variant-ahem"] }] },
   { feature: "font-variant-numeric:oldstyle-nums", context: "text-in-flex-item/row/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "oldstyle-nums", context: "text-in-flex-item/row/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
+  { feature: "font-variant-numeric:ordinal", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "ordinal", context: "text-in-block/ltr", cases: ["text-font-variant-ahem"] }] },
+  { feature: "font-variant-numeric:ordinal", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "ordinal", context: "text-in-block/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
+  { feature: "font-variant-numeric:proportional-nums", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "proportional-nums", context: "text-in-block/ltr", cases: ["text-font-variant-ahem"] }] },
+  { feature: "font-variant-numeric:proportional-nums", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "proportional-nums", context: "text-in-block/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
+  { feature: "font-variant-numeric:slashed-zero", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "slashed-zero", context: "text-in-block/ltr", cases: ["text-font-variant-ahem"] }] },
+  { feature: "font-variant-numeric:slashed-zero", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "slashed-zero", context: "text-in-block/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
+  { feature: "font-variant-numeric:stacked-fractions", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "stacked-fractions", context: "text-in-block/ltr", cases: ["text-font-variant-ahem"] }] },
+  { feature: "font-variant-numeric:stacked-fractions", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "stacked-fractions", context: "text-in-block/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
+  { feature: "font-variant-numeric:tabular-nums", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "tabular-nums", context: "text-in-block/ltr", cases: ["text-font-variant-ahem"] }] },
+  { feature: "font-variant-numeric:tabular-nums", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "tabular-nums", context: "text-in-block/rtl", cases: ["text-font-variant-ahem-rtl"] }] },
   { feature: "font-variant-position:inherit", context: "text-in-block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "inherit", context: "text-in-block/ltr", cases: ["font-shorthand-inherit"] }] },
   { feature: "font-variant-position:inherit", context: "text-in-block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "inherit", context: "text-in-block/rtl", cases: ["font-shorthand-inherit-rtl"] }] },
   { feature: "font-variant-position:normal", context: "text-beside-inline/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "normal", context: "text-beside-inline/ltr", cases: ["text-font-variant-ahem"] }] },
@@ -2995,6 +3009,9 @@ const ROWS_2: readonly ProfileRow[] = [
   { feature: "margin-bottom:<max()>", context: "relative-in-flex-row/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "relative-in-flex-row/ltr", cases: ["values-calc-contexts-positioned"] }] },
   { feature: "margin-bottom:<max()>", context: "relative-in-flex-row/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "relative-in-flex-row/rtl", cases: ["values-calc-contexts-positioned-rtl"] }] },
   { feature: "margin-bottom:<max()>", context: "root/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "root/ltr", cases: ["values-calc-contexts-root-min-max"] }] },
+];
+
+const ROWS_3: readonly ProfileRow[] = [
   { feature: "margin-bottom:<max()>", context: "root/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "root/rtl", cases: ["values-calc-contexts-root-min-max-rtl"] }] },
   { feature: "margin-bottom:<min()>", context: "absolute-in-block/ltr/cb-ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<min()>", context: "absolute-in-block/ltr/cb-ltr", cases: ["values-calc-contexts-positioned", "values-calc-contexts-positioned-rtl"] }] },
   { feature: "margin-bottom:<min()>", context: "absolute-in-block/ltr/cb-rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<min()>", context: "absolute-in-block/ltr/cb-rtl", cases: ["values-calc-contexts-positioned", "values-calc-contexts-positioned-rtl"] }] },
@@ -3009,9 +3026,6 @@ const ROWS_2: readonly ProfileRow[] = [
   { feature: "margin-bottom:<min()>", context: "display-none/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<min()>", context: "display-none/ltr", cases: ["values-calc-contexts-display-none"] }] },
   { feature: "margin-bottom:<min()>", context: "display-none/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<min()>", context: "display-none/rtl", cases: ["values-calc-contexts-display-none-rtl"] }] },
   { feature: "margin-bottom:<min()>", context: "flex-column/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<min()>", context: "flex-column/ltr", cases: ["values-calc-contexts-flex"] }] },
-];
-
-const ROWS_3: readonly ProfileRow[] = [
   { feature: "margin-bottom:<min()>", context: "flex-column/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<min()>", context: "flex-column/rtl", cases: ["values-calc-contexts-flex-rtl"] }] },
   { feature: "margin-bottom:<min()>", context: "flex-row/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<min()>", context: "flex-row/ltr", cases: ["values-calc-contexts-flex"] }] },
   { feature: "margin-bottom:<min()>", context: "flex-row/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<min()>", context: "flex-row/rtl", cases: ["values-calc-contexts-flex-rtl"] }] },
@@ -3998,6 +4012,9 @@ const ROWS_3: readonly ProfileRow[] = [
   { feature: "min-width:inherit", context: "block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "inherit", context: "block/ltr", cases: ["ctx-proof-inherit"] }] },
   { feature: "min-width:inherit", context: "block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "inherit", context: "block/rtl", cases: ["ctx-proof-inherit-rtl"] }] },
   { feature: "min-width:max-content", context: "block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "max-content", context: "block/ltr", cases: ["sizing-keywords-block", "sizing-keywords-contribution"] }] },
+];
+
+const ROWS_4: readonly ProfileRow[] = [
   { feature: "min-width:max-content", context: "block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "max-content", context: "block/rtl", cases: ["sizing-keywords-block-rtl", "sizing-keywords-contribution-rtl"] }] },
   { feature: "min-width:min-content", context: "block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "min-content", context: "block/ltr", cases: ["sizing-keywords-block", "sizing-keywords-contribution"] }] },
   { feature: "min-width:min-content", context: "block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "min-content", context: "block/rtl", cases: ["sizing-keywords-block-rtl", "sizing-keywords-contribution-rtl"] }] },
@@ -4012,9 +4029,6 @@ const ROWS_3: readonly ProfileRow[] = [
   { feature: "object-fit:scale-down", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "scale-down", context: "paint/ltr", cases: ["replaced-block", "replaced-fit"] }] },
   { feature: "object-fit:scale-down", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "scale-down", context: "paint/rtl", cases: ["replaced-block-rtl", "replaced-fit-rtl"] }] },
   { feature: "object-position:<position>", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "<position>", context: "paint/ltr", cases: ["replaced-block", "replaced-fit"] }] },
-];
-
-const ROWS_4: readonly ProfileRow[] = [
   { feature: "object-position:<position>", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "<position>", context: "paint/rtl", cases: ["replaced-block-rtl", "replaced-fit-rtl"] }] },
   { feature: "opacity:<number>", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "<number>", context: "paint/ltr", cases: ["opacity-basic", "opacity-cascade"] }] },
   { feature: "opacity:<number>", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "<number>", context: "paint/rtl", cases: ["opacity-basic-rtl", "opacity-cascade-rtl"] }] },
@@ -5001,6 +5015,9 @@ const ROWS_4: readonly ProfileRow[] = [
   { feature: "row-gap:<length-rem>", context: "grid-container/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-rem>", context: "grid-container/rtl", cases: ["grid-gap-units-rtl"] }] },
   { feature: "row-gap:<length-rem>", context: "not-flex-container/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-rem>", context: "not-flex-container/ltr", cases: ["values-calc-contexts-block"] }] },
   { feature: "row-gap:<length-rem>", context: "not-flex-container/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-rem>", context: "not-flex-container/rtl", cases: ["values-calc-contexts-block-rtl"] }] },
+];
+
+const ROWS_5: readonly ProfileRow[] = [
   { feature: "row-gap:<length-vh>", context: "flex-column-multi-line/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-vh>", context: "flex-column-multi-line/ltr", cases: ["ctx-proof-flex-gap-units"] }] },
   { feature: "row-gap:<length-vh>", context: "flex-column-multi-line/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-vh>", context: "flex-column-multi-line/rtl", cases: ["ctx-proof-flex-gap-units-rtl"] }] },
   { feature: "row-gap:<length-vh>", context: "flex-column-single-line/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-vh>", context: "flex-column-single-line/ltr", cases: ["ctx-proof-flex-gap-units"] }] },
@@ -5015,9 +5032,6 @@ const ROWS_4: readonly ProfileRow[] = [
   { feature: "row-gap:<length-vw>", context: "flex-row-multi-line/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-vw>", context: "flex-row-multi-line/rtl", cases: ["values-calc-gap-px-rtl"] }] },
   { feature: "row-gap:<max()>", context: "flex-column-multi-line/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "flex-column-multi-line/ltr", cases: ["values-calc-contexts-flex"] }] },
   { feature: "row-gap:<max()>", context: "flex-column-multi-line/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "flex-column-multi-line/rtl", cases: ["values-calc-contexts-flex-rtl"] }] },
-];
-
-const ROWS_5: readonly ProfileRow[] = [
   { feature: "row-gap:<max()>", context: "flex-column-single-line/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "flex-column-single-line/ltr", cases: ["values-calc-contexts-flex"] }] },
   { feature: "row-gap:<max()>", context: "flex-column-single-line/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "flex-column-single-line/rtl", cases: ["values-calc-contexts-flex-rtl"] }] },
   { feature: "row-gap:<max()>", context: "flex-row-multi-line/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "flex-row-multi-line/ltr", cases: ["values-calc-contexts-flex"] }] },
