@@ -220,6 +220,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   y: '<length-percentage> | <number>',
   // Blink PaintOrder::ParseSingleValue: normal, or fill, stroke and markers each at most once (svg-paint-order.ts canonicalizes).
   'paint-order': 'normal | [ fill || stroke || markers ]',
+  // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
+  rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
 };
 
 /**

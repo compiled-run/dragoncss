@@ -234,6 +234,8 @@
     "x": { "values": ["4px"] },
     "y": { "values": ["2"] },
     "paint-order": { "values": ["stroke"] },
+    "rx": { "values": ["4px"] },
+    "ry": { "values": ["2"] },
     "fill-opacity": { "values": ["0.5"] },
     "stroke-opacity": { "values": ["0.5"] },
     "content": { "values": ["\"\"", "\"x\"", "none"] },

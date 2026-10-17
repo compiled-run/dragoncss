@@ -515,4 +515,49 @@ describe('the svg model in a compile', () => {
       for (const tag of ['rect', 'path', 'circle']) expect(refusedOn(`${tag} { ${decl}; }`), `${tag} { ${decl} }`).toEqual(['android', 'ios', 'web']);
     }
   });
+  it('SVG-rrect: rx and ry compute from CSS over their attributes, are not inherited, resolve auto from each other and clamp to half the rect (SVG 2 §10.4)', () => {
+    const input = svgTree('svg { rx: 3px; } .a { rx: 2; } .b { ry: 0.4em; font-size: 10px; } .c { rx: 30px; ry: auto; } .d { rx: 5px; ry: 0; }', (_r, o) => {
+      const rect = (id: string, cls: string | null, attrs: [string, string][]) => ({ ...shape(o, id, 'rect', [['width', '20'], ['height', '10'], ...attrs]), classes: cls === null ? [] : [staticClass({ owner: DOC, sheet: 's', name: cls }, o)] });
+      return [rect('a', 'a', [['ry', '1']]), rect('b', 'b', []), rect('c', 'c', [['ry', '2']]), rect('d', 'd', []), rect('e', null, [['rx', '4'], ['ry', '50']]), rect('f', null, [])];
+    });
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.shape])).toEqual([
+      // rx from CSS, ry from the attribute.
+      ['a', { kind: 'rect', x: 0, y: 0, width: 20, height: 10, rx: 2, ry: 1 }],
+      // An auto rx takes ry (em in px).
+      ['b', { kind: 'rect', x: 0, y: 0, width: 20, height: 10, rx: 4, ry: 4 }],
+      // ry: auto in CSS beats the attribute and takes rx; both clamp to half the size, an oval.
+      ['c', { kind: 'rect', x: 0, y: 0, width: 20, height: 10, rx: 10, ry: 5 }],
+      // A zero radius makes the rect square, as SkRRect::setRectXY does.
+      ['d', { kind: 'rect', x: 0, y: 0, width: 20, height: 10 }],
+      ['e', { kind: 'rect', x: 0, y: 0, width: 20, height: 10, rx: 4, ry: 5 }],
+      // rx is not inherited: the svg's rx: 3px reaches no shape, and both auto are 0.
+      ['f', { kind: 'rect', x: 0, y: 0, width: 20, height: 10 }],
+    ]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const k = (4 / 3) * (Math.SQRT2 - 1);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      const paths = w?.kind === 'svg-shapes' ? w.shapes.map((x) => x.path) : [];
+      // a: from the top edge's left end, each edge then its corner, clockwise (Skia set_as_rrect, start index 0).
+      expect(paths[0], backend).toEqual([0, 2, 0, 1, 18, 0, 3, 18 + 2 * k, 0, 20, 1 - k, 20, 1, 1, 20, 9, 3, 20, 9 + k, 18 + 2 * k, 10, 18, 10, 1, 2, 10, 3, 2 - 2 * k, 10, 0, 9 + k, 0, 9, 1, 0, 1, 3, 0, 1 - k, 2 - 2 * k, 0, 2, 0, 4]);
+      // c: an oval is four quarters from the top centre, with no lines (SkPathPriv::SimplifyRRect).
+      expect(paths[2], backend).toEqual([0, 10, 0, 3, 10 + 10 * k, 0, 20, 5 - 5 * k, 20, 5, 3, 20, 5 + 5 * k, 10 + 10 * k, 10, 10, 10, 3, 10 - 10 * k, 10, 0, 5 + 5 * k, 0, 5, 3, 0, 5 - 5 * k, 10 - 10 * k, 0, 10, 0, 4]);
+      expect(paths[3], backend).toEqual([0, 0, 0, 1, 20, 0, 1, 20, 10, 1, 0, 10, 4]);
+    }
+  });
+  it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect, and a negative attribute; a negative in CSS is invalid', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
+    const all = (m: string) => ['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${m}`);
+    for (const css of ['', 'rect { rx: auto; ry: 0; } circle { rx: 10%; ry: calc(1px + 1px); }']) expect(refused(css), css).toEqual([]);
+    expect(refused('rect { rx: 10%; }')).toEqual(all('rx: 10% on <rect> r is unsupported: a percentage rx is relative to the viewport width, which is not built yet (package SVG-units)'));
+    expect(refused('rect { ry: calc(1px + 2px); }')).toEqual(all('ry: calc(1px + 2px) on <rect> r is unsupported: a calculated ry is not resolved yet (package SVG-units)'));
+    expect(refused('rect { rx: -2px; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "-2px" is not a valid value for rx (@webref/css grammar)']);
+    expect(svgAttributeRefusal('rect', 'ry', '-1')).toContain('negative');
+    expect(svgAttributeRefusal('rect', 'rx', '2px')).toBeNull();
+    expect(svgAttributeRefusal('rect', 'rx', '10%')).toContain('SVG-units');
+  });
 });
