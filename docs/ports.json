@@ -625,7 +625,11 @@
         { "lines": "6031-6033", "symbol": "ConsumeGenericFamily", "source": "located" },
         { "lines": "3640-3688", "symbol": "ConsumeImage", "source": "located" },
         { "lines": "6102-6158", "symbol": "ConsumeFontStyle", "source": "located" },
-        { "lines": "584-619", "symbol": "ConsumeBasicShapeInset", "source": "located" }
+        { "lines": "584-619", "symbol": "ConsumeBasicShapeInset", "source": "located" },
+        { "lines": "1410-1421", "symbol": "ConsumeSVGGeometryPropertyLength", "source": "located" },
+        { "lines": "4837-4840", "symbol": "ConsumePrefixedMaskComposite", "source": "located" },
+        { "lines": "4939-4952", "symbol": "ConsumePrefixedBackgroundBox", "source": "located" },
+        { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
@@ -641,7 +645,8 @@
         { "file": "packages/parity/src/font-reference.ts", "symbol": "PARSER_GENERICS", "use": "port" },
         { "file": "packages/parity/test/place-computed.test.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -655,11 +660,14 @@
       "ranges": [
         { "lines": "3892-3944", "symbol": "PlaceContent::ParseShorthand", "source": "located" },
         { "lines": "3956-4003", "symbol": "PlaceItems::ParseShorthand", "source": "located" },
-        { "lines": "4015-4062", "symbol": "PlaceSelf::ParseShorthand", "source": "located" }
+        { "lines": "4015-4062", "symbol": "PlaceSelf::ParseShorthand", "source": "located" },
+        { "lines": "5163-5170", "symbol": "Mask::ParseShorthand", "source": "located" },
+        { "lines": "5181-5193", "symbol": "MaskPosition::ParseShorthand", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/place.ts", "symbol": null, "use": "port" },
-        { "file": "packages/dragon/src/css/place.ts", "symbol": "splitPlace", "use": "port" }
+        { "file": "packages/dragon/src/css/place.ts", "symbol": "splitPlace", "use": "port" },
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" }
       ]
     },
     {
@@ -3677,6 +3685,11 @@
         { "lines": "8533-8552", "symbol": "Resize::ApplyValue", "source": "located" },
         { "lines": "9615-9643", "symbol": "StrokeDasharray::ParseSingleValue", "source": "located" },
         { "lines": "9654-9662", "symbol": "StrokeDashoffset::ParseSingleValue", "source": "located" },
+        { "lines": "3748-3753", "symbol": "Cx::ParseSingleValue", "source": "located" },
+        { "lines": "3763-3768", "symbol": "Cy::ParseSingleValue", "source": "located" },
+        { "lines": "8487-8492", "symbol": "R::ParseSingleValue", "source": "located" },
+        { "lines": "12474-12479", "symbol": "X::ParseSingleValue", "source": "located" },
+        { "lines": "12489-12494", "symbol": "Y::ParseSingleValue", "source": "located" },
         { "lines": "9689-9695", "symbol": "StrokeMiterlimit::ParseSingleValue", "source": "located" },
         { "lines": "10363-10381", "symbol": "ConsumePan", "source": "located" },
         { "lines": "10386-10416", "symbol": "TouchAction::ParseSingleValue", "source": "located" },
@@ -3686,7 +3699,24 @@
         { "lines": "2322-2361", "symbol": "Clip::ParseSingleValue", "source": "located" },
         { "lines": "2363-2381", "symbol": "Clip::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "2383-2416", "symbol": "ClipPath::ParseSingleValue", "source": "located" },
-        { "lines": "2418-2447", "symbol": "ClipPath::CSSValueFromComputedStyleInternal", "source": "located" }
+        { "lines": "2418-2447", "symbol": "ClipPath::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "11345-11356", "symbol": "MaskClip::ParseSingleValue", "source": "located" },
+        { "lines": "11372-11374", "symbol": "MaskClip::InitialValue", "source": "located" },
+        { "lines": "11376-11386", "symbol": "MaskComposite::ParseSingleValue", "source": "located" },
+        { "lines": "11402-11404", "symbol": "MaskComposite::InitialValue", "source": "located" },
+        { "lines": "11406-11414", "symbol": "MaskImage::ParseSingleValue", "source": "located" },
+        { "lines": "11430-11435", "symbol": "MaskMode::ParseSingleValue", "source": "located" },
+        { "lines": "11445-11447", "symbol": "MaskMode::InitialValue", "source": "located" },
+        { "lines": "11449-11460", "symbol": "MaskOrigin::ParseSingleValue", "source": "located" },
+        { "lines": "11476-11478", "symbol": "MaskOrigin::InitialValue", "source": "located" },
+        { "lines": "11480-11488", "symbol": "WebkitMaskPositionX::ParseSingleValue", "source": "located" },
+        { "lines": "11500-11503", "symbol": "WebkitMaskPositionX::InitialValue", "source": "located" },
+        { "lines": "11505-11513", "symbol": "WebkitMaskPositionY::ParseSingleValue", "source": "located" },
+        { "lines": "11525-11528", "symbol": "WebkitMaskPositionY::InitialValue", "source": "located" },
+        { "lines": "11530-11535", "symbol": "MaskRepeat::ParseSingleValue", "source": "located" },
+        { "lines": "11545-11548", "symbol": "MaskRepeat::InitialValue", "source": "located" },
+        { "lines": "11550-11556", "symbol": "MaskSize::ParseSingleValue", "source": "located" },
+        { "lines": "11567-11569", "symbol": "MaskSize::InitialValue", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
@@ -3701,7 +3731,9 @@
         { "file": "packages/dragon/src/css/aliases/filter.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/touch-action.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-rect.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/mask.ts", "symbol": null, "use": "reference" },
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" }
       ]
     },
     {
