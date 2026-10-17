@@ -8,7 +8,7 @@ import { inflateSync } from 'node:zlib';
 import type { LayoutBox, LayoutRect } from '@dragon/layout';
 import { AHEM_FONT_DATA, coveredCodePoints, coveredIndex, ELLIPSIS, LU_PER_PX, pieceGlyphs, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
-import { borderDevicePx, programInput } from 'dragon';
+import { borderDevicePx, programInput, syntheticBoldStroke } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from './chrome.ts';
 import { dprLabel } from './dpr.ts';
 import { cssFontSizes } from './ahem-lines.ts';
@@ -280,8 +280,10 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
  * The glyph lines of a program at a DPR, as the device places them: each Ahem glyph at the line's absolute x plus its pen position
  * from the shaped item (pieceGlyphs, HarfBuzz's 16.16 advances), with size = platformFontSize(zoomFontSize(css size, DPR)); the
  * baseline is the snapped line top plus the engine's ascent. Each Ahem glyph's box is its font box scaled by size / unitsPerEm; a real
- * face's are its shaped glyphs' HarfBuzz extents (TXT1a-2). A text with a synthetic-oblique write draws each glyph sheared about its
- * baseline origin, so its box is the bounding box of the sheared box and carries the slanted sides (shearedBox).
+ * face's are its shaped glyphs' HarfBuzz extents (TXT1a-2). A text with a synthetic-bold write strokes each outline at Skia's fake-bold
+ * width for the size, so its box grows by half that width on every side (an Ahem box keeps its right-angled corners under a miter join).
+ * A text with a synthetic-oblique write draws each glyph sheared about its baseline origin, so its box is the bounding box of the sheared
+ * box and carries the slanted sides (shearedBox).
  */
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
   const sheared = glyphShears(p);
@@ -311,7 +313,7 @@ export function shearedBox(g: GlyphBox, baseline: number, k: number): GlyphBox {
 /** A glyph line with its baseline in device px. */
 export type BaselineLine = GlyphLine & { readonly baseline: number };
 
-/** glyphLines before any shear: each glyph's upright box, and each line's baseline. */
+/** glyphLines before any shear: each glyph's upright box (grown by a synthetic bold), and each line's baseline. */
 export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): BaselineLine[] {
   const input = programInput(p, viewport, dpr);
   const sizes = cssFontSizes(input.root);
@@ -319,11 +321,16 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
   const texts = engineTextLines(input, m);
   const boxes = ahemGlyphBoxes();
   const upem = AHEM_FONT_DATA.unitsPerEm;
+  const bolds = glyphBolds(p);
   const out: BaselineLine[] = [];
   for (const t of texts) {
     const css = sizes.get(t.id);
     if (css === undefined) throw new Error(`no text leaf ${t.id}`);
     const size = platformFontSize(zoomFontSize(css.size, dpr));
+    const bold = bolds.get(t.id);
+    if (bold !== undefined && css.family !== 'Ahem') throw new Error(`${t.id}: a synthetic-bold write on ${css.family}, which native draws only over Ahem`);
+    // Half the fake-bold stroke at a size: how far the stroked outline reaches past the upright one.
+    const grow = (at: number): number => (bold === undefined ? 0 : syntheticBoldStroke(at, bold.keys, bold.values) / 2);
     const metrics = m.metrics(t.textFont);
     for (const [j, line] of t.lines.entries()) {
       const baseline = line.snapped.top + metrics.ascent / 64;
@@ -350,7 +357,8 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
         if (coveredIndex(cp) < 0) throw new Error(`${t.id}: U+${cp.toString(16)} is not covered by Ahem`);
         const b = boxes.get(cp);
         const x = line.rect.x / 64 + (shaped.xs[n] as number) + (line.shifts.length === 0 ? 0 : (line.shifts[n] as number));
-        if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem, right: x + (b.xMax * size) / upem, top: baseline - (b.yMax * size) / upem, bottom: baseline - (b.yMin * size) / upem });
+        const h = grow(size);
+        if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem - h, right: x + (b.xMax * size) / upem + h, top: baseline - (b.yMax * size) / upem - h, bottom: baseline - (b.yMin * size) / upem + h });
       }
       // TXT2-f: the ellipsis glyphs after the painted text, in the line's font, on the same baseline.
       const e = line.ellipsis;
@@ -362,12 +370,20 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
         for (const [n, cp] of e.cps.entries()) {
           const b = boxes.get(cp);
           const x = e.x / 64 + (eShaped.xs[n] as number);
-          if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * eSize) / upem, right: x + (b.xMax * eSize) / upem, top: baseline - (b.yMax * eSize) / upem, bottom: baseline - (b.yMin * eSize) / upem });
+          const h = grow(eSize);
+          if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * eSize) / upem - h, right: x + (b.xMax * eSize) / upem + h, top: baseline - (b.yMax * eSize) / upem - h, bottom: baseline - (b.yMin * eSize) / upem + h });
         }
       }
       out.push({ id: `${t.id}:line${j}`, baseline, glyphs });
     }
   }
+  return out;
+}
+
+/** The fake-bold keys and values of each text node a synthetic-bold write emboldens, by node id. */
+export function glyphBolds(p: NativeProgram): ReadonlyMap<string, { readonly keys: readonly [number, number]; readonly values: readonly [number, number] }> {
+  const out = new Map<string, { readonly keys: readonly [number, number]; readonly values: readonly [number, number] }>();
+  for (const n of p.nodes) for (const w of n.writes) if (w.kind === 'synthetic-bold') out.set(n.id, { keys: w.keys, values: w.values });
   return out;
 }
 
