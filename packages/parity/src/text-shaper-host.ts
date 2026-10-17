@@ -209,12 +209,15 @@ function vendoredFaceFiles(): string[] {
   return out.sort();
 }
 
-let vendoredIds: string[] | null = null;
-/** Every vendored face, registered with the host shaper once, by face id. */
-export const vendoredFaceIds = (): string[] => {
-  if (vendoredIds === null) vendoredIds = vendoredFaceFiles().map((f) => registerFace(new Uint8Array(readFileSync(f))));
-  return vendoredIds;
+let vendored: { readonly id: string; readonly file: string }[] | null = null;
+/** Every vendored face, registered with the host shaper once: its face id and its file, in file order. */
+export const vendoredFaces = (): readonly { readonly id: string; readonly file: string }[] => {
+  if (vendored === null) vendored = vendoredFaceFiles().map((f) => ({ id: registerFace(new Uint8Array(readFileSync(f))), file: f }));
+  return vendored;
 };
+
+/** Every vendored face, registered with the host shaper once, by face id. */
+export const vendoredFaceIds = (): string[] => vendoredFaces().map((f) => f.id);
 
 /**
  * The reference measurer through HarfBuzz (shapedMeasurerFor): Ahem, every vendored face and the given face bytes, at the

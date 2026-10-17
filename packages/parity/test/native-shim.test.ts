@@ -1,13 +1,17 @@
 // The host apps' HarfBuzz shim (native-shim.ts): the probe the device must reproduce, its Swift and Kotlin encodings, the copied
 // wrapper sources, and the NDK pin.
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { coveredCodePoints } from '@dragon/layout';
-import { hostSources } from '../src/native-host.ts';
-import { androidNdk, SHIM_ANDROID_ABIS, SHIM_NDK, SHIM_ZIG, shimProbe, shimSources, shimToken } from '../src/native-shim.ts';
+import { AHEM_FACE_ID, coveredCodePoints } from '@dragon/layout';
+import { emitNativeSupport } from 'dragon';
+import type { EmitCase } from 'dragon';
+import { emitCases, hostSources, unbundledFaces } from '../src/native-host.ts';
+import { androidNdk, REAL_FACE_PROBE_TEXT, SHIM_ANDROID_ABIS, SHIM_FACE_DIRS, SHIM_NDK, SHIM_ZIG, shimFaces, shimProbe, shimSources, shimToken } from '../src/native-shim.ts';
 import { repoPath } from '../src/paths.ts';
+import { fontDataOf, vendoredFaceIds } from '../src/text-shaper-host.ts';
 
 const STRIDE = 7;
 const probe = shimProbe();
@@ -26,11 +30,36 @@ function probeTexts(text: string, target: 'ios' | 'android'): string[] {
   );
 }
 
+const real = shimFaces().filter((f) => f.id !== AHEM_FACE_ID);
+
+describe('the bundled faces', () => {
+  it('are Ahem and every vendored face, each real one held under its own sha256 in both apps', () => {
+    expect(shimFaces().map((f) => f.id)).toEqual([AHEM_FACE_ID, ...vendoredFaceIds()]);
+    expect(real.length).toBeGreaterThanOrEqual(9);
+    for (const f of real) {
+      const sha = createHash('sha256').update(readFileSync(repoPath(`vendor/fonts/${f.source}`))).digest('hex');
+      expect([f.id, f.sha256, f.iosFile, f.androidAsset], f.source).toEqual([`sha256:${sha}`, sha, `${SHIM_FACE_DIRS.ios}/${sha}.ttf`, `${SHIM_FACE_DIRS.android}/${sha}.ttf`]);
+    }
+  });
+  it('are the directories the emitted bridges read', () => {
+    const swift = emitNativeSupport('uikit').find((f) => f.path === 'Support/DragonBridge.swift')?.text ?? '';
+    expect(swift).toContain(`public let dragonFaceDirectory = "${SHIM_FACE_DIRS.ios}"`);
+    const kotlin = emitNativeSupport('android-views').find((f) => f.path === 'kotlin/dev/dragon/views/DragonBridge.kt')?.text ?? '';
+    expect(kotlin).toContain(`const val DRAGON_FACE_DIRECTORY = "${SHIM_FACE_DIRS.android}"`);
+  });
+  it('cover every face a device case draws, and a face no app bundles is named', () => {
+    for (const t of ['ios', 'android'] as const) expect(unbundledFaces(emitCases(t)), t).toEqual([]);
+    const c = emitCases('ios').find((x) => x.program.nodes.some((n) => n.writes.some((w) => w.kind === 'font'))) as EmitCase;
+    const other = JSON.parse(JSON.stringify(c).replace(/"family":"[^"]*"/, '"family":"sha256:00"')) as EmitCase;
+    expect(unbundledFaces([other])).toEqual([`${c.id}: sha256:00`]);
+  });
+});
+
 describe('the shim probe', () => {
   it('shapes the bundled Ahem through the host WASM shim: one glyph per code unit, whole records, the same on a second run', () => {
     const text = String.fromCodePoint(...coveredCodePoints());
-    expect(probe).toHaveLength(5);
-    for (const p of probe) {
+    expect(probe).toHaveLength(5 + 2 * real.length);
+    for (const p of probe.slice(0, 5)) {
       expect(p.text).toBe(text);
       expect(p.glyphs.length).toBe(text.length * STRIDE);
       expect(p.glyphs.every((x) => Number.isInteger(x))).toBe(true);
@@ -44,6 +73,15 @@ describe('the shim probe', () => {
     const clusters = (i: number): number[] => (probe[i]?.glyphs ?? []).filter((_x, k) => k % STRIDE === 1);
     expect(clusters(3)).toEqual([...clusters(0)].reverse());
   });
+  it('shapes every bundled real face at a whole and a fractional size, in whole records whose advances differ by size', () => {
+    const rest = probe.slice(5);
+    expect(rest.map((p) => [p.face, p.size, p.text, p.rtl])).toEqual(real.flatMap((f) => [[f.id, 16, REAL_FACE_PROBE_TEXT, false], [f.id, 13.37, REAL_FACE_PROBE_TEXT, false]]));
+    for (let k = 0; k < rest.length; k += 2) {
+      const [a, b] = [rest[k], rest[k + 1]] as [(typeof rest)[number], (typeof rest)[number]];
+      for (const p of [a, b]) expect(p.glyphs.length > 0 && p.glyphs.length % STRIDE === 0, p.face).toBe(true);
+      expect(a.glyphs.filter((_x, i) => i % STRIDE === 2), a.face).not.toEqual(b.glyphs.filter((_x, i) => i % STRIDE === 2));
+    }
+  });
 });
 
 describe('the generated shim sources', () => {
@@ -54,6 +92,16 @@ describe('the generated shim sources', () => {
       expect(glyphLists(file.text, target)).toEqual(probe.map((p) => [...p.glyphs]));
       expect(probeTexts(file.text, target)).toEqual(probe.map((p) => p.text));
       expect(file.text).toContain('b719ecb31c5b21fc573c03f6421c74ac63c271a5a3ff841e34f9705fb94b8448');
+      for (const f of real) expect(file.text, f.id).toContain(f.sha256);
+    });
+    it(`${target}: the face file carries the host's FontData of every bundled real face, in order`, () => {
+      const file = shimSources(target, probe).find((f) => f.path.includes('DragonShimProbe')) as { text: string };
+      const re = target === 'ios' ? /\(id: "(sha256:[0-9a-f]+)", data: \[([^\]]*)\]\)/g : /DragonShimFaceData\("(sha256:[0-9a-f]+)", doubleArrayOf\(([^)]*)\)\)/g;
+      const rows = [...file.text.matchAll(re)].map((m) => [m[1], (m[2] as string).split(',').map((x) => Number(x.trim()))]);
+      expect(rows).toEqual(real.map((f) => {
+        const d = fontDataOf(f.id);
+        return [f.id, [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance]];
+      }));
     });
   }
   it('the wrappers are the text-shaper package files, byte for byte, and the host apps carry the shim sources', () => {
@@ -71,6 +119,14 @@ describe('the generated shim sources', () => {
     const activity = hostSources('android', 'x').find((f) => f.path === 'kotlin/dev/dragon/host/DragonActivity.kt')?.text ?? '';
     expect(activity.indexOf('dragonCheckShim(this)')).toBeGreaterThan(0);
     expect(activity.indexOf('dragonCheckShim(this)')).toBeLessThan(activity.indexOf('runCase(0)'));
+  });
+  it('both hosts check the bridge faces once its shaper is set, before the first case', () => {
+    const main = hostSources('ios', 'x').find((f) => f.path === 'Host/main.swift')?.text ?? '';
+    expect(main.indexOf('dragonCheckFaces()')).toBeGreaterThan(main.indexOf('DragonBridge.shaper = dragonGlyphShaper()'));
+    expect(main.indexOf('dragonCheckFaces()')).toBeLessThan(main.indexOf('dragonWarmUp(run'));
+    const activity = hostSources('android', 'x').find((f) => f.path === 'kotlin/dev/dragon/host/DragonActivity.kt')?.text ?? '';
+    expect(activity.indexOf('dragonCheckFaces(this)')).toBeGreaterThan(activity.indexOf('DragonBridge.shaper = dragonGlyphShaper(this)'));
+    expect(activity.indexOf('dragonCheckFaces(this)')).toBeLessThan(activity.indexOf('runCase(0)'));
   });
   it('a probe integer outside int32 is refused, not written', () => {
     const bad = [{ ...(probe[0] as (typeof probe)[number]), glyphs: [2 ** 31] }];

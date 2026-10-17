@@ -18,6 +18,8 @@ export const TEXT_LATIN: readonly FixtureSpec[] = [
   layout('text-latin-words', ['ltr', 'rtl']),
   layout('text-latin-metrics', ['ltr']),
   layout('text-ahem-fractional', ['ltr']),
+  // TXT1a-2 phase R: faces declared with @font-face (Roboto, and Inter Bold for the UA-bold h1), the font-family:<declared> proof.
+  layout('text-latin-declared', ['ltr', 'rtl']),
 ];
 
 /** data-dragon-id to postScriptName: the face Chrome must draw each listed element's text with, in both documents. */
@@ -32,6 +34,7 @@ export const TEXT_LATIN_FACES: ReadonlyMap<string, { readonly [id: string]: stri
   ['text-latin-flex', { 'row-a': LATO, 'row-b': LATO, 'col-a': LATO, 'col-b': LATO }],
   ['text-latin-words', { a: LATO, b: LATO, c: INTER, d: LATO, e: LATO }],
   ['text-latin-metrics', { r1: LATO, r2: LATO, r3: INTER, r4: INTER }],
+  ['text-latin-declared', { regular: 'Roboto-Regular', wide: 'Roboto-Regular', bold: 'Inter-Bold' }],
 ]);
 
 /**

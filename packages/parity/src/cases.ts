@@ -4,8 +4,8 @@
 import type { Page } from 'playwright';
 import type { Assignment, Environment, ForcedPseudo, FrontEndResult, InteractionPartition } from 'dragon';
 import { fontMapOf } from './fixture-groups/fonts.ts';
-import { fontReferencePrepare } from './font-reference.ts';
-import { compiledFixtureHtml, readHtmlFixture } from './fixture-reader.ts';
+import { fontDataUrl, fontReferencePrepare, VENDOR_FONTS, vendorFontBytes } from './font-reference.ts';
+import { compiledFixtureHtml, fontFaceUrls, parseFixtureHtml, readHtmlFixture } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix, environmentsOf } from './fixtures.ts';
 import { authoredModel } from './render.ts';
@@ -62,6 +62,18 @@ export function forcedCasesOf(spec: FixtureSpec, c: ParityCase, p: InteractionPa
   }));
 }
 
+/** The authored document as Chrome loads it: each @font-face url() that names a vendored font (fontFaceUrls) inlined as a data: URL. */
+export function authoredFontHtml(html: string): string {
+  const { style } = parseFixtureHtml(html);
+  if (style === null) return html;
+  const edits = fontFaceUrls(html.slice(style.start, style.end))
+    .flatMap((u) => u.spans.map((sp) => ({ start: style.start + sp.start, end: style.start + sp.end, text: `url("${fontDataUrl(vendorFontBytes(u.id.slice(VENDOR_FONTS.length)))}")` })))
+    .sort((a, b) => b.start - a.start);
+  let out = html;
+  for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end);
+  return out;
+}
+
 export function fixtureInput(spec: FixtureSpec): FrontEndResult {
   return spec.format === 'html' ? readHtmlFixture(spec.id).input : readTreeFixture(spec.id);
 }
@@ -80,7 +92,8 @@ export function casesOf(spec: FixtureSpec, input: FrontEndResult): ParityCase[] 
       computedExtra: spec.kind === 'layout' ? (spec.computedExtra ?? []) : [],
       assignment: [],
       isInitial: true,
-      authoredHtml: html,
+      // TXT1a-2 phase R: a layout fixture's @font-face faces load in Chrome as they do in the fonts fixtures (the identity without one).
+      authoredHtml: authoredFontHtml(html),
       authoredPrepare,
       compiledHtml: (css: string, classOf: ReadonlyMap<string, string>) => compiledFixtureHtml(html, css, classOf),
     }));

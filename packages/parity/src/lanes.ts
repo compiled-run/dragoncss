@@ -30,7 +30,7 @@ import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
 import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
-import { declaredLane, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest, vectorCaseIds } from './targets.ts';
+import { declaredLane, declaredSuites, deviceCaseIds, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest } from './targets.ts';
 
 export type LaneState = 'pass' | 'fail' | 'blocked (owner tooling)' | 'not run';
 
@@ -347,8 +347,8 @@ export type ReferenceRow = { readonly dpr: number; readonly role: 'shared' | 'ex
 export function referenceProof(targets: readonly TargetConfig[], all: ReturnType<typeof layoutCases> = layoutCases()): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
   // TXT1a-2: the engine the device mirrors measures every face through HarfBuzz (native-host.ts referenceMeasurer).
   const measurer = referenceShapedMeasurer();
-  // The device cases (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
-  const device = new Set(vectorCaseIds());
+  // The device cases (targets.ts deviceCaseIds): every layout case, a shaped one in its bundled real faces since TXT1a-2 phase R.
+  const device = new Set(deviceCaseIds());
   return targets.map((t) => ({
     target: t.target,
     rows: t.dprs.map((dpr): ReferenceRow => {

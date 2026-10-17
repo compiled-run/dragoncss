@@ -57,7 +57,8 @@ export const EVIDENCE_DATA: readonly string[] = [
   'packages/parity/expected-frames',
   'packages/parity/expected-pixels',
   'packages/layout/break-vectors',
-  'vendor/fonts/Ahem.ttf',
+  // Ahem and every real face the apps bundle (native-shim.ts shimFaces).
+  'vendor/fonts',
 ];
 
 /** The toolchain label the app digest is taken with: the version is a fact of the run (recorded apart), not of the sources. */

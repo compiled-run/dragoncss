@@ -78,6 +78,13 @@ export function vectorCaseIds(): readonly string[] {
   return vectorIds;
 }
 
+/**
+ * The layout case ids the device lanes run (device-frames, -applied, -lines and -pixels), in fixture order: every layout case. A
+ * shaped case is drawn on the device in its bundled real faces through the shim since TXT1a-2 phase R (native-host.ts nativeCases
+ * throws for a case native refuses); its vectors stay the text-latin suite's.
+ */
+export const deviceCaseIds = (): readonly string[] => layoutCaseIds();
+
 const extraName = (dpr: number): string | null => EXTRA_DPRS.find((e) => e.dpr === dpr)?.name ?? null;
 
 function dprSet(dpr: number, ids: readonly string[]): CaseSet {
@@ -143,7 +150,7 @@ export function stateScriptIds(): readonly string[] {
  */
 export function hitCaseIds(): readonly string[] {
   const refused = readJson<{ readonly refused?: Readonly<Record<string, string>> }>('packages/layout/rt-vectors/hit/facts.json').refused ?? {};
-  // TXT1a-2: a shaped case is not a device case (vectorCaseIds), so device-hit never runs one.
+  // TXT1a-2: device-hit runs no shaped case (vectorCaseIds) until its hit facts cover real faces.
   return vectorCaseIds().filter((id) => refused[id] === undefined);
 }
 
@@ -157,10 +164,10 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   }
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   if (lane === 'device-anim') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, animSampleIds(target))), corpora: [] };
-  // TXT1a-2: a shaped case is not a device case until phase R gives the device runtime its shaper (the device measures only Ahem).
+  // TXT1a-2: device-hit runs no shaped case yet (hitCaseIds); the other device lanes run every case (deviceCaseIds).
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   if (lane === 'device-traces') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, traceScriptIds())), corpora: [] };
-  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, vectorCaseIds())), corpora: [] };
+  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, deviceCaseIds())), corpora: [] };
 }
 
 function targetConfig(target: NativeTarget): TargetConfig {

@@ -26,7 +26,7 @@ import { FONT_REFERENCE_MAP } from '../src/font-reference.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { NO_FAULTS } from 'dragon';
 import * as tl from '../src/text-latin-run.ts';
-import { vectorCaseIds } from '../src/targets.ts';
+import { deviceCaseIds } from '../src/targets.ts';
 import { repoPath } from '../src/paths.ts';
 import { ahemFaceId, faceIdOf, fontDataOf, hostShaper, referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
@@ -241,7 +241,7 @@ const WHITE_SPACE_AHEM_IDS = ['white-space-preserve', 'white-space-wrap'];
  * (text-weight-ahem, fixture-groups/text-weight.ts), and so do touch-action-values and FX's filter-none (fixture-groups/filter.ts).
  */
 const LATER_NATIVE_IDS = ['clip-path-basic', 'clip-path-basic-rtl', 'clip-path-nested', 'clip-path-nested-rtl', 'svg-stroke', 'svg-stroke-rtl', 'bg-position-keywords', 'bg-position-keywords-rtl', 'clip-rect-basic', 'clip-rect-basic-rtl', 'clip-rect-nested', 'clip-rect-nested-rtl', 'filter-none', 'filter-none-rtl', 'text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl', 'text-break-ahem', 'text-break-ahem-rtl', 'line-clamp-lines', 'line-clamp-nested', 'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-stretch-ahem', 'text-font-stretch-ahem-rtl', 'text-font-features-ahem', 'text-font-features-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-weight-ahem', 'text-weight-ahem-rtl', 'touch-action-values', 'touch-action-values-rtl', 'radius-logical', 'radius-logical-rtl', 'text-decoration-native-values', 'text-decoration-native-values-rtl', 'text-fill-stroke-initial', 'text-fill-stroke-initial-rtl', 'text-shadow-none', 'text-shadow-none-rtl', 'alias-background', 'alias-background-rtl', 'shadow-webkit-alias', 'shadow-webkit-alias-rtl', 'svg-opacity', 'svg-opacity-rtl'];
-const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-indent-latin', 'text-indent-latin-rtl', 'text-break-lato'];
+const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-indent-latin', 'text-indent-latin-rtl', 'text-break-lato', 'text-latin-declared', 'text-latin-declared-rtl'];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);
@@ -307,24 +307,19 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
     expect(boxesOf(layout(p.input, reference.measurer))).not.toEqual(boxesOf(layout(p.input, referenceShapedMeasurer())));
   });
 
-  it('refuses every new real-face case on ios and android until TXT1a-2 phase R, and lowers it for the engine lane', () => {
-    // The device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer), so native keeps
-    // TXT1a-1's deferred font refusal and the engine lane lowers the case in engine mode; the Ahem fractional case lowers natively
-    // but is shaped, so it is no device case either (targets.ts vectorCaseIds).
-    for (const id of [...NEW_IDS, ...TAG_IDS]) {
+  it('lowers every real-face case on ios and android by default since TXT1a-2 phase R, as a device case, the engine projection the native one', () => {
+    // The device bridge measures and draws every bundled real face through the shim (emit/native-support.ts DragonBridge.faces), so
+    // native lowers each case with no font refusal, and the device lanes run it (targets.ts deviceCaseIds).
+    const device = new Set(deviceCaseIds());
+    for (const id of [...NEW_IDS, ...TAG_IDS, ...LATER_SHAPED_IDS]) {
       const direction = id.endsWith('-rtl') ? 'rtl' : 'ltr';
       const c = derived(id.replace(/-rtl$/, ''), direction);
       const env = caseOf(id.replace(/-rtl$/, ''), direction).environment;
-      expect(dragon.engineLayoutProjection(c, env, []).kind, id).toBe('ready');
-      if (id === 'text-ahem-fractional') {
-        expect(c.outputs.ios.kind, id).toBe('analysis-only');
-        continue;
-      }
-      expect(c.diagnostics.filter((d) => d.severity === 'error' && d.target !== 'web').map((d) => `${d.target} ${d.code}`).filter((x) => !/^(ios|android) DRAGON_UNSUPPORTED_(FONT|VALUE)$/.test(x)), id).toEqual([]);
-      expect([c.outputs.ios.kind, dragon.nativeLayoutProjection(c, env, []).kind], id).toEqual(['blocked', 'blocked']);
+      expect(c.diagnostics.filter((d) => d.severity === 'error' && d.target !== 'web').map((d) => `${d.target} ${d.code}: ${d.message}`), id).toEqual([]);
+      expect([c.outputs.ios.kind, dragon.nativeLayoutProjection(c, env, []).kind], id).toEqual(['analysis-only', 'ready']);
+      expect(dragon.engineLayoutProjection(c, env, []), id).toEqual(dragon.nativeLayoutProjection(c, env, []));
+      expect(device.has(id), id).toBe(true);
     }
-    const device = new Set(vectorCaseIds());
-    expect([...NEW_IDS, ...TAG_IDS].filter((id) => device.has(id))).toEqual([]);
   });
 
   it('gives every FIXTURES case native lowers the native projection as its engine projection, at every DPR', () => {
@@ -343,8 +338,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
           const native = dragon.nativeLayoutProjection(compiled, env, c.assignment);
           if (native.kind === 'blocked') {
             engineOnly++;
-            expect([...NEW_IDS, ...TAG_IDS, ...LATER_SHAPED_IDS], c.id).toContain(c.id);
-            expect(dragon.engineLayoutProjection(compiled, env, c.assignment).kind, `${c.id} at DPR ${dpr}`).toBe('ready');
+            console.log(`${c.id} at DPR ${dpr} is engine only: ${native.reason}`);
             continue;
           }
           expect(dragon.engineLayoutProjection(compiled, env, c.assignment), `${c.id} at DPR ${dpr}`).toEqual(native);
@@ -352,9 +346,8 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
         }
       }
     }
-    // The 10 real-face cases, T133's 2, the text-justify-latin ones and text-break-lato are native-refused (engine only); every other case, the Ahem
-    // fractional and font-shorthand inherit ones too, lowers natively, TXT2-c's two Ahem white-space cases and text-justify-ahem among them.
-    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1 + AHEM_ADDED.length + WHITE_SPACE_AHEM_IDS.length + LATER_NATIVE_IDS.length) * 4, (NEW_IDS.length - 1 + TAG_IDS.length + LATER_SHAPED_IDS.length) * 4]);
+    // Since TXT1a-2 phase R every case lowers natively, the real-face ones too (no case is engine only).
+    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + NEW_IDS.length + TAG_IDS.length + AHEM_ADDED.length + WHITE_SPACE_AHEM_IDS.length + LATER_NATIVE_IDS.length + LATER_SHAPED_IDS.length) * 4, 0]);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {

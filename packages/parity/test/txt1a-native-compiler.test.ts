@@ -21,7 +21,7 @@ const LATO = 'sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f18
 
 const inputOf = (id: string): FrontEndResult => withFontMapAssets(fixtureInput(layout(id, ['ltr'], 'ahem')), FONT_REFERENCE_MAP);
 
-// Phase C's lowering is off by default until phase R (InternalOptions.nativeRealFaces); these tests turn it on to keep proving it.
+// The lowering is on by default since phase R (InternalOptions.nativeRealFaces); these tests name it to keep proving it.
 function compile(input: FrontEndResult, nativeRealFaces = true): Compiled<'ios' | 'android' | 'web'> {
   const project = dragon.createProjectWith(
     { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, fonts: FONT_REFERENCE_MAP },
@@ -50,8 +50,7 @@ function families(v: unknown, out = new Set<string>()): Set<string> {
 }
 
 describe('TXT1a-2 phase C: native lowering of real bundled faces', () => {
-  it('is off by default: native refuses Lato with the font refusal, and the engine lane lowers it in engine mode', () => {
-    // The device runtime measures and draws only the bundled Ahem until phase R (emit/native-support.ts DragonBridge.measurer).
+  it('turned off (InternalOptions.nativeRealFaces false), native refuses Lato with the font refusal, and the engine lane lowers it in engine mode', () => {
     const c = compile(inputOf('text-latin-lato'), false);
     expect(new Set(nativeErrors(c).map((d) => `${d.target} ${d.code}`))).toEqual(new Set(['ios DRAGON_UNSUPPORTED_FONT', 'android DRAGON_UNSUPPORTED_FONT']));
     expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);

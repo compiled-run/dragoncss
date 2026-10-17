@@ -4,12 +4,12 @@
 // app shapes the probe below on the device's shim and stops unless every integer equals the host's WASM shim.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { AHEM_SHA256, coveredCodePoints, FEATURE_STRIDE } from '@dragon/layout';
 import type { GeneratedFile } from 'dragon';
 import { repoPath } from './paths.ts';
-import { ahemFaceId, hostShaper, REFERENCE_LANGUAGE } from './text-shaper-host.ts';
+import { ahemFaceId, fontDataOf, hostShaper, REFERENCE_LANGUAGE, vendoredFaces } from './text-shaper-host.ts';
 
 /** The Zig release build.zig is written for (build.zig.zon minimum_zig_version), and the NDK whose sysroot the Android build links. */
 export const SHIM_ZIG = '0.16.0';
@@ -87,19 +87,25 @@ export type ShimProbe = { readonly face: string; readonly size: number; readonly
 
 const tagInt = (t: string): number => ((t.charCodeAt(0) << 24) | (t.charCodeAt(1) << 16) | (t.charCodeAt(2) << 8) | t.charCodeAt(3)) >>> 0;
 
+/** The Latin text each bundled real face is probed with: kerning pairs, ligature candidates, digits and punctuation. */
+export const REAL_FACE_PROBE_TEXT = 'Hamburgefonstiv AVATAR Wolf office fluffy 0123456789 (x, y): "T.V."';
+
 /**
  * The bundled Ahem's covered code points (the default-ignorable U+200B among them) at a whole, a fractional and the unitsPerEm
- * size, right to left, and with kerning turned off by a feature record, shaped by the host's WASM shim.
+ * size, right to left, and with kerning turned off by a feature record; then each bundled real face's probe text at a whole and a
+ * fractional size (TXT1a-2 phase R). Each is shaped by the host's WASM shim.
  */
 export function shimProbe(): readonly ShimProbe[] {
   const face = ahemFaceId();
   const text = String.fromCodePoint(...coveredCodePoints());
+  const real = (id: string, size: number): Omit<ShimProbe, 'glyphs'> => ({ face: id, size, text: REAL_FACE_PROBE_TEXT, script: 'Latn', rtl: false, language: REFERENCE_LANGUAGE, features: [] });
   const calls: readonly Omit<ShimProbe, 'glyphs'>[] = [
     { face, size: 16, text, script: 'Latn', rtl: false, language: REFERENCE_LANGUAGE, features: [] },
     { face, size: 13.37, text, script: 'Latn', rtl: false, language: REFERENCE_LANGUAGE, features: [] },
     { face, size: 1000, text, script: 'Latn', rtl: false, language: REFERENCE_LANGUAGE, features: [] },
     { face, size: 16, text, script: 'Latn', rtl: true, language: REFERENCE_LANGUAGE, features: [] },
     { face, size: 16, text, script: 'Latn', rtl: false, language: REFERENCE_LANGUAGE, features: [tagInt('kern'), 0, 0, text.length] },
+    ...shimFaces().filter((f) => f.id !== face).flatMap((f) => [real(f.id, 16), real(f.id, 13.37)]),
   ];
   return calls.map((c) => {
     if (c.features.length % FEATURE_STRIDE !== 0) throw new Error(`a probe's features are not whole records of ${FEATURE_STRIDE}`);
@@ -109,8 +115,35 @@ export function shimProbe(): readonly ShimProbe[] {
   });
 }
 
-/** The faces the host app bundles, by face id: the file the app reads and the sha256 the shim must see. */
-const SHIM_FACES = [{ id: 'Ahem', iosFile: 'Ahem.ttf', androidAsset: 'fonts/Ahem.ttf', sha256: AHEM_SHA256 }] as const;
+/** The bundle directory (iOS) and asset directory (Android) of the real faces, as the emitted bridge reads them (native-support.ts). */
+export const SHIM_FACE_DIRS = { ios: 'DragonFaces', android: 'dragon-faces' } as const;
+
+/**
+ * A face the host apps bundle: its face id, its file under vendor/fonts, the path each app holds it at, and the sha256 the shim and
+ * the bridge must see (T056 R8). A real face is held as <sha256 hex>.ttf in SHIM_FACE_DIRS, so its name is its manifest hash.
+ */
+export type ShimFace = { readonly id: string; readonly source: string; readonly iosFile: string; readonly androidAsset: string; readonly sha256: string };
+
+/**
+ * The faces the host apps bundle: Ahem, then every vendored face (the faces the reference font map and the fixtures' @font-face
+ * rules resolve to), in file order. A program naming any other face fails the host build (native-host.ts hostSources).
+ */
+export function shimFaces(): readonly ShimFace[] {
+  const fonts = repoPath('vendor/fonts');
+  const real = vendoredFaces().map((f): ShimFace => {
+    if (!f.id.startsWith('sha256:')) throw new Error(`vendored face ${f.file} has face id ${f.id}, not sha256:<hex>`);
+    const hex = f.id.slice('sha256:'.length);
+    return { id: f.id, source: relative(fonts, f.file), iosFile: `${SHIM_FACE_DIRS.ios}/${hex}.ttf`, androidAsset: `${SHIM_FACE_DIRS.android}/${hex}.ttf`, sha256: hex };
+  });
+  return [{ id: ahemFaceId(), source: 'Ahem.ttf', iosFile: 'Ahem.ttf', androidAsset: 'fonts/Ahem.ttf', sha256: AHEM_SHA256 }, ...real];
+}
+
+/** The FontData fields the bridge must read from each bundled real face, as the host reads them (text-shaper-host.ts fontDataOf). */
+function faceDataRow(id: string): readonly number[] {
+  const d = fontDataOf(id);
+  if (d.advances.length !== 0) throw new Error(`the host's FontData of ${id} carries ${d.advances.length} advances; a shaped face carries none`);
+  return [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance];
+}
 
 const swiftString = (s: string): string => `"${[...s].map((ch) => { const cp = ch.codePointAt(0) as number; return cp >= 0x20 && cp < 0x7f && ch !== '"' && ch !== '\\' ? ch : `\\u{${cp.toString(16)}}`; }).join('')}"`;
 const kotlinString = (s: string): string => `"${Array.from({ length: s.length }, (_x, i) => { const u = s.charCodeAt(i); const ch = s[i] as string; return u >= 0x20 && u < 0x7f && ch !== '"' && ch !== '\\' && ch !== '$' ? ch : `\\u${u.toString(16).padStart(4, '0')}`; }).join('')}"`;
@@ -138,7 +171,7 @@ final class DragonShaper {
   private init() {
     do { shaper = try DragonHBShaper() } catch { fatalError("dragon shaper: \(error)") }
     for f in dragonShimFaces {
-      guard let url = Bundle.main.url(forResource: f.file, withExtension: nil), let data = try? Data(contentsOf: url) else { fatalError("dragon shaper: \(f.file) is not bundled") }
+      guard let data = try? Data(contentsOf: Bundle.main.bundleURL.appendingPathComponent(f.file)) else { fatalError("dragon shaper: \(f.file) is not bundled") }
       let sha = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
       if sha != f.sha256 { fatalError("dragon shaper: \(f.file) has sha256 \(sha), but the build names \(f.sha256)") }
       do { faces[f.id] = try DragonHBFace(bytes: [UInt8](data)) } catch { fatalError("dragon shaper: \(f.file): \(error)") }
@@ -179,6 +212,19 @@ func dragonCheckShim() {
     }
   }
 }
+
+/// The bridge (DragonBridge.faces) holds exactly the real faces the build bundles, each with the FontData the host reads from the same
+/// bytes (text-shaper-host.ts fontDataOf); a difference stops the run before any case. Called once the bridge's shaper is set.
+func dragonCheckFaces() {
+  let bridge = DragonBridge.shared
+  let want = dragonShimFaceData.map { $0.id }
+  if bridge.faces.keys.sorted() != want.sorted() { fatalError("dragon faces: the bridge holds \(bridge.faces.keys.sorted()), the build bundles \(want.sorted())") }
+  for f in dragonShimFaceData {
+    guard let d = bridge.faceData(f.id) else { fatalError("dragon faces: the bridge has no FontData for \(f.id)") }
+    let got = [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance]
+    if got != f.data || !d.advances.items.isEmpty { fatalError("dragon faces: \(f.id) reads \(got) with \(d.advances.items.count) advances on the device, \(f.data) with none on the host") }
+  }
+}
 `;
 
 const KOTLIN_SHAPER = String.raw`package dev.dragon.host
@@ -186,6 +232,7 @@ const KOTLIN_SHAPER = String.raw`package dev.dragon.host
 import android.content.Context
 import dev.dragon.layout.GlyphShaper
 import dev.dragon.text.DragonHB
+import dev.dragon.views.DragonBridge
 import dev.dragon.views.dragonCheckedInt
 import java.security.MessageDigest
 
@@ -254,31 +301,50 @@ fun dragonCheckShim(ctx: Context) {
     }
   }
 }
+
+/**
+ * The bridge (DragonBridge.faces) holds exactly the real faces the build bundles, each with the FontData the host reads from the same
+ * bytes (text-shaper-host.ts fontDataOf); a difference stops the run before any case. Called once the bridge's shaper is set.
+ */
+fun dragonCheckFaces(ctx: Context) {
+  val bridge = DragonBridge.shared(ctx)
+  val want = DRAGON_SHIM_FACE_DATA.map { it.id }.sorted()
+  check(bridge.faces.keys.sorted() == want) { "dragon faces: the bridge holds " + bridge.faces.keys.sorted() + ", the build bundles " + want }
+  for (f in DRAGON_SHIM_FACE_DATA) {
+    val d = bridge.faceData(f.id) ?: throw IllegalStateException("dragon faces: the bridge has no FontData for " + f.id)
+    val got = doubleArrayOf(d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance)
+    check(got.contentEquals(f.data) && d.advances.isEmpty()) { "dragon faces: " + f.id + " reads " + got.toList() + " with " + d.advances.size + " advances on the device, " + f.data.toList() + " with none on the host" }
+  }
+}
 `;
 
 /** The host app's shim sources: the text-shaper wrapper (into the engine's module or package), the host DragonShaper and the probe. */
 export function shimSources(target: 'ios' | 'android', probe: readonly ShimProbe[] = shimProbe()): GeneratedFile[] {
   const gen = (c: string): string => `${c} GENERATED by @dragon/parity native-shim.ts. Do not edit.\n`;
+  const shimmed = shimFaces();
+  const realData = shimmed.filter((f) => f.id !== ahemFaceId()).map((f) => ({ id: f.id, data: faceDataRow(f.id) }));
   if (target === 'ios') {
-    const faces = SHIM_FACES.map((f) => `  (id: ${swiftString(f.id)}, file: ${swiftString(f.iosFile)}, sha256: ${swiftString(f.sha256)}),`).join('\n');
+    const faces = shimmed.map((f) => `  (id: ${swiftString(f.id)}, file: ${swiftString(f.iosFile)}, sha256: ${swiftString(f.sha256)}),`).join('\n');
+    const faceData = realData.map((f) => `  (id: ${swiftString(f.id)}, data: [${f.data.map(num).join(', ')}]),`).join('\n');
     const calls = probe.map((p) => `  (face: ${swiftString(p.face)}, size: ${num(p.size)}, text: ${swiftString(p.text)}, script: ${swiftString(p.script)}, rtl: ${p.rtl}, language: ${swiftString(p.language)}, features: [${p.features.map(num).join(', ')}], glyphs: [${ints(p.glyphs)}]),`).join('\n');
     return [
       { path: 'Support/DragonHBShaper.swift', text: readFileSync(join(SHAPER_DIR, 'swift', 'Sources', 'DragonHBShaper', 'DragonHBShaper.swift'), 'utf8') },
       { path: 'Host/DragonShaper.swift', text: gen('//') + SWIFT_SHAPER },
       {
         path: 'Host/DragonShimProbe.swift',
-        text: `${gen('//')}let dragonShimFaces: [(id: String, file: String, sha256: String)] = [\n${faces}\n]\n\nlet dragonShimProbe: [(face: String, size: Double, text: String, script: String, rtl: Bool, language: String, features: [Double], glyphs: [Int32])] = [\n${calls}\n]\n`,
+        text: `${gen('//')}let dragonShimFaces: [(id: String, file: String, sha256: String)] = [\n${faces}\n]\n\nlet dragonShimFaceData: [(id: String, data: [Double])] = [\n${faceData}\n]\n\nlet dragonShimProbe: [(face: String, size: Double, text: String, script: String, rtl: Bool, language: String, features: [Double], glyphs: [Int32])] = [\n${calls}\n]\n`,
       },
     ];
   }
-  const faces = SHIM_FACES.map((f) => `  DragonShimFace(${kotlinString(f.id)}, ${kotlinString(f.androidAsset)}, ${kotlinString(f.sha256)}),`).join('\n');
+  const faces = shimmed.map((f) => `  DragonShimFace(${kotlinString(f.id)}, ${kotlinString(f.androidAsset)}, ${kotlinString(f.sha256)}),`).join('\n');
+  const faceData = realData.map((f) => `  DragonShimFaceData(${kotlinString(f.id)}, doubleArrayOf(${f.data.map(num).join(', ')})),`).join('\n');
   const calls = probe.map((p) => `  DragonShimCall(${kotlinString(p.face)}, ${num(p.size)}, ${kotlinString(p.text)}, ${kotlinString(p.script)}, ${p.rtl}, ${kotlinString(p.language)}, intArrayOf(${ints(p.features.map((x) => x | 0))}), intArrayOf(${ints(p.glyphs)})),`).join('\n');
   return [
     { path: 'kotlin/dev/dragon/text/DragonHB.kt', text: readFileSync(join(SHAPER_DIR, 'kotlin', 'src', 'dev', 'dragon', 'text', 'DragonHB.kt'), 'utf8') },
     { path: 'kotlin/dev/dragon/host/DragonShaper.kt', text: gen('//') + KOTLIN_SHAPER },
     {
       path: 'kotlin/dev/dragon/host/DragonShimProbe.kt',
-      text: `${gen('//')}package dev.dragon.host\n\nclass DragonShimFace(val id: String, val asset: String, val sha256: String)\n\nclass DragonShimCall(val face: String, val size: Double, val text: String, val script: String, val rtl: Boolean, val language: String, val features: IntArray, val glyphs: IntArray)\n\nval DRAGON_SHIM_FACES = listOf(\n${faces}\n)\n\nval DRAGON_SHIM_PROBE = listOf(\n${calls}\n)\n`,
+      text: `${gen('//')}package dev.dragon.host\n\nclass DragonShimFace(val id: String, val asset: String, val sha256: String)\n\nclass DragonShimCall(val face: String, val size: Double, val text: String, val script: String, val rtl: Boolean, val language: String, val features: IntArray, val glyphs: IntArray)\n\nclass DragonShimFaceData(val id: String, val data: DoubleArray)\n\nval DRAGON_SHIM_FACES = listOf(\n${faces}\n)\n\nval DRAGON_SHIM_FACE_DATA: List<DragonShimFaceData> = listOf(\n${faceData}\n)\n\nval DRAGON_SHIM_PROBE = listOf(\n${calls}\n)\n`,
     },
   ];
 }

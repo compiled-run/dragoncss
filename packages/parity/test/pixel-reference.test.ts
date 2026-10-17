@@ -106,9 +106,8 @@ describe('the glyph rule', () => {
     expect(() => glyphLines(other, n.case.environment.viewport, 3)).toThrow(/the engine refused the input/);
   });
 
-  it('gives a real face its shaped glyph boxes on every inked line of every real-face shaped case (native lowering on, as phase R will run it)', () => {
-    // The real-face cases are no device cases until TXT1a-2 phase R, so the glyph rule's real-face extents are proven on their
-    // native lowering with phase C turned on (native-host.ts nativeCompile nativeRealFaces).
+  it('gives a real face its shaped glyph boxes on every inked line of every real-face shaped case (native lowering, as the devices run it)', () => {
+    // The glyph rule's real-face extents, on each real-face case's native lowering (on by default since TXT1a-2 phase R).
     const shaped = shapedCaseIds();
     let lines = 0;
     for (const { spec, cases: own } of layoutCases()) {

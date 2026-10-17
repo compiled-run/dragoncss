@@ -265,8 +265,8 @@ export type InternalOptions = {
   readonly supportProfiles?: SupportProfiles;
   readonly foldViewport?: Viewport;
   /**
-   * Native targets lower real bundled faces (TXT1a-2 phase C). Off by default: phase R, the device GlyphShaper over the T081 bridges,
-   * is not built, and the device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer).
+   * Native targets lower real bundled faces (TXT1a-2 phase C). On by default since phase R: the device bridge measures and draws every
+   * bundled real face through the shim (emit/native-support.ts DragonBridge.faces); false keeps every non-Ahem face refused natively.
    */
   readonly nativeRealFaces?: boolean;
   /**
@@ -871,8 +871,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
     const realFaces = realFacesOf(resolved, projectFonts, options.ua);
-    // Off by default (InternalOptions.nativeRealFaces): native targets keep refusing real faces, and the engine lane lowers them in
-    // engine mode (TXT1a-1's deferred font refusal).
+    // On by default (InternalOptions.nativeRealFaces); turned off, native targets refuse real faces, and the engine lane lowers them
+    // in engine mode (TXT1a-1's deferred font refusal).
     const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
     // (The second predicate is INL2a's: an atomic inline is proven only beside Ahem text, on every target.)
@@ -1430,10 +1430,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
       for (const c of lowerings) {
         try {
-          // Off by default (InternalOptions.nativeRealFaces): every non-Ahem face is refused natively until phase R, since the device
-          // runtime measures only Ahem; an element's own font (its strut) counts, not only its text.
+          // On by default (InternalOptions.nativeRealFaces); turned off, every non-Ahem face is refused natively; an element's own
+          // font (its strut) counts, not only its text.
           const real = options.nativeRealFaces ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
-          const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until TXT1a-2 phase R';
+          const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse with nativeRealFaces off';
           const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
@@ -1667,7 +1667,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     ua: choice.dataset,
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
-    nativeRealFaces: options.nativeRealFaces === true,
+    nativeRealFaces: options.nativeRealFaces !== false,
     interactionLanes: options.interactionLanes === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };

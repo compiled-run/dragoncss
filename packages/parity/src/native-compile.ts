@@ -12,8 +12,8 @@ import { REFERENCE_PLATFORM } from './platform.ts';
 export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 
 /** The lane compile (item 9): ios and android together, derive mode, one per fixture and direction. */
-/** nativeRealFaces: lower real bundled faces natively (TXT1a-2 phase C), off by default until phase R; tests of that lowering turn it on. */
-export function nativeCompile(spec: FixtureSpec, direction: Environment['direction'], nativeRealFaces = false): Compiled<'ios' | 'android'> {
+/** nativeRealFaces: lower real bundled faces natively (TXT1a-2), on by default since phase R, as every compile does. */
+export function nativeCompile(spec: FixtureSpec, direction: Environment['direction'], nativeRealFaces = true): Compiled<'ios' | 'android'> {
   if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
   // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
   // TXT1a-2: a real-font fixture compiles with its font map and the map's vendored faces as assets, as pipeline.ts compileFixture does.
@@ -24,7 +24,7 @@ export function nativeCompile(spec: FixtureSpec, direction: Environment['directi
 
 const compiles = new Map<string, Compiled<'ios' | 'android'>>();
 
-/** nativeCompile without real faces, once per fixture and direction in a process: nativeCases, engineCases and shapedCaseIds share it. */
+/** nativeCompile, once per fixture and direction in a process: nativeCases, engineCases and shapedCaseIds share it. */
 export function nativeCompileOnce(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
   const key = `${spec.id}\0${direction}`;
   let c = compiles.get(key);

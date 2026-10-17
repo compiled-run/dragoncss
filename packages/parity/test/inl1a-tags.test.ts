@@ -13,8 +13,8 @@ import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
 const inputOf = (id: string): FrontEndResult => withFontMapAssets(fixtureInput(layout(id, ['ltr'], 'ahem')), FONT_REFERENCE_MAP);
 
-/** nativeRealFaces: TXT1a-2 phase C's native lowering of real faces, off by default until phase R (InternalOptions.nativeRealFaces). */
-function compile(input: FrontEndResult, nativeRealFaces = false): Compiled<'ios' | 'android' | 'web'> {
+/** nativeRealFaces: TXT1a-2's native lowering of real faces, on by default since phase R (InternalOptions.nativeRealFaces). */
+function compile(input: FrontEndResult, nativeRealFaces = true): Compiled<'ios' | 'android' | 'web'> {
   const project = dragon.createProjectWith(
     { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, fonts: FONT_REFERENCE_MAP },
     { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport, nativeRealFaces },
@@ -45,8 +45,8 @@ const errors = (c: Compiled<string>): Diagnostic[] => c.diagnostics.filter((d) =
 const listed = (c: Compiled<string>): string[] => errors(c).map((d) => `${String(d.target)} ${d.code}: ${d.message}`);
 
 describe('b, strong, em and i on native where a real bundled face draws them', () => {
-  it('inline-tags-faces is refused on ios and android until TXT1a-2 phase R, ready on web, and the engine lane lays it out', () => {
-    const d = compile(inputOf('inline-tags-faces'));
+  it('inline-tags-faces is refused on ios and android with native real faces turned off, ready on web, and the engine lane lays it out', () => {
+    const d = compile(inputOf('inline-tags-faces'), false);
     expect([d.outputs.ios.kind, d.outputs.android.kind, d.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
     expect(new Set(errors(d).map((x) => `${x.target} ${x.code}`))).toEqual(new Set(['ios DRAGON_UNSUPPORTED_FONT', 'android DRAGON_UNSUPPORTED_FONT']));
     const e = dragon.engineLayoutProjection(d, ENVIRONMENT, []);
@@ -54,8 +54,8 @@ describe('b, strong, em and i on native where a real bundled face draws them', (
     expect(engineLayout(e.input, referenceShapedMeasurer()).kind).toBe('ok');
   });
 
-  it('inline-tags-faces compiles on ios, android and web with no error under phase C\'s native lowering, and the engine lays it out', () => {
-    const c = compile(inputOf('inline-tags-faces'), true);
+  it('inline-tags-faces compiles on ios, android and web with no error by default (TXT1a-2 phase R), and the engine lays it out', () => {
+    const c = compile(inputOf('inline-tags-faces'));
     expect(listed(c)).toEqual([]);
     expect([c.outputs.ios.kind, c.outputs.android.kind, c.outputs.web.kind]).toEqual(['analysis-only', 'analysis-only', 'ready']);
     const p = dragon.nativeLayoutProjection(c, ENVIRONMENT, []);
@@ -104,8 +104,8 @@ describe('the refusals that stay', () => {
       return errors(compile(input)).filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT').map((d) => d.message);
     };
     for (const [outer, inner] of [['strong', 'b'], ['address', 'em'], ['h2', 'em'], ['b', 'i'], ['em', 'b']] as const) expect(nest(outer, inner), `${inner} in ${outer}`).toEqual([]);
-    // Lato faces: no error under phase C's native lowering (off by default until TXT1a-2 phase R).
-    const bold = compile(inputOf('text-weight-nested-bold'), true);
+    // Lato faces: no error under the native lowering of real faces (on by default since TXT1a-2 phase R).
+    const bold = compile(inputOf('text-weight-nested-bold'));
     expect(listed(bold)).toEqual([]);
   });
 });

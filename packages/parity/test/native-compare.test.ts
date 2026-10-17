@@ -19,8 +19,7 @@ import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 import type { GlyphBox, SampleBox } from '../src/samples.ts';
 import { generateGlyphSamples, generateSamples } from '../src/samples.ts';
 import type { NativeTarget } from '../src/targets.ts';
-import { nativeTargets, vectorCaseIds } from '../src/targets.ts';
-import { shapedCaseIds } from '../src/text-latin-run.ts';
+import { deviceCaseIds, nativeTargets, vectorCaseIds } from '../src/targets.ts';
 
 const all = layoutCases();
 // TXT1a-2: the engine the device mirrors measures every face through HarfBuzz.
@@ -80,8 +79,8 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
     });
     const perFixture = all.map(proofOf);
     const proof = nativeTargets().map((t, i) => ({ target: t.target, rows: t.dprs.map((_d, j) => sum(perFixture.map((p) => (p[i]?.target === t.target ? p[i]?.rows[j] : undefined)))) }));
-    // TXT1a-2: the device cases are every layout case but the shaped ones (no device case until phase R).
-    const cases = vectorCaseIds().length;
+    // TXT1a-2 phase R: the device cases are every layout case, a shaped one in its bundled real faces.
+    const cases = deviceCaseIds().length;
     expect(proof.map((p) => [p.target, p.rows.map((r) => r.dpr)])).toEqual([['ios', [2, 3]], ['android', [2, 3, 2.625]]]);
     for (const p of proof) {
       for (const r of p.rows) {
@@ -91,7 +90,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
         expect(r.chromeCompared).toBeGreaterThan(0);
       }
     }
-    expect(cases + shapedCaseIds().size).toBe(declaredLayoutCaseCount());
+    expect(cases).toBe(declaredLayoutCaseCount());
   });
 });
 

@@ -23,7 +23,7 @@ import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, deviceCaseIds, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 import { animSampleIds } from '../src/anim-samples.ts';
 
@@ -83,8 +83,9 @@ describe('native targets', () => {
     for (const l of ['device-frames', 'device-applied', 'device-lines', 'device-pixels']) {
       const a = lane(ios, l);
       const b = lane(android, l);
-      // TXT1a-2: the device cases are every layout case but the shaped ones, which the device runtime draws only from phase R on.
-      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, vectorCaseIds().length]));
+      // TXT1a-2 phase R: the device cases are every layout case, a shaped one drawn in its bundled real faces.
+      expect(deviceCaseIds()).toEqual(ids);
+      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, deviceCaseIds().length]));
       expect(b?.sets.filter((s) => s.role === 'shared')).toEqual(a?.sets);
       expect(b?.sets.filter((s) => s.role === 'extra').map((s) => [s.dpr, s.extra])).toEqual(EXTRA_DPRS.map((e) => [e.dpr, e.name]));
     }
@@ -108,12 +109,13 @@ describe('native targets', () => {
     expect(android.projection).toBe(nativeLayoutProjection);
     expect(ios.projection).toBe(android.projection);
   });
-  // One test per fixture, so the corpus's compiles are spread over tests rather than held to one test's timeout. TXT1a-2: a shaped
-  // case is no device case (targets.ts vectorCaseIds), and a real-face one has no native projection, so only device cases compare.
+  // One test per fixture, so the corpus's compiles are spread over tests rather than held to one test's timeout. TXT1a-2 phase R:
+  // every layout case is a device case (targets.ts deviceCaseIds), a shaped one in its bundled real faces.
   describe('iosLayoutProjection output deep-equals nativeLayoutProjection output for every device case, at DPR 1 and every DPR', () => {
-    const device = new Set(vectorCaseIds());
+    const device = new Set(deviceCaseIds());
     it('the fixture tests below cover every device case at DPR 1 and every DPR', () => {
-      expect(layoutCases().reduce((n, f) => n + f.cases.filter((c) => device.has(c.id)).length * (1 + DPRS.length), 0)).toBe(vectorCaseIds().length * (1 + DPRS.length));
+      expect(layoutCases().reduce((n, f) => n + f.cases.filter((c) => device.has(c.id)).length * (1 + DPRS.length), 0)).toBe(deviceCaseIds().length * (1 + DPRS.length));
+      expect(deviceCaseIds().length).toBe(ids.length);
       expect(vectorCaseIds().length + shapedCaseIds().size).toBe(ids.length);
     });
     it.each(layoutCases().map((f) => [f.spec.id, f] as const))('%s', (_id, f) => {
@@ -302,8 +304,8 @@ describe('committed out/lanes.json', () => {
         // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every hit case (the layout cases but
         // those the hit lane refuses by name, hit-capture.ts hitCases) and compares only hit points (b), the other counts exactly 0.
         // SELD-R2: device-traces runs every interaction script and compares only trace lines (b).
-        // device-anim runs every frame sample (anim-samples.ts); the other device lanes run every device case (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
-        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : vectorCaseIds().length;
+        // device-anim runs every frame sample (anim-samples.ts); the other device lanes run every device case (targets.ts deviceCaseIds), a shaped case in its bundled real faces since TXT1a-2 phase R.
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : deviceCaseIds().length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           // A record carried over a changed case list (async device lanes) ran the cases its RanCases names, not today's.
