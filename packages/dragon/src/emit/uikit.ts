@@ -27,6 +27,8 @@ function writeLines(v: string, n: ProgramNode, w: ProgramWrite): string[] {
     }
     case 'text-color':
       return [`  // ${w.key}: set with the text run above`];
+    case 'synthetic-oblique':
+      return [`  ${v}.dragonSetGlyphShear(${doubleLit(w.shear)})`];
     case 'synthetic-bold':
       return [`  ${v}.dragonSetSyntheticBold(keys: [${w.keys.map(doubleLit).join(', ')}], values: [${w.values.map(doubleLit).join(', ')}])`];
   }

@@ -8,7 +8,7 @@ import { rootFontSizeOf } from './ios-layout.ts';
 import type { AnimationAnalysis } from '../analysis/animations.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
 import { analyzeDecorations } from '../analysis/text-decoration.ts';
-import { synthesizesBold } from '../analysis/computed.ts';
+import { synthesizesBold, SYNTHETIC_OBLIQUE_SHEAR, synthesizesOblique } from '../analysis/computed.ts';
 import { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES } from '../fonts/synthetic-bold.ts';
 import { canonicalJson } from '../digest.ts';
 import type { TxtWFaults } from '../faults/txt-w.ts';
@@ -47,10 +47,15 @@ export type WriteKind =
   | PaintWrite
   /** A text run's font: the device takes the size from the engine's resolved input at its environment (layout.ts zoomInput). */
   | { readonly kind: 'font'; readonly font: FontSpec }
+  /**
+   * TXT-W: Ahem text Chrome draws in synthetic oblique; the view shears its glyphs about each glyph's baseline origin by shear (x per
+   * unit of height above the baseline), as Skia's skewX does. Advances and line boxes are the upright face's.
+   */
+  | { readonly kind: 'synthetic-oblique'; readonly shear: number }
   | { readonly kind: 'text-color'; readonly color: Rgba8 }
   /**
    * TXT-W: Ahem text Chrome draws in synthetic bold; the view strokes and fills every glyph outline with a miter join (limit 4) at
-   * Skia's fake-bold width for the size it draws at (computed.ts syntheticBoldStroke over these keys and values). Advances are the face's.
+   * Skia's fake-bold width for the size it draws at (fonts/synthetic-bold.ts syntheticBoldStroke over these keys and values). Advances are the face's.
    */
   | { readonly kind: 'synthetic-bold'; readonly keys: readonly [number, number]; readonly values: readonly [number, number] };
 
@@ -98,12 +103,14 @@ export const VOCABULARY: { readonly [B in NativeBackend]: Vocabulary } = {
     ...paintVocabulary('uikit'),
     font: { key: 'font', technique: 'native-property', detail: 'the bundled Ahem registered with CTFontManagerRegisterFontsForURL(.process), UIFont point size = CSS px' },
     'text-color': { key: 'foregroundColor', technique: 'native-property', detail: 'DragonTextView fill colour (sRGB) for CTFontDrawGlyphs; Dragon places every glyph at the engine advances' },
+    'synthetic-oblique': { key: 'glyphShear', technique: 'native-property', detail: 'DragonTextView concatenates the shear [1 shear; 0 1] to the y-up glyph context at each baseline before CTFontDrawGlyphs' },
     'synthetic-bold': { key: 'syntheticBold', technique: 'native-property', detail: 'DragonTextView draws with CGTextDrawingMode.fillStroke, a miter join (limit 4) and the line width Skia\'s fake bold gives the device size, in a transparency layer when the colour is translucent' },
   },
   'android-views': {
     ...paintVocabulary('android-views'),
     font: { key: 'textPaint.typeface', technique: 'native-property', detail: 'the bundled Ahem built with Font.Builder and Typeface.CustomFallbackBuilder under the Dragon id dragon:Ahem; textSize = the engine zoomed font size in device px' },
     'text-color': { key: 'textPaint.color', technique: 'native-property', detail: 'TextPaint.color (ARGB) for Canvas.drawGlyphs; Dragon places every glyph at the engine advances' },
+    'synthetic-oblique': { key: 'glyphShear', technique: 'native-property', detail: 'DragonTextView skews the canvas by Canvas.skew(-shear, 0) at each baseline before Canvas.drawGlyphs' },
     'synthetic-bold': { key: 'syntheticBold', technique: 'native-property', detail: 'DragonTextView draws with Paint.Style.FILL_AND_STROKE, a miter join (limit 4) and the stroke width Skia\'s fake bold gives the text size' },
   },
 };
@@ -113,6 +120,7 @@ export const WRITE_CSS: { readonly [K in WriteKind['kind']]: readonly Longhand[]
   ...paintWriteCss(),
   font: ['font-family', 'font-size'],
   'text-color': ['color'],
+  'synthetic-oblique': ['font-style', 'font-synthesis-style'],
   'synthetic-bold': ['font-weight', 'font-synthesis-weight'],
 };
 
@@ -134,18 +142,14 @@ type NodePaint = {
   readonly facts: Readonly<Record<string, unknown>>;
 };
 
-function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, movingTransforms: ReadonlySet<string>, bold: BoldPlants): NodePaint[] {
+function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, movingTransforms: ReadonlySet<string>, plants: TextPlants): NodePaint[] {
   const elements = new Map<string, ResolvedElement>();
-  const texts = new Map<string, ResolvedText>();
-  const owners = new Map<string, ResolvedElement>();
+  const texts = new Map<string, OwnedText>();
   const walk = (el: ResolvedElement): void => {
     elements.set(el.element.address, el);
     for (const c of el.children) {
       if (c.kind === 'element') walk(c);
-      else {
-        texts.set(c.node.address, c);
-        owners.set(c.node.address, el);
-      }
+      else texts.set(c.node.address, { text: c, owner: el });
     }
   };
   walk(resolved);
@@ -175,7 +179,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   // container's view, in tree order. Inline boxes are unpainted (their decorations are INL1b) and a <br> draws nothing.
   const inline = (c: InlineChild, container: string): void => {
     if (c.kind === 'text') {
-      out.push(textPaint(c, container, texts, owners, bold));
+      out.push(textPaint(c, container, texts, plants));
       return;
     }
     // The dump schema (native-dump.ts) knows element, text and anonymous nodes: an inline box and a <br> are element nodes. Its view
@@ -191,19 +195,23 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   return out;
 }
 
-/** The TXT-W plants the lowering reads: the synthetic bold from 700 instead of 600, or never stroked. */
-export type BoldPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked'>;
-const NO_BOLD_PLANTS: BoldPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false };
+/** A resolved text and the element whose computed font it is drawn in. */
+type OwnedText = { readonly text: ResolvedText; readonly owner: ResolvedElement };
 
-function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, ResolvedText>, owners: ReadonlyMap<string, ResolvedElement>, bold: BoldPlants): NodePaint {
-  const r = texts.get(t.id);
-  const owner = owners.get(t.id);
-  if (r === undefined || owner === undefined) throw new ProgramError(`${t.id}: no resolved text for the text leaf`);
-  const color = r.props.get('color');
+/** The TXT-W plants the lowering reads: the synthetic bold from 700 instead of 600 or never stroked, and the oblique never sheared. */
+export type TextPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked' | 'ahemObliqueUnsheared'>;
+const NO_TEXT_PLANTS: TextPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false };
+
+function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, OwnedText>, plants: TextPlants): NodePaint {
+  const owned = texts.get(t.id);
+  if (owned === undefined) throw new ProgramError(`${t.id}: no resolved text for the text leaf`);
+  const color = owned.text.props.get('color');
   if (color === undefined) throw new ProgramError(`${t.id}: color did not resolve`);
   const writes: WriteKind[] = [{ kind: 'font', font: t.font }, { kind: 'text-color', color: colorChannels(color.value, t.id) }];
-  // Native draws only Ahem (a real face is refused where Chrome would synthesize), whose one regular face Chrome emboldens from 600.
-  if (t.font.family === 'Ahem' && synthesizesBold(owner.props, bold.ahemSyntheticBoldFrom700 ? 700 : 600) && !bold.ahemBoldUnstroked) writes.push({ kind: 'synthetic-bold', keys: SYNTHETIC_BOLD_KEYS, values: SYNTHETIC_BOLD_VALUES });
+  // Native draws only Ahem (a real face is refused on native), whose one regular face Chrome shears for a slope of 14deg and up
+  // and emboldens from weight 600 (both together are refused, computed-checks.ts syntheticTextFont).
+  if (t.font.family === 'Ahem' && synthesizesOblique(owned.owner.props) && !plants.ahemObliqueUnsheared) writes.push({ kind: 'synthetic-oblique', shear: SYNTHETIC_OBLIQUE_SHEAR });
+  if (t.font.family === 'Ahem' && synthesizesBold(owned.owner.props, plants.ahemSyntheticBoldFrom700 ? 700 : 600) && !plants.ahemBoldUnstroked) writes.push({ kind: 'synthetic-bold', keys: SYNTHETIC_BOLD_KEYS, values: SYNTHETIC_BOLD_VALUES });
   return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes, facts: {} };
 }
 
@@ -258,8 +266,8 @@ export function movingTransforms(cases: readonly (ResolvedElement | null)[], ani
 }
 
 /** Both backends' programs of one case, from one shared layout tree and one paint lowering. */
-export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set(), bold: BoldPlants = NO_BOLD_PLANTS): { readonly [B in NativeBackend]: NativeProgram } {
-  const paint = sharedPaint(root, resolved, images, moving, bold);
+export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set(), plants: TextPlants = NO_TEXT_PLANTS): { readonly [B in NativeBackend]: NativeProgram } {
+  const paint = sharedPaint(root, resolved, images, moving, plants);
   const rootFontSize = rootFontSizeOf(resolved);
   return { uikit: toBackend('uikit', root, rootFontSize, paint), 'android-views': toBackend('android-views', root, rootFontSize, paint) };
 }

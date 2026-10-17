@@ -75,6 +75,8 @@ export function appliedValue(engine: ExpectedEngine, backend: NativeBackend, w: 
   switch (w.kind) {
     case 'text-color':
       return rgba(w.color);
+    case 'synthetic-oblique':
+      return w.shear;
     case 'synthetic-bold':
       return { keys: [...w.keys], values: [...w.values] };
     case 'font': {

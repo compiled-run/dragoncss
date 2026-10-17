@@ -5,6 +5,8 @@ export type TxtWFaults = {
   readonly ahemSyntheticBoldFrom700: boolean;
   /** Native draws Ahem text Chrome draws in synthetic bold unemboldened: the native program gets no synthetic-bold write. */
   readonly ahemBoldUnstroked: boolean;
+  /** Native draws Ahem text Chrome draws in synthetic oblique upright: the native program gets no shear write. */
+  readonly ahemObliqueUnsheared: boolean;
 };
 
-export const TXT_W_FAULTS: TxtWFaults = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false };
+export const TXT_W_FAULTS: TxtWFaults = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false };

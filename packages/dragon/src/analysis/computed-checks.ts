@@ -40,7 +40,8 @@ import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
-import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
@@ -636,8 +637,8 @@ const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 're
 
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
-// minimum logical font size clamps, and text without a real bundled face whose computed font-style Chrome draws synthesized (Ahem
-// under em, i or address), or whose synthetic bold sits in a line Chrome may end with an ellipsis.
+// minimum logical font size clamps, and text without a real bundled face that Chrome draws in synthetic bold and oblique together
+// (Ahem under b in em, or an author weight of 600 and up with italic), or whose synthetic bold sits in a line that may end in an ellipsis.
 function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFsFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
@@ -735,13 +736,13 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       for (const c of el.children) {
         // TXT1a-2: a real bundled face at the computed weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
         if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
-        // Web synthesizes the bold or oblique itself; every configured native target draws the regular face.
+        // Web synthesizes both itself; native draws each alone, and Skia strokes the sheared outline when both apply.
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
           once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
             origin: c.node.node.origin,
             target: t,
-            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
-            manual: `Give ${c.node.address} a font-weight below 600 and a font-style below oblique 14deg, or a font family with a bundled face of that weight and style.`,
+            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} cannot draw this text, where Chrome synthesizes the bold and the oblique together, stroking the sheared outline, which no fixture proves on ${t}`,
+            manual: `Give ${c.node.address} a font-weight below 600 or a font-style below oblique 14deg, or a font family with a bundled face of that weight and style.`,
           })));
         }
       }
@@ -752,15 +753,16 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
 }
 
 /**
- * The computed font-style Chrome synthesizes over a single regular face (slope 14 and up) where font-synthesis-style allows it, with
- * the font-weight when Chrome also synthesizes the bold (600 and up). Synthetic bold alone is drawn natively (native-program.ts).
+ * The computed font-weight and font-style when Chrome synthesizes both the bold (600 and up) and the oblique (slope 14 and up) over a
+ * single regular face, where font-synthesis allows them. Each alone is drawn natively (native-program.ts synthetic-bold and
+ * synthetic-oblique); Skia strokes the sheared outline, which no fixture proves yet.
  */
 function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
   const font = textFontOfProps(el.props);
   const allowed = synthesisAllowedOf(el.props);
   const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
-  if (!allowed.style || slope < 14) return [];
-  return [...(synthesizesBold(el.props) ? [{ property: 'font-weight' as const, text: serializeFontWeight(font.weight) }] : []), { property: 'font-style', text: serializeFontStyle(font.style) }];
+  if (!allowed.style || slope < 14 || !synthesizesBold(el.props)) return [];
+  return [{ property: 'font-weight', text: serializeFontWeight(font.weight) }, { property: 'font-style', text: serializeFontStyle(font.style) }];
 }
 
 /** Whether a block may end a line in an ellipsis: text-overflow other than clip, or a -webkit-line-clamp container. */
@@ -842,7 +844,7 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
  * SVG-a1: an <svg> with a viewBox and an auto width or height is sized from the viewBox ratio and the available width, which the
  * engine does not do for a replaced box without a natural size yet (package SVG-ratio). A shape's geometry comes from its
  * attributes only: a CSS width, height or transform on it, which Chrome would apply as a geometry property, is refused, and so is
- * a percentage stroke-width (relative to the viewport diagonal).
+ * a percentage stroke-width, stroke-dasharray or stroke-dashoffset (relative to the viewport diagonal).
  */
 function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string, on: readonly string[] = targets): void => {
@@ -861,8 +863,10 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} a colour or none.`);
   }
   const sw = el.props.get('stroke-width') as ResolvedValue;
-  if (sw.value.kind === 'percentage') {
-    refuse('stroke-width', sw.declaration === null ? el.element.node.origin : authored(sw.declaration.valueSpan), `stroke-width: ${valueToString(sw.value)} on <${tag}> ${el.element.address} is unsupported: a percentage stroke-width is relative to the viewport diagonal, which is not built yet (package SVG-units)`, 'Give stroke-width in px or as a number.');
+  for (const p of ['stroke-width', 'stroke-dasharray', 'stroke-dashoffset'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const why = svgPercentageRefusal(p, v.value);
+    if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} in px or as numbers.`);
   }
   if (tag === 'svg') {
     const auto = (['width', 'height'] as const).filter((p) => keywordOf(el.props.get(p) as ResolvedValue) === 'auto');
@@ -906,6 +910,24 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   const shape = shapeOf(tag, el.element.attributes);
   if (keywordOf(cap) !== 'butt' && stroked && shape !== null && svgZeroLengthSubpath(shape)) {
     refuse('zero-length-cap', cap.declaration === null ? el.element.node.origin : authored(cap.declaration.valueSpan), `stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address}, whose path has a zero-length subpath, is not supported on native: Chrome draws its cap as a dot or square that native does not orient the same way yet`, `Give <${tag}> ${el.element.address} stroke-linecap: butt, or draw the dot as a <circle>.`, native);
+  }
+  // SVG-dash: a calculated stroke-dashoffset keeps its text (values.ts), which the shape's dash phase cannot use yet.
+  const dashOffset = el.props.get('stroke-dashoffset') as ResolvedValue;
+  if (dashOffset.value.kind === 'other') {
+    refuse('dashoffset-calc', dashOffset.declaration === null ? el.element.node.origin : authored(dashOffset.declaration.valueSpan), `stroke-dashoffset: ${valueToString(dashOffset.value)} on <${tag}> ${el.element.address} is unsupported: a calculated stroke-dashoffset is not resolved yet (package SVG-units)`, 'Give stroke-dashoffset in px or as a number.');
+  }
+  // SVG-dash: a dashed stroke starts at the shape's first point and runs in its direction. A circle's is Skia's oval start in
+  // Chrome and the platform's ellipse start on native, which nothing proves the same yet; and a zero-length dash with a round or
+  // square cap is a dot or square, which native orients by its own rules (as a zero-length subpath's, above).
+  const dashValue = el.props.get('stroke-dasharray') as ResolvedValue;
+  const dashes = dashArrayOf(dashValue.value);
+  const dashed = stroked && dashes !== 'percentage' && dashes.reduce((a, b) => a + b, 0) > 0;
+  const dashOrigin = dashValue.declaration === null ? el.element.node.origin : authored(dashValue.declaration.valueSpan);
+  if (dashed && tag === 'circle') {
+    refuse('dash-circle', dashOrigin, `stroke-dasharray: ${valueToString(dashValue.value)} on <circle> ${el.element.address} is not supported on native: where the dashes of a circle start is not proven against Chrome yet`, `Draw the circle as a <path> to dash it, or remove stroke-dasharray from <circle> ${el.element.address}.`, native);
+  }
+  if (dashed && keywordOf(cap) !== 'butt' && (dashes as readonly number[]).includes(0)) {
+    refuse('dash-zero-cap', dashOrigin, `stroke-dasharray: ${valueToString(dashValue.value)} with stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address} is not supported on native: a zero-length dash is a dot or square that native does not orient the same way yet`, `Give every dash a length, or give <${tag}> ${el.element.address} stroke-linecap: butt.`, native);
   }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;

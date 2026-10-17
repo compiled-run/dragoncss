@@ -86,14 +86,12 @@ describe('declared UA values', () => {
 
 describe('refusals of UA defaults Dragon does not model', () => {
   const codes = (input: ReturnType<typeof inputFor>) => project().compile(input).diagnostics.map((d) => `${d.code} ${String(d.target)}`);
-  it('address text: ios only, since Chrome draws the UA font-style on web; heading text is emboldened on ios since TXT-W', () => {
-    // h2's UA bold was refused here too until TXT-W drew Ahem's synthetic bold natively (text-weight-bold-ahem proves it).
+  it('heading and address text compile on ios since TXT-W: the UA bold is emboldened and the UA italic sheared natively', () => {
+    // Both were refused (DRAGON_UNSUPPORTED_FONT on ios) until TXT-W drew Ahem's synthetic bold and oblique (text-weight-bold-ahem, text-style-ahem).
     const c = project().compile(inputFor(FONT, (r) => [el(r, 'h2', 'h2', [], [text(r, 't', 'XX')]), el(r, 'a', 'address', [], [el(r, 'ad', 'div', [], [text(r, 'u', 'X')])])]));
-    expect(c.diagnostics.map((d) => [d.code, d.target, d.message.split(' from ')[0]])).toEqual([
-      ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text ad:text0 inherits font-style: italic'],
-    ]);
+    expect(c.diagnostics.map((d) => [d.code, d.target, d.message.split(' from ')[0]])).toEqual([]);
     expect(c.outputs.web.kind).toBe('ready');
-    expect(c.outputs.ios.kind).toBe('blocked');
+    expect(c.outputs.ios.kind).not.toBe('blocked');
   });
   it('heading text in an ellipsis block is refused for each configured native target: android as ios, and only the configured ones', () => {
     // Was bare heading text until TXT-W drew Ahem's synthetic bold natively; the UA bold stays refused where a line may end in an ellipsis.
