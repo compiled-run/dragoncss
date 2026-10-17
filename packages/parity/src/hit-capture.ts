@@ -298,12 +298,13 @@ const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
 const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
 /**
  * SVG-a1's svg family (fill, stroke, stroke-width, SVG-opacity's fill-opacity and stroke-opacity, and SVG-stroke's stroke-linecap,
- * stroke-linejoin, stroke-miterlimit and fill-rule, and SVG-dash's stroke-dasharray and stroke-dashoffset), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * stroke-linejoin, stroke-miterlimit and fill-rule, SVG-dash's stroke-dasharray and stroke-dashoffset, and SVG-geometry's cx, cy,
+ * r, x and y), also added after the identity base, at its initial values only, in LONGHANDS order:
  * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
  * family's own values).
  */
-const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1"(?:,\n[ ]*"stroke-linecap": "butt",\n[ ]*"stroke-linejoin": "miter",\n[ ]*"stroke-miterlimit": "4",\n[ ]*"fill-rule": "nonzero"(?:,\n[ ]*"stroke-dasharray": "none",\n[ ]*"stroke-dashoffset": "0px")?)?)?/g;
-const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n(?:[ ]*stroke-linecap: butt;\n[ ]*stroke-linejoin: miter;\n[ ]*stroke-miterlimit: 4;\n[ ]*fill-rule: nonzero;\n(?:[ ]*stroke-dasharray: none;\n[ ]*stroke-dashoffset: 0px;\n)?)?)?/gm;
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1"(?:,\n[ ]*"stroke-linecap": "butt",\n[ ]*"stroke-linejoin": "miter",\n[ ]*"stroke-miterlimit": "4",\n[ ]*"fill-rule": "nonzero"(?:,\n[ ]*"stroke-dasharray": "none",\n[ ]*"stroke-dashoffset": "0px"(?:,\n[ ]*"cx": "0px",\n[ ]*"cy": "0px",\n[ ]*"r": "0px",\n[ ]*"x": "0px",\n[ ]*"y": "0px")?)?)?)?/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n(?:[ ]*stroke-linecap: butt;\n[ ]*stroke-linejoin: miter;\n[ ]*stroke-miterlimit: 4;\n[ ]*fill-rule: nonzero;\n(?:[ ]*stroke-dasharray: none;\n[ ]*stroke-dashoffset: 0px;\n(?:[ ]*cx: 0px;\n[ ]*cy: 0px;\n[ ]*r: 0px;\n[ ]*x: 0px;\n[ ]*y: 0px;\n)?)?)?)?/gm;
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**

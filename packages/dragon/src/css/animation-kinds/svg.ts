@@ -19,4 +19,10 @@ export const SVG_ANIMATION: { readonly [P in (typeof SVG_LONGHANDS)[number]]: An
   // SVG-dash: both interpolate in Chrome (css_properties.json5 interpolable); no animation package admits them yet.
   'stroke-dasharray': UNADMITTED,
   'stroke-dashoffset': UNADMITTED,
+  // SVG-geometry: all five interpolate in Chrome (css_properties.json5 interpolable); no animation package admits them yet.
+  cx: UNADMITTED,
+  cy: UNADMITTED,
+  r: UNADMITTED,
+  x: UNADMITTED,
+  y: UNADMITTED,
 };

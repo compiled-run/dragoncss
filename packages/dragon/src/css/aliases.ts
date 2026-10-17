@@ -5,7 +5,8 @@
 // is listed only when its property is a Dragon longhand or shorthand and Chrome parses the two alike, or legacyAliasRefusal
 // refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing,
 // css_parsing_utils.cc ConsumePerspective). The other aliases Chrome parses with UseAliasParsing (-webkit-perspective,
-// -webkit-background-origin, -webkit-background-size, -webkit-mask-*, -webkit-appearance) wait for their property's lane,
+// -webkit-background-origin, -webkit-background-size, -webkit-appearance) wait for their property's lane, the -webkit-mask-*
+// aliases are the mask family's (aliases/mask.ts),
 // -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
 // family's own shorthand (properties/radius.ts), -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
 // and grid-column-gap are already shorthands of the grid family (properties/grid.ts).
@@ -22,6 +23,7 @@ import { FILTER_ALIASES } from './aliases/filter.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
 import { FONT_FEATURES_ALIASES } from './aliases/font-features.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
+import { MASK_ALIASES } from './aliases/mask.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
 import { SELECTION_ALIASES } from './aliases/selection.ts';
 import { SHADOW_ALIASES } from './aliases/shadow.ts';
@@ -38,6 +40,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   flex: FLEX_ALIASES,
   'font-features': FONT_FEATURES_ALIASES,
   logical: LOGICAL_ALIASES,
+  mask: MASK_ALIASES,
   radius: RADIUS_ALIASES,
   selection: SELECTION_ALIASES,
   shadow: SHADOW_ALIASES,
