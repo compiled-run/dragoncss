@@ -429,7 +429,7 @@ public final class DragonTextView: UIView, DragonNodeView {
     ctx.setFillColor(paint)
     ctx.setStrokeColor(paint)
     // y is up from the baseline here: a fake-bold run is each glyph's outline at its origin, stroked with a miter join and filled.
-    func draw(_ f: CTFont, _ glyphs: [CGGlyph], _ at: [CGPoint], _ sizeDevicePx: Double) {
+    func drawRun(_ f: CTFont, _ glyphs: [CGGlyph], _ at: [CGPoint], _ sizeDevicePx: Double) {
       let w = dragonBoldStroke(sizeDevicePx)
       if w <= 0 {
         CTFontDrawGlyphs(f, glyphs, at, glyphs.count, ctx)
@@ -452,10 +452,10 @@ public final class DragonTextView: UIView, DragonNodeView {
       ctx.translateBy(x: 0, y: CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale))
       ctx.scaleBy(x: 1, y: -1)
       let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
-      if !l.glyphs.isEmpty { draw(ct, l.glyphs, positions, Double(font.pointSize) * scale) }
+      if !l.glyphs.isEmpty { drawRun(ct, l.glyphs, positions, Double(font.pointSize) * scale) }
       if !l.ellipsisGlyphs.isEmpty {
         let dots = l.ellipsisXs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
-        draw(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisSize)
+        drawRun(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisSize)
       }
       ctx.restoreGState()
     }
