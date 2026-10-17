@@ -8,7 +8,8 @@
 // -webkit-background-origin, -webkit-background-size, -webkit-appearance) wait for their property's lane, the -webkit-mask-*
 // aliases are the mask family's (aliases/mask.ts),
 // -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
-// family's own shorthand (properties/radius.ts), -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
+// family's own shorthand (properties/radius.ts), -webkit-border-image the border image family's (properties/border-image.ts),
+// -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
 // and grid-column-gap are already shorthands of the grid family (properties/grid.ts).
 // The animation family's targets are the transition and animation list properties, which stay out of LONGHANDS (T065 option B).
 import type { Longhand, Shorthand } from './properties.ts';

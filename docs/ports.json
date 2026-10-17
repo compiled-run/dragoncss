@@ -662,12 +662,14 @@
         { "lines": "3956-4003", "symbol": "PlaceItems::ParseShorthand", "source": "located" },
         { "lines": "4015-4062", "symbol": "PlaceSelf::ParseShorthand", "source": "located" },
         { "lines": "5163-5170", "symbol": "Mask::ParseShorthand", "source": "located" },
-        { "lines": "5181-5193", "symbol": "MaskPosition::ParseShorthand", "source": "located" }
+        { "lines": "5181-5193", "symbol": "MaskPosition::ParseShorthand", "source": "located" },
+        { "lines": "749-794", "symbol": "BorderImage::ParseShorthand", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/place.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/css/place.ts", "symbol": "splitPlace", "use": "port" },
-        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" }
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -686,10 +688,12 @@
       "headerSha256": "f118f16944514ddfe94243d4e3152390a34e7ebd5cdc54ce77b5ff70764dfc56",
       "ranges": [
         { "lines": "195-213", "symbol": "CSSToStyleMap::MapFillPositionX", "source": "located" },
-        { "lines": "215-233", "symbol": "CSSToStyleMap::MapFillPositionY", "source": "located" }
+        { "lines": "215-233", "symbol": "CSSToStyleMap::MapFillPositionY", "source": "located" },
+        { "lines": "527-605", "symbol": "CSSToStyleMap::MapNinePieceImage", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" }
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -3815,7 +3819,19 @@
         { "lines": "11530-11535", "symbol": "MaskRepeat::ParseSingleValue", "source": "located" },
         { "lines": "11545-11548", "symbol": "MaskRepeat::InitialValue", "source": "located" },
         { "lines": "11550-11556", "symbol": "MaskSize::ParseSingleValue", "source": "located" },
-        { "lines": "11567-11569", "symbol": "MaskSize::InitialValue", "source": "located" }
+        { "lines": "11567-11569", "symbol": "MaskSize::InitialValue", "source": "located" },
+        { "lines": "1491-1496", "symbol": "BorderImageOutset::ParseSingleValue", "source": "located" },
+        { "lines": "1507-1514", "symbol": "BorderImageOutset::InitialValue", "source": "located" },
+        { "lines": "1516-1521", "symbol": "BorderImageRepeat::ParseSingleValue", "source": "located" },
+        { "lines": "1531-1533", "symbol": "BorderImageRepeat::InitialValue", "source": "located" },
+        { "lines": "1535-1541", "symbol": "BorderImageSlice::ParseSingleValue", "source": "located" },
+        { "lines": "1551-1561", "symbol": "BorderImageSlice::InitialValue", "source": "located" },
+        { "lines": "1563-1568", "symbol": "BorderImageSource::ParseSingleValue", "source": "located" },
+        { "lines": "1582-1584", "symbol": "BorderImageSource::InitialValue", "source": "located" },
+        { "lines": "1599-1604", "symbol": "BorderImageWidth::ParseSingleValue", "source": "located" },
+        { "lines": "1615-1622", "symbol": "BorderImageWidth::InitialValue", "source": "located" },
+        { "lines": "10980-10985", "symbol": "WebkitBorderImage::ParseSingleValue", "source": "located" },
+        { "lines": "10996-11003", "symbol": "WebkitBorderImage::ApplyValue", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
@@ -3832,7 +3848,8 @@
         { "file": "packages/dragon/src/css/properties/clip-rect.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/mask.ts", "symbol": null, "use": "reference" },
-        { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" }
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

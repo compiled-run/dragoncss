@@ -89,7 +89,10 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'mask-repeat': ['repeat', 'REPEAT'], 'mask-origin': ['border-box', 'BORDER-BOX'], 'mask-clip': ['border-box', 'Border-Box'], 'mask-composite': ['add', 'ADD'],
       'mask-mode': ['match-source', 'MATCH-SOURCE'],
       // PNT2: the 3D transform longhands, which accept their initial values alone, at those values in two ASCII cases.
-      'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'] };
+      'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'],
+      // MISC-PAINT: the border image longhands, which accept their initial values alone, at those values in two spellings.
+      'border-image-source': ['none', 'NONE'], 'border-image-slice': ['100%', '100.0%'], 'border-image-width': ['1', '1.0'], 'border-image-outset': ['0', '0.0'],
+      'border-image-repeat': ['stretch', 'STRETCH'] };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
