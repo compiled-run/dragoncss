@@ -595,7 +595,7 @@
           },
           "device": null,
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -629,7 +629,7 @@
             "corpora": "35c7f1615f709898028b44db24390bae633d4495f8387d617c5782a00b5e37ad"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -686,11 +686,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 211483,
+                  "c": 211492,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "96e5f981f89f376d3811593969d5d210aa8af78cc69868a3c85693ab151a3a56",
+                "dumpsSha256": "0e87a7c1084956cf1e926c50f968105a2a29d4e36c05992ff825b11fd5c74432",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -723,11 +723,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213506,
+                  "c": 213478,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "3fb0381c6b1fa5fe9a635da6545925824edc24860fd11fa98788297a1b1690e3",
+                "dumpsSha256": "446b3e4b76bfe45831b972541ca63e69a1e1c3d4c9ac1fccd40741deb8e17c45",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -737,7 +737,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -759,7 +759,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -816,11 +816,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 211483,
+                  "c": 211492,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "96e5f981f89f376d3811593969d5d210aa8af78cc69868a3c85693ab151a3a56",
+                "dumpsSha256": "0e87a7c1084956cf1e926c50f968105a2a29d4e36c05992ff825b11fd5c74432",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -853,11 +853,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213506,
+                  "c": 213478,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "3fb0381c6b1fa5fe9a635da6545925824edc24860fd11fa98788297a1b1690e3",
+                "dumpsSha256": "446b3e4b76bfe45831b972541ca63e69a1e1c3d4c9ac1fccd40741deb8e17c45",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -867,7 +867,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -889,7 +889,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -946,11 +946,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 211483,
+                  "c": 211492,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "96e5f981f89f376d3811593969d5d210aa8af78cc69868a3c85693ab151a3a56",
+                "dumpsSha256": "0e87a7c1084956cf1e926c50f968105a2a29d4e36c05992ff825b11fd5c74432",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -983,11 +983,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213506,
+                  "c": 213478,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "3fb0381c6b1fa5fe9a635da6545925824edc24860fd11fa98788297a1b1690e3",
+                "dumpsSha256": "446b3e4b76bfe45831b972541ca63e69a1e1c3d4c9ac1fccd40741deb8e17c45",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -997,7 +997,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -1019,14 +1019,14 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
           "lane": "device-pixels",
           "where": "device",
           "state": "fail",
-          "reason": "189 failures (pixel 189)",
+          "reason": "139 failures (pixel 139)",
           "sets": [
             {
               "dpr": 2,
@@ -1076,14 +1076,14 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 211483,
+                  "c": 211492,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "96e5f981f89f376d3811593969d5d210aa8af78cc69868a3c85693ab151a3a56",
-                "failures": 120,
+                "dumpsSha256": "0e87a7c1084956cf1e926c50f968105a2a29d4e36c05992ff825b11fd5c74432",
+                "failures": 83,
                 "failuresByKind": {
-                  "pixel": 120
+                  "pixel": 83
                 }
               },
               {
@@ -1115,19 +1115,19 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213506,
+                  "c": 213478,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "3fb0381c6b1fa5fe9a635da6545925824edc24860fd11fa98788297a1b1690e3",
-                "failures": 69,
+                "dumpsSha256": "446b3e4b76bfe45831b972541ca63e69a1e1c3d4c9ac1fccd40741deb8e17c45",
+                "failures": 56,
                 "failuresByKind": {
-                  "pixel": 69
+                  "pixel": 56
                 }
               }
             ],
             "failuresByKind": {
-              "pixel": 189
+              "pixel": 139
             },
             "firstFailures": [
               {
@@ -1309,7 +1309,7 @@
             ]
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -1331,7 +1331,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -1439,7 +1439,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -1461,7 +1461,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -1569,7 +1569,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -1591,7 +1591,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -1864,7 +1864,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -1886,7 +1886,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -1994,7 +1994,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
           },
@@ -2016,7 +2016,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         }
       ],
@@ -2719,7 +2719,7 @@
           },
           "device": null,
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -2753,7 +2753,7 @@
             "corpora": "35c7f1615f709898028b44db24390bae633d4495f8387d617c5782a00b5e37ad"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -2817,11 +2817,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213506,
+                  "c": 213478,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "8409fc6fa6b81c89b80d6e4aae44e8630ca17b246de334b90624831a38fbfec0",
+                "dumpsSha256": "b02cdbf344995613f922277c420df077265cc9e84cbce1d8c7aef7aab3b5d5bb",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -2855,11 +2855,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213806,
+                  "c": 213801,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "ba50fa3b720a4e77cb1a45b73507af91b074ac458ffb258bdbe8e748dead489b",
+                "dumpsSha256": "3c1909c0608463c6aa1fe11d7a83fc0929008736dda89d63b816adac4cf6a370",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -2893,11 +2893,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 211483,
+                  "c": 211492,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "040ec430ecb7356469c38a1f14374773ae6a3b5c3a35002fcfbea60c20f0e135",
+                "dumpsSha256": "e91986b405742f82f0ff9572845d3ff530740a23b908f9a71f7439ea7c9678ff",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -2907,7 +2907,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -2935,7 +2935,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -2999,11 +2999,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213506,
+                  "c": 213478,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "8409fc6fa6b81c89b80d6e4aae44e8630ca17b246de334b90624831a38fbfec0",
+                "dumpsSha256": "b02cdbf344995613f922277c420df077265cc9e84cbce1d8c7aef7aab3b5d5bb",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3037,11 +3037,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213806,
+                  "c": 213801,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "ba50fa3b720a4e77cb1a45b73507af91b074ac458ffb258bdbe8e748dead489b",
+                "dumpsSha256": "3c1909c0608463c6aa1fe11d7a83fc0929008736dda89d63b816adac4cf6a370",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3075,11 +3075,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 211483,
+                  "c": 211492,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "040ec430ecb7356469c38a1f14374773ae6a3b5c3a35002fcfbea60c20f0e135",
+                "dumpsSha256": "e91986b405742f82f0ff9572845d3ff530740a23b908f9a71f7439ea7c9678ff",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -3089,7 +3089,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -3117,7 +3117,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -3181,11 +3181,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213506,
+                  "c": 213478,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "8409fc6fa6b81c89b80d6e4aae44e8630ca17b246de334b90624831a38fbfec0",
+                "dumpsSha256": "b02cdbf344995613f922277c420df077265cc9e84cbce1d8c7aef7aab3b5d5bb",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3219,11 +3219,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213806,
+                  "c": 213801,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "ba50fa3b720a4e77cb1a45b73507af91b074ac458ffb258bdbe8e748dead489b",
+                "dumpsSha256": "3c1909c0608463c6aa1fe11d7a83fc0929008736dda89d63b816adac4cf6a370",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -3257,11 +3257,11 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 211483,
+                  "c": 211492,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "040ec430ecb7356469c38a1f14374773ae6a3b5c3a35002fcfbea60c20f0e135",
+                "dumpsSha256": "e91986b405742f82f0ff9572845d3ff530740a23b908f9a71f7439ea7c9678ff",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -3271,7 +3271,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -3299,14 +3299,14 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
           "lane": "device-pixels",
           "where": "device",
           "state": "fail",
-          "reason": "251 failures (pixel 251)",
+          "reason": "183 failures (pixel 183)",
           "sets": [
             {
               "dpr": 2,
@@ -3363,14 +3363,14 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213506,
+                  "c": 213478,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "8409fc6fa6b81c89b80d6e4aae44e8630ca17b246de334b90624831a38fbfec0",
-                "failures": 61,
+                "dumpsSha256": "b02cdbf344995613f922277c420df077265cc9e84cbce1d8c7aef7aab3b5d5bb",
+                "failures": 48,
                 "failuresByKind": {
-                  "pixel": 61
+                  "pixel": 48
                 }
               },
               {
@@ -3403,14 +3403,14 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 213806,
+                  "c": 213801,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "ba50fa3b720a4e77cb1a45b73507af91b074ac458ffb258bdbe8e748dead489b",
-                "failures": 86,
+                "dumpsSha256": "3c1909c0608463c6aa1fe11d7a83fc0929008736dda89d63b816adac4cf6a370",
+                "failures": 68,
                 "failuresByKind": {
-                  "pixel": 86
+                  "pixel": 68
                 }
               },
               {
@@ -3443,19 +3443,19 @@
                 "compared": {
                   "a": 23643,
                   "b": 74651,
-                  "c": 211483,
+                  "c": 211492,
                   "d": 23746,
                   "breaks": 4227
                 },
-                "dumpsSha256": "040ec430ecb7356469c38a1f14374773ae6a3b5c3a35002fcfbea60c20f0e135",
-                "failures": 104,
+                "dumpsSha256": "e91986b405742f82f0ff9572845d3ff530740a23b908f9a71f7439ea7c9678ff",
+                "failures": 67,
                 "failuresByKind": {
-                  "pixel": 104
+                  "pixel": 67
                 }
               }
             ],
             "failuresByKind": {
-              "pixel": 251
+              "pixel": 183
             },
             "firstFailures": [
               {
@@ -3644,7 +3644,7 @@
             ]
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -3672,7 +3672,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -3826,7 +3826,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -3854,7 +3854,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -4008,7 +4008,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -4036,7 +4036,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -4357,7 +4357,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -4385,7 +4385,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         },
         {
@@ -4560,7 +4560,7 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "laneCode": "545ebbeae39c095d9935c8cc92d083886f8d3faebed1c09d2145fe0b6a5030d4",
             "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
             "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
           },
@@ -4588,7 +4588,7 @@
             "corpora": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39000702719"
           ]
         }
       ],
