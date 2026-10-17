@@ -62,25 +62,25 @@
               "dpr": 1,
               "role": "top-level",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 2,
               "role": "shared",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 3,
               "role": "shared",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 2.625,
               "role": "extra",
               "extra": "android-extra-420dpi",
-              "cases": 903
+              "cases": 905
             }
           ],
           "corpora": [
@@ -107,7 +107,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 2944
+              "cases": 2952
             },
             {
               "corpus": "p1",
@@ -122,7 +122,7 @@
             {
               "corpus": "extended",
               "suite": "engine-dpr",
-              "cases": 2709
+              "cases": 2715
             },
             {
               "corpus": "extended",
@@ -132,7 +132,7 @@
             {
               "corpus": "extended",
               "suite": "snap",
-              "cases": 22493
+              "cases": 22499
             },
             {
               "corpus": "extended",
@@ -170,8 +170,8 @@
               "cases": 160
             }
           ],
-          "caseListSha256": "e756edbad5f6d46953ed01f0682bd73bc299c8ba88bb20fe80c03d913c8d0117",
-          "totalCases": 631319,
+          "caseListSha256": "d960ff6f03ed29ec172cbb7e9c9aa42b3cb5bffe0dfc8f9a0aada63a3a046867",
+          "totalCases": 631347,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -213,9 +213,9 @@
               {
                 "corpus": "p1",
                 "suite": "hit",
-                "declared": 2944,
-                "total": 2944,
-                "pass": 2944
+                "declared": 2952,
+                "total": 2952,
+                "pass": 2952
               },
               {
                 "corpus": "p1",
@@ -234,23 +234,23 @@
               {
                 "corpus": "extended",
                 "suite": "vectors-m2",
-                "declared": 645,
-                "total": 645,
-                "pass": 645
+                "declared": 647,
+                "total": 647,
+                "pass": 647
               },
               {
                 "corpus": "extended",
                 "suite": "vectors-dpr",
-                "declared": 2709,
-                "total": 2709,
-                "pass": 2709
+                "declared": 2715,
+                "total": 2715,
+                "pass": 2715
               },
               {
                 "corpus": "extended",
                 "suite": "engine-dpr",
-                "declared": 2709,
-                "total": 2709,
-                "pass": 2709
+                "declared": 2715,
+                "total": 2715,
+                "pass": 2715
               },
               {
                 "corpus": "extended",
@@ -262,9 +262,9 @@
               {
                 "corpus": "extended",
                 "suite": "snap",
-                "declared": 22493,
-                "total": 22493,
-                "pass": 22493
+                "declared": 22499,
+                "total": 22499,
+                "pass": 22499
               },
               {
                 "corpus": "extended",
@@ -317,8 +317,8 @@
               }
             ],
             "digests": {
-              "p1": "74c157244972dfe553fe4ce63b5db0e40196759cdee63b0904b215d967962432",
-              "extended": "d951effce1e4b4ac0c72214a6dd0449f5acbb49dad586b95c50d4f6c51edaca2"
+              "p1": "84586b5166b3385681eaf85f8c064e69ea024d39476c596861fd179cde8e4d8e",
+              "extended": "fe004ed55a23b641ec6895545712a218d53094707532f7a5b0a3cfad05fa1f83"
             }
           },
           "device": null,
@@ -327,32 +327,32 @@
         {
           "lane": "layout-vectors-device",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 1,
               "role": "top-level",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 2,
               "role": "shared",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 3,
               "role": "shared",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 2.625,
               "role": "extra",
               "extra": "android-extra-420dpi",
-              "cases": 903
+              "cases": 905
             }
           ],
           "corpora": [
@@ -379,7 +379,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 2944
+              "cases": 2952
             },
             {
               "corpus": "p1",
@@ -394,7 +394,7 @@
             {
               "corpus": "extended",
               "suite": "engine-dpr",
-              "cases": 2709
+              "cases": 2715
             },
             {
               "corpus": "extended",
@@ -404,7 +404,7 @@
             {
               "corpus": "extended",
               "suite": "snap",
-              "cases": 22493
+              "cases": 22499
             },
             {
               "corpus": "extended",
@@ -442,195 +442,11 @@
               "cases": 160
             }
           ],
-          "caseListSha256": "e756edbad5f6d46953ed01f0682bd73bc299c8ba88bb20fe80c03d913c8d0117",
-          "totalCases": 631319,
-          "run": {
-            "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1); arm64-apple-ios15.0-simulator; simctl spawn on iPhone 17",
-            "suites": [
-              {
-                "corpus": "p1",
-                "suite": "vectors",
-                "declared": 258,
-                "total": 258,
-                "pass": 258
-              },
-              {
-                "corpus": "p1",
-                "suite": "units",
-                "declared": 320000,
-                "total": 320000,
-                "pass": 320000
-              },
-              {
-                "corpus": "p1",
-                "suite": "engine",
-                "declared": 20258,
-                "total": 20258,
-                "pass": 20258
-              },
-              {
-                "corpus": "p1",
-                "suite": "library",
-                "declared": 22000,
-                "total": 22000,
-                "pass": 22000
-              },
-              {
-                "corpus": "p1",
-                "suite": "rt",
-                "declared": 55362,
-                "total": 55362,
-                "pass": 55362
-              },
-              {
-                "corpus": "p1",
-                "suite": "hit",
-                "declared": 2944,
-                "total": 2944,
-                "pass": 2944
-              },
-              {
-                "corpus": "p1",
-                "suite": "animator",
-                "declared": 27,
-                "total": 27,
-                "pass": 27
-              },
-              {
-                "corpus": "p1",
-                "suite": "interaction",
-                "declared": 21,
-                "total": 21,
-                "pass": 21
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-m2",
-                "declared": 645,
-                "total": 645,
-                "pass": 645
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-dpr",
-                "declared": 2709,
-                "total": 2709,
-                "pass": 2709
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-dpr",
-                "declared": 2709,
-                "total": 2709,
-                "pass": 2709
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-m2",
-                "declared": 120000,
-                "total": 120000,
-                "pass": 120000
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap",
-                "declared": 22493,
-                "total": 22493,
-                "pass": 22493
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap-values",
-                "declared": 216,
-                "total": 216,
-                "pass": 216
-              },
-              {
-                "corpus": "extended",
-                "suite": "calc-goldens",
-                "declared": 17,
-                "total": 17,
-                "pass": 17
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-calc",
-                "declared": 4000,
-                "total": 4000,
-                "pass": 4000
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-calc",
-                "declared": 50000,
-                "total": 50000,
-                "pass": 50000
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-inline",
-                "declared": 4500,
-                "total": 4500,
-                "pass": 4500
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-overflow",
-                "declared": 3000,
-                "total": 3000,
-                "pass": 3000
-              },
-              {
-                "corpus": "extended",
-                "suite": "text-latin",
-                "declared": 160,
-                "total": 160,
-                "pass": 160
-              }
-            ],
-            "digests": {
-              "p1": "74c157244972dfe553fe4ce63b5db0e40196759cdee63b0904b215d967962432",
-              "extended": "d951effce1e4b4ac0c72214a6dd0449f5acbb49dad586b95c50d4f6c51edaca2"
-            }
-          },
+          "caseListSha256": "d960ff6f03ed29ec172cbb7e9c9aa42b3cb5bffe0dfc8f9a0aada63a3a046867",
+          "totalCases": 631347,
+          "run": null,
           "device": null,
-          "evidence": {
-            "laneCode": "dbc2fd36e536c10cb6f83a115b258214c394af6d984f9721a818ec8421d1f7ae",
-            "referenceData": "0526eea70509669e36a55bb3e54e02a818bc5c623ec9f23ff3cb0889edb02baf",
-            "app": "903a69a5647d3fb8e06ffd0cd3698b1bc1f8c610d98f374e7910e9de31823c6c"
-          },
-          "ran": {
-            "sets": [
-              {
-                "dpr": 1,
-                "role": "top-level",
-                "extra": null,
-                "list": "c697ee47085c3b45c7ef7bf35a5ad556b3ed764e8346576ab2f30b6efacc9358"
-              },
-              {
-                "dpr": 2,
-                "role": "shared",
-                "extra": null,
-                "list": "c697ee47085c3b45c7ef7bf35a5ad556b3ed764e8346576ab2f30b6efacc9358"
-              },
-              {
-                "dpr": 3,
-                "role": "shared",
-                "extra": null,
-                "list": "c697ee47085c3b45c7ef7bf35a5ad556b3ed764e8346576ab2f30b6efacc9358"
-              },
-              {
-                "dpr": 2.625,
-                "role": "extra",
-                "extra": "android-extra-420dpi",
-                "list": "c697ee47085c3b45c7ef7bf35a5ad556b3ed764e8346576ab2f30b6efacc9358"
-              }
-            ],
-            "corpora": "f236372bb77d9cc245dcdc46ddaba362987580116981f5404b3fbb004581adef"
-          },
-          "producedOn": [
-            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/39033866094"
-          ]
+          "evidence": null
         },
         {
           "lane": "device-frames",
@@ -2024,22 +1840,22 @@
         {
           "dpr": 2,
           "role": "shared",
-          "cases": 903,
-          "valid": 903,
-          "chrome": 903,
-          "engine": 903,
-          "chromeCompared": 23771,
-          "engineCompared": 23874
+          "cases": 905,
+          "valid": 905,
+          "chrome": 905,
+          "engine": 905,
+          "chromeCompared": 23833,
+          "engineCompared": 23936
         },
         {
           "dpr": 3,
           "role": "shared",
-          "cases": 903,
-          "valid": 903,
-          "chrome": 903,
-          "engine": 903,
-          "chromeCompared": 23771,
-          "engineCompared": 23874
+          "cases": 905,
+          "valid": 905,
+          "chrome": 905,
+          "engine": 905,
+          "chromeCompared": 23833,
+          "engineCompared": 23936
         }
       ],
       "dumpFaults": [
@@ -2186,25 +2002,25 @@
               "dpr": 1,
               "role": "top-level",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 2,
               "role": "shared",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 3,
               "role": "shared",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 2.625,
               "role": "extra",
               "extra": "android-extra-420dpi",
-              "cases": 903
+              "cases": 905
             }
           ],
           "corpora": [
@@ -2231,7 +2047,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 2944
+              "cases": 2952
             },
             {
               "corpus": "p1",
@@ -2246,7 +2062,7 @@
             {
               "corpus": "extended",
               "suite": "engine-dpr",
-              "cases": 2709
+              "cases": 2715
             },
             {
               "corpus": "extended",
@@ -2256,7 +2072,7 @@
             {
               "corpus": "extended",
               "suite": "snap",
-              "cases": 22493
+              "cases": 22499
             },
             {
               "corpus": "extended",
@@ -2294,8 +2110,8 @@
               "cases": 160
             }
           ],
-          "caseListSha256": "e756edbad5f6d46953ed01f0682bd73bc299c8ba88bb20fe80c03d913c8d0117",
-          "totalCases": 631319,
+          "caseListSha256": "d960ff6f03ed29ec172cbb7e9c9aa42b3cb5bffe0dfc8f9a0aada63a3a046867",
+          "totalCases": 631347,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -2337,9 +2153,9 @@
               {
                 "corpus": "p1",
                 "suite": "hit",
-                "declared": 2944,
-                "total": 2944,
-                "pass": 2944
+                "declared": 2952,
+                "total": 2952,
+                "pass": 2952
               },
               {
                 "corpus": "p1",
@@ -2358,23 +2174,23 @@
               {
                 "corpus": "extended",
                 "suite": "vectors-m2",
-                "declared": 645,
-                "total": 645,
-                "pass": 645
+                "declared": 647,
+                "total": 647,
+                "pass": 647
               },
               {
                 "corpus": "extended",
                 "suite": "vectors-dpr",
-                "declared": 2709,
-                "total": 2709,
-                "pass": 2709
+                "declared": 2715,
+                "total": 2715,
+                "pass": 2715
               },
               {
                 "corpus": "extended",
                 "suite": "engine-dpr",
-                "declared": 2709,
-                "total": 2709,
-                "pass": 2709
+                "declared": 2715,
+                "total": 2715,
+                "pass": 2715
               },
               {
                 "corpus": "extended",
@@ -2386,9 +2202,9 @@
               {
                 "corpus": "extended",
                 "suite": "snap",
-                "declared": 22493,
-                "total": 22493,
-                "pass": 22493
+                "declared": 22499,
+                "total": 22499,
+                "pass": 22499
               },
               {
                 "corpus": "extended",
@@ -2441,8 +2257,8 @@
               }
             ],
             "digests": {
-              "p1": "74c157244972dfe553fe4ce63b5db0e40196759cdee63b0904b215d967962432",
-              "extended": "d951effce1e4b4ac0c72214a6dd0449f5acbb49dad586b95c50d4f6c51edaca2"
+              "p1": "84586b5166b3385681eaf85f8c064e69ea024d39476c596861fd179cde8e4d8e",
+              "extended": "fe004ed55a23b641ec6895545712a218d53094707532f7a5b0a3cfad05fa1f83"
             }
           },
           "device": null,
@@ -2451,32 +2267,32 @@
         {
           "lane": "layout-vectors-device",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 1,
               "role": "top-level",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 2,
               "role": "shared",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 3,
               "role": "shared",
               "extra": null,
-              "cases": 903
+              "cases": 905
             },
             {
               "dpr": 2.625,
               "role": "extra",
               "extra": "android-extra-420dpi",
-              "cases": 903
+              "cases": 905
             }
           ],
           "corpora": [
@@ -2503,7 +2319,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 2944
+              "cases": 2952
             },
             {
               "corpus": "p1",
@@ -2518,7 +2334,7 @@
             {
               "corpus": "extended",
               "suite": "engine-dpr",
-              "cases": 2709
+              "cases": 2715
             },
             {
               "corpus": "extended",
@@ -2528,7 +2344,7 @@
             {
               "corpus": "extended",
               "suite": "snap",
-              "cases": 22493
+              "cases": 22499
             },
             {
               "corpus": "extended",
@@ -2566,195 +2382,11 @@
               "cases": 160
             }
           ],
-          "caseListSha256": "e756edbad5f6d46953ed01f0682bd73bc299c8ba88bb20fe80c03d913c8d0117",
-          "totalCases": 631319,
-          "run": {
-            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18; d8 --min-api 31; ART app_process on dragon-smoke (Android 16, x86_64)",
-            "suites": [
-              {
-                "corpus": "p1",
-                "suite": "vectors",
-                "declared": 258,
-                "total": 258,
-                "pass": 258
-              },
-              {
-                "corpus": "p1",
-                "suite": "units",
-                "declared": 320000,
-                "total": 320000,
-                "pass": 320000
-              },
-              {
-                "corpus": "p1",
-                "suite": "engine",
-                "declared": 20258,
-                "total": 20258,
-                "pass": 20258
-              },
-              {
-                "corpus": "p1",
-                "suite": "library",
-                "declared": 22000,
-                "total": 22000,
-                "pass": 22000
-              },
-              {
-                "corpus": "p1",
-                "suite": "rt",
-                "declared": 55362,
-                "total": 55362,
-                "pass": 55362
-              },
-              {
-                "corpus": "p1",
-                "suite": "hit",
-                "declared": 2944,
-                "total": 2944,
-                "pass": 2944
-              },
-              {
-                "corpus": "p1",
-                "suite": "animator",
-                "declared": 27,
-                "total": 27,
-                "pass": 27
-              },
-              {
-                "corpus": "p1",
-                "suite": "interaction",
-                "declared": 21,
-                "total": 21,
-                "pass": 21
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-m2",
-                "declared": 645,
-                "total": 645,
-                "pass": 645
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-dpr",
-                "declared": 2709,
-                "total": 2709,
-                "pass": 2709
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-dpr",
-                "declared": 2709,
-                "total": 2709,
-                "pass": 2709
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-m2",
-                "declared": 120000,
-                "total": 120000,
-                "pass": 120000
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap",
-                "declared": 22493,
-                "total": 22493,
-                "pass": 22493
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap-values",
-                "declared": 216,
-                "total": 216,
-                "pass": 216
-              },
-              {
-                "corpus": "extended",
-                "suite": "calc-goldens",
-                "declared": 17,
-                "total": 17,
-                "pass": 17
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-calc",
-                "declared": 4000,
-                "total": 4000,
-                "pass": 4000
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-calc",
-                "declared": 50000,
-                "total": 50000,
-                "pass": 50000
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-inline",
-                "declared": 4500,
-                "total": 4500,
-                "pass": 4500
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-overflow",
-                "declared": 3000,
-                "total": 3000,
-                "pass": 3000
-              },
-              {
-                "corpus": "extended",
-                "suite": "text-latin",
-                "declared": 160,
-                "total": 160,
-                "pass": 160
-              }
-            ],
-            "digests": {
-              "p1": "74c157244972dfe553fe4ce63b5db0e40196759cdee63b0904b215d967962432",
-              "extended": "d951effce1e4b4ac0c72214a6dd0449f5acbb49dad586b95c50d4f6c51edaca2"
-            }
-          },
+          "caseListSha256": "d960ff6f03ed29ec172cbb7e9c9aa42b3cb5bffe0dfc8f9a0aada63a3a046867",
+          "totalCases": 631347,
+          "run": null,
           "device": null,
-          "evidence": {
-            "laneCode": "dbc2fd36e536c10cb6f83a115b258214c394af6d984f9721a818ec8421d1f7ae",
-            "referenceData": "0526eea70509669e36a55bb3e54e02a818bc5c623ec9f23ff3cb0889edb02baf",
-            "app": "a109d9c53b28ff5b50fb9411d9f9ac769e8e3fa147238c7ff8a8ed668a3554fd"
-          },
-          "ran": {
-            "sets": [
-              {
-                "dpr": 1,
-                "role": "top-level",
-                "extra": null,
-                "list": "c697ee47085c3b45c7ef7bf35a5ad556b3ed764e8346576ab2f30b6efacc9358"
-              },
-              {
-                "dpr": 2,
-                "role": "shared",
-                "extra": null,
-                "list": "c697ee47085c3b45c7ef7bf35a5ad556b3ed764e8346576ab2f30b6efacc9358"
-              },
-              {
-                "dpr": 3,
-                "role": "shared",
-                "extra": null,
-                "list": "c697ee47085c3b45c7ef7bf35a5ad556b3ed764e8346576ab2f30b6efacc9358"
-              },
-              {
-                "dpr": 2.625,
-                "role": "extra",
-                "extra": "android-extra-420dpi",
-                "list": "c697ee47085c3b45c7ef7bf35a5ad556b3ed764e8346576ab2f30b6efacc9358"
-              }
-            ],
-            "corpora": "f236372bb77d9cc245dcdc46ddaba362987580116981f5404b3fbb004581adef"
-          },
-          "producedOn": [
-            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/39033866094"
-          ]
+          "evidence": null
         },
         {
           "lane": "device-frames",
@@ -4596,32 +4228,32 @@
         {
           "dpr": 2,
           "role": "shared",
-          "cases": 903,
-          "valid": 903,
-          "chrome": 903,
-          "engine": 903,
-          "chromeCompared": 23771,
-          "engineCompared": 23874
+          "cases": 905,
+          "valid": 905,
+          "chrome": 905,
+          "engine": 905,
+          "chromeCompared": 23833,
+          "engineCompared": 23936
         },
         {
           "dpr": 3,
           "role": "shared",
-          "cases": 903,
-          "valid": 903,
-          "chrome": 903,
-          "engine": 903,
-          "chromeCompared": 23771,
-          "engineCompared": 23874
+          "cases": 905,
+          "valid": 905,
+          "chrome": 905,
+          "engine": 905,
+          "chromeCompared": 23833,
+          "engineCompared": 23936
         },
         {
           "dpr": 2.625,
           "role": "extra",
-          "cases": 903,
-          "valid": 903,
-          "chrome": 903,
-          "engine": 903,
-          "chromeCompared": 23771,
-          "engineCompared": 23874
+          "cases": 905,
+          "valid": 905,
+          "chrome": 905,
+          "engine": 905,
+          "chromeCompared": 23833,
+          "engineCompared": 23936
         }
       ],
       "dumpFaults": [
