@@ -99,6 +99,8 @@ const SUBSET = [
   '-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke-width', '-webkit-text-stroke',
   // TXT-FX: text-shadow (css-text-decor-4 §4), after the text fill and stroke, as LONGHANDS registers it.
   'text-shadow',
+  // FX: filter (filter-effects-1 §5), after text-shadow, as LONGHANDS registers it.
+  'filter',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
@@ -178,6 +180,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink TextShadow::ParseSingleValue: ConsumeShadow with AllowInsetAndSpread::kForbid, so a text shadow takes no spread and no
   // inset, unlike webref's <shadow>. Pinned against Chrome by packages/parity/test/text-shadow-parse.test.ts.
   'text-shadow': 'none | [ <color>? && [ <length>{2} <length [0,∞]>? ] ]#',
+  // Blink Filter::ParseSingleValue (longhands_custom.cc) takes none or a list of filter functions and url()s. Dragon accepts only none
+  // and refuses every other value where it applies (computed-checks.ts checkFilter), so the grammar takes any value: a filter webref's
+  // <filter-value-list> misses is refused, never dropped where Chrome would apply it. Pinned against Chrome by
+  // packages/parity/test/filter-parse.test.ts.
+  filter: 'none | <any-value>',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',
@@ -196,6 +203,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'stroke-linejoin': 'miter | bevel | round',
   // Blink StrokeMiterlimit::ParseSingleValue: ConsumeNumber with ValueRange::kNonNegative.
   'stroke-miterlimit': '<number [0,∞]>',
+  // Blink StrokeDasharray::ParseSingleValue: none, or non-negative lengths, percentages or (SVG attribute mode) numbers, each
+  // followed by an optional comma; webref's <dasharray> takes the same, written here as comma-separated runs.
+  'stroke-dasharray': 'none | [ [ <length-percentage [0,∞]> | <number [0,∞]> ]+ ]#',
+  // Blink StrokeDashoffset::ParseSingleValue: any length or percentage, or (SVG attribute mode) a number.
+  'stroke-dashoffset': '<length-percentage> | <number>',
 };
 
 /**

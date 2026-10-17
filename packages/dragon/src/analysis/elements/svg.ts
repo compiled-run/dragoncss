@@ -9,6 +9,7 @@ import type { SvgShape, ViewBox } from '@dragon/layout';
 import type { Rgba8 } from '../../css/color.ts';
 import { TRANSPARENT } from '../../css/color.ts';
 import { opacityOf } from '../../css/properties/effects.ts';
+import { dashArrayOf } from '../../css/properties/svg-dash.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { CssValue, Declaration } from '../../css/stylesheet.ts';
 import { parseValue } from '../../css/stylesheet.ts';
@@ -19,8 +20,8 @@ import type { ResolvedElement } from '../resolve.ts';
 export const SVG_TAG = 'svg';
 
 /** The presentation attributes Dragon maps to its svg property family (SVG 2 §6.6); author rules beat them. */
-export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule';
-export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule'];
+export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset';
+export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset'];
 
 /** The attributes each SVG tag compiles: its geometry, the paint presentation attributes, and xmlns (no effect in HTML). */
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
@@ -37,11 +38,10 @@ const SVG_ATTRIBUTE_OWNERS: { readonly [name: string]: string } = {
   rx: 'the SVG structure package SVG-b (rounded rects)',
   ry: 'the SVG structure package SVG-b (rounded rects)',
   opacity: 'the SVG opacity package SVG-opacity',
-  'stroke-dasharray': 'the SVG dash package SVG-dash',
-  'stroke-dashoffset': 'the SVG dash package SVG-dash',
   'clip-path': 'the clipping package MASK-CLIP',
   mask: 'the clipping package MASK-CLIP',
-  'pathLength': 'the SVG dash package SVG-dash',
+  // SVG-dash: pathLength scales the dashes (Blink SVGLayoutSupport::ApplyStrokeStyleToStrokeData's dash_scale_factor).
+  'pathLength': 'the SVG path length package SVG-pathlength',
 };
 
 /** Whether a tag is an SVG shape an <svg> draws. */
@@ -90,6 +90,15 @@ export function paintAttributeValue(property: SvgPaintAttribute, text: string): 
 }
 
 /**
+ * Why a computed stroke-width, stroke-dasharray or stroke-dashoffset with a percentage does not compile, or null: a percentage of
+ * them is of the viewport diagonal (SVG 2 §8.9), which is not resolved yet.
+ */
+export function svgPercentageRefusal(name: string, v: CssValue): string | null {
+  const percentage = name === 'stroke-dasharray' ? v.kind !== 'keyword' && dashArrayOf(v) === 'percentage' : (name === 'stroke-width' || name === 'stroke-dashoffset') && v.kind === 'percentage';
+  return percentage ? `a percentage ${name} is relative to the viewport diagonal, which is not built yet (package SVG-units)` : null;
+}
+
+/**
  * Why an attribute value of an SVG tag cannot compile, or null. Chrome ignores an invalid geometry or paint attribute, or renders a
  * path up to its first error; Dragon has no proof of those outcomes, so it refuses them.
  */
@@ -98,7 +107,7 @@ export function svgAttributeRefusal(tag: string, name: string, text: string): st
   if ((SVG_PAINT_ATTRIBUTES as readonly string[]).includes(name)) {
     const v = paintAttributeValue(name as SvgPaintAttribute, text);
     if (!v.ok) return v.reason;
-    return name === 'stroke-width' && v.value.kind === 'percentage' ? 'a percentage stroke-width is relative to the viewport diagonal, which is not built yet (package SVG-units)' : null;
+    return svgPercentageRefusal(name, v.value);
   }
   if (name === 'xmlns') return text === 'http://www.w3.org/2000/svg' ? null : 'an xmlns other than the SVG namespace';
   if (name === 'viewBox') return parseViewBox(text) === null ? 'a viewBox must be four numbers with a positive width and height (Chrome ignores any other)' : null;
@@ -179,6 +188,13 @@ export type SvgShapeScene = {
   readonly join: SvgLineJoin;
   readonly miterLimit: number;
   readonly fillRule: SvgFillRule;
+  /**
+   * SVG-dash: the dash lengths in user units as Chrome strokes them (Blink StrokeData::SetLineDash): [] for a solid stroke (none,
+   * or dashes that sum to 0, which Skia's dash effect rejects), an odd list repeated to an even one; and the computed
+   * stroke-dashoffset in user units.
+   */
+  readonly dashes: readonly number[];
+  readonly dashOffset: number;
   readonly painted: boolean;
 };
 
@@ -284,6 +300,11 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
     const sw = (c.props.get('stroke-width') as ResolvedValue).value;
     const strokeWidth = sw.kind === 'length' && sw.unit === 'px' ? sw.value : sw.kind === 'number' ? sw.value : null;
     if (strokeWidth === null) throw new Error(`${c.element.address}: stroke-width did not compute to px`);
+    const dashArray = dashArrayOf((c.props.get('stroke-dasharray') as ResolvedValue).value);
+    if (dashArray === 'percentage') throw new Error(`${c.element.address}: a percentage stroke-dasharray reached the scene`);
+    const off = (c.props.get('stroke-dashoffset') as ResolvedValue).value;
+    const dashOffset = off.kind === 'length' && off.unit === 'px' ? off.value : off.kind === 'number' ? off.value : null;
+    if (dashOffset === null) throw new Error(`${c.element.address}: stroke-dashoffset did not compute to px`);
     const miter = (c.props.get('stroke-miterlimit') as ResolvedValue).value;
     if (miter.kind !== 'number') throw new Error(`${c.element.address}: stroke-miterlimit did not compute to a number`);
     shapes.push({
@@ -299,6 +320,8 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
       join: keywordOfProp(c, 'stroke-linejoin', ['miter', 'round', 'bevel'] as const),
       miterLimit: miter.value,
       fillRule: keywordOfProp(c, 'fill-rule', ['nonzero', 'evenodd'] as const),
+      dashes: dashArray.reduce((a, b) => a + b, 0) > 0 ? (dashArray.length % 2 === 0 ? dashArray : [...dashArray, ...dashArray]) : [],
+      dashOffset,
       painted: svgShapePainted(c),
     });
   }

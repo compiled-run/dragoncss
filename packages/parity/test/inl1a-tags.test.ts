@@ -1,5 +1,6 @@
 // T133 INL1a-tags (notes/T044-inl-spec.md R7, taken over by notes/T056-txt1a-spec.md R7): b, strong, em and i are accepted on web,
-// and on native only where a real bundled face draws them; synthesis stays refused on native, and Ahem keeps its UA-font refusal.
+// and on native only where a real bundled face draws them; synthesis stays refused on native, and Ahem keeps its UA-font refusal for
+// the bold tags (TXT-W draws Ahem's synthetic oblique natively, sheared).
 import { describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic, FrontEndResult } from 'dragon';
 import * as dragon from 'dragon';
@@ -88,11 +89,22 @@ describe('the refusals that stay', () => {
     expect(c.outputs.ios.kind).toBe('blocked');
   });
 
-  it('Ahem text in b, strong, em or i keeps the UA-font refusal on ios and android, naming the tag, and is ready on web', () => {
-    for (const [tag, set] of [['b', 'font-weight: 700'], ['strong', 'font-weight: 700'], ['em', 'font-style: italic'], ['i', 'font-style: italic']] as const) {
+  it('Ahem text in b or strong keeps the UA-font refusal on ios and android, naming the tag, and is ready on web', () => {
+    for (const [tag, set] of [['b', 'font-weight: 700'], ['strong', 'font-weight: 700']] as const) {
       const c = compile(retag(inputOf('inline-tags'), [['span', tag]]));
-      expect(listed(c), tag).toEqual([`android DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`, `ios DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`]);
+      expect(listed(c), tag).toEqual([`android DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)`, `ios DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)`]);
       expect(c.outputs.web.kind, tag).toBe('ready');
+    }
+  });
+
+  it('Ahem text in em or i is drawn sheared on ios and android since TXT-W (text-style-ahem proves the shear against Chrome)', () => {
+    // Was refused with the bold tags: native drew Ahem upright where Chrome synthesizes the oblique; the native program now shears it.
+    for (const tag of ['em', 'i']) {
+      const c = compile(retag(inputOf('inline-tags'), [['span', tag]]));
+      expect(listed(c), tag).toEqual([]);
+      const p = dragon.nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      expect(p.programs.uikit.nodes.find((n) => n.id === 's:text0')?.writes.filter((w) => w.kind === 'synthetic-oblique').map((w) => w.key), tag).toEqual(['glyphShear']);
     }
   });
 

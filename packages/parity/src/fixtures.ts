@@ -20,6 +20,7 @@ import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
+import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
@@ -66,6 +67,7 @@ import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
 import { TEXT_SHADOW } from './fixture-groups/text-shadow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
+import { TEXT_STYLE } from './fixture-groups/text-style.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TOUCH_ACTION } from './fixture-groups/touch-action.ts';
@@ -149,6 +151,7 @@ export const GROUPS = {
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
+  filter: FILTER,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
   gradients: GRADIENTS,
@@ -195,6 +198,7 @@ export const GROUPS = {
   'text-overflow': TEXT_OVERFLOW,
   'text-shadow': TEXT_SHADOW,
   'text-spacing': TEXT_SPACING,
+  'text-style': TEXT_STYLE,
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
   'touch-action': TOUCH_ACTION,

@@ -33,7 +33,8 @@ const SWIFT = String.raw`import UIKit
 import ImageIO
 
 /// SVG-a2: one shape, its outline as verb-coded user units (0 move, 1 line, 2 quad, 3 cubic, 4 close, 5 circle), paint and stroke
-/// width; SVG-stroke: its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule (the CSS keywords).
+/// width; SVG-stroke: its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule (the CSS keywords); SVG-dash: its dashes in
+/// user units (empty for a solid stroke) and the phase into them the stroke starts at.
 public struct DragonSvgShape {
   public let path: [Double]
   public let fill: DragonRGBA8?
@@ -43,9 +44,12 @@ public struct DragonSvgShape {
   public let join: String
   public let miterLimit: Double
   public let fillRule: String
-  public init(_ path: [Double], _ fill: DragonRGBA8?, _ stroke: DragonRGBA8?, _ width: Double, _ cap: String, _ join: String, _ miterLimit: Double, _ fillRule: String) {
+  public let dashes: [Double]
+  public let dashPhase: Double
+  public init(_ path: [Double], _ fill: DragonRGBA8?, _ stroke: DragonRGBA8?, _ width: Double, _ cap: String, _ join: String, _ miterLimit: Double, _ fillRule: String, _ dashes: [Double], _ dashPhase: Double) {
     self.path = path; self.fill = fill; self.stroke = stroke; self.width = width
     self.cap = cap; self.join = join; self.miterLimit = miterLimit; self.fillRule = fillRule
+    self.dashes = dashes; self.dashPhase = dashPhase
   }
 }
 
@@ -70,8 +74,8 @@ public func dragonSvgLineJoin(_ k: String) -> CGLineJoin {
 }
 
 /// The svg raster plants (all false in a clean build): stroke drawn under the fill, the fill rule inverted (even-odd for nonzero),
-/// the stroke width not scaled by the viewBox, fill and stroke colours swapped, and (SVG-stroke) every cap butt, every join miter
-/// and every miter limit 4.
+/// the stroke width not scaled by the viewBox, fill and stroke colours swapped, (SVG-stroke) every cap butt, every join miter and
+/// every miter limit 4, and (SVG-dash) every stroke solid and every dash phase 0.
 public let dragonSvgPlantStrokeFirst = false
 public let dragonSvgPlantEvenOdd = false
 public let dragonSvgPlantStrokeUnscaled = false
@@ -79,6 +83,8 @@ public let dragonSvgPlantPaintSwapped = false
 public let dragonSvgPlantCapButt = false
 public let dragonSvgPlantJoinMiter = false
 public let dragonSvgPlantMiterLimit4 = false
+public let dragonSvgPlantDashSolid = false
+public let dragonSvgPlantDashPhase0 = false
 
 /// xMidYMid meet of a viewport w x h, in Chrome's arithmetic (svg-geometry.ts viewBoxTransform); the identity with no viewBox.
 public func dragonSvgViewBoxTransform(_ vb: [Double]?, _ w: Double, _ h: Double) -> CGAffineTransform {
@@ -137,6 +143,12 @@ public func dragonPaintSvg(_ v: DragonBoxView, _ ctx: CGContext) {
       ctx.setLineCap(dragonSvgPlantCapButt ? .butt : dragonSvgLineCap(shape.cap))
       ctx.setLineJoin(dragonSvgPlantJoinMiter ? .miter : dragonSvgLineJoin(shape.join))
       ctx.setMiterLimit(CGFloat(dragonSvgPlantMiterLimit4 ? 4 : shape.miterLimit))
+      // The dashes are in user units, as the line width is: CoreGraphics measures them along the path before the CTM.
+      if !shape.dashes.isEmpty && !dragonSvgPlantDashSolid {
+        ctx.setLineDash(phase: CGFloat(dragonSvgPlantDashPhase0 ? 0 : shape.dashPhase), lengths: shape.dashes.map { CGFloat($0) })
+      } else {
+        ctx.setLineDash(phase: 0, lengths: [])
+      }
       ctx.setStrokeColor(dragonUIColor(k).cgColor)
       ctx.strokePath()
     }
@@ -145,11 +157,12 @@ public func dragonPaintSvg(_ v: DragonBoxView, _ ctx: CGContext) {
   ctx.restoreGState()
 }
 
-/// The readback of an svg: its viewBox and each shape's fill, stroke, stroke width, cap, join, miter limit and fill rule.
+/// The readback of an svg: its viewBox and each shape's fill, stroke, stroke width, cap, join, miter limit, fill rule, dashes and
+/// dash phase.
 public func dragonAppliedSvg(_ v: DragonBoxView) -> DumpJsonObject {
   guard let shapes = v.dragonSvgShapes else { return [] }
   let vb: DumpJson = v.dragonSvgViewBox.map { .array($0.map { .number($0) }) } ?? .null
-  let rows: [DumpJson] = shapes.map { .array([$0.fill.map { dragonRGBAJson($0) } ?? .null, $0.stroke.map { dragonRGBAJson($0) } ?? .null, .number($0.width), .string($0.cap), .string($0.join), .number($0.miterLimit), .string($0.fillRule)]) }
+  let rows: [DumpJson] = shapes.map { .array([$0.fill.map { dragonRGBAJson($0) } ?? .null, $0.stroke.map { dragonRGBAJson($0) } ?? .null, .number($0.width), .string($0.cap), .string($0.join), .number($0.miterLimit), .string($0.fillRule), .array($0.dashes.map { .number($0) }), .number($0.dashPhase)]) }
   return [("dragonSvg", .object([("viewBox", vb), ("shapes", .array(rows))]))]
 }
 
@@ -227,6 +240,7 @@ const KOTLIN = String.raw`package dev.dragon.views
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.RenderNode
@@ -239,9 +253,10 @@ const val DRAGON_IMAGE_PLANT_DEVICE_PX = 0.0
 
 /**
  * SVG-a2: one shape, its outline as verb-coded user units (0 move, 1 line, 2 quad, 3 cubic, 4 close, 5 circle), paint and stroke
- * width; SVG-stroke: its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule (the CSS keywords).
+ * width; SVG-stroke: its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule (the CSS keywords); SVG-dash: its dashes in
+ * user units (empty for a solid stroke) and the phase into them the stroke starts at.
  */
-class DragonSvgShape(val path: DoubleArray, val fill: DragonRGBA8?, val stroke: DragonRGBA8?, val width: Double, val cap: String, val join: String, val miterLimit: Double, val fillRule: String)
+class DragonSvgShape(val path: DoubleArray, val fill: DragonRGBA8?, val stroke: DragonRGBA8?, val width: Double, val cap: String, val join: String, val miterLimit: Double, val fillRule: String, val dashes: DoubleArray, val dashPhase: Double)
 
 /** A stroke-linecap keyword as Skia's cap. */
 fun dragonSvgLineCap(k: String): Paint.Cap = when (k) {
@@ -261,7 +276,8 @@ fun dragonSvgLineJoin(k: String): Paint.Join = when (k) {
 
 /**
  * The svg raster plants (all false in a clean build): stroke under the fill, fill rule inverted, stroke width not scaled by the
- * viewBox, paints swapped, and (SVG-stroke) every cap butt, every join miter and every miter limit 4.
+ * viewBox, paints swapped, (SVG-stroke) every cap butt, every join miter and every miter limit 4, and (SVG-dash) every stroke
+ * solid and every dash phase 0.
  */
 const val DRAGON_SVG_PLANT_STROKE_FIRST = false
 const val DRAGON_SVG_PLANT_EVEN_ODD = false
@@ -270,6 +286,8 @@ const val DRAGON_SVG_PLANT_PAINT_SWAPPED = false
 const val DRAGON_SVG_PLANT_CAP_BUTT = false
 const val DRAGON_SVG_PLANT_JOIN_MITER = false
 const val DRAGON_SVG_PLANT_MITER_LIMIT_4 = false
+const val DRAGON_SVG_PLANT_DASH_SOLID = false
+const val DRAGON_SVG_PLANT_DASH_PHASE_0 = false
 
 /** xMidYMid meet of a viewport w x h as [scale, tx, ty], in Chrome's arithmetic (svg-geometry.ts viewBoxTransform); the identity with no viewBox. */
 fun dragonSvgViewBoxTransform(vb: DoubleArray?, w: Double, h: Double): DoubleArray {
@@ -335,6 +353,10 @@ fun dragonPaintSvg(v: DragonBoxView, canvas: Canvas) {
         paint.strokeCap = if (DRAGON_SVG_PLANT_CAP_BUTT) Paint.Cap.BUTT else dragonSvgLineCap(shape.cap)
         paint.strokeJoin = if (DRAGON_SVG_PLANT_JOIN_MITER) Paint.Join.MITER else dragonSvgLineJoin(shape.join)
         paint.strokeMiter = if (DRAGON_SVG_PLANT_MITER_LIMIT_4) 4f else shape.miterLimit.toFloat()
+        // Skia's own dash effect, as Chrome's (Blink StrokeData::SetLineDash), in user units under the canvas matrix.
+        if (shape.dashes.isNotEmpty() && !DRAGON_SVG_PLANT_DASH_SOLID) {
+          paint.pathEffect = DashPathEffect(FloatArray(shape.dashes.size) { shape.dashes[it].toFloat() }, if (DRAGON_SVG_PLANT_DASH_PHASE_0) 0f else shape.dashPhase.toFloat())
+        }
         paint.color = dragonArgb(stroke)
         canvas.drawPath(path, paint)
       }
@@ -344,11 +366,11 @@ fun dragonPaintSvg(v: DragonBoxView, canvas: Canvas) {
   canvas.restore()
 }
 
-/** The readback of an svg: its viewBox and each shape's fill, stroke, stroke width, cap, join, miter limit and fill rule. */
+/** The readback of an svg: its viewBox and each shape's fill, stroke, stroke width, cap, join, miter limit, fill rule, dashes and dash phase. */
 fun dragonAppliedSvg(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val shapes = v.dragonSvgShapes ?: return emptyList()
   val vb = v.dragonSvgViewBox
-  val rows = shapes.map { DumpJson.Arr(listOf(it.fill?.let { f -> dragonRGBAJson(f) } ?: DumpJson.Null, it.stroke?.let { k -> dragonRGBAJson(k) } ?: DumpJson.Null, DumpJson.Num(it.width), DumpJson.Str(it.cap), DumpJson.Str(it.join), DumpJson.Num(it.miterLimit), DumpJson.Str(it.fillRule))) }
+  val rows = shapes.map { DumpJson.Arr(listOf(it.fill?.let { f -> dragonRGBAJson(f) } ?: DumpJson.Null, it.stroke?.let { k -> dragonRGBAJson(k) } ?: DumpJson.Null, DumpJson.Num(it.width), DumpJson.Str(it.cap), DumpJson.Str(it.join), DumpJson.Num(it.miterLimit), DumpJson.Str(it.fillRule), DumpJson.Arr(it.dashes.map { d -> DumpJson.Num(d) }), DumpJson.Num(it.dashPhase))) }
   return listOf(Pair("dragonSvg", DumpJson.Obj(listOf(Pair("viewBox", if (vb == null) DumpJson.Null else DumpJson.Arr(vb.map { DumpJson.Num(it) })), Pair("shapes", DumpJson.Arr(rows))))))
 }
 
@@ -460,21 +482,21 @@ const numLit = (n: number): string => {
 
 const svgColor = (c: { r: number; g: number; b: number; alpha: number } | null, backend: 'swift' | 'kotlin'): string => (c === null ? (backend === 'swift' ? 'nil' : 'null') : rgbaLit(c));
 
-export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image-offset-1' | 'svg-stroke-first' | 'svg-even-odd' | 'svg-stroke-unscaled' | 'svg-paint-swapped' | 'svg-cap-butt' | 'svg-join-miter' | 'svg-miter-limit-4'> = {
+export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image-offset-1' | 'svg-stroke-first' | 'svg-even-odd' | 'svg-stroke-unscaled' | 'svg-paint-swapped' | 'svg-cap-butt' | 'svg-join-miter' | 'svg-miter-limit-4' | 'svg-dash-solid' | 'svg-dash-phase-0'> = {
   name: 'image',
   kinds: ['replaced-image', 'svg-shapes'],
   lines: {
     uikit: (v, _n, w) => (w.kind === 'svg-shapes'
-      ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'nil' : `[${w.viewBox.map(numLit).join(', ')}]`}, [${w.shapes.map((sh) => `DragonSvgShape([${sh.path.map(numLit).join(', ')}], ${svgColor(sh.fill, 'swift')}, ${svgColor(sh.stroke, 'swift')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)})`).join(', ')}])`]
+      ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'nil' : `[${w.viewBox.map(numLit).join(', ')}]`}, [${w.shapes.map((sh) => `DragonSvgShape([${sh.path.map(numLit).join(', ')}], ${svgColor(sh.fill, 'swift')}, ${svgColor(sh.stroke, 'swift')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)}, [${sh.dashes.map(numLit).join(', ')}], ${numLit(sh.dashPhase)})`).join(', ')}])`]
       : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, width: ${pxLit(w.width)}, height: ${pxLit(w.height)}, fit: ${keywordLit(w.fit)})`]),
     'android-views': (v, _n, w) => (w.kind === 'svg-shapes'
-      ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'null' : `doubleArrayOf(${w.viewBox.map(numLit).join(', ')})`}, listOf(${w.shapes.map((sh) => `DragonSvgShape(doubleArrayOf(${sh.path.map(numLit).join(', ')}), ${svgColor(sh.fill, 'kotlin')}, ${svgColor(sh.stroke, 'kotlin')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)})`).join(', ')}))`]
+      ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'null' : `doubleArrayOf(${w.viewBox.map(numLit).join(', ')})`}, listOf(${w.shapes.map((sh) => `DragonSvgShape(doubleArrayOf(${sh.path.map(numLit).join(', ')}), ${svgColor(sh.fill, 'kotlin')}, ${svgColor(sh.stroke, 'kotlin')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)}, doubleArrayOf(${sh.dashes.map(numLit).join(', ')}), ${numLit(sh.dashPhase)})`).join(', ')}))`]
       : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)}, ${w.layer ? 'true' : 'false'})`]),
   },
   applied: (_e, backend, w, dpr, g) => {
     if (w.kind === 'svg-shapes') {
       const rgba = (c: { r: number; g: number; b: number; alpha: number } | null) => (c === null ? null : [c.r, c.g, c.b, c.alpha]);
-      return { viewBox: w.viewBox === null ? null : [...w.viewBox], shapes: w.shapes.map((sh) => [rgba(sh.fill), rgba(sh.stroke), sh.width, sh.cap, sh.join, sh.miterLimit, sh.fillRule]) };
+      return { viewBox: w.viewBox === null ? null : [...w.viewBox], shapes: w.shapes.map((sh) => [rgba(sh.fill), rgba(sh.stroke), sh.width, sh.cap, sh.join, sh.miterLimit, sh.fillRule, [...sh.dashes], sh.dashPhase]) };
     }
     if (g.replaced === null) throw new Error('an image write on a box that is not replaced');
     return { natural: [w.width, w.height], fit: w.fit, dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest] };
@@ -498,5 +520,7 @@ export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image
     { name: 'svg-cap-butt', replace: { uikit: ['public let dragonSvgPlantCapButt = false', 'public let dragonSvgPlantCapButt = true'], 'android-views': ['const val DRAGON_SVG_PLANT_CAP_BUTT = false', 'const val DRAGON_SVG_PLANT_CAP_BUTT = true'] } },
     { name: 'svg-join-miter', replace: { uikit: ['public let dragonSvgPlantJoinMiter = false', 'public let dragonSvgPlantJoinMiter = true'], 'android-views': ['const val DRAGON_SVG_PLANT_JOIN_MITER = false', 'const val DRAGON_SVG_PLANT_JOIN_MITER = true'] } },
     { name: 'svg-miter-limit-4', replace: { uikit: ['public let dragonSvgPlantMiterLimit4 = false', 'public let dragonSvgPlantMiterLimit4 = true'], 'android-views': ['const val DRAGON_SVG_PLANT_MITER_LIMIT_4 = false', 'const val DRAGON_SVG_PLANT_MITER_LIMIT_4 = true'] } },
+    { name: 'svg-dash-solid', replace: { uikit: ['public let dragonSvgPlantDashSolid = false', 'public let dragonSvgPlantDashSolid = true'], 'android-views': ['const val DRAGON_SVG_PLANT_DASH_SOLID = false', 'const val DRAGON_SVG_PLANT_DASH_SOLID = true'] } },
+    { name: 'svg-dash-phase-0', replace: { uikit: ['public let dragonSvgPlantDashPhase0 = false', 'public let dragonSvgPlantDashPhase0 = true'], 'android-views': ['const val DRAGON_SVG_PLANT_DASH_PHASE_0 = false', 'const val DRAGON_SVG_PLANT_DASH_PHASE_0 = true'] } },
   ],
 };

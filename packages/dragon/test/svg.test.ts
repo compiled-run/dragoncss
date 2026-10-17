@@ -7,7 +7,7 @@ import { objectBoundingBox } from '@dragon/layout';
 import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/elements/svg-path.ts';
 import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgShapeEmpty, svgZeroLengthSubpath } from '../src/analysis/elements/svg.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, svgScenes } from '../src/internal.ts';
-import { svgShapePath } from '../src/lower/paint/image.ts';
+import { svgDashPhase, svgShapePath } from '../src/lower/paint/image.ts';
 import { svgPaintAlpha } from '../src/css/color.ts';
 import { mathGrammarFor, mathInvalidity } from '../src/css/math.ts';
 import type { ComponentDefinition, ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
@@ -126,7 +126,7 @@ describe('the svg model in a compile', () => {
     const user = compile(input, false);
     expect(errors(user)).toEqual([]);
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
-    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, cap: 'butt', join: 'miter', miterLimit: 4, fillRule: 'nonzero', painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
+    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, cap: 'butt', join: 'miter', miterLimit: 4, fillRule: 'nonzero', dashes: [], dashOffset: 0, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
   it('refuses on native, and compiles for web, a shape Chrome fades, a visible shape in a hidden <svg> and an <svg> Chrome does not clip: native draws a shape opaque or not at all, with its <svg>, and clips to the box', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '40']])];
@@ -381,5 +381,52 @@ describe('the svg model in a compile', () => {
       const message = `stroke-linecap: ${cap} on <path> d, whose path has a zero-length subpath, is not supported on native: Chrome draws its cap as a dot or square that native does not orient the same way yet`;
       expect(refused(`path { stroke-linecap: ${cap}; }`).sort(), cap).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${message}`, `DRAGON_UNSUPPORTED_VALUE ios ${message}`]);
     }
+  });
+  it('SVG-dash: stroke-dasharray and stroke-dashoffset compute, inherit and reach the native write as an even list and a wrapped phase; none and a zero-sum list are solid', () => {
+    const input = svgTree('svg { stroke-dasharray: 4, 2 1; stroke-dashoffset: -3; } .k { stroke-dasharray: none; stroke-dashoffset: 5px; }', (_r, o) => [
+      shape(o, 'i', 'path', [['d', 'M2 2 L20 2'], ['stroke', 'rgb(0, 0, 0)']]),
+      { ...shape(o, 'k', 'rect', [['width', '10'], ['height', '10'], ['stroke-dasharray', '3 3']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'k' }, o)] },
+      shape(o, 'a', 'path', [['d', 'M2 8 L20 8'], ['stroke-dasharray', '5px,1'], ['stroke-dashoffset', '13']]),
+      shape(o, 'z', 'path', [['d', 'M2 12 L20 12'], ['stroke-dasharray', '0,0']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.dashes, x.dashOffset])).toEqual([['i', [4, 2, 1, 4, 2, 1], -3], ['k', [], 5], ['a', [5, 1], 13], ['z', [], -3]]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => [x.dashes, x.dashPhase]) : null, backend).toEqual([[[4, 2, 1, 4, 2, 1], 11], [[], 0], [[5, 1], 1], [[], 0]]);
+    }
+  });
+  it('SVG-dash: the dash phase is the offset wrapped into the pattern, a negative offset counted back from its end (Skia CalcDashParameters)', () => {
+    expect([svgDashPhase([4, 2], 7), svgDashPhase([4, 2], -1), svgDashPhase([4, 2], -6), svgDashPhase([4, 2], 6), svgDashPhase([], 5), svgDashPhase([4, 2], 0)]).toEqual([1, 5, 0, 0, 0, 0]);
+  });
+  it('SVG-dash: the attributes take what Chrome parses (commas or spaces, numbers, px and percentages); a negative, an empty item or a keyword is refused, as Chrome ignores it', () => {
+    expect(paintAttributeValue('stroke-dasharray', '5,  3 ,2.50')).toEqual({ ok: true, value: { kind: 'other', type: 'dash-array', text: '5px, 3px, 2.5px' } });
+    expect(paintAttributeValue('stroke-dasharray', 'None')).toEqual({ ok: true, value: { kind: 'keyword', value: 'none' } });
+    expect(paintAttributeValue('stroke-dashoffset', '-4')).toEqual({ ok: true, value: { kind: 'number', value: -4 } });
+    expect(svgAttributeRefusal('path', 'stroke-dasharray', '1 2px 3')).toBeNull();
+    for (const [name, value] of [['stroke-dasharray', '-1'], ['stroke-dasharray', '1,,2'], ['stroke-dasharray', '1,'], ['stroke-dasharray', 'auto'], ['stroke-dasharray', '1 none'], ['stroke-dashoffset', '1 2'], ['stroke-dashoffset', 'none']] as const) {
+      expect(svgAttributeRefusal('path', name, value), `${name}=${value}`).toContain(`is not a valid ${name}`);
+    }
+    expect(svgAttributeRefusal('path', 'stroke-dasharray', '2 10%')).toBe('a percentage stroke-dasharray is relative to the viewport diagonal, which is not built yet (package SVG-units)');
+    expect(svgAttributeRefusal('path', 'stroke-dashoffset', '10%')).toBe('a percentage stroke-dashoffset is relative to the viewport diagonal, which is not built yet (package SVG-units)');
+    expect(svgAttributeRefusal('path', 'stroke-dasharray', '2em')).toContain('stroke-dasharray: 2em is unsupported: a dash in em is not resolved yet (package SVG-units)');
+    expect(svgAttributeRefusal('path', 'pathLength', '10')).toBeNull();
+    expect(mathInvalidity('calc(2px + 3)', mathGrammarFor('stroke-dashoffset'))).not.toBeNull();
+  });
+  it('SVG-dash: refuses on native, and compiles for web, a dashed circle and a zero-length dash with a round or square cap; a percentage refuses everywhere', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '8'], ['stroke', 'rgb(0, 0, 0)']]), shape(o, 'd', 'path', [['d', 'M2 2 L20 20'], ['stroke', 'rgb(0, 0, 0)']])];
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
+    for (const css of ['', 'path { stroke-dasharray: 2 2; stroke-linecap: round; }', 'path { stroke-dasharray: 0 4; }', 'circle { stroke-dasharray: 2 2; stroke: none; }', 'circle { stroke-dasharray: 0 0; }']) expect(refused(css), css).toEqual([]);
+    const circle = 'stroke-dasharray: 2px, 2px on <circle> c is not supported on native: where the dashes of a circle start is not proven against Chrome yet';
+    expect(refused('circle { stroke-dasharray: 2 2; }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${circle}`, `DRAGON_UNSUPPORTED_VALUE ios ${circle}`]);
+    const zero = 'stroke-dasharray: 0px, 4px with stroke-linecap: square on <path> d is not supported on native: a zero-length dash is a dot or square that native does not orient the same way yet';
+    expect(refused('path { stroke-dasharray: 0 4; stroke-linecap: square; }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${zero}`, `DRAGON_UNSUPPORTED_VALUE ios ${zero}`]);
+    const calc = 'stroke-dashoffset: calc(2px + 3px) on <path> d is unsupported: a calculated stroke-dashoffset is not resolved yet (package SVG-units)';
+    expect(refused('path { stroke-dashoffset: calc(2px + 3px); }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${calc}`, `DRAGON_UNSUPPORTED_VALUE ios ${calc}`, `DRAGON_UNSUPPORTED_VALUE web ${calc}`]);
+    const percent = 'stroke-dashoffset: 5% on <path> d is unsupported: a percentage stroke-dashoffset is relative to the viewport diagonal, which is not built yet (package SVG-units)';
+    expect(refused('path { stroke-dashoffset: 5%; }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${percent}`, `DRAGON_UNSUPPORTED_VALUE ios ${percent}`, `DRAGON_UNSUPPORTED_VALUE web ${percent}`]);
   });
 });

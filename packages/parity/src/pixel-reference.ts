@@ -295,16 +295,43 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
  * The glyph lines of a program at a DPR, as the device places them: each Ahem glyph at the line's absolute x plus its pen position
  * from the shaped item (pieceGlyphs, HarfBuzz's 16.16 advances), with size = platformFontSize(zoomFontSize(css size, DPR)); the
  * baseline is the snapped line top plus the engine's ascent. Each Ahem glyph's box is its font box scaled by size / unitsPerEm; a real
- * face's are its shaped glyphs' HarfBuzz extents (TXT1a-2).
+ * face's are its shaped glyphs' HarfBuzz extents (TXT1a-2). A text with a synthetic-oblique write draws each glyph sheared about its
+ * baseline origin, so its box is the bounding box of the sheared box.
  */
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
+  const sheared = glyphShears(p);
+  return uprightGlyphLines(p, viewport, dpr).map((l) => {
+    const k = sheared.get(l.id.slice(0, l.id.lastIndexOf(':line')));
+    return k === undefined ? { id: l.id, glyphs: l.glyphs } : { id: l.id, glyphs: l.glyphs.map((g) => shearedBox(g, l.baseline, k)) };
+  });
+}
+
+/** The shear of each text node a synthetic-oblique write shears, by node id. */
+export function glyphShears(p: NativeProgram): ReadonlyMap<string, number> {
+  const out = new Map<string, number>();
+  for (const n of p.nodes) for (const w of n.writes) if (w.kind === 'synthetic-oblique') out.set(n.id, w.shear);
+  return out;
+}
+
+/** The bounding box of a glyph box sheared about the baseline (device y down) by k: x moves by k times the height above it. */
+export function shearedBox(g: GlyphBox, baseline: number, k: number): GlyphBox {
+  const lo = k * (baseline - g.bottom);
+  const hi = k * (baseline - g.top);
+  return { left: g.left + Math.min(lo, hi), right: g.right + Math.max(lo, hi), top: g.top, bottom: g.bottom };
+}
+
+/** A glyph line with its baseline in device px. */
+export type BaselineLine = GlyphLine & { readonly baseline: number };
+
+/** glyphLines before any shear: each glyph's upright box, and each line's baseline. */
+export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): BaselineLine[] {
   const input = programInput(p, viewport, dpr);
   const sizes = cssFontSizes(input.root);
   const m = glyphMeasurer();
   const texts = engineTextLines(input, m);
   const boxes = ahemGlyphBoxes();
   const upem = AHEM_FONT_DATA.unitsPerEm;
-  const out: GlyphLine[] = [];
+  const out: BaselineLine[] = [];
   for (const t of texts) {
     const css = sizes.get(t.id);
     if (css === undefined) throw new Error(`no text leaf ${t.id}`);
@@ -321,7 +348,7 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
           ink.flatMap((g) => (g === null ? [] : [{ left: x + shift(shifts, g.cluster) + g.left, right: x + shift(shifts, g.cluster) + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
         const e = line.ellipsis;
         const dots = e === null ? [] : inkAt(e.x / 64, shapedInk(css.family, platformFontSize(e.font.size), String.fromCodePoint(...e.cps), e.font.letterSpacing, e.font.wordSpacing), []);
-        out.push({ id: `${t.id}:line${j}`, glyphs: [...inkAt(x0, shapedInk(css.family, size, String.fromCodePoint(...line.cps), t.textFont.letterSpacing, t.textFont.wordSpacing), line.shifts), ...dots] });
+        out.push({ id: `${t.id}:line${j}`, baseline, glyphs: [...inkAt(x0, shapedInk(css.family, size, String.fromCodePoint(...line.cps), t.textFont.letterSpacing, t.textFont.wordSpacing), line.shifts), ...dots] });
         continue;
       }
       // The piece's code points: the leaf's code points before its UTF-16 start, then the shown ones.
@@ -350,7 +377,7 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
           if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * eSize) / upem, right: x + (b.xMax * eSize) / upem, top: baseline - (b.yMax * eSize) / upem, bottom: baseline - (b.yMin * eSize) / upem });
         }
       }
-      out.push({ id: `${t.id}:line${j}`, glyphs });
+      out.push({ id: `${t.id}:line${j}`, baseline, glyphs });
     }
   }
   return out;
