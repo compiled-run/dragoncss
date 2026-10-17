@@ -12,6 +12,7 @@ import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects
 import { LOGICAL_CORNER_PROPERTIES, RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
+import { MASK_LONGHANDS, MASK_SHORTHANDS } from '../packages/dragon/src/css/properties/mask.ts';
 
 type WebrefEntry = {
   name: string;
@@ -108,6 +109,8 @@ const SUBSET = [
   'clip',
   // MASK-CLIP: clip-path (css-masking-1 §6.1), after clip, as LONGHANDS registers it.
   'clip-path',
+  // MASK-CLIP: the mask layer longhands (css-masking-1 §7), then mask and mask-position, after clip-path, as LONGHANDS registers them.
+  ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
 ] as const;
 
 /**
@@ -140,6 +143,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink Clip::ParseSingleValue (longhands_custom.cc): auto, or rect() with four <length> or auto edges separated all by commas
   // or all by whitespace; webref's <rect()> resolves to css-shapes' basic shape as well as css-masking's comma form.
   clip: 'auto | rect( [ <length> | auto ]{4} ) | rect( [ <length> | auto ]#{4} )',
+  // Blink's mask parsers (longhands_custom.cc MaskImage through MaskSize, shorthands_custom.cc Mask and MaskPosition). Dragon accepts
+  // each mask longhand only at its initial value and refuses every other value where it applies (computed-checks.ts checkMask), so
+  // the grammar takes any value: a mask webref's grammar misses is refused, never dropped where Chrome would apply it. Pinned against
+  // Chrome by packages/parity/test/mask-parse.test.ts.
+  ...Object.fromEntries([...MASK_LONGHANDS, ...MASK_SHORTHANDS].map((p) => [p, '<any-value>'])),
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',
@@ -219,6 +227,10 @@ const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string
   // webref lists font-stretch as a legacy alias of css-fonts-4's font-width, without fields; Chrome 145 has no font-width and keeps
   // font-stretch a longhand, initial normal, inherited (css-fonts-4 §2.4).
   'font-stretch': { initial: 'normal', inherited: 'yes' },
+  // webref has no -webkit-mask-position-x or -y; Chrome 145 keeps them the longhands of mask-position, initial 0%, not inherited
+  // (longhands_custom.cc WebkitMaskPositionX::InitialValue and WebkitMaskPositionY::InitialValue).
+  '-webkit-mask-position-x': { initial: '0%', inherited: 'no' },
+  '-webkit-mask-position-y': { initial: '0%', inherited: 'no' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
