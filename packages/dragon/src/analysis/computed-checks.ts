@@ -892,6 +892,12 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     const why = svgPaintRefusal(p, v.value);
     if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} a colour or none.`);
   }
+  // SVG-inert: a shape draws no marker, so only marker none compiles; markers are inherited, so the shape's own value is checked.
+  for (const p of ['marker-start', 'marker-mid', 'marker-end'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const why = svgPaintRefusal(p, v.value);
+    if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} none.`);
+  }
   const sw = el.props.get('stroke-width') as ResolvedValue;
   for (const p of ['stroke-width', 'stroke-dasharray', 'stroke-dashoffset'] as const) {
     const v = el.props.get(p) as ResolvedValue;
