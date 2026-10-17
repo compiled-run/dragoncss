@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4681 (20.1%) | 18604 (79.9%) | 1 | 0 | 0 |
-| ios | 4661 (20.0%) | 18584 (79.8%) | 1 | 0 | 40 |
-| android | 4661 (20.0%) | 18584 (79.8%) | 1 | 0 | 40 |
+| web | 4695 (20.2%) | 18590 (79.8%) | 1 | 0 | 0 |
+| ios | 4675 (20.1%) | 18570 (79.7%) | 1 | 0 | 40 |
+| android | 4675 (20.1%) | 18570 (79.7%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4386, ios 4407 and android 4407 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4393, ios 4414 and android 4414 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -18,11 +18,11 @@ As published (before the shell pre-pass), the sheet compiles for web 4386, ios 4
 | flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
-| typography | 261 | 173 / 88 / 0 / 0 / 0 | 173 / 88 / 0 / 0 / 0 | 173 / 88 / 0 / 0 / 0 |
+| typography | 261 | 180 / 81 / 0 / 0 / 0 | 180 / 81 / 0 / 0 / 0 | 180 / 81 / 0 / 0 / 0 |
 | colours | 14842 | 100 / 14742 / 0 / 0 / 0 | 100 / 14742 / 0 / 0 / 0 | 100 / 14742 / 0 / 0 / 0 |
 | backgrounds | 151 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 |
 | borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
-| effects | 1178 | 49 / 1129 / 0 / 0 / 0 | 30 / 1148 / 0 / 0 / 0 | 30 / 1148 / 0 / 0 / 0 |
+| effects | 1178 | 56 / 1122 / 0 / 0 / 0 | 37 / 1141 / 0 / 0 / 0 | 37 / 1141 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
 | transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
@@ -35,7 +35,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4386, ios 4
 
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
-| `property mask-image` | 6280 | 6280 | 6280 | 38 |
+| `profile mask-composite:intersect` | 6280 | 6280 | 6280 | 38 |
 | `value oklch()` | 5720 | 5720 | 5720 | 20 |
 | `at-rule @supports` | 1192 | 1192 | 1192 | 6 |
 | `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
