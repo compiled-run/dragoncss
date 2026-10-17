@@ -2312,6 +2312,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/fonts/opentype/open_type_caps_support.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "9a960e0f07f85eec24b5b26f8202c07b8ede8d24d88d9398786b9a8df09f4ede",
+      "headerSha256": "df6dee5a459238b7466cef0cc215169dc7fa308dda38a55f485398d851f7c025",
+      "ranges": [
+        { "lines": "229-285", "symbol": "OpenTypeCapsSupport::DetermineFontSupport", "source": "located" },
+        { "lines": "287-290", "symbol": "OpenTypeCapsSupport::SyntheticSmallCapsAllowed", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "synthesizesSmallCaps", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/platform/fonts/script_run_iterator.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2395,7 +2411,10 @@
         { "lines": "1-1215", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": "caseRanges", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "smallCapsCodePoint", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "SmallCapsSums", "use": "port" }
       ]
     },
     {
@@ -2500,13 +2519,17 @@
       "fileSha256": "d1faaff725559a494b1e6ffaa8c4ee9a7a718dd0117317756cca98c4794dfb5d",
       "headerSha256": "1819cc0f332f19641dad06debe90c9b3584a2b6a3f77e11e09133d478e9a58f5",
       "ranges": [
+        { "lines": "67-67", "symbol": "kSmallCapsFontSizeMultiplier", "source": "located" },
         { "lines": "115-222", "symbol": "SimpleFontData::PlatformInit", "source": "located" },
+        { "lines": "292-299", "symbol": "SimpleFontData::SmallCapsFontData", "source": "located" },
+        { "lines": "310-318", "symbol": "SimpleFontData::CreateScaledFontData", "source": "located" },
         { "lines": "421-424", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" },
-        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "smallCapsFontSize", "use": "port" }
       ]
     },
     {
@@ -2523,6 +2546,22 @@
       "dragon": [
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
         { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/small_caps_iterator.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "c5dcd69355cab52a9c139b6538e31a8477c42722387cbe9abadc65335fcba578",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "18-47", "symbol": "SmallCapsIterator::Consume", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": "caseRanges", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "smallCapsCodePoint", "use": "port" }
       ]
     },
     {

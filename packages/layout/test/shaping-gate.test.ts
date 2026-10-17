@@ -168,7 +168,7 @@ function engineWidths(faults: ShapingFaults, stop?: (c: CaseWidths, chrome: Case
       const text = ref.paragraphs[c.paragraph] as string;
       const opps = new Set(ref.opportunities[c.paragraph]);
       const m = st.measurer.measure(text, faceFont(c.font, c.size));
-      const item = st.item(text, c.font, c.size, 0, 0);
+      const item = st.item(text, c.font, c.size, 0, 0, -1);
       const lines: number[] = [];
       let error = m.ok ? '' : m.reason;
       for (const [start, end] of c.lines) {
@@ -344,7 +344,7 @@ describe('TXT1-S: Ahem through HarfBuzz (R2)', () => {
 // offsets and widths on every line of every gate case, with Chrome's break opportunities as the break iterator.
 type DecidedLine = readonly [number, number, number];
 function decideLines(st: ShapedText, text: string, font: string, size: number, widthLu: number, opps: readonly number[]): DecidedLine[] | string {
-  const shaped = st.item(text, font, size, 0, 0);
+  const shaped = st.item(text, font, size, 0, 0, -1);
   if (!shaped.ok) return shaped.reason;
   const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
   const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false, ZERO, false, false, NO_ANYWHERE_BREAK);

@@ -126,12 +126,12 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
   const fonts = new Map<string, TextFont>();
   const inline = (k: InlineChild): void => {
     if (k.kind === 'inline') {
-      fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0, wordSpacing: 0 });
+      fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
       for (const x of k.children) inline(x);
     }
   };
   const walk = (b: LayoutBox): void => {
-    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0 });
+    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
     for (const k of b.children) {
       if (k.kind === 'box') walk(k);
       // A replaced leaf (REPL-a) holds no text, so it has no decoration font.

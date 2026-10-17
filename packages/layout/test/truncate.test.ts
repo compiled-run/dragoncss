@@ -34,7 +34,7 @@ describe('TXT2-f: line truncation (line_truncator.cc TruncateLine)', () => {
     const b = box('a', TRUNCATE, [nowrap('t', 'XX XX XX XX')]);
     const [line] = placeLines(ctx(), b, fromCssPx(55));
     expect(line?.pieces).toEqual([{ leaf: 0, start: 0, visibleEnd: 11, end: 11, x: 0, width: 11 * G, top: 0, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: true, truncatedWidth: 4 * G }]);
-    expect(line?.ellipsis).toEqual({ leaf: 0, text: '…', font: { family: 'Ahem', size: 10, letterSpacing: 0, wordSpacing: 0 }, x: 4 * G, width: G, top: 0, ascent: 512, descent: 128 });
+    expect(line?.ellipsis).toEqual({ leaf: 0, text: '…', font: { family: 'Ahem', size: 10, letterSpacing: 0, wordSpacing: 0, smallCaps: false }, x: 4 * G, width: G, top: 0, ascent: 512, descent: 128 });
   });
 
   it('keeps the full fragment before the truncated one, so the text and the block keep their sizes', () => {

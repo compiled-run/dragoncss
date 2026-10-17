@@ -28,6 +28,7 @@ export type UnsupportedCode =
   | 'atomic-beside-shaped-text'
   | 'letter-spacing'
   | 'word-spacing'
+  | 'font-variant-caps'
   | 'text-overflow'
   | 'tab-stop'
   | 'preserved-control'

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import type { LayoutBox, LayoutRect } from '@dragon/layout';
-import { AHEM_FONT_DATA, coveredCodePoints, coveredIndex, ELLIPSIS, LU_PER_PX, pieceGlyphs, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
+import { AHEM_FONT_DATA, coveredCodePoints, coveredIndex, ELLIPSIS, LU_PER_PX, pieceGlyphs, platformFontSize, smallCapsCodePoint, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from './chrome.ts';
@@ -363,9 +363,13 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
       const glyphs: GlyphBox[] = [];
       for (const [n, cp] of line.cps.entries()) {
         if (coveredIndex(cp) < 0) throw new Error(`${t.id}: U+${cp.toString(16)} is not covered by Ahem`);
-        const b = boxes.get(cp);
+        // Small caps: a glyph at the small-caps size is its code point's uppercase, drawn at that size (the shaped run's size).
+        const at = shaped.sizes[n] as number;
+        const small = t.textFont.smallCaps && at !== size;
+        const b = boxes.get(small ? smallCapsCodePoint(cp) : cp);
+        const s = small ? at : size;
         const x = line.rect.x / 64 + (shaped.xs[n] as number) + (line.shifts.length === 0 ? 0 : (line.shifts[n] as number));
-        if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem, right: x + (b.xMax * size) / upem, top: baseline - (b.yMax * size) / upem, bottom: baseline - (b.yMin * size) / upem });
+        if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * s) / upem, right: x + (b.xMax * s) / upem, top: baseline - (b.yMax * s) / upem, bottom: baseline - (b.yMin * s) / upem });
       }
       // TXT2-f: the ellipsis glyphs after the painted text, in the line's font, on the same baseline.
       const e = line.ellipsis;
