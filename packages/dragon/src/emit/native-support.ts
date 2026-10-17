@@ -266,7 +266,7 @@ ${boxMembers('uikit')}  public init(dragonId: String, kind: String, parent: Stri
 /// One engine line of a text node, as Dragon places it: the line text and its glyph ids, each glyph's origin in device px from the
 /// view's left (the engine's advances), the run's left and width in LU (1/64 device px) from the view's left, the line box top and
 /// the baseline in device px from the view's top, and the line's UTF-16 offsets in the node's text. A truncated line (TXT2-f) also
-/// carries its ellipsis glyphs and their origins, drawn at the ellipsis font's instance size in device px (0 when it has none).
+/// carries its ellipsis glyphs and their origins, drawn in the ellipsis font's face at its instance size in device px (0 when it has none).
 public struct DragonLineSpec {
   public let text: String
   public let glyphs: [CGGlyph]
@@ -280,6 +280,8 @@ public struct DragonLineSpec {
   public let ellipsisGlyphs: [CGGlyph]
   public let ellipsisXs: [Double]
   public let ellipsisSize: Double
+  /// The face id the ellipsis is drawn in (its line's font, truncate.ts), "" when the line has none.
+  public let ellipsisFace: String
 }
 
 /// Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink.
@@ -317,6 +319,8 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonColor = DragonRGBA8(0, 0, 0, 255)
   public private(set) var dragonTextColor: UIColor? = nil
   public private(set) var dragonFont: UIFont? = nil
+  /// The face id dragonFont is (the bridge's Ahem or a bundled real face, DragonBridge.font(face:pointSize:)).
+  public private(set) var dragonFace = ""
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
   private let glyphLayer = DragonGlyphLayer()
@@ -345,9 +349,10 @@ public final class DragonTextView: UIView, DragonNodeView {
     accessibilityLabel = text
   }
 
-  /// The engine's data at the device scale: the instance font and the placed lines.
-  public func dragonConfigure(font: UIFont, lines: [DragonLineSpec], scale: Double) {
+  /// The engine's data at the device scale: the instance font, the face id it is, and the placed lines.
+  public func dragonConfigure(font: UIFont, face: String, lines: [DragonLineSpec], scale: Double) {
     dragonFont = font
+    dragonFace = face
     specs = lines
     self.scale = scale
     glyphLayer.contentsScale = CGFloat(scale)
@@ -376,8 +381,13 @@ public final class DragonTextView: UIView, DragonNodeView {
       }
       for l in specs {
         ink(l.xs, y(l), box)
-        let k = CGFloat(l.ellipsisSize / scale) / font.pointSize
-        ink(l.ellipsisXs, y(l), CGRect(x: box.minX * k, y: box.minY * k, width: box.width * k, height: box.height * k))
+        if l.ellipsisGlyphs.isEmpty { continue }
+        if l.ellipsisFace == dragonFace {
+          let k = CGFloat(l.ellipsisSize / scale) / font.pointSize
+          ink(l.ellipsisXs, y(l), CGRect(x: box.minX * k, y: box.minY * k, width: box.width * k, height: box.height * k))
+        } else {
+          ink(l.ellipsisXs, y(l), CTFontGetBoundingBox(DragonBridge.shared.font(face: l.ellipsisFace, pointSize: CGFloat(l.ellipsisSize / scale)) as CTFont))
+        }
       }
     }
     let s = CGFloat(scale)
@@ -405,7 +415,9 @@ public final class DragonTextView: UIView, DragonNodeView {
       if !l.glyphs.isEmpty { CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx) }
       if !l.ellipsisGlyphs.isEmpty {
         let dots = l.ellipsisXs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
-        CTFontDrawGlyphs(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisGlyphs.count, ctx)
+        // The ellipsis is in its line's font, whose face can differ from this text's (truncate.ts).
+        let dotsFont = l.ellipsisFace == dragonFace ? CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil) : DragonBridge.shared.font(face: l.ellipsisFace, pointSize: CGFloat(l.ellipsisSize / scale)) as CTFont
+        CTFontDrawGlyphs(dotsFont, l.ellipsisGlyphs, dots, l.ellipsisGlyphs.count, ctx)
       }
       ctx.restoreGState()
     }
@@ -413,7 +425,8 @@ public final class DragonTextView: UIView, DragonNodeView {
 
   public func dragonApplied() -> DumpJsonObject {
     return [
-      ("font", dragonFont.map { DumpJson.object([("name", .string($0.fontName)), ("pointSize", .number(Double($0.pointSize)))]) } ?? .null),
+      // The face id when the live font is that face's (its PostScript name), else the live font's own name, which no expected dump holds.
+      ("font", dragonFont.map { DumpJson.object([("name", .string($0.fontName == DragonBridge.shared.facePostScriptName(dragonFace) ? dragonFace : $0.fontName)), ("pointSize", .number(Double($0.pointSize)))]) } ?? .null),
       ("foregroundColor", dragonColorJson(dragonTextColor)),
     ]
   }
@@ -424,9 +437,55 @@ const SWIFT_BRIDGE = String.raw`import UIKit
 import CoreText
 import CryptoKit
 
+/// A real face bundled as DragonFaces/<sha256 hex>.ttf (TXT1a-2 phase R), whose face id is sha256:<hex>: its FontData read from its
+/// own tables as the host reads them (text-shaper-host.ts fontDataOf; the shaped measurer reads no per-code-point advances), and the
+/// descriptor Core Text draws it from.
+public struct DragonFace {
+  public let id: String
+  public let data: FontData
+  public let postScriptName: String
+  let descriptor: CTFontDescriptor
+}
+
+/// The bundle directory of the real faces, each named by the sha256 of its bytes.
+public let dragonFaceDirectory = "DragonFaces"
+
+/// Loads a bundled real face. Its bytes must hash to its name (T056 R8), it must be one static TrueType face, map x and 0, and have
+/// OS/2 version 2 or later (sCapHeight), as the host's FontData requires; anything else stops the run.
+func dragonLoadFace(_ url: URL) -> DragonFace {
+  let hex = url.deletingPathExtension().lastPathComponent
+  let what = "\(dragonFaceDirectory)/\(url.lastPathComponent)"
+  guard let bytes = try? Data(contentsOf: url) else { fatalError("dragon bridge: \(what) cannot be read") }
+  let sha = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+  if sha != hex { fatalError("dragon bridge: \(what) has sha256 \(sha), not the one it is named by") }
+  guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor], descriptors.count == 1, let descriptor = descriptors.first else { fatalError("dragon bridge: \(what) is not one font") }
+  let probe = CTFontCreateWithFontDescriptor(descriptor, 16, nil)
+  // A variable face is refused natively (T056 R8); Dragon draws only static faces.
+  if CTFontCopyTable(probe, CTFontTableTag(kCTFontTableFvar), []) != nil { fatalError("dragon bridge: \(what) is a variable face") }
+  func table(_ tag: CTFontTableTag, _ name: String) -> [UInt8] {
+    guard let t = CTFontCopyTable(probe, tag, []) as Data? else { fatalError("dragon bridge: \(what) has no \(name) table") }
+    return [UInt8](t)
+  }
+  let head = table(CTFontTableTag(kCTFontTableHead), "head")
+  let hhea = table(CTFontTableTag(kCTFontTableHhea), "hhea")
+  let cmap = table(CTFontTableTag(kCTFontTableCmap), "cmap")
+  let hmtx = table(CTFontTableTag(kCTFontTableHmtx), "hmtx")
+  let os2 = table(CTFontTableTag(kCTFontTableOS2), "OS/2")
+  let loca = table(CTFontTableTag(kCTFontTableLoca), "loca")
+  let glyf = table(CTFontTableTag(kCTFontTableGlyf), "glyf")
+  if dragonU16(os2, 0) < 2 { fatalError("dragon bridge: \(what) has OS/2 version \(dragonU16(os2, 0)), which has no sCapHeight") }
+  if dragonGlyph(cmap: cmap, 0x78) == 0 || dragonGlyph(cmap: cmap, 0x30) == 0 { fatalError("dragon bridge: \(what) maps no glyph to x or 0") }
+  let header = dragonFontHeader(head: head, hhea: hhea)
+  let units = dragonMetricUnits(head: head, hhea: hhea, hmtx: hmtx, cmap: cmap, os2: os2, loca: loca, glyf: glyf)
+  let ellipsis = dragonGlyph(cmap: cmap, 0x2026)
+  let data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: [], xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance, ellipsisAdvance: ellipsis == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, ellipsis))
+  return DragonFace(id: "sha256:" + hex, data: data, postScriptName: CTFontCopyPostScriptName(probe) as String, descriptor: descriptor)
+}
+
 /// The measurer bridge (R4): raw data read from the bundled Ahem's tables through Core Text (head, hhea, cmap, hmtx), fed to the translated
 /// measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics. With a host HarfBuzz (shaper) the
-/// measurer is the translated shaped measurer and text views draw its glyphs; without one, the font-data measurer and cmap and hmtx.
+/// measurer is the translated shaped measurer over Ahem and every bundled real face (faces), and text views draw its glyphs; without
+/// one, the font-data measurer and cmap and hmtx (Ahem only).
 public final class DragonBridge {
   /// The host's HarfBuzz (T056 R1), set before the bridge is first used; the bridge reads it once.
   public static var shaper: GlyphShaper? = nil
@@ -437,10 +496,13 @@ public final class DragonBridge {
   public let selfCheck: [String]
   private let layoutShaper: GlyphShaper?
   private let fontDataMeasurer: TextMeasurer
+  /// The bundled real faces by face id (sha256:<hex>), in the bundle's DragonFaces directory.
+  public let faces: [String: DragonFace]
   /// The measurer of one layout. Shaped, a fresh one per read: its shaped items are cached per layout, as the host's are.
   public var measurer: TextMeasurer {
     guard let s = layoutShaper else { return fontDataMeasurer }
-    return try! platform_deviceShapedMeasurer(JsStringMap([(text_AHEM_FACE_ID, data)]), s)
+    let real = faces.keys.sorted().map { (JsString($0), faces[$0]!.data) }
+    return try! platform_deviceShapedMeasurer(JsStringMap([(text_AHEM_FACE_ID, data)] + real), s)
   }
   /// Whether measurer shapes with the host's HarfBuzz, so a text view draws the shaped glyph ids (shaping_pieceGlyphs).
   public var shaped: Bool { return layoutShaper != nil }
@@ -484,6 +546,26 @@ public final class DragonBridge {
     selfCheck = dragonSelfCheck(data)
     layoutShaper = DragonBridge.shaper
     fontDataMeasurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
+    var loaded: [String: DragonFace] = [:]
+    for url in Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: dragonFaceDirectory) ?? [] {
+      let f = dragonLoadFace(url)
+      loaded[f.id] = f
+    }
+    faces = loaded
+  }
+  /// The face's FontData, as the measurer reads it; nil for a face the app does not bundle.
+  public func faceData(_ face: String) -> FontData? {
+    return face == text_AHEM_FACE_ID.description ? data : faces[face]?.data
+  }
+  /// The PostScript name of a face Dragon draws (Ahem or a bundled real face); nil for any other.
+  public func facePostScriptName(_ face: String) -> String? {
+    return face == text_AHEM_FACE_ID.description ? postScriptName : faces[face]?.postScriptName
+  }
+  /// A face Dragon draws at a point size: the registered Ahem, or a bundled real face from its own descriptor.
+  public func font(face: String, pointSize: CGFloat) -> UIFont {
+    if face == text_AHEM_FACE_ID.description { return font(pointSize: pointSize) }
+    guard let f = faces[face] else { fatalError("dragon bridge: no bundled face \(face)") }
+    return CTFontCreateWithFontDescriptor(f.descriptor, pointSize, nil) as UIFont
   }
   /// The glyph id of a code point (cmap); 0 when the font does not map it.
   public func glyph(_ cp: Int) -> Int { return dragonGlyph(cmap: cmapTable, cp) }
@@ -842,9 +924,11 @@ public final class DragonTree {
           let run = try glyphRun(leaves[li].text, leafFont, piece.start, paintEnd, xLU / lu, piece.shifts.items, "line \(k)")
           var dots: (glyphs: [CGGlyph], xs: [Double]) = ([], [])
           var dotsSize: Double = 0
+          var dotsFace = ""
           if painted, let el = ellipsis {
             dots = try glyphRun(el.text, el.font, 0, Double(el.text.description.unicodeScalars.count), (xLU + el.x - piece.x) / lu, [], "ellipsis")
             dotsSize = try units_platformFontSize(el.font.size)
+            dotsFace = el.font.family.description
           }
           let shown = Array(scalars[Int(piece.start)..<Int(paintEnd)])
           // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
@@ -853,13 +937,14 @@ public final class DragonTree {
             geometryCps.append(shown.map { Double($0.value) })
             geometryPens.append(run.xs.map { $0 + e[0] })
           }
-          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize))
+          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize, ellipsisFace: dotsFace))
         }
         }
       }
       if specs.count != pieces.count { fatalError("dragon: \(id): the engine's breaks give \(specs.count) lines, its layout \(pieces.count)") }
       textMetrics[id] = viewMetrics
-      tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(size / s)), lines: specs, scale: s)
+      // The leaf's face (Ahem or a bundled real face, as the measurer laid it out) at the instance size in points.
+      tv.dragonConfigure(font: bridge.font(face: leafFont.family.description, pointSize: CGFloat(size / s)), face: leafFont.family.description, lines: specs, scale: s)
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       if let cv = views[pId] as? DragonBoxView, let strut = p.strut, let m = viewMetrics {
@@ -1044,6 +1129,9 @@ fun dragonSfntTable(font: ByteArray, tag: String): ByteArray {
   }
   throw IllegalStateException("dragon font table: no " + tag + " table")
 }
+
+/** Whether an sfnt buffer's table directory lists a table. */
+fun dragonHasSfntTable(font: ByteArray, tag: String): Boolean = (0 until dragonU16(font, 4).toInt()).any { String(font, 12 + 16 * it, 4, Charsets.US_ASCII) == tag }
 
 /** unitsPerEm (head 18), ascender (hhea 4), descender (hhea 6, as a positive descent) and lineGap (hhea 8), in font units. */
 fun dragonFontHeader(head: ByteArray, hhea: ByteArray): DoubleArray = doubleArrayOf(dragonU16(head, 18), dragonI16(hhea, 4), -dragonI16(hhea, 6), dragonI16(hhea, 8))
@@ -1242,9 +1330,10 @@ ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonCli
  * One engine line of a text node, as Dragon places it: the line text and its glyph ids, each glyph's origin in device px from the
  * view's left (the engine's advances), the run's left and width in LU (1/64 device px) from the view's left, the line box top and
  * baseline in device px from the view's top, and the UTF-16 offsets of the line in the node's text. A truncated line (TXT2-f) also
- * carries its ellipsis glyphs and their origins, drawn at the ellipsis font's instance size in device px (0 when it has none).
+ * carries its ellipsis glyphs and their origins, drawn in the ellipsis font's face (ellipsisFace, "" when it has none) at its instance
+ * size in device px (0 when it has none).
  */
-class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int, val ellipsisGlyphs: IntArray, val ellipsisXs: DoubleArray, val ellipsisSize: Double)
+class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int, val ellipsisGlyphs: IntArray, val ellipsisXs: DoubleArray, val ellipsisSize: Double, val ellipsisFace: String)
 
 /** Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink. */
 const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0
@@ -1269,6 +1358,10 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
   var specs: List<DragonLineSpec> = emptyList()
     private set
   private var font: android.graphics.fonts.Font? = null
+  private var bridge: DragonBridge? = null
+  /** The face id font is (the bridge's Ahem or a bundled real face, DragonBridge.font(face)). */
+  var dragonFace = ""
+    private set
 
   /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
   fun dragonSetText(text: String, family: String, color: DragonRGBA8) {
@@ -1278,11 +1371,13 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     contentDescription = text
   }
 
-  /** The engine's data at the device scale: the instance text size and the placed lines. */
-  fun dragonConfigure(bridge: DragonBridge, textSize: Float, lines: List<DragonLineSpec>) {
+  /** The engine's data at the device scale: the face id, the instance text size and the placed lines. */
+  fun dragonConfigure(bridge: DragonBridge, face: String, textSize: Float, lines: List<DragonLineSpec>) {
     specs = lines
-    font = bridge.font
-    paint.typeface = bridge.typeface
+    this.bridge = bridge
+    dragonFace = face
+    font = bridge.font(face)
+    paint.typeface = bridge.typeface(face)
     paint.textSize = textSize
     paint.color = dragonArgb(dragonColor)
     invalidate()
@@ -1292,24 +1387,26 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     val f = font ?: return
     for (l in specs) {
       val y = (l.baseline + DRAGON_GLYPH_PLANT_Y_DEVICE_PX).toFloat()
-      fun draw(glyphs: IntArray, xs: DoubleArray, p: Paint) {
+      fun draw(glyphs: IntArray, xs: DoubleArray, p: Paint, face: android.graphics.fonts.Font) {
         if (glyphs.isEmpty()) return
         val positions = FloatArray(2 * glyphs.size)
         for (k in glyphs.indices) {
           positions[2 * k] = (xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
           positions[2 * k + 1] = y
         }
-        canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, p)
+        canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, face, p)
       }
-      draw(l.glyphs, l.xs, paint)
-      if (l.ellipsisGlyphs.isNotEmpty()) draw(l.ellipsisGlyphs, l.ellipsisXs, TextPaint(paint).apply { textSize = l.ellipsisSize.toFloat() })
+      draw(l.glyphs, l.xs, paint, f)
+      // The ellipsis is in its line's font, whose face can differ from this text's (truncate.ts).
+      val b = bridge
+      if (l.ellipsisGlyphs.isNotEmpty()) draw(l.ellipsisGlyphs, l.ellipsisXs, TextPaint(paint).apply { textSize = l.ellipsisSize.toFloat() }, if (l.ellipsisFace == dragonFace || b == null) f else b.font(l.ellipsisFace))
     }
   }
 
   override fun dragonApplied(): List<Pair<String, DumpJson>> {
     val face = paint.typeface
     return listOf(
-      Pair("textPaint.typeface", if (face != null && face === DragonBridge.shared(context).typeface) DumpJson.Obj(listOf(Pair("typeface", DumpJson.Str("dragon:" + dragonFamily)), Pair("textSize", DumpJson.Num(paint.textSize.toDouble())))) else DumpJson.Null),
+      Pair("textPaint.typeface", if (face != null && face === DragonBridge.shared(context).typefaceOrNull(dragonFamily)) DumpJson.Obj(listOf(Pair("typeface", DumpJson.Str("dragon:" + dragonFamily)), Pair("textSize", DumpJson.Num(paint.textSize.toDouble())))) else DumpJson.Null),
       Pair("textPaint.color", dragonColorJson(paint.color)),
     )
   }
@@ -1335,10 +1432,52 @@ import dev.dragon.layout.text_coveredCodePoints
 import dev.dragon.layout.text_fontDataMeasurer
 import java.security.MessageDigest
 
+/** The asset directory of the real faces (TXT1a-2 phase R), each named by the sha256 of its bytes: <hex>.ttf, face id sha256:<hex>. */
+const val DRAGON_FACE_DIRECTORY = "dragon-faces"
+
+/**
+ * A bundled real face: its FontData read from its own tables as the host reads them (text-shaper-host.ts fontDataOf; the shaped
+ * measurer reads no per-code-point advances), the drawGlyphs font and its typeface under the Dragon id dragon:<face id>.
+ */
+class DragonFace(val id: String, val data: FontData, val font: Font, val typeface: Typeface)
+
+/**
+ * Loads a bundled real face. Its bytes must hash to its name (T056 R8), it must be one static TrueType face, map x and 0, and have
+ * OS/2 version 2 or later (sCapHeight), as the host's FontData requires; anything else stops the run.
+ */
+fun dragonLoadFace(ctx: Context, file: String): DragonFace {
+  val path = DRAGON_FACE_DIRECTORY + "/" + file
+  check(file.endsWith(".ttf")) { "dragon bridge: " + path + " is not a .ttf face" }
+  val hex = file.removeSuffix(".ttf")
+  val bytes = ctx.assets.open(path).use { it.readBytes() }
+  val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { String.format("%02x", it.toInt() and 0xff) }
+  check(sha == hex) { "dragon bridge: " + path + " has sha256 " + sha + ", not the one it is named by" }
+  val font = Font.Builder(ctx.assets, path).build()
+  val buffer = font.buffer
+  val raw = ByteArray(buffer.remaining())
+  buffer.duplicate().get(raw)
+  check(raw.contentEquals(bytes)) { "dragon bridge: the Font built from " + path + " holds other bytes" }
+  // A variable face is refused natively (T056 R8); Dragon draws only static faces.
+  check(!dragonHasSfntTable(raw, "fvar")) { "dragon bridge: " + path + " is a variable face" }
+  val head = dragonSfntTable(raw, "head")
+  val hhea = dragonSfntTable(raw, "hhea")
+  val cmap = dragonSfntTable(raw, "cmap")
+  val hmtx = dragonSfntTable(raw, "hmtx")
+  val os2 = dragonSfntTable(raw, "OS/2")
+  check(dragonU16(os2, 0) >= 2.0) { "dragon bridge: " + path + " has OS/2 version " + dragonU16(os2, 0) + ", which has no sCapHeight" }
+  check(dragonGlyph(cmap, 0x78) != 0 && dragonGlyph(cmap, 0x30) != 0) { "dragon bridge: " + path + " maps no glyph to x or 0" }
+  val header = dragonFontHeader(head, hhea)
+  val units = dragonMetricUnits(head, hhea, hmtx, cmap, os2, dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
+  val ellipsis = dragonGlyph(cmap, 0x2026)
+  val data = dragonFontData(header[0], header[1], header[2], header[3], emptyList(), units[0], units[1], units[2], if (ellipsis == 0) -1.0 else dragonAdvance(hhea, hmtx, ellipsis))
+  return DragonFace("sha256:" + hex, data, font, Typeface.CustomFallbackBuilder(FontFamily.Builder(font).build()).build())
+}
+
 /**
  * The measurer bridge (R4): raw data read from the bundled Ahem's tables in the android.graphics.fonts.Font buffer (head, hhea, cmap, hmtx), fed to the
  * translated measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics. With a host HarfBuzz
- * (shaper) the measurer is the translated shaped measurer and text views draw its glyphs; without one, the font-data measurer and cmap and hmtx.
+ * (shaper) the measurer is the translated shaped measurer over Ahem and every bundled real face (faces), and text views draw its
+ * glyphs; without one, the font-data measurer and cmap and hmtx (Ahem only).
  */
 class DragonBridge private constructor(ctx: Context) {
   val fontSha256: String
@@ -1346,11 +1485,13 @@ class DragonBridge private constructor(ctx: Context) {
   val selfCheck: List<String>
   private val layoutShaper: GlyphShaper?
   private val fontDataMeasurer: TextMeasurer
+  /** The bundled real faces by face id (sha256:<hex>), from the APK's dragon-faces assets. */
+  val faces: Map<String, DragonFace>
   /** The measurer of one layout. Shaped, a fresh one per read: its shaped items are cached per layout, as the host's are. */
   val measurer: TextMeasurer
     get() {
       val s = layoutShaper ?: return fontDataMeasurer
-      return platform_deviceShapedMeasurer(JsStringMap(listOf(Pair(text_AHEM_FACE_ID, data))), s)
+      return platform_deviceShapedMeasurer(JsStringMap(listOf(Pair(text_AHEM_FACE_ID, data)) + faces.keys.sorted().map { Pair(it, faces.getValue(it).data) }), s)
     }
   /** Whether measurer shapes with the host's HarfBuzz, so a text view draws the shaped glyph ids (shaping_pieceGlyphs). */
   val shaped: Boolean
@@ -1391,7 +1532,21 @@ class DragonBridge private constructor(ctx: Context) {
     selfCheck = dragonSelfCheck(data)
     layoutShaper = shaper
     fontDataMeasurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
+    val loaded = HashMap<String, DragonFace>()
+    for (file in (ctx.assets.list(DRAGON_FACE_DIRECTORY) ?: emptyArray()).sorted()) {
+      val f = dragonLoadFace(ctx, file)
+      loaded[f.id] = f
+    }
+    faces = loaded
   }
+  /** The face's FontData, as the measurer reads it; null for a face the app does not bundle. */
+  fun faceData(face: String): FontData? = if (face == text_AHEM_FACE_ID) data else faces[face]?.data
+  /** The drawGlyphs font of a face Dragon draws (Ahem or a bundled real face). */
+  fun font(face: String): Font = if (face == text_AHEM_FACE_ID) font else faces[face]?.font ?: throw IllegalStateException("dragon bridge: no bundled face " + face)
+  /** The typeface of a face Dragon draws (Ahem or a bundled real face). */
+  fun typeface(face: String): Typeface = typefaceOrNull(face) ?: throw IllegalStateException("dragon bridge: no bundled face " + face)
+  /** The typeface of a face Dragon draws; null for any other face. */
+  fun typefaceOrNull(face: String): Typeface? = if (face == text_AHEM_FACE_ID) typeface else faces[face]?.typeface
   /** The glyph id of a code point (cmap); 0 when the font does not map it. */
   fun glyph(cp: Int): Int = dragonGlyph(cmapTable, cp)
   /** A glyph's advance in font units (hmtx). */
@@ -1822,9 +1977,11 @@ class DragonTree(val context: Context) {
           val run = glyphRun(leafText, leafFont, piece.start, paintEnd, xLU / lu, piece.shifts, "line " + k)
           var dots = Pair(IntArray(0), DoubleArray(0))
           var dotsSize = 0.0
+          var dotsFace = ""
           if (painted && ellipsis != null) {
             dots = glyphRun(ellipsis.text, ellipsis.font, 0.0, ellipsis.text.codePointCount(0, ellipsis.text.length).toDouble(), (xLU + ellipsis.x - piece.x) / lu, emptyList(), "ellipsis")
             dotsSize = units_platformFontSize(ellipsis.font.size)
+            dotsFace = ellipsis.font.family
           }
           // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
           if (painted) {
@@ -1832,13 +1989,14 @@ class DragonTree(val context: Context) {
             geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
             geometryPens.add(DoubleArray(run.second.size) { run.second[it] + e[0] })
           }
-          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize))
+          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize, dotsFace))
         }
       }
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)
       val vm = viewMetrics
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
-      tv.dragonConfigure(bridge, size.toFloat(), specs)
+      // The leaf's face (Ahem or a bundled real face, as the measurer laid it out).
+      tv.dragonConfigure(bridge, leafFont.family, size.toFloat(), specs)
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       val cv = views[pId] as? DragonBoxView

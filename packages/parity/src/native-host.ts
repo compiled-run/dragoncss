@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutBox, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import type { LU } from '@dragon/layout';
-import { deviceShapedMeasurer, layout, LU_PER_PX, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { AHEM_FACE_ID, deviceShapedMeasurer, layout, LU_PER_PX, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { emitAndroidViewsCases, emitNativeSupport, emitUikitCases, engineLayoutProjection, expectedDigest, expectedDump, nativePrograms, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
@@ -30,8 +30,9 @@ import { BUILD_CACHE, hit, publish, pruneCache, replace } from '../../translate/
 import { repoPath } from './paths.ts';
 import type { NativeTarget } from './targets.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
-import { deviceDprs, vectorCaseIds } from './targets.ts';
-import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
+import { deviceCaseIds, deviceDprs } from './targets.ts';
+import type { ShimFace } from './native-shim.ts';
+import { buildShim, SHIM_ANDROID_ABIS, SHIM_FACE_DIRS, SHIM_SWIFT_INCLUDE, shimFaces, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
 import { ahemFaceId, fontDataOf, hostShaper, vendoredFaceIds } from './text-shaper-host.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
@@ -54,12 +55,12 @@ export type NativeCase = {
 let records: readonly NativeCase[] | null = null;
 
 /**
- * Every device case (targets.ts vectorCaseIds: every layout case but the shaped ones, which the device runtime cannot draw until
- * TXT1a-2 phase R), each with the programs of its one native compile; a case that cannot be lowered throws.
+ * Every device case (targets.ts deviceCaseIds: every layout case, a shaped one in its bundled real faces since TXT1a-2 phase R), each
+ * with the programs of its one native compile; a case that cannot be lowered throws.
  */
 export function nativeCases(): readonly NativeCase[] {
   if (records !== null) return records;
-  const device = new Set(vectorCaseIds());
+  const device = new Set(deviceCaseIds());
   const out: NativeCase[] = [];
   for (const f of layoutCases()) {
     for (const c of f.cases) {
@@ -81,7 +82,7 @@ let engineRecords: readonly EngineCase[] | null = null;
 
 /**
  * Every layout case in layoutCases() order: a device case through its native programs (both backends hold one engine input tree),
- * and a shaped case, which native refuses until TXT1a-2 phase R, through engineLayoutProjection of its derive compile.
+ * and any other through engineLayoutProjection of its derive compile.
  */
 export function engineCases(): readonly EngineCase[] {
   if (engineRecords !== null) return engineRecords;
@@ -109,12 +110,20 @@ export function engineCases(): readonly EngineCase[] {
 }
 
 /**
- * The device apps' measurer on the host (TXT1a-2 phase R): deviceShapedMeasurer over the bundled Ahem's FontData and the WASM
- * HarfBuzz, as each app's bridge composes it over its own shim. A fresh measurer per call: its shaped items are cached per layout.
+ * The device apps' measurer on the host (TXT1a-2 phase R): deviceShapedMeasurer over the FontData of every face the apps bundle
+ * (Ahem and the real faces, native-shim.ts shimFaces) and the WASM HarfBuzz, as each app's bridge composes it over its own shim. A
+ * fresh measurer per call: its shaped items are cached per layout.
  */
 export function referenceMeasurer(): TextMeasurer {
-  const ahem = ahemFaceId();
-  return deviceShapedMeasurer(new Map([[ahem, fontDataOf(ahem)]]), hostShaper);
+  return deviceShapedMeasurer(new Map(shimFaces().map((f) => [f.id, fontDataOf(f.id)] as const)), hostShaper);
+}
+
+/** Every face a case's program draws text in that the apps do not bundle (shimFaces), as "<case>: <face>". */
+export function unbundledFaces(cases: readonly EmitCase[], bundled: readonly ShimFace[] = shimFaces()): string[] {
+  const ids = new Set(bundled.map((f) => f.id));
+  const out = new Set<string>();
+  for (const c of cases) for (const n of c.program.nodes) for (const w of n.writes) if (w.kind === 'font' && !ids.has(w.font.family)) out.add(`${c.id}: ${w.font.family}`);
+  return [...out];
 }
 
 /**
@@ -220,6 +229,8 @@ func dragonRun(window: UIWindow, host: UIView) {
   DragonBridge.shaper = dragonGlyphShaper()
   let bridge = DragonBridge.shared
   if !bridge.shaped { fatalError("dragon host: the bridge does not shape with the shim") }
+  // TXT1a-2 phase R: the bridge holds every bundled real face, with the host's FontData.
+  dragonCheckFaces()
   dragonWrite(out + "/bridge-ios.json", bridge.record(platform: "ios"))
   let scale = Double(window.screen.scale)
   if Double(window.traitCollection.displayScale) != scale { fatalError("dragon host: traitCollection.displayScale differs from UIScreen.scale") }
@@ -440,6 +451,8 @@ class DragonActivity : Activity() {
     DragonBridge.shaper = dragonGlyphShaper(this)
     bridge = DragonBridge.shared(this)
     check(bridge.shaped) { "dragon host: the bridge does not shape with the shim" }
+    // TXT1a-2 phase R: the bridge holds every bundled real face, with the host's FontData.
+    dragonCheckFaces(this)
     File(out, "bridge-android.json").writeText(bridge.record("android"))
     scale = resources.displayMetrics.density.toDouble()
     val os = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ", " + Build.ID + ")"
@@ -759,6 +772,9 @@ const PLANTED: { readonly [P in Exclude<BuildPlant, SupportPlant>]: GeneratedFil
 export function hostSources(target: NativeTarget, toolchain: string, plant: BuildPlant | null = null): GeneratedFile[] {
   const backend = BACKEND_OF[target];
   const cases = emitCases(target);
+  // TXT1a-2 phase R: the apps draw only the faces they bundle; a case naming another would stop on the device.
+  const unbundled = unbundledFaces(cases);
+  if (unbundled.length > 0) throw new Error(`the ${target} app bundles no face for ${unbundled.slice(0, 10).join('; ')}`);
   const files: GeneratedFile[] = [];
   if (target === 'ios') {
     const engine = repoPath('packages/layout/generated/swift/Sources/DragonLayout');
@@ -954,8 +970,12 @@ export function casesCodeProblems(path: string, text: string): string[] {
   return [...new Set([...words, ...ternary])].map((w) => `${path}: ${w} in code built at -Onone (DragonCases holds construction code only)`);
 }
 
+/** The commands that copy each bundled real face ($FONTS is vendor/fonts) to <root>/<its app path> (native-shim.ts shimFaces). */
+const faceCopies = (faces: readonly ShimFace[], root: string, pathOf: (f: ShimFace) => string): AppCommand[] =>
+  faces.filter((f) => f.id !== AHEM_FACE_ID).map((f) => ['cp', `$FONTS/${f.source}`, `${root}/${pathOf(f)}`]);
+
 /** The iOS app's build commands for its source paths ($CORES is the -j width, which changes no output). */
-export function iosCommands(paths: readonly string[]): AppCommand[] {
+export function iosCommands(paths: readonly string[], faces: readonly ShimFace[] = shimFaces()): AppCommand[] {
   const mods = iosModules(paths);
   const src = (ps: readonly string[]): string[] => ps.map((p) => `$W/src/${p}`);
   // -I: DragonCore's shim wrapper imports CDragonHB, a module map over dragon_hb.h, which every module importing DragonCore must find.
@@ -971,6 +991,8 @@ export function iosCommands(paths: readonly string[]): AppCommand[] {
     [...swiftc, '-O', '-module-name', 'DragonHost', '-I', '$W/modules', ...implicit('-import-module', 'DragonCore'), ...implicit('-testable-import-module', 'DragonCases'), ...load('DragonCore'), ...load('DragonCases'), '-L', '$SHIM_IOS_LIB', '-ldragon_hb', '-lc++', '-o', '$W/DragonHost.app/DragonHost', ...src(mods.host)],
     ['cp', '$W/src/Info.plist', '$W/DragonHost.app/Info.plist'],
     ['cp', '$AHEM', '$W/DragonHost.app/Ahem.ttf'],
+    ['mkdir', '-p', `$W/DragonHost.app/${SHIM_FACE_DIRS.ios}`],
+    ...faceCopies(faces, '$W/DragonHost.app', (f) => f.iosFile),
     ['codesign', '--force', '--sign', '-', '--timestamp=none', '$W/DragonHost.app'],
   ];
 }
@@ -994,8 +1016,10 @@ export function buildIos(opts: BuildOptions = {}): BuildResult {
     writeSources(work, files);
     mkdirSync(join(work, 'modules'), { recursive: true });
     mkdirSync(join(work, 'DragonHost.app'), { recursive: true });
-    const values = { W: work, CORES: String(availableParallelism()), AHEM: repoPath('vendor/fonts/Ahem.ttf'), SHIM_SWIFT_INCLUDE, ...shim.files };
-    const names = ['swiftc DragonCore -O', 'swiftc DragonCases -Onone', 'swiftc DragonHost -O', 'Info.plist', 'Ahem.ttf', 'codesign --sign - (ad hoc)'];
+    const values = { W: work, CORES: String(availableParallelism()), AHEM: repoPath('vendor/fonts/Ahem.ttf'), FONTS: repoPath('vendor/fonts'), SHIM_SWIFT_INCLUDE, ...shim.files };
+    const faces = commands.length - 7;
+    const names = ['swiftc DragonCore -O', 'swiftc DragonCases -Onone', 'swiftc DragonHost -O', 'Info.plist', 'Ahem.ttf', SHIM_FACE_DIRS.ios, ...Array.from({ length: faces }, (_x, k) => `face ${k + 1} of ${faces}`), 'codesign --sign - (ad hoc)'];
+    if (names.length !== commands.length) throw new Error(`the iOS build names ${names.length} steps for ${commands.length} commands`);
     for (const [i, c] of commands.entries()) {
       const t0 = Date.now();
       const [cmd, ...args] = expand(c, values);
@@ -1006,11 +1030,12 @@ export function buildIos(opts: BuildOptions = {}): BuildResult {
   return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: join(dir, 'DragonHost.app'), log: [shim.log, ...log] };
 }
 
-/** The Android APK's build commands for its Kotlin source paths (tokens: the SDK tools, the jars, the keystore and Ahem). */
-export function androidCommands(ktPaths: readonly string[]): AppCommand[] {
+/** The Android APK's build commands for its Kotlin source paths (tokens: the SDK tools, the jars, the keystore, Ahem and the faces). */
+export function androidCommands(ktPaths: readonly string[], faces: readonly ShimFace[] = shimFaces()): AppCommand[] {
   return [
-    ['mkdir', '-p', '$W/assets/fonts', '$W/dex', ...SHIM_ANDROID_ABIS.map((abi) => `$W/lib/${abi}`)],
+    ['mkdir', '-p', '$W/assets/fonts', `$W/assets/${SHIM_FACE_DIRS.android}`, '$W/dex', ...SHIM_ANDROID_ABIS.map((abi) => `$W/lib/${abi}`)],
     ['cp', '$AHEM', '$W/assets/fonts/Ahem.ttf'],
+    ...faceCopies(faces, '$W/assets', (f) => f.androidAsset),
     ...SHIM_ANDROID_ABIS.map((abi) => ['cp', `$${shimToken(abi)}`, `$W/lib/${abi}/libdragon_hb.so`]),
     ['$BT/aapt2', 'link', '--manifest', '$W/src/AndroidManifest.xml', '-I', '$ANDROID_JAR', '-A', '$W/assets', '--min-sdk-version', String(NATIVE_CONFIG.android.minSdk), '--target-sdk-version', String(ANDROID_TARGET_SDK), '-o', '$W/base.apk'],
     ['$KOTLINC', '-J-Xmx8g', '-cp', '$ANDROID_JAR', '-jvm-target', '1.8', '-nowarn', '-d', '$W/classes.jar', ...ktPaths.map((p) => `$W/src/${p}`)],
@@ -1059,8 +1084,10 @@ export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly 
   const dexesOf = (d: string): string[] => (existsSync(join(d, 'dex')) ? readdirSync(join(d, 'dex')).filter((f) => /^classes\d*\.dex$/.test(f)).sort().map((x) => join(d, 'dex', x)) : []);
   const { dir, log } = cachedApp('apk', key, 'DragonHost.apk', (d) => dexesOf(d).length > 0, opts.reuse === true, (work, out) => {
     writeSources(work, files);
-    const values = { W: work, AHEM: repoPath('vendor/fonts/Ahem.ttf'), BT: tools.buildTools, ANDROID_JAR: tools.androidJar, KOTLINC: tools.kotlinc, KOTLIN_STDLIB: tools.kotlinStdlib, KEYSTORE: keystore, ...shim.files };
-    const names = ['mkdir', 'Ahem.ttf', ...SHIM_ANDROID_ABIS.map((abi) => `libdragon_hb.so (${abi})`), 'aapt2 link', 'kotlinc', 'd8', 'zip classes.dex', 'zip libdragon_hb.so', 'zipalign', 'apksigner sign'];
+    const values = { W: work, AHEM: repoPath('vendor/fonts/Ahem.ttf'), FONTS: repoPath('vendor/fonts'), BT: tools.buildTools, ANDROID_JAR: tools.androidJar, KOTLINC: tools.kotlinc, KOTLIN_STDLIB: tools.kotlinStdlib, KEYSTORE: keystore, ...shim.files };
+    const faces = commands.length - 9 - SHIM_ANDROID_ABIS.length;
+    const names = ['mkdir', 'Ahem.ttf', ...Array.from({ length: faces }, (_x, k) => `face ${k + 1} of ${faces}`), ...SHIM_ANDROID_ABIS.map((abi) => `libdragon_hb.so (${abi})`), 'aapt2 link', 'kotlinc', 'd8', 'zip classes.dex', 'zip libdragon_hb.so', 'zipalign', 'apksigner sign'];
+    if (names.length !== commands.length) throw new Error(`the Android build names ${names.length} steps for ${commands.length} commands`);
     for (const [i, c] of commands.entries()) {
       const t0 = Date.now();
       const [cmd, ...args] = expand(c, values);
