@@ -223,6 +223,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
   rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
   ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  // Chrome parses none and non-scaling-stroke only (css_properties.json5 keywords); webref adds non-scaling-size, non-rotation and
+  // fixed-position, which Chrome rejects.
+  'vector-effect': 'none | non-scaling-stroke',
 };
 
 /**
