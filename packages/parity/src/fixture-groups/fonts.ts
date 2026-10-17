@@ -52,6 +52,8 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   // 39.37), px and percent thicknesses, px and percent offsets, and a 6px line whose dilation passes kDecorationClipMaxDilation (13
   // device px) at DPR 3.
   font('text-decoration-ahem-skip', FONT_REFERENCE_MAP, Object.fromEntries(['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'].map((id) => [id, 'Ahem']))),
+  // TDEC-c: double under, over and line-through lines in Lato (auto, px and percent thicknesses, at 16px and 15px) and Ahem.
+  font('text-decoration-double', FONT_REFERENCE_MAP, { d1: 'Lato-Regular', d2: 'Lato-Regular', d3: 'Lato-Regular', d4: 'Lato-Regular', d5: 'Lato-Regular', d6: 'Ahem' }),
 ];
 
 /** An invalid map: a pinned entry with no faces. */
