@@ -6,8 +6,8 @@
 // text_decoration_info.cc). The device places the rects after every layout from the translated text-decoration.ts decorationRects
 // over each line's engine geometry (the same inputs as the decoration capture, parity/src/decoration-capture.ts predictDecorations),
 // an under or overline in a view beneath the text view and a line-through above it. analysis/computed-checks.ts checkDecorations
-// refuses what the device does not draw: a length other than auto, px or a percentage, and skip-ink auto on an overline, on a real
-// face, or thicker than the decoration capture proves (TDEC-d clips Ahem glyphs only).
+// refuses what the device does not draw: a style other than solid or double, a length other than auto, px or a percentage, and
+// skip-ink auto on an overline, a double line, a real face, or thicker than the decoration capture proves (TDEC-d clips Ahem glyphs only).
 import type { InlineChild, LayoutBox } from '@dragon/layout';
 import type { Rgba8 } from '../../css/color.ts';
 import type { DecorationLine } from '../../css/properties/text-decoration.ts';
@@ -30,11 +30,13 @@ export type TextDecorationEntry = {
   readonly underlineOffset: DecorationLengthValue;
   /** text-decoration-skip-ink is auto: the device clips an under or overline around the glyphs' ink (TDEC-d). */
   readonly skipInk: boolean;
+  /** text-decoration-style: solid, or double (each line paints a second rect at SetLineData's double offset). */
+  readonly style: 'solid' | 'double';
 };
 
 export type TextDecorationWrite = { readonly kind: 'text-decoration'; readonly entries: readonly TextDecorationEntry[] };
 
-const DECORATION_PAINT = 'Dragon places solid decoration rects in DragonDecorationView views beside the text view, under and overlines beneath it and a line-through above it (text_fragment_painter.cc paint order), from the translated text-decoration.ts decorationRects over the engine lines at the device scale: whole device rows, and the ends of each row covered as Skia antifilldot8 covers them (columnAlpha)';
+const DECORATION_PAINT = 'Dragon places solid and double decoration rects in DragonDecorationView views beside the text view, under and overlines beneath it and a line-through above it (text_fragment_painter.cc paint order), from the translated text-decoration.ts decorationRects over the engine lines at the device scale: whole device rows, and the ends of each row covered as Skia antifilldot8 covers them (columnAlpha)';
 
 /** A computed thickness or offset as the device takes it; anything else never reaches a program (checkDecorations refuses it). */
 export function decorationLengthOf(v: CssValue, what: string): DecorationLengthValue {
@@ -72,8 +74,8 @@ export const TEXT_DECORATION_LOWERING: PaintLowering<TextDecorationWrite> = {
     const entries: TextDecorationEntry[] = [];
     for (const text of texts) {
       for (const d of decorations.get(text) ?? []) {
-        // checkDecorations accepts solid decorations only on the native targets; the value table refuses every other style.
-        if (d.style !== 'solid') throw new ProgramError(`${text}: a ${d.style} decoration from ${d.box} reached the native program`);
+        // checkDecorations refuses every drawn style but solid and double.
+        if (d.style !== 'solid' && d.style !== 'double') throw new ProgramError(`${text}: a ${d.style} decoration from ${d.box} reached the native program`);
         entries.push({
           text,
           box: inlines.has(d.box) ? d.box : null,
@@ -82,6 +84,7 @@ export const TEXT_DECORATION_LOWERING: PaintLowering<TextDecorationWrite> = {
           thickness: decorationLengthOf(d.thickness, `${text}: the text-decoration-thickness of ${d.box}`),
           underlineOffset: decorationLengthOf(d.underlineOffset, `${text}: the text-underline-offset of ${d.box}`),
           skipInk: d.skipInk === 'auto',
+          style: d.style,
         });
       }
     }

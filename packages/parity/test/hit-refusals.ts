@@ -21,6 +21,8 @@ export const INLINE_OUT: readonly string[] = [
   'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
   'text-decoration-native', 'text-decoration-native-rtl',
+  // TDEC-c's text-decoration-native-styles holds an inline box (s6s, the inline box's double underline).
+  'text-decoration-native-styles', 'text-decoration-native-styles-rtl',
   // resize-values holds an inline box (sp, resize on an inline span).
   'resize-values', 'resize-values-rtl',
   // touch-action-values holds an inline box (sp, touch-action none on an inline span).
