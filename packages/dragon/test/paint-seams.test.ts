@@ -75,11 +75,12 @@ describe('EMS: the paint registries', () => {
         for (const b of ['uikit', 'android-views'] as const) expect(VOCABULARY[b][k as keyof (typeof VOCABULARY)['uikit']]).toEqual((m.vocabulary[b] as Record<string, unknown>)[k]);
       }
     }
-    // TXT-W adds the text run's synthetic-oblique shear after its font and colour.
-    for (const b of ['uikit', 'android-views'] as const) expect(Object.keys(VOCABULARY[b]), b).toEqual([...PAINT_EMITTERS.flatMap((m) => m.kinds), 'font', 'text-color', 'synthetic-oblique']);
+    // TXT-W adds the text run's synthetic-oblique shear and synthetic-bold stroke after its font and colour.
+    for (const b of ['uikit', 'android-views'] as const) expect(Object.keys(VOCABULARY[b]), b).toEqual([...PAINT_EMITTERS.flatMap((m) => m.kinds), 'font', 'text-color', 'synthetic-oblique', 'synthetic-bold']);
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
     expect(isPaintKind('synthetic-oblique')).toBe(false);
+    expect(isPaintKind('synthetic-bold')).toBe(false);
   });
   it('the lowering registry refuses a write kind lowered by two modules, a vocabulary that disagrees with the longhands, or a reordered list', () => {
     expect(() => checkPaintLowerings(PAINT_LOWERINGS)).not.toThrow();

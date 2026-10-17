@@ -156,9 +156,9 @@ describe('Ahem: one regular face', () => {
       expect(fonts(`.a { font-weight: ${v}; }`).map((d) => d.split(' ').slice(0, 3).join(' ')), v).toEqual(['DRAGON_UNSUPPORTED_VALUE ios font-weight:']);
     }
   });
-  it('refuses on ios the weights Chrome synthesizes, naming the author value, and accepts the rest and every slope', () => {
-    expect(fonts('.a { font-weight: 600; }')).toEqual(["DRAGON_UNSUPPORTED_FONT ios text d:text0 inherits font-weight: 600 from the author's style on <div> d"]);
-    // TXT-W: a slope Chrome synthesizes (oblique 20deg) is drawn sheared natively (text-style-ahem.test.ts), so it is no longer refused.
-    for (const v of ['font-weight: 599.9', 'font-weight: 100', 'font-style: oblique 13deg', 'font-style: oblique -30deg', 'font-weight: lighter', 'font-style: oblique 20deg']) expect(fonts(`.a { ${v}; }`), v).toEqual([]);
+  it('refuses on ios a weight and slope Chrome synthesizes together, naming the author values, and accepts each alone and the rest', () => {
+    expect(fonts('.a { font-weight: 600; font-style: oblique 20deg; }')).toEqual(["DRAGON_UNSUPPORTED_FONT ios text d:text0 inherits font-weight: 600 from the author's style on <div> d, and font-style: oblique 20deg from the author's style on <div> d"]);
+    // TXT-W: a weight (600) or a slope (oblique 20deg) Chrome synthesizes alone is drawn natively (text-weight-bold-ahem, text-style-ahem).
+    for (const v of ['font-weight: 599.9', 'font-weight: 100', 'font-style: oblique 13deg', 'font-style: oblique -30deg', 'font-weight: lighter', 'font-weight: 600', 'font-style: oblique 20deg']) expect(fonts(`.a { ${v}; }`), v).toEqual([]);
   });
 });

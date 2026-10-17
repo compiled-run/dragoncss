@@ -32,6 +32,7 @@ export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from '
 export { nativeOutlinePending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
+export { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES, syntheticBoldStroke } from './fonts/synthetic-bold.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
 export type { UaDataset, UaDatasetChoice } from './ua/datasets.ts';
 export { REFERENCE_PLATFORM, ReferencePlatformUnavailable, referenceDataset, uaDatasetFor } from './ua/datasets.ts';
@@ -297,7 +298,7 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.obliqueUnsheared) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -452,7 +453,7 @@ export function nativeBandPrograms(compiled: object, assignment: Assignment, ban
   if (c === undefined) return { kind: 'blocked', reason: `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}` };
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: `the case has no native lowering in band ${band}` };
   try {
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.obliqueUnsheared) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;

@@ -61,10 +61,10 @@ public final class Fit {
 
 // ts: packages/layout/src/truncate.ts:34
 public func truncate_ellipsisOf(_ ctx: Ctx, _ nodeId: JsString, _ font: TextFont) throws -> EllipsisRun {
-  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s982, font)
+  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s983, font)
   // ts: packages/layout/src/truncate.ts:36
   if one.ok {
-    return EllipsisRun(S.s982, (one as! MeasureResult_okTrue).measure.width)
+    return EllipsisRun(S.s983, (one as! MeasureResult_okTrue).measure.width)
   }
   // ts: packages/layout/src/truncate.ts:37
   if ((one as! MeasureResult_okFalse).code != S.s_text_glyph) {
@@ -85,11 +85,11 @@ public func truncate_codePoints(_ text: JsString, _ start: Double, _ end: Double
   var k: Double = 0.0
   // ts: packages/layout/src/truncate.ts:49
   do {
-    let _a312 = jsCodePoints(text)
-    var _i312 = 0
-    while _i312 < _a312.items.count {
-      let ch: JsString = _a312.items[_i312]
-      _i312 += 1
+    let _a313 = jsCodePoints(text)
+    var _i313 = 0
+    while _i313 < _a313.items.count {
+      let ch: JsString = _a313.items[_i313]
+      _i313 += 1
       // ts: packages/layout/src/truncate.ts:50
       if ((k >= start) && (k < end)) {
         out += ch
@@ -142,18 +142,18 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
   var clusterEnd: Double = 0.0
   // ts: packages/layout/src/truncate.ts:85
   do {
-    let _a313 = result.runs
-    var _i313 = 0
-    while _i313 < _a313.items.count {
-      let run: ShapingRun = _a313.items[_i313]
-      _i313 += 1
+    let _a314 = result.runs
+    var _i314 = 0
+    while _i314 < _a314.items.count {
+      let run: ShapingRun = _a314.items[_i314]
+      _i314 += 1
       // ts: packages/layout/src/truncate.ts:86
       do {
-        let _a314 = run.glyphs
-        var _i314 = 0
-        while _i314 < _a314.items.count {
-          let g: ShapingGlyph = _a314.items[_i314]
-          _i314 += 1
+        let _a315 = run.glyphs
+        var _i315 = 0
+        while _i315 < _a315.items.count {
+          let g: ShapingGlyph = _a315.items[_i315]
+          _i315 += 1
           let at: Double = (run.start + g.ci)
           // ts: packages/layout/src/truncate.ts:88
           if ((at < s.start) || (at >= s.end)) {
@@ -228,25 +228,25 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
   // ts: packages/layout/src/truncate.ts:139
   do {
     var i: Double = (jsLength(children) - 1.0)
-    loop35: while (i >= 0.0) {
-      loop35_body: do {
+    loop37: while (i >= 0.0) {
+      loop37_body: do {
         let c: TruncSource = try jsUnwrap(jsAt(children, i))
         let first: Bool = (i == 0.0)
         var space: Double = try units_sub(available, c.x)
         // ts: packages/layout/src/truncate.ts:143
         if (space <= 0.0) {
-          break loop35_body
+          break loop37_body
         }
         try space = units_sub(space, e.width)
         // ts: packages/layout/src/truncate.ts:145
         if (space >= c.width) {
           ellipsized = i
           try x = units_add(c.x, c.width)
-          break loop35
+          break loop37
         }
         // ts: packages/layout/src/truncate.ts:151
         if ((space <= 0.0) && (!first)) {
-          break loop35_body
+          break loop37_body
         }
         let length: Double = (c.end - c.start)
         let fit: Fit = try truncate_offsetToFit(ctx, nodeId, c, shaped, space)
@@ -255,7 +255,7 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
         if ((n == 0.0) || (n == length)) {
           // ts: packages/layout/src/truncate.ts:156
           if (!first) {
-            break loop35_body
+            break loop37_body
           }
           n = ((n == 0.0) ? 1.0 : (length - 1.0))
         }
@@ -263,7 +263,7 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
         count = n
         try cutWidth = ((n == fit.count) ? fit.width : truncate_truncatedWidth(ctx, nodeId, c, shaped, n))
         try x = units_add(c.x, cutWidth)
-        break loop35
+        break loop37
       }
       i -= 1.0
     }

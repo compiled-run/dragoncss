@@ -1382,8 +1382,8 @@ fun paintGradient_planBackground(bg: BackgroundPaint, faults: GradientFaults): B
   // ts: packages/layout/src/paint-gradient.ts:1151
   run {
     var i: Double = (jsLength(bg.layers) - 1.0)
-    loop4@ while ((i >= 0.0)) {
-      loop4_body@ do {
+    loop6@ while ((i >= 0.0)) {
+      loop6_body@ do {
         val layer: BackgroundLayer = jsUnwrap(jsAt(bg.layers, i))
         val pl: LayerPlacement = paintGradient_layerPlacement(box, layer.geometry, bg.zoom, (bg.lastIsBottom && (i == (jsLength(bg.layers) - 1.0))), faults)
         // ts: packages/layout/src/paint-gradient.ts:1154
@@ -1394,7 +1394,7 @@ fun paintGradient_planBackground(bg: BackgroundPaint, faults: GradientFaults): B
         val h: Double = paintGradient_luFloat(pl.tileHeight)
         // ts: packages/layout/src/paint-gradient.ts:1157
         if ((((!((w > 0.0) && (h > 0.0))) || (pl.destWidth <= 0.0)) || (pl.destHeight <= 0.0))) {
-          break@loop4_body
+          break@loop6_body
         }
         val desc: GradientDesc = paintGradient_gradientDesc(layer.image, w, h, bg.zoom)
         val sl: Double = paintGradient_luFloat(pl.srcX)
@@ -1404,7 +1404,7 @@ fun paintGradient_planBackground(bg: BackgroundPaint, faults: GradientFaults): B
         val lm: Mat? = paintGradient_matRectToRect(sl, st, paintGradient_f32((sl + paintGradient_luFloat(pl.destWidth))), paintGradient_f32((st + paintGradient_luFloat(pl.destHeight))), dl, dt, paintGradient_f32((dl + paintGradient_luFloat(pl.destWidth))), paintGradient_f32((dt + paintGradient_luFloat(pl.destHeight))))
         // ts: packages/layout/src/paint-gradient.ts:1165
         if ((lm == null)) {
-          break@loop4_body
+          break@loop6_body
         }
         val tileX: Double = (pl.destX - pl.srcX)
         val tileY: Double = (pl.destY - pl.srcY)
@@ -1498,8 +1498,8 @@ fun paintGradient_backgroundRow(plan: BackgroundPlan, py: Double, faults: Gradie
   // ts: packages/layout/src/paint-gradient.ts:1238
   run {
     var x: Double = (plan.left - plan.originX)
-    loop5@ while ((x < (plan.right - plan.originX))) {
-      loop5_body@ do {
+    loop7@ while ((x < (plan.right - plan.originX))) {
+      loop7_body@ do {
         var any: Boolean = false
         // ts: packages/layout/src/paint-gradient.ts:1240
         run {
@@ -1520,7 +1520,7 @@ fun paintGradient_backgroundRow(plan: BackgroundPlan, py: Double, faults: Gradie
           jsPush(out, 0.0)
           jsPush(out, 0.0)
           jsPush(out, 0.0)
-          break@loop5_body
+          break@loop7_body
         }
         val tx: Double = paintDither_ccTileStart(paintDither_ccTileIndex(x, ts), ts)
         // ts: packages/layout/src/paint-gradient.ts:1249
@@ -1549,26 +1549,26 @@ fun paintGradient_backgroundRow(plan: BackgroundPlan, py: Double, faults: Gradie
         // ts: packages/layout/src/paint-gradient.ts:1261
         run {
           var i: Double = 0.0
-          loop6@ while ((i < jsLength(plan.layers))) {
-            loop6_body@ do {
+          loop8@ while ((i < jsLength(plan.layers))) {
+            loop8_body@ do {
               val l: PlannedLayer = jsUnwrap(jsAt(plan.layers, i))
               // ts: packages/layout/src/paint-gradient.ts:1263
               if ((!paintGradient_inLayer(l.placement, x, y))) {
-                break@loop6_body
+                break@loop8_body
               }
               // ts: packages/layout/src/paint-gradient.ts:1264
               if ((!l.placement.direct)) {
                 val m: Mat? = paintGradient_tileMatrix(l.shader, 0.0, 0.0)
                 // ts: packages/layout/src/paint-gradient.ts:1267
                 if ((m == null)) {
-                  break@loop6_body
+                  break@loop8_body
                 }
                 dst = paintGradient_imageSrcOver(paintGradient_shadePixel(l.shader, jsUnwrap(m), (x - l.tileX), (y - l.tileY), 0.0, 0.0, paintGradient_CLEAR, faults), dst)
-                break@loop6_body
+                break@loop8_body
               }
               // ts: packages/layout/src/paint-gradient.ts:1271
               if ((!jsUnwrap(jsAt(valid, i)))) {
-                break@loop6_body
+                break@loop8_body
               }
               dst = paintGradient_shadePixel(l.shader, jsUnwrap(jsAt(mats, i)), x, y, tileX, tileY, dst, faults)
             } while (false)
