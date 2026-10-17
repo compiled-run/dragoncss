@@ -317,6 +317,8 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonColor = DragonRGBA8(0, 0, 0, 255)
   public private(set) var dragonTextColor: UIColor? = nil
   public private(set) var dragonFont: UIFont? = nil
+  /// TXT-W: Skia's fake-bold (size, scale) keys and values when Chrome draws this text in synthetic bold, else nil.
+  public private(set) var dragonSyntheticBold: (keys: [Double], values: [Double])? = nil
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
   private let glyphLayer = DragonGlyphLayer()
@@ -343,6 +345,22 @@ public final class DragonTextView: UIView, DragonNodeView {
     dragonColor = color
     dragonTextColor = dragonUIColor(color)
     accessibilityLabel = text
+  }
+
+  /// The synthetic bold from the program: every glyph outline is stroked and filled; advances are the face's.
+  public func dragonSetSyntheticBold(keys: [Double], values: [Double]) {
+    dragonSyntheticBold = (keys, values)
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// Skia's fake-bold stroke width in device px at a size in device px (SkFloatInterpFunc, then size * scale, in Float); 0 when upright.
+  func dragonBoldStroke(_ size: Double) -> Double {
+    guard let b = dragonSyntheticBold, b.keys.count == 2, b.values.count == 2 else { return 0 }
+    let s = Float(size), k0 = Float(b.keys[0]), k1 = Float(b.keys[1]), v0 = Float(b.values[0]), v1 = Float(b.values[1])
+    let f: Float
+    if s <= k0 { f = v0 } else if s > k1 { f = v1 } else { let t: Float = (s - k0) / (k1 - k0); let d: Float = (v1 - v0) * t; f = v0 + d }
+    return Double(s * f)
   }
 
   /// The engine's data at the device scale: the instance font and the placed lines.
@@ -374,10 +392,15 @@ public final class DragonTextView: UIView, DragonNodeView {
         let x1 = CGFloat((hi + dragonGlyphPlantDevicePx) / scale) + b.maxX
         r = r.union(CGRect(x: x0, y: y - b.maxY, width: x1 - x0, height: b.height))
       }
+      // A fake-bold stroke reaches past the outline by at most its miter limit (4) times half its width.
+      func grown(_ b: CGRect, _ sizeDevicePx: Double) -> CGRect {
+        let h = CGFloat(2 * dragonBoldStroke(sizeDevicePx) / scale)
+        return b.insetBy(dx: -h, dy: -h)
+      }
       for l in specs {
-        ink(l.xs, y(l), box)
+        ink(l.xs, y(l), grown(box, Double(font.pointSize) * scale))
         let k = CGFloat(l.ellipsisSize / scale) / font.pointSize
-        ink(l.ellipsisXs, y(l), CGRect(x: box.minX * k, y: box.minY * k, width: box.width * k, height: box.height * k))
+        ink(l.ellipsisXs, y(l), grown(CGRect(x: box.minX * k, y: box.minY * k, width: box.width * k, height: box.height * k), l.ellipsisSize))
       }
     }
     let s = CGFloat(scale)
@@ -395,27 +418,57 @@ public final class DragonTextView: UIView, DragonNodeView {
     ctx.setAllowsFontSubpixelPositioning(true)
     ctx.setShouldSubpixelPositionFonts(true)
     ctx.setShouldSubpixelQuantizeFonts(false)
-    ctx.setFillColor(color.cgColor)
+    // TXT-W: Skia strokes and fills a fake-bold outline as one path, so a translucent colour is drawn opaque in a layer at its alpha.
+    let bold = dragonSyntheticBold != nil
+    let alpha = color.cgColor.alpha
+    let paint = bold ? (color.cgColor.copy(alpha: 1) ?? color.cgColor) : color.cgColor
+    if bold && alpha < 1 {
+      ctx.setAlpha(alpha)
+      ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+    }
+    ctx.setFillColor(paint)
+    ctx.setStrokeColor(paint)
+    // y is up from the baseline here: a fake-bold run is each glyph's outline at its origin, stroked with a miter join and filled.
+    func draw(_ f: CTFont, _ glyphs: [CGGlyph], _ at: [CGPoint], _ sizeDevicePx: Double) {
+      let w = dragonBoldStroke(sizeDevicePx)
+      if w <= 0 {
+        CTFontDrawGlyphs(f, glyphs, at, glyphs.count, ctx)
+        return
+      }
+      let outline = CGMutablePath()
+      for (g, p) in zip(glyphs, at) {
+        var move = CGAffineTransform(translationX: p.x, y: p.y)
+        if let path = CTFontCreatePathForGlyph(f, g, &move) { outline.addPath(path) }
+      }
+      ctx.addPath(outline)
+      ctx.setLineWidth(CGFloat(w / scale))
+      ctx.setLineJoin(.miter)
+      ctx.setMiterLimit(4)
+      ctx.drawPath(using: .fillStroke)
+    }
     for l in specs {
       ctx.saveGState()
       ctx.textMatrix = .identity
       ctx.translateBy(x: 0, y: CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale))
       ctx.scaleBy(x: 1, y: -1)
       let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
-      if !l.glyphs.isEmpty { CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx) }
+      if !l.glyphs.isEmpty { draw(ct, l.glyphs, positions, Double(font.pointSize) * scale) }
       if !l.ellipsisGlyphs.isEmpty {
         let dots = l.ellipsisXs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
-        CTFontDrawGlyphs(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisGlyphs.count, ctx)
+        draw(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisSize)
       }
       ctx.restoreGState()
     }
+    if bold && alpha < 1 { ctx.endTransparencyLayer() }
   }
 
   public func dragonApplied() -> DumpJsonObject {
-    return [
+    var out: DumpJsonObject = [
       ("font", dragonFont.map { DumpJson.object([("name", .string($0.fontName)), ("pointSize", .number(Double($0.pointSize)))]) } ?? .null),
       ("foregroundColor", dragonColorJson(dragonTextColor)),
     ]
+    if let b = dragonSyntheticBold { out.append(("syntheticBold", .object([("keys", .array(b.keys.map { DumpJson.number($0) })), ("values", .array(b.values.map { DumpJson.number($0) }))]))) }
+    return out
   }
 }
 `;
@@ -1268,6 +1321,11 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var specs: List<DragonLineSpec> = emptyList()
     private set
+  /** TXT-W: Skia's fake-bold (size, scale) keys and values when Chrome draws this text in synthetic bold, else null. */
+  var dragonBoldKeys: DoubleArray? = null
+    private set
+  var dragonBoldValues: DoubleArray? = null
+    private set
   private var font: android.graphics.fonts.Font? = null
 
   /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
@@ -1276,6 +1334,38 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     dragonFamily = family
     dragonColor = color
     contentDescription = text
+  }
+
+  /** The synthetic bold from the program: every glyph outline is stroked and filled; advances are the face's. */
+  fun dragonSetSyntheticBold(keys: DoubleArray, values: DoubleArray) {
+    dragonBoldKeys = keys
+    dragonBoldValues = values
+    invalidate()
+  }
+
+  /** Skia's fake-bold stroke width in device px at a text size in device px (SkFloatInterpFunc, then size * scale, in Float); 0 when upright. */
+  fun dragonBoldStroke(size: Float): Float {
+    val k = dragonBoldKeys ?: return 0f
+    val v = dragonBoldValues ?: return 0f
+    if (k.size != 2 || v.size != 2) return 0f
+    val k0 = k[0].toFloat()
+    val k1 = k[1].toFloat()
+    val v0 = v[0].toFloat()
+    val v1 = v[1].toFloat()
+    val f = if (size <= k0) v0 else if (size > k1) v1 else { val t: Float = (size - k0) / (k1 - k0); val d: Float = (v1 - v0) * t; v0 + d }
+    return size * f
+  }
+
+  /** The paint a run is drawn with: a fake-bold run strokes and fills its outlines as one path with a miter join, as Skia's fake bold. */
+  private fun dragonRunPaint(p: Paint): Paint {
+    val w = dragonBoldStroke(p.textSize)
+    if (w <= 0f) return p
+    return Paint(p).apply {
+      style = Paint.Style.FILL_AND_STROKE
+      strokeWidth = w
+      strokeJoin = Paint.Join.MITER
+      strokeMiter = 4f
+    }
   }
 
   /** The engine's data at the device scale: the instance text size and the placed lines. */
@@ -1299,7 +1389,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
           positions[2 * k] = (xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
           positions[2 * k + 1] = y
         }
-        canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, p)
+        canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, dragonRunPaint(p))
       }
       draw(l.glyphs, l.xs, paint)
       if (l.ellipsisGlyphs.isNotEmpty()) draw(l.ellipsisGlyphs, l.ellipsisXs, TextPaint(paint).apply { textSize = l.ellipsisSize.toFloat() })
@@ -1311,7 +1401,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     return listOf(
       Pair("textPaint.typeface", if (face != null && face === DragonBridge.shared(context).typeface) DumpJson.Obj(listOf(Pair("typeface", DumpJson.Str("dragon:" + dragonFamily)), Pair("textSize", DumpJson.Num(paint.textSize.toDouble())))) else DumpJson.Null),
       Pair("textPaint.color", dragonColorJson(paint.color)),
-    )
+    ) + (if (dragonBoldKeys != null && dragonBoldValues != null) listOf(Pair("syntheticBold", DumpJson.Obj(listOf(Pair("keys", DumpJson.Arr(dragonBoldKeys!!.map { DumpJson.Num(it) })), Pair("values", DumpJson.Arr(dragonBoldValues!!.map { DumpJson.Num(it) })))))) else emptyList())
   }
 }
 `;

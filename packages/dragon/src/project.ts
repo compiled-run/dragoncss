@@ -71,6 +71,7 @@ import type { EngineFace } from './lower/ios-layout.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
 import { undecidedScrollContainers } from './lower/scroll-decidable.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
+import type { BoldPlants } from './lower/native-program.ts';
 import type { BandAnalysis } from './lower/band-program.ts';
 import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions } from './lower/band-program.ts';
 import type { rtBand } from '@dragon/layout';
@@ -209,6 +210,8 @@ export type InternalRecord = {
   readonly laneOnlyNative: readonly ('ios' | 'android')[];
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
   readonly images: ReadonlyMap<string, Uint8Array>;
+  /** TXT-W: the synthetic-bold plants, which the native lowering reads (native-program.ts textPaint). */
+  readonly boldPlants: BoldPlants;
 };
 
 /**
@@ -1530,6 +1533,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       },
       laneOnlyNative,
       images: images === null ? new Map() : images.bytes,
+      boldPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked },
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,

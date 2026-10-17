@@ -42,7 +42,7 @@ import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { analyzeDecorations } from './text-decoration.ts';
-import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
+import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
@@ -52,7 +52,7 @@ import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
-import { checkLineClamp } from './line-clamp.ts';
+import { checkLineClamp, lineClampOf } from './line-clamp.ts';
 import { checkResize } from './resize.ts';
 import { checkTouchAction } from './touch-action.ts';
 
@@ -636,8 +636,8 @@ const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 're
 
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
-// minimum logical font size clamps, and text without a real bundled face whose computed font-weight or font-style Chrome draws
-// synthesized (Ahem under a heading, b, strong, em, i or address, or an author weight of 600 and up).
+// minimum logical font size clamps, and text without a real bundled face whose computed font-style Chrome draws synthesized (Ahem
+// under em, i or address), or whose synthetic bold sits in a line Chrome may end with an ellipsis.
 function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFsFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
@@ -707,7 +707,23 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         }
       }
     }
-    const synthetic = here ? [] : syntheticTextFont(el, faults);
+    const synthetic = here ? [] : syntheticTextFont(el);
+    // TXT-W: native draws Ahem's synthetic bold (native-program.ts synthetic-bold) but for a line-ending ellipsis, which Chrome draws in
+    // the block container's font while native draws it in the text's own paint.
+    const ellipsisBlock = here || synthetic.length > 0 ? undefined : [...ancestors, el].reverse().find(endsLinesWithEllipsis);
+    if (ellipsisBlock !== undefined && (synthesizesBold(el.props) || synthesizesBold(ellipsisBlock.props))) {
+      for (const c of el.children) {
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
+            origin: c.node.node.origin,
+            target: t,
+            message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is inside <${ellipsisBlock.element.tag}> ${ellipsisBlock.element.address} (font-weight ${serializeFontWeight(textFontOfProps(ellipsisBlock.props).weight)}), whose lines may end in an ellipsis, and Chrome draws one of them in synthetic bold; Chrome draws the ellipsis in the block's own font, ${t} in the text's paint, and no fixture proves a synthetic-bold ellipsis`,
+            manual: `Give ${c.node.address} and ${ellipsisBlock.element.address} a font-weight below 600, or remove text-overflow: ellipsis and -webkit-line-clamp from ${ellipsisBlock.element.address}.`,
+          })));
+        }
+      }
+    }
     if (synthetic.length > 0) {
       const chain = [...ancestors, el];
       const sources = synthetic.map(({ property, text }) => {
@@ -735,16 +751,20 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
   walk(root, [], false, false);
 }
 
-/** The computed font-weight and font-style Chrome synthesizes over a single regular face (600 and up, slope 14 and up), where font-synthesis allows it. */
-function syntheticTextFont(el: ResolvedElement, faults: TxtWFaults): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
-  const out: { property: 'font-weight' | 'font-style'; text: string }[] = [];
+/**
+ * The computed font-style Chrome synthesizes over a single regular face (slope 14 and up) where font-synthesis-style allows it, with
+ * the font-weight when Chrome also synthesizes the bold (600 and up). Synthetic bold alone is drawn natively (native-program.ts).
+ */
+function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
   const font = textFontOfProps(el.props);
   const allowed = synthesisAllowedOf(el.props);
-  if (allowed.weight && font.weight >= (faults.ahemSyntheticBoldFrom700 ? 700 : 600)) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
   const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
-  if (allowed.style && slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
-  return out;
+  if (!allowed.style || slope < 14) return [];
+  return [...(synthesizesBold(el.props) ? [{ property: 'font-weight' as const, text: serializeFontWeight(font.weight) }] : []), { property: 'font-style', text: serializeFontStyle(font.style) }];
 }
+
+/** Whether a block may end a line in an ellipsis: text-overflow other than clip, or a -webkit-line-clamp container. */
+const endsLinesWithEllipsis = (el: ResolvedElement): boolean => valueToString((el.props.get('text-overflow') as ResolvedValue).value) !== 'clip' || lineClampOf(el) > 0;
 
 /** The support profile each target is checked against, or null when the profiles are not enforced. */
 export type ProfileOf = ((target: string) => SupportProfile) | null;

@@ -3178,6 +3178,37 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkScalar.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2010 The Android Open Source Project",
+      "fileSha256": "04472dbece8a2df8c23045eb8898dbd6f066382ef48ff7636ee214f216edee05",
+      "headerSha256": "72a4d64e743df1cea14947d6bc934e46c03211531a0631c56f75ef8c41b60a4c",
+      "ranges": [
+        { "lines": "11-37", "symbol": "SkFloatInterpFunc", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/synthetic-bold.ts", "symbol": "syntheticBoldStroke", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkScalerContext.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "c378bcb516f7b3a46dcbe972b06727d55e23ad5b4a3adbba6749ab847f3277a5",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "1017-1039", "symbol": "useStrokeForFakeBold", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/synthetic-bold.ts", "symbol": "SYNTHETIC_BOLD_KEYS", "use": "reference" },
+        { "file": "packages/dragon/src/fonts/synthetic-bold.ts", "symbol": "syntheticBoldStroke", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/core/SkScan_AAAPath.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -3256,6 +3287,22 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkTextFormatParams.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2010 The Android Open Source Project",
+      "fileSha256": "e7bb5d61609e7de1a33c298dceb3d6c3a5b68e912ba6545ff057bda81f6c0a38",
+      "headerSha256": "72a4d64e743df1cea14947d6bc934e46c03211531a0631c56f75ef8c41b60a4c",
+      "ranges": [
+        { "lines": "15-29", "symbol": "kStdFakeBoldInterpKeys", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/synthetic-bold.ts", "symbol": "SYNTHETIC_BOLD_KEYS", "use": "port" },
+        { "file": "packages/dragon/src/fonts/synthetic-bold.ts", "symbol": "SYNTHETIC_BOLD_VALUES", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/opts/SkBlitRow_opts.h",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -3299,6 +3346,21 @@
       "dragon": [
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/ports/SkTypeface_mac_ct.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "0dd22ab53ed814d2d44307e0d2353717ae06e4c34d75a8dcfdbbbe6a9c2775fa",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "887-888", "symbol": "onFilterRec", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/synthetic-bold.ts", "symbol": "SYNTHETIC_BOLD_KEYS", "use": "reference" }
       ]
     },
     {

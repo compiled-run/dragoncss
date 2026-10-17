@@ -338,6 +338,14 @@ export function weightOf(v: ResolvedValue): number {
   return v.value.value;
 }
 
+/**
+ * Whether Chrome draws an element's text over a face below weight 600 (Ahem's one regular face) in synthetic bold: font-synthesis-weight
+ * allows it and the computed weight is 600 or more (fonts/weight.ts synthesisOf, kBoldThreshold).
+ */
+export function synthesizesBold(props: ReadonlyMap<Longhand, ResolvedValue>, from = 600): boolean {
+  return synthesisAllowedOf(props).weight && textFontOfProps(props).weight >= from;
+}
+
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).
 export function blockifyRoot(v: ResolvedValue): ResolvedValue {
   return v.value.kind === 'keyword' && v.value.value === 'inline' ? { ...v, value: { kind: 'keyword', value: 'block' } } : v;

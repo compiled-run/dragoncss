@@ -88,11 +88,22 @@ describe('the refusals that stay', () => {
     expect(c.outputs.ios.kind).toBe('blocked');
   });
 
-  it('Ahem text in b, strong, em or i keeps the UA-font refusal on ios and android, naming the tag, and is ready on web', () => {
-    for (const [tag, set] of [['b', 'font-weight: 700'], ['strong', 'font-weight: 700'], ['em', 'font-style: italic'], ['i', 'font-style: italic']] as const) {
+  it('Ahem text in em or i keeps the UA-font refusal on ios and android, naming the tag, and is ready on web', () => {
+    for (const [tag, set] of [['em', 'font-style: italic'], ['i', 'font-style: italic']] as const) {
       const c = compile(retag(inputOf('inline-tags'), [['span', tag]]));
       expect(listed(c), tag).toEqual([`android DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`, `ios DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`]);
       expect(c.outputs.web.kind, tag).toBe('ready');
+    }
+  });
+
+  it('Ahem text in b or strong is drawn emboldened on ios and android since TXT-W (text-weight-bold-ahem proves the stroke against Chrome)', () => {
+    // Was refused with em and i: native drew Ahem unemboldened where Chrome synthesizes the bold; the native program now strokes it.
+    for (const tag of ['b', 'strong']) {
+      const c = compile(retag(inputOf('inline-tags'), [['span', tag]]));
+      expect(listed(c), tag).toEqual([]);
+      const p = dragon.nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      expect(p.programs.uikit.nodes.find((n) => n.id === 's:text0')?.writes.filter((w) => w.kind === 'synthetic-bold').map((w) => w.key), tag).toEqual(['syntheticBold']);
     }
   });
 

@@ -156,9 +156,9 @@ describe('Ahem: one regular face', () => {
       expect(fonts(`.a { font-weight: ${v}; }`).map((d) => d.split(' ').slice(0, 3).join(' ')), v).toEqual(['DRAGON_UNSUPPORTED_VALUE ios font-weight:']);
     }
   });
-  it('refuses on ios the weights and slopes Chrome synthesizes, naming the author value, and accepts the rest', () => {
-    expect(fonts('.a { font-weight: 600; }')).toEqual(["DRAGON_UNSUPPORTED_FONT ios text d:text0 inherits font-weight: 600 from the author's style on <div> d"]);
+  it('refuses on ios the slopes Chrome synthesizes, naming the author value, and accepts the rest and every weight', () => {
     expect(fonts('.a { font-style: oblique 20deg; }')).toEqual(["DRAGON_UNSUPPORTED_FONT ios text d:text0 inherits font-style: oblique 20deg from the author's style on <div> d"]);
-    for (const v of ['font-weight: 599.9', 'font-weight: 100', 'font-style: oblique 13deg', 'font-style: oblique -30deg', 'font-weight: lighter']) expect(fonts(`.a { ${v}; }`), v).toEqual([]);
+    // TXT-W: a weight Chrome synthesizes (600) is drawn emboldened natively (text-weight-bold-ahem.test.ts), so it is no longer refused.
+    for (const v of ['font-weight: 599.9', 'font-weight: 100', 'font-style: oblique 13deg', 'font-style: oblique -30deg', 'font-weight: lighter', 'font-weight: 600']) expect(fonts(`.a { ${v}; }`), v).toEqual([]);
   });
 });
