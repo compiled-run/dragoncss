@@ -342,6 +342,17 @@ export function synthesizesOblique(props: ReadonlyMap<Longhand, ResolvedValue>):
 }
 
 /**
+ * Whether Chrome draws an element's text over a face without smcp (Ahem) in synthesized small capitals: font-variant-caps is
+ * small-caps and font-synthesis-small-caps allows it (open_type_caps_support.cc OpenTypeCapsSupport::SyntheticSmallCapsAllowed, and
+ * DetermineFontSupport's kLowerToSmallCaps where the face has no smcp). Lowercase runs are then
+ * uppercased at 70% of the size (text.ts smallCapsFontSize); a real face may have smcp, which the analysis refuses.
+ */
+export function synthesizesSmallCaps(props: ReadonlyMap<Longhand, ResolvedValue>): boolean {
+  const caps = props.get('font-variant-caps') as ResolvedValue;
+  return valueToString(caps.value) === 'small-caps' && valueToString((props.get('font-synthesis-small-caps') as ResolvedValue).value) !== 'none';
+}
+
+/**
  * The shear Chrome draws a synthetic oblique with, in x per unit of height above the baseline: Skia's SkFont::setSkewX(-1/4) in
  * y-down glyph space (font_platform_data_mac.mm CreateSkFont, line 256), the same at every angle.
  */

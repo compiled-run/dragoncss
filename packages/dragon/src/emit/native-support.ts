@@ -280,6 +280,8 @@ public struct DragonLineSpec {
   public let ellipsisGlyphs: [CGGlyph]
   public let ellipsisXs: [Double]
   public let ellipsisSize: Double
+  /// Small caps (font-variant-caps): each glyph's instance size in device px, 0 for the view's font; empty when every glyph is in it.
+  public let sizes: [Double]
 }
 
 /// Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink.
@@ -416,12 +418,29 @@ public final class DragonTextView: UIView, DragonNodeView {
       // y is up from the baseline here and every glyph origin is at y 0, so the shear moves only the outlines.
       if dragonGlyphShear != 0 { ctx.concatenate(CGAffineTransform(a: 1, b: 0, c: CGFloat(dragonGlyphShear), d: 1, tx: 0, ty: 0)) }
       let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
+      if !l.sizes.isEmpty {
+        dragonDrawSized(ct, l, positions, ctx)
+        ctx.restoreGState()
+        continue
+      }
       if !l.glyphs.isEmpty { CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx) }
       if !l.ellipsisGlyphs.isEmpty {
         let dots = l.ellipsisXs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
         CTFontDrawGlyphs(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisGlyphs.count, ctx)
       }
       ctx.restoreGState()
+    }
+  }
+
+  /// Small caps: each run of glyphs at one instance size is drawn with the font at that size (the compiler refuses an ellipsis with it).
+  func dragonDrawSized(_ ct: CTFont, _ l: DragonLineSpec, _ positions: [CGPoint], _ ctx: CGContext) {
+    var k = 0
+    while k < l.glyphs.count {
+      var e = k + 1
+      while e < l.glyphs.count && l.sizes[e] == l.sizes[k] { e += 1 }
+      let f = l.sizes[k] == 0 ? ct : CTFontCreateCopyWithAttributes(ct, CGFloat(l.sizes[k] / scale), nil, nil)
+      CTFontDrawGlyphs(f, Array(l.glyphs[k..<e]), Array(positions[k..<e]), e - k, ctx)
+      k = e
     }
   }
 
@@ -819,16 +838,31 @@ public final class DragonTree {
           // Letter and word spacing follow each glyph as the engine adds them (text.ts letterSpacingAfter and wordSpacingAfter, 16.16).
           let spacing16 = try units_textRunLayoutUnit(font.letterSpacing)
           let word16 = try units_textRunLayoutUnit(font.wordSpacing)
+          // Small caps: a lowercase letter is drawn uppercased at the small-caps size (text.ts smallCapsCodePoint and smallCapsFontSize).
+          let smallSize = try font.smallCaps ? text_smallCapsFontSize(font.size) : runSize
           var pen: Float = 0
           for (n, sc) in Array(text.description.unicodeScalars)[Int(from)..<Int(to)].enumerated() {
-            let gid = bridge.glyph(Int(sc.value))
+            let drawn = try font.smallCaps ? text_smallCapsCodePoint(Double(sc.value)) : Double(sc.value)
+            let gid = bridge.glyph(dragonCheckedInt(drawn, "\(id) small-caps code point"))
             glyphs.append(CGGlyph(gid))
             xs.append(x + Double(pen) + shift(n))
             let spacing = try text_letterSpacingAfter(Double(sc.value), spacing16) + text_wordSpacingAfter(Double(sc.value), word16)
-            pen = pen + Float(runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm) + Float(spacing / 65536)
+            pen = pen + Float((drawn == Double(sc.value) ? runSize : smallSize) * bridge.advanceUnits(gid) / bridge.data.unitsPerEm) + Float(spacing / 65536)
           }
         }
         return (glyphs, xs)
+      }
+      // Small caps: each glyph's instance size in device px, 0 for the view's font (none unless the font has small caps).
+      func glyphSizes(_ text: JsString, _ font: TextFont, _ from: Double, _ to: Double, _ what: String) throws -> [Double] {
+        if !font.smallCaps || from >= to { return [] }
+        let runSize = try units_platformFontSize(font.size)
+        if bridge.shaped {
+          let pg = try shaping_pieceGlyphs(measurer, text, font, from, to)
+          guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) \(what): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
+          return g.sizes.items.map { $0 == runSize ? 0 : $0 }
+        }
+        let small = try text_smallCapsFontSize(font.size)
+        return try Array(text.description.unicodeScalars)[Int(from)..<Int(to)].map { try text_smallCapsCodePoint(Double($0.value)) == Double($0.value) ? 0 : small }
       }
       let leafFont = try inline_leafFontOf(leaves[li])
       // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
@@ -869,7 +903,7 @@ public final class DragonTree {
             geometryCps.append(shown.map { Double($0.value) })
             geometryPens.append(run.xs.map { $0 + e[0] })
           }
-          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize))
+          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize, sizes: try glyphSizes(leaves[li].text, leafFont, piece.start, paintEnd, "line \(k)")))
         }
         }
       }
@@ -1260,7 +1294,7 @@ ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonCli
  * baseline in device px from the view's top, and the UTF-16 offsets of the line in the node's text. A truncated line (TXT2-f) also
  * carries its ellipsis glyphs and their origins, drawn at the ellipsis font's instance size in device px (0 when it has none).
  */
-class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int, val ellipsisGlyphs: IntArray, val ellipsisXs: DoubleArray, val ellipsisSize: Double)
+class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int, val ellipsisGlyphs: IntArray, val ellipsisXs: DoubleArray, val ellipsisSize: Double, val sizes: DoubleArray = DoubleArray(0))
 
 /** Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink. */
 const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0
@@ -1330,6 +1364,18 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
         if (dragonGlyphShear != 0.0) canvas.skew((-dragonGlyphShear).toFloat(), 0f)
         canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, p)
         canvas.restore()
+      }
+      // Small caps (font-variant-caps): each run of glyphs at one instance size (0 for the view's) is drawn at that text size; the
+      // compiler refuses an ellipsis with it.
+      if (l.sizes.isNotEmpty()) {
+        var k = 0
+        while (k < l.glyphs.size) {
+          var e = k + 1
+          while (e < l.glyphs.size && l.sizes[e] == l.sizes[k]) e++
+          draw(l.glyphs.copyOfRange(k, e), l.xs.copyOfRange(k, e), if (l.sizes[k] == 0.0) paint else TextPaint(paint).apply { textSize = l.sizes[k].toFloat() })
+          k = e
+        }
+        continue
       }
       draw(l.glyphs, l.xs, paint)
       if (l.ellipsisGlyphs.isNotEmpty()) draw(l.ellipsisGlyphs, l.ellipsisXs, TextPaint(paint).apply { textSize = l.ellipsisSize.toFloat() })
@@ -1518,6 +1564,8 @@ import dev.dragon.layout.ScrollRangesResult_refused
 import dev.dragon.layout.shaping_pieceGlyphs
 import dev.dragon.layout.snap_snapEdges
 import dev.dragon.layout.text_letterSpacingAfter
+import dev.dragon.layout.text_smallCapsCodePoint
+import dev.dragon.layout.text_smallCapsFontSize
 import dev.dragon.layout.text_wordSpacingAfter
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
@@ -1810,14 +1858,30 @@ class DragonTree(val context: Context) {
         // Letter and word spacing follow each glyph as the engine adds them (text.ts letterSpacingAfter and wordSpacingAfter, 16.16).
         val spacing16 = units_textRunLayoutUnit(font.letterSpacing)
         val word16 = units_textRunLayoutUnit(font.wordSpacing)
+        // Small caps: a lowercase letter is drawn uppercased at the small-caps size (text.ts smallCapsCodePoint and smallCapsFontSize).
+        val smallSize = if (font.smallCaps) text_smallCapsFontSize(font.size) else runSize
         var pen = 0f
         for ((n, cp) in cps.withIndex()) {
-          val gid = bridge.glyph(cp)
+          val drawn = if (font.smallCaps) dragonCheckedInt(text_smallCapsCodePoint(cp.toDouble()), id + " small-caps code point") else cp
+          val gid = bridge.glyph(drawn)
           glyphs[n] = gid
           xs[n] = x + pen.toDouble() + shift(n)
-          pen = pen + (runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + ((text_letterSpacingAfter(cp.toDouble(), spacing16) + text_wordSpacingAfter(cp.toDouble(), word16)) / 65536).toFloat()
+          pen = pen + ((if (drawn == cp) runSize else smallSize) * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + ((text_letterSpacingAfter(cp.toDouble(), spacing16) + text_wordSpacingAfter(cp.toDouble(), word16)) / 65536).toFloat()
         }
         return Pair(glyphs, xs)
+      }
+      // Small caps: each glyph's instance size in device px, 0 for the view's font (none unless the font has small caps).
+      fun glyphSizes(text: String, font: TextFont, from: Double, to: Double, what: String): DoubleArray {
+        if (!font.smallCaps || from >= to) return DoubleArray(0)
+        val runSize = units_platformFontSize(font.size)
+        if (bridge.shaped) {
+          val pg = shaping_pieceGlyphs(measurer, text, font, from, to)
+          val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " " + what + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
+          return DoubleArray(g.sizes.size) { if (g.sizes[it] == runSize) 0.0 else g.sizes[it] }
+        }
+        val small = text_smallCapsFontSize(font.size)
+        val cps = text.codePoints().toArray().copyOfRange(from.toInt(), to.toInt())
+        return DoubleArray(cps.size) { if (text_smallCapsCodePoint(cps[it].toDouble()) == cps[it].toDouble()) 0.0 else small }
       }
       val leafFont = inline_leafFontOf(leaves[li])
       // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
@@ -1862,7 +1926,7 @@ class DragonTree(val context: Context) {
             geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
             geometryPens.add(DoubleArray(run.second.size) { run.second[it] + e[0] })
           }
-          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize))
+          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize, glyphSizes(leafText, leafFont, piece.start, paintEnd, "line " + k)))
         }
       }
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)
@@ -2439,7 +2503,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   };
   const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);
   const inline = (c: import('@dragon/layout').InlineChild): string => {
-    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${engineValue(lang, c.wordSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)})`;
+    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${engineValue(lang, c.wordSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)}, ${String(c.smallCaps)})`;
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };

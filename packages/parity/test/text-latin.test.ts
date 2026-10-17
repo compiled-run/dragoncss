@@ -63,9 +63,9 @@ const changedBy = (faults: EngineFaults): string[] => {
   return all.filter((v) => JSON.stringify(boxesOf(layoutWithFaults(v.input, m, faults))) !== JSON.stringify(v.output)).map((v) => v.file);
 };
 /** T082's committed Chrome widths of Ahem nowrap runs: X repeated 1 to N times at each size. */
-const ahemRuns = (): { font: { family: 'Ahem'; size: number; letterSpacing: number; wordSpacing: number }; text: string; lu: number }[] => {
+const ahemRuns = (): { font: { family: 'Ahem'; size: number; letterSpacing: number; wordSpacing: number; smallCaps: boolean }; text: string; lu: number }[] => {
   const cap = JSON.parse(readFileSync(repoPath('docs/research/text-spike/metric-rounding/captures/ahem-advances.json'), 'utf8')) as { widthsLayoutUnits: Record<string, number[]> };
-  return Object.entries(cap.widthsLayoutUnits).flatMap(([size, widths]) => widths.map((lu, i) => ({ font: { family: 'Ahem' as const, size: Number(size), letterSpacing: 0, wordSpacing: 0 }, text: 'X'.repeat(i + 1), lu })));
+  return Object.entries(cap.widthsLayoutUnits).flatMap(([size, widths]) => widths.map((lu, i) => ({ font: { family: 'Ahem' as const, size: Number(size), letterSpacing: 0, wordSpacing: 0, smallCaps: false }, text: 'X'.repeat(i + 1), lu })));
 };
 /** The table tags of a TrueType file's table directory. */
 const tableTags = (bytes: Uint8Array): string[] => {
@@ -109,7 +109,7 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
     let ahemMisses = 0;
     for (const [size, widths] of Object.entries(cap.widthsLayoutUnits)) {
       widths.forEach((lu, i) => {
-        const font = { family: 'Ahem' as const, size: Number(size), letterSpacing: 0, wordSpacing: 0 };
+        const font = { family: 'Ahem' as const, size: Number(size), letterSpacing: 0, wordSpacing: 0, smallCaps: false };
         const text = 'X'.repeat(i + 1);
         const s = shaped.measure(text, font);
         const a = reference.measurer.measure(text, font);
@@ -123,9 +123,9 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
 
   it('refuses a face the host was never given, and a feature list that is not whole records', () => {
     const m = referenceShapedMeasurer();
-    const r = m.measure('X', { family: 'sha256:0000' as 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0 });
+    const r = m.measure('X', { family: 'sha256:0000' as 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
     expect(r.ok).toBe(false);
-    expect(() => m.metrics({ family: 'sha256:0000' as 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0 })).toThrow(/no bundled face/);
+    expect(() => m.metrics({ family: 'sha256:0000' as 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false })).toThrow(/no bundled face/);
     expect(() => hostShaper.shape(AHEM_FACE_ID, 16, 'X', 0, 1, 'Latn', false, 'en-US', [1, 2, 3])).toThrow(/whole records/);
   });
 
@@ -193,12 +193,12 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
       const skipped: EngineFaults = { ...NO_ENGINE_FAULTS, latinCheckSkipped: true };
       const shaped = layoutWithFaults(input, referenceShapedMeasurer(skipped), skipped);
       expect(shaped.kind === 'unsupported' && shaped.unsupported.code, foreign).toBe('line-break');
-      expect(referenceShapedMeasurer(skipped).measure(foreign, { family: 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0 }).ok, foreign).toBe(true);
+      expect(referenceShapedMeasurer(skipped).measure(foreign, { family: 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).ok, foreign).toBe(true);
     }
     const m = referenceShapedMeasurer();
-    expect(m.measure('Xé X', { family: 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0 }).ok).toBe(true);
-    expect(m.measure('\u03a9', { family: 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0 })).toEqual({ ok: false, code: 'text-script', reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
-    expect(m.measureRange('X\u03a9', 0, 1, { family: 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0 })).toMatchObject({ ok: false, code: 'text-script' });
+    expect(m.measure('Xé X', { family: 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).ok).toBe(true);
+    expect(m.measure('\u03a9', { family: 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false })).toEqual({ ok: false, code: 'text-script', reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
+    expect(m.measureRange('X\u03a9', 0, 1, { family: 'Ahem', size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false })).toMatchObject({ ok: false, code: 'text-script' });
   });
 
   it('pins latinCheckSkipped inert on every committed vector, which is all Latin, Common and Inherited text', () => {
@@ -240,7 +240,7 @@ const WHITE_SPACE_AHEM_IDS = ['white-space-preserve', 'white-space-wrap'];
  * and so do TXT2-g's -webkit-line-clamp cases (fixture-groups/line-clamp.ts, Ahem, one direction each) and TXT-W's Ahem case
  * (text-weight-ahem, fixture-groups/text-weight.ts), and so do touch-action-values and FX's filter-none (fixture-groups/filter.ts).
  */
-const LATER_NATIVE_IDS = ['clip-path-basic', 'clip-path-basic-rtl', 'clip-path-nested', 'clip-path-nested-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'bg-position-keywords', 'bg-position-keywords-rtl', 'clip-rect-basic', 'clip-rect-basic-rtl', 'clip-rect-nested', 'clip-rect-nested-rtl', 'filter-none', 'filter-none-rtl', 'text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl', 'text-break-ahem', 'text-break-ahem-rtl', 'line-clamp-lines', 'line-clamp-nested', 'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-stretch-ahem', 'text-font-stretch-ahem-rtl', 'text-font-features-ahem', 'text-font-features-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-weight-ahem', 'text-weight-ahem-rtl', 'touch-action-values', 'touch-action-values-rtl', 'radius-logical', 'radius-logical-rtl', 'text-decoration-native-values', 'text-decoration-native-values-rtl', 'text-fill-stroke-initial', 'text-fill-stroke-initial-rtl', 'text-shadow-none', 'text-shadow-none-rtl', 'alias-background', 'alias-background-rtl', 'shadow-webkit-alias', 'shadow-webkit-alias-rtl', 'svg-opacity', 'svg-opacity-rtl', 'text-style-ahem', 'text-style-ahem-rtl', 'text-decoration-native-styles', 'text-decoration-native-styles-rtl', 'alias-font', 'alias-font-rtl', 'mask-initial', 'mask-initial-rtl', 'svg-paint-order', 'svg-paint-order-rtl'];
+const LATER_NATIVE_IDS = ['clip-path-basic', 'clip-path-basic-rtl', 'clip-path-nested', 'clip-path-nested-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'bg-position-keywords', 'bg-position-keywords-rtl', 'clip-rect-basic', 'clip-rect-basic-rtl', 'clip-rect-nested', 'clip-rect-nested-rtl', 'filter-none', 'filter-none-rtl', 'text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl', 'text-break-ahem', 'text-break-ahem-rtl', 'line-clamp-lines', 'line-clamp-nested', 'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-variant-caps-ahem', 'text-font-variant-caps-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-stretch-ahem', 'text-font-stretch-ahem-rtl', 'text-font-features-ahem', 'text-font-features-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-weight-ahem', 'text-weight-ahem-rtl', 'touch-action-values', 'touch-action-values-rtl', 'radius-logical', 'radius-logical-rtl', 'text-decoration-native-values', 'text-decoration-native-values-rtl', 'text-fill-stroke-initial', 'text-fill-stroke-initial-rtl', 'text-shadow-none', 'text-shadow-none-rtl', 'alias-background', 'alias-background-rtl', 'shadow-webkit-alias', 'shadow-webkit-alias-rtl', 'svg-opacity', 'svg-opacity-rtl', 'text-style-ahem', 'text-style-ahem-rtl', 'text-decoration-native-styles', 'text-decoration-native-styles-rtl', 'alias-font', 'alias-font-rtl', 'mask-initial', 'mask-initial-rtl', 'svg-paint-order', 'svg-paint-order-rtl'];
 const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-indent-latin', 'text-indent-latin-rtl', 'text-break-lato'];
 
 const specOf = (id: string): FixtureSpec => {
