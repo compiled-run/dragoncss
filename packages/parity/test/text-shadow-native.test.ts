@@ -6,7 +6,7 @@
 // dilates, and no glyph, box edge, other box or other line's shadow is near) the largest per-channel difference must be 0, the
 // text-shadow rule's channel delta (GATE_CHANNEL_DELTA). Every line needs clean pixels and sample points at every DPR. The planted
 // fault sigmaHalfBlur (sigma from the css blur, not the device blur) and the text-shadow-offset-1 raster plant (device-run.ts
-// PLANT_CASES: every shadow view one device px right) must each change a clean pixel at every DPR.
+// PLANT_CASES: every shadow drawn one device px lower) must each change a clean pixel at every DPR.
 import { describe, expect, it } from 'vitest';
 import { NO_SHADOW_FAULTS, textShadowLayerOver } from '@dragon/layout';
 import type { BackdropFill, ShadowLayer } from '@dragon/layout';
@@ -82,8 +82,8 @@ function measure(caseId: string, p: NativeProgram, viewport: { readonly width: n
         m.worst = `${l.id} ${x},${y} Chrome ${JSON.stringify(got)} reference ${JSON.stringify(want)}`;
       }
       if (platformOver(half, x, y, under).some((v, k) => v !== got[k])) m.fault++;
-      // text-shadow-offset-1: the layer drawn one device px right, so pixel x shows the layer's x - 1.
-      if (platformOver(over, x - 1, y, under).some((v, k) => v !== got[k])) m.plant++;
+      // text-shadow-offset-1: the layer drawn one device px lower, so pixel y shows the layer's y - 1.
+      if (platformOver(over, x, y - 1, under).some((v, k) => v !== got[k])) m.plant++;
     }
   }
   return m;

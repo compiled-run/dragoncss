@@ -41,7 +41,7 @@ const SWIFT_MEMBERS = String.raw`  /// TXT-FX: the shadows of the texts of this 
 
 const SWIFT = String.raw`import UIKit
 
-/// Device px added to each text shadow view's x; 0 except in the text-shadow-offset-1 raster plant build.
+/// Device px added to each text shadow view's y; 0 except in the text-shadow-offset-1 raster plant build.
 public let dragonTextShadowPlantDevicePx: Double = 0
 
 /// The shadows of one text: css px at zoom 1 and sRGB RGBA8 colours, in list order.
@@ -99,7 +99,7 @@ public func dragonPlaceTextShadow(_ v: DragonBoxView, _ id: String) {
   let cg = CGFloat(s)
   CATransaction.begin()
   CATransaction.setDisableActions(true)
-  o.frame = CGRect(x: CGFloat(layer.left + dx + dragonTextShadowPlantDevicePx) / cg, y: CGFloat(layer.top + dy) / cg, width: CGFloat(w) / cg, height: CGFloat(h) / cg)
+  o.frame = CGRect(x: CGFloat(layer.left + dx) / cg, y: CGFloat(layer.top + dy + dragonTextShadowPlantDevicePx) / cg, width: CGFloat(w) / cg, height: CGFloat(h) / cg)
   o.bitmapLayer.contents = dragonShadowImage(layer.rgba.items, w, h)
   o.bitmapLayer.frame = CGRect(x: 0, y: 0, width: CGFloat(w) / cg, height: CGFloat(h) / cg)
   host.insertSubview(o, belowSubview: tv)
@@ -143,7 +143,7 @@ import dev.dragon.layout.ShadowFaults
 import dev.dragon.layout.ShadowInput
 import dev.dragon.layout.paintShadow_textShadowLayerOver
 
-/** Device px added to each text shadow bitmap's x; 0 except in the text-shadow-offset-1 raster plant build. */
+/** Device px added to each text shadow bitmap's y; 0 except in the text-shadow-offset-1 raster plant build. */
 const val DRAGON_TEXT_SHADOW_PLANT_DEVICE_PX = 0
 
 /** The shadows of one text: css px at zoom 1 and sRGB RGBA8 colours, in list order. */
@@ -194,8 +194,8 @@ fun dragonPlaceTextShadow(v: DragonBoxView, id: String) {
   val dy = tv.dragonFrame[1].toDouble() - g.origin[1]
   val o = DragonShadowView(v.context)
   o.bitmap = dragonShadowBitmap(layer.rgba, w, h)
-  o.dx = DRAGON_TEXT_SHADOW_PLANT_DEVICE_PX
-  o.dy = 0
+  o.dx = 0
+  o.dy = DRAGON_TEXT_SHADOW_PLANT_DEVICE_PX
   dragonSetFrame(o.dragonFrame, layer.left + dx, layer.top + dy, layer.right + dx, layer.bottom + dy, id + " text shadow")
   host.addView(o, host.indexOfChild(tv))
   host.requestLayout()
@@ -234,7 +234,7 @@ export const TEXT_SHADOW_EMITTER: PaintEmitter<'text-shadow', 'text-shadow-offse
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, applied: 'dragonAppliedTextShadow', afterText: 'dragonAfterTextShadow' },
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, applied: 'dragonAppliedTextShadow', afterText: 'dragonAfterTextShadow' },
   },
-  // The raster plant: every text shadow view one device px to the right, caught by the text-shadow points (parity
+  // The raster plant: every text shadow drawn one device px lower (the clean pixels lie on the vertical blur ramps below the glyphs), caught by the text-shadow points (parity
   // paint-samples/text-shadow.ts) at every scale.
   plants: [
     {
