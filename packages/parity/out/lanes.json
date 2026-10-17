@@ -327,32 +327,32 @@
         {
           "lane": "layout-vectors-device",
           "where": "device",
-          "state": "not run",
-          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 1,
               "role": "top-level",
               "extra": null,
-              "cases": 899
+              "cases": 897
             },
             {
               "dpr": 2,
               "role": "shared",
               "extra": null,
-              "cases": 899
+              "cases": 897
             },
             {
               "dpr": 3,
               "role": "shared",
               "extra": null,
-              "cases": 899
+              "cases": 897
             },
             {
               "dpr": 2.625,
               "role": "extra",
               "extra": "android-extra-420dpi",
-              "cases": 899
+              "cases": 897
             }
           ],
           "corpora": [
@@ -394,7 +394,7 @@
             {
               "corpus": "extended",
               "suite": "engine-dpr",
-              "cases": 2697
+              "cases": 2691
             },
             {
               "corpus": "extended",
@@ -404,7 +404,7 @@
             {
               "corpus": "extended",
               "suite": "snap",
-              "cases": 22481
+              "cases": 22475
             },
             {
               "corpus": "extended",
@@ -442,11 +442,195 @@
               "cases": 160
             }
           ],
-          "caseListSha256": "74aa22e6ba33cfe59e849c60b60ed7ac83a566ed6e058e62ea5e7434f26fdb00",
-          "totalCases": 631271,
-          "run": null,
+          "caseListSha256": "e39514fb5c659bd931c6058dc378270a1a5e54d05697bd2639726284828a1f74",
+          "totalCases": 631251,
+          "run": {
+            "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1); arm64-apple-ios15.0-simulator; simctl spawn on iPhone 17",
+            "suites": [
+              {
+                "corpus": "p1",
+                "suite": "vectors",
+                "declared": 258,
+                "total": 258,
+                "pass": 258
+              },
+              {
+                "corpus": "p1",
+                "suite": "units",
+                "declared": 320000,
+                "total": 320000,
+                "pass": 320000
+              },
+              {
+                "corpus": "p1",
+                "suite": "engine",
+                "declared": 20258,
+                "total": 20258,
+                "pass": 20258
+              },
+              {
+                "corpus": "p1",
+                "suite": "library",
+                "declared": 22000,
+                "total": 22000,
+                "pass": 22000
+              },
+              {
+                "corpus": "p1",
+                "suite": "rt",
+                "declared": 55362,
+                "total": 55362,
+                "pass": 55362
+              },
+              {
+                "corpus": "p1",
+                "suite": "hit",
+                "declared": 2936,
+                "total": 2936,
+                "pass": 2936
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 27,
+                "total": 27,
+                "pass": 27
+              },
+              {
+                "corpus": "p1",
+                "suite": "interaction",
+                "declared": 21,
+                "total": 21,
+                "pass": 21
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-m2",
+                "declared": 639,
+                "total": 639,
+                "pass": 639
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-dpr",
+                "declared": 2691,
+                "total": 2691,
+                "pass": 2691
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-dpr",
+                "declared": 2691,
+                "total": 2691,
+                "pass": 2691
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-m2",
+                "declared": 120000,
+                "total": 120000,
+                "pass": 120000
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap",
+                "declared": 22475,
+                "total": 22475,
+                "pass": 22475
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap-values",
+                "declared": 216,
+                "total": 216,
+                "pass": 216
+              },
+              {
+                "corpus": "extended",
+                "suite": "calc-goldens",
+                "declared": 17,
+                "total": 17,
+                "pass": 17
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-calc",
+                "declared": 4000,
+                "total": 4000,
+                "pass": 4000
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-calc",
+                "declared": 50000,
+                "total": 50000,
+                "pass": 50000
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-inline",
+                "declared": 4500,
+                "total": 4500,
+                "pass": 4500
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-overflow",
+                "declared": 3000,
+                "total": 3000,
+                "pass": 3000
+              },
+              {
+                "corpus": "extended",
+                "suite": "text-latin",
+                "declared": 160,
+                "total": 160,
+                "pass": 160
+              }
+            ],
+            "digests": {
+              "p1": "13957d63e1c8bc70bf90ff49430662ea30dd4922a1dfb7e04795aa88b09411f6",
+              "extended": "0879dbeb96650c2af77a0592c8dbd1573c5c14867084a84aa280b499a69afe85"
+            }
+          },
           "device": null,
-          "evidence": null
+          "evidence": {
+            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
+            "app": "a39b49f637422a6574ecf530e6ce171b464e9ca14307bb5aa4f3f0f8aafd5023"
+          },
+          "ran": {
+            "sets": [
+              {
+                "dpr": 1,
+                "role": "top-level",
+                "extra": null,
+                "list": "fc6a4b5888f981b68b073178e4ed5f9c9083f3d17a4686fd03eaaa7f95fd46ef"
+              },
+              {
+                "dpr": 2,
+                "role": "shared",
+                "extra": null,
+                "list": "fc6a4b5888f981b68b073178e4ed5f9c9083f3d17a4686fd03eaaa7f95fd46ef"
+              },
+              {
+                "dpr": 3,
+                "role": "shared",
+                "extra": null,
+                "list": "fc6a4b5888f981b68b073178e4ed5f9c9083f3d17a4686fd03eaaa7f95fd46ef"
+              },
+              {
+                "dpr": 2.625,
+                "role": "extra",
+                "extra": "android-extra-420dpi",
+                "list": "fc6a4b5888f981b68b073178e4ed5f9c9083f3d17a4686fd03eaaa7f95fd46ef"
+              }
+            ],
+            "corpora": "35c7f1615f709898028b44db24390bae633d4495f8387d617c5782a00b5e37ad"
+          },
+          "producedOn": [
+            "GitHub Actions macOS ARM64 (macos27) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+          ]
         },
         {
           "lane": "device-frames",
@@ -2267,32 +2451,32 @@
         {
           "lane": "layout-vectors-device",
           "where": "device",
-          "state": "not run",
-          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 1,
               "role": "top-level",
               "extra": null,
-              "cases": 899
+              "cases": 897
             },
             {
               "dpr": 2,
               "role": "shared",
               "extra": null,
-              "cases": 899
+              "cases": 897
             },
             {
               "dpr": 3,
               "role": "shared",
               "extra": null,
-              "cases": 899
+              "cases": 897
             },
             {
               "dpr": 2.625,
               "role": "extra",
               "extra": "android-extra-420dpi",
-              "cases": 899
+              "cases": 897
             }
           ],
           "corpora": [
@@ -2334,7 +2518,7 @@
             {
               "corpus": "extended",
               "suite": "engine-dpr",
-              "cases": 2697
+              "cases": 2691
             },
             {
               "corpus": "extended",
@@ -2344,7 +2528,7 @@
             {
               "corpus": "extended",
               "suite": "snap",
-              "cases": 22481
+              "cases": 22475
             },
             {
               "corpus": "extended",
@@ -2382,11 +2566,195 @@
               "cases": 160
             }
           ],
-          "caseListSha256": "74aa22e6ba33cfe59e849c60b60ed7ac83a566ed6e058e62ea5e7434f26fdb00",
-          "totalCases": 631271,
-          "run": null,
+          "caseListSha256": "e39514fb5c659bd931c6058dc378270a1a5e54d05697bd2639726284828a1f74",
+          "totalCases": 631251,
+          "run": {
+            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18; d8 --min-api 31; ART app_process on dragon-smoke (Android 16, x86_64)",
+            "suites": [
+              {
+                "corpus": "p1",
+                "suite": "vectors",
+                "declared": 258,
+                "total": 258,
+                "pass": 258
+              },
+              {
+                "corpus": "p1",
+                "suite": "units",
+                "declared": 320000,
+                "total": 320000,
+                "pass": 320000
+              },
+              {
+                "corpus": "p1",
+                "suite": "engine",
+                "declared": 20258,
+                "total": 20258,
+                "pass": 20258
+              },
+              {
+                "corpus": "p1",
+                "suite": "library",
+                "declared": 22000,
+                "total": 22000,
+                "pass": 22000
+              },
+              {
+                "corpus": "p1",
+                "suite": "rt",
+                "declared": 55362,
+                "total": 55362,
+                "pass": 55362
+              },
+              {
+                "corpus": "p1",
+                "suite": "hit",
+                "declared": 2936,
+                "total": 2936,
+                "pass": 2936
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 27,
+                "total": 27,
+                "pass": 27
+              },
+              {
+                "corpus": "p1",
+                "suite": "interaction",
+                "declared": 21,
+                "total": 21,
+                "pass": 21
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-m2",
+                "declared": 639,
+                "total": 639,
+                "pass": 639
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-dpr",
+                "declared": 2691,
+                "total": 2691,
+                "pass": 2691
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-dpr",
+                "declared": 2691,
+                "total": 2691,
+                "pass": 2691
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-m2",
+                "declared": 120000,
+                "total": 120000,
+                "pass": 120000
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap",
+                "declared": 22475,
+                "total": 22475,
+                "pass": 22475
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap-values",
+                "declared": 216,
+                "total": 216,
+                "pass": 216
+              },
+              {
+                "corpus": "extended",
+                "suite": "calc-goldens",
+                "declared": 17,
+                "total": 17,
+                "pass": 17
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-calc",
+                "declared": 4000,
+                "total": 4000,
+                "pass": 4000
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-calc",
+                "declared": 50000,
+                "total": 50000,
+                "pass": 50000
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-inline",
+                "declared": 4500,
+                "total": 4500,
+                "pass": 4500
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-overflow",
+                "declared": 3000,
+                "total": 3000,
+                "pass": 3000
+              },
+              {
+                "corpus": "extended",
+                "suite": "text-latin",
+                "declared": 160,
+                "total": 160,
+                "pass": 160
+              }
+            ],
+            "digests": {
+              "p1": "13957d63e1c8bc70bf90ff49430662ea30dd4922a1dfb7e04795aa88b09411f6",
+              "extended": "0879dbeb96650c2af77a0592c8dbd1573c5c14867084a84aa280b499a69afe85"
+            }
+          },
           "device": null,
-          "evidence": null
+          "evidence": {
+            "laneCode": "725f4d8826eba7c47faa5c3fe82415fc7b5113baddb4727b5316a15799baeb59",
+            "referenceData": "62a7256a53b81a94b641e45c8180017843ceda6585a7655f0fc7934a3695b1b9",
+            "app": "debeff9ea00b062ea2485076a92de108229329430e405e02f265d571307d143d"
+          },
+          "ran": {
+            "sets": [
+              {
+                "dpr": 1,
+                "role": "top-level",
+                "extra": null,
+                "list": "fc6a4b5888f981b68b073178e4ed5f9c9083f3d17a4686fd03eaaa7f95fd46ef"
+              },
+              {
+                "dpr": 2,
+                "role": "shared",
+                "extra": null,
+                "list": "fc6a4b5888f981b68b073178e4ed5f9c9083f3d17a4686fd03eaaa7f95fd46ef"
+              },
+              {
+                "dpr": 3,
+                "role": "shared",
+                "extra": null,
+                "list": "fc6a4b5888f981b68b073178e4ed5f9c9083f3d17a4686fd03eaaa7f95fd46ef"
+              },
+              {
+                "dpr": 2.625,
+                "role": "extra",
+                "extra": "android-extra-420dpi",
+                "list": "fc6a4b5888f981b68b073178e4ed5f9c9083f3d17a4686fd03eaaa7f95fd46ef"
+              }
+            ],
+            "corpora": "35c7f1615f709898028b44db24390bae633d4495f8387d617c5782a00b5e37ad"
+          },
+          "producedOn": [
+            "GitHub Actions Linux X64 (ubuntu24) run https://github.com/compiled-run/dragoncss/actions/runs/38996508499"
+          ]
         },
         {
           "lane": "device-frames",
