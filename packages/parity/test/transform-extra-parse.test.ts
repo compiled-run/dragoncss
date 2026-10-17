@@ -80,6 +80,7 @@ describe('backface-visibility, transform-style and transform-box: Chrome 145 par
     } finally {
       await browser.close();
     }
+    expect(seen.map((s) => s.length)).toEqual(sets.map((s) => s.length));
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
     expect(real.filter((it) => it.value !== null).length).toBe(20);
     expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBe(20);
