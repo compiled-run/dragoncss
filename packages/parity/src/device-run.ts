@@ -110,6 +110,7 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'svg-miter-limit-4': ['svg-stroke'],
   'svg-dash-solid': ['svg-dash'],
   'svg-dash-phase-0': ['svg-dash'],
+  'svg-paint-order-normal': ['svg-paint-order'],
   // T150a: visibility-basic's hidden boxes (ids hid-*) paint their backgrounds when the writer is ignored; its visible children
   // (kid-*) vanish when the writer hides the box view itself.
   'visibility-ignored': ['visibility-basic'],
@@ -154,6 +155,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'svg-miter-limit-4': /^svg:/,
   'svg-dash-solid': /^svg:/,
   'svg-dash-phase-0': /^svg:/,
+  'svg-paint-order-normal': /^svg:/,
   'visibility-ignored': /^interior:hid-/,
   'visibility-subtree': /^interior:kid-/,
   // An under or overline above the text shows over the glyphs it crosses (the over-glyph points); a rect top at a whole css px moves

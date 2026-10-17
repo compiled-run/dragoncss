@@ -3690,6 +3690,8 @@
         { "lines": "8487-8492", "symbol": "R::ParseSingleValue", "source": "located" },
         { "lines": "12474-12479", "symbol": "X::ParseSingleValue", "source": "located" },
         { "lines": "12489-12494", "symbol": "Y::ParseSingleValue", "source": "located" },
+        { "lines": "8213-8271", "symbol": "PaintOrder::ParseSingleValue", "source": "located" },
+        { "lines": "8273-8291", "symbol": "PaintOrder::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "9689-9695", "symbol": "StrokeMiterlimit::ParseSingleValue", "source": "located" },
         { "lines": "10363-10381", "symbol": "ConsumePan", "source": "located" },
         { "lines": "10386-10416", "symbol": "TouchAction::ParseSingleValue", "source": "located" },
