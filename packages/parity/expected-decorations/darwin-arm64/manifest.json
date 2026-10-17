@@ -100,6 +100,20 @@
    "sameLayout": true
   },
   {
+   "case": "text-decoration-double",
+   "dpr": 1,
+   "decorated": "83e21045c8d5b711f11e6169bb607385d06c8fdb67520a6f943bebd67f2c9ea6",
+   "stripped": "4e91df6906c17df7377203d7122737a486fa6cca8b1badd1c8c2995a0b07dc0c",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-double-rtl",
+   "dpr": 1,
+   "decorated": "c2299fe50ca7bdbf713842d14eb7581b1ab411faeb0ebcd0e3ccc6864dc6e357",
+   "stripped": "0868bbed7497cb94e2809dc18f46b4df8a8d36507f639e4221148b1fee7d879c",
+   "sameLayout": true
+  },
+  {
    "case": "text-decoration-lines",
    "dpr": 2,
    "decorated": "7f7ee221648ea9e9c683ef6eb7f7cbb507ade233e155d590d7a02e088c5e4e1f",
@@ -195,6 +209,20 @@
    "dpr": 2,
    "decorated": "9440bf81e5d90df398e630849873adb32f1ad8aab32c25dde7e5e3be053c094a",
    "stripped": "d06e85cd8ed607c8d6c8349d4fdb39f793ff548024764a55ad611bd6043cf90b",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-double",
+   "dpr": 2,
+   "decorated": "305b045ee0ad6556b1389218cffffb227b42823bd8309105f8a2a3a41746d6fc",
+   "stripped": "405ef48b0ec0ba131f45d0449fee1f5ec79fd6f56996ddc4c88f9beb42f8ed36",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-double-rtl",
+   "dpr": 2,
+   "decorated": "83f33923c2caeacd0c2d1e7be328827be6a26b8160b6e23d4a0ddf6522f34580",
+   "stripped": "29fd97d86ef6ca11e3c841085de7719b2d3ea1cc8f4903f9474beec5b8719e3e",
    "sameLayout": true
   },
   {
@@ -296,6 +324,20 @@
    "sameLayout": true
   },
   {
+   "case": "text-decoration-double",
+   "dpr": 3,
+   "decorated": "2d47bede1e762904828f0825c4ed971b2c4c683dd360da8b3b8fdd7aaf435600",
+   "stripped": "3da1ace8f6d36b19a56dfe1c4924b218beb4d9ce206c30a1126d59dcb4f151d4",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-double-rtl",
+   "dpr": 3,
+   "decorated": "34b8f52821f90710efde0256d209d2cc6921208b5d70d7ee7c8cb8f34aa9c105",
+   "stripped": "8b52b866edb3f8285c5f0585f79a9058780e37937889b72d11e28f75719e91fa",
+   "sameLayout": true
+  },
+  {
    "case": "text-decoration-lines",
    "dpr": 2.625,
    "decorated": "1e18d1182ea39e53c8547c29ca0adcefde35b22766504faf10fa31f32c20032b",
@@ -391,6 +433,20 @@
    "dpr": 2.625,
    "decorated": "eec65b7cdf6c84e2baeb864e59e513fa39371f5195c159cf94bc5778210a0a80",
    "stripped": "96a2965dbe35535f314c549838f7a9e58405c9280be8584736cde5ecfb5c81f1",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-double",
+   "dpr": 2.625,
+   "decorated": "24f37479cbc53bc369ec3f20afb4b2e5c22f27f8b48608a486463dcb406579a9",
+   "stripped": "49ec2bb846617b602e1433eec4fd832700e80f93ff09a722e95f9cebeea3396c",
+   "sameLayout": true
+  },
+  {
+   "case": "text-decoration-double-rtl",
+   "dpr": 2.625,
+   "decorated": "c198e0f0622c551c3759eff8454412bf8ff4f530a5b62e8c8fb3a5ac67668584",
+   "stripped": "99d63be189ee057d8858abd54a07bd37ed324f9f02c4fef88865820a48425c00",
    "sameLayout": true
   }
  ]

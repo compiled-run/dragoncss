@@ -72,8 +72,9 @@ describe('the text-decoration longhands and shorthand', () => {
     expect(declare('text-decoration: none').set).toEqual(['text-decoration-line=none', 'text-decoration-thickness=auto (reset)', 'text-decoration-style=solid (reset)', 'text-decoration-color=currentcolor (reset)']);
     expect(declare('text-decoration-line: line-through overline underline').set).toEqual(['text-decoration-line=underline overline line-through']);
   });
-  it('refuses what TDEC-a does not draw and drops what Chrome does not parse', () => {
-    for (const d of ['text-decoration-line: blink', 'text-decoration-line: spelling-error', 'text-decoration-style: wavy', 'text-decoration-style: dotted', 'text-decoration-thickness: from-font', 'text-underline-position: under', 'text-decoration: underline wavy', 'text-decoration: underline from-font']) expect(declare(d).codes, d).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+  it('refuses what TDEC-a does not draw and drops what Chrome does not parse; every style is a value (a drawn one is judged per text)', () => {
+    for (const d of ['text-decoration-line: blink', 'text-decoration-line: spelling-error', 'text-decoration-thickness: from-font', 'text-underline-position: under', 'text-decoration: underline from-font']) expect(declare(d).codes, d).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    for (const d of ['text-decoration-style: double', 'text-decoration-style: dotted', 'text-decoration-style: dashed', 'text-decoration-style: wavy', 'text-decoration: underline wavy', 'text-decoration: dotted']) expect(declare(d).codes, d).toEqual([]);
     for (const d of ['text-decoration-thickness: thin', 'text-decoration-skip-ink: all', 'text-decoration-line: underline underline', 'text-decoration-line: none underline', 'text-underline-offset: from-font']) expect(declare(d).codes, d).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     for (const d of ['text-decoration-thickness: 10%', 'text-underline-offset: -2px', 'text-decoration-skip-ink: none', 'text-decoration-color: rgba(167, 175, 189, 0.45)', 'text-decoration: underline 0.1em solid currentcolor']) expect(declare(d).codes, d).toEqual([]);
   });

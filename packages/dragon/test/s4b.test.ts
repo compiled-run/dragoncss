@@ -70,9 +70,10 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       clip: ['rect(0, 0, 0, 0)', 'rect(1px 2px 3px 4px)'],
       // MASK-CLIP: two clip-path insets, on boxes without text (natively a clip-path over any text is refused, below).
       'clip-path': ['inset(0)', 'inset(-2px 0 0 -10%)'],
-      // SVG-a1: two stroke widths; SVG-opacity: two fill and stroke opacities; SVG-stroke: two caps, joins, miter limits and fill rules.
+      // SVG-a1: two stroke widths; SVG-opacity: two fill and stroke opacities; SVG-stroke: two caps, joins, miter limits and fill rules;
+      // SVG-dash: two dash lists and offsets.
       'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
-      'stroke-linecap': ['round', 'square'], 'stroke-linejoin': ['bevel', 'round'], 'stroke-miterlimit': ['1', '10'], 'fill-rule': ['evenodd', 'nonzero'],
+      'stroke-linecap': ['round', 'square'], 'stroke-linejoin': ['bevel', 'round'], 'stroke-miterlimit': ['1', '10'], 'fill-rule': ['evenodd', 'nonzero'], 'stroke-dasharray': ['2 3', 'none'], 'stroke-dashoffset': ['4px', '-2'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.
       'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
       'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
