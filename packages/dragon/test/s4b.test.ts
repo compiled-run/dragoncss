@@ -75,7 +75,7 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // SVG-paint-order: two paint orders.
       'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
       'stroke-linecap': ['round', 'square'], 'stroke-linejoin': ['bevel', 'round'], 'stroke-miterlimit': ['1', '10'], 'fill-rule': ['evenodd', 'nonzero'], 'stroke-dasharray': ['2 3', 'none'], 'stroke-dashoffset': ['4px', '-2'],
-      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'],
+      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'], 'rx': ['2px', 'auto'], 'ry': ['auto', '1'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.
       'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
       'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
