@@ -47,8 +47,8 @@ function entryLit(lang: Lang, e: TextDecorationEntry): string {
   const box = e.box === null ? (lang === 'swift' ? 'nil' : 'null') : strLit(lang, e.box);
   const lines = e.lines.map((l) => strLit(lang, l)).join(', ');
   const what = `${e.text} decoration`;
-  if (lang === 'swift') return `DragonTextDecorationSpec(${strLit(lang, e.text)}, ${box}, [${lines}], ${rgbaLit(e.color)}, ${lengthLit(e.thickness, `${what} thickness`)}, ${lengthLit(e.underlineOffset, `${what} offset`)}, ${e.skipInk})`;
-  return `DragonTextDecorationSpec(${strLit(lang, e.text)}, ${box}, listOf(${lines}), ${rgbaLit(e.color)}, ${lengthLit(e.thickness, `${what} thickness`)}, ${lengthLit(e.underlineOffset, `${what} offset`)}, ${e.skipInk})`;
+  if (lang === 'swift') return `DragonTextDecorationSpec(${strLit(lang, e.text)}, ${box}, [${lines}], ${rgbaLit(e.color)}, ${lengthLit(e.thickness, `${what} thickness`)}, ${lengthLit(e.underlineOffset, `${what} offset`)}, ${e.skipInk}, ${strLit(lang, e.style)})`;
+  return `DragonTextDecorationSpec(${strLit(lang, e.text)}, ${box}, listOf(${lines}), ${rgbaLit(e.color)}, ${lengthLit(e.thickness, `${what} thickness`)}, ${lengthLit(e.underlineOffset, `${what} offset`)}, ${e.skipInk}, ${strLit(lang, e.style)})`;
 }
 
 /** The readback of one entry: what the device reads back from its stored spec, and its view order (always in order). */
@@ -61,6 +61,7 @@ export function appliedEntry(e: TextDecorationEntry): JsonValue {
     thickness: [e.thickness.kind, lengthValue(e.thickness)],
     offset: [e.underlineOffset.kind, lengthValue(e.underlineOffset)],
     skipInk: e.skipInk,
+    style: e.style,
     ordered: true,
   };
 }
@@ -85,7 +86,7 @@ public struct DragonDecorationLength {
 }
 
 /// One applied decoration of one text: the decorating inline box (nil for the container's strut font), lines, colour, lengths
-/// and whether skip-ink is auto (TDEC-d: an under or overline then leaves out the glyphs' dilated ink).
+/// whether skip-ink is auto (TDEC-d: an under or overline then leaves out the glyphs' dilated ink) and the style (solid or double).
 public struct DragonTextDecorationSpec {
   public let text: String
   public let box: String?
@@ -94,8 +95,9 @@ public struct DragonTextDecorationSpec {
   public let thickness: DragonDecorationLength
   public let offset: DragonDecorationLength
   public let skipInk: Bool
-  public init(_ text: String, _ box: String?, _ lines: [String], _ color: DragonRGBA8, _ thickness: DragonDecorationLength, _ offset: DragonDecorationLength, _ skipInk: Bool) {
-    self.text = text; self.box = box; self.lines = lines; self.color = color; self.thickness = thickness; self.offset = offset; self.skipInk = skipInk
+  public let style: String
+  public init(_ text: String, _ box: String?, _ lines: [String], _ color: DragonRGBA8, _ thickness: DragonDecorationLength, _ offset: DragonDecorationLength, _ skipInk: Bool, _ style: String) {
+    self.text = text; self.box = box; self.lines = lines; self.color = color; self.thickness = thickness; self.offset = offset; self.skipInk = skipInk; self.style = style
   }
 }
 
@@ -180,7 +182,7 @@ public func dragonPlaceTextDecorations(_ v: DragonBoxView, _ id: String) {
   // origin times the scale that lands an ulp off an integer does not move a clip or an end column.
   let dx = (Double(tv.frame.minX) * s - g.origin[0]).rounded()
   let dy = (Double(tv.frame.minY) * s - g.origin[1]).rounded()
-  let faults = DecorationFaults(false, false, false, false, false, false, false, false, false)
+  let faults = DecorationFaults(false, false, false, false, false, false, false, false, false, false)
   var below: [DragonDecorationView] = []
   var above: [DragonDecorationView] = []
   for d in specs {
@@ -196,7 +198,7 @@ public func dragonPlaceTextDecorations(_ v: DragonBoxView, _ id: String) {
       let baseline = textTop + textFont.ascent
       let rects: [DecorationRect]
       do {
-        let input = DecorationInput(JsArray(d.lines.map { JsString($0) }), dragonDecorationLength(d.thickness, s), dragonDecorationLength(d.offset, s), boxFont, textFont, line[0], line[1], textTop, baseline - boxFont.ascent)
+        let input = DecorationInput(JsArray(d.lines.map { JsString($0) }), dragonDecorationLength(d.thickness, s), dragonDecorationLength(d.offset, s), boxFont, textFont, line[0], line[1], textTop, baseline - boxFont.ascent, d.style == "double")
         rects = try textDecoration_decorationRects(input, faults).items
       } catch {
         fatalError("dragon: \(id): text-decoration decorationRects failed: \(error)")
@@ -259,6 +261,7 @@ public func dragonAppliedTextDecoration(_ v: DragonBoxView) -> DumpJsonObject {
       ("thickness", .array([.string(d.thickness.kind), .number(d.thickness.value)])),
       ("offset", .array([.string(d.offset.kind), .number(d.offset.value)])),
       ("skipInk", .bool(d.skipInk)),
+      ("style", .string(d.style)),
       ("ordered", .bool(ordered)),
     ]))
   }
@@ -302,9 +305,9 @@ class DragonDecorationLength(val kind: String, val value: Double)
 
 /**
  * One applied decoration of one text: the decorating inline box (null for the container's strut font), lines, colour, lengths and
- * whether skip-ink is auto (TDEC-d: an under or overline then leaves out the glyphs' dilated ink).
+ * whether skip-ink is auto (TDEC-d: an under or overline then leaves out the glyphs' dilated ink) and the style (solid or double).
  */
-class DragonTextDecorationSpec(val text: String, val box: String?, val lines: List<String>, val color: DragonRGBA8, val thickness: DragonDecorationLength, val offset: DragonDecorationLength, val skipInk: Boolean)
+class DragonTextDecorationSpec(val text: String, val box: String?, val lines: List<String>, val color: DragonRGBA8, val thickness: DragonDecorationLength, val offset: DragonDecorationLength, val skipInk: Boolean, val style: String)
 
 /**
  * One decoration rect: whole device rows, its frame whole device columns from floor(left) to ceil(right); each column is filled with
@@ -380,7 +383,7 @@ fun dragonPlaceTextDecorations(v: DragonBoxView, id: String) {
   // The text view's frame in its parent, in device px, against its absolute edges.
   val dx = tv.dragonFrame[0].toDouble() - g.origin[0]
   val dy = tv.dragonFrame[1].toDouble() - g.origin[1]
-  val faults = DecorationFaults(false, false, false, false, false, false, false, false, false)
+  val faults = DecorationFaults(false, false, false, false, false, false, false, false, false, false)
   val below = ArrayList<DragonDecorationView>()
   val above = ArrayList<DragonDecorationView>()
   for (d in specs) {
@@ -388,7 +391,7 @@ fun dragonPlaceTextDecorations(v: DragonBoxView, id: String) {
     for ((k, line) in g.lines.withIndex()) {
       val textTop = line[2]
       val baseline = textTop + textFont.ascent
-      val input = DecorationInput(JsArray(d.lines), dragonDecorationLength(d.thickness, g.scale), dragonDecorationLength(d.offset, g.scale), boxFont, textFont, line[0], line[1], textTop, baseline - boxFont.ascent)
+      val input = DecorationInput(JsArray(d.lines), dragonDecorationLength(d.thickness, g.scale), dragonDecorationLength(d.offset, g.scale), boxFont, textFont, line[0], line[1], textTop, baseline - boxFont.ascent, d.style == "double")
       for (r in textDecoration_decorationRects(input, faults)) {
         val o = DragonDecorationView(v.context)
         val x0 = kotlin.math.floor(r.left + dx)
@@ -445,6 +448,7 @@ fun dragonAppliedTextDecoration(v: DragonBoxView): List<Pair<String, DumpJson>> 
       Pair("thickness", DumpJson.Arr(listOf(DumpJson.Str(d.thickness.kind), DumpJson.Num(d.thickness.value)))),
       Pair("offset", DumpJson.Arr(listOf(DumpJson.Str(d.offset.kind), DumpJson.Num(d.offset.value)))),
       Pair("skipInk", DumpJson.Bool(d.skipInk)),
+      Pair("style", DumpJson.Str(d.style)),
       Pair("ordered", DumpJson.Bool(ordered)),
     )))
   }

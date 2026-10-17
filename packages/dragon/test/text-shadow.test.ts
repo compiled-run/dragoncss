@@ -84,6 +84,9 @@ describe('text-shadow', () => {
     expect(errorsIn(`${shadow} .n { white-space: nowrap; }`, one('n', 'XX XX'))).toEqual([]);
     // Decorated, in a group, or with an ellipsis (a real face is refused on the native targets already).
     expect(errorsIn(`${shadow} .u { text-decoration: underline; }`, one('u', 'XX'))).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`${shadow} .b { font-weight: 700; }`, one('b', 'XX'))).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`${shadow} .i { font-style: italic; }`, one('i', 'XX'))).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`${shadow} .b { font-weight: 700; font-synthesis: none; }`, one('b', 'XX'))).toEqual([]);
     expect(errorsIn(`${shadow} .o { opacity: 0.5; }`, one('o', 'XX'))).toEqual(NATIVE_REFUSED);
     expect(errorsIn(`${shadow} .e { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`, one('e', 'XX'))).toEqual(NATIVE_REFUSED);
     // A later box painting a background, which Chrome paints beneath the shadow; an earlier one is fine.

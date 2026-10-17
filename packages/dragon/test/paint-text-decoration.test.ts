@@ -52,6 +52,30 @@ describe('TDEC-b: what ios and android draw', () => {
       expect(native(c).outputs['web']?.kind, css).toBe('ready');
     }
   });
+  it('draws double lines (TDEC-c), and refuses skip-ink auto over a double under or overline (TDEC-d) on ios and android only', () => {
+    for (const css of ['.u { text-decoration: underline overline double; text-decoration-skip-ink: none; }', '.u { text-decoration: line-through double; }', '.u { text-decoration: underline; text-decoration-style: double; text-decoration-skip-ink: none; text-decoration-thickness: 15%; }']) {
+      expect(codes(one(css)), css).toEqual([]);
+    }
+    const c = one('.u { text-decoration: underline double; }');
+    expect(codes(c)).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
+    expect(native(c).diagnostics[0]?.message).toMatch(/skip-ink-intercepts: .* TDEC-d/);
+    expect(native(c).outputs['web']?.kind).toBe('ready');
+  });
+  it('accepts dotted, dashed and wavy where no line draws them, and refuses a drawn one on every target at its declaration (TDEC-c)', () => {
+    for (const css of ['.u { text-decoration-style: dotted; }', '.u { text-decoration: dashed; }', '.u { text-decoration-line: none; text-decoration-style: wavy; }']) {
+      const c = one(css);
+      expect(codes(c), css).toEqual([]);
+      expect(native(c).outputs['web']?.kind, css).toBe('ready');
+    }
+    for (const style of ['dotted', 'dashed', 'wavy']) {
+      const c = one(`.u { text-decoration: line-through ${style}; }`);
+      expect(codes(c), style).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
+      expect(native(c).diagnostics[0]?.message, style).toBe(`text-decoration-style: ${style} draws the line-through of u over text u:text0, and TDEC-c draws solid and double lines only`);
+    }
+    // A child inherits no style: its parent's dotted line over the child's text is refused, and the child's own solid line is drawn.
+    const nested = compile('.u { text-decoration: underline dotted; } .s { text-decoration: line-through; }', (r) => [el(r, 'u', 'div', ['u'], [el(r, 's', 'span', ['s'], [text(r, 't', 'XX')])])]);
+    expect(native(nested).diagnostics.filter((d) => d.message.startsWith('text-decoration-style')).map((d) => d.message)).toEqual(Array(3).fill('text-decoration-style: dotted draws the underline of u over text s:text0, and TDEC-c draws solid and double lines only'));
+  });
   it('refuses decorated text that is not visible', () => {
     const c = one('.u { text-decoration: line-through; visibility: hidden; }');
     expect(codes(c)).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
@@ -89,9 +113,9 @@ describe('TDEC-b: the text-decoration write', () => {
       expect(w.key).toBe('dragonTextDecoration');
       expect(w.css).toContain('text-decoration-line');
       expect(w.entries).toEqual([
-        { text: 'u:text0', box: null, lines: ['line-through'], color: { r: 0, g: 0, b: 255, alpha: 255 }, thickness: { kind: 'auto' }, underlineOffset: { kind: 'auto' }, skipInk: true },
-        { text: 'i:text0', box: null, lines: ['line-through'], color: { r: 0, g: 0, b: 255, alpha: 255 }, thickness: { kind: 'auto' }, underlineOffset: { kind: 'auto' }, skipInk: true },
-        { text: 'i:text0', box: 'i', lines: ['underline'], color: { r: 255, g: 0, b: 0, alpha: 255 }, thickness: { kind: 'px', value: 2 }, underlineOffset: { kind: 'percent', value: 50 }, skipInk: false },
+        { text: 'u:text0', box: null, lines: ['line-through'], color: { r: 0, g: 0, b: 255, alpha: 255 }, thickness: { kind: 'auto' }, underlineOffset: { kind: 'auto' }, skipInk: true, style: 'solid' },
+        { text: 'i:text0', box: null, lines: ['line-through'], color: { r: 0, g: 0, b: 255, alpha: 255 }, thickness: { kind: 'auto' }, underlineOffset: { kind: 'auto' }, skipInk: true, style: 'solid' },
+        { text: 'i:text0', box: 'i', lines: ['underline'], color: { r: 255, g: 0, b: 0, alpha: 255 }, thickness: { kind: 'px', value: 2 }, underlineOffset: { kind: 'percent', value: 50 }, skipInk: false, style: 'solid' },
       ]);
       // The text nodes keep their own writes only.
       expect(p[b].nodes.filter((n) => n.kind === 'text').every((n) => n.writes.every((w) => w.kind === 'font' || w.kind === 'text-color')), b).toBe(true);
@@ -106,14 +130,14 @@ describe('TDEC-b: the text-decoration write', () => {
 describe('TDEC-b: emission and support', () => {
   const w = {
     kind: 'text-decoration',
-    entries: [{ text: 'u:text0', box: 'i', lines: ['underline', 'line-through'], color: { r: 1, g: 2, b: 3, alpha: 255 }, thickness: { kind: 'px', value: 1.5 }, underlineOffset: { kind: 'auto' }, skipInk: true }],
+    entries: [{ text: 'u:text0', box: 'i', lines: ['underline', 'line-through'], color: { r: 1, g: 2, b: 3, alpha: 255 }, thickness: { kind: 'px', value: 1.5 }, underlineOffset: { kind: 'auto' }, skipInk: true, style: 'double' }],
   } as never;
   it('calls the public writer with the written spec on both backends', () => {
-    expect(TEXT_DECORATION_EMITTER.lines.uikit('v1', {} as never, w)).toEqual(['  dragonSetTextDecorations(t, v1, [DragonTextDecorationSpec("u:text0", "i", ["underline", "line-through"], DragonRGBA8(1, 2, 3, 255), DragonDecorationLength("px", 1.5), DragonDecorationLength("auto", 0.0), true)])']);
-    expect(TEXT_DECORATION_EMITTER.lines['android-views']('v1', {} as never, w)).toEqual(['  dragonSetTextDecorations(t, v1, listOf(DragonTextDecorationSpec("u:text0", "i", listOf("underline", "line-through"), DragonRGBA8(1, 2, 3, 255), DragonDecorationLength("px", 1.5), DragonDecorationLength("auto", 0.0), true)))']);
+    expect(TEXT_DECORATION_EMITTER.lines.uikit('v1', {} as never, w)).toEqual(['  dragonSetTextDecorations(t, v1, [DragonTextDecorationSpec("u:text0", "i", ["underline", "line-through"], DragonRGBA8(1, 2, 3, 255), DragonDecorationLength("px", 1.5), DragonDecorationLength("auto", 0.0), true, "double")])']);
+    expect(TEXT_DECORATION_EMITTER.lines['android-views']('v1', {} as never, w)).toEqual(['  dragonSetTextDecorations(t, v1, listOf(DragonTextDecorationSpec("u:text0", "i", listOf("underline", "line-through"), DragonRGBA8(1, 2, 3, 255), DragonDecorationLength("px", 1.5), DragonDecorationLength("auto", 0.0), true, "double")))']);
   });
   it('reads back the spec as written, in order', () => {
-    expect(TEXT_DECORATION_EMITTER.applied({} as never, 'uikit', w, 2, {} as never)).toEqual([{ text: 'u:text0', box: 'i', lines: ['underline', 'line-through'], color: [1, 2, 3, 255], thickness: ['px', 1.5], offset: ['auto', 0], skipInk: true, ordered: true }]);
+    expect(TEXT_DECORATION_EMITTER.applied({} as never, 'uikit', w, 2, {} as never)).toEqual([{ text: 'u:text0', box: 'i', lines: ['underline', 'line-through'], color: [1, 2, 3, 255], thickness: ['px', 1.5], offset: ['auto', 0], skipInk: true, style: 'double', ordered: true }]);
   });
   it('runs the after-text hook from the text pass and places the views with the translated decorationRects', () => {
     for (const b of ['uikit', 'android-views'] as const) {

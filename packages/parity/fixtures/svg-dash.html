@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.wrap { width: 380px; }
+svg { display: block; margin-bottom: 4px; }
+.open { fill: none; stroke: rgb(30, 90, 200); stroke-width: 10px; }
+.d1 { stroke-dasharray: 20 10; }
+.d3 { stroke-dasharray: 16px, 12px; stroke-dashoffset: -12; stroke-linecap: round; }
+.zig { stroke-dasharray: 40 12; stroke-width: 12; }
+.box { fill: rgb(20, 160, 80); stroke: rgb(120, 0, 160); stroke-width: 8; stroke-dasharray: 25 10; }
+.two { stroke-dasharray: 30 15; stroke-dashoffset: 5; stroke-linecap: square; }
+.curve { stroke-dasharray: 18 9; stroke-width: 8; }
+.inh { stroke-dasharray: 12 6; stroke-dashoffset: 5px; }
+.solid { stroke-dasharray: none; }
+.v { --dash: 8 4 2 4; stroke-dasharray: var(--dash); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<svg data-dragon-id="s1" class="open" width="380" height="66"><path data-dragon-id="d1" class="d1" d="M20 13 H360"/><path data-dragon-id="d2" stroke-dasharray="15,5,5" stroke-dashoffset="7" d="M20 33 H360"/><path data-dragon-id="d3" class="d3" d="M20 53 H360"/></svg>
+<svg data-dragon-id="s2" class="open" width="380" height="80"><path data-dragon-id="z1" class="zig" d="M20 70 L60 12 L100 70 L140 12"/><rect data-dragon-id="r1" class="box" x="170" y="10" width="60" height="60"/><path data-dragon-id="p2" class="two" d="M262 18 H360 M262 52 H360"/></svg>
+<svg data-dragon-id="s3" class="open" width="380" height="66"><path data-dragon-id="c1" class="curve" d="M20 58 Q100 -14 180 58"/><path data-dragon-id="c2" class="curve" stroke-dashoffset="-30" d="M210 10 C260 70 310 -10 360 50"/></svg>
+<svg data-dragon-id="s4" class="open inh" width="380" height="66"><path data-dragon-id="i1" d="M20 15 H360"/><path data-dragon-id="i2" class="solid" d="M20 33 H170"/><path data-dragon-id="i3" stroke-dasharray="0,0" d="M210 33 H360"/><path data-dragon-id="i4" class="v" d="M20 51 H360"/></svg>
+</div>
+</body>
+</html>

@@ -456,6 +456,7 @@
         { "lines": "115-122", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "synthesizesOblique", "use": "reference" },
         { "file": "packages/dragon/src/fonts/weight.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/weight.ts", "symbol": "synthesisOf", "use": "port" },
         { "file": "packages/dragon/test/font-weight.test.ts", "symbol": null, "use": "reference" }
@@ -1944,7 +1945,8 @@
       "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
       "ranges": [
         { "lines": "15-27", "symbol": null, "source": "cited" },
-        { "lines": "75-93", "symbol": null, "source": "cited" }
+        { "lines": "75-93", "symbol": null, "source": "cited" },
+        { "lines": "336-347", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
@@ -2009,7 +2011,8 @@
         { "lines": "74-102", "symbol": null, "source": "cited" },
         { "lines": "319-330", "symbol": null, "source": "cited" },
         { "lines": "395-400", "symbol": null, "source": "cited" },
-        { "lines": "453-464", "symbol": null, "source": "cited" }
+        { "lines": "453-464", "symbol": null, "source": "cited" },
+        { "lines": "274-301", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/text-decoration.ts", "symbol": "AppliedDecoration", "use": "reference" },
@@ -2296,6 +2299,25 @@
         { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "sub", "use": "port" },
         { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "uniqueValue", "use": "port" },
         { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "WIDTH_KEYWORD_VALUES", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/mac/font_platform_data_mac.mm",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (a synthetic italic draws the face sheared by SkFont::setSkewX(-1/4) at every slope)",
+        "proof": ["packages/parity/test/text-style-ahem.test.ts"]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.; Copyright (c) 2010 Google Inc. All rights reserved.",
+      "fileSha256": "78cd6148a0ac5c58e8f0a5e7caa7da85196d51d24c31aafb29010bd42ba6881c",
+      "headerSha256": "1db68253298ebf8949ab5efba9b92ced494a39bc71a2395ca9704d99ebbb890d",
+      "ranges": [
+        { "lines": "211-272", "symbol": "CreateSkFont", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "SYNTHETIC_OBLIQUE_SHEAR", "use": "reference" }
       ]
     },
     {
@@ -3653,6 +3675,8 @@
         { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8525-8531", "symbol": "Resize::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8533-8552", "symbol": "Resize::ApplyValue", "source": "located" },
+        { "lines": "9615-9643", "symbol": "StrokeDasharray::ParseSingleValue", "source": "located" },
+        { "lines": "9654-9662", "symbol": "StrokeDashoffset::ParseSingleValue", "source": "located" },
         { "lines": "9689-9695", "symbol": "StrokeMiterlimit::ParseSingleValue", "source": "located" },
         { "lines": "10363-10381", "symbol": "ConsumePan", "source": "located" },
         { "lines": "10386-10416", "symbol": "TouchAction::ParseSingleValue", "source": "located" },

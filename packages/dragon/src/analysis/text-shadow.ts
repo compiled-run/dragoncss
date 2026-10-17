@@ -1,13 +1,14 @@
 // TXT-FX (css-text-decor-4 §4): text-shadow. Every target takes a shadow list of px lengths and explicit colours; the web target
 // leaves the drawing to Chrome. The native targets draw it with the translated paint-shadow.ts textShadowLayerOver in a view
 // beneath the text view (lower/paint/text-shadow.ts), which is Chrome's drawing only where checkTextShadows finds nothing below:
-// Ahem text (the glyph masks are Ahem's ink boxes) that cannot wrap (Chrome paints each line fragment's shadows and then its text,
+// upright regular Ahem text (the glyph masks are Ahem's ink boxes; no synthetic bold or oblique) that cannot wrap (Chrome paints each line fragment's shadows and then its text,
 // so a line's shadow covers the line above), with no decoration (Chrome shadows decorations too), visible, without ellipsis, outside
 // a compositing group, and with no box after it in tree order painting a background, border or box shadow (Chrome paints a
 // stacking context's text shadows over all of its block backgrounds; the native views of later boxes are above the text's).
 // Planted fault textShadowListAccepted accepts every list on every target.
 import type { Rgba8 } from '../css/color.ts';
 import { opacityOf } from '../css/properties/effects.ts';
+import { synthesisAllowedOf, synthesizesOblique, weightOf } from './computed.ts';
 import type { Shadow } from '../css/properties/shadow.ts';
 import { shadowsOf } from '../css/properties/shadow.ts';
 import type { Longhand } from '../css/properties.ts';
@@ -113,6 +114,10 @@ function nativeRefusal(texts: readonly Shadowed[], painters: readonly number[], 
     const at = `text ${text.node.address}`;
     if (realFaceAt(text.node.address)) return `${at} is in a real face; the native shadow is drawn from Ahem's glyph boxes only`;
     if (!singleLine(text)) return `${at} may wrap onto several lines, and Chrome paints each line's shadow over the line above`;
+    // Chrome draws Ahem past 600 in synthetic bold and at an italic or oblique slope in synthetic oblique; the native shadow
+    // takes the upright regular glyph boxes.
+    if (synthesisAllowedOf(parent.props).weight && weightOf(parent.props.get('font-weight') as ResolvedValue) >= 600) return `${at} is drawn in synthetic bold, which the native shadow does not embolden`;
+    if (synthesizesOblique(parent.props)) return `${at} is drawn in synthetic oblique, which the native shadow does not shear`;
     if (decorated.has(text.node.address)) return `${at} is decorated, and Chrome shadows its decorations too`;
     if (keyword(parent.props, 'visibility') !== 'visible') return `${at} is not visible`;
     if (keyword(parent.props, 'text-overflow') !== 'clip') return `${at} may end in an ellipsis, which the native shadow does not draw`;

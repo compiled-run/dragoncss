@@ -1,0 +1,12 @@
+{
+  "case": "alias-font",
+  "dpr": 3,
+  "texts": [
+    {"id":"f1:text0","lines":[[0,4]]},
+    {"id":"f2:text0","lines":[[0,4]]},
+    {"id":"f3:text0","lines":[[0,4]]},
+    {"id":"f4:text0","lines":[[0,4]]},
+    {"id":"f5:text0","lines":[[0,4]]},
+    {"id":"f7:text0","lines":[[0,4]]}
+  ]
+}

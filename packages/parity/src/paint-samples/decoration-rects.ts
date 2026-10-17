@@ -76,13 +76,13 @@ export function placedDecorations(p: NativeProgram, viewport: { readonly width: 
         const baseline = textTop + textFont.ascent;
         const input: td.DecorationInput = {
           lines: e.lines, thickness: lengthAt(e.thickness, dpr), underlineOffset: lengthAt(e.underlineOffset, dpr),
-          font, textFont, left: line.rect.x / 64, width: line.rect.width / 64, textTop, decoratingTop: baseline - font.ascent,
+          font, textFont, left: line.rect.x / 64, width: line.rect.width / 64, textTop, decoratingTop: baseline - font.ascent, double: e.style === 'double',
         };
         for (const r of td.decorationRects(input, faults)) {
           let clips: number[] = [];
           if (e.skipInk && r.line !== 'line-through') {
             // TDEC-d: the compiler accepts skip-ink auto on Ahem only, one glyph per code point.
-            if (t.font.family !== 'Ahem') throw new Error(`${t.id}: skip-ink auto on ${t.font.family} reached a program`);
+            if (t.font.family !== 'Ahem' || input.double) throw new Error(`${t.id}: skip-ink auto on a ${e.style} line in ${t.font.family} reached a program`);
             const g = pieceGlyphs(m, String.fromCodePoint(...line.cps), t.textFont, 0, line.cps.length);
             if (!g.ok || g.xs.length !== line.cps.length) throw new Error(`${t.id} line ${j}: no glyph per code point: ${g.ok ? g.xs.length : g.reason}`);
             clips = td.skipInkClips(r, td.ahemLineInk(line.cps, g.xs.map((x) => input.left + x), t.font.size, baseline), faults);
