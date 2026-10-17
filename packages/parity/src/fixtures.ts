@@ -52,6 +52,7 @@ import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
+import { TEXT_ALIGN_LAST } from './fixture-groups/text-align-last.ts';
 import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
@@ -61,15 +62,20 @@ import { TEXT_FONT_SIZE } from './fixture-groups/text-font-size.ts';
 import { TEXT_FONT_STRETCH } from './fixture-groups/text-font-stretch.ts';
 import { TEXT_FONT_TUNING } from './fixture-groups/text-font-tuning.ts';
 import { TEXT_FONT_VARIANT } from './fixture-groups/text-font-variant.ts';
+import { TEXT_HYPHENS } from './fixture-groups/text-hyphens.ts';
 import { TEXT_INDENT } from './fixture-groups/text-indent.ts';
 import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { TEXT_LINE_BREAK } from './fixture-groups/text-line-break.ts';
 import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
 import { TEXT_SHADOW } from './fixture-groups/text-shadow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
 import { TEXT_STYLE } from './fixture-groups/text-style.ts';
+import { TEXT_TAB_SIZE } from './fixture-groups/text-tab-size.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
+import { TEXT_WORD_BREAK } from './fixture-groups/text-word-break.ts';
+import { TEXT_WRAP } from './fixture-groups/text-wrap.ts';
 import { TOUCH_ACTION } from './fixture-groups/touch-action.ts';
 import { TRANSFORM_EXTRA } from './fixture-groups/transform-extra.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
@@ -184,6 +190,7 @@ export const GROUPS = {
   'sizing-ratio': SIZING,
   states: STATES,
   svg: SVG,
+  'text-align-last': TEXT_ALIGN_LAST,
   'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
@@ -193,15 +200,20 @@ export const GROUPS = {
   'text-font-stretch': TEXT_FONT_STRETCH,
   'text-font-tuning': TEXT_FONT_TUNING,
   'text-font-variant': TEXT_FONT_VARIANT,
+  'text-hyphens': TEXT_HYPHENS,
   'text-indent': TEXT_INDENT,
   'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,
+  'text-line-break': TEXT_LINE_BREAK,
   'text-overflow': TEXT_OVERFLOW,
   'text-shadow': TEXT_SHADOW,
   'text-spacing': TEXT_SPACING,
   'text-style': TEXT_STYLE,
+  'text-tab-size': TEXT_TAB_SIZE,
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
+  'text-word-break': TEXT_WORD_BREAK,
+  'text-wrap': TEXT_WRAP,
   'touch-action': TOUCH_ACTION,
   'transform-extra': TRANSFORM_EXTRA,
   transforms: TRANSFORMS,

@@ -31,8 +31,12 @@ import { TXT_FV_FAULTS } from './faults/txt-fv.ts';
 import { TXT_FX_FAULTS } from './faults/txt-fx.ts';
 import { TXT_W_FAULTS } from './faults/txt-w.ts';
 import { TXT2_C_FAULTS } from './faults/txt2-c.ts';
+import { TXT2_D_FAULTS } from './faults/txt2-d.ts';
 import { TXT2_E_FAULTS } from './faults/txt2-e.ts';
 import { TXT2_G_FAULTS } from './faults/txt2-g.ts';
+import { TXT2_I_FAULTS } from './faults/txt2-i.ts';
+import { TXT2_LB_FAULTS } from './faults/txt2-lb.ts';
+import { TXT2_TAL_FAULTS } from './faults/txt2-tal.ts';
 import { TXT2B_FAULTS } from './faults/txt2b.ts';
 import { VALUES_FAULTS } from './faults/values.ts';
 
@@ -67,8 +71,12 @@ export const FAULT_GROUPS = {
   'txt-fx': TXT_FX_FAULTS,
   'txt-w': TXT_W_FAULTS,
   'txt2-c': TXT2_C_FAULTS,
+  'txt2-d': TXT2_D_FAULTS,
   'txt2-e': TXT2_E_FAULTS,
   'txt2-g': TXT2_G_FAULTS,
+  'txt2-i': TXT2_I_FAULTS,
+  'txt2-lb': TXT2_LB_FAULTS,
+  'txt2-tal': TXT2_TAL_FAULTS,
   txt2b: TXT2B_FAULTS,
   values: VALUES_FAULTS,
 } as const;

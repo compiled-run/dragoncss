@@ -20,7 +20,9 @@ import { FONT_STRETCH_ANIMATION } from './animation-kinds/font-stretch.ts';
 import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
+import { HYPHENS_ANIMATION } from './animation-kinds/hyphens.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
+import { LINE_BREAK_ANIMATION } from './animation-kinds/line-break.ts';
 import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
@@ -35,7 +37,9 @@ import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
+import { TAB_SIZE_ANIMATION } from './animation-kinds/tab-size.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
+import { TEXT_ALIGN_LAST_ANIMATION } from './animation-kinds/text-align-last.ts';
 import { TEXT_BREAK_ANIMATION } from './animation-kinds/text-break.ts';
 import { TEXT_DECORATION_ANIMATION } from './animation-kinds/text-decoration.ts';
 import { TEXT_FILL_STROKE_ANIMATION } from './animation-kinds/text-fill-stroke.ts';
@@ -44,6 +48,7 @@ import { TEXT_OVERFLOW_ANIMATION } from './animation-kinds/text-overflow.ts';
 import { TEXT_SHADOW_ANIMATION } from './animation-kinds/text-shadow.ts';
 import { TEXT_SPACING_ANIMATION } from './animation-kinds/text-spacing.ts';
 import { TEXT_TRANSFORM_ANIMATION } from './animation-kinds/text-transform.ts';
+import { TEXT_WRAP_ANIMATION } from './animation-kinds/text-wrap.ts';
 import { TOUCH_ACTION_ANIMATION } from './animation-kinds/touch-action.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
@@ -68,7 +73,9 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_TUNING_ANIMATION,
   ...FONT_VARIANT_ANIMATION,
   ...GRID_ANIMATION,
+  ...HYPHENS_ANIMATION,
   ...INLINE_ANIMATION,
+  ...LINE_BREAK_ANIMATION,
   ...LINE_CLAMP_ANIMATION,
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,
@@ -83,7 +90,9 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
   ...SVG_ANIMATION,
+  ...TAB_SIZE_ANIMATION,
   ...TEXT_ANIMATION,
+  ...TEXT_ALIGN_LAST_ANIMATION,
   ...TEXT_BREAK_ANIMATION,
   ...TEXT_DECORATION_ANIMATION,
   ...TEXT_FILL_STROKE_ANIMATION,
@@ -92,6 +101,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TEXT_SHADOW_ANIMATION,
   ...TEXT_SPACING_ANIMATION,
   ...TEXT_TRANSFORM_ANIMATION,
+  ...TEXT_WRAP_ANIMATION,
   ...TOUCH_ACTION_ANIMATION,
   ...TRANSFORM_ANIMATION,
   ...TRANSFORM_EXTRA_ANIMATION,
