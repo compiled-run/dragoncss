@@ -296,7 +296,7 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
  * from the shaped item (pieceGlyphs, HarfBuzz's 16.16 advances), with size = platformFontSize(zoomFontSize(css size, DPR)); the
  * baseline is the snapped line top plus the engine's ascent. Each Ahem glyph's box is its font box scaled by size / unitsPerEm; a real
  * face's are its shaped glyphs' HarfBuzz extents (TXT1a-2). A text with a synthetic-oblique write draws each glyph sheared about its
- * baseline origin, so its box is the bounding box of the sheared box.
+ * baseline origin, so its box is the bounding box of the sheared box and carries the slanted sides (shearedBox).
  */
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
   const sheared = glyphShears(p);
@@ -313,11 +313,14 @@ export function glyphShears(p: NativeProgram): ReadonlyMap<string, number> {
   return out;
 }
 
-/** The bounding box of a glyph box sheared about the baseline (device y down) by k: x moves by k times the height above it. */
+/**
+ * A glyph box sheared about the baseline (device y down) by k: x moves by k times the height above it. Its box is the bounding box of
+ * the sheared ink and its slant the sheared sides, which the clearance and the glyph scanlines follow (samples.ts glyphClearance).
+ */
 export function shearedBox(g: GlyphBox, baseline: number, k: number): GlyphBox {
   const lo = k * (baseline - g.bottom);
   const hi = k * (baseline - g.top);
-  return { left: g.left + Math.min(lo, hi), right: g.right + Math.max(lo, hi), top: g.top, bottom: g.bottom };
+  return { left: g.left + Math.min(lo, hi), right: g.right + Math.max(lo, hi), top: g.top, bottom: g.bottom, slant: { k, baseline, left: g.left, right: g.right } };
 }
 
 /** A glyph line with its baseline in device px. */

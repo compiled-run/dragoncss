@@ -4,6 +4,10 @@
 // device draws: each glyph box sheared about its baseline origin by the write's shear, black on the white page. Every pixel the model
 // covers fully must be Chrome's ink and every pixel it leaves clear must be Chrome's background, so where Chrome shears, by how much
 // and about which origin are proven before any device runs. The ahemObliqueUnsheared plant (no shear write) must fail.
+// Chrome on darwin grows every glyph edge by a fraction of a device px (the fringe of T093 addendum F1), upright or sheared, so the
+// device lanes' points keep SAMPLE_INSET_DEVICE_PX off every glyph edge: a sheared glyph's slanted sides run through its bounding box,
+// and its points keep off those sides too. Check (c) of the drawn model (the model at exact coverage) against Chrome must pass on the
+// device points; with each sheared glyph taken as its bounding box it must fail.
 import { describe, expect, it } from 'vitest';
 import type { CompilerFaults, NativeProgram } from 'dragon';
 import { createProjectWith, nativePrograms, NO_FAULTS } from 'dragon';
@@ -14,8 +18,10 @@ import type { FixtureSpec } from '../src/fixtures.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { NATIVE_CONFIG } from '../src/native-compile.ts';
 import type { RgbaImage } from '../src/native-compare.ts';
-import { committedPixels, glyphShears, uprightGlyphLines } from '../src/pixel-reference.ts';
+import { readSamples } from '../src/native-compare.ts';
+import { caseBoxes, checkCasePixels, committedPixels, devicePoints, glyphLines, glyphShears, rasterSize, uprightGlyphLines } from '../src/pixel-reference.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
+import { sampleBoxes, sampleGlyphs } from '../src/samples.ts';
 
 const CASE = 'text-style-ahem';
 const SPEC = FIXTURE_GROUPS.flatMap((g) => g.fixtures).find((f) => f.id === CASE);
@@ -115,6 +121,60 @@ describe('TXT-W: text-style-ahem\'s sheared glyphs equal the committed Chrome pi
         expect(r.shearedInk, `DPR ${dpr}`).toBeGreaterThan(SHEARED.length * 40 * dpr * dpr);
         expect(r.background, `DPR ${dpr}`).toBeGreaterThan(chrome.width * chrome.height / 2);
         expect(judge(chrome, inks(planted, dpr)).mismatches.length, `DPR ${dpr} plant`).toBeGreaterThan(SHEARED.length * 10);
+      }
+    }, 300_000);
+  }
+});
+
+/** The model drawn at exact coverage (an 8 x 8 grid per device px), black ink on white, as the device draws it. */
+function drawn(p: NativeProgram, dpr: number): RgbaImage {
+  const { width, height } = rasterSize(ENVIRONMENT.viewport, dpr);
+  const S = 8;
+  const hits = new Uint16Array(width * height);
+  for (const g of inks(p, dpr)) {
+    for (let y = Math.max(0, Math.floor(g.top)); y < Math.min(height, Math.ceil(g.bottom)); y++) {
+      for (let sy = 0; sy < S; sy++) {
+        const yy = y + (sy + 0.5) / S;
+        if (yy < g.top || yy >= g.bottom) continue;
+        const [l, r] = span(g, yy);
+        for (let x = Math.max(0, Math.floor(l)); x < Math.min(width, Math.ceil(r)); x++) {
+          for (let sx = 0; sx < S; sx++) {
+            const xx = x + (sx + 0.5) / S;
+            if (xx >= l && xx < r) hits[y * width + x] = (hits[y * width + x] as number) + 1;
+          }
+        }
+      }
+    }
+  }
+  const data = new Uint8Array(width * height * 4);
+  hits.forEach((h, i) => {
+    const v = Math.round(255 * (1 - Math.min(1, h / (S * S))));
+    data.set([v, v, v, 255], i * 4);
+  });
+  return { width, height, data };
+}
+
+describe('TXT-W: the device points keep off the slanted sides of text-style-ahem\'s sheared glyphs', () => {
+  if (SPEC === undefined) return;
+  for (const c of casesOf(SPEC, fixtureInput(SPEC))) {
+    it(`${c.id}: check (c) of the drawn model against Chrome passes on the device points at ${DPRS.join(', ')}, and fails on bounding boxes`, () => {
+      const p = nativePrograms(compile(SPEC, c.environment.direction, NO_FAULTS), c.assignment);
+      if (p.kind !== 'ready') throw new Error(`${c.id}: ${p.reason}`);
+      for (const prog of [p.programs.uikit, p.programs['android-views']]) {
+        for (const dpr of DPRS) {
+          const chrome = committedPixels(c.id, dpr);
+          if (chrome === null) throw new Error(`${c.id}: no committed Chrome PNG at DPR ${dpr}`);
+          const size = rasterSize(ENVIRONMENT.viewport, dpr);
+          const model = drawn(prog, dpr);
+          const points = devicePoints(prog, ENVIRONMENT.viewport, dpr);
+          const r = checkCasePixels(readSamples(model, points), points, chrome, size, size);
+          expect(r.problems, `${prog.backend} DPR ${dpr}`).toEqual([]);
+          expect(r.compared, `${prog.backend} DPR ${dpr}`).toBeGreaterThan(500);
+          // The same rules with each sheared glyph as its bounding box: points on the slanted sides compare Chrome's fringe.
+          const boxed = glyphLines(prog, ENVIRONMENT.viewport, dpr).map((l) => ({ id: l.id, glyphs: l.glyphs.map(({ left, top, right, bottom }) => ({ left, top, right, bottom })) }));
+          const plain = [...sampleBoxes(caseBoxes(prog, ENVIRONMENT.viewport, dpr), size, boxed.flatMap((l) => l.glyphs)).points, ...sampleGlyphs(boxed, size).points];
+          expect(checkCasePixels(readSamples(model, plain), plain, chrome, size, size).problems.length, `${prog.backend} DPR ${dpr} bounding boxes`).toBeGreaterThan(0);
+        }
       }
     }, 300_000);
   }
