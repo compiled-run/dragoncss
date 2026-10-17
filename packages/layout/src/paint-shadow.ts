@@ -22,6 +22,8 @@
 // box an outer shadow is clipped out of, the padding box an inset one is clipped to) are supersampled 16 x 16 per pixel, and a
 // backdrop the ancestors' backgrounds do not describe (another box's paint beneath the shadow) is composited over as the platform
 // rounds. packages/parity/test/pnt1-shadow.test.ts measures the device layers against Chrome.
+//
+// textShadowLayerOver draws text-shadow on a line of Ahem text the same way, glyph by glyph (see its comment).
 import type { A8Mask, BlurFaults, IRect } from './paint-blur.ts';
 import { boxBlur, boxBlurMargin, hasNoBlur, maskBounds, mulDiv255Round, rectShadowCoverage, shadowSigma } from './paint-blur.ts';
 import type { AaPath, Device, IRect as AaIRect, Radius, SkRRect } from './paint-aa.ts';
@@ -29,6 +31,7 @@ import { a8Device, aaRoute, antiFillPath, devicePixels, drrectPath, NO_AA_FAULTS
 import { ccTileEnd, ccTileIndex, ccTileStart } from './paint-dither.ts';
 import { constrainCornerRadii, hasRoundedCorner } from './paint-radius.ts';
 import { floorOf, froundOf } from './rt-easing.ts';
+import { ahemLineInk } from './text-decoration.ts';
 
 /** Planted faults (T046 §5.2); the paint vectors and the pixel lanes must catch each one. */
 export type ShadowFaults = {
@@ -472,14 +475,18 @@ function approxMulDiv255(a: number, b: number): number {
  * Composites one shadow of colour (r, g, b, a) and per-pixel coverage onto a premultiplied layer with Skia's A8 colour mask blit
  * (SkOpts blit_mask_d32_a8_general, measured exact against Chrome 145): left = approxMulDiv255(premul colour, coverage), then
  * left + ((layer * (256 - left alpha)) >> 8). The colour is premultiplied with SkMulDiv255Round (SkPreMultiplyColor). The same
- * blit goes onto over (the opaque backdrop, as Chrome's tile holds it) unless over is empty.
+ * blit goes onto over (the opaque backdrop, as Chrome's tile holds it) unless over is empty. Only the pixels of region are blitted.
  */
-function compositeOnto(layer: readonly Cell[], over: readonly Cell[], bounds: IRect, sh: ShadowInput, coverageAt: (x: number, y: number) => number): void {
+function compositeOnto(layer: readonly Cell[], over: readonly Cell[], bounds: IRect, region: IRect, sh: ShadowInput, coverageAt: (x: number, y: number) => number): void {
   const pr = mulDiv255Round(sh.r, sh.a);
   const pg = mulDiv255Round(sh.g, sh.a);
   const pb = mulDiv255Round(sh.b, sh.a);
-  for (let y = bounds.top; y < bounds.bottom; y++) {
-    for (let x = bounds.left; x < bounds.right; x++) {
+  const y0 = maxNum(bounds.top, region.top);
+  const y1 = minNum(bounds.bottom, region.bottom);
+  const x0 = maxNum(bounds.left, region.left);
+  const x1 = minNum(bounds.right, region.right);
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
       const c = coverageAt(x, y);
       if (c === 0) continue;
       const i = 4 * ((y - bounds.top) * width(bounds) + (x - bounds.left));
@@ -680,7 +687,7 @@ function outerLayer(left: number, top: number, right: number, bottom: number, ra
     const ox = at(offsets, 2 * k);
     const oy = at(offsets, 2 * k + 1);
     const cache: TileMask[] = [];
-    compositeOnto(layer, over, b, sh, (x, y) => {
+    compositeOnto(layer, over, b, b, sh, (x, y) => {
       const m = tileMaskAt(cache, spread, ox, oy, sigma, x, y);
       const c = maskAt(m, x, y);
       if (c === 0 || faults.shadowNotClippedOut) return c;
@@ -731,7 +738,7 @@ function insetLayer(left: number, top: number, right: number, bottom: number, bo
     const sigma = at(z, 4);
     const hole = spreadShape(pl, pt, pr, pb, bounds.radii, faults.spreadIgnored ? 0 : -spread, NO_SHADOW_FAULTS);
     if (shapeType(hole) === 'empty') {
-      compositeOnto(layer, over, b, sh, (x, y) => mulDiv255Round(shapeCoverage(bounds, x, y), 255));
+      compositeOnto(layer, over, b, b, sh, (x, y) => mulDiv255Round(shapeCoverage(bounds, x, y), 255));
       continue;
     }
     // AreaCastingShadowInHole: the padding box outset by the blur (and by a negative spread), united with itself moved back
@@ -743,7 +750,7 @@ function insetLayer(left: number, top: number, right: number, bottom: number, bo
     const b0 = f32(pb + grow);
     const outer: ShadowShape = { left: minNum(l0, f32(l0 - ox)), top: minNum(t0, f32(t0 - oy)), right: maxNum(r0, f32(r0 - ox)), bottom: maxNum(b0, f32(b0 - oy)), radii: [0, 0, 0, 0, 0, 0, 0, 0] };
     const cache: TileMask[] = [];
-    compositeOnto(layer, over, b, sh, (x, y) => {
+    compositeOnto(layer, over, b, b, sh, (x, y) => {
       const i = ccTileIndex(x, TILE);
       const j = ccTileIndex(y, TILE);
       let m: A8Mask | null = null;
@@ -765,6 +772,71 @@ function insetLayer(left: number, top: number, right: number, bottom: number, bo
       }
       return mulDiv255Round(maskAt(m, x, y), clipAt(x, y));
     });
+  }
+  return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, rgba: layerValues(layer, over, back) };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// text-shadow (TXT-FX) on one line of Ahem text.
+
+/** An Ahem glyph's source A8 mask: each pixel's area coverage of the ink box (Core Text's fringe is not modelled; see textShadowLayerOver). */
+function glyphMask(left: number, top: number, right: number, bottom: number): A8Mask {
+  const b = roundOut(left, top, right, bottom);
+  const data: number[] = [];
+  for (let y = b.top; y < b.bottom; y++) {
+    const cy = minNum(y + 1, bottom) - maxNum(y, top);
+    for (let x = b.left; x < b.right; x++) {
+      const cx = minNum(x + 1, right) - maxNum(x, left);
+      data.push(cx > 0 && cy > 0 ? floorOf(cx * cy * 255 + 0.5) : 0);
+    }
+  }
+  return { bounds: b, data };
+}
+
+/**
+ * The text shadows of one line of Ahem text (its code points, pen xs and baseline in page device px, its zoomed font size), composited
+ * as the device shows them: over the backdrop, as outerShadowLayerOver encodes a layer. Blink draws the line once per shadow, last
+ * first, through cc::DrawLooper (text_painter.cc CreateDrawLooper, draw_looper.cc Layer::Apply): translated by the zoomed offset, in
+ * the shadow colour, and with a blur mask filter of sigma = blur / 2 when the blur is not zero. Skia's CPU text path
+ * (SkGlyphRunPainter.cpp prepare_for_direct_mask_drawing) places each glyph at x rounded down to a quarter pixel after adding 1/8 and
+ * at y rounded to a whole pixel; the strike's scaler context blurs each glyph's own A8 image (SkScalerContext::getImage, filterMask,
+ * SkBlurMask::BoxBlur, without the gamma preblend), and Draw::paintMasks blits each glyph's mask on its own. Core Text grows a glyph's
+ * left, right and top edges by a size-dependent fringe that is not modelled, so only pixels whose blur reads none of those edges
+ * equal Chrome's (packages/parity/test/text-shadow-native.test.ts).
+ */
+export function textShadowLayerOver(cps: readonly number[], xs: readonly number[], size: number, baseline: number, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[]): ShadowLayer {
+  const ink = ahemLineInk(cps, xs, size, baseline);
+  const masks: A8Mask[] = [];
+  let bounds: IRect | null = null;
+  for (let k = shadows.length - 1; k >= 0; k--) {
+    const sh = shadows[k] as ShadowInput;
+    if (sh.inset) throw new Error('paint-shadow: a text shadow is never inset');
+    if (sh.a === 0) continue;
+    const z = zoomed(sh, dpr, faults);
+    const sigma = at(z, 4);
+    const y = floorOf(f32(f32(baseline + at(z, 1)) + 0.5));
+    for (const g of ink) {
+      const x = floorOf(f32(f32(g.left + at(z, 0)) + 0.125) * 4) / 4;
+      const src = glyphMask(x, y - (baseline - g.top), x + (g.right - g.left), y + (g.bottom - baseline));
+      const m = sigma > 0 && !hasNoBlur(sigma) ? boxBlur(src, sigma, NO_BLUR) : src;
+      masks.push(m);
+      if (width(m.bounds) > 0 && height(m.bounds) > 0) bounds = union(bounds, m.bounds);
+    }
+  }
+  if (bounds === null) return { left: 0, top: 0, right: 0, bottom: 0, rgba: [] };
+  const b = bounds;
+  const layer = zeroCells(4 * width(b) * height(b));
+  const back = backdropCells(backdrop, b);
+  const over = backdropCells(backdrop, b);
+  let i = 0;
+  for (let k = shadows.length - 1; k >= 0; k--) {
+    const sh = shadows[k] as ShadowInput;
+    if (sh.a === 0) continue;
+    for (let n = 0; n < ink.length; n++) {
+      const m = masks[i] as A8Mask;
+      i++;
+      compositeOnto(layer, over, b, m.bounds, sh, (x, y) => maskAt(m, x, y));
+    }
   }
   return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, rgba: layerValues(layer, over, back) };
 }
