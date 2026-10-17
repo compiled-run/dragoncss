@@ -28,7 +28,7 @@ export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stro
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
   svg: ['width', 'height', 'viewBox', 'xmlns', ...SVG_PAINT_ATTRIBUTES],
   path: ['d', ...SVG_PAINT_ATTRIBUTES],
-  rect: ['x', 'y', 'width', 'height', ...SVG_PAINT_ATTRIBUTES],
+  rect: ['x', 'y', 'width', 'height', 'rx', 'ry', ...SVG_PAINT_ATTRIBUTES],
   circle: ['cx', 'cy', 'r', ...SVG_PAINT_ATTRIBUTES],
 };
 
@@ -36,8 +36,6 @@ export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[]
 const SVG_ATTRIBUTE_OWNERS: { readonly [name: string]: string } = {
   transform: 'the SVG transform package SVG-transform',
   preserveAspectRatio: 'the SVG transform package SVG-transform',
-  rx: 'the SVG structure package SVG-b (rounded rects)',
-  ry: 'the SVG structure package SVG-b (rounded rects)',
   opacity: 'the SVG opacity package SVG-opacity',
   'clip-path': 'the clipping package MASK-CLIP',
   mask: 'the clipping package MASK-CLIP',
@@ -118,16 +116,19 @@ export function svgAttributeRefusal(tag: string, name: string, text: string): st
   }
   const v = parseSvgLength(text);
   if (v === null) return 'only numbers and px lengths are built (package SVG-units)';
-  if ((name === 'width' || name === 'height' || name === 'r') && v < 0) return 'a negative value is an error, which disables rendering in Chrome';
+  if ((name === 'width' || name === 'height' || name === 'r' || name === 'rx' || name === 'ry') && v < 0) return 'a negative value is an error, which disables rendering in Chrome';
   return null;
 }
 
 /** The geometry properties each shape tag maps its attributes to (SVG 2 §10.3, §10.4); a rect's width and height are below. */
-const SVG_GEOMETRY_HINTS: { readonly [tag: string]: readonly ('cx' | 'cy' | 'r' | 'x' | 'y')[] } = { rect: ['x', 'y'], circle: ['cx', 'cy', 'r'] };
+const SVG_GEOMETRY_HINTS: { readonly [tag: string]: readonly SvgGeometryProperty[] } = { rect: ['x', 'y', 'rx', 'ry'], circle: ['cx', 'cy', 'r'] };
+
+/** The SVG geometry properties a shape draws from (SVG-geometry, and SVG-rrect's corner radii). */
+export type SvgGeometryProperty = 'cx' | 'cy' | 'r' | 'x' | 'y' | 'rx' | 'ry';
 
 /**
  * The presentation hints of an SVG element: the svg property family, an svg's width and height, and (SVG-geometry) a rect's x, y,
- * width and height and a circle's cx, cy and r, as CSS values.
+ * width and height and a circle's cx, cy and r, and (SVG-rrect) a rect's rx and ry, as CSS values.
  */
 export function svgPresentationHints(tag: string, attributes: ReadonlyMap<string, string>): Map<Longhand, CssValue> {
   const out = new Map<Longhand, CssValue>();
@@ -141,7 +142,7 @@ export function svgPresentationHints(tag: string, attributes: ReadonlyMap<string
   for (const p of SVG_GEOMETRY_HINTS[tag] ?? []) {
     const text = attributes.get(p);
     const v = text === undefined ? null : parseSvgLength(text);
-    if (v !== null && !(p === 'r' && v < 0)) out.set(p, { kind: 'length', value: v, unit: 'px' });
+    if (v !== null && !((p === 'r' || p === 'rx' || p === 'ry') && v < 0)) out.set(p, { kind: 'length', value: v, unit: 'px' });
   }
   // An svg's width and height, and a rect's, are geometry properties their attributes map to (SVG 2 §10.4, §11.2).
   if (tag === SVG_TAG || tag === 'rect') {
@@ -162,18 +163,39 @@ export function viewBoxOf(attributes: ReadonlyMap<string, string>): ViewBox | nu
 
 /**
  * A shape's computed geometry property in user units (a px length, or a number, Chrome's SVG attribute mode), or null for one that
- * is not resolved yet: a percentage of the viewport, or a calculation (computed-checks.ts checkSvg refuses both).
+ * is not resolved yet: a percentage of the viewport, or a calculation (computed-checks.ts checkSvg refuses both). An rx or ry of
+ * auto is 'auto'.
  */
-export function svgGeometryOf(el: ResolvedElement, p: 'cx' | 'cy' | 'r' | 'x' | 'y'): number | null {
+export function svgGeometryOf(el: ResolvedElement, p: SvgGeometryProperty): number | 'auto' | null {
   const v = (el.props.get(p) as ResolvedValue | undefined)?.value;
   if (v === undefined) throw new Error(`${el.element.address}: ${p} did not resolve`);
+  if ((p === 'rx' || p === 'ry') && v.kind === 'keyword' && v.value === 'auto') return 'auto';
   return v.kind === 'length' && v.unit === 'px' ? v.value : v.kind === 'number' ? v.value : null;
+}
+
+/** A geometry property that has no auto: its user units, or null when it is not resolved yet (svgGeometryOf). */
+function svgLengthOf(el: ResolvedElement, p: 'cx' | 'cy' | 'r' | 'x' | 'y'): number | null {
+  const v = svgGeometryOf(el, p);
+  if (v === 'auto') throw new Error(`${el.element.address}: ${p} computed to auto`);
+  return v;
+}
+
+/**
+ * SVG-rrect: a rect's used corner radii from its computed rx and ry, as SVG 2 §10.4 resolves them: an auto radius takes the other's
+ * value (both auto are 0), then each is at most half the rect's width or height. Null when one is not resolved yet.
+ */
+export function svgRectRadii(rx: number | 'auto' | null, ry: number | 'auto' | null, width: number, height: number): { readonly rx: number; readonly ry: number } | null {
+  if (rx === null || ry === null) return null;
+  const x = rx === 'auto' ? (ry === 'auto' ? 0 : ry) : rx;
+  const y = ry === 'auto' ? x : ry;
+  return { rx: Math.min(x, width / 2), ry: Math.min(y, height / 2) };
 }
 
 /**
  * A shape's geometry (an absent d is an empty path), or null when it is refused. A path's d and a rect's width and height come from
  * the attributes (absent ones are 0); SVG-geometry: a rect's x and y and a circle's cx, cy and r are the computed properties, which
- * the attributes are presentation hints of.
+ * the attributes are presentation hints of. SVG-rrect: a rect's rx and ry round its corners (svgRectRadii); a rect with a zero
+ * radius is square, as Skia's SkRRect::setRectXY makes it.
  */
 export function shapeOf(el: ResolvedElement): SvgShape | null {
   const tag = el.element.tag;
@@ -187,11 +209,14 @@ export function shapeOf(el: ResolvedElement): SvgShape | null {
     return d.ok ? { kind: 'path', segments: d.segments } : null;
   }
   if (tag === 'rect') {
-    const [x, y, width, height] = [svgGeometryOf(el, 'x'), svgGeometryOf(el, 'y'), num('width'), num('height')];
-    return x === null || y === null || width === null || height === null ? null : { kind: 'rect', x, y, width, height };
+    const [x, y, width, height] = [svgLengthOf(el, 'x'), svgLengthOf(el, 'y'), num('width'), num('height')];
+    if (x === null || y === null || width === null || height === null) return null;
+    const radii = svgRectRadii(svgGeometryOf(el, 'rx'), svgGeometryOf(el, 'ry'), width, height);
+    if (radii === null) return null;
+    return radii.rx > 0 && radii.ry > 0 ? { kind: 'rect', x, y, width, height, rx: radii.rx, ry: radii.ry } : { kind: 'rect', x, y, width, height };
   }
   if (tag === 'circle') {
-    const [cx, cy, r] = [svgGeometryOf(el, 'cx'), svgGeometryOf(el, 'cy'), svgGeometryOf(el, 'r')];
+    const [cx, cy, r] = [svgLengthOf(el, 'cx'), svgLengthOf(el, 'cy'), svgLengthOf(el, 'r')];
     return cx === null || cy === null || r === null ? null : { kind: 'circle', cx, cy, r };
   }
   return null;

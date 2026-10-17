@@ -71,10 +71,36 @@ export function svgDashPhase(dashes: readonly number[], offset: number): number 
   return phase + length === length ? 0 : phase + length;
 }
 
+/** The cubic control distance of a quarter ellipse, as a fraction of its radius: 4/3 (sqrt 2 - 1). */
+const QUARTER_ARC_KAPPA = (4 / 3) * (Math.SQRT2 - 1);
+
+/**
+ * SVG-rrect: a rounded rect's outline, in the order Blink's PathBuilder::AddRoundedRect (path_builder.cc) builds it (clockwise,
+ * start index 0) and Skia's set_as_rrect (SkPathRawShapes.cpp) lays it out: from the top edge's left end (SkPath_RRectPointIterator
+ * point 0, SkPathMakers.h), each edge's line then its corner, closed; an oval (both radii at half the size) is set_as_oval's four
+ * quarters from the top centre, with no lines (SkPathPriv::SimplifyRRect, SkPathPriv.h). Skia draws each corner as a conic of
+ * weight sqrt(2)/2, an exact quarter ellipse; CoreGraphics and android.graphics.Path have no conic, so each is the cubic that
+ * approximates it (within 0.03% of the radius).
+ */
+function roundedRectPath(x: number, y: number, w: number, h: number, rx: number, ry: number): number[] {
+  const [l, t, r, b] = [x, y, x + w, y + h];
+  const [kx, ky] = [rx * QUARTER_ARC_KAPPA, ry * QUARTER_ARC_KAPPA];
+  const corners = [
+    [3, r - rx + kx, t, r, t + ry - ky, r, t + ry],
+    [3, r, b - ry + ky, r - rx + kx, b, r - rx, b],
+    [3, l + rx - kx, b, l, b - ry + ky, l, b - ry],
+    [3, l, t + ry - ky, l + rx - kx, t, l + rx, t],
+  ];
+  if (rx * 2 === w && ry * 2 === h) return [0, l + rx, t, ...corners.flat(), 4];
+  const lines = [[1, r - rx, t], [1, r, b - ry], [1, l + rx, b], [1, l, t + ry]];
+  return [0, l + rx, t, ...lines.flatMap((line, i) => [...line, ...(corners[i] as number[])]), 4];
+}
+
 /** A shape's outline as verb-coded numbers (SvgShapeData.path). A rect is its four sides, closed, as Blink builds it. */
 export function svgShapePath(s: SvgShapeScene): number[] {
   const g = s.shape;
   if (g.kind === 'circle') return [5, g.cx, g.cy, g.r];
+  if (g.kind === 'rect' && g.rx !== undefined && g.ry !== undefined) return roundedRectPath(g.x, g.y, g.width, g.height, g.rx, g.ry);
   if (g.kind === 'rect') return [0, g.x, g.y, 1, g.x + g.width, g.y, 1, g.x + g.width, g.y + g.height, 1, g.x, g.y + g.height, 4];
   return g.segments.flatMap((v) => (v.kind === 'move' ? [0, v.x, v.y] : v.kind === 'line' ? [1, v.x, v.y] : v.kind === 'quad' ? [2, v.x1, v.y1, v.x, v.y] : v.kind === 'cubic' ? [3, v.x1, v.y1, v.x2, v.y2, v.x, v.y] : [4]));
 }
@@ -95,7 +121,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView android.graphics.Paths drawn with Canvas.drawPath (Paint FILL and STROKE): ${SVG_PAINT}` },
     },
   },
-  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order'] },
+  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry'] },
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
