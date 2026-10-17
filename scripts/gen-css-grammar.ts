@@ -102,6 +102,9 @@ const SUBSET = [
   'text-shadow',
   // FX: filter (filter-effects-1 §5), after text-shadow, as LONGHANDS registers it.
   'filter',
+  // PNT2: the 3D transform longhands (css-transforms-2 §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
+  // Chrome 145's (css_properties.json5 keywords).
+  'backface-visibility', 'transform-style', 'transform-box',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
@@ -227,6 +230,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   y: '<length-percentage> | <number>',
   // Blink PaintOrder::ParseSingleValue: normal, or fill, stroke and markers each at most once (svg-paint-order.ts canonicalizes).
   'paint-order': 'normal | [ fill || stroke || markers ]',
+  // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
+  rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
 };
 
 /**

@@ -3135,6 +3135,21 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkPathMakers.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 Google Inc.",
+      "fileSha256": "b05e7f3c35e5a41f9ca956cc668cf3ac5c559337f61510e9156bc535071b2605",
+      "headerSha256": "399bcb38e47eceb8fd2bdb507ff4053467ad57650e12b15bab73eaf5dddd7352",
+      "ranges": [
+        { "lines": "66-86", "symbol": "SkPath_RRectPointIterator", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/paint/image.ts", "symbol": "roundedRectPath", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/core/SkPathPriv.h",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -3143,10 +3158,12 @@
       "fileSha256": "eb978220f89fada40647ed4313a55788ed3e5a6884012c9fcf1c094fde52f785",
       "headerSha256": "4c66cc21a1f800a4dc2688173a1eb7c2a17eb9af43681961c51429b749c43f26",
       "ranges": [
-        { "lines": "418-432", "symbol": "SkPathPriv::TrimmedBounds", "source": "located" }
+        { "lines": "418-432", "symbol": "SkPathPriv::TrimmedBounds", "source": "located" },
+        { "lines": "47-55", "symbol": "SkPathPriv::SimplifyRRect", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/svg-geometry.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/svg-geometry.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/lower/paint/image.ts", "symbol": "roundedRectPath", "use": "port" }
       ]
     },
     {
@@ -3193,7 +3210,8 @@
         { "lines": "1-212", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/lower/paint/image.ts", "symbol": "roundedRectPath", "use": "port" }
       ]
     },
     {
@@ -3394,6 +3412,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-easing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/geometry/path_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 The Chromium Authors",
+      "fileSha256": "d102f716f9bf7a3e4ba386b6af80ceea79c6604af978a997420fe6a0aa549797",
+      "headerSha256": "f0becbc6a99a89f1949bdbdac5e4f383c5c94c1c7a235ff46564eb41cd5c0ae7",
+      "ranges": [
+        { "lines": "228-236", "symbol": "PathBuilder::AddRoundedRect", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/paint/image.ts", "symbol": "roundedRectPath", "use": "port" }
       ]
     },
     {
@@ -3662,6 +3695,8 @@
         { "lines": "8487-8492", "symbol": "R::ParseSingleValue", "source": "located" },
         { "lines": "12474-12479", "symbol": "X::ParseSingleValue", "source": "located" },
         { "lines": "12489-12494", "symbol": "Y::ParseSingleValue", "source": "located" },
+        { "lines": "8662-8670", "symbol": "Rx::ParseSingleValue", "source": "located" },
+        { "lines": "8680-8688", "symbol": "Ry::ParseSingleValue", "source": "located" },
         { "lines": "8213-8271", "symbol": "PaintOrder::ParseSingleValue", "source": "located" },
         { "lines": "8273-8291", "symbol": "PaintOrder::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "9689-9695", "symbol": "StrokeMiterlimit::ParseSingleValue", "source": "located" },

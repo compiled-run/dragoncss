@@ -72,6 +72,7 @@ import { TEXT_STYLE } from './fixture-groups/text-style.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TOUCH_ACTION } from './fixture-groups/touch-action.ts';
+import { TRANSFORM_EXTRA } from './fixture-groups/transform-extra.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
@@ -204,6 +205,7 @@ export const GROUPS = {
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
   'touch-action': TOUCH_ACTION,
+  'transform-extra': TRANSFORM_EXTRA,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,

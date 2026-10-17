@@ -29,6 +29,7 @@ import { RADIUS_ALIASES } from './aliases/radius.ts';
 import { SELECTION_ALIASES } from './aliases/selection.ts';
 import { SHADOW_ALIASES } from './aliases/shadow.ts';
 import { TRANSFORM_ALIASES } from './aliases/transform.ts';
+import { TRANSFORM_EXTRA_ALIASES } from './aliases/transform-extra.ts';
 
 /** Each family's aliases, one line per family, sorted by family id (test/registry-claims.test.ts). */
 export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: string]: Longhand | Shorthand | AnimLonghand | 'transition' | 'animation' } } = {
@@ -45,6 +46,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   selection: SELECTION_ALIASES,
   shadow: SHADOW_ALIASES,
   transform: TRANSFORM_ALIASES,
+  'transform-extra': TRANSFORM_EXTRA_ALIASES,
 };
 
 const ALIASES: ReadonlyMap<string, string> = new Map(Object.values(ALIAS_FAMILIES).flatMap((f) => Object.entries(f)));
