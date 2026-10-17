@@ -331,6 +331,22 @@ export function textFontOfProps(props: ReadonlyMap<Longhand, ResolvedValue>): Te
   return { weight: weightOf(props.get('font-weight') as ResolvedValue), style };
 }
 
+/**
+ * Whether Chrome draws an element's text over a face without a slope range (Ahem's one regular face) in synthetic oblique:
+ * font-synthesis-style allows it and the computed slope is 14deg or more (css_segmented_font_face.cc, fonts/weight.ts synthesisOf).
+ */
+export function synthesizesOblique(props: ReadonlyMap<Longhand, ResolvedValue>): boolean {
+  const style = textFontOfProps(props).style;
+  const slope = style.kind === 'italic' ? 14 : style.kind === 'oblique' ? style.degrees : 0;
+  return synthesisAllowedOf(props).style && slope >= 14;
+}
+
+/**
+ * The shear Chrome draws a synthetic oblique with, in x per unit of height above the baseline: Skia's SkFont::setSkewX(-1/4) in
+ * y-down glyph space (font_platform_data_mac.mm CreateSkFont, line 256), the same at every angle.
+ */
+export const SYNTHETIC_OBLIQUE_SHEAR = 0.25;
+
 /** A computed font-weight's number; a refused calculation counts as the initial weight, since its declaration is refused. */
 export function weightOf(v: ResolvedValue): number {
   if (isRefusedMath(v.value)) return INITIAL_TEXT_FONT.weight;

@@ -30,7 +30,8 @@ export type ImageWrite = {
 /**
  * One shape of an svg-shapes write: its outline as verb-coded user-unit numbers (0 move x y, 1 line x y, 2 quad x1 y1 x y, 3 cubic
  * x1 y1 x2 y2 x y, 4 close, 5 circle cx cy r), its fill and stroke (null for none), its stroke width in user units, and (SVG-stroke)
- * its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule.
+ * its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule, and (SVG-dash) its dashes in user units ([] for a solid
+ * stroke, else an even list) and the phase into them the stroke starts at (svgDashPhase).
  */
 export type SvgShapeData = {
   readonly path: readonly number[];
@@ -41,6 +42,8 @@ export type SvgShapeData = {
   readonly join: SvgLineJoin;
   readonly miterLimit: number;
   readonly fillRule: SvgFillRule;
+  readonly dashes: readonly number[];
+  readonly dashPhase: number;
 };
 
 export type SvgShapesWrite = {
@@ -52,6 +55,20 @@ export type SvgShapesWrite = {
 
 const paintColor = (p: SvgPaint, opacity: number): Rgba8 | null => (p.kind === 'none' ? null : opacity === 1 ? p.color : { ...p.color, alpha: svgPaintAlpha(p.color.alpha, opacity) });
 
+/**
+ * SVG-dash: where in the dash pattern a stroke starts, in [0, the pattern length): stroke-dashoffset wrapped into the pattern, as
+ * Skia's SkDashPath::CalcDashParameters wraps the phase Chrome passes it (a negative offset counts back from the pattern's end).
+ * CoreGraphics' setLineDash phase and Android's DashPathEffect phase are this same distance into the pattern.
+ */
+export function svgDashPhase(dashes: readonly number[], offset: number): number {
+  const length = dashes.reduce((a, b) => a + b, 0);
+  if (length === 0) return 0;
+  const phase = offset % length;
+  if (phase >= 0) return phase + 0;
+  // + 0 makes -0 (an offset of minus whole patterns) 0; a tiny negative remainder can round up to the pattern's length.
+  return phase + length === length ? 0 : phase + length;
+}
+
 /** A shape's outline as verb-coded numbers (SvgShapeData.path). A rect is its four sides, closed, as Blink builds it. */
 export function svgShapePath(s: SvgShapeScene): number[] {
   const g = s.shape;
@@ -60,7 +77,7 @@ export function svgShapePath(s: SvgShapeScene): number[] {
   return g.segments.flatMap((v) => (v.kind === 'move' ? [0, v.x, v.y] : v.kind === 'line' ? [1, v.x, v.y] : v.kind === 'quad' ? [2, v.x1, v.y1, v.x, v.y] : v.kind === 'cubic' ? [3, v.x1, v.y1, v.x2, v.y2, v.x, v.y] : [4]));
 }
 
-const SVG_PAINT = 'each shape filled (its fill-rule) then stroked (its stroke-linecap, stroke-linejoin and stroke-miterlimit) in its paint, antialiased, through the viewBox transform of the snapped content box, clipped to it (the UA overflow: hidden)';
+const SVG_PAINT = 'each shape filled (its fill-rule) then stroked (its stroke-linecap, stroke-linejoin, stroke-miterlimit and dash pattern) in its paint, antialiased, through the viewBox transform of the snapped content box, clipped to it (the UA overflow: hidden)';
 
 const IMAGE_PAINT = 'the PNG decoded once at build (sRGB, unpremultiplied source); drawn into the engine destination rect snapped to device px, clipped to the snapped content box';
 
@@ -76,7 +93,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView android.graphics.Paths drawn with Canvas.drawPath (Paint FILL, then STROKE): ${SVG_PAINT}` },
     },
   },
-  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule'] },
+  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset'] },
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
@@ -84,7 +101,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       // Nor is one Chrome does not paint (hidden, or opacity 0).
       if (scene === null) throw new ProgramError(`${box.id}: an svg leaf without a scene`);
       const v = scene.viewBox;
-      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth, cap: sh.cap, join: sh.join, miterLimit: sh.miterLimit, fillRule: sh.fillRule })) }];
+      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth, cap: sh.cap, join: sh.join, miterLimit: sh.miterLimit, fillRule: sh.fillRule, dashes: sh.dashes, dashPhase: svgDashPhase(sh.dashes, sh.dashOffset) })) }];
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);

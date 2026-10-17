@@ -86,11 +86,11 @@ describe('declared UA values', () => {
 
 describe('refusals of UA defaults Dragon does not model', () => {
   const codes = (input: ReturnType<typeof inputFor>) => project().compile(input).diagnostics.map((d) => `${d.code} ${String(d.target)}`);
-  it('heading and address text: ios only, since Chrome draws the UA font-weight and font-style on web', () => {
+  it('heading text: ios only, since Chrome draws the UA font-weight on web; address text is sheared on ios since TXT-W', () => {
+    // address's UA italic was refused here too until TXT-W drew Ahem's synthetic oblique natively (text-style-ahem proves it).
     const c = project().compile(inputFor(FONT, (r) => [el(r, 'h2', 'h2', [], [text(r, 't', 'XX')]), el(r, 'a', 'address', [], [el(r, 'ad', 'div', [], [text(r, 'u', 'X')])])]));
     expect(c.diagnostics.map((d) => [d.code, d.target, d.message.split(' from ')[0]])).toEqual([
       ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text h2:text0 inherits font-weight: 700'],
-      ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text ad:text0 inherits font-style: italic'],
     ]);
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('blocked');
