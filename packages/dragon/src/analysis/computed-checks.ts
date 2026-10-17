@@ -40,7 +40,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
-import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { isSvgShapeTag, shapeOf, svgGeometryOf, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
@@ -884,7 +884,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   // SVG 2 §13.6.6 says; native orients it by its own rules, so a stroked shape with one is refused there.
   const cap = el.props.get('stroke-linecap') as ResolvedValue;
   const stroked = keywordOf(el.props.get('stroke') as ResolvedValue) !== 'none' && !((sw.value.kind === 'length' || sw.value.kind === 'number') && sw.value.value === 0);
-  const shape = shapeOf(tag, el.element.attributes);
+  const shape = shapeOf(el);
   if (keywordOf(cap) !== 'butt' && stroked && shape !== null && svgZeroLengthSubpath(shape)) {
     refuse('zero-length-cap', cap.declaration === null ? el.element.node.origin : authored(cap.declaration.valueSpan), `stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address}, whose path has a zero-length subpath, is not supported on native: Chrome draws its cap as a dot or square that native does not orient the same way yet`, `Give <${tag}> ${el.element.address} stroke-linecap: butt, or draw the dot as a <circle>.`, native);
   }
@@ -905,6 +905,16 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
   if (dashed && keywordOf(cap) !== 'butt' && (dashes as readonly number[]).includes(0)) {
     refuse('dash-zero-cap', dashOrigin, `stroke-dasharray: ${valueToString(dashValue.value)} with stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address} is not supported on native: a zero-length dash is a dot or square that native does not orient the same way yet`, `Give every dash a length, or give <${tag}> ${el.element.address} stroke-linecap: butt.`, native);
+  }
+  // SVG-geometry: a rect's x and y and a circle's cx, cy and r draw the shape (elements/svg.ts shapeOf) when they are user units; a
+  // percentage of the viewport and a calculation (whose text values.ts keeps) are not resolved yet.
+  const geometry: readonly ('cx' | 'cy' | 'r' | 'x' | 'y')[] = tag === 'rect' ? ['x', 'y'] : tag === 'circle' ? ['cx', 'cy', 'r'] : [];
+  for (const p of geometry) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (svgGeometryOf(el, p) !== null) continue;
+    const of = p === 'cx' || p === 'x' ? 'the viewport width' : p === 'cy' || p === 'y' ? 'the viewport height' : 'the normalized viewport diagonal';
+    const why = v.value.kind === 'percentage' ? `a percentage ${p} is relative to ${of}, which is not built yet (package SVG-units)` : `a calculated ${p} is not resolved yet (package SVG-units)`;
+    refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} in px or as a number.`);
   }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;

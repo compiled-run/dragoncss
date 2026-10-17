@@ -200,6 +200,13 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'stroke-dasharray': 'none | [ [ <length-percentage [0,∞]> | <number [0,∞]> ]+ ]#',
   // Blink StrokeDashoffset::ParseSingleValue: any length or percentage, or (SVG attribute mode) a number.
   'stroke-dashoffset': '<length-percentage> | <number>',
+  // Blink Cx, Cy, R, X and Y ::ParseSingleValue: ConsumeSVGGeometryPropertyLength, a length or percentage in SVG attribute mode
+  // (so a number is a length in px too); r takes ValueRange::kNonNegative. webref has <length-percentage> only.
+  cx: '<length-percentage> | <number>',
+  cy: '<length-percentage> | <number>',
+  r: '<length-percentage [0,∞]> | <number [0,∞]>',
+  x: '<length-percentage> | <number>',
+  y: '<length-percentage> | <number>',
 };
 
 /**
