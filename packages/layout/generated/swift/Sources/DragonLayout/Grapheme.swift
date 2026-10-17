@@ -70,12 +70,12 @@ public func grapheme_pictographicZwjBefore(_ cps: JsArray<Double>, _ i: Double) 
   // ts: packages/layout/src/grapheme.ts:54
   do {
     var j: Double = (i - 2.0)
-    loop42: while (j >= 0.0) {
-      loop42_body: do {
+    loop44: while (j >= 0.0) {
+      loop44_body: do {
         let cp: Double = try jsUnwrap(jsAt(cps, j))
         // ts: packages/layout/src/grapheme.ts:56
         if try (grapheme_graphemeBreakProperty(cp) == graphemeData_GCB_EXTEND) {
-          break loop42_body
+          break loop44_body
         }
         return try grapheme_isPictographic(cp)
       }
@@ -92,14 +92,14 @@ public func grapheme_graphemeBreaksWith(_ cps: JsArray<Double>, _ codePoints: Bo
   // ts: packages/layout/src/grapheme.ts:70
   do {
     var i: Double = 0.0
-    loop36: while (i < jsLength(cps)) {
-      loop36_body: do {
+    loop38: while (i < jsLength(cps)) {
+      loop38_body: do {
         let c: Double = try grapheme_graphemeBreakProperty(jsUnwrap(jsAt(cps, i)))
         // ts: packages/layout/src/grapheme.ts:72
         if ((i == 0.0) || codePoints) {
           _ = jsPush(out, true)
           riOdd = (c == graphemeData_GCB_REGIONAL_INDICATOR)
-          break loop36_body
+          break loop38_body
         }
         let p: Double = try grapheme_graphemeBreakProperty(jsUnwrap(jsAt(cps, (i - 1.0))))
         var brk: Bool = true

@@ -189,6 +189,6 @@ describe('paint-shadow vectors', () => {
     const v = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'paint-vectors', 'shadow', 'vectors.json'), 'utf8')) as { feature: string; lines: string[] };
     expect(v.feature).toBe('shadow');
     const names = new Set(v.lines.map((l) => (JSON.parse(l) as string[])[0]));
-    expect([...names].sort()).toEqual(['paint:shadow:backdropAt', 'paint:shadow:blurredCoverage', 'paint:shadow:encodeOver', 'paint:shadow:insetShadowLayer', 'paint:shadow:insetShadowLayerOver', 'paint:shadow:outerShadowLayer', 'paint:shadow:outerShadowLayerOver', 'paint:shadow:platformOver', 'paint:shadow:shapeCoverage', 'paint:shadow:shapeType', 'paint:shadow:spreadShape']);
+    expect([...names].sort()).toEqual(['paint:shadow:backdropAt', 'paint:shadow:blurredCoverage', 'paint:shadow:encodeOver', 'paint:shadow:insetShadowLayer', 'paint:shadow:insetShadowLayerOver', 'paint:shadow:outerShadowLayer', 'paint:shadow:outerShadowLayerOver', 'paint:shadow:platformOver', 'paint:shadow:shapeCoverage', 'paint:shadow:shapeType', 'paint:shadow:spreadShape', 'paint:shadow:textShadowLayerOver']);
   });
 });

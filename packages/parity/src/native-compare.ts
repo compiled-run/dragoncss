@@ -237,6 +237,8 @@ export const CHANNEL_DELTA_BY_KIND: { readonly [K in SampleRule]: number } = {
   svg: GATE_CHANNEL_DELTA,
   // TDEC-b: the rows of a text decoration are whole device rows of one colour, compared strictly.
   decoration: GATE_CHANNEL_DELTA,
+  // TXT-FX: a text shadow point reads no glyph edge Core Text dilates, so it is compared strictly.
+  'text-shadow': GATE_CHANNEL_DELTA,
 };
 
 /**

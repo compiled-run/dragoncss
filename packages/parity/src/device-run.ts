@@ -119,6 +119,7 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'decoration-above-text': ['text-decoration-native'],
   'decoration-snap-css-px': ['text-decoration-native'],
   'decoration-alpha-ignored': ['text-decoration-native'],
+  'text-shadow-offset-1': ['text-shadow-blur'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -162,6 +163,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'decoration-above-text': /^decoration:/,
   'decoration-snap-css-px': /^decoration:/,
   'decoration-alpha-ignored': /^decoration:/,
+  'text-shadow-offset-1': /^text-shadow:/,
 };
 /**
  * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason
