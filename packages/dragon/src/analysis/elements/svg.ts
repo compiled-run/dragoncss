@@ -10,6 +10,7 @@ import type { Rgba8 } from '../../css/color.ts';
 import { TRANSPARENT } from '../../css/color.ts';
 import { opacityOf } from '../../css/properties/effects.ts';
 import { dashArrayOf } from '../../css/properties/svg-dash.ts';
+import { paintsStrokeFirst } from '../../css/properties/svg-paint-order.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { CssValue, Declaration } from '../../css/stylesheet.ts';
 import { parseValue } from '../../css/stylesheet.ts';
@@ -20,8 +21,8 @@ import type { ResolvedElement } from '../resolve.ts';
 export const SVG_TAG = 'svg';
 
 /** The presentation attributes Dragon maps to its svg property family (SVG 2 §6.6); author rules beat them. */
-export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset';
-export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset'];
+export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order';
+export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order'];
 
 /** The attributes each SVG tag compiles: its geometry, the paint presentation attributes, and xmlns (no effect in HTML). */
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
@@ -222,6 +223,8 @@ export type SvgShapeScene = {
    */
   readonly dashes: readonly number[];
   readonly dashOffset: number;
+  /** SVG-paint-order: whether the computed paint-order paints the stroke before the fill (paintsStrokeFirst). */
+  readonly strokeFirst: boolean;
   readonly painted: boolean;
 };
 
@@ -349,6 +352,7 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
       fillRule: keywordOfProp(c, 'fill-rule', ['nonzero', 'evenodd'] as const),
       dashes: dashArray.reduce((a, b) => a + b, 0) > 0 ? (dashArray.length % 2 === 0 ? dashArray : [...dashArray, ...dashArray]) : [],
       dashOffset,
+      strokeFirst: paintsStrokeFirst((c.props.get('paint-order') as ResolvedValue).value),
       painted: svgShapePainted(c),
     });
   }
