@@ -430,7 +430,9 @@ public final class DragonTextView: UIView, DragonNodeView {
     ctx.setAllowsFontSubpixelPositioning(true)
     ctx.setShouldSubpixelPositionFonts(true)
     ctx.setShouldSubpixelQuantizeFonts(false)
-    // TXT-W: Skia strokes and fills a fake-bold outline as one path, so a translucent colour is drawn opaque in a layer at its alpha.
+    // TXT-W: Skia strokes and fills a fake-bold outline as one path, so a translucent colour is drawn opaque in a layer at its alpha. One
+    // layer covers the run while Chrome composites each glyph alone, so the compiler refuses a translucent synthetic bold
+    // (computed-checks.ts); the layer keeps stroke and fill from blending twice.
     let bold = dragonSyntheticBold != nil
     let alpha = color.cgColor.alpha
     let paint = bold ? (color.cgColor.copy(alpha: 1) ?? color.cgColor) : color.cgColor
@@ -1379,16 +1381,23 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     return size * f
   }
 
+  /** The fake-bold paints made so far, by text size, so a frame draws without allocating one per run. */
+  private val dragonBoldPaints = HashMap<Float, Paint>()
+
   /** The paint a run is drawn with: a fake-bold run strokes and fills its outlines as one path with a miter join, as Skia's fake bold. */
   private fun dragonRunPaint(p: Paint): Paint {
     val w = dragonBoldStroke(p.textSize)
     if (w <= 0f) return p
-    return Paint(p).apply {
+    val cached = dragonBoldPaints[p.textSize]
+    if (cached != null && cached.color == p.color && cached.typeface == p.typeface) return cached
+    val made = Paint(p).apply {
       style = Paint.Style.FILL_AND_STROKE
       strokeWidth = w
       strokeJoin = Paint.Join.MITER
       strokeMiter = 4f
     }
+    dragonBoldPaints[p.textSize] = made
+    return made
   }
 
   /** The engine's data at the device scale: the instance text size and the placed lines. */

@@ -95,7 +95,8 @@ describe('refusals of UA defaults Dragon does not model', () => {
   });
   it('heading text in an ellipsis block is refused for each configured native target: android as ios, and only the configured ones', () => {
     // Was bare heading text until TXT-W drew Ahem's synthetic bold natively; the UA bold stays refused where a line may end in an ellipsis.
-    const input = inputFor(`${FONT} h2 { text-overflow: ellipsis; }`, (r) => [el(r, 'h2', 'h2', [], [text(r, 't', 'XX')])]);
+    // An ellipsis needs a clipping block (text-overflow on a block with overflow visible draws none, and is accepted).
+    const input = inputFor(`${FONT} h2 { text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }`, (r) => [el(r, 'h2', 'h2', [], [text(r, 't', 'XX')])]);
     const run = (targets: Parameters<typeof createProjectWith>[0]['targets']) => createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     const all = run({ ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
     expect(all.diagnostics.map((d) => [d.code, d.target, d.message.split(', whose')[0]]).sort()).toEqual([

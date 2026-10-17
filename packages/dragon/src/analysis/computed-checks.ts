@@ -473,6 +473,16 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
   }
 }
 
+/**
+ * TXT2-f: whether text-overflow on el applies to its own lines: el is a block container (not an inline box, where text-overflow does
+ * nothing, and not a flex or grid container, whose text is an anonymous item Chrome does not truncate, its parent being no block
+ * container) that clips its overflow and is not the element whose overflow the viewport takes.
+ */
+function truncatesOwnLines(el: ResolvedElement, propagated: ResolvedElement | null): boolean {
+  if (el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
+  return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible');
+}
+
 // TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
 // (LayoutBlockFlow::ShouldTruncateOverflowingText), which the engine does left to right in the block's own inline formatting
 // context. Refused for every target: rtl, and inline content beside block children (Chrome truncates the anonymous blocks'
@@ -480,9 +490,7 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
 // from the block's, since the native view draws the ellipsis with the text it follows while Chrome paints it in the block's style.
 function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const value = el.props.get('text-overflow') as ResolvedValue;
-  // A flex or grid container's text is an anonymous item, which Chrome does not truncate (its parent is no block container).
-  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return;
-  if (['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) return;
+  if (keywordOf(value) !== 'ellipsis' || !truncatesOwnLines(el, propagated)) return;
   const runs = inlineContexts(el, () => {});
   if (runs.length === 0) return;
   const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
@@ -643,6 +651,7 @@ const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 're
 // minimum logical font size clamps, and text without a real bundled face that Chrome draws in synthetic bold and oblique together
 // (Ahem under b in em, or an author weight of 600 and up with italic), or whose synthetic bold sits in a line that may end in an ellipsis.
 function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFsFaults): void {
+  const propagated = propagatedFrom(root);
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -714,7 +723,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const synthetic = here ? [] : syntheticTextFont(el);
     // TXT-W: native draws Ahem's synthetic bold (native-program.ts synthetic-bold) but for a line-ending ellipsis, which Chrome draws in
     // the block container's font while native draws it in the text's own paint.
-    const ellipsisBlock = here || synthetic.length > 0 ? undefined : [...ancestors, el].reverse().find(endsLinesWithEllipsis);
+    const ellipsisBlock = here || synthetic.length > 0 ? undefined : ellipsisBlockOf([...ancestors, el], propagated);
     if (ellipsisBlock !== undefined && (synthesizesBold(el.props) || synthesizesBold(ellipsisBlock.props))) {
       for (const c of el.children) {
         if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
@@ -724,6 +733,25 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
             target: t,
             message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is inside <${ellipsisBlock.element.tag}> ${ellipsisBlock.element.address} (font-weight ${serializeFontWeight(textFontOfProps(ellipsisBlock.props).weight)}), whose lines may end in an ellipsis, and Chrome draws one of them in synthetic bold; Chrome draws the ellipsis in the block's own font, ${t} in the text's paint, and no fixture proves a synthetic-bold ellipsis`,
             manual: `Give ${c.node.address} and ${ellipsisBlock.element.address} a font-weight below 600, or remove text-overflow: ellipsis and -webkit-line-clamp from ${ellipsisBlock.element.address}.`,
+          })));
+        }
+      }
+    }
+    // TXT-W: Chrome composites each fake-bold glyph on its own (Skia draws a glyph mask per glyph), so where a translucent colour's
+    // emboldened glyphs overlap the overlap is darker; the iOS view composites the whole run in one transparency layer, and no fixture
+    // proves a translucent synthetic bold on either target.
+    if (!here && synthetic.length === 0 && synthesizesBold(el.props)) {
+      for (const c of el.children) {
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
+        const color = c.props.get('color') as ResolvedValue;
+        const alpha = color.value.kind === 'color' ? color.value.value.alpha : 255;
+        if (alpha === 0 || alpha === 255) continue;
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
+            origin: c.node.node.origin,
+            target: t,
+            message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is drawn in synthetic bold in the translucent colour ${valueToString(color.value)}; Chrome composites each emboldened glyph on its own, so overlapping glyphs blend darker, and no fixture proves a translucent synthetic bold on ${t}`,
+            manual: `Give ${c.node.address} an opaque colour, or a font-weight below 600.`,
           })));
         }
       }
@@ -768,8 +796,18 @@ function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weig
   return [{ property: 'font-weight', text: serializeFontWeight(font.weight) }, { property: 'font-style', text: serializeFontStyle(font.style) }];
 }
 
-/** Whether a block may end a line in an ellipsis: text-overflow other than clip, or a -webkit-line-clamp container. */
-const endsLinesWithEllipsis = (el: ResolvedElement): boolean => valueToString((el.props.get('text-overflow') as ResolvedValue).value) !== 'clip' || lineClampOf(el) > 0;
+/**
+ * The block whose ellipsis may end a line of el's own text, given [...ancestors, el]: the block container whose inline formatting
+ * context lays the text out (el, or its nearest ancestor that is no inline box or display: contents) when its text-overflow is not
+ * clip and it truncates its own lines (truncatesOwnLines, checkTextOverflow's rule), else the nearest -webkit-line-clamp container,
+ * which may clamp lines of its descendant blocks. Chrome draws the ellipsis in that block's font.
+ */
+function ellipsisBlockOf(chain: readonly ResolvedElement[], propagated: ResolvedElement | null): ResolvedElement | undefined {
+  const outward = [...chain].reverse();
+  const container = outward.find((e) => !isInlineBox(e) && displayKeyword(e) !== 'contents');
+  if (container !== undefined && valueToString((container.props.get('text-overflow') as ResolvedValue).value) !== 'clip' && truncatesOwnLines(container, propagated)) return container;
+  return outward.find((e) => lineClampOf(e) > 0);
+}
 
 /** The support profile each target is checked against, or null when the profiles are not enforced. */
 export type ProfileOf = ((target: string) => SupportProfile) | null;
@@ -1112,12 +1150,12 @@ export const DRAWN_DECORATION_STYLES: readonly string[] = ['solid', 'double'];
  * (TDEC-c draws solid and double only); the style itself is accepted wherever it draws nothing. TDEC-b: ios and android draw solid
  * and double decorations and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
  * auto, px or a percentage; a decorated text that is not visible; an overline or a double line with skip-ink auto, or an underline with skip-ink auto
- * on a real face or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
+ * on a real face, in synthetic bold, or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
  * decorated element in a formatting context no Chrome case proves propagation for is refused on every target.
  */
 function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   const { applied, unproven } = analyzeDecorations(root);
-  const byAddress = new Map<string, { readonly text: ResolvedText; readonly containerSize: number; readonly visibility: string }>();
+  const byAddress = new Map<string, { readonly text: ResolvedText; readonly owner: ResolvedElement; readonly containerSize: number; readonly visibility: string }>();
   const sizeOf = (props: ReadonlyMap<Longhand, ResolvedValue>): number => {
     const v = props.get('font-size')?.value;
     return v !== undefined && v.kind === 'length' && v.unit === 'px' ? v.value : Number.NaN;
@@ -1128,7 +1166,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
     const here = inline ? containerSize : sizeOf(el.props);
     for (const c of el.children) {
       // A text's visibility is its parent element's (an inherited property).
-      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
+      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, owner: el, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
       else index(c, here);
     }
   };
@@ -1148,7 +1186,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
   for (const [address, list] of applied) {
     const hit = byAddress.get(address);
     if (hit === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
-    const { text, containerSize, visibility } = hit;
+    const { text, owner, containerSize, visibility } = hit;
     // TDEC-c: a line drawn in a style no target draws is refused on every target, at the decorating box's style declaration.
     for (const d of list.filter((x) => !DRAWN_DECORATION_STYLES.includes(x.style))) {
       const style = elements.get(d.box)?.props.get('text-decoration-style');
@@ -1173,8 +1211,9 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
       if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
       if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
       if (d.skipInk !== 'auto') continue;
-      // TDEC-d clips Ahem glyphs only, for a solid underline (the capture's skip-ink probe), as thick as a capture proves.
-      if (d.lines.includes('overline') || (d.style === 'double' && d.lines.includes('underline')) || (d.lines.includes('underline') && (realFaceAt(address) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
+      // TDEC-d clips Ahem glyphs only, for a solid underline (the capture's skip-ink probe), as thick as a capture proves. TXT-W: Skia
+      // takes the intercepts of a synthetic-bold glyph from its emboldened outline, which the native views' upright Ahem boxes miss.
+      if (d.lines.includes('overline') || (d.style === 'double' && d.lines.includes('underline')) || (d.lines.includes('underline') && (realFaceAt(address) || synthesizesBold(owner.props) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
     }
     if (intercepts) reasons.push('skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from ' + list.filter((d) => d.skipInk === 'auto').map((d) => d.box).join(', ') + ', which the intercepts of TDEC-d clip');
     if (reasons.length === 0) continue;
@@ -1187,7 +1226,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
         origin: text.node.node.origin,
         target: t,
         message: `text ${address} draws text-decoration (${what}) that ${t} does not draw: ${reasons.join('; ')}`,
-        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines and real faces come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
+        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines, real faces and synthetic bold come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
         basis: 'computed-value',
       }));
     }

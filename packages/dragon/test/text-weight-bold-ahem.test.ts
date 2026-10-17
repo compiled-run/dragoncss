@@ -85,6 +85,54 @@ describe('font-weight over Ahem on native', () => {
       (r) => [el(r, 'o', 'div', ['o'], [el(r, 'n', 'span', ['n'], [text(r, 't', 'XX XX')])])]));
     expect(errorsOf(inner).filter((e) => e.endsWith('DRAGON_UNSUPPORTED_FONT'))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
     expect(inner.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_FONT')?.message).toMatch(/^text n:text0 \(font-weight 400\) is inside <div> o \(font-weight 700\)/);
+    // The block is the text's block container (checkTextOverflow's rule), not the nearest element with text-overflow: an inline span's
+    // own text-overflow does nothing, so the bold div's ellipsis still ends the span's line in synthetic bold.
+    const nested = (outer: string, span: string) => project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } .o { ${outer} } .n { ${span} }`,
+      (r) => [el(r, 'o', 'div', ['o'], [el(r, 'n', 'span', ['n'], [text(r, 't', 'XXXXXXXXXXXXXXXXXXXXXXXX')])])]));
+    const fontErrors = (c: ReturnType<typeof nested>): string[] => errorsOf(c).filter((e) => e.endsWith('DRAGON_UNSUPPORTED_FONT'));
+    const truncating = 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap;';
+    const repro = nested(`font-weight: 700; ${truncating}`, 'font-weight: 400; text-overflow: ellipsis;');
+    expect(fontErrors(repro)).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
+    expect(repro.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_FONT')?.message).toMatch(/^text n:text0 \(font-weight 400\) is inside <div> o \(font-weight 700\)/);
+    // A bold span in a truncating block, whatever the span's own text-overflow, is refused too.
+    expect(fontErrors(nested(truncating, 'font-weight: 700; text-overflow: clip;'))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
+    // No ellipsis: text-overflow only on the inline span, or on a block whose overflow is visible, truncates nothing.
+    const spanOnly = nested('white-space: nowrap; overflow: hidden;', 'font-weight: 700; text-overflow: ellipsis;');
+    expect(fontErrors(spanOnly)).toEqual([]);
+    expect(programs(spanOnly).uikit.nodes.find((n) => n.id === 'n:text0')?.writes.some((w) => w.kind === 'synthetic-bold')).toBe(true);
+    expect(fontErrors(nested('font-weight: 700; text-overflow: ellipsis; white-space: nowrap;', ''))).toEqual([]);
+  });
+
+  it('refuses synthetic bold on native in a translucent colour, which Chrome composites glyph by glyph, and accepts opaque or transparent', () => {
+    const NATIVE_FONT = ['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT'];
+    for (const d of ['font-weight: 700; color: rgba(0, 0, 0, 0.5)', 'font-weight: bold; color: #0008', 'font-weight: 600; color: hsl(0 0% 0% / 0.99)']) {
+      const c = compile(d);
+      expect(errorsOf(c), d).toEqual(NATIVE_FONT);
+      expect(c.diagnostics.find((x) => x.target === 'ios')?.message, d).toMatch(/^text a:text0 \(font-weight \d+\) is drawn in synthetic bold in the translucent colour .*composites each emboldened glyph on its own/);
+      expect(c.outputs.web.kind, d).toBe('ready');
+    }
+    // b inherits the bold from the user-agent stylesheet and the colour from the author.
+    expect(errorsOf(compile('color: rgba(0, 0, 0, 0.5)', 'b'))).toEqual(NATIVE_FONT);
+    for (const d of ['font-weight: 700; color: rgba(0, 0, 0, 1)', 'font-weight: 700; color: transparent', 'font-weight: 500; color: rgba(0, 0, 0, 0.5)', 'font-weight: 700; color: rgba(0, 0, 0, 0.5); font-synthesis-weight: none']) {
+      expect(errorsOf(compile(d)), d).toEqual([]);
+    }
+  });
+
+  it('refuses a skip-ink auto underline over synthetic bold on native, whose intercepts Skia takes from the emboldened outline', () => {
+    const NATIVE_VALUE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    for (const d of ['font-weight: 700; text-decoration: underline', 'font-weight: bold; text-decoration: underline; text-decoration-skip-ink: auto']) {
+      const c = compile(d);
+      expect(errorsOf(c), d).toEqual(NATIVE_VALUE);
+      expect(c.diagnostics.find((x) => x.target === 'android')?.message, d).toMatch(/^text a:text0 draws text-decoration \(underline from a\) that android does not draw: skip-ink-intercepts/);
+      expect(c.outputs.web.kind, d).toBe('ready');
+    }
+    // An underline from an upright ancestor over a bold child is refused too: the child's glyphs are the emboldened ones.
+    const nested = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .u { text-decoration: underline; } .b { font-weight: 700; }',
+      (r) => [el(r, 'u', 'div', ['u'], [el(r, 'b', 'span', ['b'], [text(r, 't', 'XX XX')])])]));
+    expect(errorsOf(nested)).toEqual(NATIVE_VALUE);
+    for (const d of ['font-weight: 700; text-decoration: underline; text-decoration-skip-ink: none', 'font-weight: 500; text-decoration: underline', 'font-weight: 700; text-decoration: underline; font-synthesis-weight: none']) {
+      expect(errorsOf(compile(d)), d).toEqual([]);
+    }
   });
 
   it('emits the stroke rule on both backends and reads it back as syntheticBold; a state program refuses it by name', () => {
