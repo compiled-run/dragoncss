@@ -1,8 +1,10 @@
 // TXT-FX (css-text-decor-4 §4): text-shadow. Every target takes a shadow list of px lengths and explicit colours; the web target
 // leaves the drawing to Chrome. The native targets draw it with the translated paint-shadow.ts textShadowLayerOver in a view
 // beneath the text view (lower/paint/text-shadow.ts), which is Chrome's drawing only where checkTextShadows finds nothing below:
-// upright regular Ahem text (the glyph masks are Ahem's ink boxes; no synthetic bold or oblique) that cannot wrap (Chrome paints each line fragment's shadows and then its text,
-// so a line's shadow covers the line above), with no decoration (Chrome shadows decorations too), visible, without ellipsis, outside
+// upright regular Ahem text (the glyph masks are Ahem's ink boxes; no synthetic bold or oblique) that cannot wrap (Chrome paints
+// each line fragment's shadows and then its text, so a line's shadow covers the line above), with no decoration (Chrome shadows
+// decorations too), visible, without ellipsis (on the block container: text-overflow is not inherited), within the work bound
+// (textShadowWork), outside
 // a compositing group, and with no box after it in tree order painting a background, border or box shadow (Chrome paints a
 // stacking context's text shadows over all of its block backgrounds; the native views of later boxes are above the text's).
 // Planted fault textShadowListAccepted accepts every list on every target.
@@ -49,6 +51,51 @@ function listRefusal(shadows: readonly Shadow[]): string | null {
   return null;
 }
 
+/**
+ * The native work bound (TXT-FX): the device rasters a shadowed line's layer and each glyph's blurred mask in memory, so iOS and
+ * Android refuse a list with a blur over TEXT_SHADOW_MAX_BLUR_PX, more than TEXT_SHADOW_MAX_SHADOWS shadows, or a line whose layer
+ * or glyph masks would pass TEXT_SHADOW_MAX_DEVICE_PX pixels at the largest device scale (textShadowWork).
+ */
+export const TEXT_SHADOW_MAX_BLUR_PX = 16;
+export const TEXT_SHADOW_MAX_SHADOWS = 4;
+export const TEXT_SHADOW_MAX_DEVICE_PX = 600_000;
+/** The largest device scale a native target runs at. */
+const MAX_DEVICE_SCALE = 3;
+
+/**
+ * An upper estimate, in device px at MAX_DEVICE_SCALE, of the pixels the device rasters for a line of n Ahem glyphs of a css size
+ * (each at most size + letterSpacing wide): the layer (the line's box grown by every shadow's offset and blur margin, 3 sigma + 2, unrounded)
+ * and every shadow's glyph masks, whichever is larger.
+ */
+export function textShadowWork(n: number, size: number, letterSpacing: number, shadows: readonly { readonly x: number; readonly y: number; readonly blur: number }[]): number {
+  const s = MAX_DEVICE_SCALE;
+  const margin = (blur: number): number => (3 * blur * s) / 2 + 2;
+  const m = Math.max(0, ...shadows.map((x) => margin(x.blur)));
+  const dx = Math.max(0, ...shadows.map((x) => Math.abs(x.x))) * s;
+  const dy = Math.max(0, ...shadows.map((x) => Math.abs(x.y))) * s;
+  const advance = (size + Math.max(0, letterSpacing)) * s;
+  const layer = (n * advance + 2 * m + dx + 2) * (size * s + 2 * m + dy + 2);
+  const masks = shadows.reduce((sum, x) => sum + n * (size * s + 2 * margin(x.blur) + 2) ** 2, 0);
+  return Math.max(layer, masks);
+}
+
+/** A px length keyword's number, or null for any other value. */
+const pxOf = (v: string): number | null => (/^-?[0-9.]+px$/.test(v) ? Number(v.slice(0, -2)) : v === 'normal' ? 0 : null);
+
+/** Why the native targets refuse a list for its work on one text, or null. */
+function workRefusal(shadows: readonly Shadow[], text: ResolvedText, parent: ResolvedElement): string | null {
+  const at = `text ${text.node.address}`;
+  if (shadows.length > TEXT_SHADOW_MAX_SHADOWS) return `${shadows.length} shadows are more than the ${TEXT_SHADOW_MAX_SHADOWS} the native shadow draws`;
+  const big = shadows.find((x) => x.blur.value > TEXT_SHADOW_MAX_BLUR_PX);
+  if (big !== undefined) return `a blur of ${big.blur.value}px is over the ${TEXT_SHADOW_MAX_BLUR_PX}px the native shadow draws`;
+  const size = pxOf(keyword(text.props, 'font-size'));
+  const spacing = pxOf(keyword(text.props, 'letter-spacing'));
+  if (size === null || spacing === null) return `${at} has a font size or letter spacing that is not in px`;
+  const work = textShadowWork([...text.text].length, size, spacing, shadows.map((x) => ({ x: x.x.value, y: x.y.value, blur: x.blur.value })));
+  if (work > TEXT_SHADOW_MAX_DEVICE_PX) return `${at} would raster about ${work} device px of shadow, over the ${TEXT_SHADOW_MAX_DEVICE_PX} the native shadow draws`;
+  return null;
+}
+
 /** The native drawing of an accepted list. */
 export function textShadowValues(shadows: readonly Shadow[], address: string): TextShadowValue[] {
   return shadows.map((s) => {
@@ -81,15 +128,18 @@ function groupOf(el: ResolvedElement): string | null {
   return o !== null && o < 1 ? `opacity: ${o}` : null;
 }
 
-type Shadowed = { readonly text: ResolvedText; readonly parent: ResolvedElement; readonly order: number; readonly group: string | null };
+/** container: the block container whose inline formatting context holds the text (the parent, or the parent's nearest non-inline ancestor). */
+type Shadowed = { readonly text: ResolvedText; readonly parent: ResolvedElement; readonly container: ResolvedElement; readonly order: number; readonly group: string | null };
 
 /** The text leaves that draw each declared text-shadow list (declaring element first), and every box-painting element's tree order. */
 function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement, Shadowed[]>; readonly painters: number[] } {
   const declared = new Map<ResolvedElement, Shadowed[]>();
   const painters: number[] = [];
   let order = 0;
-  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null): void => {
+  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement): void => {
     if (keyword(el.props, 'display') === 'none') return;
+    // text-overflow is not inherited: it is the block container's, through any depth of inline boxes.
+    const container = keyword(el.props, 'display') === 'inline' ? outer : el;
     order++;
     if (el !== root && paintsBox(el)) painters.push(order);
     const v = el.props.get('text-shadow') as ResolvedValue;
@@ -97,20 +147,20 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
     if (own !== null && !declared.has(own)) declared.set(own, []);
     const g = group ?? groupOf(el);
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c, own, g);
+      if (c.kind === 'element') walk(c, own, g, container);
       else {
         order++;
-        if (own !== null) (declared.get(own) as Shadowed[]).push({ text: c, parent: el, order, group: g });
+        if (own !== null) (declared.get(own) as Shadowed[]).push({ text: c, parent: el, container, order, group: g });
       }
     }
   };
-  walk(root, null, null);
+  walk(root, null, null, root);
   return { declared, painters };
 }
 
 /** Why the native targets refuse a list on its texts, or null when they draw it as Chrome does. */
-function nativeRefusal(texts: readonly Shadowed[], painters: readonly number[], decorated: ReadonlySet<string>, realFaceAt: (address: string) => boolean): string | null {
-  for (const { text, parent, order, group } of texts) {
+function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], painters: readonly number[], decorated: ReadonlySet<string>, realFaceAt: (address: string) => boolean): string | null {
+  for (const { text, parent, container, order, group } of texts) {
     const at = `text ${text.node.address}`;
     if (realFaceAt(text.node.address)) return `${at} is in a real face; the native shadow is drawn from Ahem's glyph boxes only`;
     if (!singleLine(text)) return `${at} may wrap onto several lines, and Chrome paints each line's shadow over the line above`;
@@ -120,8 +170,10 @@ function nativeRefusal(texts: readonly Shadowed[], painters: readonly number[], 
     if (synthesizesOblique(parent.props)) return `${at} is drawn in synthetic oblique, which the native shadow does not shear`;
     if (decorated.has(text.node.address)) return `${at} is decorated, and Chrome shadows its decorations too`;
     if (keyword(parent.props, 'visibility') !== 'visible') return `${at} is not visible`;
-    if (keyword(parent.props, 'text-overflow') !== 'clip') return `${at} may end in an ellipsis, which the native shadow does not draw`;
+    if (keyword(container.props, 'text-overflow') !== 'clip' || keyword(parent.props, 'text-overflow') !== 'clip') return `${at} may end in an ellipsis, which the native shadow does not draw`;
     if (group !== null) return `${at} is inside an element with ${group}, a compositing group in Chrome`;
+    const work = workRefusal(shadows, text, parent);
+    if (work !== null) return work;
     if (painters.some((p) => p > order)) return `a box after ${at} paints a background, border or box shadow, which Chrome paints beneath the text shadow and the native views paint over it`;
   }
   return null;
@@ -137,7 +189,7 @@ export function checkTextShadows(root: ResolvedElement, targets: readonly string
     const v = el.props.get('text-shadow') as ResolvedValue;
     const value = valueToString(v.value);
     const all = listRefusal(shadowList(el));
-    const native = all === null ? nativeRefusal(texts, painters, decorated, realFaceAt) : null;
+    const native = all === null ? nativeRefusal(shadowList(el), texts, painters, decorated, realFaceAt) : null;
     const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
     for (const t of targets) {
       const why = all ?? (NATIVE.includes(t) ? native : null);

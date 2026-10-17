@@ -9,6 +9,7 @@ import { valueToString } from '../src/analysis/computed.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
+import { TEXT_SHADOW_MAX_BLUR_PX, TEXT_SHADOW_MAX_DEVICE_PX, TEXT_SHADOW_MAX_SHADOWS, textShadowWork } from '../src/analysis/text-shadow.ts';
 
 const SOURCE = { uri: 'dragon-source://test/text-shadow.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -94,6 +95,31 @@ describe('text-shadow', () => {
     const earlier = (r: SourceRef) => [el(r, 'b', 'div', ['g'], []), el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])];
     expect(errorsIn(`${shadow} .g { height: 10px; background-color: red; }`, later)).toEqual(NATIVE_REFUSED);
     expect(errorsIn(`${shadow} .g { height: 10px; background-color: red; }`, earlier)).toEqual([]);
+  });
+
+  it('refuses on iOS and Android an ellipsis on the block container of a shadowed inline (text-overflow is not inherited)', () => {
+    const css = '.s { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); } .e { width: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }';
+    const tree = (r: SourceRef) => [el(r, 'a', 'div', ['e'], [el(r, 'b', 'span', ['s'], [text(r, 't', 'XXXXXXXXXX')])])];
+    expect(errorsIn(css, tree)).toEqual(NATIVE_REFUSED);
+    const deep = (r: SourceRef) => [el(r, 'a', 'div', ['e'], [el(r, 'b', 'span', [], [el(r, 'c', 'span', ['s'], [text(r, 't', 'XXXXXXXXXX')])])])];
+    expect(errorsIn(css, deep)).toEqual(NATIVE_REFUSED);
+  });
+
+  it('bounds the native work: blur, shadow count and rastered pixels, pinned', () => {
+    expect([TEXT_SHADOW_MAX_BLUR_PX, TEXT_SHADOW_MAX_SHADOWS, TEXT_SHADOW_MAX_DEVICE_PX]).toEqual([16, 4, 600_000]);
+    const one = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])];
+    expect(errorsIn('.s { text-shadow: 0 0 16px red; }', one)).toEqual([]);
+    expect(errorsIn('.s { text-shadow: 0 0 17px red; }', one)).toEqual(NATIVE_REFUSED);
+    expect(errorsIn('.s { text-shadow: 0 0 5000px red; }', one)).toEqual(NATIVE_REFUSED);
+    expect(errorsIn('.s { text-shadow: 1px 1px red, 1px 1px red, 1px 1px red, 1px 1px red; }', one)).toEqual([]);
+    expect(errorsIn('.s { text-shadow: 1px 1px red, 1px 1px red, 1px 1px red, 1px 1px red, 1px 1px red; }', one)).toEqual(NATIVE_REFUSED);
+    // A long nowrap line at a large size passes the pixel bound; the same at 10px does not.
+    expect(errorsIn('.s { white-space: nowrap; font-size: 100px; text-shadow: 0 1px 2px red; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'X'.repeat(40))])])).toEqual(NATIVE_REFUSED);
+    expect(errorsIn('.s { white-space: nowrap; text-shadow: 0 1px 2px red; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'X'.repeat(40))])])).toEqual([]);
+    // The text-shadow-blur fixture's widest line (five 40px glyphs, 2px 5px 3px) is well inside the bound.
+    expect(textShadowWork(5, 40, 0, [{ x: 2, y: 5, blur: 3 }])).toBeLessThan(TEXT_SHADOW_MAX_DEVICE_PX / 3);
+    const msg = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .s { text-shadow: 0 0 5000px red; }', one)).diagnostics.find((d) => d.target === 'ios');
+    expect(msg?.message).toBe('text-shadow: rgb(255, 0, 0) 0px 0px 5000px on <div> a is unsupported on ios: a blur of 5000px is over the 16px the native shadow draws');
   });
 
   it('plant textShadowListAccepted: every list compiles', () => {
