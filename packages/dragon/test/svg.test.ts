@@ -86,11 +86,16 @@ describe('path data as Chrome builds it', () => {
 });
 
 describe('the svg attributes', () => {
-  it('map fill, stroke and stroke-width, and an svg\'s or rect\'s width and height, to their properties', () => {
-    const hints = svgPresentationHints('rect', new Map([['fill', 'rgb(1, 2, 3)'], ['stroke', 'none'], ['stroke-width', '3'], ['width', '5'], ['x', '2']]));
-    expect([...hints.keys()]).toEqual(['fill', 'stroke', 'stroke-width', 'width']);
+  it('map fill, stroke and stroke-width, an svg\'s or rect\'s width and height, and (SVG-geometry) a rect\'s x and y and a circle\'s cx, cy and r, to their properties', () => {
+    const hints = svgPresentationHints('rect', new Map([['fill', 'rgb(1, 2, 3)'], ['stroke', 'none'], ['stroke-width', '3'], ['width', '5'], ['x', '2'], ['cx', '4']]));
+    expect([...hints.keys()]).toEqual(['fill', 'stroke', 'stroke-width', 'x', 'width']);
     expect(hints.get('stroke-width')).toEqual({ kind: 'number', value: 3 });
-    expect(svgPresentationHints('circle', new Map([['r', '3']])).size).toBe(0);
+    expect(hints.get('x')).toEqual({ kind: 'length', value: 2, unit: 'px' });
+    const circle = svgPresentationHints('circle', new Map([['cx', '-1.5'], ['cy', '2px'], ['r', '3'], ['x', '1']]));
+    expect([...circle.entries()]).toEqual([['cx', { kind: 'length', value: -1.5, unit: 'px' }], ['cy', { kind: 'length', value: 2, unit: 'px' }], ['r', { kind: 'length', value: 3, unit: 'px' }]]);
+    // A path has no geometry property, and a negative r is an error (refused, svgAttributeRefusal), not a hint.
+    expect(svgPresentationHints('path', new Map([['x', '1']])).size).toBe(0);
+    expect(svgPresentationHints('circle', new Map([['r', '-3']])).size).toBe(0);
   });
   it('refuse values Chrome would ignore or that wait for a package, naming it', () => {
     expect(svgAttributeRefusal('rect', 'fill', 'url(#p)')).toContain('SVG-paint');
@@ -428,5 +433,34 @@ describe('the svg model in a compile', () => {
     expect(refused('path { stroke-dashoffset: calc(2px + 3px); }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${calc}`, `DRAGON_UNSUPPORTED_VALUE ios ${calc}`, `DRAGON_UNSUPPORTED_VALUE web ${calc}`]);
     const percent = 'stroke-dashoffset: 5% on <path> d is unsupported: a percentage stroke-dashoffset is relative to the viewport diagonal, which is not built yet (package SVG-units)';
     expect(refused('path { stroke-dashoffset: 5%; }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${percent}`, `DRAGON_UNSUPPORTED_VALUE ios ${percent}`, `DRAGON_UNSUPPORTED_VALUE web ${percent}`]);
+  });
+  it('SVG-geometry: a rect\'s x and y and a circle\'s cx, cy and r compute from CSS over their attributes (numbers and em as px), are not inherited, and draw the shape', () => {
+    const input = svgTree('svg { font-size: 10px; cx: 9px; } .m { x: 3; y: -2px; } .n { cx: 1.5em; cy: 4; r: 0.5em; }', (_r, o) => [
+      { ...shape(o, 'a', 'rect', [['x', '7'], ['y', '8'], ['width', '4'], ['height', '5']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'm' }, o)] },
+      shape(o, 'b', 'rect', [['x', '1'], ['width', '4'], ['height', '5']]),
+      { ...shape(o, 'c', 'circle', [['cx', '2'], ['cy', '3'], ['r', '9']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'n' }, o)] },
+      shape(o, 'd', 'circle', [['r', '2']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.shape])).toEqual([
+      ['a', { kind: 'rect', x: 3, y: -2, width: 4, height: 5 }],
+      ['b', { kind: 'rect', x: 1, y: 0, width: 4, height: 5 }],
+      ['c', { kind: 'circle', cx: 15, cy: 4, r: 5 }],
+      // cx is not inherited: the svg's cx: 9px reaches no shape.
+      ['d', { kind: 'circle', cx: 0, cy: 0, r: 2 }],
+    ]);
+  });
+  it('SVG-geometry: refuses everywhere a percentage or a calculated geometry property on the shape it draws; one on another tag has no effect and compiles', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']]), shape(o, 'p', 'path', [['d', 'M0 0 H4']])];
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
+    const all = (m: string) => ['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${m}`);
+    for (const css of ['', 'rect { cx: 10%; r: calc(2px + 1px); } circle { x: 50%; } path { cx: 5%; y: calc(1px * 2); }']) expect(refused(css), css).toEqual([]);
+    expect(refused('circle { cx: 10%; }')).toEqual(all('cx: 10% on <circle> c is unsupported: a percentage cx is relative to the viewport width, which is not built yet (package SVG-units)'));
+    expect(refused('circle { r: 5%; }')).toEqual(all('r: 5% on <circle> c is unsupported: a percentage r is relative to the normalized viewport diagonal, which is not built yet (package SVG-units)'));
+    expect(refused('rect { y: 20%; }')).toEqual(all('y: 20% on <rect> r is unsupported: a percentage y is relative to the viewport height, which is not built yet (package SVG-units)'));
+    expect(refused('rect { x: calc(1px + 2px); }')).toEqual(all('x: calc(1px + 2px) on <rect> r is unsupported: a calculated x is not resolved yet (package SVG-units)'));
+    // A negative r is invalid CSS (Blink ValueRange::kNonNegative), and auto is not a geometry value (Rx and Ry alone take it).
+    expect(refused('circle { r: -2px; cx: auto; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "-2px" is not a valid value for r (@webref/css grammar)', 'DRAGON_CSS_INVALID_VALUE * "auto" is not a valid value for cx (@webref/css grammar)']);
   });
 });

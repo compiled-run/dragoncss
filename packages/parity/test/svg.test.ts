@@ -90,7 +90,7 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     return out;
   };
   it('every shape of every case equals Chrome as doubles', async () => {
-    expect(runs.length).toBe(18);
+    expect(runs.length).toBe(20);
     expect(await problems(NO_SVG_FAULTS)).toEqual([]);
   });
   it('no SVG shape records inline line fragments: its computed display is inline, but SVG lays it out (capture.ts)', async () => {
@@ -209,7 +209,7 @@ describe('the svg sample points (SVG-a2) against the committed Chrome pixels', (
     expect(() => casePoints(broken, n.case.environment.viewport, 2)).toThrow(/^wrap: an svg-shapes write on a box with no replaced paint geometry at DPR 2$/);
   });
   it('every svg point at every DPR sits in one solid colour in Chrome: its 3x3 neighbourhood is one pixel value', () => {
-    expect(svgCases.length).toBe(18);
+    expect(svgCases.length).toBe(20);
     for (const n of svgCases) {
       for (const dpr of DPRS) {
         const img = committedPixels(n.case.id, dpr);
