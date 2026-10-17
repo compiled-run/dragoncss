@@ -11,8 +11,8 @@ import type { PropertyAspect } from '../properties.ts';
 export const SVG_LONGHANDS = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y'] as const;
 export const SVG_SHORTHANDS = [] as const;
 /** The SVG geometry properties: a shape's position and size, which no element inherits. */
-export const SVG_GEOMETRY_LONGHANDS = ['cx', 'cy', 'r', 'x', 'y'] as const;
-export const SVG_INHERITED: readonly (typeof SVG_LONGHANDS)[number][] = SVG_LONGHANDS.filter((p) => !(SVG_GEOMETRY_LONGHANDS as readonly string[]).includes(p));
+export const SVG_GEOMETRY_PROPERTIES = ['cx', 'cy', 'r', 'x', 'y'] as const;
+export const SVG_INHERITED: readonly (typeof SVG_LONGHANDS)[number][] = SVG_LONGHANDS.filter((p) => !(SVG_GEOMETRY_PROPERTIES as readonly string[]).includes(p));
 export const SVG_CONTAINER: readonly (typeof SVG_LONGHANDS)[number][] = [];
 export const SVG_TEXT_ROLE: readonly (typeof SVG_LONGHANDS)[number][] = [];
 
