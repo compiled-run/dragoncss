@@ -34,6 +34,9 @@ import type { TxtFxFaults } from '../faults/txt-fx.ts';
 import { TXT_FX_FAULTS } from '../faults/txt-fx.ts';
 import type { TxtWFaults } from '../faults/txt-w.ts';
 import { TXT_W_FAULTS } from '../faults/txt-w.ts';
+import type { TransformExtraFaults } from '../faults/transform-extra.ts';
+import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
+import { checkTransformExtra } from './transform-extra.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -913,7 +916,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & TransformExtraFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...TRANSFORM_EXTRA_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -934,6 +937,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkTextShadow(el, targets, diagnostics, reported, faults);
     checkFilter(el, targets, diagnostics, reported, faults);
+    checkTransformExtra(el, targets, diagnostics, reported, faults);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);

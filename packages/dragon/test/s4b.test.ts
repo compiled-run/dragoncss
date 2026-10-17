@@ -81,7 +81,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // text-shadow, which accepts none alone, at none on both.
       '-webkit-text-fill-color': ['currentcolor', 'currentColor'], '-webkit-text-stroke-width': ['0', '0px'], 'text-shadow': ['none', 'none'],
       // FX: filter, which accepts none alone, at none in two ASCII cases.
-      filter: ['none', 'NONE'] };
+      filter: ['none', 'NONE'],
+      // PNT2: the 3D transform longhands, which accept their initial values alone, at those values in two ASCII cases.
+      'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'] };
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const position = p === 'box-shadow' ? 'static' : 'relative';

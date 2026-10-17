@@ -20,6 +20,7 @@ import { OVFL_FAULTS } from './faults/ovfl.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
 import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
+import { TRANSFORM_EXTRA_FAULTS } from './faults/transform-extra.ts';
 import { TXT_FF_FAULTS } from './faults/txt-ff.ts';
 import { TXT_FILL_FAULTS } from './faults/txt-fill.ts';
 import { TXT_FS_FAULTS } from './faults/txt-fs.ts';
@@ -54,6 +55,7 @@ export const FAULT_GROUPS = {
   seld: SELD_FAULTS,
   'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,
+  'transform-extra': TRANSFORM_EXTRA_FAULTS,
   'txt-ff': TXT_FF_FAULTS,
   'txt-fill': TXT_FILL_FAULTS,
   'txt-fs': TXT_FS_FAULTS,

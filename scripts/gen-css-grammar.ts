@@ -100,6 +100,9 @@ const SUBSET = [
   'text-shadow',
   // FX: filter (filter-effects-1 §5), after text-shadow, as LONGHANDS registers it.
   'filter',
+  // PNT2: the 3D transform longhands (css-transforms-2 §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
+  // Chrome 145's (css_properties.json5 keywords).
+  'backface-visibility', 'transform-style', 'transform-box',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
