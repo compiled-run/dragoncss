@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4591 (19.7%) | 18694 (80.3%) | 1 | 0 | 0 |
-| ios | 4559 (19.6%) | 18686 (80.2%) | 1 | 0 | 40 |
-| android | 4559 (19.6%) | 18686 (80.2%) | 1 | 0 | 40 |
+| web | 4695 (20.2%) | 18590 (79.8%) | 1 | 0 | 0 |
+| ios | 4675 (20.1%) | 18570 (79.7%) | 1 | 0 | 40 |
+| android | 4675 (20.1%) | 18570 (79.7%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4299, ios 4316 and android 4316 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4393, ios 4414 and android 4414 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -18,31 +18,29 @@ As published (before the shell pre-pass), the sheet compiles for web 4299, ios 4
 | flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
-| typography | 261 | 151 / 110 / 0 / 0 / 0 | 141 / 120 / 0 / 0 / 0 | 141 / 120 / 0 / 0 / 0 |
-| colours | 14842 | 100 / 14742 / 0 / 0 / 0 | 97 / 14745 / 0 / 0 / 0 | 97 / 14745 / 0 / 0 / 0 |
-| backgrounds | 151 | 19 / 132 / 0 / 0 / 0 | 19 / 132 / 0 / 0 / 0 | 19 / 132 / 0 / 0 / 0 |
-| borders | 250 | 172 / 78 / 0 / 0 / 0 | 172 / 78 / 0 / 0 / 0 | 172 / 78 / 0 / 0 / 0 |
-| effects | 1178 | 48 / 1130 / 0 / 0 / 0 | 29 / 1149 / 0 / 0 / 0 | 29 / 1149 / 0 / 0 / 0 |
+| typography | 261 | 180 / 81 / 0 / 0 / 0 | 180 / 81 / 0 / 0 / 0 | 180 / 81 / 0 / 0 / 0 |
+| colours | 14842 | 100 / 14742 / 0 / 0 / 0 | 100 / 14742 / 0 / 0 / 0 | 100 / 14742 / 0 / 0 / 0 |
+| backgrounds | 151 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 |
+| borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
+| effects | 1178 | 56 / 1122 / 0 / 0 / 0 | 37 / 1141 / 0 / 0 / 0 | 37 / 1141 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
 | transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
-| transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
-| interactivity | 1246 | 9 / 1237 / 0 / 0 / 0 | 9 / 1199 / 0 / 0 / 38 | 9 / 1199 / 0 / 0 / 38 |
+| transforms | 680 | 13 / 667 / 0 / 0 / 0 | 13 / 667 / 0 / 0 / 0 | 13 / 667 / 0 / 0 / 0 |
+| interactivity | 1246 | 12 / 1234 / 0 / 0 / 0 | 11 / 1197 / 0 / 0 / 38 | 11 / 1197 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
-| accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 2 / 0 / 0 / 2 | 0 / 2 / 0 / 0 / 2 |
+| accessibility | 4 | 2 / 2 / 0 / 0 / 0 | 2 / 0 / 0 / 0 / 2 | 2 / 0 / 0 / 0 / 2 |
 
 ## Largest refusal groups (first blocking diagnostic)
 
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
-| `property mask-image` | 6280 | 6280 | 6280 | 38 |
+| `profile mask-composite:intersect` | 6280 | 6280 | 6280 | 38 |
 | `value oklch()` | 5720 | 5720 | 5720 | 20 |
+| `at-rule @supports` | 1192 | 1192 | 1192 | 6 |
 | `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
-| `at-rule @supports` | 612 | 612 | 612 | 4 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |
-| `property filter` | 351 | 351 | 351 | 10 |
-| `property text-shadow` | 298 | 298 | 298 | 2 |
 | `value box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-o` | 298 | 298 | 298 | 2 |
 | `property accent-color` | 292 | 292 | 292 | 2 |
 | `property caret-color` | 291 | 291 | 291 | 1 |
@@ -62,6 +60,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4299, ios 4
 | `property scroll-margin-left` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-right` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-top` | 70 | 70 | 70 | 4 |
+| `profile filter:<filter-value-list>` | 59 | 59 | 59 | 9 |
 | `value calc()` | 52 | 52 | 52 | 4 |
 | `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
 | `property cursor` | 36 | 0 | 0 | 36 |
@@ -75,3 +74,4 @@ As published (before the shell pre-pass), the sheet compiles for web 4299, ios 4
 | `property scroll-padding-inline-start` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-left` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-right` | 35 | 35 | 35 | 2 |
+| `property scroll-padding-top` | 35 | 35 | 35 | 2 |

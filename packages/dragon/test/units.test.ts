@@ -149,8 +149,19 @@ describe('math function checks', () => {
     expect(refusal('flex-grow', 'calc(1 + 5%)')).toBe('it adds a number and a percentage, which have no common type (css-values-4 §10.9), so Chrome drops the declaration');
     expect(refusal('flex-shrink', 'min(1, 5%)')).toBe('min() mixes arguments of different types (css-values-4 §10.9), so Chrome drops the declaration');
     expect(refusal('flex-grow', 'calc(5% / 5%)')).toBe('a percentage in a number calculation cancels out only by typed arithmetic (css-values-4 §10.9), which is not supported');
-    for (const p of ['gap', 'row-gap', 'column-gap']) expect(refusal(p, 'calc(10px + 5%)'), p).toBe('a percentage in this property needs percentage gaps, which are not supported yet');
+    for (const p of ['gap', 'row-gap', 'column-gap', 'grid-gap', 'grid-row-gap', 'grid-column-gap']) expect(refusal(p, 'calc(10px + 5%)'), p).toBe('a percentage in this property needs percentage gaps, which are not supported yet');
     for (const p of ['width', 'padding-left', 'margin-top', 'flex-basis', 'left']) expect(refusal(p, 'calc(10px + 5%)'), p).toBe('ok');
+  });
+  it('a percentage calculation in a grid-* gap alias is refused as unsupported with its reason, as in the gap properties', () => {
+    for (const p of ['gap', 'grid-gap', 'grid-row-gap', 'grid-column-gap']) {
+      const enforced = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' });
+      const c = enforced.compile(inputFor(`${FONT} .a { display: grid; ${p}: calc(10px + 5%); }`, (r) => [div(r, 'a', ['a'])]));
+      expect(c.diagnostics.length, p).toBeGreaterThan(0);
+      for (const d of c.diagnostics) {
+        expect(d.code, p).toBe('DRAGON_UNSUPPORTED_VALUE');
+        expect(d.message, p).toMatch(/^(row|column)-gap: calc\(10px \+ 5%\) \/\* a percentage in this property needs percentage gaps, which are not supported yet \*\//);
+      }
+    }
   });
   it('a border-width declaration with a percentage calculation is invalid CSS, as Chrome has it, not unsupported percentage gaps', () => {
     const c = project().compile(inputFor(`${FONT} .a { border-left-style: solid; border-left-width: calc(1px + 5%); }`, (r) => [div(r, 'a', ['a'])]));

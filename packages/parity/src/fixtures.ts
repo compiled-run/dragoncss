@@ -5,6 +5,7 @@ import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
+import { BG_POSITION } from './fixture-groups/bg-position.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASC_LAYER } from './fixture-groups/casc-layer.ts';
@@ -12,11 +13,14 @@ import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
 import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CHARSET } from './fixture-groups/charset.ts';
+import { CLIP_PATH } from './fixture-groups/clip-path.ts';
+import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
+import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
@@ -29,6 +33,7 @@ import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LINE_CLAMP } from './fixture-groups/line-clamp.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
+import { MASK } from './fixture-groups/mask.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
@@ -51,18 +56,28 @@ import { TEXT_ALIGN_LAST } from './fixture-groups/text-align-last.ts';
 import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
+import { TEXT_FILL_STROKE } from './fixture-groups/text-fill-stroke.ts';
+import { TEXT_FONT_FEATURES } from './fixture-groups/text-font-features.ts';
+import { TEXT_FONT_SIZE } from './fixture-groups/text-font-size.ts';
+import { TEXT_FONT_STRETCH } from './fixture-groups/text-font-stretch.ts';
+import { TEXT_FONT_TUNING } from './fixture-groups/text-font-tuning.ts';
+import { TEXT_FONT_VARIANT } from './fixture-groups/text-font-variant.ts';
 import { TEXT_HYPHENS } from './fixture-groups/text-hyphens.ts';
 import { TEXT_INDENT } from './fixture-groups/text-indent.ts';
 import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TEXT_LINE_BREAK } from './fixture-groups/text-line-break.ts';
 import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
+import { TEXT_SHADOW } from './fixture-groups/text-shadow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
+import { TEXT_STYLE } from './fixture-groups/text-style.ts';
 import { TEXT_TAB_SIZE } from './fixture-groups/text-tab-size.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TEXT_WORD_BREAK } from './fixture-groups/text-word-break.ts';
 import { TEXT_WRAP } from './fixture-groups/text-wrap.ts';
+import { TOUCH_ACTION } from './fixture-groups/touch-action.ts';
+import { TRANSFORM_EXTRA } from './fixture-groups/transform-extra.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
@@ -128,6 +143,7 @@ export const GROUPS = {
   'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
+  'bg-position': BG_POSITION,
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
   casc: CASC,
@@ -135,11 +151,14 @@ export const GROUPS = {
   'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
   charset: CHARSET,
+  'clip-path': CLIP_PATH,
+  'clip-rect': CLIP_RECT,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
+  filter: FILTER,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
   gradients: GRADIENTS,
@@ -152,6 +171,7 @@ export const GROUPS = {
   'line-clamp': LINE_CLAMP,
   'list-items': LIST_ITEMS,
   'logical-props': LOGICAL_PROPS,
+  mask: MASK,
   media: MEDIA,
   'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
@@ -174,18 +194,28 @@ export const GROUPS = {
   'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
+  'text-fill-stroke': TEXT_FILL_STROKE,
+  'text-font-features': TEXT_FONT_FEATURES,
+  'text-font-size': TEXT_FONT_SIZE,
+  'text-font-stretch': TEXT_FONT_STRETCH,
+  'text-font-tuning': TEXT_FONT_TUNING,
+  'text-font-variant': TEXT_FONT_VARIANT,
   'text-hyphens': TEXT_HYPHENS,
   'text-indent': TEXT_INDENT,
   'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,
   'text-line-break': TEXT_LINE_BREAK,
   'text-overflow': TEXT_OVERFLOW,
+  'text-shadow': TEXT_SHADOW,
   'text-spacing': TEXT_SPACING,
+  'text-style': TEXT_STYLE,
   'text-tab-size': TEXT_TAB_SIZE,
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
   'text-word-break': TEXT_WORD_BREAK,
   'text-wrap': TEXT_WRAP,
+  'touch-action': TOUCH_ACTION,
+  'transform-extra': TRANSFORM_EXTRA,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,

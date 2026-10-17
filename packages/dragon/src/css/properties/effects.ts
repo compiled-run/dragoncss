@@ -52,16 +52,21 @@ function numberCalc(property: string, t: CssNode, base: Span, manual: string): {
 
 const OPACITY_FIX = 'Write opacity as a number or a percentage, or a calc() of numbers.';
 
-/** css-color-4 §14.1: <opacity-value> is a number or a percentage; any value parses, and the computed value is clamped. */
-export function parseOpacity(tokens: readonly CssNode[], base: Span): ParsedValue {
-  if (tokens.length !== 1) return { kind: 'invalid', reason: 'opacity is one number or percentage' };
+/**
+ * css-color-4 §14.1: an <opacity-value> is a number or a percentage; any value parses, and the computed value is clamped. opacity,
+ * fill-opacity and stroke-opacity (css-fill-stroke-3 §3.4, §4.4) take it alike.
+ */
+export function parseOpacityValue(property: string, tokens: readonly CssNode[], base: Span): ParsedValue {
+  if (tokens.length !== 1) return { kind: 'invalid', reason: `${property} is one number or percentage` };
   const t = tokens[0] as CssNode;
-  if (t.type === 'Number') return single('opacity', { kind: 'number', value: Number(t['value']) });
-  if (t.type === 'Percentage') return single('opacity', { kind: 'percentage', value: Number(t['value']) });
-  const calc = numberCalc('opacity', t, base, OPACITY_FIX);
-  if (calc === null) return { kind: 'invalid', reason: 'opacity is one number or percentage' };
-  return 'value' in calc ? single('opacity', { kind: 'number', value: calc.value }) : calc;
+  if (t.type === 'Number') return single(property, { kind: 'number', value: Number(t['value']) });
+  if (t.type === 'Percentage') return single(property, { kind: 'percentage', value: Number(t['value']) });
+  const calc = numberCalc(property, t, base, OPACITY_FIX.replace('opacity', property));
+  if (calc === null) return { kind: 'invalid', reason: `${property} is one number or percentage` };
+  return 'value' in calc ? single(property, { kind: 'number', value: calc.value }) : calc;
 }
+
+export const parseOpacity = (tokens: readonly CssNode[], base: Span): ParsedValue => parseOpacityValue('opacity', tokens, base);
 
 /** The computed opacity of a declared value: the number, or the percentage / 100, clamped to [0, 1]; null for any other value. */
 export function opacityOf(v: CssValue): number | null {

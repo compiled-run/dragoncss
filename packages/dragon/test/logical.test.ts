@@ -89,17 +89,11 @@ describe('css-logical-1: out of scope stays refused', () => {
     parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 's', owner: 'o', scope: 'document' }, 0, diagnostics);
     return diagnostics;
   };
-  it('vertical writing modes are refused as values, and the logical border-radius corners with a fix that removes them', () => {
+  it('vertical writing modes are refused as values', () => {
     for (const css of ['writing-mode: vertical-rl', 'writing-mode: vertical-lr']) {
       const [d, ...rest] = refusal(css);
       expect(rest).toEqual([]);
       expect(d?.code, css).toBe('DRAGON_UNSUPPORTED_VALUE');
-    }
-    for (const css of ['border-start-start-radius: 4px', 'border-end-start-radius: 4px']) {
-      const [d, ...rest] = refusal(css);
-      expect(rest).toEqual([]);
-      expect(d?.code, css).toBe('DRAGON_UNSUPPORTED_PROPERTY');
-      expect(d?.fix, css).toMatchObject({ edits: [{ replacement: '' }] });
     }
   });
 });

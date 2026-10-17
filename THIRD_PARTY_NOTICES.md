@@ -24,6 +24,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/css_parser_fast_paths.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/css_parser_impl.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/css/properties/computed_style_utils.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/css_parsing_utils.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/shorthands/shorthands_custom.cc`: Copyright 2019 The Chromium Authors
@@ -74,6 +75,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/decoration_line_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/outline_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/paint_property_tree_builder.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/core/paint/svg_object_painter.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_decoration_info.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_fragment_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_painter.cc`: Copyright 2017 The Chromium Authors
@@ -91,6 +93,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/geometry/calculation_expression_node.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/calculation_value.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/contoured_rect.cc`: Copyright 2025 The Chromium Authors
+- `third_party/blink/renderer/platform/geometry/path_builder.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/physical_size.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/text/capitalize.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
@@ -153,6 +156,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkMaskBlurFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkMaskFilterBase.cpp`: Copyright 2025 Google LLC
 - `third_party/skia/src/core/SkMatrix.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkPathMakers.h`: Copyright 2019 Google Inc.
 - `third_party/skia/src/core/SkPathPriv.cpp`: Copyright 2025 Google Inc.
 - `third_party/skia/src/core/SkPathPriv.h`: Copyright 2015 Google Inc.
 - `third_party/skia/src/core/SkPathRawShapes.cpp`: Copyright 2025 Google LLC.

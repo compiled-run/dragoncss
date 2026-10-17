@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
 import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
 import type { LanesFile } from './lanes.ts';
-import { readLanesFile, staleEvidence, staleLanes } from './lanes.ts';
+import { ranIds, readLanesFile, staleLanes } from './lanes.ts';
 import { repoPath } from './paths.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import type { NativeTarget, TargetConfig } from './targets.ts';
@@ -189,9 +189,11 @@ export function deviceEvidence(target: NativeTarget, lanes: LanesFile | null, fa
     if (listed.length !== recorded) return none(`device-failures-${target}.json lists ${listed.length} ${lc.lane} failures, lanes.json records ${recorded}`);
     const perCase = rec.device !== null;
     if (!perCase && rec.state !== 'pass') return none(`${target} ${lc.lane}: ${rec.state}`);
-    // A case proves nothing on a lane unless the lane runs it at every DPR of the target.
+    // A case proves nothing on a lane unless the lane runs it at every DPR of the target, and (a record carried over a changed case
+    // list) the recorded run ran it at every one of them.
     const sets = lc.sets.filter((x) => c.dprs.includes(x.dpr));
-    const cases = new Set(c.dprs.every((d) => sets.some((x) => x.dpr === d)) ? (sets[0]?.ids ?? []).filter((id) => sets.every((x) => x.ids.includes(id))) : []);
+    const ran = (id: string, dpr: number): boolean => rec.ran === undefined || ranIds(lanes, rec, dpr)?.has(id) === true;
+    const cases = new Set(c.dprs.every((d) => sets.some((x) => x.dpr === d)) ? (sets[0]?.ids ?? []).filter((id) => sets.every((x) => x.ids.includes(id) && ran(id, x.dpr))) : []);
     out.push({ lane: lc.lane, perCase, passed: rec.state === 'pass', cases, failing: new Set(listed.map((f) => f.case)) });
   }
   return { target, unavailable: null, lanes: out };
@@ -239,7 +241,11 @@ export function deviceCoverageProblems(lanes: LanesFile, c: TargetConfig): strin
     for (const s of lc.sets) {
       const got = sets.filter((x) => x.dpr === s.dpr);
       if (got.length !== 1) out.push(`${c.target} ${lc.lane} records ${got.length} sets at DPR ${s.dpr}, not 1`);
-      else if (got[0]?.dumps !== s.ids.length || got[0]?.cases !== s.ids.length) out.push(`${c.target} ${lc.lane} at DPR ${s.dpr} records ${got[0]?.dumps} dumps of ${got[0]?.cases} cases, not ${s.ids.length}`);
+      else {
+        // A record carried over a changed case list covers the cases it ran (RanCases), not the configured ones.
+        const want = rec.ran === undefined ? s.ids.length : (ranIds(lanes, rec, s.dpr)?.size ?? -1);
+        if (got[0]?.dumps !== want || got[0]?.cases !== want) out.push(`${c.target} ${lc.lane} at DPR ${s.dpr} records ${got[0]?.dumps} dumps of ${got[0]?.cases} cases, not ${want}`);
+      }
     }
     for (const x of sets) if (!lc.sets.some((s) => s.dpr === x.dpr)) out.push(`${c.target} ${lc.lane} records DPR ${x.dpr}, which it does not declare`);
   }
@@ -247,14 +253,15 @@ export function deviceCoverageProblems(lanes: LanesFile, c: TargetConfig): strin
 }
 
 /**
- * One native target's verdict from the committed record (pure): stale is staleLanes and staleEvidence over that target alone;
+ * One native target's verdict from the committed record (pure): stale is staleLanes over that target alone (device records behind
+ * the tree's sources stay its evidence until the scheduled device run on master replaces them);
  * notPassing names a failed lane parity, every lane not passing, a device lane whose recorded sets do not cover the configured
  * DPRs and cases, and, when all of that passes, why the target's device evidence (its failure list against the record) is unavailable.
  */
 export function nativeVerdict(target: NativeTarget, lanes: LanesFile | null, failures: readonly LaneFailure[] | null, configured: readonly TargetConfig[]): NativeVerdict {
   if (lanes === null) return { recorded: false, stale: [], notPassing: [] };
   const mine = configured.filter((x) => x.target === target);
-  const stale = [...staleLanes(lanes, mine), ...staleEvidence({ ...lanes, targets: lanes.targets.filter((x) => x.target === target) })];
+  const stale = staleLanes(lanes, mine);
   const c = mine[0];
   const notPassing = [
     ...(lanes.parity.pass ? [] : [`lane parity (${lanes.parity.problems.join('; ')})`]),
@@ -322,6 +329,8 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
   if (!isObject(parity) || typeof parity['pass'] !== 'boolean' || !Array.isArray(parity['problems']) || !parity['problems'].every((x) => typeof x === 'string')) bad('parity is not { pass, problems }');
   const targets = v['targets'];
   if (!Array.isArray(targets)) return bad('targets is not a list');
+  const lists = v['caseLists'];
+  if (lists !== undefined && (!isObject(lists) || !Object.values(lists).every((x) => Array.isArray(x) && x.every((id) => typeof id === 'string')))) bad('caseLists is not { <sha256>: [case ids] }');
   targets.forEach((t, i) => {
     if (!isObject(t) || typeof t['target'] !== 'string' || !Array.isArray(t['lanes'])) bad(`targets[${i}] is not { target, lanes }`);
     ((t as Record<string, unknown>)['lanes'] as unknown[]).forEach((l, j) => {
@@ -330,6 +339,8 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
       const o = l as Record<string, unknown>;
       if (o['reason'] !== null && typeof o['reason'] !== 'string') bad(`${at}.reason is neither null nor a string`);
       const d = o['device'];
+      const r = o['ran'];
+      if (r !== undefined && (!isObject(r) || typeof r['corpora'] !== 'string' || !Array.isArray(r['sets']) || !r['sets'].every((x) => isObject(x) && typeof x['dpr'] === 'number' && typeof x['list'] === 'string'))) bad(`${at}.ran is not { sets: [{ dpr, list }], corpora }`);
       if (d === null) return;
       if (!isObject(d) || !Array.isArray(d['sets']) || !d['sets'].every((x) => isObject(x) && typeof x['failures'] === 'number' && Number.isInteger(x['failures']) && x['failures'] >= 0)) bad(`${at}.device is not { sets: [{ failures }] }`);
     });
@@ -337,12 +348,12 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
   return v as LanesFile;
 }
 
-/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes plus staleEvidence), each target's failure list and verdict. */
+/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes; records behind the tree are not stale), each target's failure list and verdict. */
 export function committedLanes(): { readonly lanes: LanesFile | null; readonly stale: readonly string[]; readonly evidence: (target: NativeTarget) => DeviceEvidence; readonly verdict: (target: NativeTarget) => NativeVerdict } {
   const raw = readLanesFile();
   const lanes = raw === null ? null : checkedLanes(raw, 'packages/parity/out/lanes.json');
   const configured = nativeTargets();
-  const stale = lanes === null ? [] : [...staleLanes(lanes, configured), ...staleEvidence(lanes)];
+  const stale = lanes === null ? [] : staleLanes(lanes, configured);
   const failuresOf = (target: NativeTarget): readonly LaneFailure[] | null => {
     const path = repoPath(`packages/parity/out/device-failures-${target}.json`);
     return existsSync(path) ? checkedFailures(JSON.parse(readFileSync(path, 'utf8')) as unknown, `packages/parity/out/device-failures-${target}.json`) : null;

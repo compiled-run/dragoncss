@@ -9,9 +9,10 @@ import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/prop
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
 import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
-import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
+import { LOGICAL_CORNER_PROPERTIES, RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
+import { MASK_LONGHANDS, MASK_SHORTHANDS } from '../packages/dragon/src/css/properties/mask.ts';
 
 type WebrefEntry = {
   name: string;
@@ -51,7 +52,7 @@ const SUBSET = [
   'pointer-events',
   // Border radii (PNT1), after pointer-events, as LONGHANDS registers them, then their shorthands.
   ...RADIUS_LONGHANDS,
-  'border-radius', '-webkit-border-radius',
+  'border-radius', '-webkit-border-radius', ...LOGICAL_CORNER_PROPERTIES,
   // Box shadows (PNT1), after the radii.
   'box-shadow',
   // Outlines (PNT1), after the radius family, as LONGHANDS registers them, then their shorthand.
@@ -92,12 +93,37 @@ const SUBSET = [
   'text-wrap-style', 'text-wrap',
   // css-text-3 §7.2: text-align-last, after word-wrap, as LONGHANDS registers it.
   'text-align-last',
+  // css-fonts-4 §6.4-§6.11: the font-variant longhands, then the font-variant shorthand, after word-wrap, as LONGHANDS registers them.
+  'font-variant-ligatures', 'font-variant-caps', 'font-variant-alternates', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-position', 'font-variant-emoji', 'font-variant',
+  // css-fonts-4 §6.3, §7.1, §6.13: font-kerning, font-optical-sizing and font-language-override, after word-wrap, as LONGHANDS registers them.
+  'font-kerning', 'font-optical-sizing', 'font-language-override',
+  // TXT-FONTFEAT: font-stretch (css-fonts-4 §2.4), before the line clamp, as LONGHANDS registers it.
+  'font-stretch',
+  // TXT-FONTFEAT: font-feature-settings and font-variation-settings (css-fonts-4 §6.12, §7.2), before the line clamp, as LONGHANDS registers them.
+  'font-feature-settings', 'font-variation-settings',
+  // TXT-FX: the text fill colour and stroke (compat §5), then the -webkit-text-stroke shorthand, after the font families, as LONGHANDS registers them.
+  '-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke-width', '-webkit-text-stroke',
+  // TXT-FX: text-shadow (css-text-decor-4 §4), after the text fill and stroke, as LONGHANDS registers it.
+  'text-shadow',
+  // FX: filter (filter-effects-1 §5), after text-shadow, as LONGHANDS registers it.
+  'filter',
+  // PNT2: the 3D transform longhands (css-transforms-2 §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
+  // Chrome 145's (css_properties.json5 keywords).
+  'backface-visibility', 'transform-style', 'transform-box',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // TXT2-i: hyphens (css-text-3 §6.1), after the line clamp, as LONGHANDS registers it.
   'hyphens',
   // TXT2-c3: tab-size (css-text-3 §4.2), after the line clamp, as LONGHANDS registers it.
   'tab-size',
+  // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
+  'touch-action',
+  // MASK-CLIP: clip (css-masking-1 §5.1), after touch-action, as LONGHANDS registers it.
+  'clip',
+  // MASK-CLIP: clip-path (css-masking-1 §6.1), after clip, as LONGHANDS registers it.
+  'clip-path',
+  // MASK-CLIP: the mask layer longhands (css-masking-1 §7), then mask and mask-position, after clip-path, as LONGHANDS registers them.
+  ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
 ] as const;
 
 /**
@@ -122,6 +148,19 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
  * packages/parity/test/display-parse.test.ts.
  */
 const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  // Blink ClipPath::ParseSingleValue (longhands_custom.cc), ConsumeBasicShapeCircle and ConsumeBasicShapeEllipse (css_parsing_utils.cc):
+  // a circle or ellipse radius is a non-negative <length-percentage>, closest-side or farthest-side (webref's <radial-size> drops a
+  // lone percentage), rect() is ConsumeBasicShapeRect's (webref's <rect()> resolves to clip's comma form), and the reference box is
+  // ConsumeGeometryBox's (no half-border-box).
+  'clip-path': "none | <url> | [ [ inset( <length-percentage>{1,4} [ round <'border-radius'> ]? ) | circle( [ <length-percentage [0,∞]> | closest-side | farthest-side ]? [ at <position> ]? ) | ellipse( [ [ <length-percentage [0,∞]> | closest-side | farthest-side ]{2} ]? [ at <position> ]? ) | <polygon()> | <path()> | <shape()> | rect( [ <length-percentage> | auto ]{4} [ round <'border-radius'> ]? ) | <xywh()> ] || [ border-box | padding-box | content-box | margin-box | fill-box | stroke-box | view-box ] ]",
+  // Blink Clip::ParseSingleValue (longhands_custom.cc): auto, or rect() with four <length> or auto edges separated all by commas
+  // or all by whitespace; webref's <rect()> resolves to css-shapes' basic shape as well as css-masking's comma form.
+  clip: 'auto | rect( [ <length> | auto ]{4} ) | rect( [ <length> | auto ]#{4} )',
+  // Blink's mask parsers (longhands_custom.cc MaskImage through MaskSize, shorthands_custom.cc Mask and MaskPosition). Dragon accepts
+  // each mask longhand only at its initial value and refuses every other value where it applies (computed-checks.ts checkMask), so
+  // the grammar takes any value: a mask webref's grammar misses is refused, never dropped where Chrome would apply it. Pinned against
+  // Chrome by packages/parity/test/mask-parse.test.ts.
+  ...Object.fromEntries([...MASK_LONGHANDS, ...MASK_SHORTHANDS].map((p) => [p, '<any-value>'])),
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',
@@ -157,6 +196,14 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'word-break': 'normal | break-all | keep-all | break-word | auto-phrase',
   // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.
   'text-transform': 'none | capitalize | uppercase | lowercase | math-auto',
+  // Blink TextShadow::ParseSingleValue: ConsumeShadow with AllowInsetAndSpread::kForbid, so a text shadow takes no spread and no
+  // inset, unlike webref's <shadow>. Pinned against Chrome by packages/parity/test/text-shadow-parse.test.ts.
+  'text-shadow': 'none | [ <color>? && [ <length>{2} <length [0,∞]>? ] ]#',
+  // Blink Filter::ParseSingleValue (longhands_custom.cc) takes none or a list of filter functions and url()s. Dragon accepts only none
+  // and refuses every other value where it applies (computed-checks.ts checkFilter), so the grammar takes any value: a filter webref's
+  // <filter-value-list> misses is refused, never dropped where Chrome would apply it. Pinned against Chrome by
+  // packages/parity/test/filter-parse.test.ts.
+  filter: 'none | <any-value>',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',
@@ -170,6 +217,28 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ParsePaintStroke (fill and stroke): webref's <paint> has no <color>; Chrome 145 parses SVG 1.1's <paint>.
   fill: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
   stroke: 'none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke',
+  // Blink StrokeLinejoin (css_properties.json5 keywords): miter, bevel and round; webref's crop, arcs and fallback do not parse in
+  // Chrome 145.
+  'stroke-linejoin': 'miter | bevel | round',
+  // Blink StrokeMiterlimit::ParseSingleValue: ConsumeNumber with ValueRange::kNonNegative.
+  'stroke-miterlimit': '<number [0,∞]>',
+  // Blink StrokeDasharray::ParseSingleValue: none, or non-negative lengths, percentages or (SVG attribute mode) numbers, each
+  // followed by an optional comma; webref's <dasharray> takes the same, written here as comma-separated runs.
+  'stroke-dasharray': 'none | [ [ <length-percentage [0,∞]> | <number [0,∞]> ]+ ]#',
+  // Blink StrokeDashoffset::ParseSingleValue: any length or percentage, or (SVG attribute mode) a number.
+  'stroke-dashoffset': '<length-percentage> | <number>',
+  // Blink Cx, Cy, R, X and Y ::ParseSingleValue: ConsumeSVGGeometryPropertyLength, a length or percentage in SVG attribute mode
+  // (so a number is a length in px too); r takes ValueRange::kNonNegative. webref has <length-percentage> only.
+  cx: '<length-percentage> | <number>',
+  cy: '<length-percentage> | <number>',
+  r: '<length-percentage [0,∞]> | <number [0,∞]>',
+  x: '<length-percentage> | <number>',
+  y: '<length-percentage> | <number>',
+  // Blink PaintOrder::ParseSingleValue: normal, or fill, stroke and markers each at most once (svg-paint-order.ts canonicalizes).
+  'paint-order': 'normal | [ fill || stroke || markers ]',
+  // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
+  rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
 };
 
 /**
@@ -179,6 +248,13 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
 const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string; readonly inherited: string } } = {
   '-webkit-box-orient': { initial: 'horizontal', inherited: 'no' },
   '-webkit-line-clamp': { initial: 'none', inherited: 'no' },
+  // webref lists font-stretch as a legacy alias of css-fonts-4's font-width, without fields; Chrome 145 has no font-width and keeps
+  // font-stretch a longhand, initial normal, inherited (css-fonts-4 §2.4).
+  'font-stretch': { initial: 'normal', inherited: 'yes' },
+  // webref has no -webkit-mask-position-x or -y; Chrome 145 keeps them the longhands of mask-position, initial 0%, not inherited
+  // (longhands_custom.cc WebkitMaskPositionX::InitialValue and WebkitMaskPositionY::InitialValue).
+  '-webkit-mask-position-x': { initial: '0%', inherited: 'no' },
+  '-webkit-mask-position-y': { initial: '0%', inherited: 'no' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

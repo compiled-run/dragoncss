@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.wrap { width: 380px; }
+svg { display: block; margin-bottom: 4px; }
+.open { fill: none; stroke: rgb(30, 90, 200); stroke-width: 24px; }
+.butt { stroke-linecap: butt; }
+.round { stroke-linecap: round; }
+.square { stroke-linecap: SQUARE; }
+.capped { stroke-linecap: round; }
+.v { --cap: square; stroke-linecap: var(--cap); }
+.rj { stroke-linejoin: round; }
+.lim2 { stroke-miterlimit: 2; }
+.lim10 { stroke-miterlimit: calc(1 + 9); }
+.joins { stroke-linejoin: bevel; }
+.inh { stroke-linejoin: inherit; }
+.ini { stroke-linejoin: initial; }
+.eo { fill-rule: evenodd; }
+.nz { fill-rule: initial; }
+.holes { fill: rgb(200, 40, 40); }
+.boxed { fill: rgb(20, 160, 80); stroke: rgb(120, 0, 160); stroke-width: 16; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<svg data-dragon-id="s1" class="open capped" width="380" height="66"><path data-dragon-id="p1" class="butt" d="M40 18 L40 48"/><path data-dragon-id="p2" class="round" d="M110 18 L110 48"/><path data-dragon-id="p3" stroke-linecap="square" d="M180 18 L180 48"/><path data-dragon-id="p4" d="M250 18 L250 48"/><path data-dragon-id="p5" class="v" d="M300 18 Q340 18 340 48"/></svg>
+<svg data-dragon-id="s2" class="open" width="380" height="88"><path data-dragon-id="j1" d="M25 80 L40 39 L55 80"/><path data-dragon-id="j2" class="rj" d="M95 80 L110 39 L125 80"/><path data-dragon-id="j3" stroke-linejoin="bevel" d="M165 80 L180 39 L195 80"/><path data-dragon-id="j4" class="lim2" d="M235 80 L250 39 L265 80"/><path data-dragon-id="j5" class="lim10" d="M305 80 L320 39 L335 80"/></svg>
+<svg data-dragon-id="s3" class="holes eo" width="380" height="60"><path data-dragon-id="f1" d="M10 5 H60 V55 H10 Z M22 17 H48 V43 H22 Z"/><path data-dragon-id="f2" class="nz" d="M130 5 H180 V55 H130 Z M142 17 H168 V43 H142 Z"/><path data-dragon-id="f3" class="nz" fill-rule="evenodd" d="M250 5 H300 V55 H250 Z M262 17 H288 V43 H262 Z"/></svg>
+<svg data-dragon-id="s4" class="joins" width="380" height="64"><rect data-dragon-id="b1" class="boxed inh" x="16" y="8" width="48" height="48"/><rect data-dragon-id="b2" class="boxed ini" stroke-miterlimit="1" x="136" y="8" width="48" height="48"/><path data-dragon-id="b3" class="boxed eo" stroke-linejoin="ROUND" d="M300 4 L318 58 L272 24 L328 24 L282 58 Z"/></svg>
+</div>
+</body>
+</html>

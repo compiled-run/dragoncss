@@ -237,9 +237,11 @@ const WHITE_SPACE_AHEM_IDS = ['white-space-preserve', 'white-space-wrap'];
  * TXT2 text-align: justify (fixture-groups/text-justify.ts), TXT2-b word-spacing (fixture-groups/text-spacing.ts), TXT2-h text-indent
  * (fixture-groups/text-indent.ts) and TXT2-a overflow-wrap and word-break (fixture-groups/text-break.ts), after BASE: their Ahem cases
  * lower natively, their real-face ones are shaped. svg-colors (#297, fixture-groups/svg.ts) landed after BASE too and lowers natively,
- * and so do TXT2-g's -webkit-line-clamp cases (fixture-groups/line-clamp.ts, Ahem, one direction each).
+ * and so do TXT2-g's -webkit-line-clamp cases (fixture-groups/line-clamp.ts, Ahem, one direction each) and TXT-W's Ahem case
+ * (text-weight-ahem, fixture-groups/text-weight.ts), and so do touch-action-values, FX's filter-none (fixture-groups/filter.ts) and
+ * PNT2's transform-extra-initial (fixture-groups/transform-extra.ts).
  */
-const LATER_NATIVE_IDS = ['text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl', 'text-break-ahem', 'text-break-ahem-rtl', 'line-clamp-lines', 'line-clamp-nested', 'text-word-break-ahem', 'text-word-break-ahem-rtl', 'text-word-break-digits-ahem', 'text-line-break-ahem', 'text-line-break-ahem-rtl', 'text-line-break-punct-ahem', 'text-hyphens-ahem', 'text-hyphens-ahem-rtl', 'alias-text', 'alias-text-rtl', 'text-wrap-ahem', 'text-wrap-ahem-rtl', 'text-tab-size-ahem', 'text-tab-size-ahem-rtl', 'text-align-last-ahem', 'text-align-last-ahem-rtl'];
+const LATER_NATIVE_IDS = ['clip-path-basic', 'clip-path-basic-rtl', 'clip-path-nested', 'clip-path-nested-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'bg-position-keywords', 'bg-position-keywords-rtl', 'clip-rect-basic', 'clip-rect-basic-rtl', 'clip-rect-nested', 'clip-rect-nested-rtl', 'filter-none', 'filter-none-rtl', 'text-justify-ahem', 'text-justify-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl', 'text-indent-ahem', 'text-indent-ahem-rtl', 'svg-colors', 'svg-colors-rtl', 'text-break-ahem', 'text-break-ahem-rtl', 'line-clamp-lines', 'line-clamp-nested', 'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-stretch-ahem', 'text-font-stretch-ahem-rtl', 'text-font-features-ahem', 'text-font-features-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-weight-ahem', 'text-weight-ahem-rtl', 'touch-action-values', 'touch-action-values-rtl', 'radius-logical', 'radius-logical-rtl', 'text-decoration-native-values', 'text-decoration-native-values-rtl', 'text-fill-stroke-initial', 'text-fill-stroke-initial-rtl', 'text-shadow-none', 'text-shadow-none-rtl', 'alias-background', 'alias-background-rtl', 'shadow-webkit-alias', 'shadow-webkit-alias-rtl', 'svg-opacity', 'svg-opacity-rtl', 'text-style-ahem', 'text-style-ahem-rtl', 'text-decoration-native-styles', 'text-decoration-native-styles-rtl', 'alias-font', 'alias-font-rtl', 'mask-initial', 'mask-initial-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'transform-extra-initial', 'transform-extra-initial-rtl', 'text-word-break-ahem', 'text-word-break-ahem-rtl', 'text-word-break-digits-ahem', 'text-line-break-ahem', 'text-line-break-ahem-rtl', 'text-line-break-punct-ahem', 'text-hyphens-ahem', 'text-hyphens-ahem-rtl', 'text-wrap-ahem', 'text-wrap-ahem-rtl', 'text-tab-size-ahem', 'text-tab-size-ahem-rtl', 'text-align-last-ahem', 'text-align-last-ahem-rtl'];
 const LATER_SHAPED_IDS = ['text-justify-latin', 'text-justify-latin-rtl', 'text-word-spacing-lato', 'text-word-spacing-lato-rtl', 'text-word-spacing-nbsp', 'text-indent-latin', 'text-indent-latin-rtl', 'text-break-lato'];
 
 const specOf = (id: string): FixtureSpec => {
@@ -262,17 +264,17 @@ const probe = (id: string) => {
 };
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
-  const BASE_LAYOUT_CASES = 827;
+  const BASE_LAYOUT_CASES = 831;
   const SHAPED = [...NEW_IDS, ...TAG_IDS];
   const ADDED = [...SHAPED, ...WHITE_SPACE_AHEM_IDS];
   it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases, the T133 tag cases and the later groups', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 813 BASE layout cases, plus G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web, resize-values, G3b's grid-baseline-axes PNT's text-decoration-native-current (825) and PNT1's stacking-grid-items (827; svg-colors is a later group).
+    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 813 BASE layout cases, plus G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web, resize-values, G3b's grid-baseline-axes PNT's text-decoration-native-current (825), PNT1's stacking-grid-items (827), GRID's grid-gap-units and CTX-PROOF's ctx-proof-flex-gap-units (831; svg-colors is a later group).
     // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
     const later = [...LATER_NATIVE_IDS, ...LATER_SHAPED_IDS];
     const base = ids.filter((id) => !ADDED.includes(id) && !AHEM_ADDED.includes(id) && !later.includes(id));
     expect(base.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('cd867664307f0dbdc435aa388cd92a016cc90be60587e5fe52481d67ac054c5c');
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('b7aab2330daeaa5965cdb8071e411530c646f32ceffcd63d90dce9a0c41a02a8');
     expect(ids.filter((id) => ADDED.includes(id)).sort()).toEqual([...ADDED].sort());
     expect(ids.filter((id) => AHEM_ADDED.includes(id))).toEqual(AHEM_ADDED);
     expect(ids.filter((id) => later.includes(id)).sort()).toEqual([...later].sort());

@@ -73,6 +73,10 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
   // PNT1b: radius-double's border points sit in the gap between the two rings, which the plant fills with the border colour.
   'double-solid': ['radius-double'],
+  // MASK-CLIP: clip-rect-basic's clipped boxes (ids cut-*) paint their backgrounds when the writer is ignored.
+  'clip-rect-ignored': ['clip-rect-basic'],
+  // MASK-CLIP: clip-path-basic's clip edges (rule clip:<id>:path-*) show the box's paint outside the inset rect when the writer is ignored.
+  'clip-path-ignored': ['clip-path-basic'],
   'radius-square': ['radius-basic'],
   // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
   'shadow-offset-1': ['calib-shadow-blur'],
@@ -93,16 +97,24 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
   'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
+  // are filled and stroked in distinct colours with strokes wide enough to sample.
+  'svg-stroke-first': ['svg-paint', 'svg-basic'],
+  // SVG-stroke: svg-stroke's evenodd paths fill nonzero under the plant; its caps, joins and miter limits are each drawn with
+  // probes where the plant's butt cap, miter join or limit of 4 paints another colour.
+  'svg-even-odd': ['svg-basic', 'svg-stroke'],
+  'svg-stroke-unscaled': ['svg-paint', 'svg-basic'],
+  'svg-paint-swapped': ['svg-paint', 'svg-basic'],
+  'svg-cap-butt': ['svg-stroke'],
+  'svg-join-miter': ['svg-stroke'],
+  'svg-miter-limit-4': ['svg-stroke'],
+  'svg-dash-solid': ['svg-dash'],
+  'svg-dash-phase-0': ['svg-dash'],
+  'svg-paint-order-normal': ['svg-paint-order'],
   // T150a: visibility-basic's hidden boxes (ids hid-*) paint their backgrounds when the writer is ignored; its visible children
   // (kid-*) vanish when the writer hides the box view itself.
   'visibility-ignored': ['visibility-basic'],
   'visibility-subtree': ['visibility-basic'],
-  // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
-  // are filled and stroked in distinct colours with strokes wide enough to sample.
-  'svg-stroke-first': ['svg-paint', 'svg-basic'],
-  'svg-even-odd': ['svg-basic'],
-  'svg-stroke-unscaled': ['svg-paint', 'svg-basic'],
-  'svg-paint-swapped': ['svg-paint', 'svg-basic'],
   // TDEC-b: text-decoration-native's decoration points (rule decoration:<text>:...) see each decoration plant.
   'decoration-above-text': ['text-decoration-native'],
   'decoration-snap-css-px': ['text-decoration-native'],
@@ -114,6 +126,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-gap-unfitted': /^(border:|edge:)/,
   // One band from the border box to the padding edge paints the gap: the border points and the stripe pairs catch it.
   'double-solid': /^(border:|radius:[^:]+:[a-z-]+-stripe)/,
+  'clip-rect-ignored': /^interior:cut-/,
+  'clip-path-ignored': /^clip:cut-[^:]+:path-/,
   // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
   'radius-square': /^radius:/,
   // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.
@@ -131,12 +145,18 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'gradient-offset-1': /^gradient:/,
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
-  'visibility-ignored': /^interior:hid-/,
-  'visibility-subtree': /^interior:kid-/,
   'svg-stroke-first': /^svg:/,
   'svg-even-odd': /^svg:/,
   'svg-stroke-unscaled': /^svg:/,
   'svg-paint-swapped': /^svg:/,
+  'svg-cap-butt': /^svg:/,
+  'svg-join-miter': /^svg:/,
+  'svg-miter-limit-4': /^svg:/,
+  'svg-dash-solid': /^svg:/,
+  'svg-dash-phase-0': /^svg:/,
+  'svg-paint-order-normal': /^svg:/,
+  'visibility-ignored': /^interior:hid-/,
+  'visibility-subtree': /^interior:kid-/,
   // An under or overline above the text shows over the glyphs it crosses (the over-glyph points); a rect top at a whole css px moves
   // its rows (the row points and the clear rows beside them); an opaque transparent line shows on the background (its row points).
   'decoration-above-text': /^decoration:/,

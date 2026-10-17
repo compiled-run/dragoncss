@@ -441,6 +441,7 @@
         { "lines": "115-122", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "synthesizesOblique", "use": "reference" },
         { "file": "packages/dragon/src/fonts/weight.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/weight.ts", "symbol": "synthesisOf", "use": "port" },
         { "file": "packages/dragon/test/font-weight.test.ts", "symbol": null, "use": "reference" }
@@ -608,7 +609,12 @@
         { "lines": "4265-4300", "symbol": "ConsumeContentDistributionOverflowPosition", "source": "located" },
         { "lines": "6031-6033", "symbol": "ConsumeGenericFamily", "source": "located" },
         { "lines": "3640-3688", "symbol": "ConsumeImage", "source": "located" },
-        { "lines": "6102-6158", "symbol": "ConsumeFontStyle", "source": "located" }
+        { "lines": "6102-6158", "symbol": "ConsumeFontStyle", "source": "located" },
+        { "lines": "584-619", "symbol": "ConsumeBasicShapeInset", "source": "located" },
+        { "lines": "1410-1421", "symbol": "ConsumeSVGGeometryPropertyLength", "source": "located" },
+        { "lines": "4837-4840", "symbol": "ConsumePrefixedMaskComposite", "source": "located" },
+        { "lines": "4939-4952", "symbol": "ConsumePrefixedBackgroundBox", "source": "located" },
+        { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
@@ -623,7 +629,9 @@
         { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": null, "use": "port" },
         { "file": "packages/parity/src/font-reference.ts", "symbol": "PARSER_GENERICS", "use": "port" },
         { "file": "packages/parity/test/place-computed.test.ts", "symbol": null, "use": "reference" },
-        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" }
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -637,11 +645,14 @@
       "ranges": [
         { "lines": "3892-3944", "symbol": "PlaceContent::ParseShorthand", "source": "located" },
         { "lines": "3956-4003", "symbol": "PlaceItems::ParseShorthand", "source": "located" },
-        { "lines": "4015-4062", "symbol": "PlaceSelf::ParseShorthand", "source": "located" }
+        { "lines": "4015-4062", "symbol": "PlaceSelf::ParseShorthand", "source": "located" },
+        { "lines": "5163-5170", "symbol": "Mask::ParseShorthand", "source": "located" },
+        { "lines": "5181-5193", "symbol": "MaskPosition::ParseShorthand", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/place.ts", "symbol": null, "use": "port" },
-        { "file": "packages/dragon/src/css/place.ts", "symbol": "splitPlace", "use": "port" }
+        { "file": "packages/dragon/src/css/place.ts", "symbol": "splitPlace", "use": "port" },
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" }
       ]
     },
     {
@@ -697,9 +708,12 @@
       "headerSha256": "8344006ca2b0ef81dcc0bb8f77b6545e0d86cb9b232146f5ad5966ed7dd3de6c",
       "ranges": [
         { "lines": "1961-1994", "symbol": null, "source": "cited" },
-        { "lines": "1107-1185", "symbol": null, "source": "cited" }
+        { "lines": "1107-1185", "symbol": null, "source": "cited" },
+        { "lines": "928-974", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "checkUserAgentDefaults", "use": "port" },
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeLengths", "use": "port" },
         { "file": "packages/dragon/src/fonts/weight.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/chrome-deviations-dpr.ts", "symbol": "dprChromeDeviations", "use": "reference" }
       ]
@@ -1098,6 +1112,7 @@
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "buildItem", "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "columnIntrinsicBlockSize", "use": "port" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "reference" },
         { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
@@ -1146,6 +1161,7 @@
         { "lines": "24-183", "symbol": "GridBaselineAccumulator", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "reference" },
         { "file": "packages/layout/src/grid.ts", "symbol": "placeItems", "use": "port" }
       ]
     },
@@ -1556,6 +1572,7 @@
         { "lines": "33-40", "symbol": "LogicalBoxFragment::SynthesizedBaseline", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "ContentsResult", "use": "reference" },
         { "file": "packages/layout/src/grid.ts", "symbol": "firstBaselineOrSynthesize", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "inlineBaseline", "use": "port" },
@@ -1921,7 +1938,8 @@
       "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
       "ranges": [
         { "lines": "15-27", "symbol": null, "source": "cited" },
-        { "lines": "75-93", "symbol": null, "source": "cited" }
+        { "lines": "75-93", "symbol": null, "source": "cited" },
+        { "lines": "336-347", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
@@ -1962,10 +1980,14 @@
         { "lines": "2541-2562", "symbol": "NeedsOverflowClipForReplacedContents", "source": "cited" },
         { "lines": "2651-2670", "symbol": "NeedsInnerBorderRadiusClip", "source": "cited" },
         { "lines": "2744-2770", "symbol": "AdjustRoundedClipForOverflowClipMargin", "source": "cited" },
-        { "lines": "2772-2815", "symbol": "UpdateInnerBorderRadiusClip", "source": "cited" }
+        { "lines": "2772-2815", "symbol": "UpdateInnerBorderRadiusClip", "source": "cited" },
+        { "lines": "2381-2405", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateCssClip", "source": "located" },
+        { "lines": "2426-2527", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateClipPathClip", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/clip.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/lower/paint/clip.ts", "symbol": null, "use": "reference" },
         { "file": "packages/parity/src/paint-samples/replaced-geometry.ts", "symbol": null, "use": "reference" }
         ]
       },
@@ -1982,7 +2004,8 @@
         { "lines": "74-102", "symbol": null, "source": "cited" },
         { "lines": "319-330", "symbol": null, "source": "cited" },
         { "lines": "395-400", "symbol": null, "source": "cited" },
-        { "lines": "453-464", "symbol": null, "source": "cited" }
+        { "lines": "453-464", "symbol": null, "source": "cited" },
+        { "lines": "274-301", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/text-decoration.ts", "symbol": "AppliedDecoration", "use": "reference" },
@@ -2267,6 +2290,25 @@
         { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "sub", "use": "port" },
         { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "uniqueValue", "use": "port" },
         { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "WIDTH_KEYWORD_VALUES", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/mac/font_platform_data_mac.mm",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (a synthetic italic draws the face sheared by SkFont::setSkewX(-1/4) at every slope)",
+        "proof": ["packages/parity/test/text-style-ahem.test.ts"]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.; Copyright (c) 2010 Google Inc. All rights reserved.",
+      "fileSha256": "78cd6148a0ac5c58e8f0a5e7caa7da85196d51d24c31aafb29010bd42ba6881c",
+      "headerSha256": "1db68253298ebf8949ab5efba9b92ced494a39bc71a2395ca9704d99ebbb890d",
+      "ranges": [
+        { "lines": "211-272", "symbol": "CreateSkFont", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "SYNTHETIC_OBLIQUE_SHEAR", "use": "reference" }
       ]
     },
     {
@@ -3089,6 +3131,21 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkPathMakers.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 Google Inc.",
+      "fileSha256": "b05e7f3c35e5a41f9ca956cc668cf3ac5c559337f61510e9156bc535071b2605",
+      "headerSha256": "399bcb38e47eceb8fd2bdb507ff4053467ad57650e12b15bab73eaf5dddd7352",
+      "ranges": [
+        { "lines": "66-86", "symbol": "SkPath_RRectPointIterator", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/paint/image.ts", "symbol": "roundedRectPath", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/core/SkPathPriv.h",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -3097,10 +3154,12 @@
       "fileSha256": "eb978220f89fada40647ed4313a55788ed3e5a6884012c9fcf1c094fde52f785",
       "headerSha256": "4c66cc21a1f800a4dc2688173a1eb7c2a17eb9af43681961c51429b749c43f26",
       "ranges": [
-        { "lines": "418-432", "symbol": "SkPathPriv::TrimmedBounds", "source": "located" }
+        { "lines": "418-432", "symbol": "SkPathPriv::TrimmedBounds", "source": "located" },
+        { "lines": "47-55", "symbol": "SkPathPriv::SimplifyRRect", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/svg-geometry.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/svg-geometry.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/lower/paint/image.ts", "symbol": "roundedRectPath", "use": "port" }
       ]
     },
     {
@@ -3147,7 +3206,8 @@
         { "lines": "1-212", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/lower/paint/image.ts", "symbol": "roundedRectPath", "use": "port" }
       ]
     },
     {
@@ -3348,6 +3408,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-easing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/geometry/path_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 The Chromium Authors",
+      "fileSha256": "d102f716f9bf7a3e4ba386b6af80ceea79c6604af978a997420fe6a0aa549797",
+      "headerSha256": "f0becbc6a99a89f1949bdbdac5e4f383c5c94c1c7a235ff46564eb41cd5c0ae7",
+      "ranges": [
+        { "lines": "228-236", "symbol": "PathBuilder::AddRoundedRect", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/paint/image.ts", "symbol": "roundedRectPath", "use": "port" }
       ]
     },
     {
@@ -3565,6 +3640,36 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/properties/computed_style_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "26d7fea5a7c5666cfa2385183c04412dd581ea80fec265ec1914dd07e0ebaf8c",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "2381-2413", "symbol": "ComputedStyleUtils::TouchActionFlagsToCSSValue", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/properties/touch-action.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/svg_object_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "b37fa398f4f6ae3e779e6e6615af6656f284ced0d630df0c828352eafe0b530c",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "134-184", "symbol": "SVGObjectPainter::PreparePaint", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "svgPaintAlpha", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -3579,7 +3684,44 @@
         { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8525-8531", "symbol": "Resize::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "8533-8552", "symbol": "Resize::ApplyValue", "source": "located" },
-        { "lines": "12421-12434", "symbol": "WordSpacing::CSSValueFromComputedStyleInternal", "source": "located" }
+        { "lines": "9615-9643", "symbol": "StrokeDasharray::ParseSingleValue", "source": "located" },
+        { "lines": "9654-9662", "symbol": "StrokeDashoffset::ParseSingleValue", "source": "located" },
+        { "lines": "3748-3753", "symbol": "Cx::ParseSingleValue", "source": "located" },
+        { "lines": "3763-3768", "symbol": "Cy::ParseSingleValue", "source": "located" },
+        { "lines": "8487-8492", "symbol": "R::ParseSingleValue", "source": "located" },
+        { "lines": "12474-12479", "symbol": "X::ParseSingleValue", "source": "located" },
+        { "lines": "12489-12494", "symbol": "Y::ParseSingleValue", "source": "located" },
+        { "lines": "8662-8670", "symbol": "Rx::ParseSingleValue", "source": "located" },
+        { "lines": "8680-8688", "symbol": "Ry::ParseSingleValue", "source": "located" },
+        { "lines": "8213-8271", "symbol": "PaintOrder::ParseSingleValue", "source": "located" },
+        { "lines": "8273-8291", "symbol": "PaintOrder::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "9689-9695", "symbol": "StrokeMiterlimit::ParseSingleValue", "source": "located" },
+        { "lines": "10363-10381", "symbol": "ConsumePan", "source": "located" },
+        { "lines": "10386-10416", "symbol": "TouchAction::ParseSingleValue", "source": "located" },
+        { "lines": "10418-10424", "symbol": "TouchAction::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "4362-4366", "symbol": "Filter::ParseSingleValue", "source": "located" },
+        { "lines": "12421-12434", "symbol": "WordSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "2322-2361", "symbol": "Clip::ParseSingleValue", "source": "located" },
+        { "lines": "2363-2381", "symbol": "Clip::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "2383-2416", "symbol": "ClipPath::ParseSingleValue", "source": "located" },
+        { "lines": "2418-2447", "symbol": "ClipPath::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "11345-11356", "symbol": "MaskClip::ParseSingleValue", "source": "located" },
+        { "lines": "11372-11374", "symbol": "MaskClip::InitialValue", "source": "located" },
+        { "lines": "11376-11386", "symbol": "MaskComposite::ParseSingleValue", "source": "located" },
+        { "lines": "11402-11404", "symbol": "MaskComposite::InitialValue", "source": "located" },
+        { "lines": "11406-11414", "symbol": "MaskImage::ParseSingleValue", "source": "located" },
+        { "lines": "11430-11435", "symbol": "MaskMode::ParseSingleValue", "source": "located" },
+        { "lines": "11445-11447", "symbol": "MaskMode::InitialValue", "source": "located" },
+        { "lines": "11449-11460", "symbol": "MaskOrigin::ParseSingleValue", "source": "located" },
+        { "lines": "11476-11478", "symbol": "MaskOrigin::InitialValue", "source": "located" },
+        { "lines": "11480-11488", "symbol": "WebkitMaskPositionX::ParseSingleValue", "source": "located" },
+        { "lines": "11500-11503", "symbol": "WebkitMaskPositionX::InitialValue", "source": "located" },
+        { "lines": "11505-11513", "symbol": "WebkitMaskPositionY::ParseSingleValue", "source": "located" },
+        { "lines": "11525-11528", "symbol": "WebkitMaskPositionY::InitialValue", "source": "located" },
+        { "lines": "11530-11535", "symbol": "MaskRepeat::ParseSingleValue", "source": "located" },
+        { "lines": "11545-11548", "symbol": "MaskRepeat::InitialValue", "source": "located" },
+        { "lines": "11550-11556", "symbol": "MaskSize::ParseSingleValue", "source": "located" },
+        { "lines": "11567-11569", "symbol": "MaskSize::InitialValue", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
@@ -3589,7 +3731,14 @@
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeWordSpacing", "use": "port" },
         { "file": "packages/dragon/src/css/properties/text-spacing.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/filter.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/aliases/filter.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/touch-action.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/clip-rect.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/mask.ts", "symbol": null, "use": "reference" },
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" }
       ]
     },
     {

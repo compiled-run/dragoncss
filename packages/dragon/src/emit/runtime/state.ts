@@ -605,6 +605,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'border-widths':
       case 'text-color':
         break;
+      case 'synthetic-oblique':
+        // TXT-W: the state runtime's text record carries no shear; a sheared run is drawn from the static program only.
+        throw new StateEmitError(`${n.id}: a synthetic oblique in a state program has no state-node write (TXT-W shears glyphs on the static program only)`);
       case 'transform':
         // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
@@ -633,6 +636,12 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'visibility':
         // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
         throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
+      case 'clip-rect-empty':
+        // MASK-CLIP: a state record holds no clip write; the empty clip rect hides the box on the static program only.
+        throw new StateEmitError(`${n.id}: a clip rect in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
+      case 'clip-path-inset':
+        // MASK-CLIP: a state record holds no clip-path write; the inset clip is drawn on the static program only.
+        throw new StateEmitError(`${n.id}: a clip-path in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

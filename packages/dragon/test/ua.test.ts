@@ -126,6 +126,8 @@ describe('dependency boundaries', () => {
       "import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';",
       // TXT2-g: the line-clamp longhand names and the clamp container's authored display, from the resolved element alone.
       "import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';",
+      // MASK-CLIP: the mask longhand names and their initial values, to leave initial masks unwritten.
+      "import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';",
       "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.

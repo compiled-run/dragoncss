@@ -40,6 +40,10 @@ export const GRID: readonly FixtureSpec[] = [
   // block axis (align-items and align-self, spans, synthesized baselines, a scroll container, the end fallback), a grid's first
   // baseline from a last-baseline row in a flex line, and the static positions of absolutely positioned children.
   both('grid-baseline-axes'),
+  // Gaps in other units than px and %: rem, em, calc(), min(), max(), clamp(), vw, vh, the grid-gap alias and normal, between fixed,
+  // flexible, auto-fill and auto tracks, and an em column gap in the max-content width of a grid that is a flex item. min(), max()
+  // and clamp() resolve through an em, rem, vw or vh argument as well as a px one, and calc() of in, cm, mm, pt and pc folds to px.
+  both('grid-gap-units'),
   // G-INL: an inline-grid is an atomic inline on its line; one inside an inline box stays refused (INL2c), as inline-block and inline-flex are.
   reject('reject-grid-inline-grid', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="box" class="box"><span data-dragon-id="cell" class="cell">X</span></span>', 'inline-grid <span> box is an atomic inline inside the inline box <span> s'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),

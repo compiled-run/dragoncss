@@ -25,22 +25,9 @@ export const TEXT_FAMILY_ASPECTS: { readonly [P in (typeof TEXT_FAMILY_LONGHANDS
 
 /**
  * The longhands the font shorthand sets besides Dragon's (Chrome 145's expansion), with their initial values as getComputedStyle
- * serializes them. Dragon does not model them: a font value compiles only when it leaves each at this value (small-caps and a
- * non-normal stretch are refused), and the font-shorthand test checks Chrome computes each to it.
+ * serializes them. Dragon does not model them: a font value compiles only when it leaves each at this value, and the font-shorthand
+ * test checks Chrome computes each to it.
  */
 export const FONT_RESET_LONGHANDS = {
-  'font-variant-caps': 'normal',
-  'font-variant-ligatures': 'normal',
-  'font-variant-numeric': 'normal',
-  'font-variant-east-asian': 'normal',
-  'font-variant-alternates': 'normal',
-  'font-variant-position': 'normal',
-  'font-variant-emoji': 'normal',
-  'font-stretch': '100%',
   'font-size-adjust': 'none',
-  'font-language-override': 'normal',
-  'font-kerning': 'auto',
-  'font-optical-sizing': 'auto',
-  'font-feature-settings': 'normal',
-  'font-variation-settings': 'normal',
 } as const;

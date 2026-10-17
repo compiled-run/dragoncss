@@ -53,20 +53,83 @@ export const isScanlineRule = (rule: string): boolean => ruleKind(rule) === 'edg
 
 const along = (lo: number, hi: number, f: number): number => Math.floor(lo + (hi - lo) * f);
 
-/** One glyph's ink box in device px, from engine data only: the pen x and the font's glyph box scaled to the instance size. */
-export type GlyphBox = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+/**
+ * A glyph drawn sheared about its baseline origin (TXT-W's synthetic oblique): on the device row y its ink spans the upright left and
+ * right moved by k times the height above the baseline, k * (baseline - y), device px with y down.
+ */
+export type GlyphSlant = { readonly k: number; readonly baseline: number; readonly left: number; readonly right: number };
+/**
+ * One glyph's ink box in device px, from engine data only: the pen x and the font's glyph box scaled to the instance size. A sheared
+ * glyph's box is the bounding box of its ink, and slant gives the slanted sides: clearance and the glyph scanlines follow those, since
+ * a slanted side runs through the bounding box.
+ */
+export type GlyphBox = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly slant?: GlyphSlant };
 /** A line box's inked glyphs in drawing order; id is the line id "<text>:line<j>". */
 export type GlyphLine = { readonly id: string; readonly glyphs: readonly GlyphBox[] };
+
+/** The glyph's ink [left, right) at device height y (the bounding box's sides for an upright glyph). */
+export function glyphSpanAt(g: GlyphBox, y: number): readonly [number, number] {
+  if (g.slant === undefined) return [g.left, g.right];
+  const s = g.slant.k * (g.slant.baseline - y);
+  return [g.slant.left + s, g.slant.right + s];
+}
+
+/**
+ * The largest d >= 0 with f(d) >= 0, for f continuous, decreasing and linear between the given breakpoints (and past the last);
+ * 0 when f(0) < 0.
+ */
+function lastNonNegative(f: (d: number) => number, breaks: readonly number[]): number {
+  const at = [0, ...[...new Set(breaks.filter((b) => b > 0))].sort((a, b) => a - b)];
+  if (f(0) < 0) return 0;
+  for (let i = 0; i < at.length; i++) {
+    const a = at[i] as number;
+    const last = i === at.length - 1;
+    const b = last ? a + 1 : (at[i + 1] as number);
+    const fa = f(a);
+    const fb = f(b);
+    if (!last && fb >= 0) continue;
+    return a + (fa * (b - a)) / (fa - fb);
+  }
+  return 0;
+}
 
 /**
  * How far the pixel [x, x + 1) x [y, y + 1) is from the edges of a glyph box: the largest d with the pixel inside the box shrunk by
  * d or outside the box grown by d; 0 when it touches or straddles an edge. Each glyph box is its own obstacle, so a seam between two
- * glyphs is an edge of both.
+ * glyphs is an edge of both. A sheared glyph's edges are its slanted sides and its top and bottom: shrunk or grown by d, the
+ * pixel's rows (grown by d) must lie inside the ink's span on every row, or wholly beside it on the rows they share with the glyph.
  */
 export function glyphClearance(x: number, y: number, g: GlyphBox): number {
-  const inside = Math.min(x - g.left, g.right - (x + 1), y - g.top, g.bottom - (y + 1));
+  if (g.slant === undefined) {
+    const inside = Math.min(x - g.left, g.right - (x + 1), y - g.top, g.bottom - (y + 1));
+    if (inside >= 0) return inside;
+    return Math.max(0, g.left - (x + 1), x - g.right, g.top - (y + 1), y - g.bottom);
+  }
+  // The span moves linearly with y, so its extremes over the pixel's rows are at y and y + 1.
+  const [l0, r0] = glyphSpanAt(g, y);
+  const [l1, r1] = glyphSpanAt(g, y + 1);
+  const inside = Math.min(x - Math.max(l0, l1), Math.min(r0, r1) - (x + 1), y - g.top, g.bottom - (y + 1));
   if (inside >= 0) return inside;
-  return Math.max(0, g.left - (x + 1), x - g.right, g.top - (y + 1), y - g.bottom);
+  // Grown by d, the pixel covers rows [y - d, y + 1 + d]; those it shares with the glyph are [y0, y1], or its nearer edge row while it
+  // shares none (the top or bottom gap then holds the pixel clear). Each gap below is linear in d between the d at which y0 or y1
+  // reaches the top or the bottom, or the two meet.
+  const rows = (d: number): readonly [number, number] => {
+    const y0 = Math.max(y - d, g.top);
+    const y1 = Math.min(y + 1 + d, g.bottom);
+    if (y0 <= y1) return [y0, y1];
+    const edge = y + 1 + d < g.top ? g.top : g.bottom;
+    return [edge, edge];
+  };
+  const breaks = [y - g.top, g.bottom - y - 1, g.top - y - 1, y - g.bottom];
+  const leftGap = lastNonNegative((d) => {
+    const [y0, y1] = rows(d);
+    return Math.min(glyphSpanAt(g, y0)[0], glyphSpanAt(g, y1)[0]) - (x + 1) - d;
+  }, breaks);
+  const rightGap = lastNonNegative((d) => {
+    const [y0, y1] = rows(d);
+    return x - d - Math.max(glyphSpanAt(g, y0)[1], glyphSpanAt(g, y1)[1]);
+  }, breaks);
+  return Math.max(0, g.top - (y + 1), y - g.bottom, leftGap, rightGap);
 }
 
 /** Whether a pixel is at least inset device px from every edge of every glyph box. */
@@ -252,15 +315,45 @@ export function sampleGlyphs(lines: readonly GlyphLine[], size: ImageSize, inset
   const clear = (p: number, lo: number, hi: number): boolean => p >= lo + inset && p + 1 <= hi - inset;
   const clearOfOthers = (x: number, y: number, own: GlyphBox): boolean => all.every((g) => g === own || glyphClearance(x, y, g) >= inset);
   /** The scanline across one edge of g, or null when g cannot hold one clear of its other edges. */
+  // A sheared glyph's left or right side crosses a scanline row between its positions at the row's top and bottom (the same position
+  // for an upright glyph): the inside end clears the side on that row, and the outside end clears it on the rows the inset grows the
+  // pixel to (glyphClearance). Its top or bottom scanline keeps clear of the slanted sides on the rows it crosses inside the glyph.
   const scanline = (g: GlyphBox, side: GlyphSide): (readonly [number, number])[] | null => {
     const horizontal = side === 'left' || side === 'right';
-    const across = horizontal ? Math.floor((g.top + g.bottom) / 2) : Math.floor((g.left + g.right) / 2);
-    if (horizontal ? !clear(across, g.top, g.bottom) || g.right - g.left < 2 * inset + 2 : !clear(across, g.left, g.right) || g.bottom - g.top < 2 * inset + 2) return null;
-    const edge = side === 'left' ? g.left : side === 'right' ? g.right : side === 'top' ? g.top : g.bottom;
     const inward = side === 'left' || side === 'top' ? 1 : -1;
+    let across: number;
+    let near: number;
+    let far: number;
+    if (horizontal) {
+      across = Math.floor((g.top + g.bottom) / 2);
+      const [la, ra] = glyphSpanAt(g, across);
+      const [lb, rb] = glyphSpanAt(g, across + 1);
+      if (!clear(across, g.top, g.bottom) || Math.min(ra, rb) - Math.max(la, lb) < 2 * inset + 2) return null;
+      const [lu, ru] = glyphSpanAt(g, Math.max(across - inset, g.top));
+      const [ld, rd] = glyphSpanAt(g, Math.min(across + 1 + inset, g.bottom));
+      [near, far] = side === 'left' ? [Math.min(lu, ld), Math.max(la, lb)] : [Math.max(ru, rd), Math.min(ra, rb)];
+    } else {
+      const edge = side === 'top' ? g.top : g.bottom;
+      if (g.slant === undefined) {
+        across = Math.floor((g.left + g.right) / 2);
+        if (!clear(across, g.left, g.right)) return null;
+      } else {
+        // The rows the scanline crosses inside the glyph run from the edge to its first clear inside pixel.
+        const inner = inward > 0 ? Math.ceil(edge + inset) + 1 : Math.floor(edge - inset) - 1;
+        const [la, ra] = glyphSpanAt(g, edge);
+        const [lb, rb] = glyphSpanAt(g, inner);
+        const lo = Math.max(la, lb);
+        const hi = Math.min(ra, rb);
+        across = Math.floor((lo + hi) / 2);
+        if (!clear(across, lo, hi)) return null;
+      }
+      if (g.bottom - g.top < 2 * inset + 2) return null;
+      near = edge;
+      far = edge;
+    }
     // From the first pixel clear outside the edge to the first pixel clear inside it.
-    const outer = inward > 0 ? Math.floor(edge - inset) - 1 : Math.ceil(edge + inset);
-    const inner = inward > 0 ? Math.ceil(edge + inset) : Math.floor(edge - inset) - 1;
+    const outer = inward > 0 ? Math.floor(near - inset) - 1 : Math.ceil(near + inset);
+    const inner = inward > 0 ? Math.ceil(far + inset) : Math.floor(far - inset) - 1;
     const points: (readonly [number, number])[] = [];
     for (let p = outer; inward > 0 ? p <= inner : p >= inner; p += inward) points.push(horizontal ? [p, across] : [across, p]);
     return points;
@@ -268,9 +361,10 @@ export function sampleGlyphs(lines: readonly GlyphLine[], size: ImageSize, inset
   const usable = (g: GlyphBox, line: (readonly [number, number])[]): boolean => line.every(([x, y]) => inImage(x, y) && clearOfOthers(x, y, g));
   for (const line of lines) {
     line.glyphs.forEach((g, k) => {
-      const x = Math.floor((g.left + g.right) / 2);
       const y = Math.floor((g.top + g.bottom) / 2);
-      if (!(clear(x, g.left, g.right) && clear(y, g.top, g.bottom) && inImage(x, y))) return;
+      const [l, r] = glyphSpanAt(g, y + 0.5);
+      const x = Math.floor((l + r) / 2);
+      if (!(inImage(x, y) && (g.slant === undefined ? clear(x, g.left, g.right) && clear(y, g.top, g.bottom) : glyphClearance(x, y, g) >= inset))) return;
       const rule = `glyph:${line.id}:${k}`;
       if (clearOfOthers(x, y, g)) out.push({ x, y, rule });
       else dropped.push(rule);

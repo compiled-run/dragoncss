@@ -144,12 +144,20 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
  * PNT1), whose layers rt-hit.ts orders as z-index auto, a case with an <svg> until SVG-a2 models its shapes, and one whose program
  * rounds a corner until the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is ever silently
  * mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not
- * model them yet.
+ * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP).
  */
 export function hitRefusal(n: NativeCase): string | null {
   const nodes = n.programs.uikit.nodes;
   const moved = nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  // MASK-CLIP: Chrome's elementFromPoint passes over a box its empty clip rect hides, and over its descendants, which the hit test
+  // does not model yet.
+  const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty')).map((x) => x.id);
+  if (cut.length > 0) return `clip on ${cut.join(', ')}: hit testing past a box its clip rect hides is not modelled yet (MASK-CLIP)`;
+  // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
+  // hit test does not model yet.
+  const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset')).map((x) => x.id);
+  if (clipped.length > 0) return `clip-path on ${clipped.join(', ')}: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)`;
   // PNT1: a stacking context below the root paints its layer in z-order, which rt-hit.ts does not order yet.
   const contexts = nodes.filter((x) => x.parent !== null && (x.facts['stacking'] as { readonly createsContext?: boolean } | undefined)?.createsContext === true).map((x) => x.id);
   if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)`;
@@ -230,7 +238,7 @@ export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.jso
  * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
  * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -278,6 +286,9 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
 ];
 const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
 const CSS_TEXT = new RegExp(`^[ ]*(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
+/** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
+const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
+const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
 
 /**
  * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
@@ -286,12 +297,14 @@ const CSS_TEXT = new RegExp(`^[ ]*(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}: ${
  */
 const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
 /**
- * SVG-a1's svg family (fill, stroke, stroke-width), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * SVG-a1's svg family (fill, stroke, stroke-width, SVG-opacity's fill-opacity and stroke-opacity, and SVG-stroke's stroke-linecap,
+ * stroke-linejoin, stroke-miterlimit and fill-rule, SVG-dash's stroke-dasharray and stroke-dashoffset, SVG-geometry's cx, cy, r, x
+ * and y, SVG-paint-order's paint-order, and SVG-rrect's rx and ry), also added after the identity base, at its initial values only, in LONGHANDS order:
  * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
  * family's own values).
  */
-const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"/g;
-const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n/gm;
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1"(?:,\n[ ]*"stroke-linecap": "butt",\n[ ]*"stroke-linejoin": "miter",\n[ ]*"stroke-miterlimit": "4",\n[ ]*"fill-rule": "nonzero"(?:,\n[ ]*"stroke-dasharray": "none",\n[ ]*"stroke-dashoffset": "0px"(?:,\n[ ]*"cx": "0px",\n[ ]*"cy": "0px",\n[ ]*"r": "0px",\n[ ]*"x": "0px",\n[ ]*"y": "0px"(?:,\n[ ]*"paint-order": "normal"(?:,\n[ ]*"rx": "auto",\n[ ]*"ry": "auto")?)?)?)?)?)?/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n(?:[ ]*stroke-linecap: butt;\n[ ]*stroke-linejoin: miter;\n[ ]*stroke-miterlimit: 4;\n[ ]*fill-rule: nonzero;\n(?:[ ]*stroke-dasharray: none;\n[ ]*stroke-dashoffset: 0px;\n(?:[ ]*cx: 0px;\n[ ]*cy: 0px;\n[ ]*r: 0px;\n[ ]*x: 0px;\n[ ]*y: 0px;\n(?:[ ]*paint-order: normal;\n(?:[ ]*rx: auto;\n[ ]*ry: auto;\n)?)?)?)?)?)?/gm;
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**
@@ -322,12 +335,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(genB, '').replace(SVG_JSON, '');
+    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(genB, '').replace(SVG_JSON, '');
     return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TOUCH_ACTION, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

@@ -32,7 +32,7 @@ export const CSS_WIDE: ReadonlySet<string> = new Set(['inherit', 'initial', 'uns
 export const LINE_STYLES: ReadonlySet<string> = new Set(['none', 'hidden', 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset']);
 export const LINE_WIDTH_KEYWORDS: ReadonlySet<string> = new Set(['thin', 'medium', 'thick', 'hairline']);
 /** Properties whose unitless numbers stay numbers; elsewhere a unitless zero is a length. */
-const NUMBER_PROPERTIES: ReadonlySet<string> = new Set<string>(['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight']);
+const NUMBER_PROPERTIES: ReadonlySet<string> = new Set<string>(['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight', 'stroke-miterlimit']);
 
 export const kw = (value: string): CssValue => ({ kind: 'keyword', value });
 
@@ -57,8 +57,11 @@ export function isMathValue(v: CssValue): boolean {
 
 export const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, rgb(), rgba(), hsl(), hsla(), transparent or currentcolor.';
 
+/** The text fill and stroke properties that take a <color> (compat §5): the shorthand's width tokens are kept apart below. */
+const TEXT_STROKE_COLOR_BEARING: ReadonlySet<string> = new Set(['-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke']);
+
 function isColorBearing(property: string): boolean {
-  return property === 'color' || property === 'fill' || property === 'stroke' || property === 'text-decoration-color' || property === 'text-decoration' || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
+  return property === 'color' || property === 'fill' || property === 'stroke' || property === 'text-decoration-color' || property === 'text-decoration' || TEXT_STROKE_COLOR_BEARING.has(property) || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
 }
 
 /**
@@ -75,6 +78,10 @@ export function tokenValue(node: CssNode, property: string): CssValue | string {
   // css-backgrounds-3 §3.1: a calculation in a border shorthand is its <line-width>, typed as the border-*-width longhands are.
   if (node.type === 'Function' && MATH_VALUE_FUNCTIONS.has(asciiLower(String(node['name']))) && BORDER_SHORTHAND.test(property)) {
     return mathValue(node, asciiLower(String(node['name'])), 'border-top-width');
+  }
+  // compat §5.4: a calculation in -webkit-text-stroke is its <line-width>, typed as -webkit-text-stroke-width is.
+  if (node.type === 'Function' && MATH_VALUE_FUNCTIONS.has(asciiLower(String(node['name']))) && property === '-webkit-text-stroke') {
+    return mathValue(node, asciiLower(String(node['name'])), '-webkit-text-stroke-width');
   }
   if (node.type === 'Identifier') {
     const name = asciiLower(String(node['name']));
@@ -126,7 +133,8 @@ export const REFUSED_MATH_PREFIX = 'refused ';
 function mathValue(node: CssNode, name: string, property: string): CssValue {
   const text = generate(node);
   const refused = (reason: string): CssValue => ({ kind: 'other', type: `${REFUSED_MATH_PREFIX}${name}()`, text: `${text} /* ${reason} */` });
-  // css-values-4 §10.10: a top-level result is clamped to the property's range; flex-grow and flex-shrink take [0,∞].
+  // css-values-4 §10.10: a top-level result is clamped to the property's range; flex-grow, flex-shrink and stroke-miterlimit take
+  // [0,∞] (Chrome StrokeMiterlimit::ParseSingleValue, ValueRange::kNonNegative).
   const nonNegative = (v: number): number => (v < 0 ? 0 : v);
   if (property === 'flex') {
     const n = parseMath(text, { type: 'number' });
@@ -138,7 +146,7 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
   if (!parsed.ok) return refused(parsed.reason);
   if (context.type === 'number') {
     const folded = foldNumber(parsed.node);
-    const value = property === 'flex-grow' || property === 'flex-shrink' ? nonNegative(folded) : folded;
+    const value = property === 'flex-grow' || property === 'flex-shrink' || property === 'stroke-miterlimit' ? nonNegative(folded) : folded;
     return { kind: 'number', value };
   }
   return { kind: 'other', type: mathHasEnv(parsed.node) ? ENV_VALUE_TYPE : `${name}()`, text };
@@ -176,8 +184,8 @@ const LINE_ORDER = ['underline', 'overline', 'line-through'];
 
 /**
  * css-text-decor-4 as Chrome 145 parses it, and the values TDEC-a draws (notes/T148J-tdec.md): text-decoration-line is one value
- * of up to three lines, kept in Chrome's order; blink, spelling-error and grammar-error, styles other than solid, from-font, and an
- * underline position other than auto are refused; <line-width> thickness keywords and skip-ink all are not Chrome values. undefined
+ * of up to three lines, kept in Chrome's order; blink, spelling-error and grammar-error, from-font, and an underline position other
+ * than auto are refused (a drawn style other than solid or double is refused per decorated text, computed-checks checkDecorations); <line-width> thickness keywords and skip-ink all are not Chrome values. undefined
  * when the property is not a decoration longhand this rules on.
  */
 export function textDecorationValue(property: string, tokens: readonly CssNode[]): PairValue | undefined {
@@ -191,8 +199,6 @@ export function textDecorationValue(property: string, tokens: readonly CssNode[]
       if (tokens.length < 2) return null;
       return { kind: 'keyword', value: LINE_ORDER.filter((l) => names.includes(l)).join(' ') };
     }
-    case 'text-decoration-style':
-      return one !== '' && one !== 'solid' ? { refused: `text-decoration-style: ${one} is drawn by TDEC-c` } : null;
     case 'text-decoration-thickness':
       if (one === 'thin' || one === 'medium' || one === 'thick') return { invalid: `Chrome 145 does not parse text-decoration-thickness: ${one}` };
       return one === 'from-font' ? { refused: 'text-decoration-thickness: from-font reads the font\'s underline metrics, which TDEC-c measures' } : null;

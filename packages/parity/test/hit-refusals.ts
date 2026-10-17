@@ -17,15 +17,23 @@ export const INLINE_OUT: readonly string[] = [
   'text-justify-ahem', 'text-justify-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl',
   // TXT2-h's text-indent-ahem holds an inline box, a <br> and inline-blocks.
   'text-indent-ahem', 'text-indent-ahem-rtl',
+  // TXT-FONT's text-font-variant-ahem, text-font-tuning-ahem and text-font-size-values-ahem hold inline boxes, and so does TXT-W's text-style-ahem (em, i).
+  'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
   'text-decoration-native', 'text-decoration-native-rtl',
+  // TDEC-c's text-decoration-native-styles holds an inline box (s6s, the inline box's double underline).
+  'text-decoration-native-styles', 'text-decoration-native-styles-rtl',
   // resize-values holds an inline box (sp, resize on an inline span).
   'resize-values', 'resize-values-rtl',
-  // TXT2-g's line-clamp-lines holds an inline box (l9s, a clamped line ending inside a span).
-  'line-clamp-lines',
+  // touch-action-values holds an inline box (sp, touch-action none on an inline span).
+  'touch-action-values', 'touch-action-values-rtl',
   // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];
+// TXT2-g: every line-clamp case holds a -webkit-line-clamp container (rt-hit.ts clampRefusal; line-clamp-lines' first box l1 is one,
+// before its inline box l9s).
+export const CLAMP_OUT: readonly string[] = ['line-clamp-lines', 'line-clamp-nested'];
+export const CLAMP_REASON = /^.+ clamps its lines \(-webkit-line-clamp\), and Chrome hit tests the content past the clamp point by rules the hit table does not model yet \(TXT2-g\)$/;
 export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet/;
 // ALIAS-2's alias-paint writes -webkit-transform, so the hit lane refuses it with the transform reason though its name is not transform-.
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint'];
@@ -38,5 +46,5 @@ export const STACKING_OUT: readonly string[] = [
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in
 // VISIBILITY_OUT instead: its <svg> s3 is visibility hidden, and hitRefusal names visibility before an svg.
-export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl'];
+export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl'];
 export const SVG_REASON = /^<svg> .+: hit testing an svg's shapes comes with SVG-a2$/;

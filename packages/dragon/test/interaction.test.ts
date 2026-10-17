@@ -104,6 +104,12 @@ function serialize(root: ResolvedElement): string {
   return out.join('\n');
 }
 
+/**
+ * The fault-free resolution of each case under each state, serialized: the reference completenessFailures compares against. It
+ * does not depend on the faults, so the completeness test and both plants share it rather than resolve every state three times.
+ */
+const DIRECT = new Map<string, string>();
+
 /** Every reachable or forced state that resolves differently from the partition state it maps to. */
 function completenessFailures(faults: Partial<CompilerFaults>): string[] {
   const failures: string[] = [];
@@ -111,7 +117,12 @@ function completenessFailures(faults: Partial<CompilerFaults>): string[] {
   for (const c of partitions(faults)) {
     const p = c.partition;
     const mapped = (k: number): string => serialize(k < 0 ? c.base : (c.resolved[k] as ResolvedElement));
-    const direct = (ix: InteractionState): string => serialize(resolveTree(c.root, c.rules, NO_FAULTS, ENV, ix));
+    const direct = (ix: InteractionState): string => {
+      const key = [c.key, ...[ix.hover, ix.active, ix.focus, ix.focusVisible].map((set) => [...set].sort().join(','))].join('|');
+      let out = DIRECT.get(key);
+      if (out === undefined) DIRECT.set(key, (out = serialize(resolveTree(c.root, c.rules, NO_FAULTS, ENV, ix))));
+      return out;
+    };
     const chain = (address: string | null): Set<string> => {
       const out = new Set<string>();
       for (let a = address; a !== null;) {

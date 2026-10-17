@@ -75,6 +75,8 @@ export function appliedValue(engine: ExpectedEngine, backend: NativeBackend, w: 
   switch (w.kind) {
     case 'text-color':
       return rgba(w.color);
+    case 'synthetic-oblique':
+      return w.shear;
     case 'font': {
       if (g.fontSize === null) throw new Error(`a font write on a node without a resolved font size`);
       const size = engine.platformFontSize(g.fontSize);

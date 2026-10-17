@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.wrap { width: 380px; }
+svg { display: block; margin-bottom: 4px; }
+.thick { fill: rgb(20, 160, 80); stroke: rgb(120, 0, 160); stroke-width: 16; }
+.sf { paint-order: stroke; }
+.fs { paint-order: fill stroke markers; }
+.ms { paint-order: markers stroke; }
+.m { paint-order: MARKERS; }
+.v { --order: stroke fill; paint-order: var(--order); }
+.inh { paint-order: inherit; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<svg data-dragon-id="s1" class="thick" width="380" height="70"><rect data-dragon-id="a1" class="sf" x="14" y="14" width="44" height="42"/><rect data-dragon-id="a2" class="fs" x="84" y="14" width="44" height="42"/><circle data-dragon-id="a3" class="ms" cx="176" cy="35" r="22"/><circle data-dragon-id="a4" class="m" cx="246" cy="35" r="22"/><path data-dragon-id="a5" class="v" d="M300 14 H360 V56 H300 Z"/></svg>
+<svg data-dragon-id="s2" class="thick sf" width="380" height="70"><rect data-dragon-id="b1" x="14" y="14" width="44" height="42"/><rect data-dragon-id="b2" class="inh" x="84" y="14" width="44" height="42"/><rect data-dragon-id="b3" paint-order="fill" x="154" y="14" width="44" height="42"/><path data-dragon-id="b4" paint-order="stroke" stroke-linejoin="round" d="M230 56 L260 14 L290 56 Z"/></svg>
+</div>
+</body>
+</html>

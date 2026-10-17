@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 162,
-  "errors": 157,
+  "diagnostics": 154,
+  "errors": 149,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -156,8 +156,8 @@
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 5,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 5,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 24,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 24,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 20,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 20,
    "DRAGON_UNSUPPORTED_VALUE [web]": 4
   },
   "perTarget": {
@@ -183,7 +183,7 @@
      "DRAGON_UNSUPPORTED_FONT": 25,
      "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 24
+     "DRAGON_UNSUPPORTED_VALUE": 20
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -200,7 +200,7 @@
      "DRAGON_UNSUPPORTED_FONT": 25,
      "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 24
+     "DRAGON_UNSUPPORTED_VALUE": 20
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -215,11 +215,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 253,
+  "supportedBothTargets": 255,
   "supportedWeb": 274,
-  "supportedIos": 253,
-  "supportedAndroid": 253,
-  "supportPercent": 87.5,
+  "supportedIos": 255,
+  "supportedAndroid": 255,
+  "supportPercent": 88.2,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -302,9 +302,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 62,
-   "B-unwrapped": 62,
-   "C-context": 117
+   "A-authored": 58,
+   "B-unwrapped": 58,
+   "C-context": 113
   }
  },
  "features": {
@@ -787,11 +787,9 @@
    "property": "font-weight",
    "value": "400",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 29,
@@ -3576,11 +3574,9 @@
    "property": "text-underline-offset",
    "value": "0.2rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 257,
@@ -4132,46 +4128,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@856-859|font-weight: 400 is unsupported (support profile m1-s5); supported font-weight values: inherit or normal",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 856,
-    "end": 859,
-    "line": 60,
-    "column": 15,
-    "text": "400"
-   },
-   "message": "font-weight: 400 is unsupported (support profile m1-s5); supported font-weight values: inherit or normal",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@856-859|font-weight: 400 is unsupported (support profile m1-s5); supported font-weight values: inherit or normal",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 856,
-    "end": 859,
-    "line": 60,
-    "column": 15,
-    "text": "400"
-   },
-   "message": "font-weight: 400 is unsupported (support profile m1-s5); supported font-weight values: inherit or normal",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_SELECTOR|android|css@1646-1677|:hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
@@ -4601,46 +4557,6 @@
     "A-authored",
     "B-unwrapped",
     "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); supported text-underline-offset values: <length-px> or <percentage>",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); supported text-underline-offset values: <length-px> or <percentage>",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); supported text-underline-offset values: <length-px> or <percentage>",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); supported text-underline-offset values: <length-px> or <percentage>",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
    ]
   },
   {
@@ -5340,44 +5256,6 @@
     "text": "0"
    },
    "message": "letter-spacing:<length-px> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl, text-in-inline/ltr, text-in-inline/rtl); no letter-spacing value is proven in text-in-flex-item/column/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@856-859|font-weight: 400 is unsupported (support profile m1-s5); no font-weight value is proven in text-in-flex-item/column/ltr",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 856,
-    "end": 859,
-    "line": 60,
-    "column": 15,
-    "text": "400"
-   },
-   "message": "font-weight: 400 is unsupported (support profile m1-s5); no font-weight value is proven in text-in-flex-item/column/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@856-859|font-weight: 400 is unsupported (support profile m1-s5); no font-weight value is proven in text-in-flex-item/column/ltr",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 856,
-    "end": 859,
-    "line": 60,
-    "column": 15,
-    "text": "400"
-   },
-   "message": "font-weight: 400 is unsupported (support profile m1-s5); no font-weight value is proven in text-in-flex-item/column/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6106,44 +5984,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); in paint/ltr use <length-px> or <percentage>",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Library.tsrx:Library|font-family: \"Lato\" , sans-serif on page/library-call/library-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6160,7 +6000,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6169,7 +6009,7 @@
     "file": "examples/music-player/tree/src/components/Library.tsrx",
     "text": "Library"
    },
-   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6336,7 +6176,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6345,7 +6185,7 @@
     "file": "examples/music-player/tree/src/components/Nav.tsrx",
     "text": "Waves"
    },
-   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6480,7 +6320,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6489,7 +6329,7 @@
     "file": "examples/music-player/tree/src/components/Song.tsrx",
     "text": "{currentSong.name}"
    },
-   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6560,7 +6400,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -6569,7 +6409,7 @@
     "file": "examples/music-player/tree/src/components/Library.tsrx",
     "text": "Library"
    },
-   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6736,7 +6576,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -6745,7 +6585,7 @@
     "file": "examples/music-player/tree/src/components/Nav.tsrx",
     "text": "Waves"
    },
-   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6880,7 +6720,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -6889,7 +6729,7 @@
     "file": "examples/music-player/tree/src/components/Song.tsrx",
     "text": "{currentSong.name}"
    },
-   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"

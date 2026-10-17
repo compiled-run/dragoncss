@@ -8,10 +8,12 @@ import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
+import { FX_FAULTS } from './faults/fx.ts';
 import { GEN_B_FAULTS } from './faults/gen-b.ts';
 import { GEN_C_FAULTS } from './faults/gen-c.ts';
 import { INL1A_FAULTS } from './faults/inl1a.ts';
 import { INL2A_FAULTS } from './faults/inl2a.ts';
+import { MASK_FAULTS } from './faults/mask.ts';
 import { MEDIA_FAULTS } from './faults/media.ts';
 import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
@@ -19,6 +21,15 @@ import { OVFL_FAULTS } from './faults/ovfl.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
 import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
+import { TRANSFORM_EXTRA_FAULTS } from './faults/transform-extra.ts';
+import { TXT_FF_FAULTS } from './faults/txt-ff.ts';
+import { TXT_FILL_FAULTS } from './faults/txt-fill.ts';
+import { TXT_FS_FAULTS } from './faults/txt-fs.ts';
+import { TXT_FSTRETCH_FAULTS } from './faults/txt-fstretch.ts';
+import { TXT_FT_FAULTS } from './faults/txt-ft.ts';
+import { TXT_FV_FAULTS } from './faults/txt-fv.ts';
+import { TXT_FX_FAULTS } from './faults/txt-fx.ts';
+import { TXT_W_FAULTS } from './faults/txt-w.ts';
 import { TXT2_C_FAULTS } from './faults/txt2-c.ts';
 import { TXT2_D_FAULTS } from './faults/txt2-d.ts';
 import { TXT2_E_FAULTS } from './faults/txt2-e.ts';
@@ -37,10 +48,12 @@ export const FAULT_GROUPS = {
   'cascade-var': CASCADE_VAR_FAULTS,
   'env-safe': ENV_SAFE_FAULTS,
   fonts: FONTS_FAULTS,
+  fx: FX_FAULTS,
   'gen-b': GEN_B_FAULTS,
   'gen-c': GEN_C_FAULTS,
   inl1a: INL1A_FAULTS,
   inl2a: INL2A_FAULTS,
+  mask: MASK_FAULTS,
   media: MEDIA_FAULTS,
   'milestone-1': MILESTONE_1_FAULTS,
   'mq-r0': MQ_R0_FAULTS,
@@ -48,6 +61,15 @@ export const FAULT_GROUPS = {
   seld: SELD_FAULTS,
   'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,
+  'transform-extra': TRANSFORM_EXTRA_FAULTS,
+  'txt-ff': TXT_FF_FAULTS,
+  'txt-fill': TXT_FILL_FAULTS,
+  'txt-fs': TXT_FS_FAULTS,
+  'txt-fstretch': TXT_FSTRETCH_FAULTS,
+  'txt-ft': TXT_FT_FAULTS,
+  'txt-fv': TXT_FV_FAULTS,
+  'txt-fx': TXT_FX_FAULTS,
+  'txt-w': TXT_W_FAULTS,
   'txt2-c': TXT2_C_FAULTS,
   'txt2-d': TXT2_D_FAULTS,
   'txt2-e': TXT2_E_FAULTS,

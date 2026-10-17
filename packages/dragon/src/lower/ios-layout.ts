@@ -515,7 +515,8 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
     if (isAtomic(block)) throw new LoweringError(block.element.address, 'display', `atomic inline <${block.element.tag}> ${block.element.address} inside inline box ${id} is not laid out (INL2c)`);
     throw new LoweringError(block.element.address, 'display', `block-level <${block.element.tag}> ${block.element.address} inside inline box ${id} (CSS2 §9.2.1.1 block-in-inline) is not laid out`);
   }
-  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
+  // An inline box is never a grid item (a grid blockifies its children, analysis/blockify.ts), so last baseline stays refused on it.
+  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
 }
 
 /** A block container's inline-level child: an atomic inline is a box among its inline content (INL2a), the rest lowerInline. */
@@ -531,8 +532,10 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   const values = new Map<Longhand, CssValue>();
   for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p, l.ua));
   values.set('display', { kind: 'keyword', value: 'block' });
-  // Every non-inherited property of an anonymous box is its initial value.
-  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null });
+  // Every non-inherited property of an anonymous box is its initial value; in a grid it is a grid item (align-self: auto).
+  const parentDisplay = displayOf(parent);
+  const lastBaseline: LastBaselineContext = { items: false, self: parentDisplay === 'grid' || parentDisplay === 'inline-grid' };
+  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null }, lastBaseline);
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
   return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInlineLevel(c, l)) };
 }

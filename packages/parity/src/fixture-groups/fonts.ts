@@ -52,6 +52,8 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   // 39.37), px and percent thicknesses, px and percent offsets, and a 6px line whose dilation passes kDecorationClipMaxDilation (13
   // device px) at DPR 3.
   font('text-decoration-ahem-skip', FONT_REFERENCE_MAP, Object.fromEntries(['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'].map((id) => [id, 'Ahem']))),
+  // TDEC-c: double under, over and line-through lines in Lato (auto, px and percent thicknesses, at 16px and 15px) and Ahem.
+  font('text-decoration-double', FONT_REFERENCE_MAP, { d1: 'Lato-Regular', d2: 'Lato-Regular', d3: 'Lato-Regular', d4: 'Lato-Regular', d5: 'Lato-Regular', d6: 'Ahem' }),
 ];
 
 /** An invalid map: a pinned entry with no faces. */
@@ -71,9 +73,11 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
   // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
-  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem' && f.id !== 'text-word-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin'), ...TEXT_INDENT.filter((f) => f.id === 'text-indent-latin'), ...TEXT_BREAK.filter((f) => f.id === 'text-break-lato')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout' && f.id !== 'text-weight-ahem'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem' && f.id !== 'text-word-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin'), ...TEXT_INDENT.filter((f) => f.id === 'text-indent-latin'), ...TEXT_BREAK.filter((f) => f.id === 'text-break-lato')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
   // INL2a: the refusal of an atomic inline beside real-font text.
   ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
+  // TXT-FONTFEAT: font-stretch is accepted over Ahem, so the font shorthand's width keyword is refused over a real face.
+  ['reject-font-shorthand-stretch', FONT_REFERENCE_MAP],
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */
