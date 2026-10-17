@@ -511,7 +511,7 @@ describe('the svg model in a compile', () => {
       const refused = compile(svgTree(css, shapes), false).diagnostics.filter((d) => d.severity === 'error');
       return refused.some((d) => d.target === null || d.target === undefined) ? ['android', 'ios', 'web'] : [...new Set(refused.map((d) => String(d.target)))].sort();
     };
-    for (const decl of ['backface-visibility: hidden', 'transform-box: fill-box', 'transform-box: view-box']) {
+    for (const decl of ['backface-visibility: hidden', 'transform-box: fill-box', 'transform-box: stroke-box']) {
       for (const tag of ['rect', 'path', 'circle']) expect(refusedOn(`${tag} { ${decl}; }`), `${tag} { ${decl} }`).toEqual(['android', 'ios', 'web']);
     }
   });
