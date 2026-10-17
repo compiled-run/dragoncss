@@ -1365,6 +1365,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
   fun dragonSetSyntheticBold(keys: DoubleArray, values: DoubleArray) {
     dragonBoldKeys = keys
     dragonBoldValues = values
+    dragonBoldPaints.clear()
     invalidate()
   }
 

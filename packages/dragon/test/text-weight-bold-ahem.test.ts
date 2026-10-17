@@ -97,6 +97,12 @@ describe('font-weight over Ahem on native', () => {
     // A bold span in a truncating block, whatever the span's own text-overflow, is refused too.
     expect(fontErrors(nested(truncating, 'font-weight: 700; text-overflow: clip;'))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
     // No ellipsis: text-overflow only on the inline span, or on a block whose overflow is visible, truncates nothing.
+    // Under a bold line-clamp container, the ellipsis ends a line of the block that holds it, in that block's font: an upright nested
+    // block compiles, and bold text in it is refused.
+    const clamp = (inner: string) => project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } .o { font-weight: 700; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; } .n { ${inner} }`,
+      (r) => [el(r, 'o', 'div', ['o'], [el(r, 'n', 'div', ['n'], [text(r, 't', 'XX XX')])])]));
+    expect(fontErrors(clamp('font-weight: 400'))).toEqual([]);
+    expect(fontErrors(clamp(''))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
     const spanOnly = nested('white-space: nowrap; overflow: hidden;', 'font-weight: 700; text-overflow: ellipsis;');
     expect(fontErrors(spanOnly)).toEqual([]);
     expect(programs(spanOnly).uikit.nodes.find((n) => n.id === 'n:text0')?.writes.some((w) => w.kind === 'synthetic-bold')).toBe(true);
@@ -133,6 +139,28 @@ describe('font-weight over Ahem on native', () => {
     for (const d of ['font-weight: 700; text-decoration: underline; text-decoration-skip-ink: none', 'font-weight: 500; text-decoration: underline', 'font-weight: 700; text-decoration: underline; font-synthesis-weight: none']) {
       expect(errorsOf(compile(d)), d).toEqual([]);
     }
+  });
+
+  it('refuses on native a text whose text-decoration-skip-ink differs from its decorating box\'s, in either order', () => {
+    const NATIVE_VALUE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    // text-decoration-skip-ink is inherited: the painted text's own value and the box's may differ, and no Chrome case proves which
+    // one clips the line, so neither the box's none over a bold auto child nor the box's auto over an upright none child is drawn.
+    const nested = (o: string, n: string) => project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } .o { text-decoration: underline; ${o} } .n { ${n} }`,
+      (r) => [el(r, 'o', 'div', ['o'], [el(r, 'n', 'span', ['n'], [text(r, 't', 'XX XX')])])]));
+    for (const [o, n] of [['text-decoration-skip-ink: none', 'font-weight: 700; text-decoration-skip-ink: auto'], ['text-decoration-skip-ink: auto', 'font-weight: 400; text-decoration-skip-ink: none'], ['text-decoration-skip-ink: none', 'text-decoration-skip-ink: auto']] as const) {
+      const c = nested(o, n);
+      expect(errorsOf(c), `${o} / ${n}`).toEqual(NATIVE_VALUE);
+      expect(c.diagnostics.find((x) => x.target === 'ios')?.message, `${o} / ${n}`).toMatch(/its text-decoration-skip-ink is (auto|none) and that of o, which draws its underline, is (none|auto)/);
+      expect(c.outputs.web.kind).toBe('ready');
+    }
+    // The same value on both, inherited or set again, compiles where the box's value alone did.
+    expect(errorsOf(nested('text-decoration-skip-ink: none', 'font-weight: 700'))).toEqual([]);
+    expect(errorsOf(nested('text-decoration-skip-ink: none', 'font-weight: 700; text-decoration-skip-ink: none'))).toEqual([]);
+    expect(errorsOf(nested('', 'font-weight: 400'))).toEqual([]);
+    // A line-through ignores skip-ink, so a differing value under it compiles.
+    const through = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .o { text-decoration: line-through; text-decoration-skip-ink: none } .n { text-decoration-skip-ink: auto }',
+      (r) => [el(r, 'o', 'div', ['o'], [el(r, 'n', 'span', ['n'], [text(r, 't', 'XX XX')])])]));
+    expect(errorsOf(through)).toEqual([]);
   });
 
   it('emits the stroke rule on both backends and reads it back as syntheticBold; a state program refuses it by name', () => {

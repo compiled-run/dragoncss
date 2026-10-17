@@ -799,14 +799,15 @@ function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weig
 /**
  * The block whose ellipsis may end a line of el's own text, given [...ancestors, el]: the block container whose inline formatting
  * context lays the text out (el, or its nearest ancestor that is no inline box or display: contents) when its text-overflow is not
- * clip and it truncates its own lines (truncatesOwnLines, checkTextOverflow's rule), else the nearest -webkit-line-clamp container,
- * which may clamp lines of its descendant blocks. Chrome draws the ellipsis in that block's font.
+ * clip and it truncates its own lines (truncatesOwnLines, checkTextOverflow's rule), or under a -webkit-line-clamp container, which
+ * may clamp a line of that block. Chrome draws the ellipsis in that block's font.
  */
 function ellipsisBlockOf(chain: readonly ResolvedElement[], propagated: ResolvedElement | null): ResolvedElement | undefined {
   const outward = [...chain].reverse();
   const container = outward.find((e) => !isInlineBox(e) && displayKeyword(e) !== 'contents');
   if (container !== undefined && valueToString((container.props.get('text-overflow') as ResolvedValue).value) !== 'clip' && truncatesOwnLines(container, propagated)) return container;
-  return outward.find((e) => lineClampOf(e) > 0);
+  // A line-clamp ellipsis ends a line of whichever block holds it, in that block's font.
+  return outward.some((e) => lineClampOf(e) > 0) ? container : undefined;
 }
 
 /** The support profile each target is checked against, or null when the profiles are not enforced. */
@@ -1210,6 +1211,10 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
     for (const d of list.filter((x) => DRAWN_DECORATION_STYLES.includes(x.style))) {
       if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
       if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
+      // text-decoration-skip-ink is inherited, and Chrome may read it from the painted text's own style while the native views take
+      // the decorating box's; no Chrome case proves which, so a text whose value differs from its box's is refused.
+      const ownSkipInk = valueToString((owner.props.get('text-decoration-skip-ink') as ResolvedValue).value);
+      if ((d.lines.includes('underline') || d.lines.includes('overline')) && ownSkipInk !== d.skipInk) reasons.push(`its text-decoration-skip-ink is ${ownSkipInk} and that of ${d.box}, which draws its ${d.lines.join(' ')}, is ${d.skipInk}, and no Chrome case proves which of the two clips the line`);
       if (d.skipInk !== 'auto') continue;
       // TDEC-d clips Ahem glyphs only, for a solid underline (the capture's skip-ink probe), as thick as a capture proves. TXT-W: Skia
       // takes the intercepts of a synthetic-bold glyph from its emboldened outline, which the native views' upright Ahem boxes miss.
