@@ -11,6 +11,7 @@ import type { NativeProgram } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from './chrome.ts';
 import { dprLabel } from './dpr.ts';
+import { cssFontSizes } from './ahem-lines.ts';
 import { engineTextLines } from './line-breaks.ts';
 import type { CheckResult, RgbaImage } from './native-compare.ts';
 import { checkPixels } from './native-compare.ts';
@@ -274,22 +275,6 @@ export function ahemGlyphBoxes(): ReadonlyMap<number, FontBox | null> {
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
 
-function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number; text: string }> {
-  const out = new Map<string, { family: string; size: number; text: string }>();
-  // Text leaves sit in their block container or, through any depth of inline boxes, inside it (INL1a).
-  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox>): void => {
-    if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size, text: c.text });
-    else if (c.kind === 'inline') for (const k of c.children) inline(k);
-  };
-  const walk = (b: LayoutBox): void => {
-    for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
-      else inline(c);
-    }
-  };
-  walk(root);
-  return out;
-}
 
 /**
  * The glyph lines of a program at a DPR, as the device places them: each Ahem glyph at the line's absolute x plus its pen position

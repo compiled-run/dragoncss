@@ -80,9 +80,11 @@ public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill
   return out
 }
 
-/// After a background write: the shadows of the box and of every descendant box, whose backdrop the write changed.
+/// After a background write: the shadows (and text shadows) of the box and of every descendant box, whose backdrop the write changed.
 public func dragonShadowBackdropChanged(_ v: DragonBoxView) {
   if !v.dragonShadows.isEmpty { dragonAfterLayoutShadow(v, v.dragonShape, v.dragonScale) }
+  // TXT-FX: the text shadows of the box's texts are composited over the same backdrop.
+  if !v.dragonTextShadows.isEmpty { dragonReplaceTextShadows(v) }
   for s in v.dragonContainer.subviews {
     if let b = s as? DragonBoxView { dragonShadowBackdropChanged(b) }
   }
@@ -225,9 +227,11 @@ fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFi
   return out
 }
 
-/** After a background write: the shadows of the box and of every descendant box, whose backdrop the write changed. */
+/** After a background write: the shadows (and text shadows) of the box and of every descendant box, whose backdrop the write changed. */
 fun dragonShadowBackdropChanged(v: DragonBoxView) {
   if (v.dragonShadows.isNotEmpty()) dragonAfterLayoutShadow(v, v.dragonShape, v.dragonShadowScale)
+  // TXT-FX: the text shadows of the box's texts are composited over the same backdrop.
+  if (v.dragonTextShadows.isNotEmpty()) dragonReplaceTextShadows(v)
   val g = v.dragonContainer
   for (i in 0 until g.childCount) {
     val c = g.getChildAt(i)

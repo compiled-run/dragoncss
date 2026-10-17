@@ -14,10 +14,10 @@ import type { JsonValue } from '../expected-dump.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT, rgbaLit } from './types.ts';
 
-type Lang = 'swift' | 'kotlin';
+export type Lang = 'swift' | 'kotlin';
 
 /** A Swift or Kotlin string literal (node ids are compiler addresses; anything outside printable ASCII is escaped). */
-function strLit(lang: Lang, s: string): string {
+export function strLit(lang: Lang, s: string): string {
   let out = '"';
   for (const ch of s) {
     const cp = ch.codePointAt(0) as number;

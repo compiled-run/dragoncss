@@ -16,12 +16,12 @@ describe('sample generator', () => {
     // REPL-a appends image-flat (R8): points on flat image content, added by the image paint module; SVG-a2 appends svg (points
     // clear of every shape edge, added by the same module); TDEC-b appends decoration: points on and beside the rows of text
     // decorations, added by the text-decoration paint module.
-    expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient', 'image-flat', 'svg', 'decoration']);
+    expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient', 'image-flat', 'svg', 'decoration', 'text-shadow']);
   });
   it('is deterministic and emits every rule for a bordered, rounded, clipping box', () => {
     const a = generateSamples([card, plain], SIZE);
     expect(generateSamples([card, plain], SIZE)).toEqual(a);
-    expect([...new Set(a.filter((p) => p.rule.includes(':n3')).map((p) => ruleKind(p.rule)))]).toEqual(SAMPLE_RULES.filter((r) => r !== 'glyph' && r !== 'shadow' && r !== 'gradient' && r !== 'image-flat' && r !== 'svg' && r !== 'decoration'));
+    expect([...new Set(a.filter((p) => p.rule.includes(':n3')).map((p) => ruleKind(p.rule)))]).toEqual(SAMPLE_RULES.filter((r) => r !== 'glyph' && r !== 'shadow' && r !== 'gradient' && r !== 'image-flat' && r !== 'svg' && r !== 'decoration' && r !== 'text-shadow'));
     expect(a.filter((p) => ruleKind(p.rule) === 'radius' && p.rule.startsWith('radius:n3')).length).toBe(8);
     expect(a.filter((p) => p.rule === 'interior:n3')).toEqual([{ x: 240, y: 120, rule: 'interior:n3' }]);
     expect(a.filter((p) => p.rule === 'border:n3:top')).toEqual([{ x: 240, y: 62, rule: 'border:n3:top' }]);

@@ -25,6 +25,21 @@
       ]
     },
     {
+      "upstream": "cc/paint/draw_looper.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2024 The Chromium Authors",
+      "fileSha256": "61136a4e5d1ac49e39de34ad60bd40d4f3a4b3a34cf31ea32eca5afb609e4009",
+      "headerSha256": "fa52d121cb76cc736e8135134d68e0e6cc5d20dadfddf872088c109adf641532",
+      "ranges": [
+        { "lines": "22-43", "symbol": "DrawLooper::Layer::Apply", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": "textShadowLayerOver", "use": "port" }
+      ]
+    },
+    {
       "upstream": "cc/paint/paint_op_buffer_iterator.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2030,10 +2045,12 @@
       "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
       "ranges": [
         { "lines": "44-44", "symbol": "kDecorationClipMaxDilation", "source": "located" },
+        { "lines": "81-102", "symbol": "CreateDrawLooper", "source": "located" },
         { "lines": "555-583", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "skipInkThicknessProven", "use": "reference" },
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": "textShadowLayerOver", "use": "port" },
         { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/test/text-decoration.test.ts", "symbol": null, "use": "reference" }
       ]
@@ -2966,6 +2983,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-blur.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkGlyphRunPainter.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Android Open Source Project",
+      "fileSha256": "8ec0b1398b7c119dfb6b3aa2843b05f4d23e86c0b5f2588f50e13b3959541898",
+      "headerSha256": "d61a9ffd7143093c17bc6946a5226e335b3bf8f8a12dc024f1a7e57cb0312677",
+      "ranges": [
+        { "lines": "120-162", "symbol": "prepare_for_direct_mask_drawing", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": "textShadowLayerOver", "use": "port" }
       ]
     },
     {

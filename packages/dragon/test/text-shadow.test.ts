@@ -1,5 +1,6 @@
-// TXT-FX: text-shadow is accepted at none alone, on every target; a shadow list parses as Chrome parses it and is refused, since no
-// target draws text shadows yet. The Chrome cases are text-shadow-none and reject-text-shadow-list (packages/parity/fixtures).
+// TXT-FX: text-shadow parses as Chrome parses it. Every target takes none and a list of px lengths and colours; iOS and Android
+// refuse a list on text they do not draw as Chrome does (analysis/text-shadow.ts). The Chrome cases are text-shadow-none,
+// text-shadow-blur and reject-text-shadow-list (packages/parity/fixtures).
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -36,6 +37,13 @@ function errorsAt(decl: string, faults: CompilerFaults = NO_FAULTS): string[] {
 }
 
 const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE', 'web DRAGON_UNSUPPORTED_VALUE'];
+const NATIVE_REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+
+/** Each text-shadow error as `<target> <code>` for a whole body. */
+function errorsIn(css: string, body: (r: SourceRef) => TreeNode[]): string[] {
+  const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, body));
+  return c.diagnostics.filter((d) => d.severity === 'error' && d.message.startsWith('text-shadow')).map((d) => `${String(d.target)} ${d.code}`).sort();
+}
 
 describe('text-shadow', () => {
   it('parses none and shadow lists, and drops what Chrome drops', () => {
@@ -50,15 +58,42 @@ describe('text-shadow', () => {
     expect(errorsAt('text-shadow: none')).toEqual([]);
   });
 
-  it('refuses a shadow list on every target, once where it is declared', () => {
-    expect(errorsAt('text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5)')).toEqual(REFUSED);
-    expect(errorsAt('text-shadow: 1px 1px red, 2px 2px blue')).toEqual(REFUSED);
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }';
-    const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
-    for (const d of c.diagnostics.filter((x) => x.severity === 'error')) expect(d.message).toMatch(/^text-shadow: rgba\(0, 0, 0, 0\.5\) 0px 1px 2px on <div> a is unsupported: /);
+  it('accepts a px list with colours on every target over single-line Ahem text, blurred or not', () => {
+    expect(errorsAt('text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5)')).toEqual([]);
+    expect(errorsAt('text-shadow: 1px 1px red, 2px 2px 3px blue')).toEqual([]);
+    expect(errorsAt('text-shadow: 3px 6px 4px rgb(200, 0, 0)')).toEqual([]);
   });
 
-  it('plant textShadowListAccepted: a shadow list compiles', () => {
-    expect(errorsAt('text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5)', { ...NO_FAULTS, textShadowListAccepted: true })).toEqual([]);
+  it('refuses a length other than px, or currentcolor, on every target, once where it is declared', () => {
+    expect(errorsAt('text-shadow: 0 1px 0.2em rgba(0, 0, 0, 0.5)')).toEqual(REFUSED);
+    expect(errorsAt('text-shadow: 1px 1px 2px')).toEqual(REFUSED);
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { text-shadow: 0 1px 0.2em rgba(0, 0, 0, 0.5); }';
+    const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
+    const errors = c.diagnostics.filter((x) => x.severity === 'error');
+    expect(errors).toHaveLength(3);
+    for (const d of errors) expect(d.message).toMatch(/^text-shadow: rgba\(0, 0, 0, 0\.5\) 0px 1px 0\.2em on <div> a is unsupported on (ios|android|web): the length 0\.2em is not in px$/);
+  });
+
+  it('refuses on iOS and Android what the native shadow does not draw as Chrome does, and accepts it on web', () => {
+    const shadow = '.s { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }';
+    const one = (cls: string, t: string) => (r: SourceRef) => [el(r, 'a', 'div', ['s', ...cls.split(' ').filter((c) => c !== '')], [text(r, 't', t)])];
+    // Text that may wrap: a space, or a break-anywhere rule.
+    expect(errorsIn(shadow, one('', 'XX XX'))).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`${shadow} .w { overflow-wrap: anywhere; }`, one('w', 'XX'))).toEqual(NATIVE_REFUSED);
+    // nowrap takes one line whatever the text.
+    expect(errorsIn(`${shadow} .n { white-space: nowrap; }`, one('n', 'XX XX'))).toEqual([]);
+    // Decorated, in a group, or with an ellipsis (a real face is refused on the native targets already).
+    expect(errorsIn(`${shadow} .u { text-decoration: underline; }`, one('u', 'XX'))).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`${shadow} .o { opacity: 0.5; }`, one('o', 'XX'))).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`${shadow} .e { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`, one('e', 'XX'))).toEqual(NATIVE_REFUSED);
+    // A later box painting a background, which Chrome paints beneath the shadow; an earlier one is fine.
+    const later = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['g'], [])];
+    const earlier = (r: SourceRef) => [el(r, 'b', 'div', ['g'], []), el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])];
+    expect(errorsIn(`${shadow} .g { height: 10px; background-color: red; }`, later)).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`${shadow} .g { height: 10px; background-color: red; }`, earlier)).toEqual([]);
+  });
+
+  it('plant textShadowListAccepted: every list compiles', () => {
+    expect(errorsAt('text-shadow: 0 1px 0.2em rgba(0, 0, 0, 0.5)', { ...NO_FAULTS, textShadowListAccepted: true })).toEqual([]);
   });
 });

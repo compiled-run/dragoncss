@@ -42,6 +42,7 @@ import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { analyzeDecorations } from './text-decoration.ts';
+import { checkTextShadows } from './text-shadow.ts';
 import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
@@ -426,26 +427,6 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
   for (const t of targets) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${at} ${beside} is not proven against Chrome yet`, manual: `Remove the text-indent from ${el.element.address}, or put its text in a block of its own with text-indent.`, basis: 'computed-value' }));
-  }
-}
-
-// TXT-FX (css-text-decor-4 §4): no target draws a text shadow yet, so a text-shadow other than none is refused for every target where
-// it is declared (its descendants inherit the same declaration). Planted fault textShadowListAccepted accepts it.
-function checkTextShadow(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: TxtFxFaults): void {
-  const v = el.props.get('text-shadow') as ResolvedValue;
-  if (faults.textShadowListAccepted || v.origin === 'inherited' || (v.value.kind === 'keyword' && v.value.value === 'none')) return;
-  const id = `text-shadow|${el.element.address}`;
-  if (reported.has(id)) return;
-  reported.add(id);
-  const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
-  for (const t of targets) {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-      origin,
-      target: t,
-      message: `text-shadow: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no text shadow yet (TXT-FX); only none is accepted`,
-      manual: `Remove the text-shadow from ${el.element.address}, or set text-shadow: none.`,
-      basis: 'computed-value',
-    }));
   }
 }
 
@@ -913,7 +894,6 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkTouchAction(el, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
-    checkTextShadow(el, targets, diagnostics, reported, faults);
     checkFilter(el, targets, diagnostics, reported, faults);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
@@ -945,6 +925,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
+  // TXT-FX: text shadows a target does not draw as Chrome does (analysis/text-shadow.ts).
+  checkTextShadows(root, targets, diagnostics, reported, realFaceAt, faults);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
   checkTextTransform(root, targets, diagnostics, reported);
 }
