@@ -31,10 +31,17 @@ describe('thickness and offsets (text_decoration_info.cc, text_decoration_offset
 });
 
 describe('the snapped rects (decoration_line_painter.cc)', () => {
-  const input: DecorationInput = { lines: ['line-through', 'overline', 'underline'], thickness: { kind: 'px', value: 3 }, underlineOffset: { kind: 'auto' }, font: LATO16, textFont: LATO16, left: 10.296875, width: 85.921875, textTop: 5.1875, decoratingTop: 5.1875 };
+  const input: DecorationInput = { lines: ['line-through', 'overline', 'underline'], thickness: { kind: 'px', value: 3 }, underlineOffset: { kind: 'auto' }, font: LATO16, textFont: LATO16, left: 10.296875, width: 85.921875, textTop: 5.1875, decoratingTop: 5.1875, double: false };
   it('paints underline, overline then line-through; y snaps to floor(y + 0.5) and the height to floor(t); under and overlines go before the text', () => {
     expect(decorationRects(input, F).map((r) => [r.line, r.top, r.height, r.beforeText])).toEqual([['underline', 23, 3, true], ['overline', 2, 3, true], ['line-through', 14, 3, false]]);
     expect(decorationRects({ ...input, thickness: { kind: 'auto' } }, F).map((r) => r.height)).toEqual([1, 1, 1]);
+  });
+  it('a double line paints a second rect t + 1 below an underline, above an overline and floor(t + 1) below a line-through (text_decoration_info.cc SetLineData)', () => {
+    const d = { ...input, double: true };
+    expect(decorationRects(d, F).map((r) => [r.line, r.top, r.height])).toEqual([['underline', 23, 3], ['underline', 27, 3], ['overline', 2, 3], ['overline', -2, 3], ['line-through', 14, 3], ['line-through', 18, 3]]);
+    // auto at 16px: t = 1.6, so the underline's second line is 2.6 below it and the line-through's floor(2.6) = 2.
+    expect(decorationRects({ ...d, thickness: { kind: 'auto' } }, F).map((r) => r.top)).toEqual([22, 25, 4, 2, 15, 17]);
+    expect(decorationRects(d, { ...F, doubleOffsetWithoutGap: true }).map((r) => r.top)).toEqual([23, 26, 2, -1, 14, 17]);
   });
 });
 
@@ -59,7 +66,7 @@ describe('Skia antifilldot8 and the ARGB32 blend, as Chrome rasters a decoration
 
 describe('the skip-ink bounds proof (text_painter.cc:555-563)', () => {
   it('passes only when every glyph extent clears the band, the line inset by 0.5 px, by at least 1/64 px', () => {
-    const [r] = decorationRects({ lines: ['underline'], thickness: { kind: 'auto' }, underlineOffset: { kind: 'px', value: 3.2 }, font: LATO16, textFont: LATO16, left: 0, width: 50, textTop: 0, decoratingTop: 0 }, F);
+    const [r] = decorationRects({ lines: ['underline'], thickness: { kind: 'auto' }, underlineOffset: { kind: 'px', value: 3.2 }, font: LATO16, textFont: LATO16, left: 0, width: 50, textTop: 0, decoratingTop: 0, double: false }, F);
     if (r === undefined) throw new Error('no rect');
     expect(skipInkClear(r, [{ top: 4, bottom: 18.27 }])).toBe(true);
     expect(skipInkClear(r, [{ top: 4, bottom: 19.6 }])).toBe(false);
@@ -72,7 +79,7 @@ describe('the Ahem skip-ink clips (TDEC-d, text_painter.cc ClipDecorationsStripe
   // The text-decoration-ahem-auto probe at DPR 1: Ahem 20px "XX XX" on a 40px line, so the text top is 10 and the baseline 26.
   const AHEM20: DecorationFont = { floatAscent: 16, ascent: 16, size: 20, underlineThickness: 2 };
   const rect = () => {
-    const [r] = decorationRects({ lines: ['underline'], thickness: { kind: 'auto' }, underlineOffset: { kind: 'auto' }, font: AHEM20, textFont: AHEM20, left: 0, width: 100, textTop: 10, decoratingTop: 10 }, F);
+    const [r] = decorationRects({ lines: ['underline'], thickness: { kind: 'auto' }, underlineOffset: { kind: 'auto' }, font: AHEM20, textFont: AHEM20, left: 0, width: 100, textTop: 10, decoratingTop: 10, double: false }, F);
     if (r === undefined) throw new Error('no rect');
     return r;
   };

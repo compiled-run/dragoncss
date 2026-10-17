@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { floorRegressions } from './land-lib.ts';
+import { LANES_MERGE_DRIVER } from './lanes-merge.ts';
 import { SORTED_MERGE_DRIVER } from './sorted-merge.ts';
 
 export const FLOOR_MERGE_DRIVER = 'node scripts/floor-merge.ts %O %A %B %P';
@@ -20,6 +21,8 @@ export const MERGE_DRIVERS: readonly (readonly [string, string])[] = [
   ['merge.dragon-floor.driver', FLOOR_MERGE_DRIVER],
   ['merge.dragon-sorted.name', 'interleave additions to the sorted registries (scripts/sorted-merge.ts)'],
   ['merge.dragon-sorted.driver', SORTED_MERGE_DRIVER],
+  ['merge.dragon-lanes.name', 'keep this side but the device records (scripts/lanes-merge.ts)'],
+  ['merge.dragon-lanes.driver', LANES_MERGE_DRIVER],
 ];
 /** Everything pnpm setup:git sets, in its order: rerere off (a fresh clone has no rerere cache to replay), then the merge drivers. */
 export const SETUP_GIT_CONFIG: readonly (readonly [string, string])[] = [['rerere.enabled', 'false'], ...MERGE_DRIVERS];

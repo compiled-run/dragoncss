@@ -9,14 +9,22 @@ import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_LAYERS_ANIMATION } from './animation-kinds/background-layers.ts';
 import { BORDER_ANIMATION } from './animation-kinds/border.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
+import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
+import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
+import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
 import { FLOAT_ANIMATION } from './animation-kinds/float.ts';
+import { FONT_FEATURES_ANIMATION } from './animation-kinds/font-features.ts';
+import { FONT_STRETCH_ANIMATION } from './animation-kinds/font-stretch.ts';
+import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
+import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
 import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
+import { MASK_ANIMATION } from './animation-kinds/mask.ts';
 import { OUTLINE_ANIMATION } from './animation-kinds/outline.ts';
 import { OVERFLOW_ANIMATION } from './animation-kinds/overflow.ts';
 import { POINTER_ANIMATION } from './animation-kinds/pointer.ts';
@@ -38,6 +46,7 @@ import { TEXT_SPACING_ANIMATION } from './animation-kinds/text-spacing.ts';
 import { TEXT_TRANSFORM_ANIMATION } from './animation-kinds/text-transform.ts';
 import { TOUCH_ACTION_ANIMATION } from './animation-kinds/touch-action.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
+import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
 import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
 
@@ -48,14 +57,22 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...BACKGROUND_LAYERS_ANIMATION,
   ...BORDER_ANIMATION,
   ...BOX_ANIMATION,
+  ...CLIP_PATH_ANIMATION,
+  ...CLIP_RECT_ANIMATION,
   ...EFFECTS_ANIMATION,
+  ...FILTER_ANIMATION,
   ...FLEX_ANIMATION,
   ...FLOAT_ANIMATION,
+  ...FONT_FEATURES_ANIMATION,
+  ...FONT_STRETCH_ANIMATION,
+  ...FONT_TUNING_ANIMATION,
+  ...FONT_VARIANT_ANIMATION,
   ...GRID_ANIMATION,
   ...INLINE_ANIMATION,
   ...LINE_CLAMP_ANIMATION,
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,
+  ...MASK_ANIMATION,
   ...OUTLINE_ANIMATION,
   ...OVERFLOW_ANIMATION,
   ...POINTER_ANIMATION,
@@ -77,6 +94,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TEXT_TRANSFORM_ANIMATION,
   ...TOUCH_ACTION_ANIMATION,
   ...TRANSFORM_ANIMATION,
+  ...TRANSFORM_EXTRA_ANIMATION,
   ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
 };

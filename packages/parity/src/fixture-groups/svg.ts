@@ -5,7 +5,10 @@
 // name what SVG-a1 refuses. svg-colors writes fill and stroke in the colour syntaxes real sheets use (hex, named, hsl(),
 // currentcolor, transparent, inherit, and hex and named presentation attributes), which svg-paint's rgb() alone left unproven.
 // svg-opacity (SVG-opacity) scales fill and stroke by fill-opacity and stroke-opacity: numbers, percentages, clamped values, 0, an
-// rgba colour, inherit, initial, calc(), var() and the presentation attributes.
+// rgba colour, inherit, initial, calc(), var() and the presentation attributes. svg-stroke (SVG-stroke) draws each stroke-linecap,
+// stroke-linejoin and fill-rule, miter limits either side of a join's miter ratio, and inherit, initial, calc(), var(), keyword case
+// and the presentation attributes. svg-dash (SVG-dash) dashes lines, corners, a closed rect, two subpaths and curves: odd lists,
+// commas, px, positive and negative offsets, round and square caps, none, a zero-sum list, inherit, calc() and var().
 import { readFileSync } from 'node:fs';
 import type { FixtureSpec } from '../fixtures.ts';
 import { repoPath } from '../paths.ts';
@@ -33,13 +36,19 @@ export const SVG: readonly FixtureSpec[] = [
   both('svg-hidden'),
   both('svg-colors'),
   both('svg-opacity'),
+  both('svg-stroke'),
+  both('svg-dash'),
+  both('svg-geometry'),
+  both('svg-paint-order'),
+  both('svg-rrect'),
   reject('reject-svg-inline', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-inline', 'a', 'svg'), 'display: inline on <svg> a makes it an inline-level replaced box'),
   reject('reject-svg-ratio', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-ratio', 'a', 'svg'), '<svg> a has a viewBox and width and height auto'),
   reject('reject-svg-arc', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-arc', 'p'), 'attribute d="M2 12 A10 10 0 0 1 22 12" on p is not supported: elliptical arc commands are not built yet (package SVG-arc)'),
   reject('reject-svg-units', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-units', 'a'), 'attribute width="2em" on a is not supported: only numbers and px lengths are built (package SVG-units)'),
   reject('reject-svg-group', 'DRAGON_UNSUPPORTED_ELEMENT', element('reject-svg-group', 'g', 'g'), '<g> g is not supported'),
   reject('reject-svg-paint-url', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-paint-url', 'r'), 'attribute fill="url(#p)" on r is not supported'),
-  reject('reject-svg-dash', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-dash', 'p'), 'attribute stroke-dasharray on p is not supported: its rendering effect belongs to the SVG dash package SVG-dash'),
+  reject('reject-svg-geometry', 'DRAGON_UNSUPPORTED_VALUE', '10%', 'cx: 10% on <circle> c is unsupported: a percentage cx is relative to the viewport width, which is not built yet (package SVG-units)'),
+  reject('reject-svg-dash', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-dash', 'p'), 'attribute stroke-dasharray="10%" on p is not supported: a percentage stroke-dasharray is relative to the viewport diagonal, which is not built yet (package SVG-units)'),
   reject('reject-svg-shape-width', 'DRAGON_UNSUPPORTED_VALUE', '5px', 'width: 5px on <rect> r is not supported'),
   reject('reject-svg-shape-outside', 'DRAGON_UNSUPPORTED_ELEMENT', element('reject-svg-shape-outside', 'r', 'rect'), '<rect> r outside an <svg> is not supported'),
   reject('reject-svg-stroke-percent', 'DRAGON_UNSUPPORTED_VALUE', '10%', 'stroke-width: 10% on <rect> r is unsupported'),

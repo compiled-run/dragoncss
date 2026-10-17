@@ -2,7 +2,7 @@
 // text_decoration_info.cc ComputeDecorationThickness (74-102), ComputeThickness (453-464), SetLineThroughLineData (395-400),
 // OffsetFromDecoratingBox (319-330); text_decoration_offset.cc ComputeUnderlineOffsetAuto (16-33) and ComputeUnderlineOffsetForUnder
 // with TextTop (49-81; simple_font_data.cc:421-424); decoration_line_painter.cc SnapYAxis, RoundDownThickness and DrawLineAsRect
-// (15-27, 75-93); text_fragment_painter.cc paint order (550-557); text_painter.cc skip-ink band and its dilation clamp (44, 555-583). Every length is in zoomed
+// (15-27, 75-93) and its double second line (336-347) at SetLineData's double_offset (text_decoration_info.cc 274-301); text_fragment_painter.cc paint order (550-557); text_painter.cc skip-ink band and its dilation clamp (44, 555-583). Every length is in zoomed
 // (device) px. Skia 2ab8add5 fills the snapped rect with anti-aliased x edges: SkScan_Antihair.cpp antifillrect's 8-bit partial
 // coverage, blended by the ARGB32 blitter. TDEC-d: the skip-ink clip of Ahem glyphs (skipInkClips; its dilation and rounding are
 // those the decoration capture measures). The native support places decorations with it (TDEC-b, emit/paint/text-decoration.ts).
@@ -29,12 +29,14 @@ export type DecorationFaults = {
   readonly underlineAfterText: boolean;
   /** TDEC-d: skip-ink clips each glyph's ink extent undilated instead of dilated by the thickness. */
   readonly skipInkUndilated: boolean;
+  /** TDEC-c: a double line's second line sits the thickness away instead of the thickness plus one. */
+  readonly doubleOffsetWithoutGap: boolean;
 };
 
 export const NO_DECORATION_FAULTS: DecorationFaults = {
   autoThicknessFromFont: false, gapWithFixedOffset: false, offsetNotRounded: false, snapFloorNotHalf: false,
   thicknessRoundedNotFloored: false, lineThroughFromBaseline: false, decoratingBoxFontIgnored: false, underlineAfterText: false,
-  skipInkUndilated: false,
+  skipInkUndilated: false, doubleOffsetWithoutGap: false,
 };
 
 /** C roundf: half away from zero. */
@@ -97,6 +99,8 @@ export type DecorationInput = {
   readonly width: number;
   readonly textTop: number;
   readonly decoratingTop: number;
+  /** text-decoration-style is double: each line paints a second rect at SetLineData's double offset. */
+  readonly double: boolean;
 };
 
 /** A snapped decoration rect: whole device rows [top, top + height), and x from left to right with anti-aliased ends. */
@@ -131,16 +135,22 @@ function has(lines: readonly DecorationRect['line'][], line: DecorationRect['lin
 export function decorationRects(input: DecorationInput, faults: DecorationFaults): DecorationRect[] {
   const font = faults.decoratingBoxFontIgnored ? input.textFont : input.font;
   const t = decorationThickness(input.thickness, font, faults);
+  // SetLineData: a double line's second line is t + 1 below an underline, above an overline, and floor(t + 1) below a line-through.
+  const gap = faults.doubleOffsetWithoutGap ? t : t + 1;
   const out: DecorationRect[] = [];
+  const line = (kind: DecorationRect['line'], y: number, second: number): void => {
+    out.push(snap(kind, y, t, input, faults));
+    if (input.double) out.push(snap(kind, y + second, t, input, faults));
+  };
   if (has(input.lines, 'underline')) {
     // The offset is for the decorating box; OffsetFromDecoratingBox converts it to the text fragment.
     const fromBox = faults.decoratingBoxFontIgnored ? 0 : input.decoratingTop - input.textTop;
-    out.push(snap('underline', input.textTop + underlineOffset(input.underlineOffset, font, t, faults) + fromBox, t, input, faults));
+    line('underline', input.textTop + underlineOffset(input.underlineOffset, font, t, faults) + fromBox, gap);
   }
-  if (has(input.lines, 'overline')) out.push(snap('overline', input.textTop + overlineOffset(font, t), t, input, faults));
+  if (has(input.lines, 'overline')) line('overline', input.textTop + overlineOffset(font, t), -gap);
   if (has(input.lines, 'line-through')) {
     const base = faults.lineThroughFromBaseline ? input.textTop + font.floatAscent : input.textTop;
-    out.push(snap('line-through', base + lineThroughOffset(font, t), t, input, faults));
+    line('line-through', base + lineThroughOffset(font, t), floorOf(gap));
   }
   return out;
 }

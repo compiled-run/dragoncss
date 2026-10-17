@@ -1,5 +1,5 @@
 // SVG-a2 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): an inline <svg>'s shapes are drawn in the same stage, after the
-// image: each shape's path is filled (non-zero) and then stroked (butt caps, miter joins, miter limit 4) through the viewBox
+// image: each shape's path is filled (its fill-rule) and then stroked (its cap, join and miter limit, SVG-stroke) through the viewBox
 // transform of the snapped content box, clipped to it. The viewBox transform is svg-geometry.ts viewBoxTransform's arithmetic.
 // REPL-a Phase B (R6): a replaced image is Dragon-owned paint. The case code hands the PNG bytes to the box view, which decodes
 // them once (ImageIO on UIKit, BitmapFactory on Android) and, in the image stage after the border, draws the bitmap into the
@@ -32,21 +32,63 @@ const SWIFT_MEMBERS = String.raw`  /// REPL-a image: the decoded bitmap, its nat
 const SWIFT = String.raw`import UIKit
 import ImageIO
 
-/// SVG-a2: one shape, its outline as verb-coded user units (0 move, 1 line, 2 quad, 3 cubic, 4 close, 5 circle), paint and stroke width.
+/// SVG-a2: one shape, its outline as verb-coded user units (0 move, 1 line, 2 quad, 3 cubic, 4 close, 5 circle), paint and stroke
+/// width; SVG-stroke: its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule (the CSS keywords); SVG-dash: its dashes in
+/// user units (empty for a solid stroke) and the phase into them the stroke starts at; SVG-paint-order: whether the stroke paints
+/// before the fill.
 public struct DragonSvgShape {
   public let path: [Double]
   public let fill: DragonRGBA8?
   public let stroke: DragonRGBA8?
   public let width: Double
-  public init(_ path: [Double], _ fill: DragonRGBA8?, _ stroke: DragonRGBA8?, _ width: Double) { self.path = path; self.fill = fill; self.stroke = stroke; self.width = width }
+  public let cap: String
+  public let join: String
+  public let miterLimit: Double
+  public let fillRule: String
+  public let dashes: [Double]
+  public let dashPhase: Double
+  public let strokeFirst: Bool
+  public init(_ path: [Double], _ fill: DragonRGBA8?, _ stroke: DragonRGBA8?, _ width: Double, _ cap: String, _ join: String, _ miterLimit: Double, _ fillRule: String, _ dashes: [Double], _ dashPhase: Double, _ strokeFirst: Bool) {
+    self.path = path; self.fill = fill; self.stroke = stroke; self.width = width
+    self.cap = cap; self.join = join; self.miterLimit = miterLimit; self.fillRule = fillRule
+    self.dashes = dashes; self.dashPhase = dashPhase; self.strokeFirst = strokeFirst
+  }
 }
 
-/// The svg raster plants (all false in a clean build): stroke drawn under the fill, the even-odd fill rule, the stroke width not
-/// scaled by the viewBox, and fill and stroke colours swapped.
+/// A stroke-linecap keyword as CoreGraphics' cap (the same geometry as Skia's SkPaint::Cap).
+public func dragonSvgLineCap(_ k: String) -> CGLineCap {
+  switch k {
+  case "butt": return .butt
+  case "round": return .round
+  case "square": return .square
+  default: fatalError("dragon: svg stroke-linecap \(k)")
+  }
+}
+
+/// A stroke-linejoin keyword as CoreGraphics' join (the same geometry as Skia's SkPaint::Join).
+public func dragonSvgLineJoin(_ k: String) -> CGLineJoin {
+  switch k {
+  case "miter": return .miter
+  case "round": return .round
+  case "bevel": return .bevel
+  default: fatalError("dragon: svg stroke-linejoin \(k)")
+  }
+}
+
+/// The svg raster plants (all false in a clean build): stroke drawn under the fill, the fill rule inverted (even-odd for nonzero),
+/// the stroke width not scaled by the viewBox, fill and stroke colours swapped, (SVG-stroke) every cap butt, every join miter and
+/// every miter limit 4, (SVG-dash) every stroke solid and every dash phase 0, and (SVG-paint-order) every paint-order normal. The
+/// stroke-first plant inverts each shape's order.
 public let dragonSvgPlantStrokeFirst = false
 public let dragonSvgPlantEvenOdd = false
 public let dragonSvgPlantStrokeUnscaled = false
 public let dragonSvgPlantPaintSwapped = false
+public let dragonSvgPlantCapButt = false
+public let dragonSvgPlantJoinMiter = false
+public let dragonSvgPlantMiterLimit4 = false
+public let dragonSvgPlantDashSolid = false
+public let dragonSvgPlantDashPhase0 = false
+public let dragonSvgPlantPaintOrderNormal = false
 
 /// xMidYMid meet of a viewport w x h, in Chrome's arithmetic (svg-geometry.ts viewBoxTransform); the identity with no viewBox.
 public func dragonSvgViewBoxTransform(_ vb: [Double]?, _ w: Double, _ h: Double) -> CGAffineTransform {
@@ -96,28 +138,35 @@ public func dragonPaintSvg(_ v: DragonBoxView, _ ctx: CGContext) {
       guard let f = fill else { return }
       ctx.addPath(path)
       ctx.setFillColor(dragonUIColor(f).cgColor)
-      ctx.fillPath(using: dragonSvgPlantEvenOdd ? .evenOdd : .winding)
+      ctx.fillPath(using: (shape.fillRule == "evenodd") != dragonSvgPlantEvenOdd ? .evenOdd : .winding)
     }
     func paintStroke() {
       guard let k = stroke, shape.width > 0 else { return }
       ctx.addPath(path)
       ctx.setLineWidth(CGFloat(dragonSvgPlantStrokeUnscaled ? shape.width / Double(m.a) : shape.width))
-      ctx.setLineCap(.butt)
-      ctx.setLineJoin(.miter)
-      ctx.setMiterLimit(4)
+      ctx.setLineCap(dragonSvgPlantCapButt ? .butt : dragonSvgLineCap(shape.cap))
+      ctx.setLineJoin(dragonSvgPlantJoinMiter ? .miter : dragonSvgLineJoin(shape.join))
+      ctx.setMiterLimit(CGFloat(dragonSvgPlantMiterLimit4 ? 4 : shape.miterLimit))
+      // The dashes are in user units, as the line width is: CoreGraphics measures them along the path before the CTM.
+      if !shape.dashes.isEmpty && !dragonSvgPlantDashSolid {
+        ctx.setLineDash(phase: CGFloat(dragonSvgPlantDashPhase0 ? 0 : shape.dashPhase), lengths: shape.dashes.map { CGFloat($0) })
+      } else {
+        ctx.setLineDash(phase: 0, lengths: [])
+      }
       ctx.setStrokeColor(dragonUIColor(k).cgColor)
       ctx.strokePath()
     }
-    if dragonSvgPlantStrokeFirst { paintStroke(); paintFill() } else { paintFill(); paintStroke() }
+    if (shape.strokeFirst && !dragonSvgPlantPaintOrderNormal) != dragonSvgPlantStrokeFirst { paintStroke(); paintFill() } else { paintFill(); paintStroke() }
   }
   ctx.restoreGState()
 }
 
-/// The readback of an svg: its viewBox and each shape's fill, stroke and stroke width.
+/// The readback of an svg: its viewBox and each shape's fill, stroke, stroke width, cap, join, miter limit, fill rule, dashes, dash
+/// phase and paint order.
 public func dragonAppliedSvg(_ v: DragonBoxView) -> DumpJsonObject {
   guard let shapes = v.dragonSvgShapes else { return [] }
   let vb: DumpJson = v.dragonSvgViewBox.map { .array($0.map { .number($0) }) } ?? .null
-  let rows: [DumpJson] = shapes.map { .array([$0.fill.map { dragonRGBAJson($0) } ?? .null, $0.stroke.map { dragonRGBAJson($0) } ?? .null, .number($0.width)]) }
+  let rows: [DumpJson] = shapes.map { .array([$0.fill.map { dragonRGBAJson($0) } ?? .null, $0.stroke.map { dragonRGBAJson($0) } ?? .null, .number($0.width), .string($0.cap), .string($0.join), .number($0.miterLimit), .string($0.fillRule), .array($0.dashes.map { .number($0) }), .number($0.dashPhase), .bool($0.strokeFirst)]) }
   return [("dragonSvg", .object([("viewBox", vb), ("shapes", .array(rows))]))]
 }
 
@@ -195,6 +244,7 @@ const KOTLIN = String.raw`package dev.dragon.views
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.RenderNode
@@ -205,14 +255,45 @@ import dev.dragon.dump.DumpJson
 /** Device px added to the drawn destination x; 0 except in the image-offset-1 raster plant build, which proves the pixel lane sees the image. */
 const val DRAGON_IMAGE_PLANT_DEVICE_PX = 0.0
 
-/** SVG-a2: one shape, its outline as verb-coded user units (0 move, 1 line, 2 quad, 3 cubic, 4 close, 5 circle), paint and stroke width. */
-class DragonSvgShape(val path: DoubleArray, val fill: DragonRGBA8?, val stroke: DragonRGBA8?, val width: Double)
+/**
+ * SVG-a2: one shape, its outline as verb-coded user units (0 move, 1 line, 2 quad, 3 cubic, 4 close, 5 circle), paint and stroke
+ * width; SVG-stroke: its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule (the CSS keywords); SVG-dash: its dashes in
+ * user units (empty for a solid stroke) and the phase into them the stroke starts at; SVG-paint-order: whether the stroke paints
+ * before the fill.
+ */
+class DragonSvgShape(val path: DoubleArray, val fill: DragonRGBA8?, val stroke: DragonRGBA8?, val width: Double, val cap: String, val join: String, val miterLimit: Double, val fillRule: String, val dashes: DoubleArray, val dashPhase: Double, val strokeFirst: Boolean)
 
-/** The svg raster plants (all false in a clean build): stroke under the fill, even-odd fill, stroke width not scaled by the viewBox, paints swapped. */
+/** A stroke-linecap keyword as Skia's cap. */
+fun dragonSvgLineCap(k: String): Paint.Cap = when (k) {
+  "butt" -> Paint.Cap.BUTT
+  "round" -> Paint.Cap.ROUND
+  "square" -> Paint.Cap.SQUARE
+  else -> throw IllegalStateException("dragon: svg stroke-linecap " + k)
+}
+
+/** A stroke-linejoin keyword as Skia's join. */
+fun dragonSvgLineJoin(k: String): Paint.Join = when (k) {
+  "miter" -> Paint.Join.MITER
+  "round" -> Paint.Join.ROUND
+  "bevel" -> Paint.Join.BEVEL
+  else -> throw IllegalStateException("dragon: svg stroke-linejoin " + k)
+}
+
+/**
+ * The svg raster plants (all false in a clean build): stroke under the fill, fill rule inverted, stroke width not scaled by the
+ * viewBox, paints swapped, (SVG-stroke) every cap butt, every join miter and every miter limit 4, (SVG-dash) every stroke solid
+ * and every dash phase 0, and (SVG-paint-order) every paint-order normal. The stroke-first plant inverts each shape's order.
+ */
 const val DRAGON_SVG_PLANT_STROKE_FIRST = false
 const val DRAGON_SVG_PLANT_EVEN_ODD = false
 const val DRAGON_SVG_PLANT_STROKE_UNSCALED = false
 const val DRAGON_SVG_PLANT_PAINT_SWAPPED = false
+const val DRAGON_SVG_PLANT_CAP_BUTT = false
+const val DRAGON_SVG_PLANT_JOIN_MITER = false
+const val DRAGON_SVG_PLANT_MITER_LIMIT_4 = false
+const val DRAGON_SVG_PLANT_DASH_SOLID = false
+const val DRAGON_SVG_PLANT_DASH_PHASE_0 = false
+const val DRAGON_SVG_PLANT_PAINT_ORDER_NORMAL = false
 
 /** xMidYMid meet of a viewport w x h as [scale, tx, ty], in Chrome's arithmetic (svg-geometry.ts viewBoxTransform); the identity with no viewBox. */
 fun dragonSvgViewBoxTransform(vb: DoubleArray?, w: Double, h: Double): DoubleArray {
@@ -225,7 +306,7 @@ fun dragonSvgViewBoxTransform(vb: DoubleArray?, w: Double, h: Double): DoubleArr
   return doubleArrayOf(s, s * -vb[0], s * (-vb[1] - (vb[3] - (h * vb[2]) / w) / 2))
 }
 
-/** A shape's outline as a Path in user units, non-zero fill. */
+/** A shape's outline as a Path in user units, filled even-odd or non-zero. */
 fun dragonSvgPath(p: DoubleArray, evenOdd: Boolean): android.graphics.Path {
   val path = android.graphics.Path()
   path.fillType = if (evenOdd) android.graphics.Path.FillType.EVEN_ODD else android.graphics.Path.FillType.WINDING
@@ -259,7 +340,7 @@ fun dragonPaintSvg(v: DragonBoxView, canvas: Canvas) {
   matrix.setValues(floatArrayOf(m[0].toFloat(), 0f, m[1].toFloat(), 0f, m[0].toFloat(), m[2].toFloat(), 0f, 0f, 1f))
   canvas.concat(matrix)
   for (shape in shapes) {
-    val path = dragonSvgPath(shape.path, DRAGON_SVG_PLANT_EVEN_ODD)
+    val path = dragonSvgPath(shape.path, (shape.fillRule == "evenodd") != DRAGON_SVG_PLANT_EVEN_ODD)
     val fill = if (DRAGON_SVG_PLANT_PAINT_SWAPPED) shape.stroke else shape.fill
     val stroke = if (DRAGON_SVG_PLANT_PAINT_SWAPPED) shape.fill else shape.stroke
     val paintFill = {
@@ -275,23 +356,27 @@ fun dragonPaintSvg(v: DragonBoxView, canvas: Canvas) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = (if (DRAGON_SVG_PLANT_STROKE_UNSCALED) shape.width / m[0] else shape.width).toFloat()
-        paint.strokeCap = Paint.Cap.BUTT
-        paint.strokeJoin = Paint.Join.MITER
-        paint.strokeMiter = 4f
+        paint.strokeCap = if (DRAGON_SVG_PLANT_CAP_BUTT) Paint.Cap.BUTT else dragonSvgLineCap(shape.cap)
+        paint.strokeJoin = if (DRAGON_SVG_PLANT_JOIN_MITER) Paint.Join.MITER else dragonSvgLineJoin(shape.join)
+        paint.strokeMiter = if (DRAGON_SVG_PLANT_MITER_LIMIT_4) 4f else shape.miterLimit.toFloat()
+        // Skia's own dash effect, as Chrome's (Blink StrokeData::SetLineDash), in user units under the canvas matrix.
+        if (shape.dashes.isNotEmpty() && !DRAGON_SVG_PLANT_DASH_SOLID) {
+          paint.pathEffect = DashPathEffect(FloatArray(shape.dashes.size) { shape.dashes[it].toFloat() }, if (DRAGON_SVG_PLANT_DASH_PHASE_0) 0f else shape.dashPhase.toFloat())
+        }
         paint.color = dragonArgb(stroke)
         canvas.drawPath(path, paint)
       }
     }
-    if (DRAGON_SVG_PLANT_STROKE_FIRST) { paintStroke(); paintFill() } else { paintFill(); paintStroke() }
+    if ((shape.strokeFirst && !DRAGON_SVG_PLANT_PAINT_ORDER_NORMAL) != DRAGON_SVG_PLANT_STROKE_FIRST) { paintStroke(); paintFill() } else { paintFill(); paintStroke() }
   }
   canvas.restore()
 }
 
-/** The readback of an svg: its viewBox and each shape's fill, stroke and stroke width. */
+/** The readback of an svg: its viewBox and each shape's fill, stroke, stroke width, cap, join, miter limit, fill rule, dashes, dash phase and paint order. */
 fun dragonAppliedSvg(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val shapes = v.dragonSvgShapes ?: return emptyList()
   val vb = v.dragonSvgViewBox
-  val rows = shapes.map { DumpJson.Arr(listOf(it.fill?.let { f -> dragonRGBAJson(f) } ?: DumpJson.Null, it.stroke?.let { k -> dragonRGBAJson(k) } ?: DumpJson.Null, DumpJson.Num(it.width))) }
+  val rows = shapes.map { DumpJson.Arr(listOf(it.fill?.let { f -> dragonRGBAJson(f) } ?: DumpJson.Null, it.stroke?.let { k -> dragonRGBAJson(k) } ?: DumpJson.Null, DumpJson.Num(it.width), DumpJson.Str(it.cap), DumpJson.Str(it.join), DumpJson.Num(it.miterLimit), DumpJson.Str(it.fillRule), DumpJson.Arr(it.dashes.map { d -> DumpJson.Num(d) }), DumpJson.Num(it.dashPhase), DumpJson.Bool(it.strokeFirst))) }
   return listOf(Pair("dragonSvg", DumpJson.Obj(listOf(Pair("viewBox", if (vb == null) DumpJson.Null else DumpJson.Arr(vb.map { DumpJson.Num(it) })), Pair("shapes", DumpJson.Arr(rows))))))
 }
 
@@ -403,21 +488,21 @@ const numLit = (n: number): string => {
 
 const svgColor = (c: { r: number; g: number; b: number; alpha: number } | null, backend: 'swift' | 'kotlin'): string => (c === null ? (backend === 'swift' ? 'nil' : 'null') : rgbaLit(c));
 
-export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image-offset-1' | 'svg-stroke-first' | 'svg-even-odd' | 'svg-stroke-unscaled' | 'svg-paint-swapped'> = {
+export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image-offset-1' | 'svg-stroke-first' | 'svg-even-odd' | 'svg-stroke-unscaled' | 'svg-paint-swapped' | 'svg-cap-butt' | 'svg-join-miter' | 'svg-miter-limit-4' | 'svg-dash-solid' | 'svg-dash-phase-0' | 'svg-paint-order-normal'> = {
   name: 'image',
   kinds: ['replaced-image', 'svg-shapes'],
   lines: {
     uikit: (v, _n, w) => (w.kind === 'svg-shapes'
-      ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'nil' : `[${w.viewBox.map(numLit).join(', ')}]`}, [${w.shapes.map((sh) => `DragonSvgShape([${sh.path.map(numLit).join(', ')}], ${svgColor(sh.fill, 'swift')}, ${svgColor(sh.stroke, 'swift')}, ${numLit(sh.width)})`).join(', ')}])`]
+      ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'nil' : `[${w.viewBox.map(numLit).join(', ')}]`}, [${w.shapes.map((sh) => `DragonSvgShape([${sh.path.map(numLit).join(', ')}], ${svgColor(sh.fill, 'swift')}, ${svgColor(sh.stroke, 'swift')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)}, [${sh.dashes.map(numLit).join(', ')}], ${numLit(sh.dashPhase)}, ${sh.strokeFirst ? 'true' : 'false'})`).join(', ')}])`]
       : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, width: ${pxLit(w.width)}, height: ${pxLit(w.height)}, fit: ${keywordLit(w.fit)})`]),
     'android-views': (v, _n, w) => (w.kind === 'svg-shapes'
-      ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'null' : `doubleArrayOf(${w.viewBox.map(numLit).join(', ')})`}, listOf(${w.shapes.map((sh) => `DragonSvgShape(doubleArrayOf(${sh.path.map(numLit).join(', ')}), ${svgColor(sh.fill, 'kotlin')}, ${svgColor(sh.stroke, 'kotlin')}, ${numLit(sh.width)})`).join(', ')}))`]
+      ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'null' : `doubleArrayOf(${w.viewBox.map(numLit).join(', ')})`}, listOf(${w.shapes.map((sh) => `DragonSvgShape(doubleArrayOf(${sh.path.map(numLit).join(', ')}), ${svgColor(sh.fill, 'kotlin')}, ${svgColor(sh.stroke, 'kotlin')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)}, doubleArrayOf(${sh.dashes.map(numLit).join(', ')}), ${numLit(sh.dashPhase)}, ${sh.strokeFirst ? 'true' : 'false'})`).join(', ')}))`]
       : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)}, ${w.layer ? 'true' : 'false'})`]),
   },
   applied: (_e, backend, w, dpr, g) => {
     if (w.kind === 'svg-shapes') {
       const rgba = (c: { r: number; g: number; b: number; alpha: number } | null) => (c === null ? null : [c.r, c.g, c.b, c.alpha]);
-      return { viewBox: w.viewBox === null ? null : [...w.viewBox], shapes: w.shapes.map((sh) => [rgba(sh.fill), rgba(sh.stroke), sh.width]) };
+      return { viewBox: w.viewBox === null ? null : [...w.viewBox], shapes: w.shapes.map((sh) => [rgba(sh.fill), rgba(sh.stroke), sh.width, sh.cap, sh.join, sh.miterLimit, sh.fillRule, [...sh.dashes], sh.dashPhase, sh.strokeFirst]) };
     }
     if (g.replaced === null) throw new Error('an image write on a box that is not replaced');
     return { natural: [w.width, w.height], fit: w.fit, dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest] };
@@ -438,5 +523,11 @@ export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image
     { name: 'svg-even-odd', replace: { uikit: ['public let dragonSvgPlantEvenOdd = false', 'public let dragonSvgPlantEvenOdd = true'], 'android-views': ['const val DRAGON_SVG_PLANT_EVEN_ODD = false', 'const val DRAGON_SVG_PLANT_EVEN_ODD = true'] } },
     { name: 'svg-stroke-unscaled', replace: { uikit: ['public let dragonSvgPlantStrokeUnscaled = false', 'public let dragonSvgPlantStrokeUnscaled = true'], 'android-views': ['const val DRAGON_SVG_PLANT_STROKE_UNSCALED = false', 'const val DRAGON_SVG_PLANT_STROKE_UNSCALED = true'] } },
     { name: 'svg-paint-swapped', replace: { uikit: ['public let dragonSvgPlantPaintSwapped = false', 'public let dragonSvgPlantPaintSwapped = true'], 'android-views': ['const val DRAGON_SVG_PLANT_PAINT_SWAPPED = false', 'const val DRAGON_SVG_PLANT_PAINT_SWAPPED = true'] } },
+    { name: 'svg-cap-butt', replace: { uikit: ['public let dragonSvgPlantCapButt = false', 'public let dragonSvgPlantCapButt = true'], 'android-views': ['const val DRAGON_SVG_PLANT_CAP_BUTT = false', 'const val DRAGON_SVG_PLANT_CAP_BUTT = true'] } },
+    { name: 'svg-join-miter', replace: { uikit: ['public let dragonSvgPlantJoinMiter = false', 'public let dragonSvgPlantJoinMiter = true'], 'android-views': ['const val DRAGON_SVG_PLANT_JOIN_MITER = false', 'const val DRAGON_SVG_PLANT_JOIN_MITER = true'] } },
+    { name: 'svg-miter-limit-4', replace: { uikit: ['public let dragonSvgPlantMiterLimit4 = false', 'public let dragonSvgPlantMiterLimit4 = true'], 'android-views': ['const val DRAGON_SVG_PLANT_MITER_LIMIT_4 = false', 'const val DRAGON_SVG_PLANT_MITER_LIMIT_4 = true'] } },
+    { name: 'svg-dash-solid', replace: { uikit: ['public let dragonSvgPlantDashSolid = false', 'public let dragonSvgPlantDashSolid = true'], 'android-views': ['const val DRAGON_SVG_PLANT_DASH_SOLID = false', 'const val DRAGON_SVG_PLANT_DASH_SOLID = true'] } },
+    { name: 'svg-dash-phase-0', replace: { uikit: ['public let dragonSvgPlantDashPhase0 = false', 'public let dragonSvgPlantDashPhase0 = true'], 'android-views': ['const val DRAGON_SVG_PLANT_DASH_PHASE_0 = false', 'const val DRAGON_SVG_PLANT_DASH_PHASE_0 = true'] } },
+    { name: 'svg-paint-order-normal', replace: { uikit: ['public let dragonSvgPlantPaintOrderNormal = false', 'public let dragonSvgPlantPaintOrderNormal = true'], 'android-views': ['const val DRAGON_SVG_PLANT_PAINT_ORDER_NORMAL = false', 'const val DRAGON_SVG_PLANT_PAINT_ORDER_NORMAL = true'] } },
   ],
 };

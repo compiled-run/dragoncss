@@ -5,9 +5,9 @@
 import { describe, expect, it } from 'vitest';
 import { objectBoundingBox } from '@dragon/layout';
 import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/elements/svg-path.ts';
-import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgShapeEmpty } from '../src/analysis/elements/svg.ts';
+import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgShapeEmpty, svgZeroLengthSubpath } from '../src/analysis/elements/svg.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, svgScenes } from '../src/internal.ts';
-import { svgShapePath } from '../src/lower/paint/image.ts';
+import { svgDashPhase, svgShapePath } from '../src/lower/paint/image.ts';
 import { svgPaintAlpha } from '../src/css/color.ts';
 import { mathGrammarFor, mathInvalidity } from '../src/css/math.ts';
 import type { ComponentDefinition, ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
@@ -86,11 +86,16 @@ describe('path data as Chrome builds it', () => {
 });
 
 describe('the svg attributes', () => {
-  it('map fill, stroke and stroke-width, and an svg\'s or rect\'s width and height, to their properties', () => {
-    const hints = svgPresentationHints('rect', new Map([['fill', 'rgb(1, 2, 3)'], ['stroke', 'none'], ['stroke-width', '3'], ['width', '5'], ['x', '2']]));
-    expect([...hints.keys()]).toEqual(['fill', 'stroke', 'stroke-width', 'width']);
+  it('map fill, stroke and stroke-width, an svg\'s or rect\'s width and height, and (SVG-geometry) a rect\'s x and y and a circle\'s cx, cy and r, to their properties', () => {
+    const hints = svgPresentationHints('rect', new Map([['fill', 'rgb(1, 2, 3)'], ['stroke', 'none'], ['stroke-width', '3'], ['width', '5'], ['x', '2'], ['cx', '4']]));
+    expect([...hints.keys()]).toEqual(['fill', 'stroke', 'stroke-width', 'x', 'width']);
     expect(hints.get('stroke-width')).toEqual({ kind: 'number', value: 3 });
-    expect(svgPresentationHints('circle', new Map([['r', '3']])).size).toBe(0);
+    expect(hints.get('x')).toEqual({ kind: 'length', value: 2, unit: 'px' });
+    const circle = svgPresentationHints('circle', new Map([['cx', '-1.5'], ['cy', '2px'], ['r', '3'], ['x', '1']]));
+    expect([...circle.entries()]).toEqual([['cx', { kind: 'length', value: -1.5, unit: 'px' }], ['cy', { kind: 'length', value: 2, unit: 'px' }], ['r', { kind: 'length', value: 3, unit: 'px' }]]);
+    // A path has no geometry property, and a negative r is an error (refused, svgAttributeRefusal), not a hint.
+    expect(svgPresentationHints('path', new Map([['x', '1']])).size).toBe(0);
+    expect(svgPresentationHints('circle', new Map([['r', '-3']])).size).toBe(0);
   });
   it('refuse values Chrome would ignore or that wait for a package, naming it', () => {
     expect(svgAttributeRefusal('rect', 'fill', 'url(#p)')).toContain('SVG-paint');
@@ -126,7 +131,7 @@ describe('the svg model in a compile', () => {
     const user = compile(input, false);
     expect(errors(user)).toEqual([]);
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
-    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
+    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, cap: 'butt', join: 'miter', miterLimit: 4, fillRule: 'nonzero', dashes: [], dashOffset: 0, strokeFirst: false, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
   it('refuses on native, and compiles for web, a shape Chrome fades, a visible shape in a hidden <svg> and an <svg> Chrome does not clip: native draws a shape opaque or not at all, with its <svg>, and clips to the box', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '40']])];
@@ -319,5 +324,240 @@ describe('the svg model in a compile', () => {
     const c = compile(input, true);
     expect(errors(c)).toEqual([]);
     expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.fillOpacity, x.strokeOpacity])).toEqual([[0.75, 0.2]]);
+  });
+  it('SVG-stroke: stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule compute, inherit and reach the native write; the attributes are hints below author CSS', () => {
+    const input = svgTree('svg { stroke-linecap: ROUND; stroke-linejoin: bevel; stroke-miterlimit: calc(1 + 9); fill-rule: evenodd; } .k { stroke-linecap: square; fill-rule: initial; stroke-miterlimit: inherit; }', (_r, o) => [
+      shape(o, 'i', 'path', [['d', 'M2 2 L20 2 L2 20'], ['stroke', 'rgb(0, 0, 0)']]),
+      { ...shape(o, 'k', 'rect', [['width', '10'], ['height', '10'], ['fill-rule', 'evenodd'], ['stroke-linejoin', 'round']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'k' }, o)] },
+      shape(o, 'a', 'circle', [['cx', '6'], ['cy', '6'], ['r', '2'], ['stroke-linecap', 'butt'], ['stroke-linejoin', 'miter'], ['stroke-miterlimit', '1.5'], ['fill-rule', 'nonzero']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    const want = [['i', 'round', 'bevel', 10, 'evenodd'], ['k', 'square', 'round', 10, 'nonzero'], ['a', 'butt', 'miter', 1.5, 'nonzero']];
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.cap, x.join, x.miterLimit, x.fillRule])).toEqual(want);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => [x.cap, x.join, x.miterLimit, x.fillRule]) : null, backend).toEqual(want.map((r) => r.slice(1)));
+    }
+  });
+  it('SVG-stroke: the presentation attributes take the keywords and number Chrome parses; webref-only joins and a negative limit are refused, as Chrome ignores them', () => {
+    expect(paintAttributeValue('stroke-linecap', 'Square')).toEqual({ ok: true, value: { kind: 'keyword', value: 'square' } });
+    expect(paintAttributeValue('stroke-miterlimit', '0.5')).toEqual({ ok: true, value: { kind: 'number', value: 0.5 } });
+    expect(svgAttributeRefusal('path', 'fill-rule', 'evenodd')).toBeNull();
+    for (const [name, value] of [['stroke-linejoin', 'arcs'], ['stroke-linejoin', 'miter-clip'], ['stroke-linejoin', 'crop bevel'], ['stroke-miterlimit', '-1'], ['stroke-miterlimit', '4px'], ['stroke-linecap', 'none'], ['fill-rule', 'even-odd']] as const) {
+      expect(svgAttributeRefusal('path', name, value), `${name}=${value}`).toContain(`is not a valid ${name}`);
+    }
+    expect(mathInvalidity('calc(2 * 3)', mathGrammarFor('stroke-miterlimit'))).toBeNull();
+  });
+  it('SVG-stroke: a miter limit of 0 (unitless or an attribute) computes to the number 0, a negative calculation clamps to 0 as Chrome clamps it, and a typed division is refused, never thrown at lowering', () => {
+    const cases: [string, [string, string][]][] = [['path { stroke-miterlimit: 0; }', []], ['', [['stroke-miterlimit', '0']]], ['path { stroke-miterlimit: calc(-1); }', []], ['path { stroke-miterlimit: calc(2 - 5); }', []]];
+    for (const [css, attrs] of cases) {
+      const c = compile(svgTree(css, (_r, o) => [shape(o, 'i', 'path', [['d', 'M2 2 L20 2 L2 20'], ['stroke', 'rgb(0, 0, 0)'], ...attrs])]), true);
+      expect(errors(c), css).toEqual([]);
+      expect(svgScenes(c, [])?.[0]?.shapes.map((x) => x.miterLimit), css).toEqual([0]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      for (const backend of ['uikit', 'android-views'] as const) {
+        const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+        expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => x.miterLimit) : null, `${backend} ${css}`).toEqual([0]);
+      }
+    }
+    const divided = errors(compile(svgTree('path { stroke-miterlimit: calc(1px / 1px); }', (_r, o) => [shape(o, 'i', 'path', [['d', 'M2 2 L20 2 L2 20'], ['stroke', 'rgb(0, 0, 0)']])]), false));
+    const message = 'stroke-miterlimit: calc(1px/1px) /* it divides by a length, which is typed arithmetic (css-values-4 §10.9), not supported */ on <path> i is unsupported';
+    expect(divided.sort()).toEqual(['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${message}`));
+  });
+  it('SVG-stroke: a zero-length subpath is one that draws without leaving its start, control points included; a lone moveto is not', () => {
+    const path = (d: string) => {
+      const p = parsePathData(d);
+      if (!p.ok) throw new Error(p.reason);
+      return { kind: 'path' as const, segments: p.segments };
+    };
+    for (const d of ['M5 5 L5 5', 'M5 5 Z', 'M0 0 L9 9 M5 5 L5 5 L5 5', 'M5 5 Q5 5 5 5', 'M5 5 C5 5 5 5 5 5', 'M0 0 L9 9 Z L0 0']) expect(svgZeroLengthSubpath(path(d)), d).toBe(true);
+    for (const d of ['M5 5', 'M5 5 L6 5', 'M5 5 Q9 9 5 5', 'M5 5 C5 5 9 9 5 5', 'M0 0 L9 9 M5 5', 'M0 0 L9 0 L0 0 Z']) expect(svgZeroLengthSubpath(path(d)), d).toBe(false);
+    expect(svgZeroLengthSubpath({ kind: 'rect', x: 0, y: 0, width: 0, height: 0 })).toBe(false);
+  });
+  it('SVG-stroke: refuses on native, and compiles for web, a round or square cap on a stroked zero-length subpath; a butt cap, no stroke or a zero width compiles', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'd', 'path', [['d', 'M2 2 L20 20 M8 8 Z'], ['stroke', 'rgb(0, 0, 0)']])];
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false));
+    for (const css of ['', 'path { stroke-linecap: butt; }', 'path { stroke-linecap: round; stroke: none; }', 'path { stroke-linecap: square; stroke-width: 0; }']) expect(refused(css), css).toEqual([]);
+    for (const cap of ['round', 'square']) {
+      const message = `stroke-linecap: ${cap} on <path> d, whose path has a zero-length subpath, is not supported on native: Chrome draws its cap as a dot or square that native does not orient the same way yet`;
+      expect(refused(`path { stroke-linecap: ${cap}; }`).sort(), cap).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${message}`, `DRAGON_UNSUPPORTED_VALUE ios ${message}`]);
+    }
+  });
+  it('SVG-dash: stroke-dasharray and stroke-dashoffset compute, inherit and reach the native write as an even list and a wrapped phase; none and a zero-sum list are solid', () => {
+    const input = svgTree('svg { stroke-dasharray: 4, 2 1; stroke-dashoffset: -3; } .k { stroke-dasharray: none; stroke-dashoffset: 5px; }', (_r, o) => [
+      shape(o, 'i', 'path', [['d', 'M2 2 L20 2'], ['stroke', 'rgb(0, 0, 0)']]),
+      { ...shape(o, 'k', 'rect', [['width', '10'], ['height', '10'], ['stroke-dasharray', '3 3']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'k' }, o)] },
+      shape(o, 'a', 'path', [['d', 'M2 8 L20 8'], ['stroke-dasharray', '5px,1'], ['stroke-dashoffset', '13']]),
+      shape(o, 'z', 'path', [['d', 'M2 12 L20 12'], ['stroke-dasharray', '0,0']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.dashes, x.dashOffset])).toEqual([['i', [4, 2, 1, 4, 2, 1], -3], ['k', [], 5], ['a', [5, 1], 13], ['z', [], -3]]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => [x.dashes, x.dashPhase]) : null, backend).toEqual([[[4, 2, 1, 4, 2, 1], 11], [[], 0], [[5, 1], 1], [[], 0]]);
+    }
+  });
+  it('SVG-dash: the dash phase is the offset wrapped into the pattern, a negative offset counted back from its end (Skia CalcDashParameters)', () => {
+    expect([svgDashPhase([4, 2], 7), svgDashPhase([4, 2], -1), svgDashPhase([4, 2], -6), svgDashPhase([4, 2], 6), svgDashPhase([], 5), svgDashPhase([4, 2], 0)]).toEqual([1, 5, 0, 0, 0, 0]);
+  });
+  it('SVG-dash: the attributes take what Chrome parses (commas or spaces, numbers, px and percentages); a negative, an empty item or a keyword is refused, as Chrome ignores it', () => {
+    expect(paintAttributeValue('stroke-dasharray', '5,  3 ,2.50')).toEqual({ ok: true, value: { kind: 'other', type: 'dash-array', text: '5px, 3px, 2.5px' } });
+    expect(paintAttributeValue('stroke-dasharray', 'None')).toEqual({ ok: true, value: { kind: 'keyword', value: 'none' } });
+    expect(paintAttributeValue('stroke-dashoffset', '-4')).toEqual({ ok: true, value: { kind: 'number', value: -4 } });
+    expect(svgAttributeRefusal('path', 'stroke-dasharray', '1 2px 3')).toBeNull();
+    for (const [name, value] of [['stroke-dasharray', '-1'], ['stroke-dasharray', '1,,2'], ['stroke-dasharray', '1,'], ['stroke-dasharray', 'auto'], ['stroke-dasharray', '1 none'], ['stroke-dashoffset', '1 2'], ['stroke-dashoffset', 'none']] as const) {
+      expect(svgAttributeRefusal('path', name, value), `${name}=${value}`).toContain(`is not a valid ${name}`);
+    }
+    expect(svgAttributeRefusal('path', 'stroke-dasharray', '2 10%')).toBe('a percentage stroke-dasharray is relative to the viewport diagonal, which is not built yet (package SVG-units)');
+    expect(svgAttributeRefusal('path', 'stroke-dashoffset', '10%')).toBe('a percentage stroke-dashoffset is relative to the viewport diagonal, which is not built yet (package SVG-units)');
+    expect(svgAttributeRefusal('path', 'stroke-dasharray', '2em')).toContain('stroke-dasharray: 2em is unsupported: a dash in em is not resolved yet (package SVG-units)');
+    expect(svgAttributeRefusal('path', 'pathLength', '10')).toBeNull();
+    expect(mathInvalidity('calc(2px + 3)', mathGrammarFor('stroke-dashoffset'))).not.toBeNull();
+  });
+  it('SVG-dash: refuses on native, and compiles for web, a dashed circle and a zero-length dash with a round or square cap; a percentage refuses everywhere', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '8'], ['stroke', 'rgb(0, 0, 0)']]), shape(o, 'd', 'path', [['d', 'M2 2 L20 20'], ['stroke', 'rgb(0, 0, 0)']])];
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
+    for (const css of ['', 'path { stroke-dasharray: 2 2; stroke-linecap: round; }', 'path { stroke-dasharray: 0 4; }', 'circle { stroke-dasharray: 2 2; stroke: none; }', 'circle { stroke-dasharray: 0 0; }']) expect(refused(css), css).toEqual([]);
+    const circle = 'stroke-dasharray: 2px, 2px on <circle> c is not supported on native: where the dashes of a circle start is not proven against Chrome yet';
+    expect(refused('circle { stroke-dasharray: 2 2; }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${circle}`, `DRAGON_UNSUPPORTED_VALUE ios ${circle}`]);
+    const zero = 'stroke-dasharray: 0px, 4px with stroke-linecap: square on <path> d is not supported on native: a zero-length dash is a dot or square that native does not orient the same way yet';
+    expect(refused('path { stroke-dasharray: 0 4; stroke-linecap: square; }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${zero}`, `DRAGON_UNSUPPORTED_VALUE ios ${zero}`]);
+    const calc = 'stroke-dashoffset: calc(2px + 3px) on <path> d is unsupported: a calculated stroke-dashoffset is not resolved yet (package SVG-units)';
+    expect(refused('path { stroke-dashoffset: calc(2px + 3px); }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${calc}`, `DRAGON_UNSUPPORTED_VALUE ios ${calc}`, `DRAGON_UNSUPPORTED_VALUE web ${calc}`]);
+    const percent = 'stroke-dashoffset: 5% on <path> d is unsupported: a percentage stroke-dashoffset is relative to the viewport diagonal, which is not built yet (package SVG-units)';
+    expect(refused('path { stroke-dashoffset: 5%; }')).toEqual([`DRAGON_UNSUPPORTED_VALUE android ${percent}`, `DRAGON_UNSUPPORTED_VALUE ios ${percent}`, `DRAGON_UNSUPPORTED_VALUE web ${percent}`]);
+  });
+  it('SVG-geometry: a rect\'s x and y and a circle\'s cx, cy and r compute from CSS over their attributes (numbers and em as px), are not inherited, and draw the shape', () => {
+    const input = svgTree('svg { font-size: 10px; cx: 9px; } .m { x: 3; y: -2px; } .n { cx: 1.5em; cy: 4; r: 0.5em; }', (_r, o) => [
+      { ...shape(o, 'a', 'rect', [['x', '7'], ['y', '8'], ['width', '4'], ['height', '5']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'm' }, o)] },
+      shape(o, 'b', 'rect', [['x', '1'], ['width', '4'], ['height', '5']]),
+      { ...shape(o, 'c', 'circle', [['cx', '2'], ['cy', '3'], ['r', '9']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'n' }, o)] },
+      shape(o, 'd', 'circle', [['r', '2']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.shape])).toEqual([
+      ['a', { kind: 'rect', x: 3, y: -2, width: 4, height: 5 }],
+      ['b', { kind: 'rect', x: 1, y: 0, width: 4, height: 5 }],
+      ['c', { kind: 'circle', cx: 15, cy: 4, r: 5 }],
+      // cx is not inherited: the svg's cx: 9px reaches no shape.
+      ['d', { kind: 'circle', cx: 0, cy: 0, r: 2 }],
+    ]);
+  });
+  it('SVG-paint-order: paint-order computes to the prefix Chrome keeps, inherits, is a presentation hint, and orders the stroke before the fill in the native write', () => {
+    const cases: [string, string][] = [
+      ['normal', 'normal'], ['fill', 'fill'], ['stroke', 'stroke'], ['markers', 'markers'], ['fill stroke', 'fill'], ['stroke fill', 'stroke'],
+      ['fill markers', 'fill markers'], ['markers fill', 'markers'], ['stroke markers', 'stroke markers'], ['markers stroke', 'markers stroke'],
+      ['fill stroke markers', 'fill'], ['fill markers stroke', 'fill markers'], ['stroke fill markers', 'stroke'], ['stroke markers fill', 'stroke markers'],
+      ['markers fill stroke', 'markers'], ['markers stroke fill', 'markers stroke'], ['STROKE', 'stroke'],
+    ];
+    for (const [css, computed] of cases) {
+      const v = paintAttributeValue('paint-order', css);
+      expect(v.ok ? (v.value.kind === 'keyword' ? v.value.value : v.value.kind === 'other' ? v.value.text : null) : null, css).toBe(computed);
+    }
+    // Chrome drops these as invalid: a repeated item, normal in a list, and none.
+    for (const bad of ['fill fill', 'normal fill', 'none']) expect(paintAttributeValue('paint-order', bad).ok, bad).toBe(false);
+    const input = svgTree('svg { paint-order: stroke; } .k { paint-order: markers; } .m { paint-order: markers stroke; }', (_r, o) => [
+      shape(o, 'i', 'path', [['d', 'M2 2 H20']]),
+      { ...shape(o, 'k', 'rect', [['width', '10'], ['height', '10']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'k' }, o)] },
+      { ...shape(o, 'm', 'rect', [['width', '10'], ['height', '10']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'm' }, o)] },
+      shape(o, 'a', 'circle', [['r', '4'], ['paint-order', 'fill']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.strokeFirst])).toEqual([['i', true], ['k', false], ['m', true], ['a', false]]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => x.strokeFirst) : null, backend).toEqual([true, false, true, false]);
+    }
+  });
+  it('SVG-geometry: refuses everywhere a percentage or a calculated geometry property on the shape it draws; one on another tag has no effect and compiles', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']]), shape(o, 'p', 'path', [['d', 'M0 0 H4']])];
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
+    const all = (m: string) => ['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${m}`);
+    for (const css of ['', 'rect { cx: 10%; r: calc(2px + 1px); } circle { x: 50%; } path { cx: 5%; y: calc(1px * 2); }']) expect(refused(css), css).toEqual([]);
+    expect(refused('circle { cx: 10%; }')).toEqual(all('cx: 10% on <circle> c is unsupported: a percentage cx is relative to the viewport width, which is not built yet (package SVG-units)'));
+    expect(refused('circle { r: 5%; }')).toEqual(all('r: 5% on <circle> c is unsupported: a percentage r is relative to the normalized viewport diagonal, which is not built yet (package SVG-units)'));
+    expect(refused('rect { y: 20%; }')).toEqual(all('y: 20% on <rect> r is unsupported: a percentage y is relative to the viewport height, which is not built yet (package SVG-units)'));
+    expect(refused('rect { x: calc(1px + 2px); }')).toEqual(all('x: calc(1px + 2px) on <rect> r is unsupported: a calculated x is not resolved yet (package SVG-units)'));
+    // A negative r is invalid CSS (Blink ValueRange::kNonNegative), and auto is not a geometry value (Rx and Ry alone take it).
+    expect(refused('circle { r: -2px; cx: auto; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "-2px" is not a valid value for r (@webref/css grammar)', 'DRAGON_CSS_INVALID_VALUE * "auto" is not a valid value for cx (@webref/css grammar)']);
+  });
+  it('refuses on every target a filter, a mask, backface-visibility or transform-box on a shape other than the initial value, as on a box: no target draws them on a shape, and Chrome does', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '10'], ['height', '10']]), shape(o, 'p', 'path', [['d', 'M2 2 H20 V20 Z']]), shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']])];
+    const at = (css: string, address: string) => errors(compile(svgTree(css, shapes), false)).filter((m) => m.includes(`> ${address} `)).map((m) => m.split(' ').slice(0, 2).join(' ')).sort();
+    const everywhere = ['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web'];
+    for (const [tag, address] of [['rect', 'r'], ['path', 'p'], ['circle', 'c']] as const) {
+      expect(at(`${tag} { filter: blur(2px); }`, address), `${tag} filter`).toEqual(everywhere);
+      expect(at(`${tag} { mask-image: linear-gradient(red, blue); }`, address), `${tag} mask-image`).toEqual(everywhere);
+      expect(at(`${tag} { filter: none; mask: none; }`, address), `${tag} initial`).toEqual([]);
+    }
+    const e = errors(compile(svgTree('rect { filter: blur(2px); mask-image: linear-gradient(red, blue); }', shapes), false));
+    expect(e.filter((m) => m.includes('on <rect> r is unsupported')).map((m) => m.split(' ').slice(2).join(' ')).sort()).toEqual([
+      ...['android', 'ios', 'web'].map(() => 'filter: blur(2px) on <rect> r is unsupported: Dragon draws no filter yet (FX); only none is accepted'),
+      ...['android', 'ios', 'web'].map(() => 'mask-image: linear-gradient(red,blue) on <rect> r is unsupported: Dragon draws no mask yet (MASK-CLIP); only the initial value is accepted'),
+    ]);
+    // Refused on every target, whether as a property no target supports yet (a target-free error) or as a value refused per target.
+    const refusedOn = (css: string): string[] => {
+      const refused = compile(svgTree(css, shapes), false).diagnostics.filter((d) => d.severity === 'error');
+      return refused.some((d) => d.target === null || d.target === undefined) ? ['android', 'ios', 'web'] : [...new Set(refused.map((d) => String(d.target)))].sort();
+    };
+    for (const decl of ['backface-visibility: hidden', 'transform-box: fill-box', 'transform-box: stroke-box']) {
+      for (const tag of ['rect', 'path', 'circle']) expect(refusedOn(`${tag} { ${decl}; }`), `${tag} { ${decl} }`).toEqual(['android', 'ios', 'web']);
+    }
+  });
+  it('SVG-rrect: rx and ry compute from CSS over their attributes, are not inherited, resolve auto from each other and clamp to half the rect (SVG 2 §10.4)', () => {
+    const input = svgTree('svg { rx: 3px; } .a { rx: 2; } .b { ry: 0.4em; font-size: 10px; } .c { rx: 30px; ry: auto; } .d { rx: 5px; ry: 0; }', (_r, o) => {
+      const rect = (id: string, cls: string | null, attrs: [string, string][]) => ({ ...shape(o, id, 'rect', [['width', '20'], ['height', '10'], ...attrs]), classes: cls === null ? [] : [staticClass({ owner: DOC, sheet: 's', name: cls }, o)] });
+      return [rect('a', 'a', [['ry', '1']]), rect('b', 'b', []), rect('c', 'c', [['ry', '2']]), rect('d', 'd', []), rect('e', null, [['rx', '4'], ['ry', '50']]), rect('f', null, [])];
+    });
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.shape])).toEqual([
+      // rx from CSS, ry from the attribute.
+      ['a', { kind: 'rect', x: 0, y: 0, width: 20, height: 10, rx: 2, ry: 1 }],
+      // An auto rx takes ry (em in px).
+      ['b', { kind: 'rect', x: 0, y: 0, width: 20, height: 10, rx: 4, ry: 4 }],
+      // ry: auto in CSS beats the attribute and takes rx; both clamp to half the size, an oval.
+      ['c', { kind: 'rect', x: 0, y: 0, width: 20, height: 10, rx: 10, ry: 5 }],
+      // A zero radius makes the rect square, as SkRRect::setRectXY does.
+      ['d', { kind: 'rect', x: 0, y: 0, width: 20, height: 10 }],
+      ['e', { kind: 'rect', x: 0, y: 0, width: 20, height: 10, rx: 4, ry: 5 }],
+      // rx is not inherited: the svg's rx: 3px reaches no shape, and both auto are 0.
+      ['f', { kind: 'rect', x: 0, y: 0, width: 20, height: 10 }],
+    ]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const k = (4 / 3) * (Math.SQRT2 - 1);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      const paths = w?.kind === 'svg-shapes' ? w.shapes.map((x) => x.path) : [];
+      // a: from the top edge's left end, each edge then its corner, clockwise (Skia set_as_rrect, start index 0).
+      expect(paths[0], backend).toEqual([0, 2, 0, 1, 18, 0, 3, 18 + 2 * k, 0, 20, 1 - k, 20, 1, 1, 20, 9, 3, 20, 9 + k, 18 + 2 * k, 10, 18, 10, 1, 2, 10, 3, 2 - 2 * k, 10, 0, 9 + k, 0, 9, 1, 0, 1, 3, 0, 1 - k, 2 - 2 * k, 0, 2, 0, 4]);
+      // c: an oval is four quarters from the top centre, with no lines (SkPathPriv::SimplifyRRect).
+      expect(paths[2], backend).toEqual([0, 10, 0, 3, 10 + 10 * k, 0, 20, 5 - 5 * k, 20, 5, 3, 20, 5 + 5 * k, 10 + 10 * k, 10, 10, 10, 3, 10 - 10 * k, 10, 0, 5 + 5 * k, 0, 5, 3, 0, 5 - 5 * k, 10 - 10 * k, 0, 10, 0, 4]);
+      expect(paths[3], backend).toEqual([0, 0, 0, 1, 20, 0, 1, 20, 10, 1, 0, 10, 4]);
+    }
+  });
+  it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect, and a negative attribute; a negative in CSS is invalid', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
+    const all = (m: string) => ['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${m}`);
+    for (const css of ['', 'rect { rx: auto; ry: 0; } circle { rx: 10%; ry: calc(1px + 1px); }']) expect(refused(css), css).toEqual([]);
+    expect(refused('rect { rx: 10%; }')).toEqual(all('rx: 10% on <rect> r is unsupported: a percentage rx is relative to the viewport width, which is not built yet (package SVG-units)'));
+    expect(refused('rect { ry: calc(1px + 2px); }')).toEqual(all('ry: calc(1px + 2px) on <rect> r is unsupported: a calculated ry is not resolved yet (package SVG-units)'));
+    expect(refused('rect { rx: -2px; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "-2px" is not a valid value for rx (@webref/css grammar)']);
+    expect(svgAttributeRefusal('rect', 'ry', '-1')).toContain('negative');
+    expect(svgAttributeRefusal('rect', 'rx', '2px')).toBeNull();
+    expect(svgAttributeRefusal('rect', 'rx', '10%')).toContain('SVG-units');
   });
 });

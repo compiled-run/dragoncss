@@ -146,8 +146,9 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
     expect(SUPPORT_PLANTS.slice(0, 2 + paint.length)).toEqual(['glyph-offset-1', 'glyph-offset-y-1', ...paint]);
     expect(SUPPORT_PLANTS.filter(isGlyphPlant)).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
     expect(paint).toEqual(expect.arrayContaining(['dash-phase-1', 'dash-gap-unfitted']));
-    expect(Object.keys(PLANT_CASES)).toEqual(paint);
-    expect(Object.keys(PLANT_RULES)).toEqual(paint);
+    // Every paint plant has exactly one case list and one rule; the record order of those two maps is not part of the contract.
+    expect(Object.keys(PLANT_CASES).sort()).toEqual([...paint].sort());
+    expect(Object.keys(PLANT_RULES).sort()).toEqual([...paint].sort());
     // INL1a: the line plant is appended after them; it is neither a glyph plant nor a paint plant.
     expect(SUPPORT_PLANTS.filter(isLinePlant)).toEqual(['single-run-baseline']);
     expect(SUPPORT_PLANTS.filter(isPaintPlant)).toEqual(paint);

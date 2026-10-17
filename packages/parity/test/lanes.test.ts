@@ -9,7 +9,7 @@ import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
 import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts';
 import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
 import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
-import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
+import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, ranIds, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
 import { ANIM_LANE, HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
 import { traceScriptIds } from '../src/trace-lane.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
@@ -17,6 +17,7 @@ import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, STACKING_OUT, STACK
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
+import { CLIP_PATH_OUT, CLIP_PATH_REASON, CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
@@ -221,7 +222,8 @@ describe('committed out/lanes.json', () => {
     expect(staleLanes(f, targets)).toEqual([]);
     expect(readFileSync(repoPath('packages/parity/out/lanes.json'), 'utf8')).toBe(lanesJsonText(f));
     expect(f.parity).toEqual({ pass: true, problems: [] });
-    expect(JSON.stringify(f)).not.toMatch(/Seconds|Ms"|timing/);
+    // caseLists holds case ids (anim-timing-*), which are names, not timings.
+    expect(JSON.stringify({ ...f, caseLists: undefined })).not.toMatch(/Seconds|Ms"|timing/);
   });
   it('host lanes pass on both targets with both digests; every device lane is not run; the reference proof passes', () => {
     if (f === null) return;
@@ -243,7 +245,7 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases, the GRID cases, the visibility cases (T150a), the svg cases (SVG-a2) and the line-clamp cases (TXT2-g)', () => {
+  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases, the GRID cases, the visibility cases (T150a), the clip cases (MASK-CLIP), the svg cases (SVG-a2) and the line-clamp cases (TXT2-g)', () => {
     const refusals = hitRefusedCases();
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
@@ -256,6 +258,8 @@ describe('committed out/lanes.json', () => {
     expect(refused.filter((id) => GRID_OUT.includes(id)).sort()).toEqual([...GRID_OUT].sort());
     expect(refused.filter((id) => VISIBILITY_OUT.includes(id)).sort()).toEqual([...VISIBILITY_OUT].sort());
     expect(refused.filter((id) => SVG_OUT.includes(id)).sort()).toEqual([...SVG_OUT].sort());
+    expect(refused.filter((id) => CLIP_RECT_OUT.includes(id)).sort()).toEqual([...CLIP_RECT_OUT].sort());
+    expect(refused.filter((id) => CLIP_PATH_OUT.includes(id)).sort()).toEqual([...CLIP_PATH_OUT].sort());
     for (const r of refusals) {
       if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
@@ -263,6 +267,8 @@ describe('committed out/lanes.json', () => {
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
       else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
+      else if (CLIP_RECT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_RECT_REASON);
+      else if (CLIP_PATH_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_PATH_REASON);
       else if (CLAMP_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLAMP_REASON);
       else if (TRANSFORM_NAMED.includes(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
@@ -300,7 +306,8 @@ describe('committed out/lanes.json', () => {
         const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : vectorCaseIds().length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
-          expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(cases);
+          // A record carried over a changed case list (async device lanes) ran the cases its RanCases names, not today's.
+          expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(l.ran === undefined ? cases : (ranIds(f, l, s.dpr)?.size ?? -1));
           if (l.lane === HIT_LANE || l.lane === TRACE_LANE) expect([s.compared.a, s.compared.b > 0, s.compared.c, s.compared.d, s.compared.breaks], `${t.target} ${l.lane} ${s.dpr}`).toEqual([0, true, 0, 0, 0]);
           else expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0, `${t.target} ${l.lane} ${s.dpr}`).toBe(true);
         }

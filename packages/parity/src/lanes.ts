@@ -425,6 +425,18 @@ export type LaneRecord = {
   readonly evidence: DeviceEvidence | null;
   /** The hosts that produced a device lane merged from several (device-ci.ts); absent for a run made on one machine. */
   readonly producedOn?: readonly string[];
+  /** The cases a device lane ran (RanCases), so its results carry per case when the configured cases change; absent before it. */
+  readonly ran?: RanCases;
+};
+
+/**
+ * The cases a device lane's run covered: per DPR set the sha256 of its id list (a key of LanesFile.caseLists), and the sha256 of
+ * its corpora. A record whose sets and corpora still have the configured shape is carried when only the case lists change: the
+ * cases it ran keep their results, and the configured cases it did not run are not run (casesNotRun) until the next device run.
+ */
+export type RanCases = {
+  readonly sets: readonly { readonly dpr: number; readonly role: CaseSet['role']; readonly extra: string | null; readonly list: string }[];
+  readonly corpora: string;
 };
 
 /** One DPR set of a device lane run. */
@@ -489,7 +501,27 @@ export type LanesFile = {
     readonly referenceProof: readonly Omit<ReferenceRow, 'failures'>[] | null;
     readonly dumpFaults: readonly FaultRecord[] | null;
   }[];
+  /** The case id lists the device lanes' RanCases name, by the sha256 of each list; absent before it. */
+  readonly caseLists?: Readonly<Record<string, readonly string[]>>;
 };
+
+const sha256 = (v: unknown): string => createHash('sha256').update(JSON.stringify(v)).digest('hex');
+
+/** The RanCases of a run of the lane as configured now. */
+export function ranOf(l: LaneConfig): RanCases {
+  return { sets: l.sets.map((s) => ({ dpr: s.dpr, role: s.role, extra: s.extra, list: sha256(s.ids) })), corpora: sha256(l.corpora) };
+}
+
+/** Whether a record's ran cases have the lane's configured shape (the same DPR sets in order, the same corpora) with every list known. */
+function ranFits(ran: RanCases | undefined, l: LaneConfig, lists: LanesFile['caseLists']): boolean {
+  if (ran === undefined) return false;
+  const want = ranOf(l);
+  if (ran.corpora !== want.corpora || ran.sets.length !== want.sets.length) return false;
+  return ran.sets.every((s, i) => {
+    const w = want.sets[i]!;
+    return s.dpr === w.dpr && s.role === w.role && s.extra === w.extra && Array.isArray(lists?.[s.list]);
+  });
+}
 
 export const DEVICE_NOT_RUN = 'run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked';
 
@@ -507,6 +539,8 @@ function laneRecord(l: LaneConfig, state: LaneState, reason: string | null, run:
     run,
     device,
     evidence,
+    // A run's record (it carries the run's evidence stamp) names the cases it ran.
+    ...(evidence === null ? {} : { ran: ranOf(l) }),
   };
 }
 
@@ -561,6 +595,15 @@ export function lanesFile(targets: readonly TargetConfig[], problems: readonly s
 }
 
 function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string[], host: ReadonlyMap<NativeTarget, HostRun>, reference: ReturnType<typeof referenceProof> | null, device: ReadonlyMap<NativeTarget, DeviceRun>, carried: LanesFile | null): LanesFile {
+  const file = lanesFileTargets(targets, problems, host, reference, device, carried);
+  // Every list a record's RanCases names, from the configuration or the carried file; nothing else.
+  const known = new Map<string, readonly string[]>(Object.entries(carried?.caseLists ?? {}));
+  for (const t of targets) for (const l of t.lanes) for (const s of l.sets) known.set(sha256(s.ids), s.ids);
+  const used = [...new Set(file.targets.flatMap((t) => t.lanes.flatMap((l) => (l.ran?.sets ?? []).map((s) => s.list))))].sort();
+  return { ...file, caseLists: Object.fromEntries(used.flatMap((k) => (known.has(k) ? [[k, known.get(k)!]] : []))) };
+}
+
+function lanesFileTargets(targets: readonly TargetConfig[], problems: readonly string[], host: ReadonlyMap<NativeTarget, HostRun>, reference: ReturnType<typeof referenceProof> | null, device: ReadonlyMap<NativeTarget, DeviceRun>, carried: LanesFile | null): LanesFile {
   const stale = carried === null ? [] : staleLanes(carried, targets);
   return {
     schema: 'dragon.lanes/2',
@@ -598,8 +641,11 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
           if (d.vectors === null) return hosts(laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null));
           return hosts(laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence));
         }
-        // A device lane is carried only with the current evidence stamp: same lane code, reference data and app source.
-        if (keep && evidenceProblems(kept.evidence, deviceEvidence(t.target)).length === 0) return { ...kept, device: kept.device ?? null };
+        // Async device lanes: a device lane's record is carried as the last device evidence until the scheduled device run on master
+        // (device-refresh.yml) replaces it. It keeps the evidence stamp it was run with, so evidenceBehind names the records a
+        // tree's sources have moved past; only a change to the lane's configured cases (staleLanes) drops it.
+        // A record from before RanCases whose case list is the configured one ran exactly the configured cases.
+        if (keep) return { ...kept, device: kept.device ?? null, ...(kept.ran === undefined && kept.caseListSha256 === laneRecord(l, 'not run', null, null).caseListSha256 ? { ran: ranOf(l) } : {}) };
         return laneRecord(l, 'not run', DEVICE_NOT_RUN, null);
       }),
       referenceProof: reference?.find((r) => r.target === t.target)?.rows.map(({ failures: _f, ...row }) => row) ?? carried?.targets.find((x) => x.target === t.target)?.referenceProof ?? null,
@@ -630,7 +676,10 @@ export function runRecordProblems(f: LanesFile): string[] {
         for (const s of lx.device.sets) {
           if (!f.sharedDprs.includes(s.dpr)) continue;
           const t = ly.device.sets.find((z) => z.dpr === s.dpr);
+          // A lane carried over a changed case list on one target ran other cases than a fresh run on the other: no count to compare.
+          const lists = [lx, ly].map((r) => r.ran?.sets.find((z) => z.dpr === s.dpr)?.list);
           if (t === undefined) out.push(`run records: ${lx.lane} at DPR ${s.dpr} ran on ${x.target} but not on ${y.target}`);
+          else if (lists[0] !== undefined && lists[1] !== undefined && lists[0] !== lists[1]) continue;
           else if (t.cases !== s.cases) out.push(`run records: ${lx.lane} at DPR ${s.dpr}: ${x.target} ${s.cases} cases, ${y.target} ${t.cases}`);
           else if (JSON.stringify(Object.keys(t.compared)) !== JSON.stringify(Object.keys(s.compared))) out.push(`run records: ${lx.lane} at DPR ${s.dpr}: the targets compare different checks`);
         }
@@ -708,19 +757,59 @@ export function staleLanes(f: LanesFile, targets: readonly TargetConfig[]): stri
     if (ft.projection !== t.projection.name) out.push(`${LANES_JSON}: ${t.target} projection ${ft.projection}, configured ${t.projection.name}`);
     for (const l of t.lanes) {
       const fl = ft.lanes.find((x) => x.lane === l.lane);
-      if (fl === undefined || fl.caseListSha256 !== laneRecord(l, 'not run', null, null).caseListSha256) out.push(`${LANES_JSON}: ${t.target} ${l.lane} does not match the configured case list`);
+      if (fl === undefined) {
+        out.push(`${LANES_JSON}: ${t.target} ${l.lane} does not match the configured case list`);
+        continue;
+      }
+      if (fl.caseListSha256 === laneRecord(l, 'not run', null, null).caseListSha256) continue;
+      // A device lane that ran cases of the configured shape is carried per case (casesNotRun names the cases it did not run).
+      if (l.where === 'device' && fl.state !== 'not run' && ranFits(fl.ran, l, f.caseLists)) continue;
+      out.push(`${LANES_JSON}: ${t.target} ${l.lane} does not match the configured case list`);
     }
   }
   return out;
 }
 
-/** Device lanes of a file whose evidence stamp is not the current one (missing stamps included); lanes not run are skipped. */
-export function staleEvidence(f: LanesFile): string[] {
+/**
+ * Device lanes of a file whose evidence stamp is not the current one (missing stamps included); lanes not run are skipped. These
+ * records are behind the tree, not stale: they stay the device evidence until the scheduled device run replaces them, and only
+ * that run and the landing driver's device step read this.
+ */
+export function evidenceBehind(f: LanesFile): string[] {
   const out: string[] = [];
   for (const t of f.targets) {
     for (const l of t.lanes) {
       if (l.where !== 'device' || l.state === 'not run') continue;
       for (const p of evidenceProblems(l.evidence, deviceEvidence(t.target))) out.push(`${LANES_JSON}: ${t.target} ${l.lane} evidence is stale: ${p}`);
+    }
+  }
+  return out;
+}
+
+/** The ids a carried device lane ran at a DPR (its RanCases list), or null when the record names none. */
+export function ranIds(f: LanesFile, rec: LaneRecord, dpr: number): ReadonlySet<string> | null {
+  const s = rec.ran?.sets.find((x) => x.dpr === dpr);
+  const ids = s === undefined ? undefined : f.caseLists?.[s.list];
+  return Array.isArray(ids) ? new Set(ids) : null;
+}
+
+/**
+ * Device lanes that ran but not every configured case (a carried record whose lane gained cases): behind the tree, like
+ * evidenceBehind, until the scheduled device run on master runs them. Lanes not run, and lanes staleLanes drops, are skipped.
+ */
+export function casesNotRun(f: LanesFile, targets: readonly TargetConfig[]): string[] {
+  const out: string[] = [];
+  for (const t of targets) {
+    const ft = f.targets.find((x) => x.target === t.target);
+    for (const l of t.lanes) {
+      const rec = ft?.lanes.find((x) => x.lane === l.lane);
+      if (l.where !== 'device' || rec === undefined || rec.state === 'not run' || !ranFits(rec.ran, l, f.caseLists)) continue;
+      const missing = new Set<string>();
+      for (const s of l.sets) {
+        const ran = ranIds(f, rec, s.dpr);
+        for (const id of s.ids) if (ran === null || !ran.has(id)) missing.add(id);
+      }
+      if (missing.size > 0) out.push(`${LANES_JSON}: ${t.target} ${l.lane} has not run ${missing.size} configured case(s): ${[...missing].slice(0, 5).join(', ')}${missing.size > 5 ? ', ...' : ''}`);
     }
   }
   return out;

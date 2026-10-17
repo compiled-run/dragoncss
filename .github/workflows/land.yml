@@ -125,6 +125,8 @@ jobs:
           git config merge.dragon-floor.driver "node '$GITHUB_WORKSPACE/scripts/floor-merge.ts' %O %A %B %P"
           git config merge.dragon-sorted.name 'interleave additions to the sorted registries (scripts/sorted-merge.ts)'
           git config merge.dragon-sorted.driver "node '$GITHUB_WORKSPACE/scripts/sorted-merge.ts' %O %A %B %P"
+          git config merge.dragon-lanes.name 'keep this side but the device records (scripts/lanes-merge.ts)'
+          git config merge.dragon-lanes.driver "node '$GITHUB_WORKSPACE/scripts/lanes-merge.ts' %O %A %B %P"
           git config --global user.name 'dragon landing driver'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
       # Parallel position worktrees take a few GB each; they stay on only when the disk keeps the driver's floor (40 GB).

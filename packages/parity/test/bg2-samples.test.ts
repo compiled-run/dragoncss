@@ -18,7 +18,7 @@ const byId = (id: string) => {
 };
 
 describe('BG2 gradient sample points', () => {
-  for (const id of ['gradient-linear', 'gradient-angles', 'bg-geometry']) {
+  for (const id of ['gradient-linear', 'gradient-angles', 'bg-geometry', 'bg-position-keywords']) {
     it(`sample every gradient box of ${id} at every device DPR`, () => {
       const n = byId(id);
       const p = n.programs[BACKEND_OF.ios];

@@ -9,7 +9,7 @@
 // decorated text needs a row point, and each visible one a point that its lines' absence would change. text-decoration-native-current
 // holds currentcolor lines (the decorating box's colour over a differently coloured child's glyphs) and none; its glyphs take each
 // text's own colour, and the plants are judged on the plant case alone. text-decoration-native-values holds named and hex line colours
-// and em and rem underline offsets.
+// and em and rem underline offsets. text-decoration-native-styles holds double lines (TDEC-c), each of whose second lines Chrome sees.
 import { describe, expect, it } from 'vitest';
 import { textDecoration as td } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
@@ -29,6 +29,7 @@ import type { GlyphBox } from '../src/samples.ts';
 const CASE = 'text-decoration-native';
 const CURRENT = 'text-decoration-native-current';
 const VALUES = 'text-decoration-native-values';
+const STYLES = 'text-decoration-native-styles';
 const specOf = (id: string): FixtureSpec | undefined => FIXTURE_GROUPS.flatMap((g) => g.fixtures).find((f) => f.id === id);
 const SPEC = specOf(CASE);
 const PLANTS = ['decoration-above-text', 'decoration-snap-css-px', 'decoration-alpha-ignored'] as const;
@@ -108,10 +109,11 @@ describe('TDEC-b: text-decoration-native\'s decoration points equal the committe
   it('text-decoration-native-current and text-decoration-native-values are layout fixtures of the text-decoration group', () => {
     expect(specOf(CURRENT)?.kind).toBe('layout');
     expect(specOf(VALUES)?.kind).toBe('layout');
+    expect(specOf(STYLES)?.kind).toBe('layout');
   });
   /** Per case: whether the module's plants are judged on it, the point states it must hold, and its texts' line colours (if pinned). */
   const checks = [
-    { spec: SPEC, plants: true, states: ['row', 'above', 'below', 'ink', 'gap'], colors: null, offsetShifts: null },
+    { spec: SPEC, plants: true, states: ['row', 'above', 'below', 'ink', 'gap'], colors: null, offsetShifts: null, doubles: false },
     // currentcolor resolves against the decorating box (n3's green over n3r's red text); none draws nothing of its own (n4) and
     // leaves the parent's line on the child (n3n).
     {
@@ -120,6 +122,7 @@ describe('TDEC-b: text-decoration-native\'s decoration points equal the committe
       states: ['row', 'above', 'below', 'ink'],
       colors: { 'n1:text0': [0, 90, 200], 'n2:text0': [160, 0, 80], 'n3n:text0': [0, 130, 60], 'n3r:text0': [0, 130, 60] },
       offsetShifts: null,
+      doubles: false,
     },
     // Named and hex line colours resolve to their channels; the em and rem underline offsets move the line (its row points).
     {
@@ -128,6 +131,17 @@ describe('TDEC-b: text-decoration-native\'s decoration points equal the committe
       states: ['row', 'above', 'below', 'ink'],
       colors: { 'v1:text0': [255, 0, 0], 'v2:text0': [0, 0, 128], 'v3:text0': [204, 0, 102], 'v4:text0': [10, 127, 94], 'v5:text0': [0, 128, 128], 'v6:text0': [200, 100, 0], 'v7:text0': [220, 20, 60] },
       offsetShifts: { 'v5:text0': -0.8, 'v6:text0': 2.5, 'v7:text0': 1 },
+      doubles: false,
+    },
+    // Double under, over and line-through lines: every decorated text's lines are double, each line's second rect (odd index)
+    // follows its first, and a model without the second rects disagrees with Chrome for every text.
+    {
+      spec: specOf(STYLES),
+      plants: false,
+      states: ['row', 'above', 'below', 'ink'],
+      colors: { 's1:text0': [220, 0, 0], 's2:text0': [0, 0, 220], 's3:text0': [0, 140, 0], 's4:text0': [128, 0, 160], 's5:text0': [200, 100, 0], 's6s:text0': [0, 120, 120] },
+      offsetShifts: null,
+      doubles: true,
     },
   ] as const;
   for (const check of checks) {
@@ -174,6 +188,15 @@ describe('TDEC-b: text-decoration-native\'s decoration points equal the committe
               const moved = rects.map((r) => (r.text === t ? { ...r, top: r.top + Math.round(shift * dpr) } : r));
               const at = points.filter((q) => chromeDiffers(chrome, q, modelAt(moved, glyphs, q.x, q.y, null)));
               expect(at.length, `offset-font-size on ${t} caught @${dpr}`).toBeGreaterThan(0);
+            }
+          }
+          // TDEC-c: each double line is two rects, and dropping a text's second lines (a double drawn single) is seen by Chrome.
+          if (check.doubles) {
+            for (const t of texts) {
+              const mine = rects.filter((r) => r.text === t);
+              expect(mine.length % 2, `${t} draws rect pairs @${dpr}`).toBe(0);
+              const single = rects.filter((r) => r.text !== t || r.index % 2 === 0);
+              expect(points.filter((q) => chromeDiffers(chrome, q, modelAt(single, glyphs, q.x, q.y, null))).length, `${t} drawn single caught @${dpr}`).toBeGreaterThan(0);
             }
           }
           expect(points.length, `decoration points @${dpr}`).toBeGreaterThan(0);

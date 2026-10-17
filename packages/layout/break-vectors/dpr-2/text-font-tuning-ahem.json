@@ -1,0 +1,13 @@
+{
+  "case": "text-font-tuning-ahem",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","lines":[[0,6],[6,10]]},
+    {"id":"b:text0","lines":[[0,6],[6,10]]},
+    {"id":"c:text0","lines":[[0,7],[7,9]]},
+    {"id":"d:text0","lines":[[0,7],[7,9]]},
+    {"id":"e:text0","lines":[[0,3]]},
+    {"id":"e1:text0","lines":[[0,3]]},
+    {"id":"e:text1","lines":[[1,3]]}
+  ]
+}

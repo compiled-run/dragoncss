@@ -10,7 +10,7 @@ import { repoPath } from '../src/paths.ts';
 import type { DeviceEvidence } from '../src/profile-rows.ts';
 import { checkedFailures, checkedLanes, committedLanes, deriveRows, deviceCoverageProblems, deviceEvidence, nativeLanesSource, nativeVerdict, promotionBlocker } from '../src/profile-rows.ts';
 import type { LanesFile } from '../src/lanes.ts';
-import { staleEvidence, staleLanes } from '../src/lanes.ts';
+import { staleLanes } from '../src/lanes.ts';
 import { nativeTargets } from '../src/targets.ts';
 import { NATIVE_LANES } from '../../dragon/src/profiles/native-lanes.ts';
 
@@ -37,10 +37,10 @@ describe('Amendment T075J pins', () => {
     const body = deriveRows.toString();
     for (const word of ['lanes.json', 'committedLanes', 'deviceEvidence', 'promotionBlocker', 'readLanesFile', 'NATIVE_LANES']) expect(body, word).not.toContain(word);
   });
-  it('native-lanes.ts equals nativeLanesSource over the committed verdicts, each target\'s stale being staleLanes plus staleEvidence over it', () => {
+  it('native-lanes.ts equals nativeLanesSource over the committed verdicts, each target\'s stale being staleLanes over it (records behind the tree are not stale)', () => {
     const l = lanes.lanes;
     if (l === null) throw new Error('no committed lanes.json');
-    expect(lanes.stale).toEqual([...staleLanes(l, nativeTargets()), ...staleEvidence(l)]);
+    expect(lanes.stale).toEqual(staleLanes(l, nativeTargets()));
     for (const t of ['ios', 'android'] as const) for (const x of lanes.verdict(t).stale) expect(lanes.stale, t).toContain(x);
     expect(readFileSync(repoPath('packages/dragon/src/profiles/native-lanes.ts'), 'utf8')).toBe(nativeLanesSource({ ios: lanes.verdict('ios'), android: lanes.verdict('android') }));
   });
