@@ -34,13 +34,16 @@ import type { TxtFxFaults } from '../faults/txt-fx.ts';
 import { TXT_FX_FAULTS } from '../faults/txt-fx.ts';
 import type { TxtWFaults } from '../faults/txt-w.ts';
 import { TXT_W_FAULTS } from '../faults/txt-w.ts';
+import type { MaskFaults } from '../faults/mask.ts';
+import { MASK_FAULTS } from '../faults/mask.ts';
+import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
-import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { isSvgShapeTag, shapeOf, svgGeometryOf, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
@@ -884,7 +887,7 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   // SVG 2 §13.6.6 says; native orients it by its own rules, so a stroked shape with one is refused there.
   const cap = el.props.get('stroke-linecap') as ResolvedValue;
   const stroked = keywordOf(el.props.get('stroke') as ResolvedValue) !== 'none' && !((sw.value.kind === 'length' || sw.value.kind === 'number') && sw.value.value === 0);
-  const shape = shapeOf(tag, el.element.attributes);
+  const shape = shapeOf(el);
   if (keywordOf(cap) !== 'butt' && stroked && shape !== null && svgZeroLengthSubpath(shape)) {
     refuse('zero-length-cap', cap.declaration === null ? el.element.node.origin : authored(cap.declaration.valueSpan), `stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address}, whose path has a zero-length subpath, is not supported on native: Chrome draws its cap as a dot or square that native does not orient the same way yet`, `Give <${tag}> ${el.element.address} stroke-linecap: butt, or draw the dot as a <circle>.`, native);
   }
@@ -906,6 +909,16 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   if (dashed && keywordOf(cap) !== 'butt' && (dashes as readonly number[]).includes(0)) {
     refuse('dash-zero-cap', dashOrigin, `stroke-dasharray: ${valueToString(dashValue.value)} with stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address} is not supported on native: a zero-length dash is a dot or square that native does not orient the same way yet`, `Give every dash a length, or give <${tag}> ${el.element.address} stroke-linecap: butt.`, native);
   }
+  // SVG-geometry: a rect's x and y and a circle's cx, cy and r draw the shape (elements/svg.ts shapeOf) when they are user units; a
+  // percentage of the viewport and a calculation (whose text values.ts keeps) are not resolved yet.
+  const geometry: readonly ('cx' | 'cy' | 'r' | 'x' | 'y')[] = tag === 'rect' ? ['x', 'y'] : tag === 'circle' ? ['cx', 'cy', 'r'] : [];
+  for (const p of geometry) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (svgGeometryOf(el, p) !== null) continue;
+    const of = p === 'cx' || p === 'x' ? 'the viewport width' : p === 'cy' || p === 'y' ? 'the viewport height' : 'the normalized viewport diagonal';
+    const why = v.value.kind === 'percentage' ? `a percentage ${p} is relative to ${of}, which is not built yet (package SVG-units)` : `a calculated ${p} is not resolved yet (package SVG-units)`;
+    refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} in px or as a number.`);
+  }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;
     if (v.declaration === null) continue;
@@ -913,7 +926,30 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS }): void {
+// MASK-CLIP (css-masking-1 §7): no target draws a mask yet, and a mask image can hide text, so a mask longhand other than its initial
+// value is refused for every target where it applies (none is inherited), once per element. With every longhand initial, mask-image
+// is none and Chrome applies no mask. Planted fault maskLayerAccepted accepts every value.
+function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults): void {
+  if (faults.maskLayerAccepted) return;
+  const p = MASK_LONGHANDS.find((q) => !isInitialMask(q, (el.props.get(q) as ResolvedValue).value));
+  if (p === undefined) return;
+  const id = `mask|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  const v = el.props.get(p) as ResolvedValue;
+  const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin,
+      target: t,
+      message: `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no mask yet (MASK-CLIP); only the initial value is accepted`,
+      manual: `Remove the mask from ${el.element.address}, or set mask: none.`,
+      basis: 'computed-value',
+    }));
+  }
+}
+
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -951,6 +987,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
       checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
+    checkMask(el, targets, diagnostics, reported, faults);
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;

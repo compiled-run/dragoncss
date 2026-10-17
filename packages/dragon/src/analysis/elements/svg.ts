@@ -1,6 +1,6 @@
 // SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): an inline <svg> is a replaced box (elements/replaced.ts) whose
 // content is its <path>, <rect> and
-// <circle> children. This module holds what the compiler reads from their attributes: the geometry attributes, the presentation
+// <circle> children. This module holds what the compiler reads from their attributes and geometry properties: the geometry attributes, the presentation
 // attributes of the svg property family (and the svg's width and height), the viewBox, and the refusals of everything else.
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
@@ -121,7 +121,13 @@ export function svgAttributeRefusal(tag: string, name: string, text: string): st
   return null;
 }
 
-/** The presentation hints of an SVG element: fill, stroke and stroke-width, and an svg's width and height, as CSS values. */
+/** The geometry properties each shape tag maps its attributes to (SVG 2 §10.3, §10.4); a rect's width and height are below. */
+const SVG_GEOMETRY_HINTS: { readonly [tag: string]: readonly ('cx' | 'cy' | 'r' | 'x' | 'y')[] } = { rect: ['x', 'y'], circle: ['cx', 'cy', 'r'] };
+
+/**
+ * The presentation hints of an SVG element: the svg property family, an svg's width and height, and (SVG-geometry) a rect's x, y,
+ * width and height and a circle's cx, cy and r, as CSS values.
+ */
 export function svgPresentationHints(tag: string, attributes: ReadonlyMap<string, string>): Map<Longhand, CssValue> {
   const out = new Map<Longhand, CssValue>();
   if (!Object.hasOwn(SVG_HANDLED_ATTRIBUTES, tag)) return out;
@@ -130,6 +136,11 @@ export function svgPresentationHints(tag: string, attributes: ReadonlyMap<string
     if (text === undefined) continue;
     const v = paintAttributeValue(p, text);
     if (v.ok) out.set(p, v.value);
+  }
+  for (const p of SVG_GEOMETRY_HINTS[tag] ?? []) {
+    const text = attributes.get(p);
+    const v = text === undefined ? null : parseSvgLength(text);
+    if (v !== null && !(p === 'r' && v < 0)) out.set(p, { kind: 'length', value: v, unit: 'px' });
   }
   // An svg's width and height, and a rect's, are geometry properties their attributes map to (SVG 2 §10.4, §11.2).
   if (tag === SVG_TAG || tag === 'rect') {
@@ -148,8 +159,24 @@ export function viewBoxOf(attributes: ReadonlyMap<string, string>): ViewBox | nu
   return text === undefined ? null : parseViewBox(text);
 }
 
-/** A shape's geometry from its attributes (absent attributes are 0, and an absent d is an empty path), or null when it is refused. */
-export function shapeOf(tag: string, attributes: ReadonlyMap<string, string>): SvgShape | null {
+/**
+ * A shape's computed geometry property in user units (a px length, or a number, Chrome's SVG attribute mode), or null for one that
+ * is not resolved yet: a percentage of the viewport, or a calculation (computed-checks.ts checkSvg refuses both).
+ */
+export function svgGeometryOf(el: ResolvedElement, p: 'cx' | 'cy' | 'r' | 'x' | 'y'): number | null {
+  const v = (el.props.get(p) as ResolvedValue | undefined)?.value;
+  if (v === undefined) throw new Error(`${el.element.address}: ${p} did not resolve`);
+  return v.kind === 'length' && v.unit === 'px' ? v.value : v.kind === 'number' ? v.value : null;
+}
+
+/**
+ * A shape's geometry (an absent d is an empty path), or null when it is refused. A path's d and a rect's width and height come from
+ * the attributes (absent ones are 0); SVG-geometry: a rect's x and y and a circle's cx, cy and r are the computed properties, which
+ * the attributes are presentation hints of.
+ */
+export function shapeOf(el: ResolvedElement): SvgShape | null {
+  const tag = el.element.tag;
+  const attributes = el.element.attributes;
   const num = (name: string): number | null => {
     const text = attributes.get(name);
     return text === undefined ? 0 : parseSvgLength(text);
@@ -159,11 +186,11 @@ export function shapeOf(tag: string, attributes: ReadonlyMap<string, string>): S
     return d.ok ? { kind: 'path', segments: d.segments } : null;
   }
   if (tag === 'rect') {
-    const [x, y, width, height] = [num('x'), num('y'), num('width'), num('height')];
+    const [x, y, width, height] = [svgGeometryOf(el, 'x'), svgGeometryOf(el, 'y'), num('width'), num('height')];
     return x === null || y === null || width === null || height === null ? null : { kind: 'rect', x, y, width, height };
   }
   if (tag === 'circle') {
-    const [cx, cy, r] = [num('cx'), num('cy'), num('r')];
+    const [cx, cy, r] = [svgGeometryOf(el, 'cx'), svgGeometryOf(el, 'cy'), svgGeometryOf(el, 'r')];
     return cx === null || cy === null || r === null ? null : { kind: 'circle', cx, cy, r };
   }
   return null;
@@ -295,7 +322,7 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
     if (c.kind !== 'element' || !isSvgShapeTag(c.element.tag)) continue;
     const display = (c.props.get('display') as ResolvedValue).value;
     if (display.kind === 'keyword' && display.value === 'none') continue;
-    const shape = shapeOf(c.element.tag, c.element.attributes);
+    const shape = shapeOf(c);
     if (shape === null) throw new Error(`${c.element.address}: a refused shape reached the scene`);
     const sw = (c.props.get('stroke-width') as ResolvedValue).value;
     const strokeWidth = sw.kind === 'length' && sw.unit === 'px' ? sw.value : sw.kind === 'number' ? sw.value : null;

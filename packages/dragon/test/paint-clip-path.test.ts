@@ -9,6 +9,7 @@ import { emitNativeSupport } from 'dragon';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import { CLIP_PATH_LONGHANDS, insetEdgesOf } from '../src/css/properties/clip-path.ts';
+import { MASK_LONGHANDS } from '../src/css/properties/mask.ts';
 import { CLIP_RECT_LONGHANDS } from '../src/css/properties/clip-rect.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
@@ -50,10 +51,10 @@ function programs(css: string, body: (r: SourceRef) => TreeNode[] = tree) {
 }
 
 describe('clip-path: parse and computed values (Chrome 145 ClipPath::ParseSingleValue and getComputedStyle)', () => {
-  it('follows clip, last', () => {
+  it('follows clip, before the mask family', () => {
     expect([...CLIP_PATH_LONGHANDS]).toEqual(['clip-path']);
     expect(LONGHANDS[LONGHANDS.indexOf('clip-path') - 1]).toBe(CLIP_RECT_LONGHANDS[CLIP_RECT_LONGHANDS.length - 1]);
-    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('clip-path');
+    expect(LONGHANDS[LONGHANDS.indexOf('clip-path') + 1]).toBe(MASK_LONGHANDS[0]);
   });
   it('computes none, and inset() with lengths in px and percentages kept, in the shortest of the four edges', () => {
     const at = (css: string) => explainOne(compile(`.a { ${css} }`), 'web', 'a', 'clip-path').value;
