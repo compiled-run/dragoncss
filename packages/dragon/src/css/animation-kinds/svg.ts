@@ -25,4 +25,6 @@ export const SVG_ANIMATION: { readonly [P in (typeof SVG_LONGHANDS)[number]]: An
   r: UNADMITTED,
   x: UNADMITTED,
   y: UNADMITTED,
+  // SVG-paint-order: discrete in Chrome (css_properties.json5 has no interpolable); no animation package admits it yet.
+  'paint-order': UNADMITTED,
 };

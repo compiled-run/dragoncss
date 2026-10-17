@@ -131,7 +131,7 @@ describe('the svg model in a compile', () => {
     const user = compile(input, false);
     expect(errors(user)).toEqual([]);
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
-    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, cap: 'butt', join: 'miter', miterLimit: 4, fillRule: 'nonzero', dashes: [], dashOffset: 0, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
+    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, cap: 'butt', join: 'miter', miterLimit: 4, fillRule: 'nonzero', dashes: [], dashOffset: 0, strokeFirst: false, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
   it('refuses on native, and compiles for web, a shape Chrome fades, a visible shape in a hidden <svg> and an <svg> Chrome does not clip: native draws a shape opaque or not at all, with its <svg>, and clips to the box', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '40']])];
@@ -450,6 +450,35 @@ describe('the svg model in a compile', () => {
       // cx is not inherited: the svg's cx: 9px reaches no shape.
       ['d', { kind: 'circle', cx: 0, cy: 0, r: 2 }],
     ]);
+  });
+  it('SVG-paint-order: paint-order computes to the prefix Chrome keeps, inherits, is a presentation hint, and orders the stroke before the fill in the native write', () => {
+    const cases: [string, string][] = [
+      ['normal', 'normal'], ['fill', 'fill'], ['stroke', 'stroke'], ['markers', 'markers'], ['fill stroke', 'fill'], ['stroke fill', 'stroke'],
+      ['fill markers', 'fill markers'], ['markers fill', 'markers'], ['stroke markers', 'stroke markers'], ['markers stroke', 'markers stroke'],
+      ['fill stroke markers', 'fill'], ['fill markers stroke', 'fill markers'], ['stroke fill markers', 'stroke'], ['stroke markers fill', 'stroke markers'],
+      ['markers fill stroke', 'markers'], ['markers stroke fill', 'markers stroke'], ['STROKE', 'stroke'],
+    ];
+    for (const [css, computed] of cases) {
+      const v = paintAttributeValue('paint-order', css);
+      expect(v.ok ? (v.value.kind === 'keyword' ? v.value.value : v.value.kind === 'other' ? v.value.text : null) : null, css).toBe(computed);
+    }
+    // Chrome drops these as invalid: a repeated item, normal in a list, and none.
+    for (const bad of ['fill fill', 'normal fill', 'none']) expect(paintAttributeValue('paint-order', bad).ok, bad).toBe(false);
+    const input = svgTree('svg { paint-order: stroke; } .k { paint-order: markers; } .m { paint-order: markers stroke; }', (_r, o) => [
+      shape(o, 'i', 'path', [['d', 'M2 2 H20']]),
+      { ...shape(o, 'k', 'rect', [['width', '10'], ['height', '10']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'k' }, o)] },
+      { ...shape(o, 'm', 'rect', [['width', '10'], ['height', '10']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'm' }, o)] },
+      shape(o, 'a', 'circle', [['r', '4'], ['paint-order', 'fill']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.strokeFirst])).toEqual([['i', true], ['k', false], ['m', true], ['a', false]]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => x.strokeFirst) : null, backend).toEqual([true, false, true, false]);
+    }
   });
   it('SVG-geometry: refuses everywhere a percentage or a calculated geometry property on the shape it draws; one on another tag has no effect and compiles', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']]), shape(o, 'p', 'path', [['d', 'M0 0 H4']])];

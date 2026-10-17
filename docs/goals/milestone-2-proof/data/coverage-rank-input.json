@@ -233,6 +233,7 @@
     "r": { "values": ["8"] },
     "x": { "values": ["4px"] },
     "y": { "values": ["2"] },
+    "paint-order": { "values": ["stroke"] },
     "fill-opacity": { "values": ["0.5"] },
     "stroke-opacity": { "values": ["0.5"] },
     "content": { "values": ["\"\"", "\"x\"", "none"] },
