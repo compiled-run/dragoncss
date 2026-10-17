@@ -109,10 +109,11 @@ describe('glyph clearance (T093 ruling A)', () => {
     const at = (rule: string) => r.points.filter((p) => p.rule === rule).map((p) => [p.x, p.y]);
     expect(at('glyph:t:line0:0')).toEqual([[27, 90]]);
     expect(at('edge:t:line0:glyph-left')).toEqual([9, 10, 11, 12, 13, 14, 15].map((x) => [x, 90]));
-    expect(at('edge:t:line0:glyph-right')).toEqual([45, 44, 43, 42, 41, 40, 39].map((x) => [x, 90]));
+    expect(at('edge:t:line0:glyph-right')).toEqual([46, 45, 44, 43, 42, 41, 40, 39].map((x) => [x, 90]));
     expect(at('edge:t:line0:glyph-top')).toEqual([67, 68, 69, 70, 71, 72].map((y) => [32, y]));
     expect(at('edge:t:line0:glyph-bottom')).toEqual([112, 111, 110, 109, 108, 107].map((y) => [23, y]));
-    // Each scanline runs from a clear outside pixel to a clear inside pixel.
+    // Each scanline runs from a clear outside pixel (clear on the rows the inset grows it to, where the right side lies further right)
+    // to a clear inside pixel.
     for (const rule of ['left', 'right', 'top', 'bottom'].map((side) => `edge:t:line0:glyph-${side}`)) {
       const line = at(rule);
       for (const [x, y] of [line[0], line[line.length - 1]] as [number, number][]) expect(glyphClearance(x, y, s), `${rule} ${x},${y}`).toBeGreaterThanOrEqual(I);

@@ -88,7 +88,7 @@ function lastNonNegative(f: (d: number) => number, breaks: readonly number[]): n
     const fa = f(a);
     const fb = f(b);
     if (!last && fb >= 0) continue;
-    return a + (fa / (fa - fb)) * (b - a);
+    return a + (fa * (b - a)) / (fa - fb);
   }
   return 0;
 }
@@ -316,7 +316,8 @@ export function sampleGlyphs(lines: readonly GlyphLine[], size: ImageSize, inset
   const clearOfOthers = (x: number, y: number, own: GlyphBox): boolean => all.every((g) => g === own || glyphClearance(x, y, g) >= inset);
   /** The scanline across one edge of g, or null when g cannot hold one clear of its other edges. */
   // A sheared glyph's left or right side crosses a scanline row between its positions at the row's top and bottom (the same position
-  // for an upright glyph), and its top or bottom scanline keeps clear of the slanted sides on the rows it crosses inside the glyph.
+  // for an upright glyph): the inside end clears the side on that row, and the outside end clears it on the rows the inset grows the
+  // pixel to (glyphClearance). Its top or bottom scanline keeps clear of the slanted sides on the rows it crosses inside the glyph.
   const scanline = (g: GlyphBox, side: GlyphSide): (readonly [number, number])[] | null => {
     const horizontal = side === 'left' || side === 'right';
     const inward = side === 'left' || side === 'top' ? 1 : -1;
@@ -328,7 +329,9 @@ export function sampleGlyphs(lines: readonly GlyphLine[], size: ImageSize, inset
       const [la, ra] = glyphSpanAt(g, across);
       const [lb, rb] = glyphSpanAt(g, across + 1);
       if (!clear(across, g.top, g.bottom) || Math.min(ra, rb) - Math.max(la, lb) < 2 * inset + 2) return null;
-      [near, far] = side === 'left' ? [Math.min(la, lb), Math.max(la, lb)] : [Math.max(ra, rb), Math.min(ra, rb)];
+      const [lu, ru] = glyphSpanAt(g, Math.max(across - inset, g.top));
+      const [ld, rd] = glyphSpanAt(g, Math.min(across + 1 + inset, g.bottom));
+      [near, far] = side === 'left' ? [Math.min(lu, ld), Math.max(la, lb)] : [Math.max(ru, rd), Math.min(ra, rb)];
     } else {
       const edge = side === 'top' ? g.top : g.bottom;
       if (g.slant === undefined) {
