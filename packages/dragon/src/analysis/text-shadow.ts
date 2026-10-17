@@ -67,10 +67,16 @@ const MAX_DEVICE_SCALE = 4;
 
 /**
  * An upper estimate, in device px at MAX_DEVICE_SCALE, of the pixels the device rasters for a line of n Ahem glyphs of a css size
- * (each at most size + letterSpacing wide): the layer (the line's box grown by the span of the shadows' offsets and the largest blur
+ * (each at most size + letterSpacing wide, and each of its spaces wordSpacing wider): the layer (the line's box grown by the span of the shadows' offsets and the largest blur
  * margin, 3 sigma + 2, unrounded) plus every shadow's glyph masks.
  */
-export function textShadowWork(n: number, size: number, letterSpacing: number, shadows: readonly { readonly x: number; readonly y: number; readonly blur: number }[]): number {
+export function textShadowWork(
+  n: number,
+  spaces: number,
+  size: number,
+  letterSpacing: number,
+  wordSpacing: number,
+  shadows: readonly { readonly x: number; readonly y: number; readonly blur: number }[]): number {
   if (shadows.length === 0) return 0;
   const s = MAX_DEVICE_SCALE;
   const margin = (blur: number): number => (3 * blur * s) / 2 + 2;
@@ -79,10 +85,14 @@ export function textShadowWork(n: number, size: number, letterSpacing: number, s
   const dx = span(shadows.map((x) => x.x));
   const dy = span(shadows.map((x) => x.y));
   const advance = (size + Math.max(0, letterSpacing)) * s;
-  const layer = (n * advance + 2 * m + dx + 2) * (size * s + 2 * m + dy + 2);
+  const width = n * advance + spaces * Math.max(0, wordSpacing) * s;
+  const layer = (width + 2 * m + dx + 2) * (size * s + 2 * m + dy + 2);
   const masks = shadows.reduce((sum, x) => sum + n * (size * s + 2 * margin(x.blur) + 2) ** 2, 0);
   return layer + masks;
 }
+
+/** The word-separator characters word-spacing widens (css-text-3 § word-spacing). */
+const WORD_SEPARATORS = new Set([' ', '\u00a0', '\u1361', '\u{10100}', '\u{10101}', '\u{1039f}', '\u{1091f}']);
 
 /** A px length keyword's number, or null for any other value. */
 const pxOf = (v: string): number | null => (/^-?[0-9.]+px$/.test(v) ? Number(v.slice(0, -2)) : v === 'normal' ? 0 : null);
@@ -95,8 +105,11 @@ function workOf(shadows: readonly Shadow[], text: ResolvedText): number | string
   if (big !== undefined) return `a blur of ${big.blur.value}px is over the ${TEXT_SHADOW_MAX_BLUR_PX}px the native shadow draws`;
   const size = pxOf(keyword(text.props, 'font-size'));
   const spacing = pxOf(keyword(text.props, 'letter-spacing'));
-  if (size === null || spacing === null) return `${at} has a font size or letter spacing that is not in px`;
-  const work = textShadowWork([...text.text].length, size, spacing, shadows.map((x) => ({ x: x.x.value, y: x.y.value, blur: x.blur.value })));
+  const wordSpacing = pxOf(keyword(text.props, 'word-spacing'));
+  if (size === null || spacing === null || wordSpacing === null) return `${at} has a font size, letter spacing or word spacing that is not in px`;
+  const cps = [...text.text];
+  const spaces = cps.filter((c) => WORD_SEPARATORS.has(c)).length;
+  const work = textShadowWork(cps.length, spaces, size, spacing, wordSpacing, shadows.map((x) => ({ x: x.x.value, y: x.y.value, blur: x.blur.value })));
   if (work > TEXT_SHADOW_MAX_DEVICE_PX) return `${at} would raster about ${work} device px of shadow, over the ${TEXT_SHADOW_MAX_DEVICE_PX} the native shadow draws`;
   return work;
 }
@@ -178,7 +191,7 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
     if (synthesizesOblique(parent.props)) return `${at} is drawn in synthetic oblique, which the native shadow does not shear`;
     if (decorated.has(text.node.address)) return `${at} is decorated, and Chrome shadows its decorations too`;
     if (keyword(parent.props, 'visibility') !== 'visible') return `${at} is not visible`;
-    if (keyword(container.props, 'text-overflow') !== 'clip' || keyword(parent.props, 'text-overflow') !== 'clip') return `${at} may end in an ellipsis, which the native shadow does not draw`;
+    if (keyword(container.props, 'text-overflow') !== 'clip') return `${at} may end in an ellipsis, which the native shadow does not draw`;
     if (clamped) return `${at} is inside a -webkit-line-clamp container, whose clamp may end its line in an ellipsis the native shadow does not draw`;
     if (group !== null) return `${at} is inside an element with ${group}, a compositing group in Chrome`;
     const work = workOf(shadows, text);

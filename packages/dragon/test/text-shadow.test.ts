@@ -105,6 +105,11 @@ describe('text-shadow', () => {
     expect(errorsIn(css, deep)).toEqual(NATIVE_REFUSED);
   });
 
+  it('accepts text-overflow on a shadowed inline itself, which has no effect on an inline', () => {
+    const css = '.s { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); text-overflow: ellipsis; }';
+    expect(errorsIn(css, (r) => [el(r, 'a', 'div', [], [el(r, 'b', 'span', ['s'], [text(r, 't', 'XX')])])])).toEqual([]);
+  });
+
   it('bounds the native work: blur, shadow count and rastered pixels, pinned', () => {
     expect([TEXT_SHADOW_MAX_BLUR_PX, TEXT_SHADOW_MAX_SHADOWS, TEXT_SHADOW_MAX_DEVICE_PX, TEXT_SHADOW_MAX_DOCUMENT_DEVICE_PX]).toEqual([16, 4, 800_000, 3_000_000]);
     const one = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])];
@@ -116,8 +121,14 @@ describe('text-shadow', () => {
     // A long nowrap line at a large size passes the pixel bound; the same at 10px does not.
     expect(errorsIn('.s { white-space: nowrap; font-size: 100px; text-shadow: 0 1px 2px red; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'X'.repeat(40))])])).toEqual(NATIVE_REFUSED);
     expect(errorsIn('.s { white-space: nowrap; text-shadow: 0 1px 2px red; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'X'.repeat(40))])])).toEqual([]);
+    // Word spacing widens each space: a large one passes the pixel bound that the same line without it keeps inside.
+    const spaced = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'X X')])];
+    expect(errorsIn('.s { white-space: nowrap; word-spacing: 2px; text-shadow: 0 0 16px red; }', spaced)).toEqual([]);
+    expect(errorsIn('.s { white-space: nowrap; word-spacing: 2000px; text-shadow: 0 0 16px red; }', spaced)).toEqual(NATIVE_REFUSED);
+    expect(textShadowWork(3, 1, 10, 0, 2000, [{ x: 0, y: 0, blur: 16 }])).toBeGreaterThan(TEXT_SHADOW_MAX_DEVICE_PX);
+    expect(textShadowWork(3, 1, 10, 0, 0, [{ x: 0, y: 0, blur: 16 }])).toBeLessThan(TEXT_SHADOW_MAX_DEVICE_PX);
     // The text-shadow-blur fixture's widest line (five 40px glyphs, 2px 5px 3px) is well inside the bound.
-    expect(textShadowWork(5, 40, 0, [{ x: 2, y: 5, blur: 3 }])).toBeLessThan(TEXT_SHADOW_MAX_DEVICE_PX / 2);
+    expect(textShadowWork(5, 0, 40, 0, 0, [{ x: 2, y: 5, blur: 3 }])).toBeLessThan(TEXT_SHADOW_MAX_DEVICE_PX / 2);
     const msg = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .s { text-shadow: 0 0 5000px red; }', one)).diagnostics.find((d) => d.target === 'ios');
     expect(msg?.message).toBe('text-shadow: rgb(255, 0, 0) 0px 0px 5000px on <div> a is unsupported on ios: a blur of 5000px is over the 16px the native shadow draws');
   });
@@ -137,7 +148,7 @@ describe('text-shadow', () => {
   it('refuses the lists after the document budget, keeping the ones before it', () => {
     const lines = (count: number) => (r: SourceRef) => [...Array(count).keys()].map((k) => el(r, `d${k}`, 'div', ['s'], [text(r, `t${k}`, 'X'.repeat(40))]));
     const css = '.s { white-space: nowrap; text-shadow: 0 1px 2px red; }';
-    const one = textShadowWork(40, 10, 0, [{ x: 0, y: 1, blur: 2 }]);
+    const one = textShadowWork(40, 0, 10, 0, 0, [{ x: 0, y: 1, blur: 2 }]);
     const fit = Math.floor(TEXT_SHADOW_MAX_DOCUMENT_DEVICE_PX / one);
     // One class declares the list, so the budget refuses the whole declaration once it is passed.
     expect(errorsIn(css, lines(fit))).toEqual([]);
