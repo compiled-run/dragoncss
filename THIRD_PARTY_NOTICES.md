@@ -10,6 +10,7 @@ Those files are under the licences below, with the copyright lines from their he
 ## Chromium: BSD 3-Clause (the Chromium LICENSE file) (chromium-bsd)
 
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
+- `cc/paint/draw_looper.cc`: Copyright 2024 The Chromium Authors
 - `cc/paint/paint_op_buffer_iterator.cc`: Copyright 2017 The Chromium Authors
 - `cc/trees/layer_tree_settings.cc`: Copyright 2011 The Chromium Authors
 - `third_party/blink/renderer/core/animation/animation_time_delta.h`: Copyright 2018 The Chromium Authors
@@ -152,6 +153,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkGaussFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkGeometry.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkGeometry.h`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkGlyphRunPainter.cpp`: Copyright 2018 The Android Open Source Project
 - `third_party/skia/src/core/SkMaskBlurFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkMaskFilterBase.cpp`: Copyright 2025 Google LLC
 - `third_party/skia/src/core/SkMatrix.cpp`: Copyright 2006 The Android Open Source Project

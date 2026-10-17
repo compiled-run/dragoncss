@@ -406,12 +406,12 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   // ts: packages/layout/src/block.ts:648
   run {
     var k: Double = 0.0
-    loop20@ while ((k < jsLength(kids))) {
-      loop20_body@ do {
+    loop22@ while ((k < jsLength(kids))) {
+      loop22_body@ do {
         val child: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = jsUnwrap(jsAt(kids, k))
         // ts: packages/layout/src/block.ts:650
         if ((!jsStrEq(child.kind, "box") && !jsStrEq((child as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
-          break@loop20_body
+          break@loop22_body
         }
         var kid: U_LayoutBox_ReplacedLeaf = (child as U_LayoutBox_ReplacedLeaf)
         // ts: packages/layout/src/block.ts:652
@@ -419,7 +419,7 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
           val rtl: Boolean = (jsStrEq(direction, "rtl") && (!ctx.faults.staticPosLtr))
           val sy: Double = (if (((!seen) && a.canCollapseTop)) units_ZERO else units_add(cursor, block_collapsed(strut)))
           jsPush(outOfFlow, OutOfFlow((kid as LayoutBox), (if (rtl) StaticAxis(units_add(a.origin.x, a.contentWidth), "far") else StaticAxis(a.origin.x, "near")), StaticAxis(units_add(a.origin.y, sy), "near"), null))
-          break@loop20_body
+          break@loop22_body
         }
         var inline: BlockLevelInline
         var c: ContentsResult
