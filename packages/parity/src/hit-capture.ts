@@ -14,6 +14,7 @@ import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
+import { shapedCaseIds } from './text-latin-run.ts';
 
 export const HIT_CAPTURE_VERSION = 'dragon.hit-capture/2';
 const LU = 64;
@@ -147,6 +148,8 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
  * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP).
  */
 export function hitRefusal(n: NativeCase): string | null {
+  // TXT1a-2 phase R: a shaped case is a device case, but the hit lane keeps to the plain ones until its real-face hit points are proven.
+  if (shapedCaseIds().has(n.case.id)) return 'shaped text (text-latin-run.ts isShapedInput): the hit lane runs the plain cases until TXT1a-2 proves real-face hit points';
   const nodes = n.programs.uikit.nodes;
   const moved = nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;

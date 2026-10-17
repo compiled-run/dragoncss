@@ -46,3 +46,7 @@ export const STACKING_REASON = /^stacking context on .+: hit testing through z-i
 // VISIBILITY_OUT instead: its <svg> s3 is visibility hidden, and hitRefusal names visibility before an svg.
 export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl'];
 export const SVG_REASON = /^<svg> .+: hit testing an svg's shapes comes with SVG-a2$/;
+
+// TXT1a-2 phase R: the device lanes run the shaped cases (targets.ts deviceCaseIds), but the hit lane keeps them out until real-face hit
+// points are proven (hit-capture.ts hitRefusal names this before any other reason). The set is text-latin-run.ts shapedCaseIds.
+export const SHAPED_REASON = /^shaped text \(text-latin-run\.ts isShapedInput\): the hit lane runs the plain cases until TXT1a-2 proves real-face hit points$/;

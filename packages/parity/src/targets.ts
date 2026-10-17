@@ -150,8 +150,8 @@ export function stateScriptIds(): readonly string[] {
  */
 export function hitCaseIds(): readonly string[] {
   const refused = readJson<{ readonly refused?: Readonly<Record<string, string>> }>('packages/layout/rt-vectors/hit/facts.json').refused ?? {};
-  // TXT1a-2: device-hit runs no shaped case (vectorCaseIds) until its hit facts cover real faces.
-  return vectorCaseIds().filter((id) => refused[id] === undefined);
+  // TXT1a-2: hit-capture.ts hitRefusal refuses a shaped case, so the facts list it as refused.
+  return deviceCaseIds().filter((id) => refused[id] === undefined);
 }
 
 /** The declared lane: vectors lanes hold every top-level and DPR vector plus the corpora; device lanes the cases at the device DPRs. */
