@@ -79,7 +79,7 @@ function parseLonghand(property: BorderImageLonghand): (tokens: readonly CssNode
 
 /**
  * border-image: none (and -webkit-border-image: none) sets border-image-source none and every other longhand to its initial value, as
- * Chrome expands it (shorthands_custom.cc BorderImage::ParseShorthand); anything else is kept on border-image-source and refused.
+ * Chrome expands it (shorthands_custom.cc BorderImage::ParseShorthand); anything else is kept as written on every longhand and refused.
  */
 function parseBorderImage(name: (typeof BORDER_IMAGE_SHORTHANDS)[number]): (tokens: readonly CssNode[], base: Span) => ParsedValue {
   return (tokens) => {
@@ -87,7 +87,8 @@ function parseBorderImage(name: (typeof BORDER_IMAGE_SHORTHANDS)[number]): (toke
     const none = tokens.length === 1 && isInitialSpelling('border-image-source', tokens[0]);
     return {
       kind: 'ok',
-      longhands: BORDER_IMAGE_LONGHANDS.map((p): LonghandValue => (p === 'border-image-source' ? { property: p, value: none ? BORDER_IMAGE_INITIAL[p] : other(tokens), explicit: true } : { property: p, value: BORDER_IMAGE_INITIAL[p], explicit: false })),
+      // Anything but none marks every longhand non-initial, so that a value Dragon does not read is over-refused, never accepted.
+      longhands: BORDER_IMAGE_LONGHANDS.map((p): LonghandValue => ({ property: p, value: none ? BORDER_IMAGE_INITIAL[p] : other(tokens), explicit: p === 'border-image-source' || !none })),
     };
   };
 }

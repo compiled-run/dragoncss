@@ -85,7 +85,9 @@ describe('border-image', () => {
       expect(parsed(d), d).toEqual([d]);
       expect(kindsOf(d), d).toEqual(['other']);
     }
-    expect(kindsOf('border-image: url(b.png) 30 round')).toEqual(['other', 'percentage', 'number', 'number', 'keyword']);
+    // Anything but none is kept on every longhand, so it is over-refused rather than read as partly initial.
+    expect(kindsOf('border-image: url(b.png) 30 round')).toEqual(['other', 'other', 'other', 'other', 'other']);
+    expect(kindsOf('-webkit-border-image: url(b.png) 10 / 4px')).toEqual(['other', 'other', 'other', 'other', 'other']);
     expect(parsed('border-image: url(b.png) 30 round')[0]).toBe('border-image-source: url(b.png) 30 round');
     expect(parsed('border-image: none 100% / 1 / 0 stretch')[0]).toBe('border-image-source: none 100% / 1 / 0 stretch');
     expect(parsed('-webkit-border-image: url(b.png) 10 / 4px')[0]).toBe('border-image-source: url(b.png) 10 / 4px');
@@ -99,7 +101,6 @@ describe('border-image', () => {
     // A later initial value wins over an earlier border image, from either name, as in Chrome.
     expect(errorsAt('border-image-source: url(b.png); border-image: none')).toEqual([]);
     expect(errorsAt('border-image: url(b.png) 30 round; -webkit-border-image: none')).toEqual([]);
-    expect(errorsAt('-webkit-border-image: url(b.png) 30; border-image-source: none')).toEqual([]);
     expect(errorsAt('--b: none; border-image-source: var(--b)')).toEqual([]);
   });
 
@@ -111,6 +112,8 @@ describe('border-image', () => {
     // A value that arrives through var() is refused as well.
     expect(errorsAt('--b: linear-gradient(red, blue); border-image-source: var(--b)')).toEqual(REFUSED);
     expect(errorsAt('--b: url(b.png) 30; -webkit-border-image: var(--b)')).toEqual(REFUSED);
+    // -webkit-border-image is refused even where it loses (analysis/border-image.ts): Chrome applies it first and keeps its border widths.
+    expect(errorsAt('-webkit-border-image: url(b.png) 30; border-image-source: none')).toEqual(REFUSED);
     // Dragon's border shorthand sets no border image longhand, so an earlier border image is still refused (Chrome's border resets it).
     expect(errorsAt('border-image-repeat: round; border: 1px solid')).toEqual(REFUSED);
     const css = 'body { font-family: Ahem; font-size: 10px; } .s { border-image-repeat: space; }';
@@ -123,6 +126,36 @@ describe('border-image', () => {
     const refused = shown.diagnostics.filter((x) => x.severity === 'error');
     expect(refused).toHaveLength(3);
     for (const d of refused) expect(d.message).toMatch(/^border-image-source: linear-gradient\(red,blue\) on <div> a is unsupported: /);
+  });
+
+  it('refuses a -webkit-border-image that loses the cascade, since Chrome keeps the border widths it sets', () => {
+    // No declared border width: Chrome draws the 20px widths -webkit-border-image set, where Dragon would draw medium.
+    const at = (decl: string, extra = ''): string[] => {
+      const css = `body { font-family: Ahem; font-size: 10px; } .s { border-style: solid; ${decl}; } ${extra}`;
+      const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
+      return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
+    };
+    // The controls: none and the CSS-wide keywords set no width, and compile.
+    expect(at('-webkit-border-image: none; border-image: none')).toEqual([]);
+    for (const k of ['inherit', 'initial', 'unset', 'revert']) expect(at(`-webkit-border-image: ${k}; border-image: none`), k).toEqual([]);
+    for (const d of [
+      '-webkit-border-image: url(b.png) 10 / 20px; border-image: none',
+      '-webkit-border-image: url(b.png) 10 / 20px; border-image: initial',
+      '-webkit-border-image: url(b.png) 10 / 20px; border-image-source: none',
+      '-webkit-border-image: url(b.png) 10 / 20px !important; border-image: none !important',
+      '--x: url(b.png) 10 / 20px; -webkit-border-image: var(--x); border-image: initial',
+    ]) expect(at(d), d).toEqual(REFUSED);
+    // Inside a state rule too: every check runs on each interaction state (native refuses :hover on a div as a selector anyway).
+    const selector = ['android DRAGON_UNSUPPORTED_SELECTOR', 'ios DRAGON_UNSUPPORTED_SELECTOR'];
+    expect(at('', '.s:hover { -webkit-border-image: none; border-image: none; }')).toEqual(selector);
+    expect(at('', '.s:hover { -webkit-border-image: url(b.png) 10 / 20px; border-image: none; }')).toEqual([...REFUSED, ...selector].sort());
+    const shown = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; } .s { border-style: solid; -webkit-border-image: url(b.png) 10 / 20px; border-image: none; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
+    const refused = shown.diagnostics.filter((x) => x.severity === 'error');
+    expect(refused).toHaveLength(3);
+    for (const d of refused) expect(d.message).toMatch(/^-webkit-border-image: url\(b\.png\) 10 \/ 20px on <div> a is unsupported: /);
+    // The plant accepts it.
+    const planted = project({ ...NO_FAULTS, borderImageAccepted: true }).compile(inputFor('body { font-family: Ahem; } .s { border-style: solid; -webkit-border-image: url(b.png) 10 / 20px; border-image: none; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
+    expect(planted.diagnostics.filter((x) => x.severity === 'error')).toEqual([]);
   });
 
   it('refuses a border image that a child inherits explicitly, on the child too', () => {
