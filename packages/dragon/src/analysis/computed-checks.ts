@@ -1044,10 +1044,14 @@ export function skipInkThicknessProven(thickness: CssValue, boxSize: number): bo
 /** Whether the device takes a thickness or underline offset: auto, a px length or a percentage (lower/paint/text-decoration.ts). */
 const nativeDecorationLength = (v: CssValue): boolean => (v.kind === 'keyword' && v.value === 'auto') || (v.kind === 'length' && v.unit === 'px' && Number.isFinite(v.value)) || (v.kind === 'percentage' && Number.isFinite(v.value));
 
+/** The text-decoration-style values every target draws (TDEC-c: double as two snapped rects); a drawn dotted, dashed or wavy line is refused. */
+export const DRAWN_DECORATION_STYLES: readonly string[] = ['solid', 'double'];
+
 /**
- * TDEC-a: web draws every accepted decoration. TDEC-b: ios and android draw solid decorations (the value table refuses every other
- * style on every target) and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
- * auto, px or a percentage; a decorated text that is not visible; an overline with skip-ink auto, or an underline with skip-ink auto
+ * TDEC-a: web draws every accepted decoration. A decorated text whose line is dotted, dashed or wavy is refused on every target
+ * (TDEC-c draws solid and double only); the style itself is accepted wherever it draws nothing. TDEC-b: ios and android draw solid
+ * and double decorations and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
+ * auto, px or a percentage; a decorated text that is not visible; an overline or a double line with skip-ink auto, or an underline with skip-ink auto
  * on a real face or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
  * decorated element in a formatting context no Chrome case proves propagation for is refused on every target.
  */
@@ -1075,19 +1079,42 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
     for (const c of el.children) if (c.kind === 'element') inlines(c);
   };
   inlines(root);
+  const elements = new Map<string, ResolvedElement>();
+  const collect = (el: ResolvedElement): void => {
+    elements.set(el.element.address, el);
+    for (const c of el.children) if (c.kind === 'element') collect(c);
+  };
+  collect(root);
   for (const [address, list] of applied) {
     const hit = byAddress.get(address);
     if (hit === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
     const { text, containerSize, visibility } = hit;
+    // TDEC-c: a line drawn in a style no target draws is refused on every target, at the decorating box's style declaration.
+    for (const d of list.filter((x) => !DRAWN_DECORATION_STYLES.includes(x.style))) {
+      const style = elements.get(d.box)?.props.get('text-decoration-style');
+      if (style === undefined) throw new Error(`${address}: the decorating box ${d.box} is not in the tree`);
+      for (const t of targets) {
+        const id = `${t}|decoration-style|${address}|${d.box}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+          origin: style.origin !== 'inherited' && style.declaration !== null ? authored(style.declaration.valueSpan) : text.node.node.origin,
+          target: t,
+          message: `text-decoration-style: ${d.style} draws the ${d.lines.join(' ')} of ${d.box} over text ${address}, and TDEC-c draws solid and double lines only`,
+          manual: `Set text-decoration-style to solid or double on ${d.box}, or text-decoration-line: none.`,
+          basis: 'computed-value',
+        }));
+      }
+    }
     const reasons: string[] = [];
     let intercepts = false;
     if (visibility !== 'visible') reasons.push(`it is ${visibility}, and its decoration views do not follow visibility`);
-    for (const d of list) {
+    for (const d of list.filter((x) => DRAWN_DECORATION_STYLES.includes(x.style))) {
       if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
       if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
       if (d.skipInk !== 'auto') continue;
-      // TDEC-d clips Ahem glyphs only, for an underline (the capture's skip-ink probe), as thick as a capture proves.
-      if (d.lines.includes('overline') || (d.lines.includes('underline') && (realFaceAt(address) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
+      // TDEC-d clips Ahem glyphs only, for a solid underline (the capture's skip-ink probe), as thick as a capture proves.
+      if (d.lines.includes('overline') || (d.style === 'double' && d.lines.includes('underline')) || (d.lines.includes('underline') && (realFaceAt(address) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
     }
     if (intercepts) reasons.push('skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from ' + list.filter((d) => d.skipInk === 'auto').map((d) => d.box).join(', ') + ', which the intercepts of TDEC-d clip');
     if (reasons.length === 0) continue;
