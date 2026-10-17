@@ -146,7 +146,9 @@ describe('TXT-W: text-weight-bold-ahem\'s emboldened glyphs equal the committed 
           const crowded = (side: string): boolean => glyphs.some((o, k) => k !== n && (side === 'right' || side === 'left'
             ? o.top <= midY && midY < o.bottom && (side === 'right' ? o.left < g.right + 2 && o.right > g.right : o.right > g.left - 2 && o.left < g.left)
             : o.left <= midX && midX < o.right && (side === 'bottom' ? o.top < g.bottom + 2 && o.bottom > g.bottom : o.bottom > g.top - 2 && o.top < g.top)));
-          for (const [side, got, model, upright] of edges.filter(([side]) => !crowded(side))) {
+          // An edge within 2 device px of the image's border (the stroke of a glyph at the page's left reaches past x = 0) is clipped.
+          const clipped = (model: number, upright: number, horizontal: boolean): boolean => Math.min(model, upright) < 2 || Math.max(model, upright) > (horizontal ? chrome.width : chrome.height) - 2;
+          for (const [side, got, model, upright] of edges.filter(([side, , model, upright]) => !crowded(side) && !clipped(model, upright, side === 'right' || side === 'left'))) {
             expect(Math.abs(got - model), `DPR ${dpr} glyph ${n} ${side}: Chrome ${got}, model ${model}`).toBeLessThanOrEqual(0.5);
             if (Math.abs(model - upright) >= 1) expect(Math.abs(got - upright), `DPR ${dpr} glyph ${n} ${side} unemboldened`).toBeGreaterThan(0.5);
           }
