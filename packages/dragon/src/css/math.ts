@@ -671,8 +671,8 @@ const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 /** opacity, fill-opacity and stroke-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
 // stroke-width, stroke-dasharray and stroke-dashoffset take a unitless number too (SVG's quirk, Chrome StrokeWidth,
 // StrokeDasharray and StrokeDashoffset ::ParseSingleValue in SVG attribute mode), and so do the geometry properties cx, cy, r, x
-// and y (ConsumeSVGGeometryPropertyLength parses them in SVG attribute mode).
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y']);
+// and y and the corner radii rx and ry (ConsumeSVGGeometryPropertyLength parses them in SVG attribute mode).
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
  * stroke width), and text-shadow's lengths (Blink TextShadow). */
 const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow']);
