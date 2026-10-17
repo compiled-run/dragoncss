@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+:root { --spacing: 0.25rem; }
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; margin-bottom: 3px; background-color: #eee; }
+.au { grid-template-columns: auto auto auto; justify-content: start; }
+.fx { grid-template-columns: 70px 70px; }
+.fr { width: 160px; grid-template-columns: 1fr 1fr; }
+.pr { padding: 0.5rem 1em 0.25rem 0.75rem; }
+.mr { margin: 0.25rem 0.3em 0.5rem 1rem; }
+.e12 { font-size: 12px; }
+.tw-p { padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3); }
+.tw-m { margin-top: calc(var(--spacing) * 1); margin-left: calc(var(--spacing) * -1); }
+.tw-w { width: calc(var(--spacing) * 10); height: calc(var(--spacing) * 4); }
+.wr { width: 3rem; height: 1.5rem; }
+.we { width: 2.5em; min-height: 2em; }
+.mnw { min-width: 4rem; }
+.mxw { max-width: 1.5rem; }
+.mnh { min-height: 1.3rem; }
+.mxh { max-height: 1.2em; }
+.tall { height: 30px; }
+.vw { width: 10vw; height: 2vh; }
+.vmn { min-width: 8vw; max-height: 3vh; }
+.vmx { max-width: 6vw; min-height: 4vh; }
+.fn1 { width: min(3rem, 40px); padding-left: max(0.5em, 3px); }
+.fn2 { height: clamp(4px, 2vh, 1rem); margin-right: min(1em, 0.5rem); }
+.fn3 { min-width: max(2rem, 5vw); max-height: min(1rem, 30px); }
+.bw { border-style: solid; border-width: 0.125rem 0.2em; }
+.sq { width: 10px; height: 10px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="g au"><div data-dragon-id="a1" class="pr">XX</div><div data-dragon-id="a2" class="mr">X</div><div data-dragon-id="a3" class="pr mr e12"><div data-dragon-id="a3a" class="sq"></div></div></div>
+<div data-dragon-id="b" class="g au"><div data-dragon-id="b1" class="tw-p">XX</div><div data-dragon-id="b2" class="tw-m">X</div><div data-dragon-id="b3" class="tw-w"></div></div>
+<div data-dragon-id="c" class="g fr"><div data-dragon-id="c1" class="wr"></div><div data-dragon-id="c2" class="we e12"><div data-dragon-id="c2a" class="sq"></div></div><div data-dragon-id="c3" class="we"></div></div>
+<div data-dragon-id="d" class="g au"><div data-dragon-id="d1" class="mnw">X</div><div data-dragon-id="d2" class="mxw">XX XX XX</div><div data-dragon-id="d3" class="mnh">X</div></div>
+<div data-dragon-id="e" class="g fx"><div data-dragon-id="e1" class="mxh"><div data-dragon-id="e1a" class="tall"></div></div><div data-dragon-id="e2" class="mnh mxw">XX XX</div></div>
+<div data-dragon-id="f" class="g au"><div data-dragon-id="f1" class="vw"></div><div data-dragon-id="f2" class="vmn">X</div><div data-dragon-id="f3" class="vmx">XXXX</div></div>
+<div data-dragon-id="h" class="g au"><div data-dragon-id="h1" class="fn1">X</div><div data-dragon-id="h2" class="fn2">X</div><div data-dragon-id="h3" class="fn3"><div data-dragon-id="h3a" class="tall"></div></div></div>
+<div data-dragon-id="k" class="g au"><div data-dragon-id="k1" class="bw">XX</div><div data-dragon-id="k2" class="bw e12"><div data-dragon-id="k2a" class="sq"></div></div></div>
+</body>
+</html>

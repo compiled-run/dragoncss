@@ -264,17 +264,17 @@ const probe = (id: string) => {
 };
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
-  const BASE_LAYOUT_CASES = 831;
+  const BASE_LAYOUT_CASES = 837;
   const SHAPED = [...NEW_IDS, ...TAG_IDS];
   const ADDED = [...SHAPED, ...WHITE_SPACE_AHEM_IDS];
   it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases, the T133 tag cases and the later groups', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 813 BASE layout cases, plus G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web, resize-values, G3b's grid-baseline-axes PNT's text-decoration-native-current (825), PNT1's stacking-grid-items (827), GRID's grid-gap-units and CTX-PROOF's ctx-proof-flex-gap-units (831; svg-colors is a later group).
+    // BASE is batch #284's regenerated head da2a902a7e (text-batch2, #247, #282, #283, #275) with #285's, #280's and #286's groups, whose FIXTURES hold 813 BASE layout cases, plus G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web, resize-values, G3b's grid-baseline-axes PNT's text-decoration-native-current (825), PNT1's stacking-grid-items (827), GRID's grid-gap-units and CTX-PROOF's ctx-proof-flex-gap-units (831), and GRID's grid-item-units, grid-item-keywords and grid-item-calc-percent (837; svg-colors is a later group).
     // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
     const later = [...LATER_NATIVE_IDS, ...LATER_SHAPED_IDS];
     const base = ids.filter((id) => !ADDED.includes(id) && !AHEM_ADDED.includes(id) && !later.includes(id));
     expect(base.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('b7aab2330daeaa5965cdb8071e411530c646f32ceffcd63d90dce9a0c41a02a8');
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('739e78b81b992f0da66e6d303e3fa179dab694a6580576c8ff1ee72a649ffa77');
     expect(ids.filter((id) => ADDED.includes(id)).sort()).toEqual([...ADDED].sort());
     expect(ids.filter((id) => AHEM_ADDED.includes(id))).toEqual(AHEM_ADDED);
     expect(ids.filter((id) => later.includes(id)).sort()).toEqual([...later].sort());
