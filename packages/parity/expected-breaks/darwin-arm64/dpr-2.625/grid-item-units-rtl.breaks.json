@@ -1,0 +1,20 @@
+{
+  "case": "grid-item-units-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"a2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"b1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d2:text0","data":"XX XX XX","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"d3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"e2:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"f2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f3:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"h1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"h2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"k1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}
