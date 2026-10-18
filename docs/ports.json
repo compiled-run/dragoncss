@@ -3815,7 +3815,10 @@
         { "lines": "11530-11535", "symbol": "MaskRepeat::ParseSingleValue", "source": "located" },
         { "lines": "11545-11548", "symbol": "MaskRepeat::InitialValue", "source": "located" },
         { "lines": "11550-11556", "symbol": "MaskSize::ParseSingleValue", "source": "located" },
-        { "lines": "11567-11569", "symbol": "MaskSize::InitialValue", "source": "located" }
+        { "lines": "11567-11569", "symbol": "MaskSize::InitialValue", "source": "located" },
+        { "lines": "7287-7294", "symbol": "ObjectPosition::ParseSingleValue", "source": "located" },
+        { "lines": "8293-8316", "symbol": "Perspective::ParseSingleValue", "source": "located" },
+        { "lines": "8329-8336", "symbol": "PerspectiveOrigin::ParseSingleValue", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
@@ -3832,7 +3835,9 @@
         { "file": "packages/dragon/src/css/properties/clip-rect.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/mask.ts", "symbol": null, "use": "reference" },
-        { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" }
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/transform-extra.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
