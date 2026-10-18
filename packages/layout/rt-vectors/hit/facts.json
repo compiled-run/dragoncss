@@ -865,6 +865,8 @@
     "text-font-tuning-ahem-rtl": "e1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-font-variant-ahem": "f1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-font-variant-ahem-rtl": "f1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "text-font-variant-caps-ahem": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "text-font-variant-caps-ahem-rtl": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-indent-ahem": "a6b is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-indent-ahem-rtl": "a6b is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-justify-ahem": "s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",

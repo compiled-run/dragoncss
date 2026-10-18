@@ -352,7 +352,7 @@ public func paintAa_cellAt(_ xs: JsArray<PaintAa_Cell>, _ i: Double) throws -> P
   let c: PaintAa_Cell? = jsAt(xs, i)
   // ts: packages/layout/src/paint-aa.ts:67
   if (c == nil) {
-    throw JsError(message: jsConcat(S.s368, jsNumberToString(i), S.s90))
+    throw JsError(message: jsConcat(S.s375, jsNumberToString(i), S.s95))
   }
   return try jsUnwrap(c)
 }
@@ -539,7 +539,7 @@ public func paintAa_sqrt32(_ x: Double) throws -> Double {
   }
   // ts: packages/layout/src/paint-aa.ts:214
   if (x < 0.0) {
-    throw JsError(message: S.s371)
+    throw JsError(message: S.s378)
   }
   var r: Double = ((x > 1.0) ? x : 1.0)
   // ts: packages/layout/src/paint-aa.ts:216
@@ -590,7 +590,7 @@ public func paintAa_sqrt32(_ x: Double) throws -> Double {
 public func paintAa_quickInverse(_ x: Double) throws -> Double {
   // ts: packages/layout/src/paint-aa.ts:319
   if try (paintAa_abs32(x) > paintAa_INVERSE_TABLE_SIZE) {
-    throw JsError(message: S.s369)
+    throw JsError(message: S.s376)
   }
   return try ((x > 0.0) ? (-paintAa_at(paintAa_INVERSE_TABLE, (paintAa_INVERSE_TABLE_SIZE - x))) : paintAa_at(paintAa_INVERSE_TABLE, (paintAa_INVERSE_TABLE_SIZE + x)))
 }
@@ -1051,7 +1051,7 @@ public func paintAa_conicToQuads(_ c: Conic) throws -> JsArray<Pt> {
   let out: JsArray<Pt> = JsArray<Pt>([c.p0])
   // ts: packages/layout/src/paint-aa.ts:747
   if (p == paintAa_MAX_CONIC_TO_QUAD_POW2) {
-    throw JsError(message: S.s367)
+    throw JsError(message: S.s374)
   }
   try paintAa_subdivideConic(c, out, p)
   return out
@@ -1402,7 +1402,7 @@ public func paintAa_newEdge() throws -> Edge {
 public func paintAa_nx(_ e: Edge?) throws -> Edge {
   // ts: packages/layout/src/paint-aa.ts:1048
   if (e == nil) {
-    throw JsError(message: S.s375)
+    throw JsError(message: S.s382)
   }
   return try jsUnwrap(e)
 }
@@ -1926,7 +1926,7 @@ public func paintAa_edgeAt(_ xs: JsArray<EdgeCell>, _ i: Double) throws -> EdgeC
   let c: EdgeCell? = jsAt(xs, i)
   // ts: packages/layout/src/paint-aa.ts:1446
   if (c == nil) {
-    throw JsError(message: S.s370)
+    throw JsError(message: S.s377)
   }
   return try jsUnwrap(c)
 }
@@ -1946,11 +1946,11 @@ public func paintAa_insertionSort(_ xs: JsArray<EdgeCell>, _ left: Double, _ cou
   // ts: packages/layout/src/paint-aa.ts:1460
   do {
     var next: Double = (left + 1.0)
-    loop43: while (next <= right) {
-      loop43_body: do {
+    loop44: while (next <= right) {
+      loop44_body: do {
         // ts: packages/layout/src/paint-aa.ts:1461
         if try (!paintAa_edgeLess(paintAa_edgeAt(xs, next).e, paintAa_edgeAt(xs, (next - 1.0)).e)) {
-          break loop43_body
+          break loop44_body
         }
         let insert: Edge = try paintAa_edgeAt(xs, next).e
         var hole: Double = next
@@ -2283,7 +2283,7 @@ public func paintAa_accAntiH(_ acc: Acc, _ x0: Double, _ y: Double, _ width: Dou
 public func paintAa_accAntiHArray(_ acc: Acc, _ x0: Double, _ y: Double, _ alphas: JsArray<PaintAa_Cell>, _ len0: Double) throws -> Void {
   // ts: packages/layout/src/paint-aa.ts:1675
   if (acc.kind == paintAa_KIND_MASK) {
-    throw JsError(message: S.s366)
+    throw JsError(message: S.s373)
   }
   try paintAa_accCheckY(acc, y)
   var x: Double = (x0 - acc.left)
@@ -2378,7 +2378,7 @@ public func paintAa_realBlitAntiRect(_ acc: Acc, _ x: Double, _ y: Double, _ wid
 public func paintAa_realOnDevice(_ acc: Acc) throws -> Void {
   // ts: packages/layout/src/paint-aa.ts:1720
   if (acc.kind == paintAa_KIND_MASK) {
-    throw JsError(message: S.s373)
+    throw JsError(message: S.s380)
   }
 }
 
@@ -3284,7 +3284,7 @@ public func paintAa_antiFillPath(_ dev: Device, _ path: AaPath, _ tileClip: Pain
     }
     // ts: packages/layout/src/paint-aa.ts:2376
     if (!curves) {
-      throw JsError(message: S.s374)
+      throw JsError(message: S.s381)
     }
     let acc: Acc = try paintAa_makeAcc(paintAa_KIND_MASK, dev, ir, tileClip, faults)
     try paintAa_aaaFillPath(path, tileClip, acc, ir.top, ir.bottom, true, contained)
@@ -3522,7 +3522,7 @@ public func paintAa_sqrt64(_ x: Double) throws -> Double {
   }
   // ts: packages/layout/src/paint-aa.ts:2513
   if (!(x > 0.0)) {
-    throw JsError(message: S.s372)
+    throw JsError(message: S.s379)
   }
   var xs: Double = x
   var scale: Double = 1.0
