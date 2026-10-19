@@ -33,6 +33,7 @@ import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LINE_CLAMP } from './fixture-groups/line-clamp.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
+import { LIST_MARKERS } from './fixture-groups/list-markers.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MASK } from './fixture-groups/mask.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
@@ -167,6 +168,7 @@ export const GROUPS = {
   interaction: INTERACTION,
   'line-clamp': LINE_CLAMP,
   'list-items': LIST_ITEMS,
+  'list-markers': LIST_MARKERS,
   'logical-props': LOGICAL_PROPS,
   mask: MASK,
   media: MEDIA,
