@@ -171,8 +171,8 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   ...Object.fromEntries([...MASK_LONGHANDS, ...MASK_SHORTHANDS].map((p) => [p, '<any-value>'])),
   // The overscroll, scroll-snap, containment and container-query families: Dragon accepts their initial values alone and refuses
   // every other value where it applies (analysis/scroll-containment.ts), so the grammar takes any value, and a value webref's grammar
-  // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
-  // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
+  // misses (or lists though Chrome 145 lacks it, as scroll-snap-type: pair) is refused, never dropped where Chrome would apply it.
+  // Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
   // Blink's border image parsers (longhands_custom.cc BorderImageOutset through BorderImageWidth and WebkitBorderImage,
   // shorthands_custom.cc BorderImage). Dragon accepts each border image longhand only at its initial value and refuses every other
@@ -180,6 +180,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // refused, never dropped where Chrome would apply it. webref has no -webkit-border-image. Pinned against Chrome by
   // packages/parity/test/border-image-parse.test.ts.
   ...Object.fromEntries([...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS].map((p) => [p, '<any-value>'])),
+  // Blink's overscroll-behavior and overflow-anchor keywords (css_properties.json5), which Dragon accepts in full: no chain, which
+  // css-overscroll-1 adds and Chrome 145 does not parse. Pinned against Chrome by packages/parity/test/overscroll-parse.test.ts.
+  'overscroll-behavior': '[ auto | contain | none ]{1,2}',
+  ...Object.fromEntries(['overscroll-behavior-x', 'overscroll-behavior-y', 'overscroll-behavior-inline', 'overscroll-behavior-block'].map((p) => [p, 'auto | contain | none'])),
+  'overflow-anchor': 'auto | none',
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',

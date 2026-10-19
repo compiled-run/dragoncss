@@ -1,4 +1,4 @@
-// The value parsers of the families Dragon accepts at their initial values alone (overscroll.ts, scroll-snap.ts, containment.ts,
+// The value parsers of the families Dragon accepts at their initial values alone (scroll-snap.ts, containment.ts,
 // container-query.ts). A value that spells the initial value parses to it; any other value is kept as written and refused where it
 // applies (analysis/scroll-containment.ts). Their grammar takes any value (scripts/gen-css-grammar.ts), so Dragon never drops a
 // declaration Chrome keeps; packages/parity/test/scroll-containment-parse.test.ts pins the accepted spellings against Chrome 145.

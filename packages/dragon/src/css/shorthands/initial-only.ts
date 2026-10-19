@@ -9,7 +9,8 @@ const hooked = (): never => {
 };
 
 export const INITIAL_ONLY_SHORTHANDS = {
-  'overscroll-behavior': { longhands: ['overscroll-behavior-x', 'overscroll-behavior-y'], expand: hooked },
+  // The shorthand sets -inline and -block with -x and -y, their logical pairs (properties/overscroll.ts OVERSCROLL_PAIRS).
+  'overscroll-behavior': { longhands: ['overscroll-behavior-x', 'overscroll-behavior-inline', 'overscroll-behavior-y', 'overscroll-behavior-block'], expand: hooked },
   'scroll-padding': { longhands: SCROLL_SNAP_SHORTHAND_LONGHANDS['scroll-padding'], expand: hooked },
   'scroll-padding-inline': { longhands: SCROLL_SNAP_SHORTHAND_LONGHANDS['scroll-padding-inline'], expand: hooked },
   'scroll-padding-block': { longhands: SCROLL_SNAP_SHORTHAND_LONGHANDS['scroll-padding-block'], expand: hooked },

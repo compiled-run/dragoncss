@@ -138,7 +138,7 @@ const FAMILIES = [
   family('filter', FILTER_LONGHANDS, FILTER_SHORTHANDS, FILTER_INHERITED, FILTER_ASPECTS, FILTER_CONTAINER, FILTER_TEXT_ROLE),
   // PNT2 (css-transforms-2 §6, §7): backface-visibility, transform-style and transform-box, initial values only, after filter.
   family('transform-extra', TRANSFORM_EXTRA_LONGHANDS, TRANSFORM_EXTRA_SHORTHANDS, TRANSFORM_EXTRA_INHERITED, TRANSFORM_EXTRA_ASPECTS, TRANSFORM_EXTRA_CONTAINER, TRANSFORM_EXTRA_TEXT_ROLE),
-  // css-overscroll-1, css-scroll-anchoring-1: overscroll-behavior and overflow-anchor, initial values only, after transform-extra.
+  // css-overscroll-1, css-scroll-anchoring-1: overscroll-behavior and overflow-anchor, after transform-extra.
   family('overscroll', OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS, OVERSCROLL_INHERITED, OVERSCROLL_ASPECTS, OVERSCROLL_CONTAINER, OVERSCROLL_TEXT_ROLE),
   // css-scroll-snap-1: scroll-padding, scroll-margin and scroll snapping, initial values only, after overscroll.
   family('scroll-snap', SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS, SCROLL_SNAP_INHERITED, SCROLL_SNAP_ASPECTS, SCROLL_SNAP_CONTAINER, SCROLL_SNAP_TEXT_ROLE),

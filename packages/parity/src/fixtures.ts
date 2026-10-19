@@ -47,6 +47,7 @@ import { REPLACED } from './fixture-groups/replaced.ts';
 import { RESIZE } from './fixture-groups/resize.ts';
 import { SCROLL_CONTAINMENT } from './fixture-groups/scroll-containment.ts';
 import { SCROLLBAR } from './fixture-groups/scrollbar.ts';
+import { OVERSCROLL } from './fixture-groups/overscroll.ts';
 import { SELECTION } from './fixture-groups/selection.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHADOW } from './fixture-groups/shadow.ts';
@@ -182,6 +183,7 @@ export const GROUPS = {
   resize: RESIZE,
   'scroll-containment': SCROLL_CONTAINMENT,
   scrollbar: SCROLLBAR,
+  overscroll: OVERSCROLL,
   selection: SELECTION,
   selectors: SELECTORS,
   shadow: SHADOW,

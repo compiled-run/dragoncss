@@ -1,4 +1,4 @@
-// The overscroll, scroll-snap, containment and container-query parse against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES,
+// The scroll-snap, containment and container-query parse against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES,
 // css/properties/initial-only.ts): Dragon drops no value Chrome keeps, and every value Dragon accepts as initial computes in Chrome to
 // the initial values of the longhands it sets, as Dragon's own longhands do. Every other value is kept and then refused
 // (analysis/scroll-containment.ts), so only the accepted values' computed values are compared. Each planted reading must be caught.
@@ -7,12 +7,11 @@ import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { CONTAINER_QUERY_LONGHANDS } from '../../dragon/src/css/properties/container-query.ts';
 import { CONTAINMENT_LONGHANDS } from '../../dragon/src/css/properties/containment.ts';
-import { OVERSCROLL_LONGHANDS } from '../../dragon/src/css/properties/overscroll.ts';
 import { SCROLL_SNAP_LONGHANDS } from '../../dragon/src/css/properties/scroll-snap.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
 
 const SOURCE = { uri: 'dragon-source://test/scroll-containment.css', revision: 'r1', hash: 'sha256:0' };
-const LONGHANDS: readonly string[] = [...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS];
+const LONGHANDS: readonly string[] = [...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS];
 
 /** code: Dragon's diagnostic, or null; longhands: the longhands Dragon sets as [property, text] when every one is initial, else null. */
 type Item = { readonly name: string; readonly v: string; readonly code: string | null; readonly longhands: readonly (readonly [string, string])[] | null };
@@ -31,12 +30,6 @@ function item(name: string, v: string): Item {
 }
 
 const VALUES: { readonly [name: string]: readonly string[] } = {
-  'overscroll-behavior': ['auto', 'AUTO', 'auto auto', 'auto contain', 'none', 'chain', 'auto auto auto'],
-  'overscroll-behavior-x': ['auto', 'Auto', 'contain', 'none', 'chain', 'auto auto'],
-  'overscroll-behavior-y': ['auto', 'contain'],
-  'overscroll-behavior-inline': ['auto', 'none'],
-  'overscroll-behavior-block': ['AUTO', 'contain'],
-  'overflow-anchor': ['auto', 'AUTO', 'none', 'visible'],
   'scroll-padding': ['auto', 'auto auto', 'auto auto auto', 'AUTO auto auto Auto', 'auto auto auto auto auto', '0', '10px', '-1px', '10%'],
   'scroll-padding-top': ['auto', 'AUTO', '0', '4px', '-4px'],
   'scroll-padding-right': ['auto', '10%'],
@@ -75,7 +68,7 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
 };
 
 /** How many of VALUES Dragon accepts as initial (pinned so a parser change that accepts more or fewer is seen). */
-const ACCEPTED = 77;
+const ACCEPTED = 67;
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {
@@ -88,7 +81,7 @@ function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   });
 }
 
-describe('overscroll, scroll-snap, containment and container-query: Chrome 145 parsing', () => {
+describe('scroll-snap, containment and container-query: Chrome 145 parsing', () => {
   type Browser = { newPage(): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown> }>; close(): Promise<void> };
 
   it('Dragon drops no value Chrome keeps, every accepted value computes to the initial values, and the plants are caught', async () => {
@@ -98,7 +91,6 @@ describe('overscroll, scroll-snap, containment and container-query: Chrome 145 p
       { name: 'paddingLengthReadAsInitial', items: [{ name: 'scroll-padding-top', v: '4px', code: null, longhands: [['scroll-padding-top', 'auto']] }] },
       { name: 'marginEmReadAsInitial', items: [{ name: 'scroll-margin-top', v: '1em', code: null, longhands: [['scroll-margin-top', '0px']] }] },
       { name: 'containerTypeReadAsInitial', items: [{ name: 'container', v: 'none / size', code: null, longhands: [['container-name', 'none'], ['container-type', 'normal']] }] },
-      { name: 'threeValueAccepted', items: [{ name: 'overscroll-behavior', v: 'auto auto auto', code: null, longhands: [['overscroll-behavior-x', 'auto'], ['overscroll-behavior-y', 'auto']] }] },
     ];
     const sets = [real, ...planted.map((p) => p.items)];
     const { launchChrome } = (await import(new URL('../src/chrome.ts', import.meta.url).href)) as { launchChrome: () => Promise<Browser> };
@@ -124,7 +116,7 @@ describe('overscroll, scroll-snap, containment and container-query: Chrome 145 p
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
     expect(real.filter((it) => it.code !== null)).toEqual([]);
     expect(real.filter((it) => it.longhands !== null).length).toBe(ACCEPTED);
-    expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThan(120);
+    expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThan(100);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
   }, 120_000);
 });
