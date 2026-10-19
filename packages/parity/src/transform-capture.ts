@@ -24,14 +24,27 @@ export const QUAD_DPRS: readonly number[] = [1, 2, 3, 2.625];
 // capture.ts imports this module, and dpr.ts reaches capture.ts, so dpr.ts is imported where it is used, never at the top.
 export const dprLabel = (dpr: number): string => `dpr-${dpr}`;
 
+/** The properties that make an element transformed (css-transforms-2 §4): the twin sets each to none. */
+export const TRANSFORM_PROPERTIES: readonly string[] = ['transform', 'translate', 'rotate', 'scale'];
+
+/**
+ * The data-dragon-id of every element of the page whose transform, translate, rotate or scale is not none, in document order: the
+ * elements the transform twin restyles. frame-capture.ts refuses a sample with one, since the twin would restyle the running script.
+ */
+export async function transformedIds(page: Pick<Page, 'evaluate'>): Promise<string[]> {
+  return page.evaluate((ps) => Array.from(document.querySelectorAll('[data-dragon-id]'))
+    .filter((el) => ps.some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none'))
+    .map((el) => el.getAttribute('data-dragon-id') as string), [...TRANSFORM_PROPERTIES]);
+}
+
 /**
  * The twin step of captureFixture (capture.ts): when an element's computed transform is not none, returns every element's computed
  * values for props read on the untouched page and applies the twin; returns null (and changes nothing) when no element is transformed.
  */
 export async function applyTransformTwin(page: Page, props: readonly string[]): Promise<ReadonlyMap<string, { readonly [p: string]: string }> | null> {
-  const computed = await page.evaluate((ps) => {
+  const computed = await page.evaluate(({ ps, moving }) => {
     const els = Array.from(document.querySelectorAll('[data-dragon-id]')) as HTMLElement[];
-    const moved = (el: Element): boolean => ['transform', 'translate', 'rotate', 'scale'].some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none');
+    const moved = (el: Element): boolean => moving.some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none');
     const transformed = els.filter(moved);
     if (transformed.length === 0) return null;
     const out: [string, Record<string, string>][] = [];
@@ -42,13 +55,13 @@ export async function applyTransformTwin(page: Page, props: readonly string[]): 
       out.push([el.getAttribute('data-dragon-id') as string, values]);
     }
     for (const el of transformed) {
-      for (const p of ['transform', 'translate', 'rotate', 'scale']) el.style.setProperty(p, 'none', 'important');
+      for (const p of moving) el.style.setProperty(p, 'none', 'important');
       el.style.setProperty('will-change', 'transform', 'important');
     }
     return out;
-  }, [...props]);
+  }, { ps: [...props], moving: [...TRANSFORM_PROPERTIES] });
   if (computed === null) return null;
-  const twin = await page.evaluate(() => Array.from(document.querySelectorAll('[data-dragon-id]')).filter((el) => ['transform', 'translate', 'rotate', 'scale'].some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none')).map((el) => el.getAttribute('data-dragon-id')));
+  const twin = await transformedIds(page);
   if (twin.length > 0) throw new Error(`the transform twin left ${twin.join(', ')} transformed`);
   return new Map(computed);
 }

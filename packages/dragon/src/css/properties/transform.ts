@@ -316,17 +316,33 @@ export const originText = (o: TransformOriginDecl): string => `${lengthText(o.x)
 /** The canonical text of a function list: each function with its arguments as written (lowercase names and units). */
 export const transformListText = (fns: readonly TransformFnDecl[]): string => fns.map((f) => f.text).join(' ');
 
+/** A token of a rotation axis: an axis keyword or a vector component. */
+const isAxisToken = (t: CssNode): boolean => t.type === 'Identifier' || t.type === 'Number';
+
+/** Whether rotation axis tokens name z: none (the default), the keyword z, or a vector 0 0 k with k > 0. */
+function isZAxis(axis: readonly CssNode[]): boolean {
+  if (axis.length === 0) return true;
+  if (axis.length === 1) return axis[0]?.type === 'Identifier' && String(axis[0]['name']).toLowerCase() === 'z';
+  if (axis.length !== 3 || axis.some((t) => t.type !== 'Number')) return false;
+  const [x, y, z] = axis.map((t) => Number(t['value']));
+  return x === 0 && y === 0 && (z as number) > 0;
+}
+
 /**
  * The one function a translate, rotate or scale value stands for (css-transforms-2 §4): translate(x, y), rotate(angle) or
- * scale(x, y), its text the canonical value ("x y", "<deg>deg", "sx sy"). A rotation axis, a non-zero z translation and a z scale
- * other than 1 are refused as 3D.
+ * scale(x, y), its text the canonical value ("x y", "<deg>deg", "sx sy"). A rotation axis other than z, a non-zero z translation and
+ * a z scale other than 1 are refused as 3D.
  */
 function readIndividual(property: (typeof INDIVIDUAL_TRANSFORMS)[number], tokens: readonly CssNode[]): Read<TransformFnDecl> {
   const [a, b, c] = tokens as readonly (CssNode | undefined)[];
   if (a === undefined) return no(tokens[0] as CssNode, `${property} has no value`);
   if (property === 'rotate') {
-    if (tokens.length !== 1) return no(a, `a rotation axis turns the box out of the plane: ${PNT2_M}`);
-    const deg = readAngle(a);
+    // The axis is z, or a vector 0 0 k with k > 0, before or after the angle: Chrome 145 computes those to the angle alone, a 2D
+    // rotation. Any other axis (x, y, a tilted vector, or 0 0 k with k <= 0, which Chrome keeps as written) is refused at the axis.
+    const angleAt = tokens.length === 1 || !isAxisToken(a) ? 0 : tokens.length - 1;
+    const axis = tokens.filter((_, i) => i !== angleAt);
+    if (!isZAxis(axis)) return no(axis[0] as CssNode, `a rotation axis other than z turns the box out of the plane: ${PNT2_M}`);
+    const deg = readAngle(tokens[angleAt] as CssNode);
     return deg.ok ? ok({ kind: 'rotate', deg: deg.value, text: `${cssNumberText(deg.value)}deg` }) : deg;
   }
   if (property === 'translate') {

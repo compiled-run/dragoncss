@@ -251,8 +251,10 @@ export type AnimationInput = {
 };
 
 const KIND_LABEL = (k: AnimationKind): string => (k.kind === 'length' ? `length (${k.range})` : k.kind);
-// The spec's ANIM-p row: opacity and transform are admitted by ANIM-b2, so their refusals name that package.
-const PACKAGE_OF = (p: string): string => (p === 'opacity' || p === 'transform' ? 'ANIM-b2' : 'ANIM-p');
+// The spec's ANIM-p row: opacity, transform and the individual transforms (translate, rotate, scale) are admitted by ANIM-b2, so
+// their refusals name that package.
+const ANIM_B2: ReadonlySet<string> = new Set(['opacity', 'transform', 'translate', 'rotate', 'scale']);
+const PACKAGE_OF = (p: string): string => (ANIM_B2.has(p) ? 'ANIM-b2' : 'ANIM-p');
 
 /**
  * CSS2 §9.2.2: an element other than the root whose display is inline after blockification is an inline box (INL1a). The runtimes

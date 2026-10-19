@@ -62,13 +62,21 @@ describe('PNT2: translate, rotate and scale', () => {
       { fn: 'translateX', x: px(4), y: px(0), angle: 0, sx: 1, sy: 1 },
     ]);
     expect(ops(compile('.a { rotate: -45deg; }'))).toEqual([{ fn: 'rotate', x: px(0), y: px(0), angle: -45, sx: 1, sy: 1 }]);
+    // A z axis, as a keyword or a vector 0 0 k with k > 0, before or after the angle, is the 2D rotation (Chrome 145 computes it to the angle).
+    for (const v of ['z 30deg', '30deg z', 'Z 30deg', '0 0 1 30deg', '0 0 2 30deg', '30deg 0 0 0.5']) {
+      expect(errors(compile(`.a { rotate: ${v}; }`)), v).toEqual([]);
+      expect(ops(compile(`.a { rotate: ${v}; }`)), v).toEqual([{ fn: 'rotate', x: px(0), y: px(0), angle: 30, sx: 1, sy: 1 }]);
+    }
     expect(ops(compile('.a { scale: none; }'))).toBeUndefined();
   });
 
   it('refuse a z component, a rotation axis and a composition that skews, naming PNT2-m', () => {
     const M = 'skew, 3D functions and perspective are not supported yet (package PNT2-m)';
     expect(errors(compile('.a { translate: 1px 2px 3px; }'))).toEqual([`DRAGON_UNSUPPORTED_VALUE "3px" translate: 3px is unsupported: a z translation moves the box off the plane: ${M}`]);
-    expect(errors(compile('.a { rotate: z 30deg; }'))).toEqual([`DRAGON_UNSUPPORTED_VALUE "z" rotate: z is unsupported: a rotation axis turns the box out of the plane: ${M}`]);
+    expect(errors(compile('.a { rotate: x 30deg; }'))).toEqual([`DRAGON_UNSUPPORTED_VALUE "x" rotate: x is unsupported: a rotation axis other than z turns the box out of the plane: ${M}`]);
+    expect(errors(compile('.a { rotate: 30deg 0 1 0; }'))).toEqual([`DRAGON_UNSUPPORTED_VALUE "0" rotate: 0 is unsupported: a rotation axis other than z turns the box out of the plane: ${M}`]);
+    // Chrome 145 keeps 0 0 -1 30deg as written rather than computing it to -30deg, so it is refused too.
+    expect(errors(compile('.a { rotate: 0 0 -1 30deg; }'))).toEqual([`DRAGON_UNSUPPORTED_VALUE "0" rotate: 0 is unsupported: a rotation axis other than z turns the box out of the plane: ${M}`]);
     expect(errors(compile('.a { scale: 1 1 2; }'))).toEqual([`DRAGON_UNSUPPORTED_VALUE "2" scale: 2 is unsupported: a z scale is a 3D transform: ${M}`]);
     // scale applies before transform, so a non-uniform scale then a rotation skews; a rotation before it does not.
     expect(errors(compile('.a { scale: 2 1; transform: rotate(30deg); }'))).toEqual([
