@@ -1,0 +1,26 @@
+{
+  "case": "text-font-variant-caps-ahem-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"sc:text0","lines":[[0,11]]},
+    {"id":"fv:text0","lines":[[0,6],[6,8]]},
+    {"id":"f15:text0","lines":[[0,8],[8,11]]},
+    {"id":"s13:text0","lines":[[0,5]]},
+    {"id":"s16:text0","lines":[[0,5]]},
+    {"id":"narrow:text0","lines":[[0,8],[8,10]]},
+    {"id":"nsyn:text0","lines":[[0,5]]},
+    {"id":"fsn:text0","lines":[[0,5]]},
+    {"id":"up:text0","lines":[[0,5]]},
+    {"id":"inl:text0","lines":[[0,3]]},
+    {"id":"sp:text0","lines":[[0,5]]},
+    {"id":"inl:text1","lines":[[0,3]]},
+    {"id":"inhn:text0","lines":[[0,5]]},
+    {"id":"ra:text0","lines":[[0,5]]},
+    {"id":"rb:text0","lines":[[0,2]]},
+    {"id":"ca:text0","lines":[[0,8]]},
+    {"id":"cb:text0","lines":[[0,2]]},
+    {"id":"arow:text0","lines":[[0,4]]},
+    {"id":"arb:text0","lines":[[0,2]]},
+    {"id":"sha:text0","lines":[[0,6],[6,8]]}
+  ]
+}

@@ -137,38 +137,38 @@ export function findReusable(runs: readonly Run[], branch: string, head: string)
   return null;
 }
 
-/** regen-on-ci.yml's own REGEN_BRANCH_SLOTS and LANDING_YIELD_SECONDS: the branch regens it lets run at once, and how long one waits for a landing. */
-export const REGEN_BRANCH_SLOTS = 2;
-export const LANDING_YIELD_S = 5400;
+/** regen-on-ci.yml's own REGEN_BRANCH_SLOTS and DEVICE_YIELD_SECONDS: the branch regens it lets run at once, and how long one waits for device lanes. */
+export const REGEN_BRANCH_SLOTS = 3;
+export const DEVICE_YIELD_S = 5400;
 export const SLOT_POLL_S = 120;
 
 /**
- * The branch regens (dispatched in branch mode) and the landing's runs (a pull request's regen label, a patch-mode regen, a device
- * lanes run) queued or running now: what regen-on-ci.yml's "Wait for a branch regen slot" counts, with the same per-status lists.
+ * The branch regens (dispatched in branch mode) and the device lanes runs queued or running now: what regen-on-ci.yml's "Wait for a
+ * branch regen slot" counts, with the same per-status lists. The landing's own regens (a pull request's regen label, a patch-mode
+ * regen) run one round at a time on one macOS runner now that the landing does not wait on device lanes, so they hold nothing back.
  */
-export function slotState(deps: Deps, repo: string): { readonly branch: number; readonly landing: number } {
+export function slotState(deps: Deps, repo: string): { readonly branch: number; readonly devices: number } {
   const seen = new Set<number>();
   let branch = 0;
-  let landing = 0;
+  let devices = 0;
   for (const st of ['queued', 'in_progress', 'waiting', 'pending']) {
     for (const r of parseRuns(deps.gh(['api', `repos/${repo}/actions/workflows/${WORKFLOW}/runs?status=${st}&per_page=100`]))) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
       if (r.event === 'workflow_dispatch' && r.title.startsWith('regen of branch ')) branch++;
-      else if (r.event === 'pull_request' || (r.event === 'workflow_dispatch' && /^regen of [0-9a-f]{40}$/.test(r.title))) landing++;
     }
     for (const r of parseRuns(deps.gh(['api', `repos/${repo}/actions/workflows/device-lanes.yml/runs?status=${st}&per_page=100`]))) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
-      landing++;
+      devices++;
     }
   }
-  return { branch, landing };
+  return { branch, devices };
 }
 
 /**
- * Waits here, before dispatching, while a landing run is queued or running or every branch regen slot is taken, for at most
- * LANDING_YIELD_S from the first wait for this branch and head (shared by --once polls); then the dispatch goes and the run waits
+ * Waits here, before dispatching, while a device lanes run is queued or running or every branch regen slot is taken, for at most
+ * DEVICE_YIELD_S from the first wait for this branch and head (shared by --once polls); then the dispatch goes and the run waits
  * for its slot itself. A dispatched run waits inside its resolve job, which holds a runner the whole time: a few waiting runs
  * filled the repository's concurrent jobs and queued the landing's own rounds. Returns 'go' at once, 'waited' after sleeping (the
  * caller reads the head and the runs again), or 'pending' with --once (not dispatched). A failed listing dispatches anyway; the
@@ -183,20 +183,20 @@ export function waitForSlot(deps: Deps, repo: string, key: string, o: { readonly
     return slept ? 'waited' : 'go';
   };
   for (;;) {
-    let s: { readonly branch: number; readonly landing: number };
+    let s: { readonly branch: number; readonly devices: number };
     try {
       s = slotState(deps, repo);
     } catch (e) {
       deps.log(`listing the queued and running regens failed (${e instanceof Error ? e.message : String(e)}); dispatching, and the run waits for its slot itself`);
       return go();
     }
-    const busy = s.landing > 0 ? `${s.landing} landing run(s) are queued or running` : s.branch >= REGEN_BRANCH_SLOTS ? `${s.branch} branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once)` : null;
+    const busy = s.devices > 0 ? `${s.devices} device lanes run(s) are queued or running` : s.branch >= REGEN_BRANCH_SLOTS ? `${s.branch} branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once)` : null;
     // The wait starts at the first busy poll (kept across --once polls), never at a dispatch that did not wait.
     if (busy !== null) t0 ??= deps.since?.(key) ?? deps.now();
-    const why = busy !== null && t0 !== null && deps.now() - t0 < LANDING_YIELD_S * 1000 ? busy : null;
+    const why = busy !== null && t0 !== null && deps.now() - t0 < DEVICE_YIELD_S * 1000 ? busy : null;
     if (why === null) return go();
     if (o.once) {
-      deps.log(`PENDING (not dispatched): ${why}; run the same command again (it dispatches anyway ${LANDING_YIELD_S / 60} minutes after the first wait)`);
+      deps.log(`PENDING (not dispatched): ${why}; run the same command again (it dispatches anyway ${DEVICE_YIELD_S / 60} minutes after the first wait)`);
       return 'pending';
     }
     if (why !== told) deps.log(`waiting to dispatch: ${why}`);

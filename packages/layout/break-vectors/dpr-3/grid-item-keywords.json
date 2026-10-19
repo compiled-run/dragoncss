@@ -1,0 +1,26 @@
+{
+  "case": "grid-item-keywords",
+  "dpr": 3,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,2]]},
+    {"id":"a2:text0","lines":[[0,1]]},
+    {"id":"a3:text0","lines":[[0,3]]},
+    {"id":"b1a:text0","lines":[[0,1]]},
+    {"id":"b1b:text0","lines":[[0,2]]},
+    {"id":"b3:text0","lines":[[0,1]]},
+    {"id":"b4:text0","lines":[[0,2]]},
+    {"id":"c1:text0","lines":[[0,5]]},
+    {"id":"c2:text0","lines":[[0,3]]},
+    {"id":"d1a:text0","lines":[[0,8]]},
+    {"id":"d2:text0","lines":[[0,1]]},
+    {"id":"e1:text0","lines":[[0,1]]},
+    {"id":"e2:text0","lines":[[0,1]]},
+    {"id":"e3:text0","lines":[[0,1]]},
+    {"id":"f1:text0","lines":[[0,1]]},
+    {"id":"f2:text0","lines":[[0,1]]},
+    {"id":"h1:text0","lines":[[0,1]]},
+    {"id":"h3:text0","lines":[[0,2]]},
+    {"id":"h4:text0","lines":[[0,1]]},
+    {"id":"h6:text0","lines":[[0,1]]}
+  ]
+}

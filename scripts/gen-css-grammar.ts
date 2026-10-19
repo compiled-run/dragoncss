@@ -17,6 +17,7 @@ import { OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS } from '../packages/dragon/
 import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../packages/dragon/src/css/properties/scroll-snap.ts';
 import { CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS } from '../packages/dragon/src/css/properties/containment.ts';
 import { CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS } from '../packages/dragon/src/css/properties/container-query.ts';
+import { BORDER_IMAGE_LONGHANDS, BORDER_IMAGE_SHORTHANDS } from '../packages/dragon/src/css/properties/border-image.ts';
 
 type WebrefEntry = {
   name: string;
@@ -111,9 +112,9 @@ const SUBSET = [
   'text-shadow',
   // FX: filter (filter-effects-1 §5), after text-shadow, as LONGHANDS registers it.
   'filter',
-  // PNT2: the 3D transform longhands (css-transforms-2 §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
-  // Chrome 145's (css_properties.json5 keywords).
-  'backface-visibility', 'transform-style', 'transform-box',
+  // PNT2: the 3D transform longhands (css-transforms-2 §5, §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
+  // Chrome 145's (css_properties.json5 keywords); perspective-origin's <position> is parsed as object-position's (values.ts positionValue).
+  'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
@@ -126,6 +127,9 @@ const SUBSET = [
   ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
   // The initial-only families (css/properties/initial-only.ts), after the mask family, as LONGHANDS registers them.
   ...INITIAL_ONLY_PROPERTIES,
+  // MISC-PAINT: the border image longhands (css-backgrounds-3 §4), then border-image and -webkit-border-image, after mask, as LONGHANDS
+  // registers them.
+  ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
 ] as const;
 
 /**
@@ -168,6 +172,12 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
   // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
+  // Blink's border image parsers (longhands_custom.cc BorderImageOutset through BorderImageWidth and WebkitBorderImage,
+  // shorthands_custom.cc BorderImage). Dragon accepts each border image longhand only at its initial value and refuses every other
+  // value where it applies (analysis/border-image.ts), so the grammar takes any value: a border image webref's grammar misses is
+  // refused, never dropped where Chrome would apply it. webref has no -webkit-border-image. Pinned against Chrome by
+  // packages/parity/test/border-image-parse.test.ts.
+  ...Object.fromEntries([...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS].map((p) => [p, '<any-value>'])),
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',
@@ -240,6 +250,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
   rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
   ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  // Chrome parses none and non-scaling-stroke only (css_properties.json5 keywords); webref adds non-scaling-size, non-rotation and
+  // fixed-position, which Chrome rejects.
+  'vector-effect': 'none | non-scaling-stroke',
 };
 
 /**
