@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { objectBoundingBox } from '@dragon/layout';
 import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/elements/svg-path.ts';
-import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgShapeEmpty, svgZeroLengthSubpath } from '../src/analysis/elements/svg.ts';
+import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgRectRadii, svgShapeEmpty, svgZeroLengthSubpath } from '../src/analysis/elements/svg.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, svgScenes } from '../src/internal.ts';
 import { svgDashPhase, svgShapePath } from '../src/lower/paint/image.ts';
 import { svgPaintAlpha } from '../src/css/color.ts';
@@ -587,7 +587,7 @@ describe('the svg model in a compile', () => {
     expect(svgAttributeRefusal('path', 'clip-rule', 'bogus')).not.toBeNull();
     expect(svgAttributeRefusal('rect', 'clip-rule', 'evenodd')).toBeNull();
   });
-  it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect, and a negative attribute; a negative in CSS is invalid', () => {
+  it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect; a negative in CSS is invalid', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];
     const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
     const all = (m: string) => ['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${m}`);
@@ -595,8 +595,19 @@ describe('the svg model in a compile', () => {
     expect(refused('rect { rx: 10%; }')).toEqual(all('rx: 10% on <rect> r is unsupported: a percentage rx is relative to the viewport width, which is not built yet (package SVG-units)'));
     expect(refused('rect { ry: calc(1px + 2px); }')).toEqual(all('ry: calc(1px + 2px) on <rect> r is unsupported: a calculated ry is not resolved yet (package SVG-units)'));
     expect(refused('rect { rx: -2px; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "-2px" is not a valid value for rx (@webref/css grammar)']);
-    expect(svgAttributeRefusal('rect', 'ry', '-1')).toContain('negative');
     expect(svgAttributeRefusal('rect', 'rx', '2px')).toBeNull();
     expect(svgAttributeRefusal('rect', 'rx', '10%')).toContain('SVG-units');
+    expect(svgAttributeRefusal('rect', 'ry', '5em')).toContain('SVG-units');
+    expect(svgAttributeRefusal('rect', 'rx', '5 px')).toContain('SVG-units');
+  });
+  it('SVG-rrect: a negative rx or ry attribute stays the computed value and paints as auto; one with no digit (auto, a word, empty) computes to 0, as in Chrome', () => {
+    for (const t of ['-1', 'auto', 'AUTO', 'inherit', 'abc', '']) for (const n of ['rx', 'ry']) expect(svgAttributeRefusal('rect', n, t), `${n}="${t}"`).toBeNull();
+    expect(svgAttributeRefusal('circle', 'r', '-1')).toContain('negative');
+    expect(svgPresentationHints('rect', new Map([['rx', '-6'], ['ry', 'auto']]))).toEqual(new Map([['rx', { kind: 'length', value: -6, unit: 'px' }], ['ry', { kind: 'length', value: 0, unit: 'px' }]]));
+    expect(svgRectRadii(-6, 9, 40, 30)).toEqual({ rx: 9, ry: 9 });
+    expect(svgRectRadii(8, -5, 40, 30)).toEqual({ rx: 8, ry: 8 });
+    expect(svgRectRadii(-6, 'auto', 40, 30)).toEqual({ rx: 0, ry: 0 });
+    expect(svgRectRadii(-5, 80, 100, 60)).toEqual({ rx: 50, ry: 30 });
+    expect(svgRectRadii(0, 10, 40, 30)).toEqual({ rx: 0, ry: 10 });
   });
 });

@@ -121,9 +121,19 @@ export function svgAttributeRefusal(tag: string, name: string, text: string): st
     return d.ok ? null : d.arc ? d.reason : `the path data does not parse (${d.reason}); Chrome would draw it only up to the error`;
   }
   const v = parseSvgLength(text);
-  if (v === null) return 'only numbers and px lengths are built (package SVG-units)';
-  if ((name === 'width' || name === 'height' || name === 'r' || name === 'rx' || name === 'ry') && v < 0) return 'a negative value is an error, which disables rendering in Chrome';
+  if (v === null) return svgRadiusAttributeOf(name, text) === null ? 'only numbers and px lengths are built (package SVG-units)' : null;
+  if ((name === 'width' || name === 'height' || name === 'r') && v < 0) return 'a negative value is an error, which disables rendering in Chrome';
   return null;
+}
+
+/**
+ * SVG-rrect: the px value a rect's rx or ry attribute hints, or null when the text is a length Dragon does not build (a percentage,
+ * em, a calculation: package SVG-units). Chrome keeps a negative attribute as the computed value and paints it as auto
+ * (svgRectRadii), and computes text with no digit in it (auto, inherit, a word, empty) to 0, as an unparsable length.
+ */
+function svgRadiusAttributeOf(name: string, text: string): number | null {
+  if (name !== 'rx' && name !== 'ry') return null;
+  return parseSvgLength(text) ?? (/[0-9]/.test(text) ? null : 0);
 }
 
 /** The geometry properties each shape tag maps its attributes to (SVG 2 §10.3, §10.4); a rect's width and height are below. */
@@ -147,8 +157,8 @@ export function svgPresentationHints(tag: string, attributes: ReadonlyMap<string
   }
   for (const p of SVG_GEOMETRY_HINTS[tag] ?? []) {
     const text = attributes.get(p);
-    const v = text === undefined ? null : parseSvgLength(text);
-    if (v !== null && !((p === 'r' || p === 'rx' || p === 'ry') && v < 0)) out.set(p, { kind: 'length', value: v, unit: 'px' });
+    const v = text === undefined ? null : p === 'rx' || p === 'ry' ? svgRadiusAttributeOf(p, text) : parseSvgLength(text);
+    if (v !== null && !(p === 'r' && v < 0)) out.set(p, { kind: 'length', value: v, unit: 'px' });
   }
   // An svg's width and height, and a rect's, are geometry properties their attributes map to (SVG 2 §10.4, §11.2).
   if (tag === SVG_TAG || tag === 'rect') {
@@ -188,12 +198,15 @@ function svgLengthOf(el: ResolvedElement, p: 'cx' | 'cy' | 'r' | 'x' | 'y'): num
 
 /**
  * SVG-rrect: a rect's used corner radii from its computed rx and ry, as SVG 2 §10.4 resolves them: an auto radius takes the other's
- * value (both auto are 0), then each is at most half the rect's width or height. Null when one is not resolved yet.
+ * value (both auto are 0), then each is at most half the rect's width or height. A negative radius (only an attribute gives one)
+ * paints as auto, as Chrome paints it. Null when one is not resolved yet.
  */
 export function svgRectRadii(rx: number | 'auto' | null, ry: number | 'auto' | null, width: number, height: number): { readonly rx: number; readonly ry: number } | null {
   if (rx === null || ry === null) return null;
-  const x = rx === 'auto' ? (ry === 'auto' ? 0 : ry) : rx;
-  const y = ry === 'auto' ? x : ry;
+  const ax = rx === 'auto' || rx < 0 ? 'auto' : rx;
+  const ay = ry === 'auto' || ry < 0 ? 'auto' : ry;
+  const x = ax === 'auto' ? (ay === 'auto' ? 0 : ay) : ax;
+  const y = ay === 'auto' ? x : ay;
   return { rx: Math.min(x, width / 2), ry: Math.min(y, height / 2) };
 }
 
