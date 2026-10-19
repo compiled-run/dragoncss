@@ -365,14 +365,18 @@ describe('the stack tree of inline content (INL1a, as the native tree places it)
       expect(['p', 'o', 'i', 'b', 'z'].map(order)).toEqual([...['p', 'o', 'i', 'b', 'z'].map(order)].sort((a, b) => a - b));
     }
   });
-  it('refuses on the native targets only an inline box that would be a stacking context: opacity below 1 or will-change: opacity', () => {
-    for (const css of ['.f20 { opacity: 0; }', '.f20 { will-change: opacity; }']) {
+  it('refuses on the native targets only an inline box that would be a stacking context: opacity below 1, will-change: opacity or isolation: isolate', () => {
+    for (const css of ['.f20 { opacity: 0; }', '.f20 { will-change: opacity; }', '.f20 { isolation: isolate; }']) {
       const errs = compile(css, para).diagnostics.filter((d) => d.severity === 'error');
       expect(errs.map((d) => [d.code, d.target]).sort(), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
       expect(errs[0]?.message, css).toMatch(/on the inline box <span> o makes it a stacking context: the native runtime places an inline box's content beside its view/);
       expectCatalogued(errs);
     }
     expect(compile('.f20 { opacity: 1; }', para).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(compile('.f20 { isolation: auto; }', para).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    // The isolation refusal points at its declaration, and nativePrograms is never reached with an isolated inline box.
+    const iso = compile('.f20 { isolation: isolate; }', para);
+    expect(iso.diagnostics.filter((d) => d.severity === 'error').every((d) => d.origin.kind === 'authored' && d.origin.span.end > d.origin.span.start)).toBe(true);
   });
   it('an inline box is a childless node followed by its content, and never clips (css-overflow-3 §3)', () => {
     const style = (o: Record<string, string>): LayoutBox['style'] => ({ position: 'static', display: 'block', overflowX: 'visible', overflowY: 'visible', ...o }) as unknown as LayoutBox['style'];
