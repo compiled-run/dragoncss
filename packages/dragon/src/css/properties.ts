@@ -46,6 +46,10 @@ import { CLIP_RECT_ASPECTS, CLIP_RECT_CONTAINER, CLIP_RECT_INHERITED, CLIP_RECT_
 import { CLIP_PATH_ASPECTS, CLIP_PATH_CONTAINER, CLIP_PATH_INHERITED, CLIP_PATH_LONGHANDS, CLIP_PATH_SHORTHANDS, CLIP_PATH_TEXT_ROLE } from './properties/clip-path.ts';
 import { MASK_ASPECTS, MASK_CONTAINER, MASK_INHERITED, MASK_LONGHANDS, MASK_SHORTHANDS, MASK_TEXT_ROLE } from './properties/mask.ts';
 import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
+import { OVERSCROLL_ASPECTS, OVERSCROLL_CONTAINER, OVERSCROLL_INHERITED, OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS, OVERSCROLL_TEXT_ROLE } from './properties/overscroll.ts';
+import { SCROLL_SNAP_ASPECTS, SCROLL_SNAP_CONTAINER, SCROLL_SNAP_INHERITED, SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS, SCROLL_SNAP_TEXT_ROLE } from './properties/scroll-snap.ts';
+import { CONTAINMENT_ASPECTS, CONTAINMENT_CONTAINER, CONTAINMENT_INHERITED, CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS, CONTAINMENT_TEXT_ROLE } from './properties/containment.ts';
+import { CONTAINER_QUERY_ASPECTS, CONTAINER_QUERY_CONTAINER, CONTAINER_QUERY_INHERITED, CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS, CONTAINER_QUERY_TEXT_ROLE } from './properties/container-query.ts';
 
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
 export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
@@ -133,6 +137,14 @@ const FAMILIES = [
   family('filter', FILTER_LONGHANDS, FILTER_SHORTHANDS, FILTER_INHERITED, FILTER_ASPECTS, FILTER_CONTAINER, FILTER_TEXT_ROLE),
   // PNT2 (css-transforms-2 §6, §7): backface-visibility, transform-style and transform-box, initial values only, after filter.
   family('transform-extra', TRANSFORM_EXTRA_LONGHANDS, TRANSFORM_EXTRA_SHORTHANDS, TRANSFORM_EXTRA_INHERITED, TRANSFORM_EXTRA_ASPECTS, TRANSFORM_EXTRA_CONTAINER, TRANSFORM_EXTRA_TEXT_ROLE),
+  // css-overscroll-1, css-scroll-anchoring-1: overscroll-behavior and overflow-anchor, initial values only, after transform-extra.
+  family('overscroll', OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS, OVERSCROLL_INHERITED, OVERSCROLL_ASPECTS, OVERSCROLL_CONTAINER, OVERSCROLL_TEXT_ROLE),
+  // css-scroll-snap-1: scroll-padding, scroll-margin and scroll snapping, initial values only, after overscroll.
+  family('scroll-snap', SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS, SCROLL_SNAP_INHERITED, SCROLL_SNAP_ASPECTS, SCROLL_SNAP_CONTAINER, SCROLL_SNAP_TEXT_ROLE),
+  // css-contain-2: contain, content-visibility and the intrinsic sizes, initial values only, after scroll-snap.
+  family('containment', CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS, CONTAINMENT_INHERITED, CONTAINMENT_ASPECTS, CONTAINMENT_CONTAINER, CONTAINMENT_TEXT_ROLE),
+  // css-conditional-5: container-type and container-name, initial values only, after containment.
+  family('container-query', CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS, CONTAINER_QUERY_INHERITED, CONTAINER_QUERY_ASPECTS, CONTAINER_QUERY_CONTAINER, CONTAINER_QUERY_TEXT_ROLE),
   // TXT2-g (notes/T149-txt2-spec.md R11): -webkit-box-orient and -webkit-line-clamp, after text-break.
   family('line-clamp', LINE_CLAMP_LONGHANDS, LINE_CLAMP_SHORTHANDS, LINE_CLAMP_INHERITED, LINE_CLAMP_ASPECTS, LINE_CLAMP_CONTAINER, LINE_CLAMP_TEXT_ROLE),
   // touch-action (pointerevents-3 §10.2), after line-clamp.

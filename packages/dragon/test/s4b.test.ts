@@ -10,6 +10,10 @@ import { applyFix, CATALOGUE, compiledFeatures, createProjectWith, iosLayoutProj
 import { initialValue } from '../src/analysis/resolve.ts';
 import { computed, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
+import { CONTAINER_QUERY_INITIAL } from '../src/css/properties/container-query.ts';
+import { CONTAINMENT_INITIAL } from '../src/css/properties/containment.ts';
+import { OVERSCROLL_INITIAL } from '../src/css/properties/overscroll.ts';
+import { SCROLL_SNAP_INITIAL } from '../src/css/properties/scroll-snap.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 import { floorProblems } from './floor.ts';
 
@@ -89,7 +93,10 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'mask-repeat': ['repeat', 'REPEAT'], 'mask-origin': ['border-box', 'BORDER-BOX'], 'mask-clip': ['border-box', 'Border-Box'], 'mask-composite': ['add', 'ADD'],
       'mask-mode': ['match-source', 'MATCH-SOURCE'],
       // PNT2: the 3D transform longhands, which accept their initial values alone, at those values in two ASCII cases.
-      'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'] };
+      'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'],
+      // The overscroll, scroll-snap, containment and container-query longhands, which accept their initial values alone, at those
+      // values in two spellings.
+      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])) };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);

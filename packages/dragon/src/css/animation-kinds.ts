@@ -11,6 +11,8 @@ import { BORDER_ANIMATION } from './animation-kinds/border.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
 import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
+import { CONTAINER_QUERY_ANIMATION } from './animation-kinds/container-query.ts';
+import { CONTAINMENT_ANIMATION } from './animation-kinds/containment.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
 import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
@@ -27,10 +29,12 @@ import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
 import { MASK_ANIMATION } from './animation-kinds/mask.ts';
 import { OUTLINE_ANIMATION } from './animation-kinds/outline.ts';
 import { OVERFLOW_ANIMATION } from './animation-kinds/overflow.ts';
+import { OVERSCROLL_ANIMATION } from './animation-kinds/overscroll.ts';
 import { POINTER_ANIMATION } from './animation-kinds/pointer.ts';
 import { POSITION_ANIMATION } from './animation-kinds/position.ts';
 import { RADIUS_ANIMATION } from './animation-kinds/radius.ts';
 import { RESIZE_ANIMATION } from './animation-kinds/resize.ts';
+import { SCROLL_SNAP_ANIMATION } from './animation-kinds/scroll-snap.ts';
 import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
@@ -59,6 +63,8 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...BOX_ANIMATION,
   ...CLIP_PATH_ANIMATION,
   ...CLIP_RECT_ANIMATION,
+  ...CONTAINER_QUERY_ANIMATION,
+  ...CONTAINMENT_ANIMATION,
   ...EFFECTS_ANIMATION,
   ...FILTER_ANIMATION,
   ...FLEX_ANIMATION,
@@ -75,10 +81,12 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...MASK_ANIMATION,
   ...OUTLINE_ANIMATION,
   ...OVERFLOW_ANIMATION,
+  ...OVERSCROLL_ANIMATION,
   ...POINTER_ANIMATION,
   ...POSITION_ANIMATION,
   ...RADIUS_ANIMATION,
   ...RESIZE_ANIMATION,
+  ...SCROLL_SNAP_ANIMATION,
   ...SCROLLBAR_ANIMATION,
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
