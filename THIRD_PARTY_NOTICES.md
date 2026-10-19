@@ -10,6 +10,7 @@ Those files are under the licences below, with the copyright lines from their he
 ## Chromium: BSD 3-Clause (the Chromium LICENSE file) (chromium-bsd)
 
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
+- `cc/paint/draw_looper.cc`: Copyright 2024 The Chromium Authors
 - `cc/paint/paint_op_buffer_iterator.cc`: Copyright 2017 The Chromium Authors
 - `cc/trees/layer_tree_settings.cc`: Copyright 2011 The Chromium Authors
 - `third_party/blink/renderer/core/animation/animation_time_delta.h`: Copyright 2018 The Chromium Authors
@@ -82,6 +83,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/text_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/style/display_style.h`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/platform/fonts/opentype/open_type_caps_support.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/script_run_iterator.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/han_kerning.cc`: Copyright 2023 The Chromium Authors
@@ -90,6 +92,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result_view.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/shaping_line_breaker.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/skia/skia_text_metrics.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/platform/fonts/small_caps_iterator.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/web_font_typeface_factory.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/calculation_expression_node.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/calculation_value.cc`: Copyright 2019 The Chromium Authors
@@ -154,6 +157,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkGaussFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkGeometry.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkGeometry.h`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkGlyphRunPainter.cpp`: Copyright 2018 The Android Open Source Project
 - `third_party/skia/src/core/SkMaskBlurFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkMaskFilterBase.cpp`: Copyright 2025 Google LLC
 - `third_party/skia/src/core/SkMatrix.cpp`: Copyright 2006 The Android Open Source Project
@@ -162,14 +166,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkPathPriv.h`: Copyright 2015 Google Inc.
 - `third_party/skia/src/core/SkPathRawShapes.cpp`: Copyright 2025 Google LLC.
 - `third_party/skia/src/core/SkRRect.cpp`: Copyright 2012 Google Inc.
+- `third_party/skia/src/core/SkScalar.cpp`: Copyright 2010 The Android Open Source Project
+- `third_party/skia/src/core/SkScalerContext.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkScan_AAAPath.cpp`: Copyright 2016 The Android Open Source Project
 - `third_party/skia/src/core/SkScan_Antihair.cpp`: Copyright 2011 The Android Open Source Project
 - `third_party/skia/src/core/SkScan_AntiPath.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkStrikeSpec.cpp`: Copyright 2019 The Android Open Source Project
 - `third_party/skia/src/core/SkStroke.cpp`: Copyright 2008 The Android Open Source Project
+- `third_party/skia/src/core/SkTextFormatParams.h`: Copyright 2010 The Android Open Source Project
 - `third_party/skia/src/opts/SkBlitRow_opts.h`: Copyright 2015 Google Inc.
 - `third_party/skia/src/opts/SkRasterPipeline_opts.h`: Copyright 2018 Google Inc.
 - `third_party/skia/src/ports/SkScalerContext_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/ports/SkTypeface_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp`: Copyright 2022 Google LLC
 - `third_party/skia/src/utils/SkDashPath.cpp`: Copyright 2014 Google Inc.
 
