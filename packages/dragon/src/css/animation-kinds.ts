@@ -21,6 +21,7 @@ import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
+import { ISOLATION_ANIMATION } from './animation-kinds/isolation.ts';
 import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
@@ -69,6 +70,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_VARIANT_ANIMATION,
   ...GRID_ANIMATION,
   ...INLINE_ANIMATION,
+  ...ISOLATION_ANIMATION,
   ...LINE_CLAMP_ANIMATION,
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,

@@ -298,10 +298,18 @@ describe('stacking: lowering and emission', () => {
     };
     expect([rank('b'), rank('a')]).toEqual([0, 1]);
   });
+  it('isolation: isolate makes a stacking context in the z-index 0 layer, which holds its negative child; auto makes none', () => {
+    const p = programs('.i { isolation: isolate; height: 10px; } .n { position: relative; z-index: -1; height: 5px; } .u { isolation: auto; height: 10px; }', (r) => [div(r, 'i', ['i'], [div(r, 'n', ['n'])]), div(r, 'u', ['u'], [div(r, 'm', ['n'])])]);
+    const facts = (id: string): unknown => p.uikit.nodes.find((x) => x.id === id)?.facts['stacking'];
+    expect(facts('i')).toMatchObject({ context: 'html', createsContext: true, layer: 'positioned' });
+    expect(facts('n')).toMatchObject({ context: 'i', layer: 'negative', host: 'i' });
+    expect(facts('u')).toMatchObject({ createsContext: false, layer: 'flow' });
+    expect(facts('m')).toMatchObject({ context: 'html', layer: 'negative', host: 'html' });
+  });
   it('writes the placement of every layer item and publishes stacking facts on every box', () => {
     const p = programs('.a { height: 10px; } .z { position: relative; top: 5px; height: 10px; z-index: 1; }', (r) => [div(r, 'a', ['a'], [div(r, 'z', ['z'])]), div(r, 'b', ['a'])]);
     const z = p.uikit.nodes.find((x) => x.id === 'z');
-    expect(z?.writes.filter((w) => w.kind === 'paint-order')).toEqual([expect.objectContaining({ kind: 'paint-order', key: 'dragonStacking.order', technique: 'dragon-owned-paint', host: 'html', bucket: 2, rank: 0, css: ['z-index'] })]);
+    expect(z?.writes.filter((w) => w.kind === 'paint-order')).toEqual([expect.objectContaining({ kind: 'paint-order', key: 'dragonStacking.order', technique: 'dragon-owned-paint', host: 'html', bucket: 2, rank: 0, css: ['z-index', 'isolation'] })]);
     expect(z?.host).toBe('a');
     expect(z?.facts['stacking']).toMatchObject({ context: 'html', createsContext: true, layer: 'positive', host: 'html', clipChain: [] });
     for (const x of p['android-views'].nodes) if (x.kind !== 'text') expect(x.facts['stacking'], x.id).toBeDefined();
