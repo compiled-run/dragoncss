@@ -2,9 +2,11 @@
 // The paint model of pnt1-radius (paint-model.ts: boxes in tree order, Skia's source-over) over the program's writes, where a box that
 // clips a colour to transparent text writes no colour of its own and its glyphs carry the colour (background-clip-text.ts); an Ahem
 // glyph's points show its text colour over what is under it. Every fixture edge is a whole device px at every DPR, so no edge is
-// antialiased, and every colour and glyph point must equal Chrome exactly. Two model faults must each disagree with Chrome somewhere
-// in every case: the glyphs left in their own transparent colour (the clip ignored on the text), and the colour also filling the
-// fill boxes' border box (the clip ignored on the box).
+// antialiased, and every colour and glyph point must equal Chrome exactly. A glyph's ink shows only inside its clipping ancestors'
+// padding boxes, and a text clip box hosts its text in a clip view, as Chrome paints the colour inside the border box only (fill-h's
+// glyphs overflow it). Three model faults must each disagree with Chrome somewhere in every case: the glyphs left in their own
+// transparent colour (the clip ignored on the text), the colour also filling the fill boxes' border box (the clip ignored on the
+// box), and the ink drawn past the clip views.
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram } from 'dragon';
 import { nativePrograms } from 'dragon';
@@ -18,9 +20,9 @@ import type { Rgba } from './paint-model.ts';
 import { boxes, modelAt, over } from './paint-model.ts';
 
 const FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'bg-clip-text')?.fixtures ?? []).filter((f) => f.kind === 'layout');
-const FILL_BOXES = ['fill-a', 'fill-b', 'fill-c', 'fill-d', 'fill-e', 'fill-f', 'fill-g'];
+const FILL_BOXES = ['fill-a', 'fill-b', 'fill-c', 'fill-d', 'fill-e', 'fill-f', 'fill-g', 'fill-h'];
 
-type Fault = 'none' | 'unfilled' | 'boxed';
+type Fault = 'none' | 'unfilled' | 'boxed' | 'unclipped';
 
 const colourOf = (p: NativeProgram, id: string, kind: 'background-color' | 'text-color'): Rgba => {
   const w = p.nodes.find((n) => n.id === id)?.writes.find((x) => x.kind === kind);
@@ -58,10 +60,23 @@ function judge(caseId: string, program: NativeProgram, viewport: { width: number
     const all = boxes(p, viewport, dpr);
     const fillRects = all.filter((b) => FILL_BOXES.includes(b.node.id));
     const inks = glyphLines(p, viewport, dpr).flatMap((l) => l.glyphs.map((g) => ({ g, text: l.id.slice(0, l.id.lastIndexOf(':line')) })));
+    const byId = new Map(all.map((b) => [b.node.id, b]));
+    const nodes = new Map(p.nodes.map((n) => [n.id, n]));
+    // A glyph's ink shows only inside the padding box of every ancestor that hosts its children in a clip view.
+    const unclipped = (text: string, x: number, y: number): boolean => {
+      if (fault === 'unclipped') return true;
+      for (let id = nodes.get(text)?.parent ?? null; id !== null; id = nodes.get(id)?.parent ?? null) {
+        const b = byId.get(id);
+        if (b === undefined || !b.node.clips) continue;
+        const [l, t, r, bt] = [b.l + (b.border[3] as number), b.t + (b.border[0] as number), b.r - (b.border[1] as number), b.b - (b.border[2] as number)];
+        if (!(x + 0.5 >= l && x + 0.5 < r && y + 0.5 >= t && y + 0.5 < bt)) return false;
+      }
+      return true;
+    };
     for (const pt of casePoints(program, viewport, dpr)) {
       if (ruleKind(pt.rule) === 'edge') continue;
       const backdrop = modelAt(all, pt.x, pt.y);
-      const ink = inks.find(({ g }) => pt.x >= g.left && pt.x + 1 <= g.right && pt.y >= g.top && pt.y + 1 <= g.bottom);
+      const ink = inks.find(({ g, text }) => pt.x >= g.left && pt.x + 1 <= g.right && pt.y >= g.top && pt.y + 1 <= g.bottom && unclipped(text, pt.x, pt.y));
       const want: Rgba = ink !== undefined ? over(backdrop, colourOf(p, ink.text, 'text-color')) : backdrop;
       const inFill = fillRects.some((b) => pt.x >= b.l && pt.x + 1 <= b.r && pt.y >= b.t && pt.y + 1 <= b.b);
       if (inFill && ink !== undefined) fillGlyphPoints++;
@@ -80,7 +95,7 @@ describe('BG2 background-clip: text: the paint model at every sample point equal
   });
   for (const spec of FIXTURES) {
     for (const c of casesOf(spec, fixtureInput(spec))) {
-      it(`${c.id} at ${DPRS.join(', ')}; the unfilled and boxed faults are caught`, () => {
+      it(`${c.id} at ${DPRS.join(', ')}; the unfilled, boxed and unclipped faults are caught`, () => {
         const programs = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
         if (programs.kind !== 'ready') throw new Error(programs.reason);
         for (const p of [programs.programs.uikit, programs.programs['android-views']]) {
@@ -89,7 +104,8 @@ describe('BG2 background-clip: text: the paint model at every sample point equal
           expect(v.problems).toEqual([]);
           expect(v.fillGlyphPoints, 'glyph points of the fill boxes').toBeGreaterThan(0);
           expect(v.fillBoxPoints, 'points of the fill boxes off their glyphs').toBeGreaterThan(0);
-          for (const fault of ['unfilled', 'boxed'] as const) expect(judge(c.id, p, c.environment.viewport, fault).problems.length, fault).toBeGreaterThan(0);
+          for (const id of FILL_BOXES) expect(p.nodes.find((n) => n.id === id)?.clips, `${id} hosts a clip view`).toBe(true);
+          for (const fault of ['unfilled', 'boxed', 'unclipped'] as const) expect(judge(c.id, p, c.environment.viewport, fault).problems.length, fault).toBeGreaterThan(0);
         }
       });
     }

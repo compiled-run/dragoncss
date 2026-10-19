@@ -19,7 +19,7 @@ import { TRANSPARENT } from '../css/color.ts';
 import type { Longhand } from '../css/properties.ts';
 import { colorChannels, usedColors } from './paint/colors.ts';
 import { borderWrites } from './paint/border.ts';
-import { clipsChildren } from './paint/clip.ts';
+import { hostsClipView } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
 import { lowerBoxPaint, paintVocabulary, paintWriteCss } from './paint/registry.ts';
 import { inlineStackingFacts } from './paint/stacking.ts';
@@ -168,7 +168,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
     const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, decorations, textShadows });
-    out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: clipsChildren(b), text: null, writes, facts });
+    out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: hostsClipView(b, el), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
     for (const c of b.children) {

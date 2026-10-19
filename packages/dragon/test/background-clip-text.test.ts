@@ -207,3 +207,44 @@ describe('background-clip: text never reaches the gradient raster', () => {
     expect(() => GRADIENT_LOWERING.lower({ box: null, el, facts: {} } as never)).toThrow('a: a gradient box clips a layer to text, which every target refuses (background-clip-text.ts)');
   });
 });
+
+describe('background-clip: text: ink past the box (landing review, finding 1)', () => {
+  // Chrome paints the colour inside the border box only, masked by the text, so ink outside the box shows nothing; the native glyphs
+  // carry the colour, so the box hosts its text in a clip view over its padding box (the check refuses a border: it is the border box).
+  const fill = 'background-color: rgb(200, 30, 40); background-clip: text; color: transparent;';
+  for (const [css, body] of [
+    [`.a { ${fill} white-space: nowrap; }`, (r: SourceRef): TreeNode[] => [div(r, 'a', ['a'], [text(r, 'a-t', 'XXXXXXXX')])]],
+    [`.a { ${fill} }`, (r: SourceRef): TreeNode[] => [div(r, 'a', ['a'], [text(r, 'a-t', 'XX XX XX XX XX')])]],
+    [`.a { ${fill} font-size: 30px; }`, tree],
+    [`.a { ${fill} line-height: 2px; height: 2px; }`, tree],
+    [`.a { ${fill} text-indent: -30px; }`, tree],
+  ] as const) {
+    it(`${css} compiles, and a's text is hosted in a clip view over its box`, () => {
+      const c = compile(css, body);
+      expect(errors(c)).toEqual([]);
+      for (const prog of programsOf(c)) {
+        const a = prog.nodes.find((n) => n.id === 'a');
+        expect(a?.clips).toBe(true);
+        expect(a?.writes.filter((w) => w.kind === 'padding-box-clip')).toHaveLength(1);
+        expect(prog.nodes.find((n) => n.id === 'a:text0')?.parent).toBe('a');
+        expect(prog.nodes.find((n) => n.id === 'p')?.clips ?? false).toBe(false);
+      }
+    });
+  }
+  it('an inert text clip and a losing one host no clip view', () => {
+    for (const css of ['.a { background-clip: text; white-space: nowrap; }', `.a { ${fill} background-clip: border-box; color: red; }`]) {
+      for (const prog of programsOf(compile(css))) expect(prog.nodes.find((n) => n.id === 'a')?.clips, css).toBe(false);
+    }
+  });
+});
+
+describe('background-clip: text on a layer above the bottom one (landing review, finding 2)', () => {
+  it('the colour keeps its own clip check: a content-box colour over padding, a padding-box colour inside a dashed border', () => {
+    const content = compile('.a { background-image: none, none; background-clip: text, content-box; background-color: red; padding: 5px; }');
+    expect(errors(content).filter((d) => d.message.startsWith('background-clip on a: the background colour is clipped to the content-box')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    const dashed = compile('.a { background-image: none, none; background-clip: text, padding-box; background-color: red; border: 5px dashed blue; }');
+    expect(errors(dashed).filter((d) => d.message.startsWith('background-clip on a: the background colour is clipped to the padding-box')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    expect(clipErrors(content)).toEqual([]);
+    expect(errors(compile('.a { background-image: none, none; background-clip: text, border-box; background-color: red; }'))).toEqual([]);
+  });
+});

@@ -3,7 +3,8 @@
 <head>
 <style>
 /* Every box edge and glyph edge is a multiple of 8 CSS px, a whole device px at DPR 2, 3 and 2.625, so no edge is antialiased. */
-/* Each clipped box holds two Ahem glyphs (32px) in a 64px by 32px box, so its own area beside and under the text shows. */
+/* Each clipped box holds two Ahem glyphs (32px) in a 64px by 32px box, so its own area beside and under the text shows; fill-h's */
+/* six unwrapped glyphs (96px) overflow its box, where Chrome paints none of the colour. */
 body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
 .stage { padding: 8px; background-color: rgb(236, 240, 244); }
 .row { display: flex; column-gap: 16px; margin-bottom: 8px; padding: 8px; background-color: rgb(250, 200, 60); }
@@ -16,6 +17,7 @@ body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
 .fill-e { background-color: rgb(20, 20, 20); background-clip: text, border-box; color: transparent; }
 .fill-f { display: flex; background-color: rgb(200, 60, 20); background-clip: text; color: transparent; }
 .fill-g { background-color: rgb(0, 120, 120); background-clip: padding-box; background-clip: text; color: transparent; }
+.fill-h { min-width: 0; white-space: nowrap; background-color: rgb(70, 20, 140); background-clip: text; color: transparent; }
 .keep-a { background-clip: text; color: rgb(10, 20, 30); }
 .keep-b { -webkit-background-clip: text; }
 .keep-k { color: rgb(160, 30, 30); }
@@ -43,6 +45,9 @@ body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
 <div data-dragon-id="keep-b" class="box keep-b"><div data-dragon-id="keep-k" class="keep-k">XX</div></div>
 <div data-dragon-id="keep-c" class="box keep-c">XX</div>
 <div data-dragon-id="keep-d" class="box keep-d">XX</div>
+</div>
+<div data-dragon-id="row4" class="row">
+<div data-dragon-id="fill-h" class="box fill-h">XXXXXX</div>
 </div>
 </div>
 </body>

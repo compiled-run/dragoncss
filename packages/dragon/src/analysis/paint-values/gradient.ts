@@ -784,7 +784,11 @@ export function unfoldedLength(v: CssValue): string | null {
   return found;
 }
 
-/** The text clip refusals (background-clip-text.ts), at background-clip; whether the box clips to text at all. */
+/**
+ * The text clip refusals (background-clip-text.ts), at background-clip. Whether the other layer checks are done: the box clips its
+ * colour to text (its bottom layer), or a text clip was refused on every target. A text clip on another layer whose image is none
+ * paints nothing, and the colour's own clip is checked as usual.
+ */
 function checkTextClip(el: ResolvedElement, clip: ResolvedValue, targets: readonly string[], native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): boolean {
   const layers = resolvedLayers(el);
   if (!layers.some((l) => l.clipsToText)) return false;
@@ -793,7 +797,7 @@ function checkTextClip(el: ResolvedElement, clip: ResolvedValue, targets: readon
   if (every !== null) refuse(el, clip, targets, 'background-clip-text', `background-clip: text on ${el.element.address}: ${every} (${BG2C})`, manual, diagnostics, reported);
   const own = every === null ? nativeTextClipRefusal(el, layers) : null;
   if (own !== null) refuse(el, clip, native, 'background-clip-text', `background-clip: text on ${el.element.address}: ${own} (${BG2C})`, manual, diagnostics, reported);
-  return true;
+  return every !== null || colourClipsToText(layers);
 }
 
 const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, propagated) => {
