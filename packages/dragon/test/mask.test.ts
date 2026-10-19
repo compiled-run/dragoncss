@@ -9,6 +9,7 @@ import type { CompilerFaults } from '../src/faults.ts';
 import { initialValue, valueToString } from '../src/analysis/computed.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { MASK_INITIAL, MASK_LONGHANDS } from '../src/css/properties/mask.ts';
+import { BORDER_IMAGE_LONGHANDS } from '../src/css/properties/border-image.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import type { Diagnostic } from '../src/types.ts';
@@ -53,8 +54,8 @@ const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VAL
 const INITIAL_DECLS = ['mask-image: none', '-webkit-mask-position-x: 0%', '-webkit-mask-position-y: 0%', 'mask-size: auto', 'mask-repeat: repeat', 'mask-origin: border-box', 'mask-clip: border-box', 'mask-composite: add', 'mask-mode: match-source'];
 
 describe('mask', () => {
-  it('follows clip-path, last, in Chrome\'s mask shorthand order', () => {
-    expect(LONGHANDS.slice(LONGHANDS.indexOf('clip-path') + 1)).toEqual([...MASK_LONGHANDS]);
+  it('follows clip-path, before the border image family, in Chrome\'s mask shorthand order', () => {
+    expect(LONGHANDS.slice(LONGHANDS.indexOf('clip-path') + 1, LONGHANDS.indexOf(BORDER_IMAGE_LONGHANDS[0]))).toEqual([...MASK_LONGHANDS]);
   });
 
   it('holds the initial values the resolver takes from the grammar', () => {

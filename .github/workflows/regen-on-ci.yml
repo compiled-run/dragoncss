@@ -58,21 +58,21 @@ jobs:
       branch: ${{ steps.r.outputs.branch }}
       sha: ${{ steps.r.outputs.sha }}
       mode: ${{ steps.r.outputs.mode }}
-    # Waiting for a slot (below) can take hours while the landing's regens run.
+    # Waiting for a slot (below) can take hours while device lanes or older branch regens run.
     timeout-minutes: 360
     steps:
       # A worker's branch regen waits on this free Linux job, oldest first, while REGEN_BRANCH_SLOTS older ones are queued or
-      # running: each holds a macOS runner (5 at once), and the landing's regens, device lanes and full tests need the rest.
-      # It also waits while a landing run is queued or running (a pull request's regen label, a patch-mode regen, a device lanes
-      # run: its four iOS jobs alone take four of the five), for at most LANDING_YIELD_SECONDS, so the landing never queues
-      # for a runner a worker took meanwhile. The landing's own runs never wait.
+      # running: each holds a macOS runner (5 at once). The landing no longer waits on device lanes, so its regen rounds run one
+      # at a time and hold one runner, which the fifth leaves free: a label run or a patch-mode regen holds no branch regen back.
+      # It still waits while a device lanes run is queued or running (its four iOS jobs take four of the five), for at most
+      # DEVICE_YIELD_SECONDS, so that run never queues for a runner a worker took meanwhile. The landing's own runs never wait.
       - name: Wait for a branch regen slot
         if: github.event_name == 'workflow_dispatch' && inputs.branch != ''
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          REGEN_BRANCH_SLOTS: '2'
-          LANDING_YIELD_SECONDS: '5400'
+          REGEN_BRANCH_SLOTS: '3'
+          DEVICE_YIELD_SECONDS: '5400'
           # 9 calls a poll: two waiting runs stay well under the token's 1000 requests an hour.
           POLL_SECONDS: '120'
           DISPATCH_BRANCH: ${{ inputs.branch }}
@@ -82,10 +82,8 @@ jobs:
           mine=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" -q .created_at)
           [[ "$mine" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$ ]] || { echo "::error::run $GITHUB_RUN_ID has no creation time: $mine"; exit 1; }
           filter="[.workflow_runs[] | select(.event == \"workflow_dispatch\" and .id != $GITHUB_RUN_ID and ((.display_title // \"\") | startswith(\"regen of branch \")) and (.created_at < \"$mine\" or (.created_at == \"$mine\" and .id < $GITHUB_RUN_ID)))] | length"
-          # The landing's runs: a pull request's regen label, a patch-mode regen ("regen of <sha>"); device lanes runs count apart.
-          landing_filter='[.workflow_runs[] | select(.event == "pull_request" or (.event == "workflow_dispatch" and ((.display_title // "") | test("^regen of [0-9a-f]{40}$"))))] | length'
           waited=0
-          told_landing=0
+          told_devices=0
           told_slots=0
           while :; do
             # A branch that moved off the dispatched head is refused below anyway: stop now, so the slot goes to the next run and
@@ -99,21 +97,20 @@ jobs:
               fi
             fi
             ahead=0
-            landing=0
+            devices=0
             failed=0
             # A failed list (5xx, the token's hourly rate limit, which every waiting run shares) counts nothing: it waits a poll.
             for st in queued in_progress waiting pending; do
-              runs=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" 2>/dev/null) && n=$(jq -r "$filter" <<<"$runs") && m=$(jq -r "$landing_filter" <<<"$runs") && [[ "$n$m" =~ ^[0-9]+$ ]] || { failed=1; break; }
+              runs=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" 2>/dev/null) && n=$(jq -r "$filter" <<<"$runs") && [[ "$n" =~ ^[0-9]+$ ]] || { failed=1; break; }
               ahead=$((ahead + n))
-              landing=$((landing + m))
               n=$(gh api "repos/$REPO/actions/workflows/device-lanes.yml/runs?status=$st&per_page=100" -q '.workflow_runs | length' 2>/dev/null) && [[ "$n" =~ ^[0-9]+$ ]] || { failed=1; break; }
-              landing=$((landing + n))
+              devices=$((devices + n))
             done
             if [ "$failed" = 1 ]; then
               echo "regen-on-ci: listing the queued and running runs failed; trying again in $POLL_SECONDS s"
-            elif [ "$landing" -gt 0 ] && [ "$waited" -lt "$LANDING_YIELD_SECONDS" ]; then
-              [ "$told_landing" = 1 ] || echo "regen-on-ci: $landing landing run(s) are queued or running; waiting until they end (at most $LANDING_YIELD_SECONDS s)"
-              told_landing=1
+            elif [ "$devices" -gt 0 ] && [ "$waited" -lt "$DEVICE_YIELD_SECONDS" ]; then
+              [ "$told_devices" = 1 ] || echo "regen-on-ci: $devices device lanes run(s) are queued or running; waiting until they end (at most $DEVICE_YIELD_SECONDS s)"
+              told_devices=1
             elif [ "$ahead" -ge "$REGEN_BRANCH_SLOTS" ]; then
               [ "$told_slots" = 1 ] || echo "regen-on-ci: $ahead older branch regens are queued or running; waiting for one of $REGEN_BRANCH_SLOTS slots"
               told_slots=1

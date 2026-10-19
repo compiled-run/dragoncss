@@ -239,6 +239,7 @@
     "paint-order": { "values": ["stroke"] },
     "rx": { "values": ["4px"] },
     "ry": { "values": ["2"] },
+    "vector-effect": { "values": ["non-scaling-stroke"] },
     "fill-opacity": { "values": ["0.5"] },
     "stroke-opacity": { "values": ["0.5"] },
     "content": { "values": ["\"\"", "\"x\"", "none"] },
