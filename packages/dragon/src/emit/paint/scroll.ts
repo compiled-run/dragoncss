@@ -9,11 +9,12 @@ const SWIFT_MEMBERS = String.raw`  /// OVFL-B: this box's scroll offset range in
   public var dragonScrollRange: [Double]? = nil
   /// OVFL-B: why the translated engine gave this scroll container no range, or nil.
   public var dragonScrollRefusal: String? = nil
-  /// Overflow auto or scroll: the clip view becomes a DragonScrollView that scrolls on the axes given (a hidden axis is locked).
-  public func dragonEnableScroll(_ x: Bool, _ y: Bool) {
+  /// Overflow auto or scroll: the clip view becomes a DragonScrollView that scrolls on the axes given (a hidden axis is locked);
+  /// indicators false (scrollbar-width: none) hides its scroll indicators.
+  public func dragonEnableScroll(_ x: Bool, _ y: Bool, _ indicators: Bool = true) {
     guard let old = dragonClipView else { fatalError("dragon: \(dragonId) scrolls without a clip view") }
     old.removeFromSuperview()
-    let s = DragonScrollView(scrollsX: x, scrollsY: y)
+    let s = DragonScrollView(scrollsX: x, scrollsY: y, indicators: indicators)
     addSubview(s)
     dragonClipView = s
   }
@@ -26,7 +27,7 @@ const SWIFT = String.raw`import UIKit
 public final class DragonScrollView: UIScrollView {
   public let scrollsX: Bool
   public let scrollsY: Bool
-  public init(scrollsX: Bool, scrollsY: Bool) {
+  public init(scrollsX: Bool, scrollsY: Bool, indicators: Bool = true) {
     self.scrollsX = scrollsX
     self.scrollsY = scrollsY
     super.init(frame: .zero)
@@ -38,8 +39,8 @@ public final class DragonScrollView: UIScrollView {
     alwaysBounceHorizontal = false
     alwaysBounceVertical = false
     scrollsToTop = false
-    showsHorizontalScrollIndicator = scrollsX
-    showsVerticalScrollIndicator = scrollsY
+    showsHorizontalScrollIndicator = scrollsX && indicators
+    showsVerticalScrollIndicator = scrollsY && indicators
     panGestureRecognizer.addTarget(self, action: #selector(dragonPanned))
   }
   required init?(coder: NSCoder) { fatalError("DragonScrollView is built in code") }
@@ -91,11 +92,11 @@ const KOTLIN_MEMBERS = String.raw`  /** OVFL-B: this box's scroll offset range i
   var dragonScrollRange: IntArray? = null
   /** OVFL-B: why the translated engine gave this scroll container no range, or null. */
   var dragonScrollRefusal: String? = null
-  /** Overflow auto or scroll: the clip view becomes a DragonScrollView that scrolls on the axes given (a hidden axis is locked). */
-  fun dragonEnableScroll(x: Boolean, y: Boolean) {
+  /** Overflow auto or scroll: the clip view becomes a DragonScrollView that scrolls on the axes given (a hidden axis is locked); indicators false (scrollbar-width: none) hides its scrollbars. */
+  fun dragonEnableScroll(x: Boolean, y: Boolean, indicators: Boolean = true) {
     val old = dragonClipView ?: throw IllegalStateException("dragon: " + dragonId + " scrolls without a clip view")
     removeView(old)
-    val s = DragonScrollView(context, x, y)
+    val s = DragonScrollView(context, x, y, indicators)
     addView(s)
     dragonClipView = s
   }
@@ -145,7 +146,7 @@ ${KOTLIN_DRAG}
  * platform ScrollView scrolls one), with OverScroller flings, the platform touch slop and fling speeds, and overlay scrollbars that
  * fade, enabled at the first touch so a view at rest draws none.
  */
-class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolean) : DragonClipView(ctx) {
+class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolean, val indicators: Boolean = true) : DragonClipView(ctx) {
   /** The offset range: minX, maxX, minY, maxY in device px; a locked axis is 0, 0. Every scroll clamps to it. */
   val dragonRange = IntArray(4)
   private val scroller = OverScroller(ctx)
@@ -198,8 +199,8 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
 
   private fun beginDrag() {
     dragging = true
-    isHorizontalScrollBarEnabled = scrollsX
-    isVerticalScrollBarEnabled = scrollsY
+    isHorizontalScrollBarEnabled = scrollsX && indicators
+    isVerticalScrollBarEnabled = scrollsY && indicators
     parent?.requestDisallowInterceptTouchEvent(true)
   }
 
@@ -240,8 +241,8 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
         scroller.forceFinished(true)
         ax.down(e.x)
         ay.down(e.y)
-        isHorizontalScrollBarEnabled = scrollsX
-        isVerticalScrollBarEnabled = scrollsY
+        isHorizontalScrollBarEnabled = scrollsX && indicators
+        isVerticalScrollBarEnabled = scrollsY && indicators
       }
       MotionEvent.ACTION_MOVE -> {
         var start = startPending
@@ -301,8 +302,8 @@ export const SCROLL_EMITTER: PaintEmitter<'scroll-container'> = {
   name: 'scroll',
   kinds: ['scroll-container'],
   lines: {
-    uikit: (v, _n, w) => [`  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)})`],
-    'android-views': (v, _n, w) => [`  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)})`],
+    uikit: (v, _n, w) => [`  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)}${w.indicators ? '' : ', false'})`],
+    'android-views': (v, _n, w) => [`  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)}${w.indicators ? '' : ', false'})`],
   },
   applied: (_e, _backend, w, _dpr, g) => {
     if (g.scroll === null) throw new Error('a scroll container with no engine scroll range');
