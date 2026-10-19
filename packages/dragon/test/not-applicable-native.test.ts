@@ -117,6 +117,24 @@ describe('the not-applicable list', () => {
   }
 });
 
+describe('the owner-ruled entries are left out whatever their value, and say so by ruling, not as "no effect"', () => {
+  const VALUES: Record<string, readonly string[]> = {
+    'text-rendering': ['optimizeSpeed', 'geometricPrecision', 'var(--t, optimizeLegibility)'],
+    'scrollbar-color': ['transparent transparent', 'red blue', 'var(--s, auto)'],
+  };
+  for (const [name, values] of Object.entries(VALUES)) {
+    for (const v of values) {
+      it(`${name}: ${v}`, () => {
+        const c = compile(`${BASE}\n.a { ${name}: ${v}; }`, NATIVE);
+        expect(errors(c.diagnostics)).toEqual([]);
+        const infos = c.diagnostics.filter((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE');
+        expect(infos.map((d) => d.target).sort()).toEqual(['android', 'ios']);
+        for (const d of infos) expect(d.message).toContain(`${name} is left out on ${d.target} by owner ruling`);
+      });
+    }
+  }
+});
+
 describe('off the list, a declaration or rule is still refused on every target', () => {
   const OFF: Record<string, string> = {
     'scrollbar-width (hides scroll indicators)': '.a { scrollbar-width: none; }',

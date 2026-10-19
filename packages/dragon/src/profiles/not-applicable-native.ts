@@ -9,7 +9,8 @@
 // (Chrome drops it, so Dragon already drops the rule on every target); ::-webkit-scrollbar* rules (several common forms hide the
 // scrollbar, which is visible on native; deferred).
 
-export type NotApplicableEntry = { readonly name: string; readonly reason: string };
+/** owner: listed by owner ruling although Chrome shows a difference for some values, so its message says so instead of "no effect". */
+export type NotApplicableEntry = { readonly name: string; readonly reason: string; readonly owner?: true };
 
 export const NOT_APPLICABLE_NATIVE: readonly NotApplicableEntry[] = [
   { name: 'cursor', reason: 'it sets the mouse pointer shape, and a touch screen has no pointer' },
@@ -22,9 +23,12 @@ export const NOT_APPLICABLE_NATIVE: readonly NotApplicableEntry[] = [
   { name: '-webkit-user-drag', reason: 'it decides whether a mouse drag of an element starts a drag and drop, and native views start none' },
   { name: 'print-color-adjust', reason: 'it only decides whether printing keeps backgrounds, and the native output is never printed' },
   { name: '-webkit-print-color-adjust', reason: 'it only decides whether printing keeps backgrounds, and the native output is never printed' },
-  { name: 'text-rendering', reason: 'it is a shaping hint, and the native text stack shapes with kerning and ligatures whatever it says' },
-  { name: 'scrollbar-color', reason: 'it colours the browser scrollbar, and native scroll indicators keep the platform colours' },
+  { name: 'text-rendering', reason: 'optimizeSpeed turns kerning and ligatures off in Chrome, but the native text stack keeps them whatever it says', owner: true },
+  { name: 'scrollbar-color', reason: 'it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours', owner: true },
 ];
+
+/** The sentence that says an entry is left out on a native target: "has no effect", or the owner ruling for an owner entry. */
+export const notApplicableSentence = (e: NotApplicableEntry, target: string): string => (e.owner === true ? `${e.name} is left out on ${target} by owner ruling: ${e.reason}` : `${e.name} has no effect on ${target}: ${e.reason}`);
 
 /** The list entry for a property name (ASCII lower case), or null when it is not on the list. */
 export function notApplicableEntry(property: string): NotApplicableEntry | null {

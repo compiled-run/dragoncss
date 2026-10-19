@@ -445,6 +445,8 @@ function main(): void {
   type LaneRank = { lane: LaneSpec; reach: number; tw: number; ns: number; items: { id: string; gain: number }[]; score: number };
   const ranks = new Map<string, LaneRank>(input.lanes.map((l) => [l.id, { lane: l, reach: 0, tw: 0, ns: 0, items: [], score: 0 }]));
   for (const r of rows) {
+    // An owner-approved NA-NATIVE row the compiler reports not applicable has left the native denominator: no lane can move it.
+    if (r.na === 'approved' && naOnNative(r)) continue;
     const inLane = new Map<string, number>();
     for (const p of r.probes) {
       const native = p.verdict.ios.kind === 'ok' && p.verdict.android.kind === 'ok';
