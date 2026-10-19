@@ -44,6 +44,14 @@ export const GRID: readonly FixtureSpec[] = [
   // flexible, auto-fill and auto tracks, and an em column gap in the max-content width of a grid that is a flex item. min(), max()
   // and clamp() resolve through an em, rem, vw or vh argument as well as a px one, and calc() of in, cm, mm, pt and pc folds to px.
   both('grid-gap-units'),
+  // Grid items beyond px and % (the rows above prove the grid; these prove its items): rem, em, vw, vh, calc(), min(), max() and
+  // clamp() sizes, padding, margins and border widths, Tailwind's calc(var(--spacing) * n), and calculations with a percentage in
+  // auto, fixed and flexible tracks (the percentage resolves against zero while an auto column is measured, then against the area);
+  // display values an item blockifies, display: none, the initial keywords written out, content-box sizing, border styles none
+  // and the width keywords, and vertical-align, which a grid item ignores.
+  both('grid-item-units'),
+  both('grid-item-keywords'),
+  both('grid-item-calc-percent'),
   // G-INL: an inline-grid is an atomic inline on its line; one inside an inline box stays refused (INL2c), as inline-block and inline-flex are.
   reject('reject-grid-inline-grid', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="box" class="box"><span data-dragon-id="cell" class="cell">X</span></span>', 'inline-grid <span> box is an atomic inline inside the inline box <span> s'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),

@@ -45,8 +45,8 @@ describe('font-variant (TXT-FONTFEAT)', () => {
       expect(variantDiagnostics('Lato', decl, { ...NO_FAULTS, fontVariantOnRealFaceAccepted: true }), decl).toEqual([]);
     }
   });
-  it('refuses caps, position and emoji, and the alternates functions, at parse time on every target', () => {
-    for (const decl of ['font-variant-caps: small-caps', 'font-variant-position: sub', 'font-variant-emoji: emoji', 'font-variant-alternates: swash(a)', 'font-variant: all-small-caps tabular-nums']) {
+  it('refuses caps other than small-caps, position and emoji, and the alternates functions, at parse time on every target', () => {
+    for (const decl of ['font-variant-caps: all-small-caps', 'font-variant-caps: petite-caps', 'font-variant: titling-caps slashed-zero', 'font-variant-position: sub', 'font-variant-emoji: emoji', 'font-variant-alternates: swash(a)', 'font-variant: all-small-caps tabular-nums']) {
       const d = variantDiagnostics('Ahem', decl);
       expect(d.length, decl).toBe(1);
       expect(d[0], decl).toMatch(/^DRAGON_UNSUPPORTED_VALUE null font-variant[a-z-]*: [a-z-]+(\(\))? is unsupported: /);

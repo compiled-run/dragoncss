@@ -21,8 +21,8 @@ import type { ResolvedElement } from '../resolve.ts';
 export const SVG_TAG = 'svg';
 
 /** The presentation attributes Dragon maps to its svg property family (SVG 2 §6.6); author rules beat them. */
-export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order';
-export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order'];
+export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order' | 'vector-effect';
+export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order', 'vector-effect'];
 
 /** The attributes each SVG tag compiles: its geometry, the paint presentation attributes, and xmlns (no effect in HTML). */
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
@@ -250,6 +250,11 @@ export type SvgShapeScene = {
   readonly dashOffset: number;
   /** SVG-paint-order: whether the computed paint-order paints the stroke before the fill (paintsStrokeFirst). */
   readonly strokeFirst: boolean;
+  /**
+   * SVG-vector-effect: whether the computed vector-effect is non-scaling-stroke, so the stroke width and dashes are in the svg's
+   * px (Chrome strokes the path mapped to the svg root, without the page zoom, an observation); the viewBox scale is uniform.
+   */
+  readonly nonScalingStroke: boolean;
   readonly painted: boolean;
 };
 
@@ -268,7 +273,7 @@ function opacityOfProp(el: ResolvedElement, p: 'fill-opacity' | 'stroke-opacity'
 }
 
 /** A shape's computed keyword of a property, checked against the keywords Chrome parses for it. */
-function keywordOfProp<K extends string>(el: ResolvedElement, p: 'stroke-linecap' | 'stroke-linejoin' | 'fill-rule', keywords: readonly K[]): K {
+function keywordOfProp<K extends string>(el: ResolvedElement, p: 'stroke-linecap' | 'stroke-linejoin' | 'fill-rule' | 'vector-effect', keywords: readonly K[]): K {
   const v = (el.props.get(p) as ResolvedValue).value;
   if (v.kind !== 'keyword' || !(keywords as readonly string[]).includes(v.value)) throw new Error(`${el.element.address}: ${p} did not compute to one of ${keywords.join(', ')}`);
   return v.value as K;
@@ -378,6 +383,7 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
       dashes: dashArray.reduce((a, b) => a + b, 0) > 0 ? (dashArray.length % 2 === 0 ? dashArray : [...dashArray, ...dashArray]) : [],
       dashOffset,
       strokeFirst: paintsStrokeFirst((c.props.get('paint-order') as ResolvedValue).value),
+      nonScalingStroke: keywordOfProp(c, 'vector-effect', ['none', 'non-scaling-stroke'] as const) === 'non-scaling-stroke',
       painted: svgShapePainted(c),
     });
   }
