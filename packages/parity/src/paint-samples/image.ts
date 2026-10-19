@@ -535,6 +535,11 @@ function strokeCentre(sh: { readonly path: readonly number[]; readonly join: Joi
   return { segments: d.pieces.flat(), runs: d.pieces, discs: d.discs };
 }
 
+/** The CSS px of a shape's stroke width and dashes per user unit: the viewBox scale, or 1 for SVG-vector-effect's non-scaling-stroke. */
+function strokeScale(sh: { readonly nonScalingStroke: boolean }, viewBoxScale: number): number {
+  return sh.nonScalingStroke ? 1 : viewBoxScale;
+}
+
 /**
  * The svg points of a case: a grid over each svg's content box, points a quarter stroke width either side of each wide stroke's
  * centreline, and the cap and join probes of strokeFeatures, kept where the pixel is SVG_CLEAR_DEVICE_PX clear of every fill
@@ -564,8 +569,9 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
       // across the centreline.
       if (sh.fill !== null && sh.fill.alpha > 0) edges.push({ segments: o.fill, offset: 0 });
       if (sh.stroke !== null && sh.width > 0) {
-        const half = (sh.width * m.a * dpr) / 2;
-        const centre = strokeCentre(sh, map, m.a * dpr, half);
+        const scale = strokeScale(sh, m.a) * dpr;
+        const half = (sh.width * scale) / 2;
+        const centre = strokeCentre(sh, map, scale, half);
         corners.push(...centre.discs);
         for (const run of centre.runs) if (run.length > 0) edges.push({ segments: run, offset: half, capped: sh.cap !== 'round' });
         const f = strokeFeatures(centre.segments, half, sh.cap, sh.join, sh.miterLimit);
@@ -596,8 +602,9 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
     // centreline of an unfilled shape, where the stroke's colour shows unless it is drawn under the fill, swapped or at another width.
     for (const sh of w.shapes) {
       if (sh.stroke === null || !(sh.width > 0)) continue;
-      const half = (sh.width * m.a * dpr) / 2;
-      const segs = strokeCentre(sh, map, m.a * dpr, half).segments;
+      const scale = strokeScale(sh, m.a) * dpr;
+      const half = (sh.width * scale) / 2;
+      const segs = strokeCentre(sh, map, scale, half).segments;
       for (let j = 0; j < 8 && segs.length > 0; j++) {
         const [a, z] = segs[Math.floor((j * segs.length) / 8)] as Segment;
         const len = Math.hypot(z.x - a.x, z.y - a.y);
