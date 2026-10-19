@@ -149,9 +149,9 @@ describe('refusals', () => {
       expect(got.length, tag).toBeGreaterThan(0);
     }
   });
-  it('b, strong, em and i are elements since T133; in Ahem only ios refuses b and strong, for the UA font-weight (synthetic bold)', () => {
-    // em and i were refused too until TXT-W drew Ahem's synthetic oblique natively, sheared (text-style-ahem proves it).
-    for (const [tag, want] of [['b', ['DRAGON_UNSUPPORTED_FONT ios']], ['strong', ['DRAGON_UNSUPPORTED_FONT ios']], ['em', []], ['i', []]] as const) {
+  it('b, strong, em and i are elements since T133; in Ahem every target accepts them since TXT-W (synthetic bold and italic drawn natively)', () => {
+    // b and strong were refused for the UA bold and em and i for the UA italic until TXT-W drew both natively (text-weight-bold-ahem, text-style-ahem).
+    for (const [tag, want] of [['b', []], ['strong', []], ['em', []], ['i', []]] as const) {
       const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', tag, [], [text(r, 't1', 'b')])])]).diagnostics;
       expect(got.map((d) => `${d.code} ${String(d.target)}`), tag).toEqual(want);
     }

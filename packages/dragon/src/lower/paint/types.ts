@@ -4,6 +4,7 @@
 import type { LayoutNode } from '@dragon/layout';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
 import type { AppliedDecoration } from '../../analysis/text-decoration.ts';
+import type { TextShadowValue } from '../../analysis/text-shadow.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import type { Longhand } from '../../css/properties.ts';
 
@@ -21,7 +22,7 @@ export class ProgramError extends Error {}
 
 /** The module names, in the one registry order (lowering, emission, paint values, samples and support files all use it). */
 export const PAINT_MODULE_NAMES = [
-  'background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control', 'visibility', 'text-decoration',
+  'background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control', 'visibility', 'text-decoration', 'text-shadow',
 ] as const;
 export type PaintModuleName = (typeof PAINT_MODULE_NAMES)[number];
 
@@ -38,6 +39,8 @@ export type BoxPaintContext = {
   readonly transformMoves: boolean;
   /** TDEC-b: every decorated text leaf's applied decorations (analysis/text-decoration.ts analyzeDecorations), by text address. */
   readonly decorations: ReadonlyMap<string, readonly AppliedDecoration[]>;
+  /** TXT-FX: every shadowed text leaf's shadows (analysis/text-shadow.ts nativeTextShadows), by text address. */
+  readonly textShadows: ReadonlyMap<string, readonly TextShadowValue[]>;
 };
 
 /** A paint module's lowering: its write kinds with their vocabulary and longhands, and the writes of one box in emission order. */

@@ -89,11 +89,15 @@ describe('the refusals that stay', () => {
     expect(c.outputs.ios.kind).toBe('blocked');
   });
 
-  it('Ahem text in b or strong keeps the UA-font refusal on ios and android, naming the tag, and is ready on web', () => {
-    for (const [tag, set] of [['b', 'font-weight: 700'], ['strong', 'font-weight: 700']] as const) {
+  it('Ahem text in b or strong is drawn emboldened on ios and android since TXT-W (text-weight-bold-ahem proves the stroke against Chrome)', () => {
+    // Was refused: native drew Ahem unemboldened where Chrome synthesizes the bold; the native program now strokes it.
+    for (const tag of ['b', 'strong']) {
       const c = compile(retag(inputOf('inline-tags'), [['span', tag]]));
-      expect(listed(c), tag).toEqual([`android DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)`, `ios DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)`]);
+      expect(listed(c), tag).toEqual([]);
       expect(c.outputs.web.kind, tag).toBe('ready');
+      const p = dragon.nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      expect(p.programs.uikit.nodes.find((n) => n.id === 's:text0')?.writes.filter((w) => w.kind === 'synthetic-bold').map((w) => w.key), tag).toEqual(['syntheticBold']);
     }
   });
 

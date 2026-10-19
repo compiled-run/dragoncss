@@ -50,8 +50,9 @@ import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
-import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
-import { serializeFontWeight } from '../fonts/weight.ts';
+import { checkTextShadows } from './text-shadow.ts';
+import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } from './computed.ts';
+import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
@@ -60,7 +61,7 @@ import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
-import { checkLineClamp } from './line-clamp.ts';
+import { checkLineClamp, lineClampOf } from './line-clamp.ts';
 import { checkResize } from './resize.ts';
 import { checkTouchAction } from './touch-action.ts';
 
@@ -437,26 +438,6 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   }
 }
 
-// TXT-FX (css-text-decor-4 §4): no target draws a text shadow yet, so a text-shadow other than none is refused for every target where
-// it is declared (its descendants inherit the same declaration). Planted fault textShadowListAccepted accepts it.
-function checkTextShadow(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: TxtFxFaults): void {
-  const v = el.props.get('text-shadow') as ResolvedValue;
-  if (faults.textShadowListAccepted || v.origin === 'inherited' || (v.value.kind === 'keyword' && v.value.value === 'none')) return;
-  const id = `text-shadow|${el.element.address}`;
-  if (reported.has(id)) return;
-  reported.add(id);
-  const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
-  for (const t of targets) {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-      origin,
-      target: t,
-      message: `text-shadow: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no text shadow yet (TXT-FX); only none is accepted`,
-      manual: `Remove the text-shadow from ${el.element.address}, or set text-shadow: none.`,
-      basis: 'computed-value',
-    }));
-  }
-}
-
 // FX (filter-effects-1 §5): no target draws a filter yet, and a filter such as opacity(0) or brightness(0) can hide text, so a filter
 // other than none is refused for every target where it applies (filter is not inherited). Planted fault filterListAccepted accepts it.
 function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: FxFaults): void {
@@ -477,6 +458,16 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
   }
 }
 
+/**
+ * TXT2-f: whether text-overflow on el applies to its own lines: el is a block container (not an inline box, where text-overflow does
+ * nothing, and not a flex or grid container, whose text is an anonymous item Chrome does not truncate, its parent being no block
+ * container) that clips its overflow and is not the element whose overflow the viewport takes.
+ */
+function truncatesOwnLines(el: ResolvedElement, propagated: ResolvedElement | null): boolean {
+  if (el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
+  return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible');
+}
+
 // TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
 // (LayoutBlockFlow::ShouldTruncateOverflowingText), which the engine does left to right in the block's own inline formatting
 // context. Refused for every target: rtl, and inline content beside block children (Chrome truncates the anonymous blocks'
@@ -484,9 +475,7 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
 // from the block's, since the native view draws the ellipsis with the text it follows while Chrome paints it in the block's style.
 function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const value = el.props.get('text-overflow') as ResolvedValue;
-  // A flex or grid container's text is an anonymous item, which Chrome does not truncate (its parent is no block container).
-  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return;
-  if (['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) return;
+  if (keywordOf(value) !== 'ellipsis' || !truncatesOwnLines(el, propagated)) return;
   const runs = inlineContexts(el, () => {});
   if (runs.length === 0) return;
   const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
@@ -644,9 +633,10 @@ const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 're
 
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
-// minimum logical font size clamps, and text without a real bundled face whose computed font-weight Chrome draws synthesized (Ahem
-// under a heading, b or strong, or an author weight of 600 and up).
+// minimum logical font size clamps, and text without a real bundled face that Chrome draws in synthetic bold and oblique together
+// (Ahem under b in em, or an author weight of 600 and up with italic), or whose synthetic bold sits in a line that may end in an ellipsis.
 function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFsFaults): void {
+  const propagated = propagatedFrom(root);
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -715,7 +705,42 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         }
       }
     }
-    const synthetic = here ? [] : syntheticTextFont(el, faults);
+    const synthetic = here ? [] : syntheticTextFont(el);
+    // TXT-W: native draws Ahem's synthetic bold (native-program.ts synthetic-bold) but for a line-ending ellipsis, which Chrome draws in
+    // the block container's font while native draws it in the text's own paint.
+    const ellipsisBlock = here || synthetic.length > 0 ? undefined : ellipsisBlockOf([...ancestors, el], propagated);
+    if (ellipsisBlock !== undefined && (synthesizesBold(el.props) || synthesizesBold(ellipsisBlock.props))) {
+      for (const c of el.children) {
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
+            origin: c.node.node.origin,
+            target: t,
+            message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is inside <${ellipsisBlock.element.tag}> ${ellipsisBlock.element.address} (font-weight ${serializeFontWeight(textFontOfProps(ellipsisBlock.props).weight)}), whose lines may end in an ellipsis, and Chrome draws one of them in synthetic bold; Chrome draws the ellipsis in the block's own font, ${t} in the text's paint, and no fixture proves a synthetic-bold ellipsis`,
+            manual: `Give ${c.node.address} and ${ellipsisBlock.element.address} a font-weight below 600, or remove text-overflow: ellipsis and -webkit-line-clamp from ${ellipsisBlock.element.address}.`,
+          })));
+        }
+      }
+    }
+    // TXT-W: Chrome composites each fake-bold glyph on its own (Skia draws a glyph mask per glyph), so where a translucent colour's
+    // emboldened glyphs overlap the overlap is darker; the iOS view composites the whole run in one transparency layer, and no fixture
+    // proves a translucent synthetic bold on either target.
+    if (!here && synthetic.length === 0 && synthesizesBold(el.props)) {
+      for (const c of el.children) {
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
+        const color = c.props.get('color') as ResolvedValue;
+        const alpha = color.value.kind === 'color' ? color.value.value.alpha : 255;
+        if (alpha === 0 || alpha === 255) continue;
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
+            origin: c.node.node.origin,
+            target: t,
+            message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is drawn in synthetic bold in the translucent colour ${valueToString(color.value)}; Chrome composites each emboldened glyph on its own, so overlapping glyphs blend darker, and no fixture proves a translucent synthetic bold on ${t}`,
+            manual: `Give ${c.node.address} an opaque colour, or a font-weight below 600.`,
+          })));
+        }
+      }
+    }
     if (synthetic.length > 0) {
       const chain = [...ancestors, el];
       const sources = synthetic.map(({ property, text }) => {
@@ -727,13 +752,13 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       for (const c of el.children) {
         // TXT1a-2: a real bundled face at the computed weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
         if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
-        // Web synthesizes the bold itself; every configured native target draws the regular face.
+        // Web synthesizes both itself; native draws each alone, and Skia strokes the sheared outline when both apply.
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
           once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
             origin: c.node.node.origin,
             target: t,
-            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)`,
-            manual: `Give ${c.node.address} a font-weight below 600, or a font family with a bundled face of that weight.`,
+            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} cannot draw this text, where Chrome synthesizes the bold and the oblique together, stroking the sheared outline, which no fixture proves on ${t}`,
+            manual: `Give ${c.node.address} a font-weight below 600 or a font-style below oblique 14deg, or a font family with a bundled face of that weight and style.`,
           })));
         }
       }
@@ -744,12 +769,30 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
 }
 
 /**
- * The computed font-weight Chrome synthesizes over a single regular face (600 and up), where font-synthesis-weight allows it. Its
- * synthetic oblique is drawn natively: the native program shears the glyphs as Skia does (native-program.ts textPaint).
+ * The computed font-weight and font-style when Chrome synthesizes both the bold (600 and up) and the oblique (slope 14 and up) over a
+ * single regular face, where font-synthesis allows them. Each alone is drawn natively (native-program.ts synthetic-bold and
+ * synthetic-oblique); Skia strokes the sheared outline, which no fixture proves yet.
  */
-function syntheticTextFont(el: ResolvedElement, faults: TxtWFaults): { readonly property: 'font-weight'; readonly text: string }[] {
-  const weight = textFontOfProps(el.props).weight;
-  return synthesisAllowedOf(el.props).weight && weight >= (faults.ahemSyntheticBoldFrom700 ? 700 : 600) ? [{ property: 'font-weight', text: serializeFontWeight(weight) }] : [];
+function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
+  const font = textFontOfProps(el.props);
+  const allowed = synthesisAllowedOf(el.props);
+  const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
+  if (!allowed.style || slope < 14 || !synthesizesBold(el.props)) return [];
+  return [{ property: 'font-weight', text: serializeFontWeight(font.weight) }, { property: 'font-style', text: serializeFontStyle(font.style) }];
+}
+
+/**
+ * The block whose ellipsis may end a line of el's own text, given [...ancestors, el]: the block container whose inline formatting
+ * context lays the text out (el, or its nearest ancestor that is no inline box or display: contents) when its text-overflow is not
+ * clip and it truncates its own lines (truncatesOwnLines, checkTextOverflow's rule), or under a -webkit-line-clamp container, which
+ * may clamp a line of that block. Chrome draws the ellipsis in that block's font.
+ */
+function ellipsisBlockOf(chain: readonly ResolvedElement[], propagated: ResolvedElement | null): ResolvedElement | undefined {
+  const outward = [...chain].reverse();
+  const container = outward.find((e) => !isInlineBox(e) && displayKeyword(e) !== 'contents');
+  if (container !== undefined && valueToString((container.props.get('text-overflow') as ResolvedValue).value) !== 'clip' && truncatesOwnLines(container, propagated)) return container;
+  // A line-clamp ellipsis ends a line of whichever block holds it, in that block's font.
+  return outward.some((e) => lineClampOf(e) > 0) ? container : undefined;
 }
 
 /** The support profile each target is checked against, or null when the profiles are not enforced. */
@@ -976,7 +1019,6 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkTouchAction(el, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
-    checkTextShadow(el, targets, diagnostics, reported, faults);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
     if (!here) checkBidi(el, diagnostics, reported);
@@ -1012,6 +1054,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
   // TXT-FONTFEAT: synthesized small caps beside what no Chrome case proves (analysis/small-caps.ts).
   checkSmallCaps(root, targets, diagnostics, reported, shapedAt);
+  // TXT-FX: text shadows a target does not draw as Chrome does (analysis/text-shadow.ts).
+  checkTextShadows(root, targets, diagnostics, reported, realFaceAt, faults);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
   checkTextTransform(root, targets, diagnostics, reported);
 }
@@ -1100,12 +1144,12 @@ export const DRAWN_DECORATION_STYLES: readonly string[] = ['solid', 'double'];
  * (TDEC-c draws solid and double only); the style itself is accepted wherever it draws nothing. TDEC-b: ios and android draw solid
  * and double decorations and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
  * auto, px or a percentage; a decorated text that is not visible; an overline or a double line with skip-ink auto, or an underline with skip-ink auto
- * on a real face or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
+ * on a real face, in synthetic bold, or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
  * decorated element in a formatting context no Chrome case proves propagation for is refused on every target.
  */
 function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   const { applied, unproven } = analyzeDecorations(root);
-  const byAddress = new Map<string, { readonly text: ResolvedText; readonly containerSize: number; readonly visibility: string }>();
+  const byAddress = new Map<string, { readonly text: ResolvedText; readonly owner: ResolvedElement; readonly containerSize: number; readonly visibility: string }>();
   const sizeOf = (props: ReadonlyMap<Longhand, ResolvedValue>): number => {
     const v = props.get('font-size')?.value;
     return v !== undefined && v.kind === 'length' && v.unit === 'px' ? v.value : Number.NaN;
@@ -1116,7 +1160,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
     const here = inline ? containerSize : sizeOf(el.props);
     for (const c of el.children) {
       // A text's visibility is its parent element's (an inherited property).
-      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
+      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, owner: el, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
       else index(c, here);
     }
   };
@@ -1136,7 +1180,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
   for (const [address, list] of applied) {
     const hit = byAddress.get(address);
     if (hit === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
-    const { text, containerSize, visibility } = hit;
+    const { text, owner, containerSize, visibility } = hit;
     // TDEC-c: a line drawn in a style no target draws is refused on every target, at the decorating box's style declaration.
     for (const d of list.filter((x) => !DRAWN_DECORATION_STYLES.includes(x.style))) {
       const style = elements.get(d.box)?.props.get('text-decoration-style');
@@ -1160,9 +1204,14 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
     for (const d of list.filter((x) => DRAWN_DECORATION_STYLES.includes(x.style))) {
       if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
       if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
+      // text-decoration-skip-ink is inherited, and Chrome may read it from the painted text's own style while the native views take
+      // the decorating box's; no Chrome case proves which, so a text whose value differs from its box's is refused.
+      const ownSkipInk = valueToString((owner.props.get('text-decoration-skip-ink') as ResolvedValue).value);
+      if ((d.lines.includes('underline') || d.lines.includes('overline')) && ownSkipInk !== d.skipInk) reasons.push(`its text-decoration-skip-ink is ${ownSkipInk} and that of ${d.box}, which draws its ${d.lines.join(' ')}, is ${d.skipInk}, and no Chrome case proves which of the two clips the line`);
       if (d.skipInk !== 'auto') continue;
-      // TDEC-d clips Ahem glyphs only, for a solid underline (the capture's skip-ink probe), as thick as a capture proves.
-      if (d.lines.includes('overline') || (d.style === 'double' && d.lines.includes('underline')) || (d.lines.includes('underline') && (realFaceAt(address) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
+      // TDEC-d clips Ahem glyphs only, for a solid underline (the capture's skip-ink probe), as thick as a capture proves. TXT-W: Skia
+      // takes the intercepts of a synthetic-bold glyph from its emboldened outline, which the native views' upright Ahem boxes miss.
+      if (d.lines.includes('overline') || (d.style === 'double' && d.lines.includes('underline')) || (d.lines.includes('underline') && (realFaceAt(address) || synthesizesBold(owner.props) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
     }
     if (intercepts) reasons.push('skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from ' + list.filter((d) => d.skipInk === 'auto').map((d) => d.box).join(', ') + ', which the intercepts of TDEC-d clip');
     if (reasons.length === 0) continue;
@@ -1175,7 +1224,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
         origin: text.node.node.origin,
         target: t,
         message: `text ${address} draws text-decoration (${what}) that ${t} does not draw: ${reasons.join('; ')}`,
-        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines and real faces come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
+        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines, real faces and synthetic bold come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
         basis: 'computed-value',
       }));
     }
