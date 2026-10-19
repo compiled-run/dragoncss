@@ -652,7 +652,8 @@
           "value": 6
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       }

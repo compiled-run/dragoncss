@@ -8,6 +8,7 @@ import type { AnimationKind } from './animation-kinds/kinds.ts';
 import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_LAYERS_ANIMATION } from './animation-kinds/background-layers.ts';
 import { BORDER_ANIMATION } from './animation-kinds/border.ts';
+import { BORDER_IMAGE_ANIMATION } from './animation-kinds/border-image.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
 import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
@@ -57,6 +58,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...BACKGROUND_ANIMATION,
   ...BACKGROUND_LAYERS_ANIMATION,
   ...BORDER_ANIMATION,
+  ...BORDER_IMAGE_ANIMATION,
   ...BOX_ANIMATION,
   ...CLIP_PATH_ANIMATION,
   ...CLIP_RECT_ANIMATION,

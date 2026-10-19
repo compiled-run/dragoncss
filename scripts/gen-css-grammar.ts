@@ -13,6 +13,7 @@ import { LOGICAL_CORNER_PROPERTIES, RADIUS_LONGHANDS } from '../packages/dragon/
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 import { MASK_LONGHANDS, MASK_SHORTHANDS } from '../packages/dragon/src/css/properties/mask.ts';
+import { BORDER_IMAGE_LONGHANDS, BORDER_IMAGE_SHORTHANDS } from '../packages/dragon/src/css/properties/border-image.ts';
 
 type WebrefEntry = {
   name: string;
@@ -101,9 +102,9 @@ const SUBSET = [
   'text-shadow',
   // FX: filter (filter-effects-1 §5), after text-shadow, as LONGHANDS registers it.
   'filter',
-  // PNT2: the 3D transform longhands (css-transforms-2 §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
-  // Chrome 145's (css_properties.json5 keywords).
-  'backface-visibility', 'transform-style', 'transform-box',
+  // PNT2: the 3D transform longhands (css-transforms-2 §5, §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
+  // Chrome 145's (css_properties.json5 keywords); perspective-origin's <position> is parsed as object-position's (values.ts positionValue).
+  'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin',
   // isolation (compositing-1 §3.2), after transform-extra, as LONGHANDS registers it.
   'isolation',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
@@ -116,6 +117,9 @@ const SUBSET = [
   'clip-path',
   // MASK-CLIP: the mask layer longhands (css-masking-1 §7), then mask and mask-position, after clip-path, as LONGHANDS registers them.
   ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
+  // MISC-PAINT: the border image longhands (css-backgrounds-3 §4), then border-image and -webkit-border-image, after mask, as LONGHANDS
+  // registers them.
+  ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
 ] as const;
 
 /**
@@ -153,6 +157,12 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // the grammar takes any value: a mask webref's grammar misses is refused, never dropped where Chrome would apply it. Pinned against
   // Chrome by packages/parity/test/mask-parse.test.ts.
   ...Object.fromEntries([...MASK_LONGHANDS, ...MASK_SHORTHANDS].map((p) => [p, '<any-value>'])),
+  // Blink's border image parsers (longhands_custom.cc BorderImageOutset through BorderImageWidth and WebkitBorderImage,
+  // shorthands_custom.cc BorderImage). Dragon accepts each border image longhand only at its initial value and refuses every other
+  // value where it applies (analysis/border-image.ts), so the grammar takes any value: a border image webref's grammar misses is
+  // refused, never dropped where Chrome would apply it. webref has no -webkit-border-image. Pinned against Chrome by
+  // packages/parity/test/border-image-parse.test.ts.
+  ...Object.fromEntries([...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS].map((p) => [p, '<any-value>'])),
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',
@@ -225,6 +235,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
   rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
   ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  // Chrome parses none and non-scaling-stroke only (css_properties.json5 keywords); webref adds non-scaling-size, non-rotation and
+  // fixed-position, which Chrome rejects.
+  'vector-effect': 'none | non-scaling-stroke',
 };
 
 /**

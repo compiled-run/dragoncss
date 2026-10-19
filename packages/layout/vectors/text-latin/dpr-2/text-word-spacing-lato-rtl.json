@@ -2575,7 +2575,8 @@
           "value": 4
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -2745,7 +2746,8 @@
           "value": 4
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -2916,7 +2918,8 @@
           "value": -2
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -3087,7 +3090,8 @@
           "value": 4
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -3258,7 +3262,8 @@
           "value": 4
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -3429,7 +3434,8 @@
           "value": 3
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -3600,7 +3606,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         },
         {
          "kind": "inline",
@@ -3765,7 +3772,8 @@
             "value": 4
            },
            "overflowWrap": "normal",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },
@@ -3796,7 +3804,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       }

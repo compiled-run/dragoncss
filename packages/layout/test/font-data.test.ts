@@ -141,7 +141,7 @@ describe('font-data measurer (R4 bridge path)', () => {
       const viaData = fontDataMeasurer(RAW_AHEM, faults);
       const committed = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith(faults) : ahemMeasurer;
       for (const l of leaves) {
-        const font: TextFont = { family: 'Ahem', size: l.size, letterSpacing: 0, wordSpacing: 0 };
+        const font: TextFont = { family: 'Ahem', size: l.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false };
         const tag = `${JSON.stringify(faults)} ${l.size} ${JSON.stringify(l.text)}`;
         const m = want.metrics(font);
         check(`metrics ${tag}`, viaData.metrics(font), m);
@@ -165,7 +165,7 @@ describe('font-data measurer (R4 bridge path)', () => {
   }, 300_000);
 
   it('a font whose data differ from Ahem measures differently, so the data are read, not ignored', () => {
-    const font: TextFont = { family: 'Ahem', size: 10, letterSpacing: 0, wordSpacing: 0 };
+    const font: TextFont = { family: 'Ahem', size: 10, letterSpacing: 0, wordSpacing: 0, smallCaps: false };
     const tall = fontDataMeasurer({ ...RAW_AHEM, ascent: 900 }, FAULTS[0] as AhemRuleFaults);
     expect(tall.metrics(font).ascent).not.toBe(ahemMeasurer.metrics(font).ascent);
     const wide = fontDataMeasurer({ ...RAW_AHEM, advances: RAW_AHEM.advances.map((a) => a * 2) }, FAULTS[0] as AhemRuleFaults);

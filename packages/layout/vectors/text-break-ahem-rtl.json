@@ -447,7 +447,8 @@
           "value": 0
          },
          "overflowWrap": "anywhere",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -618,7 +619,8 @@
           "value": 0
          },
          "overflowWrap": "break-word",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -789,7 +791,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-word"
+         "wordBreak": "break-word",
+         "smallCaps": false
         }
        ]
       },
@@ -960,7 +963,8 @@
           "value": 0
          },
          "overflowWrap": "break-word",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -1131,7 +1135,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -1302,7 +1307,8 @@
           "value": 0
          },
          "overflowWrap": "anywhere",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -1473,7 +1479,8 @@
           "value": 0
          },
          "overflowWrap": "break-word",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -1644,7 +1651,8 @@
           "value": 0
          },
          "overflowWrap": "anywhere",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -1815,7 +1823,8 @@
           "value": 0
          },
          "overflowWrap": "break-word",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         },
         {
          "kind": "inline",
@@ -1980,7 +1989,8 @@
             "value": 0
            },
            "overflowWrap": "break-word",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },
@@ -2011,7 +2021,8 @@
           "value": 0
          },
          "overflowWrap": "break-word",
-         "wordBreak": "normal"
+         "wordBreak": "normal",
+         "smallCaps": false
         }
        ]
       },
@@ -2308,7 +2319,8 @@
             "value": 0
            },
            "overflowWrap": "anywhere",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },
@@ -2478,7 +2490,8 @@
             "value": 0
            },
            "overflowWrap": "break-word",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },
@@ -2648,7 +2661,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "break-word"
+           "wordBreak": "break-word",
+           "smallCaps": false
           }
          ]
         }
@@ -2947,7 +2961,8 @@
             "value": 0
            },
            "overflowWrap": "anywhere",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },
@@ -3117,7 +3132,8 @@
             "value": 0
            },
            "overflowWrap": "break-word",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         }
