@@ -7,6 +7,7 @@ import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BG_POSITION } from './fixture-groups/bg-position.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
+import { BORDER_IMAGE } from './fixture-groups/border-image.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASC_LAYER } from './fixture-groups/casc-layer.ts';
 import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
@@ -140,6 +141,7 @@ export const GROUPS = {
   background: BACKGROUND,
   'bg-position': BG_POSITION,
   'block-elements': BLOCK_ELEMENTS,
+  'border-image': BORDER_IMAGE,
   'border-paint': BORDER_PAINT,
   casc: CASC,
   'casc-layer': CASC_LAYER,

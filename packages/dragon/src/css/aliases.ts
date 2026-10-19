@@ -4,11 +4,13 @@
 // the cascade. Each family's aliases live in aliases/<family>.ts, spread here one line per family, sorted by family id. An alias
 // is listed only when its property is a Dragon longhand or shorthand and Chrome parses the two alike, or legacyAliasRefusal
 // refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing,
-// css_parsing_utils.cc ConsumePerspective). The other aliases Chrome parses with UseAliasParsing (-webkit-perspective,
-// -webkit-background-origin, -webkit-background-size, -webkit-appearance) wait for their property's lane, the -webkit-mask-*
+// css_parsing_utils.cc ConsumePerspective), and -webkit-perspective a unitless length (longhands_custom.cc
+// Perspective::ParseSingleValue). The other aliases Chrome parses with UseAliasParsing (-webkit-background-origin,
+// -webkit-background-size, -webkit-appearance) wait for their property's lane, the -webkit-mask-*
 // aliases are the mask family's (aliases/mask.ts),
 // -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
-// family's own shorthand (properties/radius.ts), -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
+// family's own shorthand (properties/radius.ts), -webkit-border-image the border image family's (properties/border-image.ts),
+// -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
 // and grid-column-gap are already shorthands of the grid family (properties/grid.ts).
 // The animation family's targets are the transition and animation list properties, which stay out of LONGHANDS (T065 option B).
 import type { Longhand, Shorthand } from './properties.ts';
@@ -61,11 +63,17 @@ export function resolveAlias(name: string): string {
   return ALIASES.get(name) ?? name;
 }
 
+/** A CSS-wide keyword or none, the only -webkit-perspective values that cannot be a length Chrome's legacy parsing reads. */
+const PLAIN_PERSPECTIVE = /^\s*(?:none|inherit|initial|unset|revert|revert-layer)\s*$/i;
+
 /**
  * Why Dragon refuses an alias declaration Chrome may parse unlike its property's, or null. -webkit-transform also accepts a
- * unitless perspective() length; a var(), env() or escape could spell one, so the value text is checked as written.
+ * unitless perspective() length, and -webkit-perspective a unitless length (calc(10) and calc(infinity) included); a var(), env()
+ * or escape could spell one, so the value text is checked as written. A -webkit-perspective other than none is refused anyway
+ * (analysis/transform-extra.ts), so only none and the CSS-wide keywords pass.
  */
 export function legacyAliasRefusal(alias: string, source: string): string | null {
+  if (alias === '-webkit-perspective') return PLAIN_PERSPECTIVE.test(source) ? null : 'Chrome parses -webkit-perspective with legacy rules (a unitless length), and Dragon parses only perspective';
   if (alias !== '-webkit-transform' || !/perspective|var\(|env\(|\\/i.test(source)) return null;
   return 'Chrome parses -webkit-transform with legacy rules (a unitless perspective() length), and Dragon parses only transform';
 }

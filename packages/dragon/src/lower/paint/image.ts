@@ -32,7 +32,7 @@ export type ImageWrite = {
  * x1 y1 x2 y2 x y, 4 close, 5 circle cx cy r), its fill and stroke (null for none), its stroke width in user units, and (SVG-stroke)
  * its stroke-linecap, stroke-linejoin, stroke-miterlimit and fill-rule, and (SVG-dash) its dashes in user units ([] for a solid
  * stroke, else an even list) and the phase into them the stroke starts at (svgDashPhase), and (SVG-paint-order) whether its stroke
- * paints before its fill.
+ * paints before its fill, and (SVG-vector-effect) whether its stroke width and dashes are in the svg's px (non-scaling-stroke).
  */
 export type SvgShapeData = {
   readonly path: readonly number[];
@@ -46,6 +46,7 @@ export type SvgShapeData = {
   readonly dashes: readonly number[];
   readonly dashPhase: number;
   readonly strokeFirst: boolean;
+  readonly nonScalingStroke: boolean;
 };
 
 export type SvgShapesWrite = {
@@ -105,7 +106,7 @@ export function svgShapePath(s: SvgShapeScene): number[] {
   return g.segments.flatMap((v) => (v.kind === 'move' ? [0, v.x, v.y] : v.kind === 'line' ? [1, v.x, v.y] : v.kind === 'quad' ? [2, v.x1, v.y1, v.x, v.y] : v.kind === 'cubic' ? [3, v.x1, v.y1, v.x2, v.y2, v.x, v.y] : [4]));
 }
 
-const SVG_PAINT = 'each shape filled (its fill-rule) and stroked (its stroke-linecap, stroke-linejoin, stroke-miterlimit and dash pattern) in its paint, in its paint-order, antialiased, through the viewBox transform of the snapped content box, clipped to it (the UA overflow: hidden)';
+const SVG_PAINT = 'each shape filled (its fill-rule) and stroked (its stroke-linecap, stroke-linejoin, stroke-miterlimit and dash pattern) in its paint, in its paint-order, at its vector-effect, antialiased, through the viewBox transform of the snapped content box, clipped to it (the UA overflow: hidden)';
 
 const IMAGE_PAINT = 'the PNG decoded once at build (sRGB, unpremultiplied source); drawn into the engine destination rect snapped to device px, clipped to the snapped content box';
 
@@ -121,7 +122,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView android.graphics.Paths drawn with Canvas.drawPath (Paint FILL and STROKE): ${SVG_PAINT}` },
     },
   },
-  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry'] },
+  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect'] },
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
@@ -129,7 +130,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       // Nor is one Chrome does not paint (hidden, or opacity 0).
       if (scene === null) throw new ProgramError(`${box.id}: an svg leaf without a scene`);
       const v = scene.viewBox;
-      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth, cap: sh.cap, join: sh.join, miterLimit: sh.miterLimit, fillRule: sh.fillRule, dashes: sh.dashes, dashPhase: svgDashPhase(sh.dashes, sh.dashOffset), strokeFirst: sh.strokeFirst })) }];
+      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth, cap: sh.cap, join: sh.join, miterLimit: sh.miterLimit, fillRule: sh.fillRule, dashes: sh.dashes, dashPhase: svgDashPhase(sh.dashes, sh.dashOffset), strokeFirst: sh.strokeFirst, nonScalingStroke: sh.nonScalingStroke })) }];
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
