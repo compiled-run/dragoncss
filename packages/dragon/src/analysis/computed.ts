@@ -227,7 +227,7 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
 }
 
 /** Inherited lengths whose value may be a calculation: their em and rem compute at the declaring element (css-values-4 §6). */
-const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset', 'text-indent'];
+const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset', 'text-indent', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing'];
 const EM_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(r?em)(?![\w-])/gi;
 
 /**

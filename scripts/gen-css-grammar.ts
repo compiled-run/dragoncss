@@ -114,6 +114,8 @@ const SUBSET = [
   'clip-path',
   // MASK-CLIP: the mask layer longhands (css-masking-1 §7), then mask and mask-position, after clip-path, as LONGHANDS registers them.
   ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
+  // TABLE: the table properties (CSS2 §17), then border-spacing, after the mask family, as LONGHANDS registers them.
+  'border-collapse', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing', 'caption-side', 'empty-cells', 'table-layout', 'border-spacing',
 ] as const;
 
 /**
@@ -223,6 +225,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
   rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
   ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  // Blink BorderSpacing::ParseShorthand and the spacing longhands' ParseSingleValue: one or two non-negative lengths (webref's
+  // <length>{1,2} takes negatives, which Chrome 145 drops); webref has no entry for the -webkit- spacing longhands.
+  'border-spacing': '<length [0,∞]>{1,2}',
+  '-webkit-border-horizontal-spacing': '<length [0,∞]>',
+  '-webkit-border-vertical-spacing': '<length [0,∞]>',
 };
 
 /**
@@ -239,6 +246,9 @@ const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string
   // (longhands_custom.cc WebkitMaskPositionX::InitialValue and WebkitMaskPositionY::InitialValue).
   '-webkit-mask-position-x': { initial: '0%', inherited: 'no' },
   '-webkit-mask-position-y': { initial: '0%', inherited: 'no' },
+  // Blink's border-spacing longhands (css_properties.json5): initial 0, inherited.
+  '-webkit-border-horizontal-spacing': { initial: '0', inherited: 'yes' },
+  '-webkit-border-vertical-spacing': { initial: '0', inherited: 'yes' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
