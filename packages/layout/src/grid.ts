@@ -1805,12 +1805,13 @@ function borderPaddingOf(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): L
 
 /**
  * Blink ResolveMinInlineLength / ResolveInitialMinBlockLength in the measure space, whose % basis in the measured axis is
- * indefinite: a px minimum in border-box terms, or the border and padding for auto and %.
+ * indefinite: a px minimum in border-box terms, or the border and padding for auto and %. Padding resolves against the given
+ * basis: indefinite (zero) for columns, the item's column area for rows (Blink ComputePadding takes the inline size).
  */
-function specifiedMinimum(ctx: Ctx, box: LayoutBox, axis: GridAxis): LU {
+function specifiedMinimum(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): LU {
   const s = box.style;
   const v = axis === 'columns' ? s.minWidth : s.minHeight;
-  const bp = borderPaddingOf(ctx, box, axis, INDEFINITE);
+  const bp = borderPaddingOf(ctx, box, axis, basis);
   return v.kind === 'px' ? borderBoxFromSpecified(fromCssPx(v.value), bp, s.boxSizing) : bp;
 }
 
@@ -2051,7 +2052,7 @@ function contributionFor(ctx: Ctx, grid: GridState, c: GridCollection, type: Gri
     const measured = contentContribution(ctx, grid, item, columns, 'min');
     const minContent = measured.size;
     if (main.kind === 'px') contribution = minContent;
-    else if (minLength.kind !== 'auto' || isScrollContainer(s) || special) contribution = specifiedMinimum(ctx, item.box, c.axis);
+    else if (minLength.kind !== 'auto' || isScrollContainer(s) || special) contribution = specifiedMinimum(ctx, item.box, c.axis, basis);
     else {
       contribution = minContent;
       const sets = itemSets(item, c.axis);

@@ -528,4 +528,15 @@ describe('percentages in a grid item\'s padding and margins while its auto colum
     // The column is 4px + 20px; laid out in it, a's margin is 4px + 10% of 24px.
     expect(columns(c)).toEqual([Math.trunc(6.4 * 64), 24 * 64]);
   });
+
+  it('resolves the padding of an item with a set min-height against its column area when its auto row is sized', () => {
+    // A 5px-tall grid with one 100px column: a's 10% padding is 10px in the row axis too (Blink ComputePadding takes the inline
+    // size), so its auto row's minimum is 10px and b starts at 10px; against zero the row would only take the 5px of free space.
+    const one = gridStyle({ templateColumns: [{ count: 1, sizes: [px(100)] }], explicitColumnCount: 1 });
+    for (const paddingTop of [{ kind: 'percent', value: 10 } as const, calc(0, 10, 'non-negative')]) {
+      const g = grid(one, [box('a', { minHeight: { kind: 'px', value: 0 }, paddingTop }), box('b', {})]);
+      const m = boxesOf({ ...g, style: { ...g.style, height: { kind: 'px', value: 5 } } });
+      expect(m.get('b')?.y, paddingTop.kind).toBe(10 * 64);
+    }
+  });
 });
