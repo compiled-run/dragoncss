@@ -25,7 +25,7 @@ import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
 import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
 import { layoutInline } from './inline.ts';
-import type { MarkerBox } from './marker.ts';
+import type { MarkerAlignment, MarkerBox } from './marker.ts';
 import { alignMarker, layoutMarker, markerX } from './marker.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
@@ -729,7 +729,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       // when the marker's ascent is the taller (unpositioned_list_marker.cc AddToBox); a child without one passes it on.
       if (a.marker !== null && markerY === null && c.frag.baseline !== null) {
         const top = add(a.origin.y, y);
-        const aligned = alignMarker(a.marker, top, add(top, c.frag.baseline));
+        const aligned: MarkerAlignment = alignMarker(a.marker, top, add(top, c.frag.baseline));
         markerY = aligned.y;
         y = add(y, aligned.push);
       }
@@ -792,7 +792,7 @@ function markerLineFlow(marker: MarkerBox, contentTop: LU, placed: readonly Plac
 
 /** The marker's y against an item's own first line. The strut is on every line, so the line's ascent is never below the marker's. */
 function inlineMarkerY(box: LayoutBox, marker: MarkerBox, contentTop: LU, first: LU): LU {
-  const aligned = alignMarker(marker, contentTop, first);
+  const aligned: MarkerAlignment = alignMarker(marker, contentTop, first);
   if (aligned.push !== ZERO) throw new Error(`${box.id}: the first line's ascent is below its marker's, which shares the strut's font and line height`);
   return aligned.y;
 }

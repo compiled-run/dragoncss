@@ -52,8 +52,11 @@ export function markerX(marker: MarkerBox, borderBoxWidth: LU, direction: Direct
   return sub(sub(borderBoxWidth, marker.marginStart), marker.width);
 }
 
+/** A marker's y, and how far the content moves down so the two baselines align. */
+export type MarkerAlignment = { readonly y: LU; readonly push: LU };
+
 /** A marker's y for content whose first baseline is at baseline: their baselines align, and the push the content needs below it. */
-export function alignMarker(marker: MarkerBox, contentTop: LU, baseline: LU): { readonly y: LU; readonly push: LU } {
+export function alignMarker(marker: MarkerBox, contentTop: LU, baseline: LU): MarkerAlignment {
   const adjust = sub(baseline, add(contentTop, marker.ascent));
   if (adjust >= ZERO) return { y: add(contentTop, adjust), push: ZERO };
   return { y: contentTop, push: neg(adjust) };

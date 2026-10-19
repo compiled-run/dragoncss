@@ -470,8 +470,8 @@ export function engineInlineCases(): string[] {
     const dropEmpty = (items: Json[]): Json[] => items.filter((c) => c['kind'] !== 'text' || c['text'] !== '').map((c) => (c['kind'] === 'inline' ? { ...c, children: dropEmpty(c['children'] as Json[]) } : c));
     const children = dropEmpty(kids);
     const containerStyle = { ...INLINE_STYLE, display: 'block', direction, width: { kind: 'px', value: 20 + r.int(180) + (r.chance(0.2) ? r.pick([0.015625, 0.5, 0.3]) : 0) }, textAlign: r.pick(['start', 'end', 'left', 'right', 'center']) };
-    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style: containerStyle, strut: children.length === 0 ? null : { font: inlineFont(strutSize), lineHeight: strutLh }, children };
-    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.2) ? 'flex' : 'block', direction }, strut: null, children: [container] };
+    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style: containerStyle, strut: children.length === 0 ? null : { font: inlineFont(strutSize), lineHeight: strutLh }, marker: null, children };
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.2) ? 'flex' : 'block', direction }, strut: null, marker: null, children: [container] };
     const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
     n++;
     if (!validateLayoutInput(input).ok) throw new Error(`engine-inline: generated input ${n} is invalid: ${JSON.stringify(validateLayoutInput(input))}`);
@@ -549,17 +549,17 @@ function atomicInlineCases(): string[] {
       if (r.chance(0.6)) {
         const pick = r.next();
         const kids: Json[] = pick < 0.3 ? [] : pick < 0.8 ? ownText(own, ownLh) : [
-          { kind: 'box', id: `${id}k0`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, paddingBottom: len([0, 3, 5]) }, strut: { font: inlineFont(own), lineHeight: ownLh }, children: ownText(own, ownLh) },
-          { kind: 'box', id: `${id}k1`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, height: len([0, 4]) }, strut: null, children: [] },
+          { kind: 'box', id: `${id}k0`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, paddingBottom: len([0, 3, 5]) }, strut: { font: inlineFont(own), lineHeight: ownLh }, marker: null, children: ownText(own, ownLh) },
+          { kind: 'box', id: `${id}k1`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, height: len([0, 4]) }, strut: null, marker: null, children: [] },
         ];
         if (pick >= 0.3 && pick < 0.8 && r.chance(0.3)) kids.push({ kind: 'br', id: `${id}br`, font: inlineFont(own), lineHeight: ownLh }, ...ownText(own, ownLh));
-        node = { kind: 'box', id, boxType: 'element', style: decorated({ ...INLINE_STYLE, display: 'inline-block', direction }), strut: kids.some((k) => k['kind'] !== 'box') ? { font: inlineFont(own), lineHeight: ownLh } : null, children: kids };
+        node = { kind: 'box', id, boxType: 'element', style: decorated({ ...INLINE_STYLE, display: 'inline-block', direction }), strut: kids.some((k) => k['kind'] !== 'box') ? { font: inlineFont(own), lineHeight: ownLh } : null, marker: null, children: kids };
       } else {
         const items: Json[] = [];
         const count = r.int(4);
-        for (let i = 0; i < count; i++) items.push({ kind: 'box', id: `${id}i${i}`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, paddingTop: len([0, 2, 7, 9]) }, strut: { font: inlineFont(own), lineHeight: ownLh }, children: ownText(own, ownLh) });
+        for (let i = 0; i < count; i++) items.push({ kind: 'box', id: `${id}i${i}`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, paddingTop: len([0, 2, 7, 9]) }, strut: { font: inlineFont(own), lineHeight: ownLh }, marker: null, children: ownText(own, ownLh) });
         const flex = { ...INLINE_STYLE, display: 'inline-flex', direction, flexDirection: r.pick(['row', 'column']), alignItems: r.pick(['normal', 'baseline', 'center', 'flex-start']), justifyContent: r.pick(['normal', 'center']) };
-        node = { kind: 'box', id, boxType: 'element', style: decorated(flex), strut: null, children: items };
+        node = { kind: 'box', id, boxType: 'element', style: decorated(flex), strut: null, marker: null, children: items };
       }
       afterSpace = false;
       return node;
@@ -601,8 +601,8 @@ function atomicInlineCases(): string[] {
     const dropEmpty = (items: Json[]): Json[] => items.filter((c) => c['kind'] !== 'text' || c['text'] !== '').map((c) => (c['kind'] === 'inline' ? { ...c, children: dropEmpty(c['children'] as Json[]) } : c));
     const children = dropEmpty(kids).filter((c) => c['kind'] !== 'inline' || (c['children'] as Json[]).length > 0);
     const containerStyle = { ...INLINE_STYLE, display: 'block', direction, width: { kind: 'px', value: 20 + r.int(180) }, textAlign: r.pick(['start', 'end', 'left', 'right', 'center']) };
-    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style: containerStyle, strut: { font: inlineFont(size), lineHeight: lh }, children };
-    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.2) ? 'flex' : 'block', direction }, strut: null, children: [container] };
+    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style: containerStyle, strut: { font: inlineFont(size), lineHeight: lh }, marker: null, children };
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.2) ? 'flex' : 'block', direction }, strut: null, marker: null, children: [container] };
     const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
     n++;
     const v = validateLayoutInput(input);
@@ -708,12 +708,12 @@ export function engineOverflowCases(): string[] {
         style['textAlign'] = r.pick(['start', 'end', 'center', 'left', 'right']);
         style['display'] = 'block';
         const strut: Json = { font: font(size), lineHeight: { kind: 'normal' } };
-        return { kind: 'box', id, boxType: 'element', style, strut, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), ...strut, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' }] };
+        return { kind: 'box', id, boxType: 'element', style, strut, marker: null, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), ...strut, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' }] };
       }
       const kids: Json[] = [];
       const count = r.int(4);
       for (let i = 0; i < count; i++) kids.push(r.chance(0.15) ? replacedLeaf() : box(depth + 1, display === 'flex'));
-      return { kind: 'box', id, boxType: 'element', style, strut: null, children: kids };
+      return { kind: 'box', id, boxType: 'element', style, strut: null, marker: null, children: kids };
     };
     // A block-level replaced leaf (REPL-a): its border box, margins and relative offset count in its scroll container.
     const replacedLeaf = (): Json => ({
@@ -740,7 +740,7 @@ export function engineOverflowCases(): string[] {
       objectPositionY: { kind: 'percent', value: 50 },
     });
     const container = box(0, false);
-    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...OVERFLOW_STYLE, display: 'block', direction }, strut: null, children: [container] };
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...OVERFLOW_STYLE, display: 'block', direction }, strut: null, marker: null, children: [container] };
     const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
     n++;
     if (!validateLayoutInput(input).ok) throw new Error(`engine-overflow: generated input ${n} is invalid: ${JSON.stringify(validateLayoutInput(input))}`);
