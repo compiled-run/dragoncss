@@ -316,9 +316,19 @@ function withoutTextColors(json: string): string {
 /** appearance, also added after the base, at its initial none only: any other value stays in the text. */
 const JSON_APPEARANCE = /,\n[ ]*"appearance": "none"/g;
 const CSS_APPEARANCE = /^[ ]*appearance: none;\n/gm;
-/** caret-color and accent-color, also added after the base: caret-color at any value, as it computes to color, accent-color at auto. */
-const JSON_UI_COLORS = /,\n[ ]*"(?:caret-color": "[^"\n]*|accent-color": "auto)"/g;
-const CSS_UI_COLORS = /^[ ]*(?:caret-color: [^;\n]*|accent-color: auto);\n/gm;
+/**
+ * caret-color and accent-color, also added after the base, at auto only: in a capture caret-color's auto is the computed object's
+ * color (Chrome resolves it), so a caret-color is removed there only where it equals that color. Any other value stays in the text.
+ */
+const JSON_ACCENT = /,\n[ ]*"accent-color": "auto"/g;
+const CSS_UI_COLORS = /^[ ]*(?:caret-color|accent-color): auto;\n/gm;
+function withoutCaretColor(json: string): string {
+  return json.replace(/"computed": \{[^{}]*\}/g, (block) => {
+    const color = /"color": "([^"]*)"/.exec(block)?.[1];
+    if (color === undefined) return block;
+    return block.replace(new RegExp(`,\\n[ ]*"caret-color": "${color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g'), '');
+  });
+}
 
 /**
  * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
@@ -365,7 +375,7 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = withoutTextColors(text).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_UI_COLORS, '').replace(genB, '').replace(SVG_JSON, '');
+    const stripped = withoutCaretColor(withoutTextColors(text)).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_ACCENT, '').replace(genB, '').replace(SVG_JSON, '');
     return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
