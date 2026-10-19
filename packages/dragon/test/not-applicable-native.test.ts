@@ -138,7 +138,7 @@ describe('the owner-ruled entries are left out whatever their value, and say so 
 describe('off the list, a declaration or rule is still refused on every target', () => {
   const OFF: Record<string, string> = {
     'scrollbar-width (hides scroll indicators)': '.a { scrollbar-width: none; }',
-    '-webkit-appearance (changes form controls)': '.a { -webkit-appearance: none; }',
+    '-webkit-appearance off the compat keywords (Chrome may keep a legacy one)': '.a { -webkit-appearance: push-button; }',
     'color-scheme (changes the UA colours)': '.a { color-scheme: dark; }',
     'break-inside (fragments columns, not only pages)': '.a { break-inside: avoid; }',
     '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',

@@ -61,7 +61,7 @@ export const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, r
 const TEXT_STROKE_COLOR_BEARING: ReadonlySet<string> = new Set(['-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke']);
 
 function isColorBearing(property: string): boolean {
-  return property === 'color' || property === 'fill' || property === 'stroke' || property === 'text-decoration-color' || property === 'text-decoration' || TEXT_STROKE_COLOR_BEARING.has(property) || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
+  return property === 'color' || property === 'fill' || property === 'stroke' || property === 'text-decoration-color' || property === 'text-decoration' || TEXT_STROKE_COLOR_BEARING.has(property) || property === 'caret-color' || property === 'accent-color' || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
 }
 
 /**
@@ -70,6 +70,8 @@ function isColorBearing(property: string): boolean {
  */
 export function tokenValue(node: CssNode, property: string): CssValue | string {
   if (!isColorBearing(property)) return toValue(node, property);
+  // FORM-b: caret-color's and accent-color's auto is a keyword of their own, not a colour (css-ui-4 §6.2, §6.3).
+  if ((property === 'caret-color' || property === 'accent-color') && node.type === 'Identifier' && asciiLower(String(node['name'])) === 'auto') return toValue(node, property);
   // The text-decoration shorthand's line, style and thickness tokens are not colours (css-text-decor-4 §2.6).
   if (property === 'text-decoration') {
     if (node.type === 'Identifier' && TEXT_DECORATION_KEYWORDS.has(asciiLower(String(node['name'])))) return toValue(node, property);

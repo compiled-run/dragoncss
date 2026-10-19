@@ -21,6 +21,13 @@ body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --t: pa
 .abs { position: absolute; left: 4px; top: 2px; width: 20px; height: 10px; touch-action: pan-x pan-y pinch-zoom; }
 .sp { touch-action: none; }
 .gone { display: none; touch-action: pan-y; }
+.no { touch-action: none; }
+.px { touch-action: pan-x; }
+.py { touch-action: pan-y; }
+.lu { touch-action: pan-left pan-up; }
+.pz { touch-action: pinch-zoom; }
+.sc { width: 80px; height: 20px; overflow-x: hidden; overflow-y: auto; touch-action: pan-y; }
+.sci { height: 40px; touch-action: pan-y; background-color: rgb(20, 160, 80); }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -37,5 +44,12 @@ body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --t: pa
 <div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs">X</div></div>
 <div data-dragon-id="t">XX <span data-dragon-id="sp" class="sp">XX</span> X</div>
 <div data-dragon-id="gone" class="gone"></div>
+<div data-dragon-id="no" class="box no">X</div>
+<div data-dragon-id="px" class="box px">X</div>
+<div data-dragon-id="py" class="box py">X</div>
+<div data-dragon-id="lu" class="box lu">X</div>
+<div data-dragon-id="pz" class="box pz">X</div>
+<div data-dragon-id="par3" class="par no"><div data-dragon-id="noi" class="inh">X</div></div>
+<div data-dragon-id="sc" class="sc"><div data-dragon-id="sci" class="sci">X</div></div>
 </body>
 </html>

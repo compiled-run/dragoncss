@@ -16020,7 +16020,7 @@
     "css/css-flexbox/flex-height-min-content.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/flex-inline.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/flex-item-and-percentage-abspos.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-flexbox/flex-item-compressible-001.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:appearance: none","status":"not-runnable"},
+    "css/css-flexbox/flex-item-compressible-001.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_ELEMENT:<input data-dragon-id=\"n19\" class=\"test1\" type=\"text\"></input>","status":"not-runnable"},
     "css/css-flexbox/flex-item-compressible-002.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_VALUE:vertical-lr","status":"not-runnable"},
     "css/css-flexbox/flex-item-contains-size-layout-001.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/flex-item-contains-strict.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:contain: strict","status":"not-runnable"},

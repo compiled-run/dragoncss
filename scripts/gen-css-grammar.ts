@@ -132,6 +132,12 @@ const SUBSET = [
   ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
   // The initial-only families (css/properties/initial-only.ts), after the mask family, as LONGHANDS registers them.
   ...INITIAL_ONLY_PROPERTIES,
+  // FORM-a: appearance (css-ui-4 §7.1), after the mask family, as LONGHANDS registers it.
+  'appearance',
+  // FORM-b: caret-color and accent-color (css-ui-4 §6.2, §6.3), after appearance, as LONGHANDS registers them.
+  'caret-color', 'accent-color',
+  // TOUCH: -webkit-user-modify, after caret-color and accent-color, as LONGHANDS registers it.
+  '-webkit-user-modify',
 ] as const;
 
 /**
@@ -182,6 +188,16 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
   // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
+  // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
+  // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
+  // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.
+  appearance: '<any-value>',
+  // css-ui-4 §6.2 adds a second caret-shape colour; Chrome 145 parses one auto or <color> and drops two
+  // (packages/parity/test/ui-colors-parse.test.ts).
+  'caret-color': 'auto | <color>',
+  // webref has no -webkit-user-modify. Chrome 145 parses read-only, read-write and read-write-plaintext-only; Dragon accepts
+  // read-only and refuses the other two (properties/user-modify.ts), so the grammar takes any value and the parser decides.
+  '-webkit-user-modify': '<any-value>',
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',
@@ -265,6 +281,7 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
  */
 const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string; readonly inherited: string } } = {
   '-webkit-box-orient': { initial: 'horizontal', inherited: 'no' },
+  '-webkit-user-modify': { initial: 'read-only', inherited: 'yes' },
   '-webkit-line-clamp': { initial: 'none', inherited: 'no' },
   // webref lists font-stretch as a legacy alias of css-fonts-4's font-width, without fields; Chrome 145 has no font-width and keeps
   // font-stretch a longhand, initial normal, inherited (css-fonts-4 §2.4).

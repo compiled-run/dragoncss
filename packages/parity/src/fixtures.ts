@@ -2,6 +2,9 @@
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
 import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
+import { APPEARANCE } from './fixture-groups/appearance.ts';
+import { UI_COLORS } from './fixture-groups/ui-colors.ts';
+import { USER_MODIFY } from './fixture-groups/user-modify.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
@@ -137,6 +140,9 @@ export type FixtureSpec =
 export const GROUPS = {
   aliases: ALIASES,
   animations: ANIMATIONS,
+  appearance: APPEARANCE,
+  'ui-colors': UI_COLORS,
+  'user-modify': USER_MODIFY,
   'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,

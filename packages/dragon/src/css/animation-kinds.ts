@@ -5,6 +5,7 @@
 // Each family's kinds live in animation-kinds/<family>.ts, spread here one line per family, sorted by family id.
 import type { Longhand } from './properties.ts';
 import type { AnimationKind } from './animation-kinds/kinds.ts';
+import { APPEARANCE_ANIMATION } from './animation-kinds/appearance.ts';
 import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_LAYERS_ANIMATION } from './animation-kinds/background-layers.ts';
 import { BORDER_ANIMATION } from './animation-kinds/border.ts';
@@ -52,6 +53,8 @@ import { TEXT_TRANSFORM_ANIMATION } from './animation-kinds/text-transform.ts';
 import { TOUCH_ACTION_ANIMATION } from './animation-kinds/touch-action.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
+import { UI_COLORS_ANIMATION } from './animation-kinds/ui-colors.ts';
+import { USER_MODIFY_ANIMATION } from './animation-kinds/user-modify.ts';
 import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
 import { ZOOM_ANIMATION } from './animation-kinds/zoom.ts';
@@ -59,6 +62,7 @@ import { ZOOM_ANIMATION } from './animation-kinds/zoom.ts';
 export type { AnimationKind, LengthRange } from './animation-kinds/kinds.ts';
 
 export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
+  ...APPEARANCE_ANIMATION,
   ...BACKGROUND_ANIMATION,
   ...BACKGROUND_LAYERS_ANIMATION,
   ...BORDER_ANIMATION,
@@ -106,6 +110,8 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TOUCH_ACTION_ANIMATION,
   ...TRANSFORM_ANIMATION,
   ...TRANSFORM_EXTRA_ANIMATION,
+  ...UI_COLORS_ANIMATION,
+  ...USER_MODIFY_ANIMATION,
   ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
   ...ZOOM_ANIMATION,
