@@ -4890,6 +4890,18 @@ const ROWS_4: readonly ProfileRow[] = [
   { feature: "paint-order:<paint-order>", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "<paint-order>", context: "paint/rtl", cases: ["svg-paint-order-rtl"] }] },
   { feature: "paint-order:inherit", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "inherit", context: "paint/ltr", cases: ["svg-paint-order"] }] },
   { feature: "paint-order:inherit", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "inherit", context: "paint/rtl", cases: ["svg-paint-order-rtl"] }] },
+  { feature: "perspective-origin:<position>", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "<position>", context: "paint/ltr", cases: ["transform-extra-initial"] }] },
+  { feature: "perspective-origin:<position>", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "<position>", context: "paint/rtl", cases: ["transform-extra-initial-rtl"] }] },
+  { feature: "perspective-origin:inherit", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "inherit", context: "paint/ltr", cases: ["transform-extra-initial"] }] },
+  { feature: "perspective-origin:inherit", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "inherit", context: "paint/rtl", cases: ["transform-extra-initial-rtl"] }] },
+  { feature: "perspective-origin:unset", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "unset", context: "paint/ltr", cases: ["transform-extra-initial"] }] },
+  { feature: "perspective-origin:unset", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "unset", context: "paint/rtl", cases: ["transform-extra-initial-rtl"] }] },
+  { feature: "perspective:inherit", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "inherit", context: "paint/ltr", cases: ["transform-extra-initial"] }] },
+  { feature: "perspective:inherit", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "inherit", context: "paint/rtl", cases: ["transform-extra-initial-rtl"] }] },
+  { feature: "perspective:initial", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "initial", context: "paint/ltr", cases: ["transform-extra-initial"] }] },
+  { feature: "perspective:initial", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "initial", context: "paint/rtl", cases: ["transform-extra-initial-rtl"] }] },
+  { feature: "perspective:none", context: "paint/ltr", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "none", context: "paint/ltr", cases: ["transform-extra-initial"] }] },
+  { feature: "perspective:none", context: "paint/rtl", status: "caveat", proofs: [{ aspect: "computed-value", lane: "chrome-dual", valueSubset: "none", context: "paint/rtl", cases: ["transform-extra-initial-rtl"] }] },
   { feature: "pointer-events:auto", context: "block/ltr", status: "exact", proofs: [] },
   { feature: "pointer-events:auto", context: "block/rtl", status: "exact", proofs: [] },
   { feature: "pointer-events:none", context: "absolute-in-block/ltr/cb-ltr", status: "exact", proofs: [] },
@@ -5003,6 +5015,9 @@ const ROWS_4: readonly ProfileRow[] = [
   { feature: "right:<length-px>", context: "relative-in-flex-row/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-px>", context: "relative-in-flex-row/ltr", cases: ["position-relative-flex"] }] },
   { feature: "right:<length-px>", context: "relative-in-flex-row/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-px>", context: "relative-in-flex-row/rtl", cases: ["position-relative-flex", "position-relative-flex-rtl"] }] },
   { feature: "right:<length-px>", context: "relative-in-grid/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-px>", context: "relative-in-grid/ltr", cases: ["grid-sizing"] }] },
+];
+
+const ROWS_5: readonly ProfileRow[] = [
   { feature: "right:<length-px>", context: "relative-in-grid/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-px>", context: "relative-in-grid/rtl", cases: ["grid-sizing-rtl"] }] },
   { feature: "right:<length-rem>", context: "absolute-in-block/ltr/cb-ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-rem>", context: "absolute-in-block/ltr/cb-ltr", cases: ["units-rem-positioned"] }] },
   { feature: "right:<length-rem>", context: "absolute-in-block/rtl/cb-rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<length-rem>", context: "absolute-in-block/rtl/cb-rtl", cases: ["units-rem-positioned-rtl"] }] },
@@ -5015,9 +5030,6 @@ const ROWS_4: readonly ProfileRow[] = [
   { feature: "right:<max()>", context: "absolute-in-flex-column/ltr/cb-ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "absolute-in-flex-column/ltr/cb-ltr", cases: ["values-calc-contexts-positioned"] }] },
   { feature: "right:<max()>", context: "absolute-in-flex-column/rtl/cb-rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "absolute-in-flex-column/rtl/cb-rtl", cases: ["values-calc-contexts-positioned-rtl"] }] },
   { feature: "right:<max()>", context: "absolute-in-flex-row/ltr/cb-ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "absolute-in-flex-row/ltr/cb-ltr", cases: ["values-calc-contexts-positioned"] }] },
-];
-
-const ROWS_5: readonly ProfileRow[] = [
   { feature: "right:<max()>", context: "absolute-in-flex-row/rtl/cb-rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "absolute-in-flex-row/rtl/cb-rtl", cases: ["values-calc-contexts-positioned-rtl"] }] },
   { feature: "right:<max()>", context: "block/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "block/ltr", cases: ["values-calc-contexts-block"] }] },
   { feature: "right:<max()>", context: "block/rtl", status: "exact", proofs: [{ aspect: "layout", lane: "linux-dragon-layout", valueSubset: "<max()>", context: "block/rtl", cases: ["values-calc-contexts-block-rtl"] }] },
