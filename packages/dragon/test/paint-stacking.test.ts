@@ -269,7 +269,7 @@ describe('stacking: clips as the native tree clips them (after merging #194, OVF
     const el = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     for (const overflow of ['hidden', 'clip', 'auto', 'scroll', 'visible']) {
       const style = { position: 'static', display: 'block', overflowX: overflow, overflowY: overflow } as unknown as LayoutBox['style'];
-      const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style, strut: null, children: [] };
+      const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style, strut: null, marker: null, children: [] };
       expect(layoutStackTree(root, new Map([['root', el()]])).clips, overflow).toBe(overflow !== 'visible');
     }
   });
@@ -327,7 +327,7 @@ describe('the stack tree of a layout tree with a replaced leaf (REPL-a)', () => 
     const style = (position: string): LayoutBox['style'] => ({ position, display: 'block', overflowX: 'visible', overflowY: 'visible' }) as unknown as LayoutBox['style'];
     const el = (z: number | null, opacity = 1): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: z === null ? { kind: 'keyword', value: 'auto' } : zIndexValue(z) }], ['opacity', { value: { kind: 'number', value: opacity } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     const img: LayoutNode = { kind: 'replaced', id: 'img', style: style('relative') } as unknown as LayoutNode;
-    const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style: style('static'), strut: null, children: [img] };
+    const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style: style('static'), strut: null, marker: null, children: [img] };
     const tree = layoutStackTree(root, new Map([['root', el(null)], ['img', el(3, 0.5)]]));
     expect(tree.children).toEqual([{ id: 'img', position: 'relative', z: 3, opacity: 0.5, transformed: false, clips: false, text: false, children: [] }]);
     expect(() => layoutStackTree(root, new Map([['root', el(null)]]))).toThrow('img: no resolved element for the layout box');

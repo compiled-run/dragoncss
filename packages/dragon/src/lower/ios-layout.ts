@@ -537,7 +537,7 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   const lastBaseline: LastBaselineContext = { items: false, self: parentDisplay === 'grid' || parentDisplay === 'inline-grid' };
   const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null }, lastBaseline);
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInlineLevel(c, l)) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), marker: null, children: items.map((c) => lowerInlineLevel(c, l)) };
 }
 
 /**
@@ -644,5 +644,5 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
   // atomic inline is on a line (INL2a).
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), marker: null, children };
 }

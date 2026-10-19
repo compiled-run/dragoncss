@@ -31,6 +31,7 @@ import type {
   LineHeightCalc,
   LineHeightValue,
   LineStrut,
+  ListMarker,
   MarginValue,
   MaxInlineSizeValue,
   MaxSizeValue,
@@ -161,6 +162,7 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
 function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
   if (styleNeedsEnvironment(b.style)) return true;
   if (b.strut !== null && fontNeedsEnvironment(b.strut.font, b.strut.lineHeight, faults)) return true;
+  if (b.marker !== null && fontNeedsEnvironment(b.marker.font, b.marker.lineHeight, faults)) return true;
   if (resolveOrder(b.style.order, faults) !== b.style.order) return true;
   for (const c of b.children) {
     if (c.kind === 'box') {
@@ -217,7 +219,7 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
 function resolveBox(b: LayoutBox, parent: Env): LayoutBox {
   const env: Env = { ...parent, node: b.id };
   const children = b.children.map((c): LayoutBox | ReplacedLeaf | InlineChild => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : resolveInline(c, env)));
-  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: b.strut === null ? null : resolveStrut(b.strut, env), children };
+  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: b.strut === null ? null : resolveStrut(b.strut, env), marker: b.marker === null ? null : resolveMarker(b.marker, env), children };
 }
 
 function resolveInline(c: InlineChild, parent: Env): InlineChild {
@@ -234,6 +236,12 @@ function resolveInline(c: InlineChild, parent: Env): InlineChild {
 function resolveStrut(s: LineStrut, env: Env): LineStrut {
   const size = computedSize(s.font, env);
   return { font: { family: s.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true }, lineHeight: resolveLineHeightValue(s.lineHeight, size, env) };
+}
+
+/** A list marker at its computed font size, as a strut's. */
+function resolveMarker(m: ListMarker, env: Env): ListMarker {
+  const s = resolveStrut({ font: m.font, lineHeight: m.lineHeight }, env);
+  return { id: m.id, kind: m.kind, symbol: m.symbol, text: m.text, font: s.font, lineHeight: s.lineHeight };
 }
 
 /** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */
@@ -975,6 +983,7 @@ function calcDependencies(e: CalcExpr, out: DependencyFlags): void {
 function boxDependencies(b: LayoutBox, out: DependencyFlags): void {
   styleDependencies(b.style, out);
   if (b.strut !== null) fontDependencies(b.strut.font, b.strut.lineHeight, out);
+  if (b.marker !== null) fontDependencies(b.marker.font, b.marker.lineHeight, out);
   for (const c of b.children) {
     if (c.kind === 'box') boxDependencies(c, out);
     else if (c.kind === 'replaced') styleDependencies(c.style, out);

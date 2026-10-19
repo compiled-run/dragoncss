@@ -460,6 +460,25 @@ export type InlineChild = TextLeaf | InlineBox | LineBreak;
 /** The strut of a block container with inline content (CSS2 §10.8.1): the container's own font and line-height. */
 export type LineStrut = { readonly font: FontSpec; readonly lineHeight: LineHeightValue };
 
+/** css-lists-3 §3: the symbol of an outside disc, circle or square marker (Blink list_marker.cc kSymbol). */
+export type MarkerSymbol = 'disc' | 'circle' | 'square';
+/** A marker drawn as a symbol (no glyph) or as its counter text. */
+export type MarkerKind = 'symbol' | 'text';
+
+/**
+ * css-lists-3 §3 and T151 R14: a list item's outside ::marker box, an inline-block with its own line of font and lineHeight (the list
+ * item's). A symbol marker has no glyph: its width comes from the font's ascent (list_marker.cc WidthOfSymbol). A text marker is
+ * its compile-time counter text, trailing space included. id names the marker's rect in the layout result: "<list item>::marker".
+ */
+export type ListMarker = {
+  readonly id: string;
+  readonly kind: MarkerKind;
+  readonly symbol: MarkerSymbol | null;
+  readonly text: string | null;
+  readonly font: FontSpec;
+  readonly lineHeight: LineHeightValue;
+};
+
 /**
  * Children are either all boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks): the compiler
  * wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level, else null.
@@ -470,6 +489,8 @@ export type LayoutBox = {
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
   readonly strut: LineStrut | null;
+  /** The outside list marker of a list item (T151 R14), or null. */
+  readonly marker: ListMarker | null;
   readonly children: readonly (LayoutBox | ReplacedLeaf | InlineChild)[];
 };
 

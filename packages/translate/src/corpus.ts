@@ -302,19 +302,19 @@ function randomInput(r: Rng): LayoutInput {
     if (made < total && r.chance(0.35) && style.display === 'block') {
       const n = 1 + r.int(2);
       for (let i = 0; i < n; i++) children.push(textLeaf(r, `${id}:t${i}`, font, style.direction === 'rtl'));
-      return { kind: 'box', id, boxType: 'element', style, strut: strutOf(font), children };
+      return { kind: 'box', id, boxType: 'element', style, strut: strutOf(font), marker: null, children };
     }
     while (made < total && r.chance(0.75)) {
       if (r.chance(0.15)) {
         // Text beside boxes, or in a flex container, arrives wrapped in an anonymous box (CSS2 §9.2.1.1, css-flexbox-1 §4).
         const aid = `${id}:anon${children.length}`;
         const astyle: LayoutStyle = { ...INITIAL, direction: style.direction, textAlign: style.textAlign };
-        children.push({ kind: 'box', id: aid, boxType: 'anonymous', style: astyle, strut: strutOf(font), children: [textLeaf(r, `${aid}:t0`, font, style.direction === 'rtl')] });
+        children.push({ kind: 'box', id: aid, boxType: 'anonymous', style: astyle, strut: strutOf(font), marker: null, children: [textLeaf(r, `${aid}:t0`, font, style.direction === 'rtl')] });
         continue;
       }
       children.push(makeBox(depth + 1, style.display === 'flex'));
     }
-    return { kind: 'box', id, boxType: 'element', style, strut: null, children };
+    return { kind: 'box', id, boxType: 'element', style, strut: null, marker: null, children };
   };
   const root = makeBox(0, false);
   const dpr = r.pick(DPRS);

@@ -27,7 +27,7 @@ const style = (width: number): LayoutBox['style'] => ({
   rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: auto,
   verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, grid: null, gridItem: null,
 }) as unknown as LayoutBox['style'];
-const box = (id: string, width: number): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, children: [] });
+const box = (id: string, width: number): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, marker: null, children: [] });
 const node = (id: string, color: number): ProgramNode => ({
   id, parent: null, host: null, kind: 'element', native: 'DragonBoxView', clips: false, text: null,
   writes: [{ kind: 'background-color', color: { r: color, g: 0, b: 0, alpha: 255 }, key: 'backgroundColor', technique: 'native-property', detail: 'test', css: ['background-color'] }],

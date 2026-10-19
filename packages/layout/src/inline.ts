@@ -47,7 +47,7 @@ const SOFT_HYPHEN = 0xad;
 type Item = { readonly kind: 'char' | 'open' | 'close' | 'br' | 'nl' | 'atomic'; readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number; readonly box: number; readonly br: number; readonly atom: number };
 
 /** The ascent and descent a box or the strut adds around the baseline with its half-leadings (CSS2 §10.8.1), and its font's A and D. */
-type BoxMetrics = { readonly above: LU; readonly below: LU; readonly ascent: LU; readonly descent: LU };
+export type BoxMetrics = { readonly above: LU; readonly below: LU; readonly ascent: LU; readonly descent: LU };
 
 /** A place a line may start: an item index, and whether the line before it ends there by force (after a <br>). */
 type Boundary = { readonly at: number; readonly forced: boolean };
@@ -326,7 +326,7 @@ function inlineChildren(box: LayoutBox): (InlineChild | LayoutBox)[] {
 }
 
 /** A font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts), unspaced. */
-function fontOf(f: FontSpec): TextFont {
+export function fontOf(f: FontSpec): TextFont {
   return { family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0 };
 }
 
@@ -350,7 +350,7 @@ function resolvedLineHeight(id: string, lh: LineHeightValue): NormalValue | Numb
 // CalculateLeadingSpace floors the ascent-side half-leading to a whole px, so a line-height below the glyphs gives negative
 // leading, and the descent side takes the rest. The planted spec reading of deviation half-leading-floor keeps the exact half,
 // and planted fault halfLeadingUnflooredPerBox keeps it for inline boxes only.
-function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightValue, inlineBox: boolean): BoxMetrics {
+export function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightValue, inlineBox: boolean): BoxMetrics {
   const m = fontMetricsOf(ctx, id, font);
   const glyphHeight = add(add(m.ascent, m.descent), m.lineGap);
   const lh = resolvedLineHeight(id, lineHeight);
@@ -362,7 +362,7 @@ function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightV
 }
 
 /** The rounded metrics of a node's font, or the text-glyph refusal for a face the measurer does not hold. */
-function fontMetricsOf(ctx: Ctx, id: string, font: FontSpec): FontMetrics {
+export function fontMetricsOf(ctx: Ctx, id: string, font: FontSpec): FontMetrics {
   if (!ctx.measurer.hasFace(font.family)) unsupported('text-glyph', id, 'css-fonts-4 §5', `${id} names the face ${font.family}, which the measurer does not hold`);
   return ctx.measurer.metrics(fontOf(font));
 }

@@ -37,6 +37,9 @@ import type {
   LineBreak,
   LineHeightValue,
   LineStrut,
+  ListMarker,
+  MarkerKind,
+  MarkerSymbol,
   MarginValue,
   NaturalSizeValue,
   ObjectFit,
@@ -903,18 +906,20 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
 }
 
 function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'marker', 'children'], path);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
   const strut = field(o, 'strut', path);
+  const marker = field(o, 'marker', path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
     strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
+    marker: marker.kind === 'null' ? null : decodeMarker(marker, `${path}.marker`),
     children,
   };
 }
@@ -922,6 +927,20 @@ function decodeBox(o: JsonObj, path: string): LayoutBox {
 function decodeStrut(v: JsonValue, path: string): LineStrut {
   const o = obj(v, ['font', 'lineHeight'], path);
   return { font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeMarker(v: JsonValue, path: string): ListMarker {
+  const o = obj(v, ['id', 'kind', 'symbol', 'text', 'font', 'lineHeight'], path);
+  const symbol = field(o, 'symbol', path);
+  const text = field(o, 'text', path);
+  return {
+    id: str(field(o, 'id', path), `${path}.id`),
+    kind: lit(field(o, 'kind', path), ['symbol', 'text'], `${path}.kind`) as MarkerKind,
+    symbol: symbol.kind === 'null' ? null : (lit(symbol, ['disc', 'circle', 'square'], `${path}.symbol`) as MarkerSymbol),
+    text: text.kind === 'null' ? null : str(text, `${path}.text`),
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
+    lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
+  };
 }
 
 function decodeInline(o: JsonObj, path: string): InlineBox {
