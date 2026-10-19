@@ -5471,7 +5471,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },
@@ -5651,7 +5652,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },
@@ -6183,7 +6185,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },
@@ -8276,7 +8279,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "normal"
+           "wordBreak": "normal",
+           "smallCaps": false
           }
          ]
         },

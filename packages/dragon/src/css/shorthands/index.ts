@@ -3,6 +3,7 @@
 import type { Shorthand } from '../properties.ts';
 import { BACKGROUND_SHORTHANDS } from './background.ts';
 import { BORDER_SHORTHANDS } from './border.ts';
+import { BORDER_IMAGE_SHORTHANDS } from './border-image.ts';
 import { BOX_SHORTHANDS } from './box.ts';
 import { FLEX_SHORTHANDS } from './flex.ts';
 import { FONT_VARIANT_SHORTHANDS } from './font-variant.ts';
@@ -44,6 +45,7 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...FONT_VARIANT_SHORTHANDS,
   ...TEXT_FILL_STROKE_SHORTHANDS,
   ...MASK_SHORTHANDS,
+  ...BORDER_IMAGE_SHORTHANDS,
 };
 
 export function shorthandHandler(property: Shorthand): ShorthandHandler {

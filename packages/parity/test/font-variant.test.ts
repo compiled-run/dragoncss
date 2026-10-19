@@ -1,5 +1,6 @@
 // TXT-FONTFEAT (fixture-groups/text-font-variant.ts): the font-variant feature longhands and shorthand over Ahem against Chrome 145. The
-// layout fixture passes both lanes in both directions and at every DPR, and the reject (small capitals) is refused on every target.
+// layout fixtures (text-font-variant-caps-ahem: synthesized small capitals) pass both lanes in both directions and at every DPR, and
+// the reject (all-small-caps) is refused on every target. text-font-variant-caps-ahem.test.ts proves the native pixels.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
@@ -32,11 +33,13 @@ const specOf = (id: string) => {
 describe('the text-font-variant fixtures', () => {
   // DRAGON_LIVE_AUTHORED=1 captures Chrome live instead of reading the committed capture (before the first regen of a new fixture).
   const authored = () => (process.env['DRAGON_LIVE_AUTHORED'] === '1' ? liveAuthored(browser) : committedAuthored);
-  it('text-font-variant-ahem passes chrome-dual and linux-dragon-layout in ltr and rtl', async () => {
-    const out = await runFixture(specOf('text-font-variant-ahem'), browser, { authored: authored(), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
-    expect(out.reason).toBeNull();
-    expect(out.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual([['ltr', 'pass', 'pass'], ['rtl', 'pass', 'pass']]);
-  }, 300_000);
+  for (const id of ['text-font-variant-ahem', 'text-font-variant-caps-ahem']) {
+    it(`${id} passes chrome-dual and linux-dragon-layout in ltr and rtl`, async () => {
+      const out = await runFixture(specOf(id), browser, { authored: authored(), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
+      expect(out.reason).toBeNull();
+      expect(out.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual([['ltr', 'pass', 'pass'], ['rtl', 'pass', 'pass']]);
+    }, 300_000);
+  }
   it('reject-text-font-variant-caps is refused on every target', async () => {
     const out = await runFixture(specOf('reject-text-font-variant-caps'), browser, { authored: authored(), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     expect(out.reason).toBeNull();
@@ -44,14 +47,16 @@ describe('the text-font-variant fixtures', () => {
   }, 300_000);
 });
 
-describe('text-font-variant-ahem passes at every DPR', () => {
-  const corpus = layoutCases().filter((f) => f.spec.id === 'text-font-variant-ahem');
-  const compiled = { ltr: compileFixture(specOf('text-font-variant-ahem'), NO_FAULTS, 'enforce', 'ltr').compiled, rtl: compileFixture(specOf('text-font-variant-ahem'), NO_FAULTS, 'enforce', 'rtl').compiled };
-  for (const dpr of [1, ...DPRS]) {
-    it(`at DPR ${dpr}`, () => {
-      const cases = corpus.flatMap((f) => f.cases);
-      expect(cases.length).toBe(2);
-      expect(cases.map((c) => runDprCase(c, compiled[c.environment.direction], dpr, committedDprCapture(c.id, dpr), NO_ENGINE_FAULTS)).filter((o) => o.status === 'fail').map((o) => `${o.id}@${o.dpr}: ${o.reason}`)).toEqual([]);
-    });
-  }
-});
+for (const id of ['text-font-variant-ahem', 'text-font-variant-caps-ahem']) {
+  describe(`${id} passes at every DPR`, () => {
+    const corpus = layoutCases().filter((f) => f.spec.id === id);
+    const compiled = { ltr: compileFixture(specOf(id), NO_FAULTS, 'enforce', 'ltr').compiled, rtl: compileFixture(specOf(id), NO_FAULTS, 'enforce', 'rtl').compiled };
+    for (const dpr of [1, ...DPRS]) {
+      it(`at DPR ${dpr}`, () => {
+        const cases = corpus.flatMap((f) => f.cases);
+        expect(cases.length).toBe(2);
+        expect(cases.map((c) => runDprCase(c, compiled[c.environment.direction], dpr, committedDprCapture(c.id, dpr), NO_ENGINE_FAULTS)).filter((o) => o.status === 'fail').map((o) => `${o.id}@${o.dpr}: ${o.reason}`)).toEqual([]);
+      });
+    }
+  });
+}

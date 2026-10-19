@@ -295,22 +295,27 @@ const POSITION_EDGES: { readonly [k: string]: { readonly axis: 'x' | 'y' | 'cent
 
 type PositionPart = { readonly edge: string } | { readonly offset: PositionOffset } | { readonly refused: CssNode; readonly reason: string } | null;
 
+/** The longhands whose value is one <position>, which Chrome 145 parses and computes alike (ConsumePosition with no three-value feature). */
+export const POSITION_PROPERTIES = ['object-position', 'perspective-origin'] as const;
+export type PositionProperty = (typeof POSITION_PROPERTIES)[number];
+export const isPositionProperty = (p: string): p is PositionProperty => (POSITION_PROPERTIES as readonly string[]).includes(p);
+
 /** One <position> token: an edge keyword, a px length or 0, or a percentage; null when it is none of these. */
-function positionPart(t: CssNode): PositionPart {
+function positionPart(t: CssNode, property: PositionProperty): PositionPart {
   if (t.type === 'Identifier') {
     // css-syntax-3 §4.3.11: an escaped keyword (\6c eft) is the keyword; keywords match ASCII case-insensitively.
     const name = asciiLower(decodeName(String(t['name'])));
     return Object.hasOwn(POSITION_EDGES, name) ? { edge: name } : null;
   }
   // A number past the double range (1e999px) is Infinity, which no offset holds; Dragon has no Chrome proof of how it clamps it.
-  const overflow = { refused: t, reason: 'an offset past the range of a number is not supported in object-position' } as const;
+  const overflow = { refused: t, reason: `an offset past the range of a number is not supported in ${property}` } as const;
   if (t.type === 'Percentage') return Number.isFinite(Number(t['value'])) ? { offset: { unit: '%', value: Number(t['value']) } } : overflow;
   if (t.type === 'Number' && Number(t['value']) === 0) return { offset: { unit: 'px', value: 0 } };
   if (t.type === 'Dimension') {
     if (normalizeUnit(String(t['unit'])) === 'px') return Number.isFinite(Number(t['value'])) ? { offset: { unit: 'px', value: Number(t['value']) } } : overflow;
-    return { refused: t, reason: 'only px and % offsets are supported in object-position' };
+    return { refused: t, reason: `only px and % offsets are supported in ${property}` };
   }
-  if (t.type === 'Function') return { refused: t, reason: 'a calculation in object-position is not supported' };
+  if (t.type === 'Function') return { refused: t, reason: `a calculation in ${property} is not supported` };
   return null;
 }
 
@@ -322,12 +327,12 @@ function fromFarEdge(edgePercent: number, o: PositionOffset): PositionOffset | n
 }
 
 /**
- * css-values-4 §9.1 <position> as Chrome 145 parses and computes object-position (probed): one value (the other axis is center),
+ * css-values-4 §9.1 <position> as Chrome 145 parses and computes object-position (probed) and perspective-origin: one value (the other axis is center),
  * two values (keywords in either order, or x then y), or four values (an edge and an offset per axis). Chrome rejects three
  * values. Keywords compute to percentages; an offset from right or bottom computes to calc() unless it is 0 or a percentage.
  */
-export function positionValue(tokens: readonly CssNode[]): CssValue | 'invalid' | { readonly token: CssNode; readonly reason: string } {
-  const parts = tokens.map(positionPart);
+export function positionValue(tokens: readonly CssNode[], property: PositionProperty): CssValue | 'invalid' | { readonly token: CssNode; readonly reason: string } {
+  const parts = tokens.map((t) => positionPart(t, property));
   for (const p of parts) {
     if (p === null) return 'invalid';
     if ('refused' in p) return { token: p.refused, reason: p.reason };
@@ -367,7 +372,7 @@ export function positionValue(tokens: readonly CssNode[]): CssValue | 'invalid' 
     const [ex, ox, ey, oy] = e1.axis === 'x' ? [e1, o1.offset, e2, o2.offset] : [e2, o2.offset, e1, o1.offset];
     const x = fromFarEdge(ex.percent, ox);
     const y = fromFarEdge(ey.percent, oy);
-    if (x === null || y === null) return { token: tokens[0] as CssNode, reason: 'an offset from right or bottom computes to a calculation, which object-position does not support' };
+    if (x === null || y === null) return { token: tokens[0] as CssNode, reason: `an offset from right or bottom computes to a calculation, which ${property} does not support` };
     return { kind: 'position', x, y };
   }
   return 'invalid';

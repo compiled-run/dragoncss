@@ -675,8 +675,8 @@ const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 // tab-size is <number> | <length> (css-text-3 §4.2); its parser (properties/tab-size.ts) refuses every calculation.
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'tab-size']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
- * stroke width), and text-shadow's lengths (Blink TextShadow). */
-const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow']);
+ * stroke width, css-transforms-2 §5 perspective), and text-shadow's lengths (Blink TextShadow). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
