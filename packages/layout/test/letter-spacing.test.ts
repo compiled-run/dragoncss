@@ -76,7 +76,7 @@ describe('letter-spacing on the shaped path', () => {
   };
   const width = (faults: ShapingFaults, spacing: number): number => {
     const m = shapedMeasurer(new Map([['Fake', { id: 'Fake', data: AHEM_FONT_DATA, hanKerning: NO_HAN_KERNING }]]), shaper, faults, 'en');
-    const r = m.measure('office', { family: 'Fake', size: 10, letterSpacing: spacing, wordSpacing: 0 });
+    const r = m.measure('office', { family: 'Fake', size: 10, letterSpacing: spacing, wordSpacing: 0, smallCaps: false });
     if (!r.ok) throw new Error(r.reason);
     return r.measure.width / LU;
   };

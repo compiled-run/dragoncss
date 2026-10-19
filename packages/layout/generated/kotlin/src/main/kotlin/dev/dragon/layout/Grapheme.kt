@@ -72,12 +72,12 @@ fun grapheme_pictographicZwjBefore(cps: JsArray<Double>, i: Double): Boolean {
   // ts: packages/layout/src/grapheme.ts:54
   run {
     var j: Double = (i - 2.0)
-    loop44@ while ((j >= 0.0)) {
-      loop44_body@ do {
+    loop45@ while ((j >= 0.0)) {
+      loop45_body@ do {
         val cp: Double = jsUnwrap(jsAt(cps, j))
         // ts: packages/layout/src/grapheme.ts:56
         if ((grapheme_graphemeBreakProperty(cp) == graphemeData_GCB_EXTEND)) {
-          break@loop44_body
+          break@loop45_body
         }
         return grapheme_isPictographic(cp)
       } while (false)
@@ -94,14 +94,14 @@ fun grapheme_graphemeBreaksWith(cps: JsArray<Double>, codePoints: Boolean): JsAr
   // ts: packages/layout/src/grapheme.ts:70
   run {
     var i: Double = 0.0
-    loop38@ while ((i < jsLength(cps))) {
-      loop38_body@ do {
+    loop39@ while ((i < jsLength(cps))) {
+      loop39_body@ do {
         val c: Double = grapheme_graphemeBreakProperty(jsUnwrap(jsAt(cps, i)))
         // ts: packages/layout/src/grapheme.ts:72
         if (((i == 0.0) || codePoints)) {
           jsPush(out, true)
           riOdd = (c == graphemeData_GCB_REGIONAL_INDICATOR)
-          break@loop38_body
+          break@loop39_body
         }
         val p: Double = grapheme_graphemeBreakProperty(jsUnwrap(jsAt(cps, (i - 1.0))))
         var brk: Boolean = true

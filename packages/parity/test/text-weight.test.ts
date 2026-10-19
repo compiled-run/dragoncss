@@ -37,8 +37,9 @@ import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
 /**
- * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration), and every
- * LayoutStyle's lineClamp removed where it is 0 (the TXT2-g migration: a style is the object that carries textOverflow).
+ * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration) and its
+ * smallCaps where it is false (the TXT-FONTFEAT small-caps migration), and every LayoutStyle's lineClamp removed where it is 0 (the
+ * TXT2-g migration: a style is the object that carries textOverflow).
  */
 function withoutWrapKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(withoutWrapKeys);
@@ -46,7 +47,7 @@ function withoutWrapKeys(v: unknown): unknown {
   const o = v as Record<string, unknown>;
   const leaf = o['kind'] === 'text';
   const style = 'textOverflow' in o;
-  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
+  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(leaf && k === 'smallCaps' && x === false) && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
 }
 
 /**
@@ -275,6 +276,8 @@ describe('BASE pins', () => {
     expect({ files: paths.length, digest: digest(paths, content) }).toEqual(BASE_OUTPUTS);
     // The migration exception is not a blanket pass: a leaf whose key is not 'normal' keeps the key and differs.
     expect(withoutWrapKeys({ kind: 'text', overflowWrap: 'anywhere', wordBreak: 'normal' })).toEqual({ kind: 'text', overflowWrap: 'anywhere' });
+    expect(withoutWrapKeys({ kind: 'text', smallCaps: true })).toEqual({ kind: 'text', smallCaps: true });
+    expect(withoutWrapKeys({ kind: 'text', smallCaps: false })).toEqual({ kind: 'text' });
   });
   /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break, TXT2-g's -webkit-box-orient and -webkit-line-clamp, resize-values' resize, touch-action-values' touch-action, TXT-FX's text fill, stroke and shadow, the font-variant, font-tuning, font-stretch and font-features longhands. */
   const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', ...BORDER_IMAGE_LONGHANDS, 'vector-effect'];

@@ -128,8 +128,7 @@ describe('the font and font-synthesis shorthands expand as Chrome 145 expands th
     SHORTHAND_FAULTS.forEach((fault, i) => expect(judge(plantSets[i] as Item[], plantSeen[i] as Seen[]).length, fault).toBeGreaterThan(0));
     const refused = real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE').map((it) => `${it.code as string} ${it.property}: ${it.value}`);
     expect(refused).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE font: oblique 2turn 12px x', 'DRAGON_UNSUPPORTED_VALUE font: small-caps 12px x',
-      'DRAGON_UNSUPPORTED_VALUE font: normal small-caps 12px x',
+      'DRAGON_UNSUPPORTED_VALUE font: oblique 2turn 12px x',
       'DRAGON_UNSUPPORTED_VALUE font: caption', 'DRAGON_UNSUPPORTED_VALUE font: menu', 'DRAGON_UNSUPPORTED_VALUE font: icon', 'DRAGON_UNSUPPORTED_VALUE font: message-box',
       'DRAGON_UNSUPPORTED_VALUE font: small-caption', 'DRAGON_UNSUPPORTED_VALUE font: status-bar', 'DRAGON_UNSUPPORTED_VALUE font: oblique calc(20deg) 12px x',
     ]);

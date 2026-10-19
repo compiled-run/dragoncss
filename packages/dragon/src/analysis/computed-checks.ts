@@ -18,6 +18,7 @@ import { GEN_B_FAULTS } from '../faults/gen-b.ts';
 import type { TxtFvFaults } from '../faults/txt-fv.ts';
 import { TXT_FV_FAULTS } from '../faults/txt-fv.ts';
 import { checkFontVariant } from './font-variant.ts';
+import { checkSmallCaps } from './small-caps.ts';
 import type { TxtFtFaults } from '../faults/txt-ft.ts';
 import { TXT_FT_FAULTS } from '../faults/txt-ft.ts';
 import { checkFontTuning } from './font-tuning.ts';
@@ -1055,6 +1056,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
+  // TXT-FONTFEAT: synthesized small caps beside what no Chrome case proves (analysis/small-caps.ts).
+  checkSmallCaps(root, targets, diagnostics, reported, shapedAt);
   // TXT-FX: text shadows a target does not draw as Chrome does (analysis/text-shadow.ts).
   checkTextShadows(root, targets, diagnostics, reported, realFaceAt, faults);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).

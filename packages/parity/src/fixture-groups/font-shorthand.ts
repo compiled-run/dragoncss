@@ -15,7 +15,9 @@ export const FONT_SHORTHAND: readonly FixtureSpec[] = [
   // ltr and rtl, which the real-face cases above cannot give (their face features defer to the engine lane, and only Ahem cases
   // prove native rows).
   layout('font-shorthand-inherit', ['ltr', 'rtl']),
-  reject('reject-font-shorthand-small-caps', 'DRAGON_UNSUPPORTED_VALUE', 'small-caps', 'font: small-caps sets font-variant-caps'),
+  // The shorthand's small-caps sets font-variant-caps, which TXT-FONTFEAT synthesizes over Ahem (text-font-variant-caps-ahem) and
+  // refuses over a real face, which may have its own small capitals (analysis/small-caps.ts), so this reject draws its text in Lato.
+  reject('reject-font-shorthand-small-caps', 'DRAGON_UNSUPPORTED_VALUE', 'XX', 'font-variant-caps: small-caps reaches text d:text0, and it is drawn in a real face'),
   // The shorthand's width keyword sets font-stretch, which TXT-FONTFEAT accepts over Ahem and refuses over a real face (computed-checks.ts
   // checkFontStretch), so this reject draws its text in Lato.
   reject('reject-font-shorthand-stretch', 'DRAGON_UNSUPPORTED_VALUE', 'XX', 'font-stretch: 75% reaches text d:text0, which is drawn in a real face'),
