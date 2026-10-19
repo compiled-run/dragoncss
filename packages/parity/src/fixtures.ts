@@ -28,6 +28,7 @@ import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
+import { INLINE_REPLACED } from './fixture-groups/inline-replaced.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
@@ -162,6 +163,7 @@ export const GROUPS = {
   'inert-layout': INERT_LAYOUT,
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
+  'inline-replaced': INLINE_REPLACED,
   'inline-tags': INLINE_TAGS,
   interaction: INTERACTION,
   'line-clamp': LINE_CLAMP,

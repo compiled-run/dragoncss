@@ -485,11 +485,18 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
   }
 }
 
-/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box among inline content (INL2a, G-INL). */
-const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'element' && (displayOf(c) === 'inline-block' || displayOf(c) === 'inline-flex' || displayOf(c) === 'inline-grid');
+/**
+ * CSS2 §9.2.4: an atomic inline among inline content: an inline-block, inline-flex or inline-grid box (INL2a, G-INL), or an
+ * inline-level replaced element (RF-INL; css-display-3 §2.4: display inline on a replaced element makes it atomic).
+ */
+const isAtomic = (c: ResolvedElement | ResolvedText): boolean => {
+  if (c.kind !== 'element') return false;
+  const d = displayOf(c);
+  if (isReplacedTag(c.element.tag)) return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+};
 
 /** CSS2 §9.2.2: inline-level content: text, an element whose box is an inline box (display: inline, <br> included), or an atomic inline. */
-// A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line.
 const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag)) || isAtomic(c);
 
 /** propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. */
@@ -519,9 +526,14 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
 }
 
-/** A block container's inline-level child: an atomic inline is a box among its inline content (INL2a), the rest lowerInline. */
-function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | InlineChild {
-  return isAtomic(c) ? lowerBox(c as ResolvedElement, l, null) : lowerInline(c, l);
+/**
+ * A block container's inline-level child: an atomic inline is a box (INL2a) or a replaced leaf (RF-INL) among its inline content,
+ * the rest lowerInline.
+ */
+function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ReplacedLeaf | InlineChild {
+  if (!isAtomic(c)) return lowerInline(c, l);
+  const el = c as ResolvedElement;
+  return isReplacedTag(el.element.tag) ? lowerReplaced(el, l.faults, l.ua, l.rootFontSize, l.images, null) : lowerBox(el, l, null);
 }
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
@@ -641,8 +653,8 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     }
   }
   flush();
-  // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
-  // atomic inline is on a line (INL2a).
-  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
+  // A line strut only when the box holds inline content: a block-level replaced leaf is a box of its own, not a line (REPL-a with
+  // INL1a); an atomic inline is on a line (INL2a, RF-INL).
+  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
   return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
 }

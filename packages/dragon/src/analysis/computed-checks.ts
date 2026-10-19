@@ -189,9 +189,14 @@ function checkPercentRelative(el: ResolvedElement, where: string | null, targets
 }
 
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
-const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
-/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box (INL2a, G-INL). */
-const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex' || displayKeyword(el) === 'inline-grid';
+/** CSS2 §9.2.2: an inline box; display: inline on a replaced element makes an atomic inline instead (css-display-3 §2.4). */
+const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline' && !isReplacedTag(el.element.tag);
+/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box (INL2a, G-INL) or an inline-level replaced element (RF-INL). */
+const isAtomic = (el: ResolvedElement): boolean => {
+  const d = displayKeyword(el);
+  if (isReplacedTag(el.element.tag)) return d === 'inline' || d === 'inline-block';
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+};
 
 /**
  * One item of an inline formatting context in tree order: a text, the open or close of an inline box, a <br> (CSS2 §9.2.2), or an
@@ -842,8 +847,9 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
 /** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
  * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. fonts keys a substituted font-family as usedKeys does. */
 /**
- * REPL-a: a replaced element is laid out as a block-level box in normal flow or as a flex item. An inline-level one waits for
- * RF-INL (atomic inlines), and an absolutely positioned one for the CSS 2.2 §10.3.8 / §10.6.5 sizing the engine does not run yet.
+ * REPL-a: a replaced element is laid out as a block-level box in normal flow or as a flex item, and (RF-INL) as an atomic inline
+ * with display inline or inline-block. An absolutely positioned one waits for the CSS 2.2 §10.3.8 / §10.6.5 sizing the engine does
+ * not run yet.
  */
 function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const display = el.props.get('display') as ResolvedValue;
@@ -859,9 +865,8 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
     }
   };
   const d = keywordOf(display);
-  if (d === 'inline' || d === 'inline-block') {
-    refuse(display, 'inline', `display: ${d} on <${tag}> ${el.element.address} makes it an inline-level replaced box, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <${tag}> ${el.element.address}, or make it a flex item.`);
-  } else if (d !== 'block') {
+  // RF-INL: display inline or inline-block makes an atomic inline, laid out on its block container's lines (checkInline).
+  if (d !== 'block' && d !== 'inline' && d !== 'inline-block') {
     refuse(display, 'display', `display: ${valueToString(display.value)} on <${tag}> ${el.element.address} is not supported on a replaced element; only block-level replaced boxes and flex items are laid out`, `Set display: block on <${tag}> ${el.element.address}.`);
   }
   const pos = keywordOf(position);

@@ -616,7 +616,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   for (const c of b.children) {
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
-    else if (c.kind === 'box' && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
+    else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
     else kids++;
   }
   if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
@@ -660,8 +660,9 @@ function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
   return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
 }
 
-function isAtomicInline(b: LayoutBox): boolean {
+function isAtomicInline(b: LayoutBox | ReplacedLeaf): boolean {
   const d = b.style.display;
+  if (b.kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
@@ -683,6 +684,7 @@ function clampRefusal(id: string): string {
 function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
+    if (c.kind === 'replaced' && isAtomicInline(c)) return atomicRefusal(c.id);
     if (c.kind === 'box') {
       if (c.style.lineClamp > 0) return clampRefusal(c.id);
       if (isAtomicInline(c)) return atomicRefusal(c.id);

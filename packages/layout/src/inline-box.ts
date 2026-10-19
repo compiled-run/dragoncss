@@ -1,8 +1,9 @@
 // Atomic inlines (CSS2 §9.2.4, §10.3.9, §10.8.1; css-display-3 §2.4): an inline-block, inline-flex or inline-grid box among a block
 // container's inline-level children. It is laid out as its block-level equivalent at its shrink-to-fit width, and takes part in its line as
 // one U+FFFC item whose advance is its margin box and which sits on the baseline with its own baseline (INL-P family 5,
-// docs/research/inline-spike/blink-notes.md §2 and §7).
-import type { LayoutBox, LayoutStyle } from './input.ts';
+// docs/research/inline-spike/blink-notes.md §2 and §7). RF-INL: an inline-level replaced box (CSS 2.2 §10.3.2, §10.6.2) is one too, sized
+// as a block-level replaced box is, with no baseline of its own.
+import type { LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, max, min, sub, ZERO } from './units.ts';
 import type { Frag } from './box.ts';
@@ -11,11 +12,16 @@ import type { Ctx } from './block.ts';
 import { layoutContents } from './block.ts';
 import type { IntrinsicKind } from './intrinsic.ts';
 import { inlineContribution, intrinsicContentInlineSize } from './intrinsic.ts';
+import { layoutReplacedInFlow } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
-/** Whether a box is an atomic inline: display inline-block, inline-flex or inline-grid. */
-export function isAtomicInline(box: LayoutBox): boolean {
-  const d = box.style.display;
+/**
+ * Whether a node is an atomic inline: a box with display inline-block, inline-flex or inline-grid, or a replaced leaf with an
+ * inline-level display (inline, inline-block or inline-flex; css-display-3 §2.4: a replaced element is always atomic).
+ */
+export function isAtomicInline(node: LayoutNode): boolean {
+  const d = node.style.display;
+  if (node.kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
@@ -105,7 +111,9 @@ function inlineGridBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU | null {
 }
 
 /** Lays out an atomic inline in a block container whose content box is cbInline wide (percentages resolve against it). */
-export function layoutAtomic(ctx: Ctx, box: LayoutBox, cbInline: LU): AtomicLayout {
+export function layoutAtomic(ctx: Ctx, atom: LayoutNode, cbInline: LU): AtomicLayout {
+  if (atom.kind === 'replaced') return layoutAtomicReplaced(ctx, atom, cbInline);
+  const box = atom;
   const s = box.style;
   const ml = resolveMarginWith(s.marginLeft, cbInline, ctx.faults).value;
   const mr = resolveMarginWith(s.marginRight, cbInline, ctx.faults).value;
@@ -134,11 +142,28 @@ export function layoutAtomic(ctx: Ctx, box: LayoutBox, cbInline: LU): AtomicLayo
   return { frag: r.frag, marginLeft, marginRight, marginTop, advance: add(add(marginLeft, width), marginRight), above, below: sub(marginBox, above) };
 }
 
+/**
+ * RF-INL: an inline-level replaced box (CSS 2.2 §10.3.2, §10.6.2) sized as its block-level equivalent, with auto margins 0
+ * (layoutReplacedInFlow). It has no baseline, so its margin box sits on the baseline (CSS2 §10.8.1: the bottom margin edge).
+ */
+function layoutAtomicReplaced(ctx: Ctx, leaf: ReplacedLeaf, cbInline: LU): AtomicLayout {
+  const s = leaf.style;
+  const margin = (v: typeof s.marginLeft): LU => (ctx.faults.atomicMarginExcluded ? ZERO : resolveMarginWith(v, cbInline, ctx.faults).value);
+  const marginLeft = margin(s.marginLeft);
+  const marginRight = margin(s.marginRight);
+  const marginTop = margin(s.marginTop);
+  const marginBottom = margin(s.marginBottom);
+  // inline.ts checkAtomic refuses a percentage block size, so the containing block's height is never read.
+  const frag = layoutReplacedInFlow(ctx, leaf, cbInline, INDEFINITE);
+  const above = add(add(marginTop, frag.height), marginBottom);
+  return { frag, marginLeft, marginRight, marginTop, advance: add(add(marginLeft, frag.width), marginRight), above, below: ZERO };
+}
+
 /** An atomic inline's min-content or max-content contribution: its margin box (css-sizing-3 §5.2). */
-export function atomicContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
-  const c = inlineContribution(ctx, blockLevelOf(box), kind);
+export function atomicContribution(ctx: Ctx, atom: LayoutNode, kind: IntrinsicKind): LU {
+  const c = inlineContribution(ctx, atom.kind === 'replaced' ? atom : blockLevelOf(atom), kind);
   if (!ctx.faults.atomicMarginExcluded) return c;
-  const s = box.style;
+  const s = atom.style;
   const m = (v: typeof s.marginLeft): LU => (v.kind === 'px' ? resolveMarginWith(v, ZERO, ctx.faults).value : ZERO);
   return sub(c, add(m(s.marginLeft), m(s.marginRight)));
 }

@@ -428,7 +428,7 @@ export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline
 
 /** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box, <br> or atomic inline child. */
 function hasInlineContent(box: LayoutBox): boolean {
-  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || (k.kind === 'box' && isAtomicInline(k)));
+  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || ((k.kind === 'box' || k.kind === 'replaced') && isAtomicInline(k)));
 }
 
 /**

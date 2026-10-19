@@ -42,7 +42,8 @@ export const SVG: readonly FixtureSpec[] = [
   both('svg-paint-order'),
   both('svg-rrect'),
   both('svg-vector-effect'),
-  reject('reject-svg-inline', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-inline', 'a', 'svg'), 'display: inline on <svg> a makes it an inline-level replaced box'),
+  // RF-INL lays an inline svg out on its block container's lines (inline-replaced); inside an inline box it stays unproven (INL2c).
+  reject('reject-svg-inline', 'DRAGON_UNPROVEN_CONTEXT', element('reject-svg-inline', 'a', 'svg'), 'inline <svg> a is an atomic inline inside the inline box <span> s'),
   reject('reject-svg-ratio', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-ratio', 'a', 'svg'), '<svg> a has a viewBox and width and height auto'),
   reject('reject-svg-arc', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-arc', 'p'), 'attribute d="M2 12 A10 10 0 0 1 22 12" on p is not supported: elliptical arc commands are not built yet (package SVG-arc)'),
   reject('reject-svg-units', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-units', 'a'), 'attribute width="2em" on a is not supported: only numbers and px lengths are built (package SVG-units)'),

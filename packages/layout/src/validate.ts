@@ -519,8 +519,6 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     checkRule(value, replacedLeafSchema, path, errors);
     const style = value['style'];
     if (isRecord(style)) {
-      // Atomic inline-level replaced boxes (CSS2 §10.3.2 in an inline formatting context) are not supported yet.
-      if (style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a replaced leaf is block-level; an inline replaced box is not supported' });
       if (style['overflowX'] !== style['overflowY']) errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
       // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
       if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
@@ -703,8 +701,16 @@ function childrenOf(value: Record<string, unknown>, path: string, errors: Valida
   return children;
 }
 
-/** An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid. */
-const isAtomic = (c: unknown): boolean => isRecord(c) && c['kind'] === 'box' && isRecord(c['style']) && (c['style']['display'] === 'inline-block' || c['style']['display'] === 'inline-flex' || c['style']['display'] === 'inline-grid');
+/**
+ * An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid, or a replaced leaf with display
+ * inline, inline-block or inline-flex (RF-INL; css-display-3 §2.4).
+ */
+const isAtomic = (c: unknown): boolean => {
+  if (!isRecord(c) || !isRecord(c['style'])) return false;
+  const d = c['style']['display'];
+  if (c['kind'] === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
+  return c['kind'] === 'box' && (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid');
+};
 
 const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'text' || c['kind'] === 'inline' || c['kind'] === 'br' || isAtomic(c));
 

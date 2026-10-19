@@ -202,11 +202,21 @@ export function phaseOneContext(runs: readonly (string | null)[], modes: readonl
   return runs.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
 }
 
-/** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
-const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
+/**
+ * CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7); a replaced element
+ * with display: inline is an atomic inline instead (§2.4).
+ */
+const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline' && !isReplacedTag(el.element.tag);
 
-/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box that stayed inline-level after blockification. */
-const isAtomicInline = (el: ResolvedElement): boolean => displayOf(el) === 'inline-block' || displayOf(el) === 'inline-flex' || displayOf(el) === 'inline-grid';
+/**
+ * CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box that stayed inline-level after blockification, or
+ * an inline-level replaced element (RF-INL).
+ */
+const isAtomicInline = (el: ResolvedElement): boolean => {
+  const d = displayOf(el);
+  if (isReplacedTag(el.element.tag)) return d === 'inline' || d === 'inline-block';
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+};
 
 /** An atomic inline's run in collapseInlineContext: U+FFFC, which is not white space (Blink inline_items_builder.cc:1245-1251). */
 const ATOMIC_RUN = '\ufffc';
@@ -389,7 +399,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
             run.push(null);
             modes.push('collapse');
           }
-          if (kid.element.tag === 'br' || isReplacedTag(kid.element.tag)) transforms.push({ kind: 'break' });
+          if (kid.element.tag === 'br') transforms.push({ kind: 'break' });
           gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
         } else if (isAtomicInline(kid)) {
           // Planted fault atomicCollapsesAsLineEnd: the atomic inline ends the context, so the white space around it goes.

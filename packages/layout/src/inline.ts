@@ -3,7 +3,7 @@
 // at UAX #14 opportunities as Blink's break iterator applies them (linebreak.ts) and at every <br>, fitted with Blink's fit test
 // (linefit.ts), and each line box is sized from the strut and every inline box on it, aligned at their baselines (CSS2 §10.8.1).
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
-import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
+import type { FontSpec, InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
@@ -58,8 +58,8 @@ export type Ifc = {
   /** The index of each box's parent box, or -1 for the root. */
   readonly boxParent: readonly number[];
   readonly brs: readonly LineBreak[];
-  /** The atomic inlines (inline-block and inline-flex boxes), in tree order. */
-  readonly atomics: readonly LayoutBox[];
+  /** The atomic inlines (inline-block, inline-flex and inline-grid boxes, and inline-level replaced leaves), in tree order. */
+  readonly atomics: readonly LayoutNode[];
   readonly items: readonly Item[];
   readonly boundaries: readonly Boundary[];
   readonly strut: BoxMetrics;
@@ -316,10 +316,10 @@ function inlineContent(box: LayoutBox): InlineChild[] {
 }
 
 /** A block container's children as inline content; validateLayoutInput rejects block-level boxes beside inline content. */
-function inlineChildren(box: LayoutBox): (InlineChild | LayoutBox)[] {
-  const out: (InlineChild | LayoutBox)[] = [];
+function inlineChildren(box: LayoutBox): (InlineChild | LayoutNode)[] {
+  const out: (InlineChild | LayoutNode)[] = [];
   for (const c of box.children) {
-    if ((c.kind === 'box' && !isAtomicInline(c)) || c.kind === 'replaced') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
+    if ((c.kind === 'box' || c.kind === 'replaced') && !isAtomicInline(c)) throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
     out.push(c);
   }
   return out;
@@ -395,12 +395,12 @@ function checkInlineBox(ctx: Ctx, b: InlineBox): void {
 }
 
 /** Collects the formatting context's leaves, boxes (with their parents), <br>s and items in tree order. */
-type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly boxParent: number[]; readonly brs: LineBreak[]; readonly atomics: LayoutBox[]; readonly items: Item[] };
+type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly boxParent: number[]; readonly brs: LineBreak[]; readonly atomics: LayoutNode[]; readonly items: Item[] };
 
 // INL2a scope: an atomic inline's line is laid out without its block container's height (the native runtime places lines the same
 // way), so a percentage block size, which would resolve against a definite one (CSS2 §10.5), is refused; and so is a relatively
 // positioned atomic inline, as INL1a refuses a relatively positioned inline box, and vertical-align other than baseline (INL2).
-function checkAtomic(a: LayoutBox): void {
+function checkAtomic(a: LayoutNode): void {
   const s = a.style;
   if (s.position !== 'static') unsupported('inline-box-position', a.id, 'CSS2 §9.4.3', `a ${s.position} atomic inline ${a.id}`);
   const va = s.verticalAlign;
@@ -410,9 +410,9 @@ function checkAtomic(a: LayoutBox): void {
 }
 
 /** The block container's children: atomic inlines become U+FFFC items, and inline content is flattened (flatten). */
-function flattenTop(ctx: Ctx, kids: readonly (InlineChild | LayoutBox)[], out: Flat): void {
+function flattenTop(ctx: Ctx, kids: readonly (InlineChild | LayoutNode)[], out: Flat): void {
   for (const k of kids) {
-    if (k.kind === 'box') {
+    if (k.kind === 'box' || k.kind === 'replaced') {
       checkAtomic(k);
       const atom = out.atomics.length;
       out.atomics.push(k);
@@ -651,7 +651,7 @@ function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpa
 }
 
 /** Preserved text beside an inline box or a <br> is refused before the boxes are checked, as the compiler refuses it (computed-checks.ts). */
-function checkPreservedBesideInline(box: LayoutBox, kids: readonly (InlineChild | LayoutBox)[]): void {
+function checkPreservedBesideInline(box: LayoutBox, kids: readonly (InlineChild | LayoutNode)[]): void {
   let inline = false;
   for (const k of kids) if (k.kind !== 'text') inline = true;
   if (!inline) return;
@@ -2175,9 +2175,9 @@ function placeFragments(kids: readonly InlineChild[], fragments: Fragments, out:
 }
 
 /** placeFragments over a block container's children, atomic inlines included. */
-function placeTopFragments(kids: readonly (InlineChild | LayoutBox)[], fragments: Fragments, out: Placed[]): void {
+function placeTopFragments(kids: readonly (InlineChild | LayoutNode)[], fragments: Fragments, out: Placed[]): void {
   for (const k of kids) {
-    if (k.kind === 'box') {
+    if (k.kind === 'box' || k.kind === 'replaced') {
       const p = fragments.placed.get(k.id);
       if (p !== undefined) out.push(p);
     } else placeFragments([k], fragments, out);
