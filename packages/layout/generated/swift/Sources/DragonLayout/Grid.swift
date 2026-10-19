@@ -1368,8 +1368,8 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
   }
   // ts: packages/layout/src/grid.ts:800
   do {
-    loop34: while true {
-      loop34_body: do {
+    loop36: while true {
+      loop36_body: do {
         try grid_updateItemsOverlappingMajorLine(list, c)
         nextMinor = c.current.minor
         // ts: packages/layout/src/grid.ts:803
@@ -1392,7 +1392,7 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
         }
         // ts: packages/layout/src/grid.ts:810
         if try (!fits()) {
-          break loop34_body
+          break loop36_body
         }
         var upcoming: Double = c.next
         // ts: packages/layout/src/grid.ts:812
@@ -3128,7 +3128,7 @@ public func grid_itemBaseline(_ ctx: Ctx, _ box: LayoutBox, _ frag: Frag) throws
 public func grid_lastBaselineOf(_ item: GridItemData, _ r: GridItemLayout) throws -> Double? {
   // ts: packages/layout/src/grid.ts:1909
   if (r.lastBaselineFlex != S.s0) {
-    try unsupported_unsupported(S.s_grid_last_baseline, item.box.id, S.s553, jsConcat(S.s949, r.lastBaselineFlex, S.s134, item.box.id, S.s8))
+    try unsupported_unsupported(S.s_grid_last_baseline, item.box.id, S.s553, jsConcat(S.s950, r.lastBaselineFlex, S.s134, item.box.id, S.s8))
   }
   let b: Double? = r.lastBaseline
   // ts: packages/layout/src/grid.ts:1911

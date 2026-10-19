@@ -1837,11 +1837,11 @@ fun paintAa_insertionSort(xs: JsArray<EdgeCell>, left: Double, count: Double): U
   // ts: packages/layout/src/paint-aa.ts:1460
   run {
     var next: Double = (left + 1.0)
-    loop44@ while ((next <= right)) {
-      loop44_body@ do {
+    loop46@ while ((next <= right)) {
+      loop46_body@ do {
         // ts: packages/layout/src/paint-aa.ts:1461
         if ((!paintAa_edgeLess(paintAa_edgeAt(xs, next).e, paintAa_edgeAt(xs, (next - 1.0)).e))) {
-          break@loop44_body
+          break@loop46_body
         }
         val insert: Edge = paintAa_edgeAt(xs, next).e
         var hole: Double = next

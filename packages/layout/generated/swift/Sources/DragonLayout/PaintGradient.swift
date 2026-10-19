@@ -406,7 +406,7 @@ public func paintGradient_gradientFaults(_ plant: JsString) throws -> GradientFa
   let named: Bool = (((((f.offsetOne || f.unpremultiplied) || f.ditherOff) || f.layerOriginIgnored) || f.singleTileModelSwapped) || f.obscuredBorderIgnored)
   // ts: packages/layout/src/paint-gradient.ts:45
   if ((!named) && (plant != S.s_none)) {
-    throw JsError(message: jsConcat(S.s972, plant))
+    throw JsError(message: jsConcat(S.s973, plant))
   }
   return f
 }
@@ -1548,8 +1548,8 @@ public func paintGradient_planBackground(_ bg: BackgroundPaint, _ faults: Gradie
   // ts: packages/layout/src/paint-gradient.ts:1151
   do {
     var i: Double = (jsLength(bg.layers) - 1.0)
-    loop4: while (i >= 0.0) {
-      loop4_body: do {
+    loop6: while (i >= 0.0) {
+      loop6_body: do {
         let layer: BackgroundLayer = try jsUnwrap(jsAt(bg.layers, i))
         let pl: LayerPlacement = try paintGradient_layerPlacement(box, layer.geometry, bg.zoom, (bg.lastIsBottom && (i == (jsLength(bg.layers) - 1.0))), faults)
         // ts: packages/layout/src/paint-gradient.ts:1154
@@ -1560,7 +1560,7 @@ public func paintGradient_planBackground(_ bg: BackgroundPaint, _ faults: Gradie
         let h: Double = try paintGradient_luFloat(pl.tileHeight)
         // ts: packages/layout/src/paint-gradient.ts:1157
         if (((!((w > 0.0) && (h > 0.0))) || (pl.destWidth <= 0.0)) || (pl.destHeight <= 0.0)) {
-          break loop4_body
+          break loop6_body
         }
         let desc: GradientDesc = try paintGradient_gradientDesc(layer.image, w, h, bg.zoom)
         let sl: Double = try paintGradient_luFloat(pl.srcX)
@@ -1570,7 +1570,7 @@ public func paintGradient_planBackground(_ bg: BackgroundPaint, _ faults: Gradie
         let lm: Mat? = try paintGradient_matRectToRect(sl, st, paintGradient_f32((sl + paintGradient_luFloat(pl.destWidth))), paintGradient_f32((st + paintGradient_luFloat(pl.destHeight))), dl, dt, paintGradient_f32((dl + paintGradient_luFloat(pl.destWidth))), paintGradient_f32((dt + paintGradient_luFloat(pl.destHeight))))
         // ts: packages/layout/src/paint-gradient.ts:1165
         if (lm == nil) {
-          break loop4_body
+          break loop6_body
         }
         let tileX: Double = (pl.destX - pl.srcX)
         let tileY: Double = (pl.destY - pl.srcY)
@@ -1664,8 +1664,8 @@ public func paintGradient_backgroundRow(_ plan: BackgroundPlan, _ py: Double, _ 
   // ts: packages/layout/src/paint-gradient.ts:1238
   do {
     var x: Double = (plan.left - plan.originX)
-    loop5: while (x < (plan.right - plan.originX)) {
-      loop5_body: do {
+    loop7: while (x < (plan.right - plan.originX)) {
+      loop7_body: do {
         var `any`: Bool = false
         // ts: packages/layout/src/paint-gradient.ts:1240
         do {
@@ -1686,7 +1686,7 @@ public func paintGradient_backgroundRow(_ plan: BackgroundPlan, _ py: Double, _ 
           _ = jsPush(out, 0.0)
           _ = jsPush(out, 0.0)
           _ = jsPush(out, 0.0)
-          break loop5_body
+          break loop7_body
         }
         let tx: Double = try paintDither_ccTileStart(paintDither_ccTileIndex(x, ts), ts)
         // ts: packages/layout/src/paint-gradient.ts:1249
@@ -1715,26 +1715,26 @@ public func paintGradient_backgroundRow(_ plan: BackgroundPlan, _ py: Double, _ 
         // ts: packages/layout/src/paint-gradient.ts:1261
         do {
           var i: Double = 0.0
-          loop6: while (i < jsLength(plan.layers)) {
-            loop6_body: do {
+          loop8: while (i < jsLength(plan.layers)) {
+            loop8_body: do {
               let l: PlannedLayer = try jsUnwrap(jsAt(plan.layers, i))
               // ts: packages/layout/src/paint-gradient.ts:1263
               if try (!paintGradient_inLayer(l.placement, x, y)) {
-                break loop6_body
+                break loop8_body
               }
               // ts: packages/layout/src/paint-gradient.ts:1264
               if (!l.placement.direct) {
                 let m: Mat? = try paintGradient_tileMatrix(l.shader, 0.0, 0.0)
                 // ts: packages/layout/src/paint-gradient.ts:1267
                 if (m == nil) {
-                  break loop6_body
+                  break loop8_body
                 }
                 try dst = paintGradient_imageSrcOver(paintGradient_shadePixel(l.shader, jsUnwrap(m), (x - l.tileX), (y - l.tileY), 0.0, 0.0, paintGradient_CLEAR, faults), dst)
-                break loop6_body
+                break loop8_body
               }
               // ts: packages/layout/src/paint-gradient.ts:1271
               if try (!jsUnwrap(jsAt(valid, i))) {
-                break loop6_body
+                break loop8_body
               }
               try dst = paintGradient_shadePixel(l.shader, jsUnwrap(jsAt(mats, i)), x, y, tileX, tileY, dst, faults)
             }

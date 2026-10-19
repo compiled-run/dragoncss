@@ -322,12 +322,12 @@ public func paintDash_borderNeedsSidePainter(_ widths: JsArray<Double>, _ styles
   // ts: packages/layout/src/paint-dash.ts:163
   do {
     var side: Double = 0.0
-    loop7: while (side < 4.0) {
-      loop7_body: do {
+    loop9: while (side < 4.0) {
+      loop9_body: do {
         let e: DashEdge = try paintDash_makeEdge(widths, styles, colors, side)
         // ts: packages/layout/src/paint-dash.ts:165
         if try (!paintDash_shouldRender(e)) {
-          break loop7_body
+          break loop9_body
         }
         // ts: packages/layout/src/paint-dash.ts:166
         if try paintDash_isDottedOrDashed(e.style) {
@@ -448,11 +448,11 @@ public func paintDash_opacityGroups(_ p: DashPainter) throws -> JsArray<DashOpac
       // ts: packages/layout/src/paint-dash.ts:264
       do {
         var side: Double = 0.0
-        loop18: while (side < 4.0) {
-          loop18_body: do {
+        loop21: while (side < 4.0) {
+          loop21_body: do {
             // ts: packages/layout/src/paint-dash.ts:265
             if try (!paintDash_shouldRender(paintDash_edgeAt(p.edges, side))) {
-              break loop18_body
+              break loop21_body
             }
             var before: Double = 0.0
             // ts: packages/layout/src/paint-dash.ts:267
