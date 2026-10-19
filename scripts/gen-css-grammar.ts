@@ -137,6 +137,10 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
  * keyword order, so they take -webkit-box, -webkit-inline-box, -webkit-flex and -webkit-inline-flex. Pinned against Chrome by
  * packages/parity/test/display-parse.test.ts.
  */
+const SIZE_KEYWORDS = 'min-content | max-content | fit-content | stretch | -webkit-fill-available | -webkit-min-content | -webkit-max-content | -webkit-fit-content';
+const SIZE_SYNTAX = `auto | <length-percentage [0,∞]> | ${SIZE_KEYWORDS} | <calc-size()> | <anchor-size()>`;
+const MAX_SIZE_SYNTAX = `none | <length-percentage [0,∞]> | ${SIZE_KEYWORDS} | <calc-size()> | <anchor-size()>`;
+
 const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ClipPath::ParseSingleValue (longhands_custom.cc), ConsumeBasicShapeCircle and ConsumeBasicShapeEllipse (css_parsing_utils.cc):
   // a circle or ellipse radius is a non-negative <length-percentage>, closest-side or farthest-side (webref's <radial-size> drops a
@@ -159,6 +163,13 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   '-webkit-box-ordinal-group': '<integer [1,∞]>',
   '-webkit-box-orient': 'horizontal | vertical | inline-axis | block-axis',
   '-webkit-box-pack': 'start | center | end | justify',
+  // Blink's sizing grammar (css_parsing_utils.cc ConsumeWidthOrHeight and ConsumeMaxWidthOrHeight): css-sizing-3's keywords and
+  // stretch, the prefixed -webkit-fill-available, -webkit-min-content, -webkit-max-content and -webkit-fit-content, and neither
+  // css-sizing-4's contain nor fit-content(); flex-basis (ConsumeFlexBasis) takes the unprefixed keywords and no anchor-size().
+  // Pinned against Chrome by packages/parity/test/size-keyword-parse.test.ts.
+  ...Object.fromEntries(['width', 'height', 'min-width', 'min-height', 'inline-size', 'block-size', 'min-inline-size', 'min-block-size'].map((p) => [p, SIZE_SYNTAX])),
+  ...Object.fromEntries(['max-width', 'max-height', 'max-inline-size', 'max-block-size'].map((p) => [p, MAX_SIZE_SYNTAX])),
+  'flex-basis': 'content | auto | <length-percentage [0,∞]> | min-content | max-content | fit-content | stretch | <calc-size()>',
   // Blink ListStyleType::ParseSingleValue (css/properties/longhands/longhands_custom.cc): none, a string or a counter-style name;
   // symbols() is parsed only in @counter-style, so webref's <symbols()> is dropped (pinned by packages/parity/test/list-style-parse.test.ts).
   'list-style-type': '<counter-style-name> | <string> | none',

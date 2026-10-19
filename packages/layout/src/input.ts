@@ -91,10 +91,12 @@ export type MinSizeValue = Px | Percent | Auto | LengthCalc;
 export type MaxSizeValue = Px | Percent | NoneValue | LengthCalc;
 /** css-sizing-3 §3.2 fit-content: min(max-content, max(min-content, the stretch size)). */
 export type FitContent = { readonly kind: 'fit-content' };
-/** css-sizing-3 §3.2: the intrinsic size keywords of an inline size, read only on a block-level box in block flow. */
-export type IntrinsicSizeKeyword = MinContent | MaxContent | FitContent;
-export type InlineSizeValue = SizeValue | IntrinsicSizeKeyword;
-export type MaxInlineSizeValue = MaxSizeValue | IntrinsicSizeKeyword;
+/** css-sizing-4 §3.1 stretch (Chrome's -webkit-fill-available computes to it): the size that fills the available space. */
+export type Stretch = { readonly kind: 'stretch' };
+/** css-sizing-3 §3.2 and css-sizing-4 §3.1: the keywords of an inline size, read only on a block-level box in block flow. */
+export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
+export type InlineSizeValue = SizeValue | SizeKeyword;
+export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**

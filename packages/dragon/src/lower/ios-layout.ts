@@ -123,9 +123,9 @@ function maxSize(id: string, get: Get, p: Longhand, l: Lowering): MaxSizeValue {
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | none') : lp;
 }
 
-// css-sizing-3 §3.2: width, min-width and max-width also take min-content, max-content and fit-content; the engine reads them on a
-// block-level box in block flow and refuses them elsewhere.
-const INTRINSIC_SIZE_KEYWORDS = ['min-content', 'max-content', 'fit-content'] as const;
+// css-sizing-3 §3.2 and css-sizing-4 §3.1: width, min-width and max-width also take min-content, max-content, fit-content and
+// stretch; the engine reads them on a block-level box in block flow and refuses them elsewhere.
+const INTRINSIC_SIZE_KEYWORDS = ['min-content', 'max-content', 'fit-content', 'stretch'] as const;
 
 function inlineSize(id: string, get: Get, p: Longhand, l: Lowering): InlineSizeValue {
   const v = get(p);

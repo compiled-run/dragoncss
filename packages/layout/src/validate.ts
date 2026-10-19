@@ -74,7 +74,7 @@ const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as 
 
 const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
 const maxSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc });
-const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {} } as const;
+const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {}, stretch: {} } as const;
 const inlineSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
 const maxInlineSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, ...intrinsic });
 const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto, ...calc });

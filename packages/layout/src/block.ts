@@ -489,8 +489,10 @@ export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbD
   // min(max-content, max(min-content, the stretch size)); width, min-width and max-width resolve them alike (Blink
   // ResolveInlineLengthInternal, length_utils.cc at 145.0.7632.6).
   const keyword = (k: string): LU | null => {
-    if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
+    if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content' && k !== 'stretch') return null;
     if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
+    // css-sizing-4 §3.1: stretch fills the space the margins leave (auto margins as 0), whatever box-sizing says.
+    if (k === 'stretch') return stretched;
     const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
     if (k === 'min-content') return minC;
     const maxC = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);

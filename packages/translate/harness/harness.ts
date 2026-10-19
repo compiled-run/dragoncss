@@ -547,23 +547,25 @@ function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
-/** width and min-width: a SizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
+/** width and min-width: a SizeValue, the css-sizing-3 keywords min-content, max-content and fit-content, or css-sizing-4's stretch. */
 function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
   const k = kindOf(v, path);
-  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return sizeValue(v, path);
+  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content' && k !== 'stretch') return sizeValue(v, path);
   obj(v, ['kind'], path);
   if (k === 'min-content') return { kind: 'min-content' };
   if (k === 'max-content') return { kind: 'max-content' };
+  if (k === 'stretch') return { kind: 'stretch' };
   return { kind: 'fit-content' };
 }
 
-/** max-width: a MaxSizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
+/** max-width: a MaxSizeValue, the css-sizing-3 keywords min-content, max-content and fit-content, or css-sizing-4's stretch. */
 function maxInlineSizeValue(v: JsonValue, path: string): MaxInlineSizeValue {
   const k = kindOf(v, path);
-  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return maxSizeValue(v, path);
+  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content' && k !== 'stretch') return maxSizeValue(v, path);
   obj(v, ['kind'], path);
   if (k === 'min-content') return { kind: 'min-content' };
   if (k === 'max-content') return { kind: 'max-content' };
+  if (k === 'stretch') return { kind: 'stretch' };
   return { kind: 'fit-content' };
 }
 

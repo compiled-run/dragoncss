@@ -1937,7 +1937,7 @@ function inlineBaseline(ctx: Ctx, grid: GridState, item: GridItemData, inlineSiz
 
 /** Length::HasPercentOrStretch for a size: a percentage or a calculation with one (stretch never reaches the engine). */
 function percentSize(v: LayoutStyle['height'] | LayoutStyle['maxHeight'] | LayoutStyle['width'] | LayoutStyle['maxWidth']): boolean {
-  return v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'min-content' && v.kind !== 'max-content' && v.kind !== 'fit-content' && hasPercent(v);
+  return v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'min-content' && v.kind !== 'max-content' && v.kind !== 'fit-content' && v.kind !== 'stretch' && hasPercent(v);
 }
 
 /**

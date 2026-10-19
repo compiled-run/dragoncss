@@ -2358,7 +2358,7 @@ export const STYLE_FIELDS = [
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
   px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx',
-  fr: 'Fr', 'min-content': 'MinContent', 'max-content': 'MaxContent', 'fit-content': 'FitContent',
+  fr: 'Fr', 'min-content': 'MinContent', 'max-content': 'MaxContent', 'fit-content': 'FitContent', stretch: 'Stretch',
 };
 
 /** The translated engine's union type of TrackSize (grid.ts input), the element type of a track-size array. */
