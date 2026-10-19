@@ -108,10 +108,11 @@ const KOTLIN_MEMBERS = String.raw`  /** OVFL-B: this box's scroll offset range i
     addView(s)
     dragonClipView = s
   }
-  /** OVFL-S0: scrollbar-width: none hides the scroll view's scrollbars. */
+  /** OVFL-S0: scrollbar-width: none hides the scroll view's scrollbars: they are never enabled, and their size is 0. */
   fun dragonHideScrollIndicators() {
     val s = dragonClipView as? DragonScrollView ?: throw IllegalStateException("dragon: " + dragonId + " hides scroll indicators without a scroll view")
     s.indicators = false
+    s.scrollBarSize = 0
   }
 `;
 
@@ -304,11 +305,11 @@ fun dragonAfterLayoutScroll(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
   sv.dragonSetRange(r)
 }
 
-/** The readback of the scroll module: the offset range every scroll clamps to, in device px, then false for indicators when hidden. */
+/** The readback of the scroll module: the offset range every scroll clamps to, in device px, then false for indicators when the platform scrollbar size is 0. */
 fun dragonAppliedScroll(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val sv = v.dragonClipView as? DragonScrollView ?: return emptyList()
   val range = Pair("dragonScroll.range", DumpJson.Arr(sv.dragonRange.map { DumpJson.Num(it.toDouble()) }))
-  return if (sv.indicators) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))
+  return if (sv.scrollBarSize != 0) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))
 }
 `;
 

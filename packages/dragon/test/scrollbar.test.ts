@@ -107,7 +107,7 @@ describe('scrollbar on native', () => {
       expect(SCROLL_EMITTER.applied(null as never, b, hidden as never, 2, null as never)).toBe(false);
     }
     expect(SCROLL_EMITTER.native.uikit.file).toContain('if !(sv.scrollsX && sv.showsHorizontalScrollIndicator) && !(sv.scrollsY && sv.showsVerticalScrollIndicator) { out.append(("dragonScroll.indicators", .bool(false))) }');
-    expect(SCROLL_EMITTER.native['android-views'].file).toContain('if (sv.indicators) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))');
+    expect(SCROLL_EMITTER.native['android-views'].file).toContain('return if (sv.scrollBarSize != 0) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))');
   });
 
   it('web rows for values that reserve a classic gutter carry the overlay-scrollbar note; none and auto gutters do not', () => {
