@@ -1,6 +1,6 @@
 // TXT2-tal (fixture-groups/text-align-last.ts): text-align-last values that align the last line as auto does, over Ahem against Chrome
-// 145. The layout fixture passes both lanes in both directions and at every DPR, the reject is refused on every target, and the
-// compiler plant alignLastAccepted lets the reject through.
+// 145. The layout fixture passes both lanes in both directions and at every DPR, each reject is refused on every target, and the
+// compiler plant alignLastAccepted lets each reject through.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
@@ -42,17 +42,19 @@ describe('the text-align-last fixtures', () => {
       expect(out.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual(directions.map((d) => [d, 'pass', 'pass']));
     }, 300_000);
   }
-  for (const id of ['reject-text-align-last-justify']) {
+  for (const id of ['reject-text-align-last-justify', 'reject-text-align-last-atomic', 'reject-text-align-last-inline']) {
     it(`${id} is refused on every target`, async () => {
       const out = await runFixture(specOf(id), browser, { authored: authored(), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
       expect(out.reason).toBeNull();
       expect(out.status).toBe('pass');
     }, 300_000);
   }
-  it('alignLastAccepted lets reject-text-align-last-justify through', async () => {
-    const out = await runFixture(specOf('reject-text-align-last-justify'), browser, { authored: authored(), faults: { ...NO_FAULTS, alignLastAccepted: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
-    expect(out.status).toBe('fail');
-  }, 300_000);
+  for (const id of ['reject-text-align-last-justify', 'reject-text-align-last-atomic', 'reject-text-align-last-inline']) {
+    it(`alignLastAccepted lets ${id} through`, async () => {
+      const out = await runFixture(specOf(id), browser, { authored: authored(), faults: { ...NO_FAULTS, alignLastAccepted: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
+      expect(out.status).toBe('fail');
+    }, 300_000);
+  }
 });
 
 describe('the text-align-last fixtures pass at every DPR', () => {

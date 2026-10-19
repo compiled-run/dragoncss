@@ -2,7 +2,7 @@
 // justified block's last line, and each line before a forced break, at start: text-align-last: auto. Any other value is accepted
 // where it puts those lines on the same side as auto in the text's direction (center with text-align: center, start or left in a
 // left-to-right justified block, ...), which fixture group text-align-last proves against Chrome; every target refuses the rest at
-// the text-align-last declaration, once per text.
+// the text-align-last declaration, once per block container whose inline formatting context holds text or an atomic inline.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Txt2talFaults } from '../faults/txt2-tal.ts';
 import type { Diagnostic } from '../types.ts';
@@ -19,8 +19,13 @@ function side(value: string, direction: string): string | null {
   return null;
 }
 
-export function checkTextAlignLast(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: Txt2talFaults): void {
-  if (faults.alignLastAccepted) return;
+/**
+ * el's own text-align-last, read with its own text-align and direction, where el is a block container whose inline formatting context
+ * holds inline content (text or an atomic inline; holdsInline): Chrome aligns the lines by the container's style, so values set on an
+ * inline box are ignored.
+ */
+export function checkTextAlignLast(el: ResolvedElement, holdsInline: boolean, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: Txt2talFaults): void {
+  if (faults.alignLastAccepted || !holdsInline) return;
   const v = el.props.get('text-align-last') as ResolvedValue | undefined;
   const last = keyword(v);
   if (v === undefined || last === 'auto' || last === '') return;
@@ -30,20 +35,17 @@ export function checkTextAlignLast(el: ResolvedElement, targets: readonly string
   const auto = side(align === 'justify' ? 'start' : align, direction);
   const own = side(last, direction);
   if (auto !== null && own === auto) return;
-  for (const c of el.children) {
-    if (c.kind !== 'text') continue;
-    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
-    for (const t of targets) {
-      const id = `${t}|text-align-last|${JSON.stringify(origin)}|${c.node.address}`;
-      if (reported.has(id)) continue;
-      reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-        origin,
-        target: t,
-        message: `text-align-last: ${last} on ${c.node.address}, whose text-align is ${align} in a ${direction} block: the engine aligns the last line as text-align-last: auto does, at ${auto ?? align} (TXT2-tal)`,
-        manual: `Remove the text-align-last declaration that reaches ${c.node.address}, or give it the value that aligns as auto does.`,
-        basis: 'computed-value',
-      }));
-    }
+  const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  for (const t of targets) {
+    const id = `${t}|text-align-last|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin,
+      target: t,
+      message: `text-align-last: ${last} on ${el.element.address}, whose text-align is ${align} in a ${direction} block: the engine aligns the last line as text-align-last: auto does, at ${auto ?? align} (TXT2-tal)`,
+      manual: `Remove the text-align-last declaration that reaches ${el.element.address}, or give it the value that aligns as auto does.`,
+      basis: 'computed-value',
+    }));
   }
 }

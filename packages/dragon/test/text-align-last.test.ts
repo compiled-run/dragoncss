@@ -33,9 +33,23 @@ describe('text-align-last (TXT2-tal)', () => {
       ['center', 'start', 'ltr', 'center'], ['start', 'center', 'rtl', 'right'],
     ];
     for (const [align, last, dir, at] of other) {
-      const message = `text-align-last: ${last} on d:text0, whose text-align is ${align} in a ${dir} block: the engine aligns the last line as text-align-last: auto does, at ${at} (TXT2-tal)`;
+      const message = `text-align-last: ${last} on d, whose text-align is ${align} in a ${dir} block: the engine aligns the last line as text-align-last: auto does, at ${at} (TXT2-tal)`;
       expect(refusals(align, last, dir), `${align} ${last} ${dir}`).toEqual([`ios ${message}`, `web ${message}`]);
       expect(refusals(align, last, dir, { ...NO_FAULTS, alignLastAccepted: true }), `${align} ${last} ${dir}`).toEqual([]);
     }
+  });
+  it('reads the block container holding the line, which may hold only an atomic inline, and ignores values on an inline box', () => {
+    const compile = (css: string, tree: (r: SourceRef) => TreeNode[]): string[] =>
+      createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' })
+        .compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, tree))
+        .diagnostics.filter((d) => d.message.startsWith('text-align-last')).map((d) => `${String(d.target)} ${d.message.split(':').slice(0, 2).join(':')}`);
+    // Landing case (a): Chrome centres the box at 17.5px; the engine puts it at 0.
+    const atomic = compile('.a { width: 45px; text-align-last: center; } .b { display: inline-block; width: 10px; height: 10px; }', (r) => [el(r, 'd', 'div', ['a'], [el(r, 'b', 'span', ['b'])])]);
+    expect(atomic).toEqual(['ios text-align-last: center on d, whose text-align is start in a ltr block', 'web text-align-last: center on d, whose text-align is start in a ltr block']);
+    // Landing case (b): Chrome puts XX at 25px by the div's right; the span's center is ignored.
+    const inline = compile('.a { width: 45px; text-align: left; text-align-last: right; } .s { text-align: center; text-align-last: center; }', (r) => [el(r, 'd', 'div', ['a'], [el(r, 's', 'span', ['s'], [text(r, 't0', 'XX')])])]);
+    expect(inline).toEqual(['ios text-align-last: right on d, whose text-align is left in a ltr block', 'web text-align-last: right on d, whose text-align is left in a ltr block']);
+    // The inverse: a matching block under a span with a mismatched value compiles.
+    expect(compile('.a { width: 45px; text-align: center; text-align-last: center; } .s { text-align: left; text-align-last: right; }', (r) => [el(r, 'd', 'div', ['a'], [el(r, 's', 'span', ['s'], [text(r, 't0', 'XX')])])])).toEqual([]);
   });
 });

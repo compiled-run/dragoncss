@@ -250,6 +250,12 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
   return runs.filter((r) => r.length > 0);
 }
 
+/** Whether el is a block container whose inline formatting context lays out a line: an atomic inline, or text other than collapsible white space. */
+function holdsInlineContent(el: ResolvedElement): boolean {
+  if (isInlineBox(el)) return false;
+  return inlineContexts(el, () => {}).some((run) => run.some((it) => it.kind === 'atomic' || (it.kind === 'text' && (!/^[ \t\n\r\f]*$/.test(it.text.text) || keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))));
+}
+
 // UAX #9 and css-writing-modes-4 §2.4: the text of an rtl inline formatting context may hold only strong-L letters, spaces and
 // U+200B, and U+200B may not be in the white space that ends a paragraph (at a <br>, bidi class B, or at the end, L1); anything else
 // would be reordered, and it is refused for every target. The text of an inline box belongs to its block container's context.
@@ -1073,7 +1079,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkLineBreak(el, targets, diagnostics, reported, shapedAt, faults);
       checkHyphens(el, targets, diagnostics, reported, faults);
       // TXT2-tal: text-align-last values the engine does not lay out (analysis/text-align-last.ts).
-      checkTextAlignLast(el, targets, diagnostics, reported, faults);
+      checkTextAlignLast(el, holdsInlineContent(el), targets, diagnostics, reported, faults);
       // TXT-FONTFEAT: font-variant features over real faces (analysis/font-variant.ts).
       checkFontVariant(el, targets, diagnostics, reported, shapedAt, faults);
       // TXT-FONTFEAT: kerning, optical sizing and language override over real faces (analysis/font-tuning.ts).
