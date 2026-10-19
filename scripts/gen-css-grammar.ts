@@ -114,6 +114,8 @@ const SUBSET = [
   'clip-path',
   // MASK-CLIP: the mask layer longhands (css-masking-1 §7), then mask and mask-position, after clip-path, as LONGHANDS registers them.
   ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
+  // GEN-d1 and GEN-d2: the counter properties (css-lists-3 §4) and quotes (css-content-3 §3.1), after the mask family, as LONGHANDS registers them.
+  'counter-reset', 'counter-increment', 'counter-set', 'quotes',
 ] as const;
 
 /**
@@ -223,6 +225,13 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
   rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
   ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  // Blink CounterReset, CounterIncrement and CounterSet ::ParseSingleValue (ConsumeCounter): none, or names each with an optional
+  // integer; css-lists-3's reversed() is not parsed (probed). Blink Quotes::ParseSingleValue: auto, none or string pairs; webref's
+  // match-parent is not parsed (probed).
+  'counter-reset': '[ <custom-ident> <integer>? ]+ | none',
+  'counter-increment': '[ <custom-ident> <integer>? ]+ | none',
+  'counter-set': '[ <custom-ident> <integer>? ]+ | none',
+  quotes: 'auto | none | [ <string> <string> ]+',
 };
 
 /**

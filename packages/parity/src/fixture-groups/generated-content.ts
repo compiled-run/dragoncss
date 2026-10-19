@@ -15,6 +15,9 @@ export const GENERATED_CONTENT: readonly FixtureSpec[] = [
   both('gen-cascade'),
   both('gen-static-empty'),
   both('gen-hr-li'),
+  // GEN-d1 and GEN-d2: counter-reset, counter-increment, counter-set and quotes at every shape Chrome parses, on elements and on
+  // generated boxes, render nothing while counter() and quotes in content stay refused, so every value compiles.
+  both('gen-counters-quotes'),
   reject('reject-gen-counter', 'DRAGON_UNSUPPORTED_VALUE', 'counter(x)', 'content: counter(x) is not supported yet: counters and their scopes (GEN-d1)'),
   reject('reject-gen-quote', 'DRAGON_UNSUPPORTED_VALUE', 'open-quote', 'content: open-quote is not supported yet: quotes and the quote depth (GEN-d2)'),
   reject('reject-gen-attr', 'DRAGON_UNSUPPORTED_VALUE', 'attr(data-x)', 'content: attr(data-x) is not supported yet: attr() (GEN-d3)'),
