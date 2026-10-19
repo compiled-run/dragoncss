@@ -220,6 +220,8 @@ export function animValueOf(v: CssValue): AnimValue {
 }
 
 const sameValue = (a: AnimValue, b: AnimValue): boolean => JSON.stringify(a) === JSON.stringify(b);
+// color.cc Color::GetColorInterpolationSpace: Chrome animates a colour outside the legacy spaces, or one with a none component, in oklab.
+const oklabColor = (v: CssValue): boolean => v.kind === 'color' && v.oklab === true;
 const valueAt = (el: ResolvedElement, p: Longhand): ResolvedValue => el.props.get(p) as ResolvedValue;
 
 /** A keyframe value on one element: lengths in em and rem take the element's and the root's font size. */
@@ -375,6 +377,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             if (!admitted(kind)) continue;
             const value = keyframeValueOf(v.value, fontPx(valueAt(el, 'font-size').value), fontPx(valueAt(rootEl, 'font-size').value));
             if (kind.kind === 'color' && value.kind === 'keyword' && value.value === 'currentcolor') once(`kfcc|${v.span.start}`, refuse(v.valueSpan, `${v.property}: currentcolor in @keyframes ${a.name} is unsupported: a keyframe pair between currentcolor and a colour is not built yet (package ANIM-cc)`));
+            if (kind.kind === 'color' && (oklabColor(v.value) || oklabColor(valueAt(el, v.property).value))) once(`kfok|${v.span.start}|${ea.address}`, refuse(v.valueSpan, `${v.property}: @keyframes ${a.name} on ${ea.address} interpolates a colour that Chrome mixes in oklab (a non-legacy colour space or a none component); Dragon's animation writer mixes 8-bit sRGB (COL4)`));
             const id = `${a.name}|${v.span.start}|${v.property}`;
             const text = JSON.stringify(value);
             const prev = resolutions.get(id);
@@ -417,6 +420,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             continue;
           }
           const cc = (v: AnimValue): boolean => v.kind === 'keyword' && v.value === 'currentcolor';
+          if (oklabColor(valueAt(ea, p).value) || oklabColor(valueAt(eb, p).value)) once(`tok|${p}|${span.start}`, refuse(span, `${p} on ${address}: a transition from or to a colour that Chrome mixes in oklab (a non-legacy colour space or a none component) is unsupported, and Dragon's animation writer mixes 8-bit sRGB (COL4)`));
           if (cc(from) !== cc(to)) once(`tcc|${p}|${span.start}`, refuse(span, `${p} on ${address}: a transition between currentcolor and a colour is unsupported (package ANIM-cc)`));
           if (animated.has(`${address}|${p}`)) once(`to|${p}|${span.start}`, refuse(span, `${p} on ${address} is both transitioned and animated: Chrome blocks transitions on animated properties (package ANIM-o)`));
         }

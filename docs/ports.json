@@ -71,6 +71,25 @@
       ]
     },
     {
+      "upstream": "skia/ext/skcms_ext.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 The Chromium Authors",
+      "fileSha256": "851966fbb7f103ffa5e0ba889a91faf17a00d3861ca428dd210ffbcf063c708f",
+      "headerSha256": "f0becbc6a99a89f1949bdbdac5e4f383c5c94c1c7a235ff46564eb41cd5c0ae7",
+      "ranges": [
+        { "lines": "20-34", "symbol": "skia::TransferFunction_eval", "source": "located" },
+        { "lines": "35-75", "symbol": "skia::TransferFunction_invert", "source": "located" },
+        { "lines": "76-133", "symbol": "skia::Matrix3x3_apply", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "evalTf", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "invertTf", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "apply", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/animation/animation_effect.cc",
       "licence": "bsd-google",
       "noticeText": "header-bsd-1",
@@ -379,7 +398,8 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/math.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/environment.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/environment.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "calcExpression", "use": "port" }
       ]
     },
     {
@@ -419,7 +439,8 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/transform.ts", "symbol": "readAngle", "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/transform.ts", "symbol": "readAngle", "use": "reference" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "degreesOf", "use": "reference" }
       ]
     },
     {
@@ -578,6 +599,27 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/properties/css_color_function_parser.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "b12fb9c721dc80ed49610d9245be44721d4c322b12707b29e05d35c9fa6de240",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "121-165", "symbol": "ConsumeRelativeColorChannel", "source": "located" },
+        { "lines": "176-333", "symbol": "ColorFunctionParser::ConsumeColorSpaceAndOriginColor", "source": "located" },
+        { "lines": "334-396", "symbol": "ColorFunctionParser::MakePerColorSpaceAdjustments", "source": "located" },
+        { "lines": "498-710", "symbol": "ColorFunctionParser::ConsumeFunctionalSyntaxColor", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "functionalColor", "use": "port" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "adjust", "use": "port" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "channel", "use": "port" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "relativeColorGrammarText", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/property_registration.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -629,7 +671,8 @@
         { "lines": "1410-1421", "symbol": "ConsumeSVGGeometryPropertyLength", "source": "located" },
         { "lines": "4837-4840", "symbol": "ConsumePrefixedMaskComposite", "source": "located" },
         { "lines": "4939-4952", "symbol": "ConsumePrefixedBackgroundBox", "source": "located" },
-        { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" }
+        { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" },
+        { "lines": "1994-2091", "symbol": "ConsumeColorMixFunction", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
@@ -646,7 +689,8 @@
         { "file": "packages/parity/test/place-computed.test.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "colorMix", "use": "port" }
       ]
     },
     {
@@ -728,13 +772,15 @@
       "ranges": [
         { "lines": "1961-1994", "symbol": null, "source": "cited" },
         { "lines": "1107-1185", "symbol": null, "source": "cited" },
-        { "lines": "928-974", "symbol": null, "source": "cited" }
+        { "lines": "928-974", "symbol": null, "source": "cited" },
+        { "lines": "2967-2993", "symbol": "ResolveColorValue", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "checkUserAgentDefaults", "use": "port" },
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeLengths", "use": "port" },
         { "file": "packages/dragon/src/fonts/weight.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/chrome-deviations-dpr.ts", "symbol": "dprChromeDeviations", "use": "reference" }
+        { "file": "packages/layout/src/chrome-deviations-dpr.ts", "symbol": "dprChromeDeviations", "use": "reference" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "parseColorValue", "use": "port" }
       ]
     },
     {
@@ -2630,7 +2676,8 @@
         { "lines": "1-787", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/calc.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/calc.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "calcExpression", "use": "port" }
       ]
     },
     {
@@ -2645,7 +2692,8 @@
         { "lines": "1-197", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/calc.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/calc.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "calcExpression", "use": "port" }
       ]
     },
     {
@@ -2735,11 +2783,22 @@
       "headerSha256": "d1f4d631a731a753eea39382845bb3ae1608640c0ff8f67861663964ced3e285",
       "ranges": [
         { "lines": "156-159", "symbol": "QuantizeTo8Bit", "source": "cited" },
-        { "lines": "1138-1182", "symbol": "Color::Light", "source": "cited" }
+        { "lines": "1138-1182", "symbol": "Color::Light", "source": "cited" },
+        { "lines": "239-277", "symbol": "Color::FromColorSpace", "source": "located" },
+        { "lines": "294-357", "symbol": "Color::FromColorMix", "source": "located" },
+        { "lines": "358-579", "symbol": "Color::InterpolateColors", "source": "located" },
+        { "lines": "580-843", "symbol": "Color::ConvertToColorSpace", "source": "located" },
+        { "lines": "864-895", "symbol": "Color::PremultiplyColor", "source": "located" },
+        { "lines": "997-1117", "symbol": "Color::SerializeAsCSSColor", "source": "located" },
+        { "lines": "1258-1267", "symbol": "Color::GetColorInterpolationSpace", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/color.ts", "symbol": "darkColor", "use": "port" },
-        { "file": "packages/dragon/src/css/color.ts", "symbol": "lightColor", "use": "port" }
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "lightColor", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "BlinkColor", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "hueInterpolation", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "chromeFixedPrecision", "use": "port" },
+        { "file": "packages/dragon/src/analysis/animations.ts", "symbol": "oklabColor", "use": "reference" }
       ]
     },
     {
@@ -2968,6 +3027,23 @@
       ]
     },
     {
+      "upstream": "third_party/skia/include/core/SkColorSpace.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 Google Inc.",
+      "fileSha256": "7be0bf06dfd49fb10ae496ead87b5494b536f796ba7ff2103787f0dc7835ca56",
+      "headerSha256": "a65cafb3032c1f30848fc790d094eee31ac8becf6a1f9d89fe326eaec7399dc8",
+      "ranges": [
+        { "lines": "121-221", "symbol": "SkNamedTransferFn", "source": "located" },
+        { "lines": "223-263", "symbol": "SkNamedGamut", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "GAMUT_SRGB", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "TF_SRGB", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/include/core/SkPaint.h",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -2980,6 +3056,32 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint.ts", "symbol": "opacityAlpha8", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/modules/skcms/skcms.cc",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 Google Inc.",
+      "fileSha256": "c4b69d55184af6a7689005b58c3fdc68181d5c32895d4e7030351408d3193c1c",
+      "headerSha256": "ed67bfe7c89c823c159b5d24b529709cd52f9f6597d2056236d8107d11e58925",
+      "ranges": [
+        { "lines": "44-101", "symbol": "powf_", "source": "located" },
+        { "lines": "250-299", "symbol": "skcms_TransferFunction_eval", "source": "located" },
+        { "lines": "1826-1978", "symbol": "skcms_Matrix3x3_invert", "source": "located" },
+        { "lines": "1983-2096", "symbol": "skcms_TransferFunction_invert", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "log2Approx", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "exp2Approx", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "powApprox", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "skcmsEval", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "skcmsInvert", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "invert", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "concat", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "adaptToXYZD50", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "primariesToXYZD50", "use": "port" }
       ]
     },
     {
@@ -3532,6 +3634,29 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/color_conversions.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "62a38e5e83107a03365c51b28dc3241a3d1566f14d5fe9f8a0338b496935ff29",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "30-119", "symbol": "gfx::LabToXYZD50", "source": "located" },
+        { "lines": "227-404", "symbol": "gfx::OklabToXYZD50", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "labToXYZD50", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "xyzD50ToLab", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "oklabToXYZD50", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "xyzD50ToOklab", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "hslToSrgb", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "srgbToHsl", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "hwbToSrgb", "use": "port" },
+        { "file": "packages/dragon/src/css/color-space.ts", "symbol": "srgbToHwb", "use": "port" }
       ]
     },
     {

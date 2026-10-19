@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.b { width: 30px; height: 10px; margin-bottom: 2px; }
+.m1 { background-color: color-mix(in srgb, red 30%, blue); }
+.m2 { background-color: color-mix(in oklab, #36c, gold 40%); }
+.m3 { background-color: color-mix(in oklch longer hue, teal, orange); }
+.m4 { background-color: color-mix(in hsl, red, lime 25%); }
+.m5 { background-color: color-mix(red, blue); }
+.m6 { background-color: color-mix(in srgb, rgb(0 0 255 / 50%), white); }
+.m7 { background-color: color-mix(in xyz, crimson, #0c9 70%); }
+.m8 { background-color: color-mix(in srgb, rgb(from red r g 128), color-mix(in oklab, blue, white) 30%); }
+.r1 { background-color: rgb(from teal r g calc(b / 2)); }
+.r2 { background-color: hsl(from #c06 calc(h + 120) s l); }
+.r3 { background-color: oklch(from navy calc(l + 0.2) c h / 60%); }
+.r4 { background-color: rgb(from color-mix(in srgb, orange, purple) b r g / calc(alpha - 0.25)); }
+.r5 { background-color: lab(from olive l a b / 0.5); }
+.a1 { background-color: lab(50 20 -30); }
+.a2 { background-color: oklch(0.7 0.1 150); }
+.a3 { background-color: hwb(200 10% 20%); }
+.a4 { background-color: color(display-p3 0.2 0.5 0.3); }
+.a5 { background-color: color(srgb-linear 0.2 0.3 0.4 / 0.7); }
+.bd { width: 20px; height: 4px; border: 3px solid color-mix(in srgb, green, white); border-left-color: oklch(0.7 0.1 150); margin-bottom: 2px; }
+.t1 { color: lch(from #0a7f5e calc(l + 10) c h); }
+.t2 { color: color-mix(in srgb, red 30%, blue); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="m1" class="b m1"></div>
+<div data-dragon-id="m2" class="b m2"></div>
+<div data-dragon-id="m3" class="b m3"></div>
+<div data-dragon-id="m4" class="b m4"></div>
+<div data-dragon-id="m5" class="b m5"></div>
+<div data-dragon-id="m6" class="b m6"></div>
+<div data-dragon-id="m7" class="b m7"></div>
+<div data-dragon-id="m8" class="b m8"></div>
+<div data-dragon-id="r1" class="b r1"></div>
+<div data-dragon-id="r2" class="b r2"></div>
+<div data-dragon-id="r3" class="b r3"></div>
+<div data-dragon-id="r4" class="b r4"></div>
+<div data-dragon-id="r5" class="b r5"></div>
+<div data-dragon-id="a1" class="b a1"></div>
+<div data-dragon-id="a2" class="b a2"></div>
+<div data-dragon-id="a3" class="b a3"></div>
+<div data-dragon-id="a4" class="b a4"></div>
+<div data-dragon-id="a5" class="b a5"></div>
+<div data-dragon-id="bd" class="bd"></div>
+<div data-dragon-id="t1" class="t1">XX X</div>
+<div data-dragon-id="t2" class="t2">X XX</div>
+</body>
+</html>

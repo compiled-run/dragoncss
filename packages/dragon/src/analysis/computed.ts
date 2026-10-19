@@ -390,7 +390,7 @@ export function valueToString(v: CssValue): string {
     case 'number':
       return String(v.value);
     case 'color':
-      return serializeColor(v.value);
+      return v.css ?? serializeColor(v.value);
     case 'ratio':
       return `${v.auto ? 'auto ' : ''}${v.width} / ${v.height}`;
     case 'position':

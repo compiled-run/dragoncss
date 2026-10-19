@@ -68,9 +68,10 @@ describe('the text fill colour and stroke', () => {
     expect(parsed('-webkit-text-fill-color', 'hsl(0 100% 50%)')).toEqual(['-webkit-text-fill-color: rgb(255, 0, 0)']);
     expect(parsed('-webkit-text-stroke-color', 'rgb(0 0 255)')).toEqual(['-webkit-text-stroke-color: rgb(0, 0, 255)']);
     expect(parsed('-webkit-text-fill-color', 'currentcolor')).toEqual(['-webkit-text-fill-color: currentcolor']);
-    expect(parsed('-webkit-text-fill-color', 'color-mix(in srgb, red, blue)')).toEqual(parsed('color', 'color-mix(in srgb, red, blue)'));
-    expect(parsed('-webkit-text-stroke-color', 'oklch(0.6 0.1 30)')).toEqual(parsed('color', 'oklch(0.6 0.1 30)'));
-    expect(parsed('color', 'oklch(0.6 0.1 30)')).not.toEqual(['color: oklch(0.6 0.1 30)']);
+    expect(parsed('-webkit-text-fill-color', 'color-mix(in srgb, red, blue)')).toEqual(['-webkit-text-fill-color: color(srgb 0.5 0 0.5)']);
+    expect(parsed('-webkit-text-stroke-color', 'oklch(0.6 0.1 30)')).toEqual(['-webkit-text-stroke-color: oklch(0.6 0.1 30)']);
+    expect(parsed('-webkit-text-fill-color', 'light-dark(red, blue)')).toEqual(parsed('color', 'light-dark(red, blue)'));
+    expect(parsed('color', 'light-dark(red, blue)')).not.toEqual(['color: light-dark(red, blue)']);
   });
 
   it('compiles a stroke colour given as a function in the shorthand, at width 0', () => {

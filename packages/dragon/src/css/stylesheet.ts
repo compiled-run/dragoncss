@@ -30,6 +30,7 @@ import { COLOR_FIX, CSS_WIDE, familyValue, featureOf, isPositionProperty, PAIR_V
 import { webProfile } from '../profiles/web.ts';
 import { provenContexts } from '../profiles/types.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
+import { relativeColorGrammarText } from './color.ts';
 import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
@@ -572,7 +573,7 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     }
   }
   if (!wide) {
-    const match = grammarMatch(property, env === null ? valueNode : grammarText(tokens));
+    const match = grammarMatch(property, env === null ? (relativeColorGrammarText(valueNode) ?? valueNode) : grammarText(tokens));
     if (match === 'undefined-reference') {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(valueNode, base)), message: `${property}: ${generate(valueNode)} is unsupported: the CSS grammar Dragon checks names a type it does not define for it, so Dragon cannot tell whether Chrome keeps it`, manual: `Use a value that matches the ${property} grammar without it.` }) };
     }

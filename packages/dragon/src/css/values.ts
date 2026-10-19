@@ -2,7 +2,7 @@
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import type { ColorSyntax, Rgba8 } from './color.ts';
-import { parseColorNode } from './color.ts';
+import { parseColorValue } from './color.ts';
 import { asciiLower, decodeName, serializeString } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 import { foldNumber, mathContextFor, mathHasEnv, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
@@ -21,8 +21,11 @@ export type CssValue =
   | { readonly kind: 'ratio'; readonly auto: boolean; readonly width: number; readonly height: number }
   /** css-images-3 §5.6 object-position as Chrome computes it: each axis an offset from the left or top edge, in px or %. */
   | { readonly kind: 'position'; readonly x: PositionOffset; readonly y: PositionOffset }
-  /** A resolved legacy sRGB colour; transparent and currentcolor stay keywords. */
-  | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax }
+  /**
+   * A resolved colour as the 8-bit sRGB colour Chrome paints; transparent and currentcolor stay keywords. css is Chrome's computed
+   * serialization when it is not rgb()/rgba() of value (the COL4 colour functions: color-mix(), relative colours, lab() and so on).
+   */
+  | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax; readonly css?: string; readonly oklab?: true }
   | { readonly kind: 'other'; readonly type: string; readonly text: string };
 
 /** One computed <position> axis: px or a percentage of the free space. */
@@ -89,9 +92,10 @@ export function tokenValue(node: CssNode, property: string): CssValue | string {
   } else if (node.type !== 'Hash' && node.type !== 'Function') {
     return toValue(node, property);
   }
-  const c = parseColorNode(node);
+  const c = parseColorValue(node);
   if (!c.ok) return c.reason;
-  return c.kind === 'keyword' ? { kind: 'keyword', value: c.keyword } : { kind: 'color', value: c.value, syntax: c.syntax };
+  if (c.kind === 'keyword') return { kind: 'keyword', value: c.keyword };
+  return { kind: 'color', value: c.value, syntax: c.syntax, ...(c.css === undefined ? {} : { css: c.css }), ...(c.oklab === undefined ? {} : { oklab: c.oklab }) };
 }
 
 export function toValue(node: CssNode, property: string): CssValue {
