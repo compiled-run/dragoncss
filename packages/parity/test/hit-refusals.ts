@@ -19,6 +19,10 @@ export const INLINE_OUT: readonly string[] = [
   'text-indent-ahem', 'text-indent-ahem-rtl',
   // TXT-FONT's text-font-variant-ahem, text-font-tuning-ahem and text-font-size-values-ahem hold inline boxes, and so does TXT-W's text-style-ahem (em, i).
   'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
+  // TXT-W's text-weight-bold-ahem holds inline boxes (b, strong).
+  'text-weight-bold-ahem', 'text-weight-bold-ahem-rtl',
+  // TXT2-d's text-word-break-ahem, TXT2-lb's text-line-break-ahem and TXT2-tal's text-align-last-ahem hold inline boxes (text-align-last-ahem also a <br>).
+  'text-word-break-ahem', 'text-word-break-ahem-rtl', 'text-line-break-ahem', 'text-line-break-ahem-rtl', 'text-align-last-ahem', 'text-align-last-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
   'text-decoration-native', 'text-decoration-native-rtl',
   // TDEC-c's text-decoration-native-styles holds an inline box (s6s, the inline box's double underline).
