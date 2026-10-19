@@ -88,11 +88,12 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'mask-image': ['none', 'NONE'], '-webkit-mask-position-x': ['0%', '0%'], '-webkit-mask-position-y': ['0%', '0%'], 'mask-size': ['auto', 'AUTO'],
       'mask-repeat': ['repeat', 'REPEAT'], 'mask-origin': ['border-box', 'BORDER-BOX'], 'mask-clip': ['border-box', 'Border-Box'], 'mask-composite': ['add', 'ADD'],
       'mask-mode': ['match-source', 'MATCH-SOURCE'],
-      // PNT2: the 3D transform longhands, which accept their initial values alone, at those values in two ASCII cases.
+      // PNT2: the 3D transform longhands, which accept their initial values alone, at those values in two ASCII cases or spellings.
       'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'],
       // MISC-PAINT: the border image longhands, which accept their initial values alone, at those values in two spellings.
       'border-image-source': ['none', 'NONE'], 'border-image-slice': ['100%', '100.0%'], 'border-image-width': ['1', '1.0'], 'border-image-outset': ['0', '0.0'],
-      'border-image-repeat': ['stretch', 'STRETCH'] };
+      'border-image-repeat': ['stretch', 'STRETCH'],
+      perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'] };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);

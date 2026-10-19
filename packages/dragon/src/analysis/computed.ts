@@ -10,7 +10,7 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
+import { isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { TxtFsFaults } from '../faults/txt-fs.ts';
 import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
@@ -65,7 +65,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   const children = (node['children'] as { toArray(): CssNode[] }).toArray().filter((n) => n.type !== 'WhiteSpace');
   let v: CssValue;
   const only = children[0];
-  const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
+  const ratio = property === 'aspect-ratio' ? ratioValue(children) : isPositionProperty(property) ? positionValue(children, property) : null;
   const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property) || property === 'fill' || property === 'stroke';
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
