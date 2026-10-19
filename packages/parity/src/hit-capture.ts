@@ -286,7 +286,7 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['font-variant-ligatures', 'normal'], ['font-variant-caps', 'normal'], ['font-variant-alternates', 'normal'], ['font-variant-numeric', 'normal'],
   ['font-variant-east-asian', 'normal'], ['font-variant-position', 'normal'], ['font-variant-emoji', 'normal'], ['font-kerning', 'auto'],
   ['font-optical-sizing', 'auto'], ['font-language-override', 'normal'], ['font-stretch', '100%'], ['font-feature-settings', 'normal'],
-  ['font-variation-settings', 'normal'], ['-webkit-text-fill-color', '[^"\\n;]*'], ['-webkit-text-stroke-color', '[^"\\n;]*'], ['-webkit-text-stroke-width', '0px'],
+  ['font-variation-settings', 'normal'], ['-webkit-text-stroke-width', '0px'],
 ];
 /** The paint, transform and mask longhands added after the base, at their initial values (filter none, mask-image none and the like). */
 const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
@@ -300,6 +300,19 @@ const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE]
 /** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
 const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
 const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
+/**
+ * The text fill and stroke colours, also added after the base, only where they draw what color draws: currentcolor in emitted CSS,
+ * and in a capture's computed object the object's own color (Chrome resolves currentcolor). Any other colour stays in the text.
+ */
+const CSS_TEXT_COLORS = /^[ ]*-webkit-text-(?:fill|stroke)-color: currentcolor;\n/gm;
+function withoutTextColors(json: string): string {
+  return json.replace(/"computed": \{[^{}]*\}/g, (block) => {
+    const color = /"color": "([^"]*)"/.exec(block)?.[1];
+    if (color === undefined) return block;
+    const own = color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return block.replace(new RegExp(`,\\n[ ]*"-webkit-text-(?:fill|stroke)-color": "${own}"`, 'g'), '');
+  });
+}
 /** appearance, also added after the base, at its initial none only: any other value stays in the text. */
 const JSON_APPEARANCE = /,\n[ ]*"appearance": "none"/g;
 const CSS_APPEARANCE = /^[ ]*appearance: none;\n/gm;
@@ -349,12 +362,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(genB, '').replace(SVG_JSON, '');
+    const stripped = withoutTextColors(text).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(genB, '').replace(SVG_JSON, '');
     return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TOUCH_ACTION, '').replace(CSS_APPEARANCE, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TEXT_COLORS, '').replace(CSS_TOUCH_ACTION, '').replace(CSS_APPEARANCE, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

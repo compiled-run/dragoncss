@@ -1,4 +1,4 @@
-// appearance (css-ui-4 §7.1): a longhand appended after the mask family, not inherited, with no layout or paint aspect on any
+// appearance (css-ui-4 §7.1): a longhand appended after the mask family, not inherited, painting nothing on any
 // supported tag, discrete, initial none, with -webkit-appearance its alias. Dragon accepts none, auto and the compat keywords in any
 // case and refuses every other keyword, so it never drops one Chrome keeps; web output writes it only where it is not none.
 import { describe, expect, it } from 'vitest';
@@ -7,7 +7,7 @@ import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
 import { MASK_LONGHANDS } from '../src/css/properties/mask.ts';
-import { APPEARANCE_KEYWORDS, APPEARANCE_LONGHANDS } from '../src/css/properties/appearance.ts';
+import { APPEARANCE_KEYWORDS, APPEARANCE_LONGHANDS, APPEARANCE_REFUSED } from '../src/css/properties/appearance.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE } from '../src/css/animation-kinds/kinds.ts';
 import { resolveAlias } from '../src/css/aliases.ts';
@@ -32,12 +32,12 @@ function compile(css: string, targets: Targets = { web: {} }) {
 }
 
 describe('appearance: registry and parse', () => {
-  it('follows the mask family, last, not inherited, with no layout or paint aspect, discrete, initial none', () => {
+  it('follows the mask family, last, not inherited, with a layout aspect and no paint aspect, discrete, initial none', () => {
     expect([...APPEARANCE_LONGHANDS]).toEqual(['appearance']);
     expect(LONGHANDS[LONGHANDS.indexOf('appearance') - 1]).toBe(MASK_LONGHANDS[MASK_LONGHANDS.length - 1]);
     expect(LONGHANDS[LONGHANDS.length - 1]).toBe('appearance');
     expect(INHERITED.has('appearance')).toBe(false);
-    expect(PROPERTY_ASPECTS.appearance).toEqual({ layout: false, paint: false });
+    expect(PROPERTY_ASPECTS.appearance).toEqual({ layout: true, paint: false });
     expect(ANIMATION_KINDS.appearance).toBe(DISCRETE);
     expect(grammar.appearance?.initial).toBe('none');
     expect(grammar.appearance?.syntax).toBe('<any-value>');
@@ -54,14 +54,17 @@ describe('appearance: registry and parse', () => {
     for (const v of ['inherit', 'initial', 'unset', 'revert', 'var(--x)']) expect(parse(v).codes, v).toEqual([]);
   });
 
-  it('refuses every other keyword, which Chrome may keep, and drops a value that is not one keyword', () => {
-    for (const v of ['base-select', 'base', 'push-button', 'square-button', 'slider-horizontal', 'slider-vertical', 'inner-spin-button', 'media-slider', 'bogus']) {
+  it('refuses base-select and slider-vertical, which Chrome keeps, and drops every other keyword and a value that is not one keyword', () => {
+    expect(APPEARANCE_REFUSED).toEqual(['base-select', 'slider-vertical']);
+    for (const v of ['base-select', 'slider-vertical', 'Slider-Vertical']) {
       const p = parse(v);
       expect(p.codes, v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
-      expect(p.diagnostics[0]?.message, v).toContain(`appearance: ${v} is unsupported`);
+      expect(p.diagnostics[0]?.message, v).toContain(`appearance: ${v.toLowerCase()} is unsupported`);
     }
+    for (const v of ['base', 'push-button', 'square-button', 'slider-horizontal', 'inner-spin-button', 'media-slider', 'sliderthumb-horizontal', 'searchfield-cancel-button', 'bogus']) expect(parse(v).codes, v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     for (const v of ['none auto', 'none none', '1px', '"none"', 'none, none']) expect(parse(v).codes, v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
-    expect(parse('push-button', '-webkit-appearance').codes).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(parse('push-button', '-webkit-appearance').codes).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    expect(parse('slider-vertical', '-webkit-appearance').codes).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
   });
 });
 
@@ -71,6 +74,17 @@ describe('appearance: compile', () => {
       const c = compile(`.a { appearance: ${k}; } .b { -webkit-appearance: ${k}; }`, NATIVE);
       expect(c.diagnostics.filter((d) => d.severity === 'error' && d.message.includes('appearance')), k).toEqual([]);
     }
+  });
+
+  it('refuses appearance other than none on display inline, inline-table, list-item and table, which Chrome adjusts', () => {
+    const refusals = (c: ReturnType<typeof compile>) => c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('appearance'));
+    for (const [display, adjusted] of [['inline', 'inline-block'], ['inline-table', 'inline-block'], ['list-item', 'block'], ['table', 'block']]) {
+      const c = compile(`.b { display: ${display}; appearance: button; }`, NATIVE);
+      expect(refusals(c).map((d) => d.target).sort(), display).toEqual(['android', 'ios', 'web']);
+      expect(refusals(c)[0]?.message, display).toContain(`which Chrome turns into display ${adjusted}`);
+      expect(refusals(compile(`.b { display: ${display}; appearance: none; }`, NATIVE)), display).toEqual([]);
+    }
+    for (const display of ['block', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid', 'flow-root']) expect(refusals(compile(`.b { display: ${display}; -webkit-appearance: auto; }`, NATIVE)), display).toEqual([]);
   });
 
   it('writes appearance in web output only where it is not none', () => {

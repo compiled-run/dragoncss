@@ -1016,6 +1016,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkTouchAction(el, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkAppearance(el, targets, diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
@@ -1078,6 +1079,32 @@ function checkFontStretch(el: ResolvedElement, targets: readonly string[], diagn
         basis: 'computed-value',
       }));
     }
+  }
+}
+
+// FORM-a (css-ui-4 §7.1): Chrome 145 adjusts the display of a box whose appearance is not none before it looks at the element's type
+// (StyleAdjuster::AdjustStyleForHTMLElement): inline and inline-table become inline-block, list-item and table become block, and
+// every other display is kept. Dragon does not model the adjustment, so a non-none appearance on a box of those four displays is
+// refused for every target; on any other display appearance changes nothing Dragon lays out or paints.
+const APPEARANCE_ADJUSTED: { readonly [display: string]: string } = { inline: 'inline-block', 'inline-table': 'inline-block', 'list-item': 'block', table: 'block' };
+function checkAppearance(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const v = el.props.get('appearance') as ResolvedValue;
+  const k = keywordOf(v);
+  if (k === '' || k === 'none') return;
+  const display = keywordOf(el.props.get('display') as ResolvedValue);
+  const adjusted = APPEARANCE_ADJUSTED[display];
+  if (adjusted === undefined) return;
+  const id = `appearance|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan),
+      target: t,
+      message: `${el.element.address} has appearance ${k} on display ${display}, which Chrome turns into display ${adjusted}; Dragon does not model that adjustment (FORM-a)`,
+      manual: `Set appearance: none on ${el.element.address}, or give it display: ${adjusted}.`,
+      basis: 'computed-value',
+    }));
   }
 }
 

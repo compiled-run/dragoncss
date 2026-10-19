@@ -1,7 +1,7 @@
 // The appearance parse against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES, properties/appearance.ts): Dragon drops no
 // value Chrome keeps, through appearance and its -webkit-appearance alias, and every keyword Dragon accepts Chrome keeps and computes
-// to the keyword Dragon computes, on a div, which has no native appearance. Every other keyword is refused, so only the accepted
-// values are compared. Each planted reading must be caught.
+// to the keyword Dragon computes, on a div, which has no native appearance. base-select and slider-vertical are refused, so only the accepted
+// values are compared, and a refused keyword must be one Chrome keeps. Each planted reading must be caught.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
@@ -36,7 +36,7 @@ function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {
     const s = seen[i] as Seen;
     if (it.code === 'DRAGON_CSS_INVALID_VALUE') return s.parsed ? [`${it.name}: ${it.v}: invalid, Chrome parses it`] : [];
-    if (it.code === 'DRAGON_UNSUPPORTED_VALUE') return [];
+    if (it.code === 'DRAGON_UNSUPPORTED_VALUE') return s.parsed ? [] : [`${it.name}: ${it.v}: refused, Chrome drops it`];
     if (it.code !== null) return [`${it.name}: ${it.v}: unexpected ${it.code}`];
     if (!s.parsed) return [`${it.name}: ${it.v}: accepted, Chrome drops it`];
     return s.computed !== it.value ? [`${it.name}: ${it.v}: Chrome computes ${s.computed}, Dragon ${it.value}`] : [];
@@ -53,6 +53,8 @@ describe('appearance: Chrome 145 parsing', () => {
       { name: 'acceptedUnparsed', items: [{ name: 'appearance', v: 'bogus', code: null, value: 'bogus' }] },
       { name: 'caseKept', items: [{ name: 'appearance', v: 'BUTTON', code: null, value: 'BUTTON' }] },
       { name: 'autoReadAsNone', items: [{ name: 'appearance', v: 'auto', code: null, value: 'none' }] },
+      { name: 'droppedRefused', items: [{ name: 'appearance', v: 'push-button', code: 'DRAGON_UNSUPPORTED_VALUE', value: null }] },
+      { name: 'keptDropped', items: [{ name: 'appearance', v: 'base-select', code: 'DRAGON_CSS_INVALID_VALUE', value: null }] },
     ];
     const sets = [real, ...planted.map((p) => p.items)];
     const { launchChrome } = (await import(new URL('../src/chrome.ts', import.meta.url).href)) as { launchChrome: () => Promise<Browser> };
@@ -74,6 +76,8 @@ describe('appearance: Chrome 145 parsing', () => {
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
     expect(real.filter((it) => it.value !== null).length).toBe(34);
+    // Refused exactly where Chrome keeps a keyword Dragon does not accept: base-select and slider-vertical, from either name.
+    expect(real.filter((it) => it.code === 'DRAGON_UNSUPPORTED_VALUE').map((it) => `${it.name}: ${it.v}`)).toEqual(['appearance: base-select', 'appearance: slider-vertical', '-webkit-appearance: base-select', '-webkit-appearance: slider-vertical']);
     expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThanOrEqual(34);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
   }, 120_000);

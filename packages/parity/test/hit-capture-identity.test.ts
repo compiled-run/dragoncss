@@ -174,9 +174,17 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('a.css', '.d {\n  text-shadow: rgb(0, 0, 0) 1px 1px 0px;\n  color: red;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
   });
 
+  it('removes the text fill and stroke colours only where they draw color: currentcolor in CSS, the computed object\'s color in a capture', () => {
+    const json = (fill: string) => `{\n  "computed": {\n    "color": "rgb(1, 2, 3)",\n    "-webkit-text-fill-color": "${fill}",\n    "-webkit-text-stroke-color": "rgb(1, 2, 3)"\n  }\n}`;
+    expect(withoutPointerEvents('a.json', json('rgb(1, 2, 3)'))).toBe('{\n  "computed": {\n    "color": "rgb(1, 2, 3)"\n  }\n}');
+    expect(withoutPointerEvents('a.json', json('rgb(255, 0, 0)'))).toContain('"-webkit-text-fill-color": "rgb(255, 0, 0)"');
+    expect(withoutPointerEvents('a.css', '.d {\n  -webkit-text-fill-color: currentcolor;\n  -webkit-text-stroke-color: currentcolor;\n  color: red;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    expect(withoutPointerEvents('a.css', '.d {\n  -webkit-text-fill-color: rgb(255, 0, 0);\n  color: red;\n}\n')).toContain('-webkit-text-fill-color: rgb(255, 0, 0);');
+  });
+
   it('removes the font, paint, transform and mask longhands added since the base only at their initial values', () => {
     expect(withoutPointerEvents('a.json', '{\n  "x": "1",\n  "font-variant-caps": "normal",\n  "filter": "none",\n  "mask-mode": "match-source",\n  "transform-box": "view-box"\n}')).toBe('{\n  "x": "1"\n}');
-    expect(withoutPointerEvents('a.css', '.d {\n  font-stretch: 100%;\n  -webkit-text-fill-color: currentcolor;\n  clip: auto;\n  color: red;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    expect(withoutPointerEvents('a.css', '.d {\n  font-stretch: 100%;\n  -webkit-text-stroke-width: 0px;\n  clip: auto;\n  color: red;\n}\n')).toBe('.d {\n  color: red;\n}\n');
     expect(withoutPointerEvents('a.css', '.d {\n  font-variant-caps: small-caps;\n  color: red;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
     expect(withoutPointerEvents('a.css', '.d {\n  filter: blur(2px);\n  color: red;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
   });

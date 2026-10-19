@@ -153,10 +153,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // the grammar takes any value: a mask webref's grammar misses is refused, never dropped where Chrome would apply it. Pinned against
   // Chrome by packages/parity/test/mask-parse.test.ts.
   ...Object.fromEntries([...MASK_LONGHANDS, ...MASK_SHORTHANDS].map((p) => [p, '<any-value>'])),
-  // Chrome 145 parses appearance as one keyword, and may keep legacy ones css-ui-4 no longer lists (push-button, slider-vertical).
-  // Dragon accepts none, auto and the compat keywords and refuses every other keyword (properties/appearance.ts), so the grammar
-  // takes any value: a keyword webref's grammar misses is refused, never dropped where Chrome keeps it. Pinned against Chrome by
-  // packages/parity/test/appearance-parse.test.ts.
+  // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
+  // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
+  // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.
   appearance: '<any-value>',
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
