@@ -144,12 +144,12 @@ const FAMILIES = [
   family('filter', FILTER_LONGHANDS, FILTER_SHORTHANDS, FILTER_INHERITED, FILTER_ASPECTS, FILTER_CONTAINER, FILTER_TEXT_ROLE),
   // PNT2 (css-transforms-2 §6, §7): backface-visibility, transform-style and transform-box, initial values only, after filter.
   family('transform-extra', TRANSFORM_EXTRA_LONGHANDS, TRANSFORM_EXTRA_SHORTHANDS, TRANSFORM_EXTRA_INHERITED, TRANSFORM_EXTRA_ASPECTS, TRANSFORM_EXTRA_CONTAINER, TRANSFORM_EXTRA_TEXT_ROLE),
+  // TXT2-i (css-text-3 §6.1): hyphens, before the line clamp.
+  family('hyphens', HYPHENS_LONGHANDS, HYPHENS_SHORTHANDS, HYPHENS_INHERITED, HYPHENS_ASPECTS, HYPHENS_CONTAINER, HYPHENS_TEXT_ROLE),
+  // TXT2-c3 (css-text-3 §4.2): tab-size, before the line clamp; preserved tabs stay refused ('tab-stop').
+  family('tab-size', TAB_SIZE_LONGHANDS, TAB_SIZE_SHORTHANDS, TAB_SIZE_INHERITED, TAB_SIZE_ASPECTS, TAB_SIZE_CONTAINER, TAB_SIZE_TEXT_ROLE),
   // TXT2-g (notes/T149-txt2-spec.md R11): -webkit-box-orient and -webkit-line-clamp, after text-break.
   family('line-clamp', LINE_CLAMP_LONGHANDS, LINE_CLAMP_SHORTHANDS, LINE_CLAMP_INHERITED, LINE_CLAMP_ASPECTS, LINE_CLAMP_CONTAINER, LINE_CLAMP_TEXT_ROLE),
-  // TXT2-i (css-text-3 §6.1): hyphens, after line-clamp.
-  family('hyphens', HYPHENS_LONGHANDS, HYPHENS_SHORTHANDS, HYPHENS_INHERITED, HYPHENS_ASPECTS, HYPHENS_CONTAINER, HYPHENS_TEXT_ROLE),
-  // TXT2-c3 (css-text-3 §4.2): tab-size, after line-clamp; preserved tabs stay refused ('tab-stop').
-  family('tab-size', TAB_SIZE_LONGHANDS, TAB_SIZE_SHORTHANDS, TAB_SIZE_INHERITED, TAB_SIZE_ASPECTS, TAB_SIZE_CONTAINER, TAB_SIZE_TEXT_ROLE),
   // touch-action (pointerevents-3 §10.2), after line-clamp.
   family('touch-action', TOUCH_ACTION_LONGHANDS, TOUCH_ACTION_SHORTHANDS, TOUCH_ACTION_INHERITED, TOUCH_ACTION_ASPECTS, TOUCH_ACTION_CONTAINER, TOUCH_ACTION_TEXT_ROLE),
   // MASK-CLIP (css-masking-1 §5.1): the clip property, after touch-action.

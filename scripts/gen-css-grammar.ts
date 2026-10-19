@@ -110,12 +110,12 @@ const SUBSET = [
   // PNT2: the 3D transform longhands (css-transforms-2 §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
   // Chrome 145's (css_properties.json5 keywords).
   'backface-visibility', 'transform-style', 'transform-box',
+  // TXT2-i: hyphens (css-text-3 §6.1), before the line clamp, as LONGHANDS registers it.
+  'hyphens',
+  // TXT2-c3: tab-size (css-text-3 §4.2), before the line clamp, as LONGHANDS registers it.
+  'tab-size',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
-  // TXT2-i: hyphens (css-text-3 §6.1), after the line clamp, as LONGHANDS registers it.
-  'hyphens',
-  // TXT2-c3: tab-size (css-text-3 §4.2), after the line clamp, as LONGHANDS registers it.
-  'tab-size',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
   'touch-action',
   // MASK-CLIP: clip (css-masking-1 §5.1), after touch-action, as LONGHANDS registers it.
