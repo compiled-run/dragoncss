@@ -303,12 +303,23 @@
     "-webkit-writing-mode": "writing-mode"
   },
   "naNative": {
+    "approved": {
+      "about": "Owner-approved NA-NATIVE entries (Jack, decision card in the project chat, 2026-10-19). Left out of the native denominator while the compiler reports them not applicable on iOS and Android.",
+      "items": {
+        "cursor": "a pointer cursor has no meaning on touch-native",
+        "-webkit-tap-highlight-color": "the browser's tap flash; native views have none to style",
+        "-webkit-font-smoothing": "macOS-only subpixel/greyscale switch; no effect on iOS or Android",
+        "-webkit-text-size-adjust": "mobile-browser text autosizing; native apps have none",
+        "text-rendering": "a shaping hint; owner-approved although optimizeSpeed turns off kerning and ligatures in Chrome",
+        "text-size-adjust": "mobile-browser text autosizing; native apps have none",
+        "forced-color-adjust": "Windows forced-colours mode only",
+        "scrollbar-color": "native scroll indicators are not styleable this way; owner-approved although transparent colours hide Chrome's scrollbar"
+      }
+    },
     "proposed": {
       "about": "The PM's proposed NA-NATIVE list (notes/PM-2026-10-04.md); the NA-NATIVE lane confirms each against the code. Counted outside the denominator in the headline's second figure only.",
       "items": {
-        "cursor": "a pointer cursor has no meaning on touch-native",
         "will-change": "a compositor hint; no visible or behavioural effect",
-        "scrollbar-color": "native scroll indicators are not styleable this way",
         "selector:::-webkit-scrollbar": "web scrollbar styling; native draws its own scroll indicators",
         "selector:::-webkit-scrollbar-thumb": "web scrollbar styling; native draws its own scroll indicators",
         "selector:::-webkit-scrollbar-track": "web scrollbar styling; native draws its own scroll indicators"
@@ -317,13 +328,7 @@
     "candidates": {
       "about": "Further candidates found by COVERAGE-RANK. Not reviewed: each needs the owner's per-entry yes before it counts as not applicable. Shown, never subtracted from the headline.",
       "items": {
-        "-webkit-tap-highlight-color": "the browser's tap flash; native views have none to style",
-        "-webkit-font-smoothing": "macOS-only subpixel/greyscale switch; no effect on iOS or Android",
         "-moz-osx-font-smoothing": "macOS Firefox only",
-        "text-rendering": "a shaping-speed hint; Dragon shapes with HarfBuzz regardless (check optimizeLegibility kerning before accepting)",
-        "-webkit-text-size-adjust": "mobile-browser text autosizing; native apps have none",
-        "text-size-adjust": "mobile-browser text autosizing; native apps have none",
-        "forced-color-adjust": "Windows forced-colours mode only",
         "-webkit-print-color-adjust": "printing only",
         "print-color-adjust": "printing only",
         "at-rule:@charset": "stylesheet encoding; Dragon reads UTF-8 source text, so accepting it is the whole job",

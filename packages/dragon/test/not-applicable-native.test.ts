@@ -29,6 +29,9 @@ const CASES: Record<string, string> = {
   '-webkit-user-drag': '.a { -webkit-user-drag: none; }',
   'print-color-adjust': '.a { print-color-adjust: exact; }',
   '-webkit-print-color-adjust': '.a { -webkit-print-color-adjust: exact; }',
+  // Owner ruling 2026-10-19: listed although optimizeSpeed turns off kerning and ligatures, and transparent colours hide Chrome's scrollbar.
+  'text-rendering': '.a { text-rendering: optimizeSpeed; }',
+  'scrollbar-color': '.a { scrollbar-color: transparent transparent; }',
 };
 
 function compile(css: string, targets: object) {
@@ -59,7 +62,7 @@ describe('the not-applicable list', () => {
     for (const e of NOT_APPLICABLE_NATIVE) expect(e.reason.length, e.name).toBeGreaterThan(20);
     expect(NOT_APPLICABLE_NATIVE.map((e) => e.name)).toEqual([
       'cursor', 'scroll-behavior', '-webkit-tap-highlight-color', '-webkit-font-smoothing', 'text-size-adjust', '-webkit-text-size-adjust',
-      'forced-color-adjust', '-webkit-user-drag', 'print-color-adjust', '-webkit-print-color-adjust',
+      'forced-color-adjust', '-webkit-user-drag', 'print-color-adjust', '-webkit-print-color-adjust', 'text-rendering', 'scrollbar-color',
     ]);
   });
 
@@ -119,11 +122,9 @@ describe('off the list, a declaration or rule is still refused on every target',
     'scrollbar-width (hides scroll indicators)': '.a { scrollbar-width: none; }',
     '-webkit-appearance (changes form controls)': '.a { -webkit-appearance: none; }',
     'color-scheme (changes the UA colours)': '.a { color-scheme: dark; }',
-    'text-rendering (optimizeSpeed turns off kerning and ligatures)': '.a { text-rendering: optimizeSpeed; }',
     'break-inside (fragments columns, not only pages)': '.a { break-inside: avoid; }',
     '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',
     '::-webkit-scrollbar-corner (not listed)': '.a::-webkit-scrollbar-corner { background: red; }',
-    'scrollbar-color (deferred: common forms hide the scrollbar)': '.a { scrollbar-color: red blue; }',
     'a ::-webkit-scrollbar rule (deferred)': '.a::-webkit-scrollbar { background-color: #eee; }',
     'a ::-webkit-scrollbar-thumb rule (deferred)': '.a::-webkit-scrollbar-thumb { background-color: red; }',
     'a ::-webkit-scrollbar-track rule (deferred)': '.a::-webkit-scrollbar-track { background-color: #333; }',
@@ -141,10 +142,6 @@ describe('off the list, a declaration or rule is still refused on every target',
     'a scrollbar thumb with an alpha-0 colour': '.a::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0); }',
     'a scrollbar thumb with a transparent border colour': '.a::-webkit-scrollbar-thumb { background-color: red; border-color: transparent; }',
     'a scrollbar thumb with a refused declaration (border-radius)': '.a::-webkit-scrollbar-thumb { background-color: red; border-radius: 20px; }',
-    'scrollbar-color with a transparent track': '.a { scrollbar-color: red transparent; }',
-    'scrollbar-color transparent transparent': '.a { scrollbar-color: transparent transparent; }',
-    'scrollbar-color with an alpha-0 thumb': '.a { scrollbar-color: rgba(0, 0, 0, 0) red; }',
-    'scrollbar-color with a colour that needs resolving': '.a { scrollbar-color: var(--c) red; }',
     'a selector list that also styles a real element': '.a, .a::-webkit-scrollbar { width: 5px; }',
     'a scrollbar pseudo-element followed by a pseudo-class': '.a::-webkit-scrollbar:hover { width: 5px; }',
   };
