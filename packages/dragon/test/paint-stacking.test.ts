@@ -266,7 +266,7 @@ describe('stacking: clips as the native tree clips them (after merging #194, OVF
     expect(p.programs.uikit.nodes.find((x) => x.id === 'd')?.facts['stacking']).toMatchObject({ host: 'clip', underClip: true });
   });
   it('the layout stack tree clips where clip.ts hosts the children in a clip view: any overflow but visible', () => {
-    const el = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
+    const el = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['translate', { value: { kind: 'keyword', value: 'none' } }], ['rotate', { value: { kind: 'keyword', value: 'none' } }], ['scale', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     for (const overflow of ['hidden', 'clip', 'auto', 'scroll', 'visible']) {
       const style = { position: 'static', display: 'block', overflowX: overflow, overflowY: overflow } as unknown as LayoutBox['style'];
       const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style, strut: null, children: [] };
@@ -325,7 +325,7 @@ describe('stacking: lowering and emission', () => {
 describe('the stack tree of a layout tree with a replaced leaf (REPL-a)', () => {
   it('takes a replaced leaf as an element box with no children: its position, z-index and opacity count, and it hosts nothing', () => {
     const style = (position: string): LayoutBox['style'] => ({ position, display: 'block', overflowX: 'visible', overflowY: 'visible' }) as unknown as LayoutBox['style'];
-    const el = (z: number | null, opacity = 1): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: z === null ? { kind: 'keyword', value: 'auto' } : zIndexValue(z) }], ['opacity', { value: { kind: 'number', value: opacity } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
+    const el = (z: number | null, opacity = 1): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: z === null ? { kind: 'keyword', value: 'auto' } : zIndexValue(z) }], ['opacity', { value: { kind: 'number', value: opacity } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['translate', { value: { kind: 'keyword', value: 'none' } }], ['rotate', { value: { kind: 'keyword', value: 'none' } }], ['scale', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     const img: LayoutNode = { kind: 'replaced', id: 'img', style: style('relative') } as unknown as LayoutNode;
     const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style: style('static'), strut: null, children: [img] };
     const tree = layoutStackTree(root, new Map([['root', el(null)], ['img', el(3, 0.5)]]));
@@ -368,7 +368,7 @@ describe('the stack tree of inline content (INL1a, as the native tree places it)
   });
   it('an inline box is a childless node followed by its content, and never clips (css-overflow-3 §3)', () => {
     const style = (o: Record<string, string>): LayoutBox['style'] => ({ position: 'static', display: 'block', overflowX: 'visible', overflowY: 'visible', ...o }) as unknown as LayoutBox['style'];
-    const el1 = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
+    const el1 = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['translate', { value: { kind: 'keyword', value: 'none' } }], ['rotate', { value: { kind: 'keyword', value: 'none' } }], ['scale', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     const inner = { kind: 'inline', id: 'i', style: style({ display: 'inline', overflowX: 'hidden' }), children: [{ kind: 'text', id: 'i:t' }] };
     const outer = { kind: 'inline', id: 'o', style: style({ display: 'inline' }), children: [inner, { kind: 'br', id: 'b' }] };
     const root = { kind: 'box', id: 'root', boxType: 'element', style: style({}), strut: null, children: [outer] } as unknown as LayoutBox;

@@ -51,9 +51,10 @@ export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedEle
 
 /** Where to report a stacking refusal: the declaration that makes the box a layer item (z-index, position, opacity, transform). */
 function itemOrigin(el: ResolvedElement): ReturnType<typeof authored> | ResolvedElement['element']['node']['origin'] {
-  for (const p of ['z-index', 'position', 'opacity', 'transform', 'will-change'] as const) {
+  for (const p of ['z-index', 'position', 'opacity', 'transform', 'translate', 'rotate', 'scale', 'will-change'] as const) {
     const v = el.props.get(p) as ResolvedValue | undefined;
     if (v === undefined || v.declaration === null) continue;
+    if ((p === 'translate' || p === 'rotate' || p === 'scale') && v.value.kind === 'keyword' && v.value.value === 'none') continue;
     if (p === 'z-index' && zIndexOf(v.value) === null) continue;
     if (p === 'position' && v.value.kind === 'keyword' && v.value.value === 'static') continue;
     return authored(v.declaration.valueSpan);

@@ -492,7 +492,7 @@ describe('the svg model in a compile', () => {
     // A negative r is invalid CSS (Blink ValueRange::kNonNegative), and auto is not a geometry value (Rx and Ry alone take it).
     expect(refused('circle { r: -2px; cx: auto; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "-2px" is not a valid value for r (@webref/css grammar)', 'DRAGON_CSS_INVALID_VALUE * "auto" is not a valid value for cx (@webref/css grammar)']);
   });
-  it('refuses on every target a filter, a mask, backface-visibility or transform-box on a shape other than the initial value, as on a box: no target draws them on a shape, and Chrome does', () => {
+  it('refuses on every target a filter, a mask, backface-visibility, transform-box or an individual transform on a shape other than the initial value, as on a box: no target draws them on a shape, and Chrome does', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '10'], ['height', '10']]), shape(o, 'p', 'path', [['d', 'M2 2 H20 V20 Z']]), shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']])];
     const at = (css: string, address: string) => errors(compile(svgTree(css, shapes), false)).filter((m) => m.includes(`> ${address} `)).map((m) => m.split(' ').slice(0, 2).join(' ')).sort();
     const everywhere = ['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web'];
@@ -511,7 +511,7 @@ describe('the svg model in a compile', () => {
       const refused = compile(svgTree(css, shapes), false).diagnostics.filter((d) => d.severity === 'error');
       return refused.some((d) => d.target === null || d.target === undefined) ? ['android', 'ios', 'web'] : [...new Set(refused.map((d) => String(d.target)))].sort();
     };
-    for (const decl of ['backface-visibility: hidden', 'transform-box: fill-box', 'transform-box: stroke-box']) {
+    for (const decl of ['backface-visibility: hidden', 'transform-box: fill-box', 'transform-box: stroke-box', 'translate: 2px', 'rotate: 10deg', 'scale: 2']) {
       for (const tag of ['rect', 'path', 'circle']) expect(refusedOn(`${tag} { ${decl}; }`), `${tag} { ${decl} }`).toEqual(['android', 'ios', 'web']);
     }
   });

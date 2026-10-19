@@ -240,6 +240,9 @@ function toBackend(backend: NativeBackend, root: LayoutBox, rootFontSize: number
   };
 }
 
+/** The longhands whose change moves a box's transform (css-transforms-2 §4). */
+const MOVING = ['transform', 'translate', 'rotate', 'scale'] as const;
+
 /**
  * The elements whose transform moves at run time: a transform transition is listed for it, one of its keyframe animations sets
  * transform, or its computed transform differs between two reachable cases (a state change). Conservative: any case counts.
@@ -248,8 +251,10 @@ export function movingTransforms(cases: readonly (ResolvedElement | null)[], ani
   const out = new Set<string>();
   const seen = new Map<string, string>();
   const walk = (el: ResolvedElement): void => {
-    const v = el.props.get('transform');
-    const text = v === undefined ? '' : canonicalJson(v.value);
+    const text = MOVING.map((p) => {
+      const v = el.props.get(p);
+      return v === undefined ? '' : canonicalJson(v.value);
+    }).join('|');
     const was = seen.get(el.element.address);
     if (was === undefined) seen.set(el.element.address, text);
     else if (was !== text) out.add(el.element.address);
@@ -258,10 +263,10 @@ export function movingTransforms(cases: readonly (ResolvedElement | null)[], ani
   for (const r of cases) if (r !== null) walk(r);
   for (const c of animation?.cases ?? []) {
     for (const [address, e] of c.elements) {
-      if (e.listings.get('transform')?.mode === 'listed') out.add(address);
+      if (MOVING.some((p) => e.listings.get(p)?.mode === 'listed')) out.add(address);
       for (const a of e.animations) {
         const rule = animation?.keyframes.get(a.name);
-        if (rule !== undefined && rule.blocks.some((b) => b.values.some((d) => d.property === 'transform'))) out.add(address);
+        if (rule !== undefined && rule.blocks.some((b) => b.values.some((d) => (MOVING as readonly string[]).includes(d.property)))) out.add(address);
       }
     }
   }

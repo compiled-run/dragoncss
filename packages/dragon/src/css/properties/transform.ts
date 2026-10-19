@@ -2,6 +2,8 @@
 // A transform is a list of 2D functions Dragon resolves itself (translate, translateX/Y, scale, scaleX/Y, rotate, and matrix()
 // without skew); skew, 3D functions, perspective and a non-zero origin z are refused naming package PNT2-m, and so is a list
 // whose composition skews the box, which Android's View transform (a rotation times an axis-aligned scale) cannot express.
+// The individual transform properties (css-transforms-2 §4) translate, rotate and scale are read as one function each, applied
+// before transform in that order (paint-values/transform.ts elementTransform); a z component or a rotation axis is refused as 3D.
 import { generate, parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
@@ -12,7 +14,7 @@ import type { LonghandValue, ParsedValue } from '../stylesheet.ts';
 import { normalizeUnit, unitEntry } from '../units.ts';
 import type { CssValue } from '../values.ts';
 
-export const TRANSFORM_LONGHANDS = ['transform', 'transform-origin', 'will-change'] as const;
+export const TRANSFORM_LONGHANDS = ['transform', 'transform-origin', 'will-change', 'translate', 'rotate', 'scale'] as const;
 export const TRANSFORM_SHORTHANDS = [] as const;
 export const TRANSFORM_INHERITED: readonly (typeof TRANSFORM_LONGHANDS)[number][] = [];
 export const TRANSFORM_CONTAINER: readonly (typeof TRANSFORM_LONGHANDS)[number][] = [];
@@ -24,6 +26,9 @@ export const TRANSFORM_ASPECTS: { readonly [P in (typeof TRANSFORM_LONGHANDS)[nu
   transform: { layout: false, paint: true },
   'transform-origin': { layout: false, paint: true },
   'will-change': { layout: false, paint: true },
+  translate: { layout: false, paint: true },
+  rotate: { layout: false, paint: true },
+  scale: { layout: false, paint: true },
 };
 
 /** The properties whose values this module parses (stylesheet.ts parseValue). */
@@ -33,6 +38,11 @@ export const TRANSFORM_VALUE_PROPERTIES: ReadonlySet<string> = new Set<string>(T
 export const TRANSFORM_LIST_TYPE = 'transform-list';
 export const TRANSFORM_ORIGIN_TYPE = 'transform-origin';
 export const WILL_CHANGE_LIST_TYPE = 'will-change-list';
+/** The value type of a computed translate, rotate or scale other than none: the canonical value text ("10px 0px", "45deg", "2 1"). */
+export const INDIVIDUAL_TRANSFORM_TYPE = 'individual-transform';
+
+/** The individual transform properties, in the order css-transforms-2 §4 applies them before transform. */
+export const INDIVIDUAL_TRANSFORMS = ['translate', 'rotate', 'scale'] as const;
 
 /** The will-change features Dragon accepts: transform (a containing block and stacking context, like a transform) and opacity. */
 export const WILL_CHANGE_FEATURES: readonly string[] = ['transform', 'opacity'];
@@ -137,6 +147,12 @@ function readNumber(n: CssNode): Read<number> {
   return no(n, `${generate(n)} is not a number`);
 }
 
+/** A scale property component: a <number>, or a <percentage> as that number over 100 (css-transforms-2 §4). */
+function readScaleComponent(n: CssNode): Read<number> {
+  if (n.type === 'Percentage') return finite(n, Number(n['value']) / 100);
+  return readNumber(n);
+}
+
 const argText = (n: CssNode): string => {
   if (n.type === 'Dimension') return `${cssNumberText(Number(n['value']))}${normalizeUnit(String(n['unit']))}`;
   if (n.type === 'Percentage') return `${cssNumberText(Number(n['value']))}%`;
@@ -220,7 +236,7 @@ export function matrixParts(values: readonly number[]): { readonly tx: number; r
  * Whether the list's linear part stays a rotation times an axis-aligned scale when composed left to right (css-transforms-1 §6).
  * A rotation after a non-uniform scale skews the box unless it turns by a multiple of 90deg.
  */
-function skewsBox(fns: readonly TransformFnDecl[]): boolean {
+export function skewsBox(fns: readonly TransformFnDecl[]): boolean {
   let sx = 1;
   let sy = 1;
   const rotate = (deg: number): boolean => {
@@ -300,10 +316,47 @@ export const originText = (o: TransformOriginDecl): string => `${lengthText(o.x)
 /** The canonical text of a function list: each function with its arguments as written (lowercase names and units). */
 export const transformListText = (fns: readonly TransformFnDecl[]): string => fns.map((f) => f.text).join(' ');
 
-const explicit = (property: 'transform' | 'transform-origin' | 'will-change', value: CssValue): ParsedValue => ({ kind: 'ok', longhands: [{ property, value, explicit: true } satisfies LonghandValue] });
+/**
+ * The one function a translate, rotate or scale value stands for (css-transforms-2 §4): translate(x, y), rotate(angle) or
+ * scale(x, y), its text the canonical value ("x y", "<deg>deg", "sx sy"). A rotation axis, a non-zero z translation and a z scale
+ * other than 1 are refused as 3D.
+ */
+function readIndividual(property: (typeof INDIVIDUAL_TRANSFORMS)[number], tokens: readonly CssNode[]): Read<TransformFnDecl> {
+  const [a, b, c] = tokens as readonly (CssNode | undefined)[];
+  if (a === undefined) return no(tokens[0] as CssNode, `${property} has no value`);
+  if (property === 'rotate') {
+    if (tokens.length !== 1) return no(a, `a rotation axis turns the box out of the plane: ${PNT2_M}`);
+    const deg = readAngle(a);
+    return deg.ok ? ok({ kind: 'rotate', deg: deg.value, text: `${cssNumberText(deg.value)}deg` }) : deg;
+  }
+  if (property === 'translate') {
+    const x = readLength(a, true);
+    if (!x.ok) return x;
+    const y = b === undefined ? ok(ZERO) : readLength(b, true);
+    if (!y.ok) return y;
+    if (c !== undefined) {
+      const z = readLength(c, false);
+      if (!z.ok) return z;
+      if (z.value.value !== 0) return no(c, `a z translation moves the box off the plane: ${PNT2_M}`);
+    }
+    return ok({ kind: 'translate', fn: 'translate', x: x.value, y: y.value, text: `${lengthText(x.value)} ${lengthText(y.value)}` });
+  }
+  const sx = readScaleComponent(a);
+  if (!sx.ok) return sx;
+  const sy = b === undefined ? sx : readScaleComponent(b);
+  if (!sy.ok) return sy;
+  if (c !== undefined) {
+    const sz = readScaleComponent(c);
+    if (!sz.ok) return sz;
+    if (sz.value !== 1) return no(c, `a z scale is a 3D transform: ${PNT2_M}`);
+  }
+  return ok({ kind: 'scale', fn: 'scale', sx: sx.value, sy: sy.value, text: `${cssNumberText(sx.value)} ${cssNumberText(sy.value)}` });
+}
+
+const explicit = (property: (typeof TRANSFORM_LONGHANDS)[number], value: CssValue): ParsedValue => ({ kind: 'ok', longhands: [{ property, value, explicit: true } satisfies LonghandValue] });
 
 function refused(property: string, r: Refusal, base: Span): ParsedValue {
-  return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(r.node, base)), message: `${property}: ${r.text ?? generate(r.node)} is unsupported: ${r.reason}`, manual: `Use translate, scale, rotate or matrix() without skew in ${property}.` }) };
+  return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(r.node, base)), message: `${property}: ${r.text ?? generate(r.node)} is unsupported: ${r.reason}`, manual: (INDIVIDUAL_TRANSFORMS as readonly string[]).includes(property) ? `Write ${property} with two-dimensional values only.` : `Use translate, scale, rotate or matrix() without skew in ${property}.` }) };
 }
 
 /**
@@ -324,6 +377,13 @@ export function parseTransformValue(property: string, tokens: readonly CssNode[]
       return refused(property, { node, text: tokens.map((t) => generate(t)).join(' '), reason: `a rotation after a non-uniform scale skews the box, which Android's View transform cannot express: ${PNT2_M}` }, base);
     }
     return explicit('transform', { kind: 'other', type: TRANSFORM_LIST_TYPE, text: transformListText(fns.value) });
+  }
+  if ((INDIVIDUAL_TRANSFORMS as readonly string[]).includes(property)) {
+    const p = property as (typeof INDIVIDUAL_TRANSFORMS)[number];
+    if (keyword === 'none') return explicit(p, { kind: 'keyword', value: 'none' });
+    const f = readIndividual(p, tokens);
+    if (!f.ok) return refused(property, f.refusal, base);
+    return explicit(p, { kind: 'other', type: INDIVIDUAL_TRANSFORM_TYPE, text: f.value.text });
   }
   if (property === 'transform-origin') {
     const o = readOrigin(tokens);
@@ -354,6 +414,13 @@ export function transformFunctionsOf(text: string): TransformFnDecl[] {
   const r = readTransformList(valueTokens(text));
   if (!r.ok) throw new Error(`transform-list ${JSON.stringify(text)}: ${r.refusal.reason}`);
   return r.value;
+}
+
+/** The function of a computed translate, rotate or scale text this module wrote; throws on text it did not write. */
+export function individualTransformOf(property: (typeof INDIVIDUAL_TRANSFORMS)[number], text: string): TransformFnDecl {
+  const f = readIndividual(property, valueTokens(text));
+  if (!f.ok) throw new Error(`${property} ${JSON.stringify(text)}: ${f.refusal.reason}`);
+  return f.value;
 }
 
 /** The x and y of a transform-origin text (this module's canonical text or the webref initial value "50% 50%"). */

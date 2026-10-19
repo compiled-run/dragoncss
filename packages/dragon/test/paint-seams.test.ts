@@ -199,7 +199,7 @@ describe('EMS: native support', () => {
 
 describe('EMS: CSS families and paint values', () => {
   it('registers the paint families, each empty until its package fills it (PNT2 filled transform), and wired when filled', () => {
-    expect(transform.TRANSFORM_LONGHANDS).toEqual(['transform', 'transform-origin', 'will-change']);
+    expect(transform.TRANSFORM_LONGHANDS).toEqual(['transform', 'transform-origin', 'will-change', 'translate', 'rotate', 'scale']);
     expect(transform.TRANSFORM_SHORTHANDS).toEqual([]);
     // PIN-DERIVE: an empty family is wholly empty; a filled one has an aspect per longhand, each a registered longhand, and a
     // handler per shorthand, so a family is never half registered.
