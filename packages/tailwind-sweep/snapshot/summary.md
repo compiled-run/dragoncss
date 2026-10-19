@@ -4,51 +4,47 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4621 (19.8%) | 18664 (80.2%) | 1 | 0 | 0 |
-| ios | 4583 (19.7%) | 18662 (80.1%) | 1 | 0 | 40 |
-| android | 4583 (19.7%) | 18662 (80.1%) | 1 | 0 | 40 |
+| web | 4703 (20.2%) | 18582 (79.8%) | 1 | 0 | 0 |
+| ios | 4683 (20.1%) | 18562 (79.7%) | 1 | 0 | 40 |
+| android | 4683 (20.1%) | 18562 (79.7%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4394, ios 4405 and android 4405 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4394, ios 4415 and android 4415 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1436 / 115 / 0 / 0 / 0 | 1436 / 115 / 0 / 0 / 0 | 1436 / 115 / 0 / 0 / 0 |
+| layout | 1551 | 1448 / 103 / 0 / 0 / 0 | 1448 / 103 / 0 / 0 / 0 | 1448 / 103 / 0 / 0 / 0 |
 | flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
-| sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
-| typography | 261 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
-| colours | 14842 | 361 / 14481 / 0 / 0 / 0 | 361 / 14481 / 0 / 0 / 0 | 361 / 14481 / 0 / 0 / 0 |
-| backgrounds | 151 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 |
-| borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
-| effects | 1178 | 21 / 1157 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 |
+| sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
+| typography | 261 | 181 / 80 / 0 / 0 / 0 | 181 / 80 / 0 / 0 / 0 | 181 / 80 / 0 / 0 / 0 |
+| colours | 14842 | 101 / 14741 / 0 / 0 / 0 | 101 / 14741 / 0 / 0 / 0 | 101 / 14741 / 0 / 0 / 0 |
+| backgrounds | 151 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 |
+| borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
+| effects | 1178 | 62 / 1116 / 0 / 0 / 0 | 43 / 1135 / 0 / 0 / 0 | 43 / 1135 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
-| transitions-animation | 36 | 19 / 17 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
-| transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
-| interactivity | 1246 | 4 / 1242 / 0 / 0 / 0 | 4 / 1204 / 0 / 0 / 38 | 4 / 1204 / 0 / 0 / 38 |
-| svg | 6 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 |
-| accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 2 / 0 / 0 / 2 | 0 / 2 / 0 / 0 / 2 |
+| transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
+| transforms | 680 | 13 / 667 / 0 / 0 / 0 | 13 / 667 / 0 / 0 / 0 | 13 / 667 / 0 / 0 / 0 |
+| interactivity | 1246 | 12 / 1234 / 0 / 0 / 0 | 11 / 1197 / 0 / 0 / 38 | 11 / 1197 / 0 / 0 / 38 |
+| svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
+| accessibility | 4 | 2 / 2 / 0 / 0 / 0 | 2 / 0 / 0 / 0 / 2 | 2 / 0 / 0 / 0 / 2 |
 
 ## Largest refusal groups (first blocking diagnostic)
 
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
-| `property mask-image` | 6280 | 6280 | 6280 | 38 |
-| `value oklch()` | 4004 | 4004 | 4004 | 14 |
-| `property box-shadow` | 1489 | 1489 | 1489 | 8 |
+| `profile mask-composite:intersect` | 6280 | 6280 | 6280 | 38 |
+| `value oklch()` | 5720 | 5720 | 5720 | 20 |
+| `at-rule @supports` | 1192 | 1192 | 1192 | 6 |
 | `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |
-| `property filter` | 351 | 351 | 351 | 10 |
-| `property text-shadow` | 298 | 298 | 298 | 2 |
+| `value box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-o` | 298 | 298 | 298 | 2 |
 | `property accent-color` | 292 | 292 | 292 | 2 |
-| `property fill` | 292 | 292 | 292 | 2 |
-| `property stroke` | 292 | 292 | 292 | 2 |
 | `property caret-color` | 291 | 291 | 291 | 1 |
-| `property outline-color` | 291 | 291 | 291 | 1 |
-| `property text-decoration-color` | 291 | 291 | 291 | 1 |
+| `selector pseudo-element ::placeholder` | 291 | 291 | 291 | 1 |
 | `property border-spacing` | 105 | 105 | 105 | 6 |
 | `property scale` | 90 | 90 | 90 | 10 |
 | `value transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-` | 90 | 90 | 90 | 12 |
@@ -64,7 +60,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4394, ios 4
 | `property scroll-margin-left` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-right` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-top` | 70 | 70 | 70 | 4 |
-| `property text-indent` | 70 | 70 | 70 | 4 |
+| `profile filter:<filter-value-list>` | 59 | 59 | 59 | 9 |
 | `value calc()` | 52 | 52 | 52 | 4 |
 | `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
 | `property cursor` | 36 | 0 | 0 | 36 |
@@ -75,3 +71,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4394, ios 4
 | `property scroll-padding-bottom` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-inline` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-inline-end` | 35 | 35 | 35 | 2 |
+| `property scroll-padding-inline-start` | 35 | 35 | 35 | 2 |
+| `property scroll-padding-left` | 35 | 35 | 35 | 2 |
+| `property scroll-padding-right` | 35 | 35 | 35 | 2 |
+| `property scroll-padding-top` | 35 | 35 | 35 | 2 |
