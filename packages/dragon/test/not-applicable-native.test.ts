@@ -118,7 +118,6 @@ describe('off the list, a declaration or rule is still refused on every target',
   const OFF: Record<string, string> = {
     'scrollbar-width (hides scroll indicators)': '.a { scrollbar-width: none; }',
     '-webkit-appearance (changes form controls)': '.a { -webkit-appearance: none; }',
-    'color-scheme (changes the UA colours)': '.a { color-scheme: dark; }',
     'text-rendering (optimizeSpeed turns off kerning and ligatures)': '.a { text-rendering: optimizeSpeed; }',
     'break-inside (fragments columns, not only pages)': '.a { break-inside: avoid; }',
     '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',

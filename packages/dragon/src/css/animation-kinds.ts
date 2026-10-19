@@ -12,6 +12,7 @@ import { BORDER_IMAGE_ANIMATION } from './animation-kinds/border-image.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
 import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
+import { COLOR_SCHEME_ANIMATION } from './animation-kinds/color-scheme.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
 import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
@@ -61,6 +62,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...BOX_ANIMATION,
   ...CLIP_PATH_ANIMATION,
   ...CLIP_RECT_ANIMATION,
+  ...COLOR_SCHEME_ANIMATION,
   ...EFFECTS_ANIMATION,
   ...FILTER_ANIMATION,
   ...FLEX_ANIMATION,

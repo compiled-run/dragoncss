@@ -118,6 +118,8 @@ const SUBSET = [
   // MISC-PAINT: the border image longhands (css-backgrounds-3 §4), then border-image and -webkit-border-image, after mask, as LONGHANDS
   // registers them.
   ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
+  // color-scheme (css-color-adjust-1 §2.1), after border-image, as LONGHANDS registers it.
+  'color-scheme',
 ] as const;
 
 /**

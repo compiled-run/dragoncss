@@ -16,6 +16,7 @@ import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CHARSET } from './fixture-groups/charset.ts';
 import { CLIP_PATH } from './fixture-groups/clip-path.ts';
 import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
+import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
@@ -149,6 +150,7 @@ export const GROUPS = {
   charset: CHARSET,
   'clip-path': CLIP_PATH,
   'clip-rect': CLIP_RECT,
+  'color-scheme': COLOR_SCHEME,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
