@@ -1,0 +1,22 @@
+{
+  "case": "grid-item-units-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,2]]},
+    {"id":"a2:text0","lines":[[0,1]]},
+    {"id":"b1:text0","lines":[[0,2]]},
+    {"id":"b2:text0","lines":[[0,1]]},
+    {"id":"d1:text0","lines":[[0,1]]},
+    {"id":"d2:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"d3:text0","lines":[[0,1]]},
+    {"id":"e2:text0","lines":[[0,3],[3,5]]},
+    {"id":"f2:text0","lines":[[0,1]]},
+    {"id":"f3:text0","lines":[[0,4]]},
+    {"id":"h1:text0","lines":[[0,1]]},
+    {"id":"h2:text0","lines":[[0,1]]},
+    {"id":"k1:text0","lines":[[0,2]]},
+    {"id":"m1:text0","lines":[[0,2]]},
+    {"id":"m2:text0","lines":[[0,1]]},
+    {"id":"m3:text0","lines":[[0,1]]}
+  ]
+}

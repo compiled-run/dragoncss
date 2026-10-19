@@ -128,6 +128,8 @@ describe('dependency boundaries', () => {
       "import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';",
       // MASK-CLIP: the mask longhand names and their initial values, to leave initial masks unwritten.
       "import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';",
+      // MISC-PAINT: the border image longhand names and their initial values, to leave initial border images unwritten.
+      "import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';",
       "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.

@@ -41,6 +41,22 @@
  },
  {
   "lane": "device-pixels",
+  "case": "grid-item-calc-percent",
+  "dpr": 3,
+  "node": "edge:m2:text0:line0:glyph-top",
+  "kind": "pixel",
+  "detail": "edge:m2:text0:line0:glyph-top: Chrome shows an edge 2.681 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "grid-item-calc-percent-rtl",
+  "dpr": 3,
+  "node": "edge:m2:text0:line0:glyph-top",
+  "kind": "pixel",
+  "detail": "edge:m2:text0:line0:glyph-top: Chrome shows an edge 2.681 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
   "node": "svg:s1:3",
@@ -710,6 +726,22 @@
   "node": "outside:c2",
   "kind": "pixel",
   "detail": "outside:c2 at 31,51: native [0,0,255,255], Chrome [51,51,51,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "grid-item-calc-percent",
+  "dpr": 2,
+  "node": "edge:m2:text0:line0:glyph-top",
+  "kind": "pixel",
+  "detail": "edge:m2:text0:line0:glyph-top: Chrome shows an edge 2.790 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "grid-item-calc-percent-rtl",
+  "dpr": 2,
+  "node": "edge:m2:text0:line0:glyph-top",
+  "kind": "pixel",
+  "detail": "edge:m2:text0:line0:glyph-top: Chrome shows an edge 2.790 device px along the scanline, the native capture none"
  },
  {
   "lane": "device-pixels",

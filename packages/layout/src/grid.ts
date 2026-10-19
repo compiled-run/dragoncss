@@ -1711,8 +1711,10 @@ function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, ali
 /** Margins resolved against a percentage basis, by logical side; auto margins are zero here. */
 type GridMargins = { readonly inlineStart: LU; readonly inlineEnd: LU; readonly blockStart: LU; readonly blockEnd: LU };
 
-function marginsOf(box: LayoutBox, basis: LU, rtl: boolean): GridMargins {
+/** Blink ComputePhysicalMargins (third_party/blink/renderer/core/layout/length_utils.h 465-481): an indefinite basis is clamped to zero. */
+function marginsOf(box: LayoutBox, indefiniteOrBasis: LU, rtl: boolean): GridMargins {
   const s = box.style;
+  const basis = indefiniteOrBasis === INDEFINITE ? ZERO : indefiniteOrBasis;
   const left = resolveMargin(s.marginLeft, basis).value;
   const right = resolveMargin(s.marginRight, basis).value;
   return {
@@ -1777,12 +1779,14 @@ function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: L
   return { frag: r.frag, margins, lastBaseline: r.defaultLastBaseline, lastBaselineFlex: r.defaultLastBaselineFlex };
 }
 
-/** css-sizing-3 §5.2 for a grid item as its own formatting context: its min- or max-content inline contribution without margins. */
+/**
+ * css-sizing-3 §5.2 for a grid item as its own formatting context: its min- or max-content inline contribution without margins
+ * (Blink ComputeMinAndMaxContentContributionInternal, length_utils.cc 361-460). Its padding resolves against the indefinite size
+ * clamped to zero (ComputePadding, length_utils.cc 1518-1545), so a calculation keeps its length part.
+ */
 function inlineContributionOf(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max'): LU {
   const s = box.style;
-  const bor = resolveBorder(s, ctx.devicePixelRatio);
-  const padPx = (v: typeof s.paddingLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : ZERO);
-  const bp = sumEdges(bor.left, bor.right, padPx(s.paddingLeft), padPx(s.paddingRight));
+  const bp = borderPaddingOf(ctx, box, 'columns', INDEFINITE);
   let size: LU;
   if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
   else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
@@ -1801,12 +1805,13 @@ function borderPaddingOf(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): L
 
 /**
  * Blink ResolveMinInlineLength / ResolveInitialMinBlockLength in the measure space, whose % basis in the measured axis is
- * indefinite: a px minimum in border-box terms, or the border and padding for auto and %.
+ * indefinite: a px minimum in border-box terms, or the border and padding for auto and %. Padding resolves against the given
+ * basis: indefinite (zero) for columns, the item's column area for rows (Blink ComputePadding takes the inline size).
  */
-function specifiedMinimum(ctx: Ctx, box: LayoutBox, axis: GridAxis): LU {
+function specifiedMinimum(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): LU {
   const s = box.style;
   const v = axis === 'columns' ? s.minWidth : s.minHeight;
-  const bp = borderPaddingOf(ctx, box, axis, INDEFINITE);
+  const bp = borderPaddingOf(ctx, box, axis, basis);
   return v.kind === 'px' ? borderBoxFromSpecified(fromCssPx(v.value), bp, s.boxSizing) : bp;
 }
 
@@ -1821,9 +1826,9 @@ type GridMeasure = { readonly size: LU; readonly shim: LU };
 function contentContribution(ctx: Ctx, grid: GridState, item: GridItemData, columns: boolean, kind: 'min' | 'max'): GridMeasure {
   if (columns) {
     const s = item.box.style;
-    if (s.height.kind === 'percent' || s.minHeight.kind === 'percent' || s.maxHeight.kind === 'percent' || (s.height.kind === 'auto' && item.rowStretch)) item.sizingDependsOnBlockSize = true;
+    if (percentSize(s.height) || percentSize(s.minHeight) || percentSize(s.maxHeight) || (s.height.kind === 'auto' && item.rowStretch)) item.sizingDependsOnBlockSize = true;
     const size = inlineContributionOf(ctx, item.box, kind);
-    // Columns are measured with an indefinite inline size: % margins resolve against LayoutUnit(-1), as in contributionFor.
+    // Columns are measured with an indefinite inline size, so % margins resolve against zero, as in contributionFor.
     const shim = baselineAligned(item, 'columns') ? baselineShim(ctx, grid, item, 'columns', inlineBaseline(ctx, grid, item, size), INDEFINITE) : ZERO;
     return { size: add(size, shim), shim };
   }
@@ -2028,7 +2033,7 @@ function contributionFor(ctx: Ctx, grid: GridState, c: GridCollection, type: Gri
   if (type === 'free-space') throw new Error('free-space is not an item contribution');
   const s = item.box.style;
   const columns = c.axis === 'columns';
-  // Columns are measured with an indefinite inline size: % margins resolve against LayoutUnit(-1), as Blink's measure space does.
+  // Columns are measured with an indefinite inline size, so % margins resolve against zero (Blink ComputePhysicalMargins).
   const basis = columns ? INDEFINITE : areaSize(grid.columns, item.columnSets);
   const m = marginsOf(item.box, basis, grid.rtl);
   const marginSum = columns ? add(m.inlineStart, m.inlineEnd) : add(m.blockStart, m.blockEnd);
@@ -2047,7 +2052,7 @@ function contributionFor(ctx: Ctx, grid: GridState, c: GridCollection, type: Gri
     const measured = contentContribution(ctx, grid, item, columns, 'min');
     const minContent = measured.size;
     if (main.kind === 'px') contribution = minContent;
-    else if (minLength.kind !== 'auto' || isScrollContainer(s) || special) contribution = specifiedMinimum(ctx, item.box, c.axis);
+    else if (minLength.kind !== 'auto' || isScrollContainer(s) || special) contribution = specifiedMinimum(ctx, item.box, c.axis, basis);
     else {
       contribution = minContent;
       const sets = itemSets(item, c.axis);

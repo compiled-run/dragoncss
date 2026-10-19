@@ -663,12 +663,14 @@
         { "lines": "3956-4003", "symbol": "PlaceItems::ParseShorthand", "source": "located" },
         { "lines": "4015-4062", "symbol": "PlaceSelf::ParseShorthand", "source": "located" },
         { "lines": "5163-5170", "symbol": "Mask::ParseShorthand", "source": "located" },
-        { "lines": "5181-5193", "symbol": "MaskPosition::ParseShorthand", "source": "located" }
+        { "lines": "5181-5193", "symbol": "MaskPosition::ParseShorthand", "source": "located" },
+        { "lines": "749-794", "symbol": "BorderImage::ParseShorthand", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/place.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/css/place.ts", "symbol": "splitPlace", "use": "port" },
-        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" }
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -687,10 +689,12 @@
       "headerSha256": "f118f16944514ddfe94243d4e3152390a34e7ebd5cdc54ce77b5ff70764dfc56",
       "ranges": [
         { "lines": "195-213", "symbol": "CSSToStyleMap::MapFillPositionX", "source": "located" },
-        { "lines": "215-233", "symbol": "CSSToStyleMap::MapFillPositionY", "source": "located" }
+        { "lines": "215-233", "symbol": "CSSToStyleMap::MapFillPositionY", "source": "located" },
+        { "lines": "527-605", "symbol": "CSSToStyleMap::MapNinePieceImage", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" }
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1649,17 +1653,20 @@
         { "lines": "285-297", "symbol": "InlineSizeFromAspectRatio", "source": "located" },
         { "lines": "299-312", "symbol": "BlockSizeFromAspectRatio", "source": "located" },
         { "lines": "318-357", "symbol": "ComputeMinAndMaxContentContributionForReplaced", "source": "located" },
+        { "lines": "361-460", "symbol": "ComputeMinAndMaxContentContributionInternal", "source": "cited" },
         { "lines": "531-603", "symbol": "ComputeInlineSizeForFragmentInternal", "source": "located" },
         { "lines": "699-719", "symbol": "ComputeTransferredMinMaxInlineSizes", "source": "located" },
         { "lines": "721-739", "symbol": "ComputeTransferredMinMaxBlockSizes", "source": "located" },
         { "lines": "762-804", "symbol": "ComputeMinMaxInlineSizes", "source": "located" },
         { "lines": "1016-1231", "symbol": "ComputeReplacedSizeInternal", "source": "located" },
+        { "lines": "1518-1545", "symbol": "ComputePadding", "source": "cited" },
         { "lines": "1555-1574", "symbol": "ResolveInlineAutoMargins", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
         { "file": "packages/layout/src/box.ts", "symbol": "resolveMinLength", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "indefiniteInlineSize", "use": "port" },
+        { "file": "packages/layout/src/grid.ts", "symbol": "inlineContributionOf", "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "blockFromRatio", "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "inlineFromRatio", "use": "port" },
@@ -1669,6 +1676,21 @@
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": "replacedContribution", "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/length_utils.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "71b6545e46198d815bc3750ebf96d9545acd37451d207a12019a2b37073fd978",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "465-481", "symbol": "ComputePhysicalMargins", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "marginsOf", "use": "port" }
       ]
     },
     {
@@ -2330,6 +2352,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/fonts/opentype/open_type_caps_support.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "9a960e0f07f85eec24b5b26f8202c07b8ede8d24d88d9398786b9a8df09f4ede",
+      "headerSha256": "df6dee5a459238b7466cef0cc215169dc7fa308dda38a55f485398d851f7c025",
+      "ranges": [
+        { "lines": "229-285", "symbol": "OpenTypeCapsSupport::DetermineFontSupport", "source": "located" },
+        { "lines": "287-290", "symbol": "OpenTypeCapsSupport::SyntheticSmallCapsAllowed", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "synthesizesSmallCaps", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/platform/fonts/script_run_iterator.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2413,7 +2451,10 @@
         { "lines": "1-1215", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": "caseRanges", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "smallCapsCodePoint", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "SmallCapsSums", "use": "port" }
       ]
     },
     {
@@ -2518,13 +2559,17 @@
       "fileSha256": "d1faaff725559a494b1e6ffaa8c4ee9a7a718dd0117317756cca98c4794dfb5d",
       "headerSha256": "1819cc0f332f19641dad06debe90c9b3584a2b6a3f77e11e09133d478e9a58f5",
       "ranges": [
+        { "lines": "67-67", "symbol": "kSmallCapsFontSizeMultiplier", "source": "located" },
         { "lines": "115-222", "symbol": "SimpleFontData::PlatformInit", "source": "located" },
+        { "lines": "292-299", "symbol": "SimpleFontData::SmallCapsFontData", "source": "located" },
+        { "lines": "310-318", "symbol": "SimpleFontData::CreateScaledFontData", "source": "located" },
         { "lines": "421-424", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" },
-        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "smallCapsFontSize", "use": "port" }
       ]
     },
     {
@@ -2541,6 +2586,22 @@
       "dragon": [
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
         { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/small_caps_iterator.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "c5dcd69355cab52a9c139b6538e31a8477c42722387cbe9abadc65335fcba578",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "18-47", "symbol": "SmallCapsIterator::Consume", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": "caseRanges", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "smallCapsCodePoint", "use": "port" }
       ]
     },
     {
@@ -3816,7 +3877,22 @@
         { "lines": "11530-11535", "symbol": "MaskRepeat::ParseSingleValue", "source": "located" },
         { "lines": "11545-11548", "symbol": "MaskRepeat::InitialValue", "source": "located" },
         { "lines": "11550-11556", "symbol": "MaskSize::ParseSingleValue", "source": "located" },
-        { "lines": "11567-11569", "symbol": "MaskSize::InitialValue", "source": "located" }
+        { "lines": "11567-11569", "symbol": "MaskSize::InitialValue", "source": "located" },
+        { "lines": "1491-1496", "symbol": "BorderImageOutset::ParseSingleValue", "source": "located" },
+        { "lines": "1507-1514", "symbol": "BorderImageOutset::InitialValue", "source": "located" },
+        { "lines": "1516-1521", "symbol": "BorderImageRepeat::ParseSingleValue", "source": "located" },
+        { "lines": "1531-1533", "symbol": "BorderImageRepeat::InitialValue", "source": "located" },
+        { "lines": "1535-1541", "symbol": "BorderImageSlice::ParseSingleValue", "source": "located" },
+        { "lines": "1551-1561", "symbol": "BorderImageSlice::InitialValue", "source": "located" },
+        { "lines": "1563-1568", "symbol": "BorderImageSource::ParseSingleValue", "source": "located" },
+        { "lines": "1582-1584", "symbol": "BorderImageSource::InitialValue", "source": "located" },
+        { "lines": "1599-1604", "symbol": "BorderImageWidth::ParseSingleValue", "source": "located" },
+        { "lines": "1615-1622", "symbol": "BorderImageWidth::InitialValue", "source": "located" },
+        { "lines": "10980-10985", "symbol": "WebkitBorderImage::ParseSingleValue", "source": "located" },
+        { "lines": "10996-11003", "symbol": "WebkitBorderImage::ApplyValue", "source": "located" },
+        { "lines": "7287-7294", "symbol": "ObjectPosition::ParseSingleValue", "source": "located" },
+        { "lines": "8293-8316", "symbol": "Perspective::ParseSingleValue", "source": "located" },
+        { "lines": "8329-8336", "symbol": "PerspectiveOrigin::ParseSingleValue", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
@@ -3833,7 +3909,10 @@
         { "file": "packages/dragon/src/css/properties/clip-rect.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/mask.ts", "symbol": null, "use": "reference" },
-        { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" }
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/transform-extra.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
