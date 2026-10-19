@@ -116,7 +116,6 @@ describe('the not-applicable list', () => {
 
 describe('off the list, a declaration or rule is still refused on every target', () => {
   const OFF: Record<string, string> = {
-    'scrollbar-width (hides scroll indicators)': '.a { scrollbar-width: none; }',
     '-webkit-appearance (changes form controls)': '.a { -webkit-appearance: none; }',
     'color-scheme (changes the UA colours)': '.a { color-scheme: dark; }',
     'text-rendering (optimizeSpeed turns off kerning and ligatures)': '.a { text-rendering: optimizeSpeed; }',
@@ -197,7 +196,7 @@ describe('querySupport', () => {
     for (const target of [{ kind: 'ios', minimum: '15.0' }, { kind: 'android', minSdk: 31 }] as const) {
       const a = querySupport({ kind: 'possibilities', target, css: 'cursor: pointer' });
       expect(a).toEqual({ kind: 'not-applicable', declaration: 'cursor: pointer', reason: expect.stringContaining(`cursor has no effect on ${target.kind}`) });
-      expect(querySupport({ kind: 'possibilities', target, css: 'scrollbar-width: none' }).kind).toBe('invalid-query');
+      expect(querySupport({ kind: 'possibilities', target, css: 'color-scheme: dark' }).kind).toBe('invalid-query');
     }
     expect(querySupport({ kind: 'possibilities', target: { kind: 'web' }, css: 'cursor: pointer' }).kind).toBe('invalid-query');
     // Only a query of exactly the one listed declaration is answered; another declaration beside it keeps the query invalid.

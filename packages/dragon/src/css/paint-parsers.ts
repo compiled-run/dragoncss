@@ -22,6 +22,7 @@ import { SCROLL_SNAP_VALUE_PARSERS } from './properties/scroll-snap.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
+import { SCROLLBAR_VALUE_PARSERS } from './properties/scrollbar.ts';
 import { SELECTION_VALUE_PARSERS } from './properties/selection.ts';
 import { SVG_DASH_VALUE_PARSERS } from './properties/svg-dash.ts';
 import { SVG_PAINT_ORDER_VALUE_PARSERS } from './properties/svg-paint-order.ts';
@@ -61,6 +62,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(TEXT_SHADOW_VALUE_PARSERS),
   ...Object.entries(FILTER_VALUE_PARSERS),
   ...Object.entries(TOUCH_ACTION_VALUE_PARSERS),
+  ...Object.entries(SCROLLBAR_VALUE_PARSERS),
   ...Object.entries(CLIP_RECT_VALUE_PARSERS),
   ...Object.entries(CLIP_PATH_VALUE_PARSERS),
   ...Object.entries(MASK_VALUE_PARSERS),
