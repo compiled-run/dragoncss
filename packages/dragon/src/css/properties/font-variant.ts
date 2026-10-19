@@ -2,9 +2,11 @@
 // -numeric, -east-asian, -alternates, -position and -emoji, each inherited with initial normal, set together by the font-variant
 // shorthand (shorthands/font-variant.ts) and reset by font. Ligatures, numeric, east-asian and alternates select OpenType features of
 // the used face, which Ahem has none of, so Chrome draws Ahem the same whatever they say: Dragon accepts them, computed as Chrome
-// serializes them, and refuses them over text in a real face (analysis/font-variant.ts). Caps, position and emoji make Chrome
-// synthesize small capitals, move glyphs or pick an emoji face; Dragon draws none of that, so a non-normal value of any of them is
-// refused on every target, as are the alternates functions, which name @font-feature-values Dragon does not read.
+// serializes them, and refuses them over text in a real face (analysis/font-variant.ts). font-variant-caps: small-caps makes Chrome
+// synthesize small capitals over a face without smcp, which Dragon draws over Ahem (layout text.ts smallCapsFontSize) and refuses
+// over a real face (analysis/small-caps.ts). The other caps values, position and emoji make Chrome draw other capitals, move glyphs or pick an emoji face;
+// Dragon draws none of that, so they are refused on every target, as are the alternates functions, which name
+// @font-feature-values Dragon does not read.
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Span } from '../../types.ts';
@@ -80,7 +82,8 @@ export function variantRefusal(tokens: readonly CssNode[], base: Span, property:
     const k = ident(t);
     const fn = t.type === 'Function' ? asciiLower(String(t['name'])) : null;
     let why: string | null = null;
-    if (k !== null && CAPS.includes(k)) why = `${k} makes Chrome draw small or petite capitals, synthesized where the face has none, which Dragon does not draw yet`;
+    // small-caps is drawn as Chrome synthesizes it over Ahem (analysis/small-caps.ts refuses it over a real face).
+    if (k !== null && CAPS.includes(k) && k !== 'small-caps') why = `${k} makes Chrome draw petite, all-small or titling capitals, which Dragon does not draw yet`;
     else if (k !== null && POSITION.includes(k)) why = `${k} makes Chrome draw subscript or superscript glyphs, which Dragon does not draw yet`;
     else if (k !== null && EMOJI.includes(k)) why = `${k} picks the presentation of emoji characters, which Dragon does not apply yet`;
     else if (fn !== null && ALTERNATE_FUNCTIONS.includes(fn)) why = `${fn}() names a @font-feature-values alternate, which Dragon does not read`;

@@ -163,12 +163,12 @@ describe('pieceGlyphs', () => {
     };
     const m = deviceShapedMeasurer(new Map([[AHEM_FACE_ID, AHEM_FONT_DATA]]), scripted);
     const text = 'fi \u{1d400}X';
-    expect(pieceGlyphs(m, text, font(16), 0, 5)).toEqual({ ok: true, glyphs: [7, 8, 9, 10], xs: [0, 3, 4.5, 6.5], chars: [0, 2, 3, 4] });
+    expect(pieceGlyphs(m, text, font(16), 0, 5)).toEqual({ ok: true, glyphs: [7, 8, 9, 10], xs: [0, 3, 4.5, 6.5], chars: [0, 2, 3, 4], sizes: [16, 16, 16, 16] });
     // Code points [2, 4) are the space and U+1D400: UTF-16 [2, 5).
-    expect(pieceGlyphs(m, text, font(16), 2, 4)).toEqual({ ok: true, glyphs: [8, 9], xs: [0, 1.5], chars: [0, 1] });
+    expect(pieceGlyphs(m, text, font(16), 2, 4)).toEqual({ ok: true, glyphs: [8, 9], xs: [0, 1.5], chars: [0, 1], sizes: [16, 16] });
     // A piece that starts inside the ligature's cluster draws none of it.
-    expect(pieceGlyphs(m, text, font(16), 1, 3)).toEqual({ ok: true, glyphs: [8], xs: [0], chars: [1] });
-    expect(pieceGlyphs(m, text, font(16), 4, 4)).toEqual({ ok: true, glyphs: [], xs: [], chars: [] });
+    expect(pieceGlyphs(m, text, font(16), 1, 3)).toEqual({ ok: true, glyphs: [8], xs: [0], chars: [1], sizes: [16] });
+    expect(pieceGlyphs(m, text, font(16), 4, 4)).toEqual({ ok: true, glyphs: [], xs: [], chars: [], sizes: [] });
   });
   it('passes a refusal of the measurer through, with its reason', () => {
     expect(pieceGlyphs(device, 'XΩ', font(16), 0, 1)).toEqual({ ok: false, reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
