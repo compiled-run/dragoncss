@@ -45,6 +45,7 @@ import { TOUCH_ACTION_ASPECTS, TOUCH_ACTION_CONTAINER, TOUCH_ACTION_INHERITED, T
 import { CLIP_RECT_ASPECTS, CLIP_RECT_CONTAINER, CLIP_RECT_INHERITED, CLIP_RECT_LONGHANDS, CLIP_RECT_SHORTHANDS, CLIP_RECT_TEXT_ROLE } from './properties/clip-rect.ts';
 import { CLIP_PATH_ASPECTS, CLIP_PATH_CONTAINER, CLIP_PATH_INHERITED, CLIP_PATH_LONGHANDS, CLIP_PATH_SHORTHANDS, CLIP_PATH_TEXT_ROLE } from './properties/clip-path.ts';
 import { MASK_ASPECTS, MASK_CONTAINER, MASK_INHERITED, MASK_LONGHANDS, MASK_SHORTHANDS, MASK_TEXT_ROLE } from './properties/mask.ts';
+import { APPEARANCE_ASPECTS, APPEARANCE_CONTAINER, APPEARANCE_INHERITED, APPEARANCE_LONGHANDS, APPEARANCE_SHORTHANDS, APPEARANCE_TEXT_ROLE } from './properties/appearance.ts';
 import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
 
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
@@ -143,6 +144,8 @@ const FAMILIES = [
   family('clip-path', CLIP_PATH_LONGHANDS, CLIP_PATH_SHORTHANDS, CLIP_PATH_INHERITED, CLIP_PATH_ASPECTS, CLIP_PATH_CONTAINER, CLIP_PATH_TEXT_ROLE),
   // MASK-CLIP (css-masking-1 §7): the mask layer longhands, mask and mask-position, initial values only until Dragon draws masks, after clip-path.
   family('mask', MASK_LONGHANDS, MASK_SHORTHANDS, MASK_INHERITED, MASK_ASPECTS, MASK_CONTAINER, MASK_TEXT_ROLE),
+  // FORM-a (css-ui-4 §7.1): appearance, after mask.
+  family('appearance', APPEARANCE_LONGHANDS, APPEARANCE_SHORTHANDS, APPEARANCE_INHERITED, APPEARANCE_ASPECTS, APPEARANCE_CONTAINER, APPEARANCE_TEXT_ROLE),
 ] as const;
 
 export type Longhand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<infer L, string> ? L : never) : never;

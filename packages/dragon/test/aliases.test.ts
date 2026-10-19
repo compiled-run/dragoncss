@@ -40,6 +40,7 @@ const asAlias = (p: Parsed, alias: string, property: string): Parsed => ({
 /** Values for each standard property: a typical value, a multi-token value where the grammar has one, and an invalid value. */
 const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'box-sizing': ['border-box', 'content-box'],
+  appearance: ['none', 'NONE', 'auto', 'button', 'menulist-button', 'push-button', 'none auto', '1px'],
   'background-clip': ['padding-box', 'CONTENT-BOX, border-box', 'text', 'border'],
   'box-shadow': ['1px 2px 3px red', 'inset 0 0 0 2px rgb(0 0 0 / 50%), 3px 3px currentcolor', 'none', '1px 2px calc(1px + 1px)', '1vw 0', '1px'],
   opacity: ['0', '50%', '0.5', '1.5', 'calc(50% + 10%)'],
@@ -124,7 +125,7 @@ const COMMON = ['inherit', 'initial', 'unset', 'revert', 'var(--x)', 'var(--x, 1
 
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(80);
+    expect(ALIASES.length).toBe(81);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
@@ -281,9 +282,10 @@ describe('profile diagnostics name the alias as written', () => {
 
 describe('the alias fixtures cover every alias', () => {
   it('each alias appears in a fixture of the aliases group or its property\'s group, or the animation ones in the anim-webkit frame fixture', () => {
-    // shadow-webkit-alias (shadow group), opacity-cascade (effects group), filter-none (filter group), mask-initial (mask group) and
-    // transform-extra-initial (transform-extra group) hold the paint aliases where their pixel tests read them.
-    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
+    // shadow-webkit-alias (shadow group), opacity-cascade (effects group), filter-none (filter group), mask-initial (mask group),
+    // transform-extra-initial (transform-extra group) and appearance-values (appearance group) hold the paint aliases where their
+    // pixel tests read them.
+    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial', 'appearance-values'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
     const frames = readFileSync(new URL('../../parity/fixtures/anim-webkit/view.css', import.meta.url), 'utf8');
     for (const [alias] of ALIASES) expect((alias.includes('-transition') || alias.includes('-animation') ? frames : html).includes(`${alias}:`), alias).toBe(true);
     expect(frames).toContain('@-webkit-keyframes');

@@ -67,8 +67,9 @@ describe('createProject().compile() and check()', () => {
     // Every longhand is written on every rule, except the insets, which are written only when one of them is not auto, and the
     // outline longhands, which are written only when an author declaration sets one (Chrome's UA :focus-visible ring stays), and the
     // line-clamp longhands, which are written only where one is not initial (TXT2-g), clip, written only where it is not auto, and
-    // clip-path, written only where it is not none, and the mask longhands, written only where one is not initial (MASK-CLIP).
-    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS];
+    // clip-path, written only where it is not none, the mask longhands, written only where one is not initial (MASK-CLIP), and
+    // appearance, written only where it is not none (FORM-a).
+    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, 'appearance'];
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');
