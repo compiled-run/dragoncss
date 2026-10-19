@@ -80,6 +80,7 @@ import { VALUES } from './fixture-groups/values.ts';
 import { VISIBILITY } from './fixture-groups/visibility.ts';
 import { WHITE_SPACE } from './fixture-groups/white-space.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
+import { ZOOM } from './fixture-groups/zoom.ts';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -213,6 +214,7 @@ export const GROUPS = {
   visibility: VISIBILITY,
   'white-space': WHITE_SPACE,
   'writing-mode': WRITING_MODE,
+  zoom: ZOOM,
 } as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
 
 export type FixtureGroupId = keyof typeof GROUPS;
