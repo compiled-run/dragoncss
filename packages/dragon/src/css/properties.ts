@@ -45,6 +45,7 @@ import { TOUCH_ACTION_ASPECTS, TOUCH_ACTION_CONTAINER, TOUCH_ACTION_INHERITED, T
 import { CLIP_RECT_ASPECTS, CLIP_RECT_CONTAINER, CLIP_RECT_INHERITED, CLIP_RECT_LONGHANDS, CLIP_RECT_SHORTHANDS, CLIP_RECT_TEXT_ROLE } from './properties/clip-rect.ts';
 import { CLIP_PATH_ASPECTS, CLIP_PATH_CONTAINER, CLIP_PATH_INHERITED, CLIP_PATH_LONGHANDS, CLIP_PATH_SHORTHANDS, CLIP_PATH_TEXT_ROLE } from './properties/clip-path.ts';
 import { TABLE_ASPECTS, TABLE_CONTAINER, TABLE_INHERITED, TABLE_LONGHANDS, TABLE_SHORTHANDS, TABLE_TEXT_ROLE } from './properties/table.ts';
+import { COUNTERS_ASPECTS, COUNTERS_CONTAINER, COUNTERS_INHERITED, COUNTERS_LONGHANDS, COUNTERS_SHORTHANDS, COUNTERS_TEXT_ROLE } from './properties/counters.ts';
 import { MASK_ASPECTS, MASK_CONTAINER, MASK_INHERITED, MASK_LONGHANDS, MASK_SHORTHANDS, MASK_TEXT_ROLE } from './properties/mask.ts';
 import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
 
@@ -146,6 +147,8 @@ const FAMILIES = [
   family('mask', MASK_LONGHANDS, MASK_SHORTHANDS, MASK_INHERITED, MASK_ASPECTS, MASK_CONTAINER, MASK_TEXT_ROLE),
   // TABLE (CSS2 §17): the table properties, every value, since Dragon builds no table box for them to change, after mask.
   family('table', TABLE_LONGHANDS, TABLE_SHORTHANDS, TABLE_INHERITED, TABLE_ASPECTS, TABLE_CONTAINER, TABLE_TEXT_ROLE),
+  // GEN-d1 and GEN-d2 (css-lists-3 §4, css-content-3 §3): the counter properties and quotes, every value, since Dragon renders no counter or quote, after table.
+  family('counters', COUNTERS_LONGHANDS, COUNTERS_SHORTHANDS, COUNTERS_INHERITED, COUNTERS_ASPECTS, COUNTERS_CONTAINER, COUNTERS_TEXT_ROLE),
 ] as const;
 
 export type Longhand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<infer L, string> ? L : never) : never;

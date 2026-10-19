@@ -1,0 +1,10 @@
+{
+  "case": "gen-block",
+  "dpr": 3,
+  "texts": [
+    {"id":"b:text0","lines":[[0,5]]},
+    {"id":"b::after:text0","lines":[[0,3],[3,5]]},
+    {"id":"m::before:text0","lines":[[0,2]]},
+    {"id":"m1:text0","lines":[[0,2]]}
+  ]
+}

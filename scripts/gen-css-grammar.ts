@@ -116,6 +116,8 @@ const SUBSET = [
   ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
   // TABLE: the table properties (CSS2 §17), then border-spacing, after the mask family, as LONGHANDS registers them.
   'border-collapse', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing', 'caption-side', 'empty-cells', 'table-layout', 'border-spacing',
+  // GEN-d1 and GEN-d2: the counter properties (css-lists-3 §4) and quotes (css-content-3 §3.1), after the table family, as LONGHANDS registers them.
+  'counter-reset', 'counter-increment', 'counter-set', 'quotes',
 ] as const;
 
 /**
@@ -230,6 +232,13 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'border-spacing': '<length [0,∞]>{1,2}',
   '-webkit-border-horizontal-spacing': '<length [0,∞]>',
   '-webkit-border-vertical-spacing': '<length [0,∞]>',
+  // Blink CounterReset, CounterIncrement and CounterSet ::ParseSingleValue (ConsumeCounter): none, or names each with an optional
+  // integer; css-lists-3's reversed() is not parsed (probed). Blink Quotes::ParseSingleValue: auto, none or string pairs; webref's
+  // match-parent is not parsed (probed).
+  'counter-reset': '[ <custom-ident> <integer>? ]+ | none',
+  'counter-increment': '[ <custom-ident> <integer>? ]+ | none',
+  'counter-set': '[ <custom-ident> <integer>? ]+ | none',
+  quotes: 'auto | none | [ <string> <string> ]+',
 };
 
 /**

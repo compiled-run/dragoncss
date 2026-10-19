@@ -1,0 +1,17 @@
+{
+  "sources": ["app.dg", "doc.css", "app.css"],
+  "modules": [{ "id": "app", "source": "app.dg" }],
+  "styles": [{ "id": "doc", "file": "doc.css", "scope": "document" }, { "id": "app", "file": "app.css", "scope": "App" }],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app"] },
+  "components": [
+    { "id": "App", "module": "app", "at": "component App",
+      "states": [{ "id": "open", "domain": [false, true], "initial": false, "at": "open: boolean = false" }],
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [{ "el": "body", "id": "body", "at": "<body>", "children": [
+          { "el": "div", "id": "toggle", "at": "<div toggle", "class": ["app.toggle"], "attr": [
+            { "name": "ui-open", "when": ["open", true], "value": "", "at": "ui-open={open}" }
+          ], "children": [{ "text": "AA", "id": "label", "at": "AA" }] }
+        ] }] }
+      ] }
+  ]
+}
