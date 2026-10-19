@@ -10,6 +10,7 @@ import type {
   FlexBasisValue,
   FlexDirection,
   FlexWrap,
+  Float,
   FontSpec,
   GapValue,
   InlineChild,
@@ -80,6 +81,19 @@ function keyword<T extends string>(id: string, get: Get, p: Longhand, allowed: r
   const v = get(p);
   if (v.kind === 'keyword' && (allowed as readonly string[]).includes(v.value)) return v.value as T;
   return fail(id, p, v, allowed.join(' | '));
+}
+
+/**
+ * CSS2 §9.5 float. inline-start and inline-end take their physical side from the element's own direction: they reach the engine
+ * only on flex and grid items, which do not float, since the compiler refuses them in block flow (computed-checks.ts checkFloats).
+ */
+function floatOf(id: string, get: Get): Float {
+  const v = get('float');
+  const d = get('direction');
+  const rtl = d.kind === 'keyword' && d.value === 'rtl';
+  if (v.kind === 'keyword' && v.value === 'inline-start') return rtl ? 'right' : 'left';
+  if (v.kind === 'keyword' && v.value === 'inline-end') return rtl ? 'left' : 'right';
+  return keyword<Float>(id, get, 'float', ['none', 'left', 'right']);
 }
 
 /** What the lowering of one element reads besides its values: its font sizes for em and rem, and the compiler faults. */
@@ -316,6 +330,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   return {
     display: displayOfStyle(id, get, lineClamp),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
+    float: floatOf(id, get),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
     bottom: inset(id, get, 'bottom', l),

@@ -17,6 +17,7 @@ import { UnsupportedSignal } from './unsupported.ts';
 import { placeLines } from './inline.ts';
 import { isAtomicInline } from './inline-box.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
+import { isFloat } from './float.ts';
 import type { TextMeasurer } from './text.ts';
 
 /** A grid container: display grid, or inline-grid (an atomic inline, css-grid-2 §5.1). */
@@ -383,6 +384,7 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   }
   for (const k of b.children) {
     if ((k.kind !== 'box' && k.kind !== 'replaced') || isOutOfFlow(ix.ctx, k)) continue;
+    refuseFloat(ix, b, k);
     const kn = nodeOf(ix, k.id);
     const dx = sub(kn.rect.x, n.rect.x);
     const dy = sub(kn.rect.y, n.rect.y);
@@ -585,6 +587,7 @@ function readFlow(ix: Index, n: Node): Flow {
   let escapeTop = EMPTY_STRUT;
   for (const k of b.children) {
     if ((k.kind !== 'box' && k.kind !== 'replaced') || isOutOfFlow(ix.ctx, k)) continue;
+    refuseFloat(ix, b, k);
     const kn = nodeOf(ix, k.id);
     const mt = resolveMarginWith(k.style.marginTop, cb, f).value;
     const mb = resolveMarginWith(k.style.marginBottom, cb, f).value;
@@ -607,6 +610,11 @@ function readFlow(ix: Index, n: Node): Flow {
   }
   if (!seen && canCollapseTop) return { escapeTop: strut, endStrut: EMPTY_STRUT, cursor: ZERO, hasContent: false, ends };
   return { escapeTop, endStrut: strut, cursor, hasContent: seen, ends };
+}
+
+/** FLT: a float in a block container: its scrollable overflow and its place outside the flow are not decided here. */
+function refuseFloat(ix: Index, b: LayoutBox, k: LayoutNode): void {
+  if ((b.style.display === 'block' || b.style.display === 'inline-block') && isFloat(ix.ctx, k)) throw new OverflowRefusal(k.id, `a float in ${b.id}: its scrollable overflow is not decided here (FLT)`);
 }
 
 function isRootOrFc(ix: Index, n: Node): boolean {

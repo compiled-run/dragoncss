@@ -10,7 +10,7 @@ import { div, inputFor, text } from './helpers.ts';
 
 // Engine input builders (as packages/layout/test/helpers.ts, which this package's tests cannot import): CSS initial values for a div.
 const DIV: LayoutStyle = {
-  display: 'block', position: 'static', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
+  display: 'block', position: 'static', float: 'none', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
   overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box', width: { kind: 'auto' }, height: { kind: 'auto' },
   minWidth: { kind: 'auto' }, minHeight: { kind: 'auto' }, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' },
   marginTop: { kind: 'px', value: 0 }, marginRight: { kind: 'px', value: 0 }, marginBottom: { kind: 'px', value: 0 }, marginLeft: { kind: 'px', value: 0 },
@@ -71,6 +71,9 @@ const KIDS: Record<string, Kid> = {
   gridItemPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}i`, sc('auto', { paddingLeft: pct(10), gridItem: ITEM }), [box(`${id}k`, { paddingTop: pct(5), height: px(90) })])]),
   gridAbsPct: (id) => box(id, { display: 'grid', grid: GRID, position: 'relative' }, [box(`${id}a`, sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }), [box(`${id}k`, { height: px(90) })])]),
   gridAbsStaticPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}a`, sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }), [box(`${id}k`, { height: px(90) })])]),
+  // FLT: a float in a block container, and one deeper in a plain block.
+  float: (id) => box(id, { float: 'left', width: px(20), height: px(90) }),
+  deepFloat: (id) => box(id, {}, [box(`${id}f`, { float: 'right', width: px(20), height: px(90) })]),
   abs: (id) => box(id, { position: 'absolute', width: px(20), height: px(20) }, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])]),
 };
 

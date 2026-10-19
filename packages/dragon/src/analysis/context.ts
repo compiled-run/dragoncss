@@ -39,6 +39,7 @@ export type BoxContext =
   | 'block'
   | 'inline'
   | 'atomic-inline'
+  | 'float'
   | 'flex-row'
   | 'flex-column'
   | 'display-none'
@@ -53,9 +54,10 @@ export type BoxContext =
 /**
  * The context an element's box takes part in: the root, or its parent's formatting context. inline: an inline box (CSS2 §9.2.2),
  * which takes part in its block container's inline formatting context (a flex or grid item is blockified, so never inline); atomic-inline: an inline-block, inline-flex or inline-grid box (CSS2
- * §9.2.4), which sits on a line of that context as one item and is sized by shrink-to-fit (§10.3.9).
+ * §9.2.4), which sits on a line of that context as one item and is sized by shrink-to-fit (§10.3.9); float: a float in block flow (CSS2
+ * §9.5, FLT), which leaves the flow, is sized by shrink-to-fit (§10.3.5) and is placed beside the floats before it.
  */
-export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'grid' | 'display-none' | 'inline' | 'atomic-inline';
+export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'grid' | 'display-none' | 'inline' | 'atomic-inline' | 'float';
 
 /**
  * Row contexts. Item properties of a positioned box carry the positioning scheme: a relative box its parent's context and
@@ -98,6 +100,12 @@ export const isAtomicInline = (el: ResolvedElement): boolean => {
 };
 
 /**
+ * Whether an element floats in block flow (CSS2 §9.5): float other than none (an absolutely positioned box's computes to none,
+ * blockify.ts) under a parent that is no flex or grid container, where float has no effect (css-flexbox-1 §4, css-grid-2 §6).
+ */
+export const isFloatInFlow = (el: ResolvedElement, parent: ResolvedElement): boolean => keyword(el, 'float') !== 'none' && keyword(el, 'float') !== '' && !isFlexContainer(parent) && !isGridContainer(parent);
+
+/**
  * The formatting context of an element-level longhand, with the direction of the box whose algorithm consumes it. Item
  * properties: the context the element's box takes part in (root, block, flex-row, flex-column, or display-none under a hidden
  * parent) and the parent's direction (the root's own). Container properties: the element's own flex line mode and direction.
@@ -116,7 +124,7 @@ export function formattingContext(property: Longhand, el: ResolvedElement, ances
     const single = keyword(el, 'flex-wrap') === 'nowrap';
     return `flex-${axisFacet(el)}-${single ? 'single' : 'multi'}-line/${own}`;
   }
-  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : isAtomicInline(el) ? 'atomic-inline' : keyword(el, 'display') === 'inline' ? 'inline' : isFlexContainer(parent) ? `flex-${axisFacet(parent)}` : isGridContainer(parent) ? 'grid' : 'block';
+  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : isFloatInFlow(el, parent) ? 'float' : isAtomicInline(el) ? 'atomic-inline' : keyword(el, 'display') === 'inline' ? 'inline' : isFlexContainer(parent) ? `flex-${axisFacet(parent)}` : isGridContainer(parent) ? 'grid' : 'block';
   const dir = directionFacet(parent === null ? el : parent);
   const position = keyword(el, 'position');
   if (position === 'relative') return `relative-in-${base}/${dir}`;

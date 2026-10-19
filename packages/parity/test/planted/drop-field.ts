@@ -5,6 +5,7 @@ import type { LayoutStyle } from '@dragon/layout';
 const complete = {
   display: 'block',
   position: 'static',
+  float: 'none',
   top: { kind: 'auto' },
   right: { kind: 'auto' },
   bottom: { kind: 'auto' },

@@ -37,6 +37,12 @@ function lineLevel(b: LayoutBox): void {
   }
 }
 
+/** overflow.ts refuseFloat: a float in a block container (FLT). */
+function floatIn(b: LayoutBox): void {
+  if (b.style.display !== 'block' && b.style.display !== 'inline-block') return;
+  for (const k of b.children) if (isNode(k) && !outOfFlow(k) && k.style.float !== 'none') throw new Undecided(k.id, `a float in ${b.id}: its scrollable overflow is not decided here (FLT)`);
+}
+
 /** The absolutely positioned boxes whose containing block is b (none when b is static), as indexOf files them. */
 function oofsOf(b: LayoutNode): LayoutNode[] {
   if (b.kind === 'replaced' || b.style.position === 'static') return [];
@@ -78,6 +84,7 @@ function overflowOf(b: LayoutNode, unknown: ReadonlySet<string>): void {
   if (b.kind === 'replaced') return;
   if (unknown.has(b.id)) throw new Undecided(b.id, 'a percentage padding against a grid area: its basis is not decided here');
   lineLevel(b);
+  floatIn(b);
   for (const k of b.children) if (isNode(k) && !outOfFlow(k)) propagated(k, unknown);
   for (const k of oofsOf(b)) propagated(k, unknown);
 }
@@ -92,6 +99,7 @@ const fcRoot = (b: LayoutNode): boolean => b.kind === 'replaced' || b.style.disp
 /** readFlow and readChild from a block flow: a percentage height whose end margins may collapse through it is refused. */
 function flow(b: LayoutBox): void {
   if (b.style.display !== 'block' || hasInlineContent(b)) return;
+  floatIn(b);
   for (const k of b.children) {
     if (!isNode(k) || outOfFlow(k) || k.kind === 'replaced' || fcRoot(k)) continue;
     flow(k);

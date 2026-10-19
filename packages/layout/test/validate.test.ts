@@ -24,7 +24,7 @@ describe('validateLayoutInput', () => {
 
   it('rejects extra keys, unknown tags and bad enums', () => {
     const bad = clone(good) as unknown as { root: { style: Record<string, unknown> } };
-    bad.root.style['float'] = 'left';
+    bad.root.style['clear'] = 'left';
     bad.root.style['width'] = { kind: 'em', value: 2 };
     bad.root.style['display'] = 'inline-table';
     const r = validateLayoutInput(bad);

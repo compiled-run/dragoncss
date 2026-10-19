@@ -29,6 +29,8 @@ import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
+import type { FloatArea } from './float.ts';
+import { floatsBottom, isFloat, layoutFloat, placeFloat } from './float.ts';
 import type { ClampedChild } from './line-clamp.ts';
 import { clampChild } from './line-clamp.ts';
 import type { TextMeasurer } from './text.ts';
@@ -423,7 +425,10 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   // spec reading of min-max-end-margin (CSS 2.1 §8.3.1), a non-zero min-height also keeps them from adjoining.
   const specNoCollapse = ctx.faults.minMaxEndMarginSpec && minMax.min > vbp;
   const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null && !specNoCollapse;
-  const intrinsic = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  const flowEnd = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  // CSS2 §10.6.7: a formatting context root's auto height reaches the bottom margin edge of its lowest float.
+  const floatEnd = a.formattingContextRoot ? floatsBottom(ctx, box, r.placed, contentWidth) : null;
+  const intrinsic = floatEnd === null ? flowEnd : max(flowEnd, sub(floatEnd, add(bor.top, pad.top)));
   // Blink: with a definite initial block size the end margins neither escape nor count toward the content height.
   const height = fromRatio !== null
     ? ratioFinalBlockSize(box, fromRatio, add(a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0 ? intrinsic : r.cursor, vbp), minMax)
@@ -644,6 +649,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let defaultLastBaseline: LU | null = null;
   let defaultLastBaselineFlex = '';
   const outOfFlow: OutOfFlow[] = [];
+  const floats: FloatArea[] = [];
   // TXT2-g: a line-clamp container counts the lines of its block children in order (BlockLineClampData::UpdateAfterLayout).
   let clampLeft = box.style.lineClamp > 0 ? box.style.lineClamp : 0;
   let clampedCursor: LU | null = null;
@@ -662,6 +668,16 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         y: { offset: add(a.origin.y, sy), edge: 'near' },
         area: null,
       });
+      continue;
+    }
+    if (isFloat(ctx, kid)) {
+      // CSS2 §9.5.1 rule 4 with Blink's float origin: the float's top is the flow position with the pending margins once the parent's
+      // block offset is fixed, as the static position above. Later boxes keep their flow: the compiler refuses content after a float.
+      const top = !seen && a.canCollapseTop ? ZERO : add(cursor, collapsed(strut));
+      const f = layoutFloat(ctx, kid, a.contentWidth, a.childBasis);
+      const area = placeFloat(floats, kid.style.float, add(add(f.marginLeft, f.frag.width), f.marginRight), add(add(f.marginTop, f.frag.height), f.marginBottom), top, a.contentWidth);
+      floats.push(area);
+      placed.push({ frag: f.frag, x: add(add(a.origin.x, area.x), f.marginLeft), y: add(add(a.origin.y, area.y), f.marginTop) });
       continue;
     }
     let inline: BlockLevelInline;

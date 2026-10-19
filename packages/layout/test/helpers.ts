@@ -4,6 +4,7 @@ import type { FontSpec, InlineBox, InlineChild, LayoutBox, LayoutStyle, LineBrea
 export const divStyle: LayoutStyle = {
   display: 'block',
   position: 'static',
+  float: 'none',
   top: { kind: 'auto' },
   right: { kind: 'auto' },
   bottom: { kind: 'auto' },

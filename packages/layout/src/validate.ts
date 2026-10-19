@@ -122,6 +122,7 @@ const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto',
 export const styleSchema = obj({
   display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
   position: lit('static', 'relative', 'absolute'),
+  float: lit('none', 'left', 'right'),
   top: inset,
   right: inset,
   bottom: inset,
@@ -503,6 +504,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     checkFields(value, { id: str, style: styleSchema, font: fontSpecSchema, lineHeight: lineHeightSchema }, path, errors, ['kind', 'children']);
     const style = value['style'];
     if (isRecord(style) && style['display'] !== 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an inline box has display inline' });
+    // CSS2 §9.7: a float is blockified, so it is never an inline box.
+    if (isRecord(style) && style['float'] !== 'none') errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'a float is blockified: it is never an inline box' });
     // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
     if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
     const kids = childrenOf(value, path, errors);
@@ -522,6 +525,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       if (style['overflowX'] !== style['overflowY']) errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
       // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
       if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
+      checkFloat(value, style, path, parentId, errors);
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
       if (style['display'] === 'grid' || style['display'] === 'inline-grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
@@ -538,6 +542,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
   if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
   if (isAtomic(value) && parentId === null) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'the root box is blockified: it is never inline-block, inline-flex or inline-grid' });
+  if (isRecord(style)) checkFloat(value, style, path, parentId, errors);
   const children = childrenOf(value, path, errors);
   if (children === null) return;
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
@@ -714,6 +719,14 @@ const isAtomic = (c: unknown): boolean => {
 
 const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'text' || c['kind'] === 'inline' || c['kind'] === 'br' || isAtomic(c));
 
+// CSS2 §9.7: a float is blockified and an absolutely positioned box's float computes to none; the compiler refuses a float on the root.
+function checkFloat(node: Record<string, unknown>, style: Record<string, unknown>, path: string, parentId: string | null, errors: ValidationError[]): void {
+  if (style['float'] !== 'left' && style['float'] !== 'right') return;
+  if (parentId === null) errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'the root box does not float' });
+  if (style['position'] === 'absolute') errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'an absolutely positioned box does not float (its float computes to none)' });
+  if (isAtomic(node)) errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'a float is blockified: it is never an atomic inline' });
+}
+
 /** A value as JSON with every object's keys sorted, so two fonts compare equal whatever their key order. */
 function canonicalOf(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonicalOf).join(',')}]`;
@@ -814,6 +827,7 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
 const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
+  float: 'none',
   top: { kind: 'auto' },
   right: { kind: 'auto' },
   bottom: { kind: 'auto' },

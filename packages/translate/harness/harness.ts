@@ -45,6 +45,7 @@ import type {
   MaxInlineSizeValue,
   MaxSizeValue,
   MinSizeValue,
+  Float,
   Overflow,
   PaddingValue,
   Position,
@@ -642,7 +643,7 @@ function aspectRatioValue(v: JsonValue, path: string): AspectRatioValue {
 }
 
 const STYLE_KEYS: readonly string[] = [
-  'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
+  'display', 'position', 'float', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
@@ -803,6 +804,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   return {
     display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
+    float: lit(f('float'), ['none', 'left', 'right'], p('float')) as Float,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
     bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,

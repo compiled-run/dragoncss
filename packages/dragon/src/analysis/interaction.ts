@@ -528,6 +528,29 @@ export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedV
   return null;
 }
 
+/**
+ * FLT: the first float in block flow of a resolved tree whose float compiles, in preorder, or null. rt-hit.ts refuses a float in a
+ * block or inline-block container (no Chrome hit capture yet).
+ */
+export function hitUnmodelledFloat(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): string | null {
+  const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
+    const v = el.props.get(p);
+    return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
+  };
+  const visit = (el: ResolvedElement): string | null => {
+    const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
+    for (const c of el.children) {
+      if (c.kind !== 'element') continue;
+      const f = c.props.get('float');
+      if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return c.element.address;
+      const found = visit(c);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  return visit(root);
+}
+
 /** R13: the first paint fact of a resolved tree the hit test does not model and that compiles, in preorder and longhand order, or null. */
 export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles: (v: ResolvedValue) => boolean = () => true): { readonly property: Longhand; readonly address: string } | null {
   const initial = new Map<Longhand, string>();

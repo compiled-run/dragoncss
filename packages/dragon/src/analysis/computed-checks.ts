@@ -589,6 +589,69 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
   }
 }
 
+// FLT (CSS2 §9.5): the engine places a float beside the floats before it in its container and counts it in its block formatting
+// context root's height, but moves no in-flow box and shortens no line box for it (packages/layout/src/float.ts). So a float in
+// block flow compiles only where nothing in flow is beside it: its parent is a block container with no inline content, every in-flow
+// sibling before it, every float after it, and nothing in flow after it in its formatting context (the ancestors up to the context's
+// root have nothing in flow after it either). Its formatting context's plain blocks stay static (a relative offset would move the
+// float out of the root's area). float: inline-start and inline-end, clear on a float, a positioned float and a negative margin
+// have no case yet. The engine refuses all of these; each is refused here on every target at the float declaration, since a
+// refusal on the device is a crash.
+function checkFloats(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (el: ResolvedElement, message: string, manual: string): void => {
+    const v = el.props.get('float') as ResolvedValue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|float|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const floats = (el: ResolvedElement): boolean => keywordOf(el.props.get('float') as ResolvedValue) !== 'none';
+  const position = (el: ResolvedElement): string => keywordOf(el.props.get('position') as ResolvedValue);
+  const container = (el: ResolvedElement): boolean => ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(displayKeyword(el));
+  const scrolls = (el: ResolvedElement): boolean => el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue));
+  // A block box that takes part in its parent's block formatting context (block.ts newFormattingContext, float.ts sharesFormattingContext).
+  const shares = (el: ResolvedElement, parent: ResolvedElement): boolean => displayKeyword(el) === 'block' && !isReplacedTag(el.element.tag) && !scrolls(el) && !floats(el) && position(el) !== 'absolute' && position(el) !== 'fixed' && !container(parent);
+  const inFlow = (c: ResolvedElement): boolean => displayKeyword(c) !== 'none' && position(c) !== 'absolute' && position(c) !== 'fixed';
+  const negative = (v: ResolvedValue): boolean => ((v.value.kind === 'length' || v.value.kind === 'percentage') && v.value.value < 0) || (v.value.kind === 'other' && v.value.text.includes('-'));
+  // The first float of each formatting context, once seen: everything in flow after it is refused.
+  const walk = (el: ResolvedElement, chain: readonly ResolvedElement[], first: { at: ResolvedElement | null; parent: ResolvedElement | null }): void => {
+    const inline = el.children.some((c) => (c.kind === 'text' && c.text.length > 0) || (c.kind === 'element' && inFlow(c) && (isInlineBox(c) || isAtomic(c))));
+    for (const c of el.children) {
+      if (c.kind === 'text' && c.text.length > 0 && first.at !== null) refuse(first.at, `float: ${keywordOf(first.at.props.get('float') as ResolvedValue)} on ${first.at.element.address} is followed in its formatting context by text in ${el.element.address}: Dragon does not shorten line boxes around a float yet (FLT)`, `Wrap the text in an element before ${first.at.element.address}.`);
+      if (c.kind !== 'element' || displayKeyword(c) === 'none') continue;
+      const floating = floats(c) && !container(el);
+      if (floating) {
+        const f = keywordOf(c.props.get('float') as ResolvedValue);
+        const clear = keywordOf(c.props.get('clear') as ResolvedValue);
+        const margin = (['margin-top', 'margin-right', 'margin-bottom', 'margin-left'] as const).find((p) => negative(c.props.get(p) as ResolvedValue));
+        const plain = chain.find((a) => position(a) !== 'static');
+        if (f !== 'left' && f !== 'right') refuse(c, `float: ${f} on ${c.element.address} is not laid out yet (FLT: only left and right)`, `Use float: left or float: right on ${c.element.address}.`);
+        else if (displayKeyword(el) !== 'block' || isReplacedTag(el.element.tag)) refuse(c, `float: ${f} on ${c.element.address} in ${el.element.address}, whose display is ${displayKeyword(el)}: Dragon lays out a float only in a block container (FLT)`, `Wrap ${c.element.address} in a display: block element.`);
+        else if (inline) refuse(c, `float: ${f} on ${c.element.address} beside the text or inline content of ${el.element.address}: Dragon does not shorten line boxes around a float yet (FLT)`, `Wrap the text beside ${c.element.address} in its own element before the float, or use flex layout.`);
+        else if (first.at !== null && first.parent !== el) refuse(c, `float: ${f} on ${c.element.address} follows the float ${first.at.element.address} of another container in its formatting context: Dragon places floats beside each other only within one container (FLT)`, `Make ${c.element.address} a sibling of ${first.at.element.address}.`);
+        else if (clear !== 'none') refuse(c, `float: ${f} with clear: ${clear} on ${c.element.address}: clearance between floats is not laid out yet (FLT)`, `Remove clear from ${c.element.address}.`);
+        else if (position(c) !== 'static') refuse(c, `float: ${f} on the ${position(c)}ly positioned ${c.element.address} is not laid out yet (FLT)`, `Position a wrapper inside ${c.element.address} instead.`);
+        else if (margin !== undefined) refuse(c, `float: ${f} with a negative ${margin} on ${c.element.address}: a float that overlaps other boxes is not laid out yet (FLT)`, `Use a margin of 0 or more on ${c.element.address}.`);
+        else if (plain !== undefined) refuse(c, `float: ${f} on ${c.element.address} inside the ${position(plain)}ly positioned ${plain.element.address}, which shares its formatting context: its offset is not applied to the float yet (FLT)`, `Make ${plain.element.address} a formatting context root (overflow: hidden, display: flow-root is not supported) or keep it static.`);
+        if (first.at === null) {
+          first.at = c;
+          first.parent = el;
+        }
+        // A float is the root of its own block formatting context.
+        walk(c, [], { at: null, parent: null });
+        continue;
+      }
+      if (inFlow(c) && first.at !== null) refuse(first.at, `float: ${keywordOf(first.at.props.get('float') as ResolvedValue)} on ${first.at.element.address} is followed in its formatting context by ${c.element.address}, which is in flow: Dragon does not move boxes or lines around a float yet (FLT)`, `Put ${c.element.address} before ${first.at.element.address}, or make the floats' parent a formatting context root (overflow: hidden) with nothing after the floats in it.`);
+      if (inFlow(c) && shares(c, el)) walk(c, [...chain, c], first);
+      else walk(c, [], { at: null, parent: null });
+    }
+  };
+  walk(root, [], { at: null, parent: null });
+}
+
 const RATIO_BLOCK_SIZES: readonly Longhand[] = ['height', 'min-height', 'max-height'];
 
 // css-sizing-4 §5.1: the engine takes aspect-ratio as Blink's raw layout ratio. A ratio whose parts are not whole 64ths needs
@@ -1055,6 +1118,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
   };
   walk(root, false, 'viewport');
+  // FLT: floats beside what the engine does not move (checkFloats).
+  checkFloats(root, propagated, targets, diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

@@ -24,8 +24,20 @@ export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: Intri
   if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);
   if (box.strut !== null) return inlineIntrinsicSize(ctx, box, kind);
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
+  // CSS2 §9.5 (Blink BlockNode::ComputeMinMaxSizes): floats sit beside each other on one "line", so in the max-content size the left
+  // floats' contributions add up, as do the right floats', and the two sides add up; each float alone bounds the min-content size.
+  // The compiler keeps every float of a formatting context after its in-flow boxes, with no clear (computed-checks.ts checkFloats).
   let widest = ZERO;
-  for (const k of kids) if ((k.kind === 'box' || k.kind === 'replaced') && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
+  let left = ZERO;
+  let right = ZERO;
+  for (const k of kids) {
+    if ((k.kind !== 'box' && k.kind !== 'replaced') || isOutOfFlow(ctx, k)) continue;
+    const c = inlineContribution(ctx, k, kind);
+    if (kind === 'max' && k.style.float === 'left') left = add(left, c);
+    else if (kind === 'max' && k.style.float === 'right') right = add(right, c);
+    else widest = max(widest, c);
+  }
+  return max(widest, add(left, right));
   return widest;
 }
 

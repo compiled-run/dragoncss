@@ -134,6 +134,11 @@ export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'i
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
 /**
+ * CSS2 §9.5: a float leaves the flow and is shifted to the left or right of its containing block (FLT). The compiler computes none
+ * for an absolutely positioned box (§9.7) and on the root; a flex or grid item ignores it. inline-start and inline-end are refused.
+ */
+export type Float = 'none' | 'left' | 'right';
+/**
  * css-overflow-3 §3: hidden, auto and scroll make a scroll container; clip clips without one. The validator requires a §3.1
  * computed pair: both axes in visible and clip, or both in hidden, auto and scroll.
  */
@@ -304,6 +309,7 @@ export type GridItemStyle = {
 export type LayoutStyle = {
   readonly display: Display;
   readonly position: Position;
+  readonly float: Float;
   readonly top: InsetValue;
   readonly right: InsetValue;
   readonly bottom: InsetValue;
