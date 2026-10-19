@@ -104,6 +104,8 @@ const SUBSET = [
   // PNT2: the 3D transform longhands (css-transforms-2 §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
   // Chrome 145's (css_properties.json5 keywords).
   'backface-visibility', 'transform-style', 'transform-box',
+  // ZOOM: zoom (css-viewport-1 §5), after transform-extra, as LONGHANDS registers it.
+  'zoom',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
@@ -128,6 +130,8 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
   'list-style-image': '-webkit-image-set( <image-set-option># ) | -webkit-cross-fade( <image> , <image> , [ <percentage> | <number> ] )',
   // css-ui-4 §5.1 lists no auto, but Chrome 145 parses it under CSSResizeAuto, a stable feature (css_parser_fast_paths.cc kResize).
   resize: 'auto',
+  // Blink Zoom::ParseSingleValue (longhands_custom.cc) also takes normal, which webref's css-viewport grammar omits; it computes to 1.
+  zoom: 'normal',
 };
 
 /**

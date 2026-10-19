@@ -49,6 +49,7 @@ import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
 import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
+import { ZOOM_ANIMATION } from './animation-kinds/zoom.ts';
 
 export type { AnimationKind, LengthRange } from './animation-kinds/kinds.ts';
 
@@ -97,6 +98,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TRANSFORM_EXTRA_ANIMATION,
   ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
+  ...ZOOM_ANIMATION,
 };
 
 /** ANIM-b1 admits colour and length (R1, R13): kinds with an rt interpolator and a runtime writer on every target. */
