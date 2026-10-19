@@ -79,6 +79,9 @@ describe('small caps (TXT-FONTFEAT)', () => {
   it('refuses on every target what the engine does not lay out with small capitals', () => {
     const every = ['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web'];
     expect(refused('.i { font-variant-caps: small-caps; font-family: Lato; }')).toEqual({ codes: every, message: 'font-variant-caps: small-caps reaches text s:text0, and it is drawn in a real face, which may have its own small capitals (smcp); Dragon synthesizes them over Ahem only' });
+    // font-synthesis: none synthesizes nothing, but Chrome still draws a real face's own smcp, so the real face stays refused.
+    expect(refused('.i { font-variant-caps: small-caps; font-family: Lato; font-synthesis: none; }')).toEqual({ codes: every, message: 'font-variant-caps: small-caps reaches text s:text0, and it is drawn in a real face, which may have its own small capitals (smcp); Dragon synthesizes them over Ahem only' });
+    expect(refused('.i { font-variant-caps: small-caps; font-synthesis-small-caps: none; }').codes).toEqual([]);
     expect(refused('.i { font-variant-caps: small-caps; letter-spacing: 1px; }').codes).toEqual(every);
     expect(refused('.i { font-variant-caps: small-caps; word-spacing: 2px; }').codes).toEqual(every);
     expect(refused('.i { font-variant-caps: small-caps; white-space: pre; }').codes).toEqual(every);

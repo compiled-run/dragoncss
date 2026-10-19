@@ -6,7 +6,7 @@
 // bold or oblique, a decoration, a shadow or a transform, which the native views draw at one size.
 import { diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, DiagnosticCode } from '../types.ts';
-import { synthesisAllowedOf, synthesizesOblique, weightOf } from './computed.ts';
+import { synthesizesBold, synthesizesOblique } from './computed.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
 import { analyzeDecorations } from './text-decoration.ts';
@@ -14,20 +14,22 @@ import { analyzeDecorations } from './text-decoration.ts';
 const text = (el: ResolvedElement, p: Parameters<ResolvedElement['props']['get']>[0]): string => valueToString((el.props.get(p) as ResolvedValue).value);
 const isInline = (el: ResolvedElement): boolean => text(el, 'display') === 'inline';
 
+const REAL_FACE = 'it is drawn in a real face, which may have its own small capitals (smcp); Dragon synthesizes them over Ahem only';
+
 /** Why each target refuses one small-caps text, as [targets, code, reason]; empty when every target draws it. */
 function refusals(t: ResolvedText, owner: ResolvedElement, block: ResolvedElement, truncating: string | null, decorated: boolean, targets: readonly string[], realFace: boolean): [readonly string[], DiagnosticCode, string][] {
   const native = targets.filter((x) => x === 'ios' || x === 'android');
   const out: [readonly string[], DiagnosticCode, string][] = [];
   const all = (why: string): void => void out.push([targets, 'DRAGON_UNSUPPORTED_VALUE', why]);
   const onNative = (code: DiagnosticCode, why: string): void => void out.push([native, code, why]);
-  if (realFace) all('it is drawn in a real face, which may have its own small capitals (smcp); Dragon synthesizes them over Ahem only');
+  if (realFace) all(REAL_FACE);
   const spacing = (['letter-spacing', 'word-spacing'] as const).filter((p) => !['normal', '0px'].includes(valueToString((t.props.get(p) as ResolvedValue).value)));
   if (spacing.length > 0) all(`it has ${spacing.join(' and ')}, which Dragon does not lay out with small capitals yet`);
   if (valueToString((t.props.get('white-space-collapse') as ResolvedValue).value) !== 'collapse') all('its white space is preserved, which Dragon does not lay out with small capitals yet');
   if (text(block, 'text-align') === 'justify') all(`its block ${block.element.address} is justified, which Dragon does not lay out with small capitals yet`);
   if (truncating !== null) all(`${truncating} may end its line in an ellipsis, which Dragon does not place after small capitals yet`);
   if (synthesizesOblique(owner.props)) onNative('DRAGON_UNSUPPORTED_FONT', 'Chrome also draws it in synthetic oblique, which the native views do not combine with small capitals');
-  if (synthesisAllowedOf(owner.props).weight && weightOf(owner.props.get('font-weight') as ResolvedValue) >= 600) onNative('DRAGON_UNSUPPORTED_FONT', 'Chrome also draws it in synthetic bold, which the native views do not combine with small capitals');
+  if (synthesizesBold(owner.props)) onNative('DRAGON_UNSUPPORTED_FONT', 'Chrome also draws it in synthetic bold, which the native views do not combine with small capitals');
   if (decorated) onNative('DRAGON_UNSUPPORTED_VALUE', 'a text decoration reaches it, which the native views do not draw over small capitals yet');
   if (text(owner, 'text-shadow') !== 'none') onNative('DRAGON_UNSUPPORTED_VALUE', 'it has a text-shadow, which the native views do not draw for small capitals yet');
   if (text(owner, 'text-transform') !== 'none') onNative('DRAGON_UNSUPPORTED_VALUE', 'it has a text-transform, which the native views do not combine with small capitals yet');
@@ -47,8 +49,11 @@ export function checkSmallCaps(root: ResolvedElement, targets: readonly string[]
         walk(c, here, below);
         continue;
       }
-      if (!c.smallCaps) continue;
-      for (const [on, code, why] of refusals(c, el, here, below, decorated.has(c.node.address), targets, shapedAt(c.node.address))) {
+      // With font-synthesis-small-caps: none nothing is synthesized, but Chrome still draws a real face's own small capitals (smcp).
+      const unsynthesized = !c.smallCaps && text(el, 'font-variant-caps') === 'small-caps' && shapedAt(c.node.address);
+      if (!c.smallCaps && !unsynthesized) continue;
+      const found: [readonly string[], DiagnosticCode, string][] = unsynthesized ? [[targets, 'DRAGON_UNSUPPORTED_VALUE', REAL_FACE]] : refusals(c, el, here, below, decorated.has(c.node.address), targets, shapedAt(c.node.address));
+      for (const [on, code, why] of found) {
         for (const t of on) {
           const id = `${t}|small-caps|${why}|${c.node.address}`;
           if (reported.has(id)) continue;
