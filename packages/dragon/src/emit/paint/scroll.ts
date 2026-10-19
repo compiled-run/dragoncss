@@ -108,11 +108,10 @@ const KOTLIN_MEMBERS = String.raw`  /** OVFL-B: this box's scroll offset range i
     addView(s)
     dragonClipView = s
   }
-  /** OVFL-S0: scrollbar-width: none hides the scroll view's scrollbars: they are never enabled, and their size is 0. */
+  /** OVFL-S0: scrollbar-width: none hides the scroll view's scrollbars: a touch never enables them (DragonScrollView.barsOnTouch). */
   fun dragonHideScrollIndicators() {
     val s = dragonClipView as? DragonScrollView ?: throw IllegalStateException("dragon: " + dragonId + " hides scroll indicators without a scroll view")
     s.indicators = false
-    s.scrollBarSize = 0
   }
 `;
 
@@ -163,6 +162,8 @@ ${KOTLIN_DRAG}
 class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolean) : DragonClipView(ctx) {
   /** Whether a touch enables the overlay scrollbars; scrollbar-width: none turns it off (dragonHideScrollIndicators). */
   var indicators = true
+  /** Whether a touch enables the scrollbar of an axis: the one predicate both touch paths and the readback use. */
+  fun barsOnTouch(axisScrolls: Boolean): Boolean = axisScrolls && indicators
   /** The offset range: minX, maxX, minY, maxY in device px; a locked axis is 0, 0. Every scroll clamps to it. */
   val dragonRange = IntArray(4)
   private val scroller = OverScroller(ctx)
@@ -215,8 +216,8 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
 
   private fun beginDrag() {
     dragging = true
-    isHorizontalScrollBarEnabled = scrollsX && indicators
-    isVerticalScrollBarEnabled = scrollsY && indicators
+    isHorizontalScrollBarEnabled = barsOnTouch(scrollsX)
+    isVerticalScrollBarEnabled = barsOnTouch(scrollsY)
     parent?.requestDisallowInterceptTouchEvent(true)
   }
 
@@ -257,8 +258,8 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
         scroller.forceFinished(true)
         ax.down(e.x)
         ay.down(e.y)
-        isHorizontalScrollBarEnabled = scrollsX && indicators
-        isVerticalScrollBarEnabled = scrollsY && indicators
+        isHorizontalScrollBarEnabled = barsOnTouch(scrollsX)
+        isVerticalScrollBarEnabled = barsOnTouch(scrollsY)
       }
       MotionEvent.ACTION_MOVE -> {
         var start = startPending
@@ -305,11 +306,11 @@ fun dragonAfterLayoutScroll(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
   sv.dragonSetRange(r)
 }
 
-/** The readback of the scroll module: the offset range every scroll clamps to, in device px, then false for indicators when the platform scrollbar size is 0. */
+/** The readback of the scroll module: the offset range every scroll clamps to, in device px, then false for indicators when a touch enables no scrollbar. */
 fun dragonAppliedScroll(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val sv = v.dragonClipView as? DragonScrollView ?: return emptyList()
   val range = Pair("dragonScroll.range", DumpJson.Arr(sv.dragonRange.map { DumpJson.Num(it.toDouble()) }))
-  return if (sv.scrollBarSize != 0) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))
+  return if (sv.barsOnTouch(sv.scrollsX) || sv.barsOnTouch(sv.scrollsY)) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))
 }
 `;
 

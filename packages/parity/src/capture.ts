@@ -90,7 +90,7 @@ const collectNodes = (props: string[]): CapturedNode[] => {
  * fixture's stated-reference transform (font-reference.ts), run on the loaded page before the capture; none for every other fixture.
  */
 export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
-  // A prepare script is code the memo key cannot see, and a browser launchChrome did not start has flags it cannot see.
+  // A prepare script is code the memo key cannot see, and a browser with no recorded launch flags has flags it cannot see.
   const args = launchArgsOf(browser);
   if (prepare !== undefined || args === null) return captureFixtureLive(browser, fixture, html, env, extra, prepare);
   const parts = { html: injectHarness(html, env), env, args, properties: [...LONGHANDS, ...extra], flavour: BROWSER_FLAVOUR };
