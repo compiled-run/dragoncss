@@ -9,6 +9,7 @@ import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { NativeProgram } from '../src/internal.ts';
 import type { Assignment, DraftTree, FrontEndResult, SourceRef, Targets, TreeNode } from '../src/types.ts';
+import { GRADIENT_LOWERING } from '../src/lower/paint/gradient.ts';
 import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not, spanTextOf, text } from './helpers.ts';
 
 const ALL: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
@@ -161,8 +162,8 @@ describe('background-clip: text refusals', () => {
     ['.a { background-color: rgb(200, 30, 40); background-clip: text; }', 'the text is not transparent: Chrome draws it over the background colour seen through the same glyph coverage, which one native glyph draw matches only for transparent text', tree],
     ['.a { background-clip: text; color: transparent; }', 'the text is transparent and so is the background colour clipped to it, so the text would not show; Dragon refuses text that cannot be seen', tree],
     [`.a { ${fill} }`, 'the box has child elements, whose own paint and text Chrome draws under and through the clipped colour', nested],
-    [`.a { ${fill} display: inline; }`, 'the box is display: inline, and Dragon draws the clip on block, flow-root, flex and grid boxes only', tree],
-    [`.a { ${fill} display: inline-block; }`, 'the box is display: inline-block, and Dragon draws the clip on block, flow-root, flex and grid boxes only', tree],
+    [`.a { ${fill} display: inline; }`, 'the box is display: inline, and Dragon draws the clip on block, flex and grid boxes only', tree],
+    [`.a { ${fill} display: inline-block; }`, 'the box is display: inline-block, and Dragon draws the clip on block, flex and grid boxes only', tree],
     [`.a { ${fill} border: 1px solid red; }`, 'the box has a border', tree],
     [`.a { ${fill} border-radius: 2px; }`, 'the box has a border radius', tree],
     [`.a { ${fill} box-shadow: 1px 1px red; }`, 'the box has a box shadow', tree],
@@ -186,5 +187,23 @@ describe('background-clip: text refusals', () => {
     const b = compile('body { background-clip: text; }');
     expect(clipErrors(b).map((m) => m.split(':')[0])).toEqual(['android', 'ios', 'web']);
     expectCatalogued(errors(g));
+  });
+});
+
+describe('background-clip: text never reaches the gradient raster', () => {
+  it('the gradient lowering throws on a layer clipped to text, which every target refuses first', () => {
+    const kw = (value: string) => ({ value: { kind: 'keyword', value } });
+    const props = new Map<string, unknown>([
+      ['background-image', { value: { kind: 'other', type: 'linear-gradient()', text: 'linear-gradient(red, blue)' } }],
+      ['background-position-x', { value: { kind: 'percentage', value: 0 } }],
+      ['background-position-y', { value: { kind: 'percentage', value: 0 } }],
+      ['background-size', kw('auto')],
+      ['background-repeat', kw('repeat')],
+      ['background-attachment', kw('scroll')],
+      ['background-origin', kw('padding-box')],
+      ['background-clip', kw('text')],
+    ]);
+    const el = { element: { address: 'a' }, props, children: [] };
+    expect(() => GRADIENT_LOWERING.lower({ box: null, el, facts: {} } as never)).toThrow('a: a gradient box clips a layer to text, which every target refuses (background-clip-text.ts)');
   });
 });

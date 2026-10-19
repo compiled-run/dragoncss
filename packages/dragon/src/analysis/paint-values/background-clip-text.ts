@@ -53,7 +53,7 @@ export function nativeTextClipRefusal(el: ResolvedElement, layers: readonly Elem
   if (bg.alpha === 0) return fg.alpha === 0 ? 'the text is transparent and so is the background colour clipped to it, so the text would not show; Dragon refuses text that cannot be seen' : null;
   if (fg.alpha !== 0) return 'the text is not transparent: Chrome draws it over the background colour seen through the same glyph coverage, which one native glyph draw matches only for transparent text';
   const display = keywordOf(el, 'display');
-  if (!['block', 'flow-root', 'flex', 'grid'].includes(display)) return `the box is display: ${display || 'other'}, and Dragon draws the clip on block, flow-root, flex and grid boxes only`;
+  if (!['block', 'flex', 'grid'].includes(display)) return `the box is display: ${display || 'other'}, and Dragon draws the clip on block, flex and grid boxes only`;
   if (el.children.some((c) => c.kind === 'element')) return 'the box has child elements, whose own paint and text Chrome draws under and through the clipped colour';
   if ((el.props.get('color') as ResolvedValue).origin === 'inherited') return 'the box inherits its transparent color, which an ancestor\'s animation or state could change under the native glyphs';
   const sides = ['top', 'right', 'bottom', 'left'];

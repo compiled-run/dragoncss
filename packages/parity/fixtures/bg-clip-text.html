@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Every box edge and glyph edge is a multiple of 8 CSS px, a whole device px at DPR 2, 3 and 2.625, so no edge is antialiased. */
+/* Each clipped box holds two Ahem glyphs (32px) in a 64px by 32px box, so its own area beside and under the text shows. */
+body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
+.stage { padding: 8px; background-color: rgb(236, 240, 244); }
+.row { display: flex; column-gap: 16px; margin-bottom: 8px; padding: 8px; background-color: rgb(250, 200, 60); }
+.box { width: 64px; height: 32px; }
+.fill-a { background-color: rgb(40, 90, 200); background-clip: text; color: transparent; }
+.fill-b { background: rgba(200, 40, 120, 0.5); -webkit-background-clip: text; color: rgba(0, 0, 0, 0); }
+.fill-c { --c: text; background-color: rgb(30, 160, 80); background-clip: var(--c); color: transparent; }
+.fill-d { background-color: rgb(120, 40, 160); background-clip: TEXT !important; color: transparent; }
+.fill-d { background-clip: border-box; }
+.fill-e { background-color: rgb(20, 20, 20); background-clip: text, border-box; color: transparent; }
+.fill-f { display: flex; background-color: rgb(200, 60, 20); background-clip: text; color: transparent; }
+.fill-g { background-color: rgb(0, 120, 120); background-clip: padding-box; background-clip: text; color: transparent; }
+.keep-a { background-clip: text; color: rgb(10, 20, 30); }
+.keep-b { -webkit-background-clip: text; }
+.keep-k { color: rgb(160, 30, 30); }
+.keep-c { background-color: rgb(90, 50, 20); background-clip: text; background-clip: border-box; color: rgb(240, 240, 240); }
+.keep-d { background-clip: text; background: rgb(60, 60, 200); }
+.keep-e { background-clip: text; background-color: transparent; color: rgb(0, 90, 0); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="fill-a" class="box fill-a">XX</div>
+<div data-dragon-id="fill-b" class="box fill-b">XX</div>
+<div data-dragon-id="fill-c" class="box fill-c">XX</div>
+<div data-dragon-id="fill-d" class="box fill-d">XX</div>
+</div>
+<div data-dragon-id="row2" class="row">
+<div data-dragon-id="fill-e" class="box fill-e">XX</div>
+<div data-dragon-id="fill-f" class="box fill-f">XX</div>
+<div data-dragon-id="fill-g" class="box fill-g">XX</div>
+<div data-dragon-id="keep-e" class="box keep-e">XX</div>
+</div>
+<div data-dragon-id="row3" class="row">
+<div data-dragon-id="keep-a" class="box keep-a">XX</div>
+<div data-dragon-id="keep-b" class="box keep-b"><div data-dragon-id="keep-k" class="keep-k">XX</div></div>
+<div data-dragon-id="keep-c" class="box keep-c">XX</div>
+<div data-dragon-id="keep-d" class="box keep-d">XX</div>
+</div>
+</div>
+</body>
+</html>
