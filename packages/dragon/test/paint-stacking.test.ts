@@ -92,6 +92,23 @@ describe('Appendix E paint order', () => {
     expect(s.writes.get('neg')).toMatchObject({ host: 'p0', bucket: -1 });
     expect(s.native).toEqual(s.order);
   });
+  it('a layered box (backface-visibility: hidden) is a normal-flow layer: after its layer host\'s flow, before the z-index 0 layer, no context', () => {
+    const L = (id: string, ...c: StackNode[]): StackNode => ({ ...n(id, {}, ...c), layered: true });
+    const s = stackingOf(n('html', {}, n('r', { position: 'relative' }, L('lr', n('d', { position: 'absolute' }))), n('w', {}, L('l1', n('in', {}), L('l2'))), n('after', {}), L('l3', n('neg', { position: 'relative', z: -1 }))));
+    // Blink: html's negative list, its flow, its normal-flow layers in tree order (each with its own), then its z-order list.
+    expect(s.order).toEqual(['html', 'neg', 'w', 'after', 'l1', 'in', 'l2', 'l3', 'r', 'lr', 'd']);
+    expect(s.facts.get('l1')).toMatchObject({ createsContext: false, layer: 'normal-flow', host: 'html', context: 'html' });
+    expect(s.facts.get('l2')).toMatchObject({ layer: 'normal-flow', host: 'l1' });
+    // A positioned box's normal-flow layer paints with it; a positioned box inside a normal-flow layer leaves it for the context.
+    expect(s.facts.get('lr')?.host).toBe('r');
+    expect(s.facts.get('d')?.host).toBe('r');
+    expect(s.facts.get('neg')).toMatchObject({ context: 'html', host: 'html', layer: 'negative' });
+    expect(s.writes.get('l1')).toMatchObject({ bucket: 1 });
+    expect(s.native).toEqual(s.order);
+    // A layered box that is positioned or a stacking context is only that.
+    const t = stackingOf(n('html', {}, { ...n('p', { position: 'relative' }), layered: true }, { ...n('o', { opacity: 0.5 }), layered: true }));
+    expect([t.facts.get('p')?.layer, t.facts.get('o')?.layer, t.facts.get('o')?.createsContext]).toEqual(['positioned', 'positioned', true]);
+  });
   it('a transformed box is a stacking context in the z-index 0 layer: after the flow, in tree order with positioned boxes', () => {
     const s = stackingOf(n('html', {}, n('t1', { transformed: true }, n('k', { position: 'absolute', z: 5 })), n('after', {}), n('r', { position: 'relative' }), n('t2', { transformed: true }), n('r2', { position: 'relative', z: 1 })));
     expect(s.order).toEqual(['html', 'after', 't1', 'k', 'r', 't2', 'r2']);
