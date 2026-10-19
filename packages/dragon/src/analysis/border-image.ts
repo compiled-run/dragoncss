@@ -2,9 +2,9 @@
 // (css/properties/border-image.ts). No target draws a border image yet, so any other computed value is refused on every target
 // where it applies (none is inherited), once per element. The values are checked computed, so one that arrives through var() or
 // inherit is refused too. With every longhand initial, border-image-source is none and Chrome draws the border as border-style says.
-// -webkit-border-image is refused even where it loses the cascade: Chrome applies the highest-priority one first, winning or not
-// (style_cascade.cc ApplyWideOverlapping), and its WebkitBorderImage::ApplyValue sets border-*-width from a fixed-length width part
-// (css_to_style_map.cc MapNinePieceImage) that a later border-image: none keeps. Any one that holds more than none or a CSS-wide
+// -webkit-border-image is refused even where it loses the cascade: Chrome's cascade applies the highest-priority one first, winning
+// or not (StyleCascade::ApplyWideOverlapping), and its WebkitBorderImage::ApplyValue sets border-*-width from a fixed-length width
+// part (MapNinePieceImage, cited in css/properties/border-image.ts) that a later border-image: none keeps. Any one that holds more than none or a CSS-wide
 // keyword is refused, whatever its priority, so this over-refuses one that a higher-priority none outranks.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';
