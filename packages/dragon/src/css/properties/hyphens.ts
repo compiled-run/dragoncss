@@ -1,7 +1,8 @@
 // hyphens (css-text-3 §6.1): none | manual | auto, inherited, initial manual. -webkit-hyphens stays
 // unknown, as in Chrome 145 (css_properties.json5 lists no alias for hyphens).
 // The engine breaks after a soft hyphen and shows the hyphen, which is manual. Chrome hyphenates nothing under auto without a
-// content language (its macOS dictionary needs lang, which Dragon refuses), so auto lowers as manual (notes/T149-txt2-spec.md R14).
+// content language (its macOS dictionary needs lang, which Dragon refuses, or a content-language pragma, which the parity fixture
+// reader refuses: parity test/hyphens-chrome.test.ts), so auto lowers as manual (notes/T149-txt2-spec.md R14).
 // none on text that holds a soft hyphen is refused until the engine honours it (TXT2-i).
 import type { PropertyAspect } from '../properties.ts';
 
