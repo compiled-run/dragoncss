@@ -1,7 +1,7 @@
 // touch-action (pointerevents-3 §10.2): a longhand appended after line-clamp, not inherited, with no layout or paint aspect. Chrome
 // 145 parses auto, none, manipulation, or one keyword of each of the x, y and pinch-zoom groups in any order, and serializes the
-// computed flags in x, y, pinch-zoom order, with pan-x pan-y pinch-zoom as manipulation. Native compiles a value that allows every
-// pan direction and refuses any other where Chrome applies it.
+// computed flags in x, y, pinch-zoom order, with pan-x pan-y pinch-zoom as manipulation. Native compiles a value that stops a pan
+// direction unless a native scroll view on or around the box scrolls on that axis, or the box is or holds an iframe.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -26,8 +26,8 @@ function parse(value: string): Diagnostic[] {
   return diagnostics;
 }
 
-function compile(css: string, targets: Targets = { web: {} }, tag = 'div') {
-  const input = inputFor(`body { margin: 0; font-family: Ahem; font-size: 10px; } ${css}`, (r) => [{ ...div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])]), tag } as ElementNode]);
+function compile(css: string, targets: Targets = { web: {} }, tag = 'div', childTag = 'div') {
+  const input = inputFor(`body { margin: 0; font-family: Ahem; font-size: 10px; } ${css}`, (r) => [{ ...div(r, 'a', ['a'], [{ ...div(r, 'b', ['b'], [text(r, 't', 'XX')]), tag: childTag } as ElementNode]), tag } as ElementNode]);
   return createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
 }
 
@@ -76,49 +76,112 @@ describe('touch-action: computed values', () => {
 });
 
 describe('touch-action on native', () => {
-  it('auto, manipulation and pan-x pan-y, with or without pinch-zoom, compile on every target', () => {
+  const taErrors = (c: ReturnType<typeof compile>): Diagnostic[] => errors(c).filter((d) => d.message.includes('touch-action'));
+
+  it('auto, manipulation and pan-x pan-y, with or without pinch-zoom, compile on every target, inside a scroll container too', () => {
     for (const v of ['auto', 'manipulation', 'pan-x pan-y', 'pan-y pan-x pinch-zoom']) {
-      const c = compile(`.a { touch-action: ${v}; }`, NATIVE);
+      for (const css of [`.a { touch-action: ${v}; }`, `.a { overflow: auto; height: 5px; } .b { touch-action: ${v}; }`]) {
+        const c = compile(css, NATIVE);
+        expect(errors(c), css).toEqual([]);
+        expect(c.outputs.ios.kind, css).not.toBe('blocked');
+        expect(c.outputs.android.kind, css).not.toBe('blocked');
+      }
+    }
+  });
+
+  it('a value that stops a pan direction compiles on native where no native scroll view is around the box: the native root never scrolls', () => {
+    for (const v of ['none', 'pinch-zoom', 'pan-y', 'pan-x', 'pan-up pan-x', 'pan-left pan-down']) {
+      const c = compile(`.a { touch-action: ${v}; } .b { touch-action: ${v}; }`, NATIVE);
       expect(errors(c), v).toEqual([]);
       expect(c.outputs.ios.kind, v).not.toBe('blocked');
       expect(c.outputs.android.kind, v).not.toBe('blocked');
     }
   });
 
-  it('a value that stops a pan direction is refused on ios and android, at the declaration, and compiles for web', () => {
-    for (const [v, computed, how] of [['none', 'none', 'in any direction'], ['pinch-zoom', 'pinch-zoom', 'in any direction'], ['pan-y', 'pan-y', 'in the directions it leaves out'], ['pan-up pan-x', 'pan-x pan-up', 'in the directions it leaves out']] as const) {
-      const c = compile(`.a { touch-action: ${v}; }`, NATIVE);
+  it('overflow the viewport takes (html, else body) makes no native scroll view, so none compiles under it', () => {
+    for (const css of ['body { overflow: auto; } .a { touch-action: none; }', 'html { overflow: scroll; } .a { touch-action: none; }']) expect(taErrors(compile(css, NATIVE)), css).toEqual([]);
+  });
+
+  it('a body that scrolls because html took the viewport overflow is a native scroll view, so none under it is refused', () => {
+    const errs = taErrors(compile('html { overflow: hidden; } body { overflow: auto; } .a { touch-action: none; }', NATIVE));
+    expect(errs.map((d) => [d.code, d.target]).sort()).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(errs.find((d) => d.target === 'ios')?.message).toBe('a has touch-action none, so Chrome stops a pan that starts on it from scrolling the scroll container body in any direction; ios scroll views pan in every direction they scroll, so Dragon compiles a touch-action that stops a pan direction only where native pans nothing in that direction');
+  });
+
+  it('a value that stops a direction on an axis a scroll view around the box scrolls is refused on ios and android, at the declaration, and compiles for web', () => {
+    for (const [overflow, v, computed, how] of [
+      ['overflow: auto', 'none', 'none', 'in any direction'],
+      ['overflow: auto', 'pinch-zoom', 'pinch-zoom', 'in any direction'],
+      ['overflow-x: scroll; overflow-y: hidden', 'pan-y', 'pan-y', 'in the directions it leaves out'],
+      ['overflow-x: hidden; overflow-y: auto', 'pan-x', 'pan-x', 'in the directions it leaves out'],
+      ['overflow-x: hidden; overflow-y: auto', 'pan-up pan-x', 'pan-x pan-up', 'in the directions it leaves out'],
+      ['overflow-x: auto; overflow-y: hidden', 'pan-right pan-y', 'pan-right pan-y', 'in the directions it leaves out'],
+    ] as const) {
+      const css = `.a { ${overflow}; height: 5px; } .b { touch-action: ${v}; }`;
+      const c = compile(css, NATIVE);
       const errs = errors(c);
-      expect(errs.map((d) => [d.code, d.target]).sort(), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-      expect(errs.find((d) => d.target === 'ios')?.message, v).toBe(`a has touch-action ${computed}, so Chrome stops a pan that starts on it from scrolling ${how}; ios views pan in every direction, so Dragon compiles touch-action at auto, manipulation or pan-x pan-y only`);
-      expect(c.outputs.web.kind, v).toBe('ready');
+      expect(errs.map((d) => [d.code, d.target]).sort(), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+      expect(errs.find((d) => d.target === 'ios')?.message, css).toBe(`b has touch-action ${computed}, so Chrome stops a pan that starts on it from scrolling the scroll container a ${how}; ios scroll views pan in every direction they scroll, so Dragon compiles a touch-action that stops a pan direction only where native pans nothing in that direction`);
+      expect(errs[0]?.origin.kind, css).toBe('authored');
+      expect(c.outputs.web.kind, css).toBe('ready');
       expectCatalogued(errs);
     }
   });
 
-  it('an inherited none is refused on the child that inherits it too', () => {
-    const c = compile('.a { touch-action: none; } .b { touch-action: inherit; }', NATIVE);
-    expect(errors(c).map((d) => d.message.slice(0, 24)).sort()).toEqual(['a has touch-action none,', 'a has touch-action none,', 'b has touch-action none,', 'b has touch-action none,']);
+  it('a value that stops only the axis the scroll views around it do not scroll compiles', () => {
+    for (const css of [
+      '.a { overflow-x: hidden; overflow-y: auto; height: 5px; } .b { touch-action: pan-y; }',
+      '.a { overflow-x: auto; overflow-y: hidden; } .b { touch-action: pan-x; }',
+      '.a { overflow-x: auto; overflow-y: clip; } .b { touch-action: pan-x pinch-zoom; }',
+      '.a { overflow: hidden; height: 5px; } .b { touch-action: none; }',
+    ]) expect(taErrors(compile(css, NATIVE)), css).toEqual([]);
+  });
+
+  it('a scroll container\'s own touch-action limits its own pans, and refuses where it stops an axis it scrolls', () => {
+    expect(taErrors(compile('.a { overflow-x: auto; overflow-y: hidden; touch-action: pan-x; }', NATIVE))).toEqual([]);
+    const errs = taErrors(compile('.a { overflow-x: auto; overflow-y: hidden; touch-action: pan-y; }', NATIVE));
+    expect(errs.length).toBe(2);
+    expect(errs[0]?.message).toContain('from scrolling itself in the directions it leaves out');
+  });
+
+  it('Chrome resets pan restrictions at a scroll container, so none on a box around one compiles', () => {
+    expect(taErrors(compile('.a { touch-action: none; } .b { overflow: auto; height: 5px; }', NATIVE))).toEqual([]);
+  });
+
+  it('the scroll container named is the nearest one whose pans the value stops', () => {
+    const c = compile('body { overflow: hidden; } .a { overflow-x: auto; overflow-y: hidden; } .b { overflow-x: hidden; overflow-y: auto; height: 5px; touch-action: pan-y; }', NATIVE);
+    expect(taErrors(c).find((d) => d.target === 'android')?.message).toContain('from scrolling the scroll container a in the directions it leaves out; android scroll views pan');
+  });
+
+  it('a box that is or holds an iframe refuses a value that stops a pan, as the iframe\'s web view pans its document', () => {
+    const own = taErrors(compile('.a { display: block; touch-action: none; }', NATIVE, 'iframe'));
+    expect(own.length).toBe(2);
+    expect(own.find((d) => d.target === 'ios')?.message).toContain('from scrolling the document of its iframe in any direction; ios web views pan');
+    const held = taErrors(compile('.a { touch-action: pan-y; }', NATIVE, 'div', 'iframe'));
+    expect(held.length).toBe(2);
+    expect(held[0]?.message).toContain('from scrolling the document of an iframe in the directions it leaves out');
+  });
+
+  it('an inherited none inside a scroll container is refused on the child that inherits it too', () => {
+    const c = compile('html { overflow: hidden; } body { overflow: auto; } .a { touch-action: none; } .b { touch-action: inherit; }', NATIVE);
+    expect(taErrors(c).map((d) => d.message.slice(0, 24)).sort()).toEqual(['a has touch-action none,', 'a has touch-action none,', 'b has touch-action none,', 'b has touch-action none,']);
   });
 
   it('Chrome ignores it on a non-replaced inline box, a table row, display contents or none, so native compiles it there', () => {
     for (const css of ['.a { display: inline; touch-action: none; } .b { display: inline; }', '.a { display: contents; touch-action: none; }', '.a { display: none; touch-action: pan-y; }', '.a { display: table-row; touch-action: none; }']) {
-      expect(errors(compile(css, NATIVE)).filter((d) => d.message.includes('touch-action')), css).toEqual([]);
+      expect(taErrors(compile(`html { overflow: hidden; } body { overflow: auto; } ${css}`, NATIVE)), css).toEqual([]);
     }
   });
 
   it('Chrome ignores it on an inline <iframe>, which it does not count as replaced here, so native compiles it there', () => {
-    expect(errors(compile('.a { display: inline; touch-action: none; }', NATIVE, 'iframe')).filter((d) => d.message.includes('touch-action'))).toEqual([]);
+    expect(taErrors(compile('.a { display: inline; touch-action: none; }', NATIVE, 'iframe'))).toEqual([]);
   });
 
-  it('Chrome keeps it on a table header or footer group, so native refuses none there', () => {
-    for (const d of ['table-header-group', 'table-footer-group']) {
-      expect(errors(compile(`.a { display: ${d}; touch-action: none; }`, NATIVE)).filter((x) => x.message.includes('touch-action')).length, d).toBe(2);
+  it('Chrome keeps it on a table header or footer group, an inline-block and a replaced inline box, so native refuses none there inside a scroll view', () => {
+    const scroller = 'html { overflow: hidden; } body { overflow: auto; }';
+    for (const d of ['table-header-group', 'table-footer-group', 'inline-block']) {
+      expect(taErrors(compile(`${scroller} .a { display: ${d}; touch-action: none; }`, NATIVE)).length, d).toBe(2);
     }
-  });
-
-  it('an inline-block or a replaced inline box with none is refused', () => {
-    expect(errors(compile('.a { display: inline-block; touch-action: none; }', NATIVE)).length).toBe(2);
-    expect(errors(compile('.a { touch-action: none; }', NATIVE, 'img')).filter((d) => d.message.includes('touch-action')).length).toBe(2);
+    expect(taErrors(compile(`${scroller} .a { touch-action: none; }`, NATIVE, 'img')).length).toBe(2);
   });
 });
