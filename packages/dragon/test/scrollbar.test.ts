@@ -1,6 +1,6 @@
 // OVFL-S0: scrollbar-width and scrollbar-gutter (css-scrollbars-1 §3, css-overflow-4 §3.2), registered after the background layers,
 // not inherited, discrete. Every value compiles on every target under the overlay-scrollbar rule (no gutter on any target); on native
-// scrollbar-width: none hides a scroll container's indicators, and every other value keeps them.
+// scrollbar-width: none hides a scroll container's indicators (read back as dragonScroll.indicators false), and every other value keeps them.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, profileNoteFor } from '../src/internal.ts';
@@ -77,7 +77,7 @@ describe('scrollbar on native', () => {
   const writesOf = (css: string, id: string) => {
     const p = nativePrograms(compile(css, NATIVE), []);
     if (p.kind !== 'ready') throw new Error(p.reason);
-    return (['uikit', 'android-views'] as const).map((b) => p.programs[b].nodes.find((x) => x.id === id)?.writes.filter((w) => w.kind === 'scroll-container') ?? []);
+    return (['uikit', 'android-views'] as const).map((b) => (p.programs[b].nodes.find((x) => x.id === id)?.writes ?? []).filter((w) => w.key.startsWith('dragonScroll')).map((w) => (w.kind === 'scroll-container' ? `${w.key} ${String(w.x)} ${String(w.y)}` : w.key)));
   };
 
   it('every value compiles on every target, on a scroll container or not', () => {
@@ -89,20 +89,25 @@ describe('scrollbar on native', () => {
     }
   });
 
-  it('scrollbar-width: none hides the indicators of a scroll container; thin, auto and an inherited none on a box that does not scroll change nothing', () => {
-    for (const ws of writesOf('.a { overflow: auto; scrollbar-width: none; }', 'a')) expect(ws.map((w) => w.kind === 'scroll-container' && [w.x, w.y, w.indicators])).toEqual([[true, true, false]]);
-    for (const ws of writesOf('.a { overflow-x: hidden; overflow-y: scroll; scrollbar-width: thin; }', 'a')) expect(ws.map((w) => w.kind === 'scroll-container' && [w.x, w.y, w.indicators])).toEqual([[false, true, true]]);
-    for (const ws of writesOf('.a { overflow: auto; } .b { overflow: auto; scrollbar-width: inherit; }', 'b')) expect(ws.map((w) => w.kind === 'scroll-container' && w.indicators)).toEqual([true]);
-    for (const ws of writesOf('.a { scrollbar-width: none; } .b { overflow: auto; scrollbar-width: inherit; }', 'b')) expect(ws.map((w) => w.kind === 'scroll-container' && w.indicators)).toEqual([false]);
-    for (const ws of writesOf('.a { scrollbar-width: none; }', 'a')) expect(ws).toEqual([]);
+  it('scrollbar-width: none on a scroll container adds a hidden-indicators write; thin, auto and a box that does not scroll add none', () => {
+    const both = (ws: string[]) => [ws, ws];
+    expect(writesOf('.a { overflow: auto; scrollbar-width: none; }', 'a')).toEqual(both(['dragonScroll.range true true', 'dragonScroll.indicators']));
+    expect(writesOf('.a { overflow-x: hidden; overflow-y: scroll; scrollbar-width: thin; }', 'a')).toEqual(both(['dragonScroll.range false true']));
+    expect(writesOf('.a { overflow: auto; } .b { overflow: auto; scrollbar-width: inherit; }', 'b')).toEqual(both(['dragonScroll.range true true']));
+    expect(writesOf('.a { scrollbar-width: none; } .b { overflow: auto; scrollbar-width: inherit; }', 'b')).toEqual(both(['dragonScroll.range true true', 'dragonScroll.indicators']));
+    expect(writesOf('.a { scrollbar-width: none; }', 'a')).toEqual(both([]));
   });
 
-  it('the native line passes false only for hidden indicators, so every other scroll container keeps its line', () => {
-    const w = { kind: 'scroll-container', x: true, y: false } as const;
+  it('the hidden-indicators write calls its own writer, applies false, and the readback reports it from the platform flags', () => {
+    const range = { kind: 'scroll-container', x: true, y: false } as const;
+    const hidden = { kind: 'scroll-indicators-hidden' } as const;
     for (const b of ['uikit', 'android-views'] as const) {
-      expect(SCROLL_EMITTER.lines[b]('v', null as never, { ...w, indicators: true } as never)).toEqual(['  v.dragonEnableScroll(true, false)']);
-      expect(SCROLL_EMITTER.lines[b]('v', null as never, { ...w, indicators: false } as never)).toEqual(['  v.dragonEnableScroll(true, false, false)']);
+      expect(SCROLL_EMITTER.lines[b]('v', null as never, range as never)).toEqual(['  v.dragonEnableScroll(true, false)']);
+      expect(SCROLL_EMITTER.lines[b]('v', null as never, hidden as never)).toEqual(['  v.dragonHideScrollIndicators()']);
+      expect(SCROLL_EMITTER.applied(null as never, b, hidden as never, 2, null as never)).toBe(false);
     }
+    expect(SCROLL_EMITTER.native.uikit.file).toContain('if !(sv.scrollsX && sv.showsHorizontalScrollIndicator) && !(sv.scrollsY && sv.showsVerticalScrollIndicator) { out.append(("dragonScroll.indicators", .bool(false))) }');
+    expect(SCROLL_EMITTER.native['android-views'].file).toContain('if (sv.indicators) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))');
   });
 
   it('web rows for values that reserve a classic gutter carry the overlay-scrollbar note; none and auto gutters do not', () => {

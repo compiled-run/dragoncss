@@ -196,7 +196,7 @@ describe('querySupport', () => {
     for (const target of [{ kind: 'ios', minimum: '15.0' }, { kind: 'android', minSdk: 31 }] as const) {
       const a = querySupport({ kind: 'possibilities', target, css: 'cursor: pointer' });
       expect(a).toEqual({ kind: 'not-applicable', declaration: 'cursor: pointer', reason: expect.stringContaining(`cursor has no effect on ${target.kind}`) });
-      expect(querySupport({ kind: 'possibilities', target, css: 'text-rendering: optimizeSpeed' }).kind).toBe('invalid-query');
+      expect(querySupport({ kind: 'possibilities', target, css: 'color-scheme: dark' }).kind).toBe('invalid-query');
     }
     expect(querySupport({ kind: 'possibilities', target: { kind: 'web' }, css: 'cursor: pointer' }).kind).toBe('invalid-query');
     // Only a query of exactly the one listed declaration is answered; another declaration beside it keeps the query invalid.
