@@ -138,6 +138,10 @@ const SUBSET = [
   'caret-color', 'accent-color',
   // TOUCH: -webkit-user-modify, after caret-color and accent-color, as LONGHANDS registers it.
   '-webkit-user-modify',
+  // TABLE: the table properties (CSS2 §17), then border-spacing, after the mask family, as LONGHANDS registers them.
+  'border-collapse', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing', 'caption-side', 'empty-cells', 'table-layout', 'border-spacing',
+  // GEN-d1 and GEN-d2: the counter properties (css-lists-3 §4) and quotes (css-content-3 §3.1), after the table family, as LONGHANDS registers them.
+  'counter-reset', 'counter-increment', 'counter-set', 'quotes',
 ] as const;
 
 /**
@@ -273,6 +277,18 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Chrome parses none and non-scaling-stroke only (css_properties.json5 keywords); webref adds non-scaling-size, non-rotation and
   // fixed-position, which Chrome rejects.
   'vector-effect': 'none | non-scaling-stroke',
+  // Blink BorderSpacing::ParseShorthand and the spacing longhands' ParseSingleValue: one or two non-negative lengths (webref's
+  // <length>{1,2} takes negatives, which Chrome 145 drops); webref has no entry for the -webkit- spacing longhands.
+  'border-spacing': '<length [0,∞]>{1,2}',
+  '-webkit-border-horizontal-spacing': '<length [0,∞]>',
+  '-webkit-border-vertical-spacing': '<length [0,∞]>',
+  // Blink CounterReset, CounterIncrement and CounterSet ::ParseSingleValue (ConsumeCounter): none, or names each with an optional
+  // integer; css-lists-3's reversed() is not parsed (probed). Blink Quotes::ParseSingleValue: auto, none or string pairs; webref's
+  // match-parent is not parsed (probed).
+  'counter-reset': '[ <custom-ident> <integer>? ]+ | none',
+  'counter-increment': '[ <custom-ident> <integer>? ]+ | none',
+  'counter-set': '[ <custom-ident> <integer>? ]+ | none',
+  quotes: 'auto | none | [ <string> <string> ]+',
 };
 
 /**
@@ -290,6 +306,9 @@ const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string
   // (longhands_custom.cc WebkitMaskPositionX::InitialValue and WebkitMaskPositionY::InitialValue).
   '-webkit-mask-position-x': { initial: '0%', inherited: 'no' },
   '-webkit-mask-position-y': { initial: '0%', inherited: 'no' },
+  // Blink's border-spacing longhands (css_properties.json5): initial 0, inherited.
+  '-webkit-border-horizontal-spacing': { initial: '0', inherited: 'yes' },
+  '-webkit-border-vertical-spacing': { initial: '0', inherited: 'yes' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

@@ -27,6 +27,7 @@ import { ENV } from './fixture-groups/env.ts';
 import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
+import { GENERATED_CONTENT } from './fixture-groups/generated-content.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
@@ -57,6 +58,7 @@ import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
+import { TABLE } from './fixture-groups/table.ts';
 import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
@@ -165,6 +167,7 @@ export const GROUPS = {
   filter: FILTER,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
+  'generated-content': GENERATED_CONTENT,
   gradients: GRADIENTS,
   grid: GRID,
   'inert-layout': INERT_LAYOUT,
@@ -195,6 +198,7 @@ export const GROUPS = {
   'sizing-ratio': SIZING,
   states: STATES,
   svg: SVG,
+  table: TABLE,
   'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,

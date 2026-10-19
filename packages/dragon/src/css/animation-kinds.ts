@@ -15,6 +15,7 @@ import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
 import { CONTAINER_QUERY_ANIMATION } from './animation-kinds/container-query.ts';
 import { CONTAINMENT_ANIMATION } from './animation-kinds/containment.ts';
+import { COUNTERS_ANIMATION } from './animation-kinds/counters.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
 import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
@@ -41,6 +42,7 @@ import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
+import { TABLE_ANIMATION } from './animation-kinds/table.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
 import { TEXT_BREAK_ANIMATION } from './animation-kinds/text-break.ts';
 import { TEXT_DECORATION_ANIMATION } from './animation-kinds/text-decoration.ts';
@@ -72,6 +74,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...CLIP_RECT_ANIMATION,
   ...CONTAINER_QUERY_ANIMATION,
   ...CONTAINMENT_ANIMATION,
+  ...COUNTERS_ANIMATION,
   ...EFFECTS_ANIMATION,
   ...FILTER_ANIMATION,
   ...FLEX_ANIMATION,
@@ -98,6 +101,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
   ...SVG_ANIMATION,
+  ...TABLE_ANIMATION,
   ...TEXT_ANIMATION,
   ...TEXT_BREAK_ANIMATION,
   ...TEXT_DECORATION_ANIMATION,

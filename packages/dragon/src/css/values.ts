@@ -60,8 +60,11 @@ export const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, r
 /** The text fill and stroke properties that take a <color> (compat §5): the shorthand's width tokens are kept apart below. */
 const TEXT_STROKE_COLOR_BEARING: ReadonlySet<string> = new Set(['-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke']);
 
+/** The table properties named border-* (CSS2 §17.6), which take no colour. */
+const TABLE_BORDER_PROPERTIES: ReadonlySet<string> = new Set(['border-collapse', 'border-spacing']);
+
 function isColorBearing(property: string): boolean {
-  return property === 'color' || property === 'fill' || property === 'stroke' || property === 'text-decoration-color' || property === 'text-decoration' || TEXT_STROKE_COLOR_BEARING.has(property) || property === 'caret-color' || property === 'accent-color' || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
+  return property === 'color' || property === 'fill' || property === 'stroke' || property === 'text-decoration-color' || property === 'text-decoration' || TEXT_STROKE_COLOR_BEARING.has(property) || property === 'caret-color' || property === 'accent-color' || property === 'background-color' || property.startsWith('border') && !TABLE_BORDER_PROPERTIES.has(property) && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
 }
 
 /**

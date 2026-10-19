@@ -664,7 +664,7 @@ export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 // font-feature-settings and font-variation-settings: a setting's value is an <integer> or a <number> (css-fonts-4 §6.12, §7.2).
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber, as StrokeMiterlimit::ParseSingleValue does; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit']);
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set']);
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
@@ -674,8 +674,8 @@ const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 // and y and the corner radii rx and ry (ConsumeSVGGeometryPropertyLength parses them in SVG attribute mode).
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
- * stroke width, css-transforms-2 §5 perspective), and text-shadow's lengths (Blink TextShadow). */
-const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective']);
+ * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), and the table spacings (CSS2 §17.6.1 border-spacing). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective', 'border-spacing', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
