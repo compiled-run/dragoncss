@@ -1092,8 +1092,8 @@ fun grid_moveCursorToFitGridSpan(list: GridPlacedList, c: GridCursor, majorSpan:
   }
   // ts: packages/layout/src/grid.ts:800
   run {
-    loop33@ while (true) {
-      loop33_body@ do {
+    loop35@ while (true) {
+      loop35_body@ do {
         grid_updateItemsOverlappingMajorLine(list, c)
         nextMinor = c.current.minor
         // ts: packages/layout/src/grid.ts:803
@@ -1116,7 +1116,7 @@ fun grid_moveCursorToFitGridSpan(list: GridPlacedList, c: GridCursor, majorSpan:
         }
         // ts: packages/layout/src/grid.ts:810
         if ((!fits())) {
-          break@loop33_body
+          break@loop35_body
         }
         var upcoming: Double = c.next
         // ts: packages/layout/src/grid.ts:812
