@@ -32,10 +32,9 @@ function compile(css: string, targets: Targets = { web: {} }) {
 }
 
 describe('appearance: registry and parse', () => {
-  it('follows the mask family, last, not inherited, with a layout aspect and no paint aspect, discrete, initial none', () => {
+  it('follows the mask family, not inherited, with a layout aspect and no paint aspect, discrete, initial none', () => {
     expect([...APPEARANCE_LONGHANDS]).toEqual(['appearance']);
     expect(LONGHANDS[LONGHANDS.indexOf('appearance') - 1]).toBe(MASK_LONGHANDS[MASK_LONGHANDS.length - 1]);
-    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('appearance');
     expect(INHERITED.has('appearance')).toBe(false);
     expect(PROPERTY_ASPECTS.appearance).toEqual({ layout: true, paint: false });
     expect(ANIMATION_KINDS.appearance).toBe(DISCRETE);

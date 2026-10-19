@@ -116,6 +116,8 @@ const SUBSET = [
   ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
   // FORM-a: appearance (css-ui-4 §7.1), after the mask family, as LONGHANDS registers it.
   'appearance',
+  // FORM-b: caret-color and accent-color (css-ui-4 §6.2, §6.3), after appearance, as LONGHANDS registers them.
+  'caret-color', 'accent-color',
 ] as const;
 
 /**
@@ -157,6 +159,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
   // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.
   appearance: '<any-value>',
+  // css-ui-4 §6.2 adds a second caret-shape colour; Chrome 145 parses one auto or <color> and drops two
+  // (packages/parity/test/ui-colors-parse.test.ts).
+  'caret-color': 'auto | <color>',
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',

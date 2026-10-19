@@ -7,7 +7,8 @@
 // The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
 // clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
 // So are the mask longhands, written only where one is not initial (MASK-CLIP accepts none that is not), and appearance, written only
-// where it is not none (no Chrome UA rule sets it on a supported tag).
+// where it is not none (no Chrome UA rule sets it on a supported tag), and caret-color and accent-color, written on every element of a
+// case where any element's is not auto (FORM-b).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
 // colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
@@ -55,6 +56,14 @@ function writesClip(el: ResolvedElement): boolean {
 function writesClipPath(el: ResolvedElement): boolean {
   const v = (el.props.get('clip-path') as ResolvedValue).value;
   return !(v.kind === 'keyword' && v.value === 'none');
+}
+
+/** Whether an element's caret-color or accent-color is not auto, their initial value. */
+function writesUiColors(el: ResolvedElement): boolean {
+  return (['caret-color', 'accent-color'] as const).some((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return !(v.kind === 'keyword' && v.value === 'auto');
+  });
 }
 
 /** Whether an element's appearance is not none, its initial value. */
@@ -243,6 +252,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const bandCase = [c, ...bands.map((b) => b.cases.find((x) => x.key === c.key) as WebCase)];
     const states = bandCase.map((bc) => (bc.interaction?.states ?? []).map((st) => ({ conditions: st.members.map((m) => interactionCondition(m, (bc.interaction as WebInteraction).candidates)), at: byAddress(st.root) })));
     const bandBase = bandCase.map((bc) => byAddress(bc.root));
+    // FORM-b: caret-color and accent-color are inherited, so they are written on every element of the case or none: an auto left out
+    // under a written colour would inherit it.
+    const uiColors = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesUiColors));
     const visit = (el: ResolvedElement, under: boolean): void => {
       const insets = writesInsets(el);
       // The outline longhands are written for every resolution of the element or none (an unwritten one is Chrome's UA value).
@@ -259,7 +271,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const clipPath = resolutions.some(writesClipPath);
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const appearance = resolutions.some(writesAppearance);
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance')).map((p) => declLine(el, p, under));
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color'))).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).
