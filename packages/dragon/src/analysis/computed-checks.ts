@@ -55,6 +55,7 @@ import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, generatedPseudoOf, refusedGenerationOf, valueToString } from './resolve.ts';
+import { markerTypeOf } from './markers.ts';
 import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
@@ -627,6 +628,30 @@ function listMarkerOf(el: ResolvedElement): string | null {
   return type.kind === 'keyword' && type.value === 'none' ? null : valueToString(type);
 }
 
+/**
+ * T151 R14: why GEN-c does not draw a list item's marker for a target, or null when it does. The web keeps Chrome's own marker for
+ * every R14 type; iOS and Android draw outside disc and square symbols (paint-aa's oval and rect fills, proven pixel-exact by the
+ * GEN-P oracle). Email keeps the GEN-b refusal.
+ */
+function markerRefusal(el: ResolvedElement, target: string): string | null {
+  const type = markerTypeOf((el.props.get('list-style-type') as ResolvedValue).value);
+  if (type.kind === 'refused') return type.reason;
+  if (target === 'email') return 'Dragon draws markers from the GEN-c package on the web, iOS and Android only';
+  if (keywordOf(el.props.get('list-style-position') as ResolvedValue) !== 'outside') return 'an inside marker is not supported yet (::marker and inside markers, GEN-d6)';
+  if (target === 'web' || type.kind !== 'type') return null;
+  if (type.type.kind !== 'style' || (type.type.name !== 'disc' && type.type.name !== 'square')) {
+    return type.type.kind === 'style' && type.type.name === 'circle'
+      ? 'a circle marker is a 1 device px hairline (Skia SkScan_Antihair), which Dragon does not draw on iOS and Android yet'
+      : 'a text marker is not drawn on iOS and Android yet (GEN-c draws disc and square)';
+  }
+  const ox = keywordOf(el.props.get('overflow-x') as ResolvedValue);
+  const oy = keywordOf(el.props.get('overflow-y') as ResolvedValue);
+  if (ox !== 'visible' || oy !== 'visible') return `overflow: ${ox} ${oy} on a list item clips its outside marker in a way Dragon has not proven on iOS and Android`;
+  const first = el.children.find((c): c is ResolvedElement => c.kind === 'element' && keywordOf(c.props.get('display') as ResolvedValue) !== 'none' && keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute');
+  if (first !== undefined && ['grid', 'inline-grid'].includes(keywordOf(first.props.get('display') as ResolvedValue))) return `its first child ${first.element.address} is a grid container, whose first baseline the marker would align with (GEN-c2 after G1)`;
+  return null;
+}
+
 /** Chrome's font-relative length units but rem (CSSPrimitiveValue::IsFontRelativeLength): a font-size in them keeps the parent's absoluteness. */
 const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 'rex', 'ch', 'rch', 'ic', 'ric', 'lh', 'rlh', 'cap', 'rcap']);
 
@@ -669,8 +694,15 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       const display = keywordOf(el.props.get('display') as ResolvedValue);
       if (display === 'list-item') {
         const marker = listMarkerOf(el);
-        if ((marker !== null && !faults.listItemDiscAccepted) || (marker === null && faults.listItemNoneMarkerRefused)) {
-          perTarget(el, 'list-item', `display: list-item on <${tag}> ${el.element.address} generates a ${marker ?? 'none'} marker (::marker, css-lists-3 §3), which Dragon draws from the GEN-c package`, `Set list-style: none on ${el.element.address} or its list, or set display: block.`);
+        if (marker === null && faults.listItemNoneMarkerRefused) {
+          perTarget(el, 'list-item', `display: list-item on <${tag}> ${el.element.address} generates a none marker (::marker, css-lists-3 §3), which Dragon draws from the GEN-c package`, `Set list-style: none on ${el.element.address} or its list, or set display: block.`);
+        }
+        if (marker !== null && !faults.listItemDiscAccepted) {
+          for (const t of targets) {
+            const why = markerRefusal(el, t);
+            if (why === null) continue;
+            once(`${t}|ua-list-item|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: el.element.node.origin, target: t, message: `display: list-item on <${tag}> ${el.element.address} generates a ${marker} marker (::marker, css-lists-3 §3): ${why}`, manual: `Set list-style: none on ${el.element.address} or its list, or set display: block.`, basis: 'computed-value' })));
+          }
         }
       }
       const inset = BORDER_STYLES.filter((p) => {

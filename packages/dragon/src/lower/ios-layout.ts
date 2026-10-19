@@ -24,6 +24,7 @@ import type {
   LengthCalc,
   LineHeightValue,
   LineStrut,
+  ListMarker,
   MarginValue,
   Overflow,
   MaxInlineSizeValue,
@@ -49,6 +50,8 @@ import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
+import type { ListItemMarker } from '../analysis/markers.ts';
+import { listItemMarkers } from '../analysis/markers.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
@@ -493,7 +496,7 @@ const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'ele
 const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag)) || isAtomic(c);
 
 /** propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. */
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null };
+type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker> };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -548,7 +551,8 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source }, null);
+  const markers = new Map(listItemMarkers(root, faults).map((m) => [m.address, m] as const));
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers }, null);
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -644,5 +648,23 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
   // atomic inline is on a line (INL2a).
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), marker: null, children };
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), marker: display === 'list-item' ? markerOf(el, l) : null, children };
+}
+
+const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];
+
+/**
+ * T151 R14: a list item's outside marker in its own font and line-height, a symbol for disc, circle and square and otherwise its
+ * compile-time counter text (analysis/markers.ts); null for list-style-type none. computed-checks.ts refuses what GEN-c does not draw.
+ */
+function markerOf(el: ResolvedElement, l: Lowerer): ListMarker | null {
+  const id = el.element.address;
+  const m = l.markers.get(id);
+  if (m === undefined) throw new LoweringError(id, 'display', `the list item ${id} has no ordinal`);
+  if (m.type.kind === 'none') return null;
+  if (m.type.kind === 'refused') throw new LoweringError(id, 'list-style-type', m.type.reason);
+  const { font, lineHeight } = lowerFont(id, (p) => (el.props.get(p) as ResolvedValue).value, l.mode);
+  const t = m.type.type;
+  if (t.kind === 'style' && SYMBOLS.includes(t.name)) return { id: `${id}::marker`, kind: 'symbol', symbol: t.name as ListMarker['symbol'], text: null, font, lineHeight };
+  return { id: `${id}::marker`, kind: 'text', symbol: null, text: m.text, font, lineHeight };
 }
