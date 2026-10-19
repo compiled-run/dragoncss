@@ -218,6 +218,7 @@ describe('C5: a text leaf carries the text-align and direction of its block cont
       ['text-align', { value: { kind: 'keyword', value: align }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }],
       ['direction', { value: { kind: 'keyword', value: direction }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }],
     ]),
+    smallCaps: false,
   } as ResolvedText);
   const container = (textAlign: LayoutStyle['textAlign'], direction: LayoutStyle['direction']) => ({ textAlign, direction }) as LayoutStyle;
   it('passes when they are equal, in both directions', () => {

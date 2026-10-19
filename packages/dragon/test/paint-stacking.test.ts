@@ -109,6 +109,14 @@ describe('Appendix E paint order', () => {
     const t = stackingOf(n('html', {}, { ...n('p', { position: 'relative' }), layered: true }, { ...n('o', { opacity: 0.5 }), layered: true }));
     expect([t.facts.get('p')?.layer, t.facts.get('o')?.layer, t.facts.get('o')?.createsContext]).toEqual(['positioned', 'positioned', true]);
   });
+  it('normal-flow layers keep tree order under order, which sorts only the z-order list (Blink PaintLayerPaintOrderIterator)', () => {
+    const L = (id: string, order: number): StackNode => ({ ...n(id, { order }), layered: true });
+    const s = stackingOf(n('html', {}, n('f', {}, L('a', 2), L('b', 1), n('p1', { position: 'relative', order: 2 }), n('p2', { position: 'relative', order: 1 }))));
+    // Chrome paints a then b (b over a where they overlap), but p2 before p1.
+    expect(s.order).toEqual(['html', 'f', 'a', 'b', 'p2', 'p1']);
+    expect([s.writes.get('a')?.rank, s.writes.get('b')?.rank]).toEqual([0, 1]);
+    expect(s.native).toEqual(s.order);
+  });
   it('a transformed box is a stacking context in the z-index 0 layer: after the flow, in tree order with positioned boxes', () => {
     const s = stackingOf(n('html', {}, n('t1', { transformed: true }, n('k', { position: 'absolute', z: 5 })), n('after', {}), n('r', { position: 'relative' }), n('t2', { transformed: true }), n('r2', { position: 'relative', z: 1 })));
     expect(s.order).toEqual(['html', 'after', 't1', 'k', 'r', 't2', 'r2']);
@@ -315,10 +323,18 @@ describe('stacking: lowering and emission', () => {
     };
     expect([rank('b'), rank('a')]).toEqual([0, 1]);
   });
+  it('isolation: isolate makes a stacking context in the z-index 0 layer, which holds its negative child; auto makes none', () => {
+    const p = programs('.i { isolation: isolate; height: 10px; } .n { position: relative; z-index: -1; height: 5px; } .u { isolation: auto; height: 10px; }', (r) => [div(r, 'i', ['i'], [div(r, 'n', ['n'])]), div(r, 'u', ['u'], [div(r, 'm', ['n'])])]);
+    const facts = (id: string): unknown => p.uikit.nodes.find((x) => x.id === id)?.facts['stacking'];
+    expect(facts('i')).toMatchObject({ context: 'html', createsContext: true, layer: 'positioned' });
+    expect(facts('n')).toMatchObject({ context: 'i', layer: 'negative', host: 'i' });
+    expect(facts('u')).toMatchObject({ createsContext: false, layer: 'flow' });
+    expect(facts('m')).toMatchObject({ context: 'html', layer: 'negative', host: 'html' });
+  });
   it('writes the placement of every layer item and publishes stacking facts on every box', () => {
     const p = programs('.a { height: 10px; } .z { position: relative; top: 5px; height: 10px; z-index: 1; }', (r) => [div(r, 'a', ['a'], [div(r, 'z', ['z'])]), div(r, 'b', ['a'])]);
     const z = p.uikit.nodes.find((x) => x.id === 'z');
-    expect(z?.writes.filter((w) => w.kind === 'paint-order')).toEqual([expect.objectContaining({ kind: 'paint-order', key: 'dragonStacking.order', technique: 'dragon-owned-paint', host: 'html', bucket: 2, rank: 0, css: ['z-index'] })]);
+    expect(z?.writes.filter((w) => w.kind === 'paint-order')).toEqual([expect.objectContaining({ kind: 'paint-order', key: 'dragonStacking.order', technique: 'dragon-owned-paint', host: 'html', bucket: 2, rank: 0, css: ['z-index', 'isolation'] })]);
     expect(z?.host).toBe('a');
     expect(z?.facts['stacking']).toMatchObject({ context: 'html', createsContext: true, layer: 'positive', host: 'html', clipChain: [] });
     for (const x of p['android-views'].nodes) if (x.kind !== 'text') expect(x.facts['stacking'], x.id).toBeDefined();
@@ -374,14 +390,18 @@ describe('the stack tree of inline content (INL1a, as the native tree places it)
       expect(['p', 'o', 'i', 'b', 'z'].map(order)).toEqual([...['p', 'o', 'i', 'b', 'z'].map(order)].sort((a, b) => a - b));
     }
   });
-  it('refuses on the native targets only an inline box that would be a stacking context: opacity below 1 or will-change: opacity', () => {
-    for (const css of ['.f20 { opacity: 0; }', '.f20 { will-change: opacity; }']) {
+  it('refuses on the native targets only an inline box that would be a stacking context: opacity below 1, will-change: opacity or isolation: isolate', () => {
+    for (const css of ['.f20 { opacity: 0; }', '.f20 { will-change: opacity; }', '.f20 { isolation: isolate; }']) {
       const errs = compile(css, para).diagnostics.filter((d) => d.severity === 'error');
       expect(errs.map((d) => [d.code, d.target]).sort(), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
       expect(errs[0]?.message, css).toMatch(/on the inline box <span> o makes it a stacking context: the native runtime places an inline box's content beside its view/);
       expectCatalogued(errs);
     }
     expect(compile('.f20 { opacity: 1; }', para).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(compile('.f20 { isolation: auto; }', para).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    // The isolation refusal points at its declaration, and nativePrograms is never reached with an isolated inline box.
+    const iso = compile('.f20 { isolation: isolate; }', para);
+    expect(iso.diagnostics.filter((d) => d.severity === 'error').every((d) => d.origin.kind === 'authored' && d.origin.span.end > d.origin.span.start)).toBe(true);
   });
   it('an inline box is a childless node followed by its content, and never clips (css-overflow-3 §3)', () => {
     const style = (o: Record<string, string>): LayoutBox['style'] => ({ position: 'static', display: 'block', overflowX: 'visible', overflowY: 'visible', ...o }) as unknown as LayoutBox['style'];

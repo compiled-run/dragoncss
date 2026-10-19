@@ -10,7 +10,7 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
+import { isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { TxtFsFaults } from '../faults/txt-fs.ts';
 import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
@@ -65,7 +65,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   const children = (node['children'] as { toArray(): CssNode[] }).toArray().filter((n) => n.type !== 'WhiteSpace');
   let v: CssValue;
   const only = children[0];
-  const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
+  const ratio = property === 'aspect-ratio' ? ratioValue(children) : isPositionProperty(property) ? positionValue(children, property) : null;
   const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property) || property === 'fill' || property === 'stroke';
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
@@ -76,7 +76,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   else if (only.type === 'Percentage') v = { kind: 'percentage', value: Number(only['value']) };
   else if (only.type === 'Number') {
     const n = Number(only['value']);
-    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
+    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight', 'border-image-outset'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
   } else v = { kind: 'other', type: only.type, text };
   valueCache.set(key, v);
   return v;
@@ -339,6 +339,17 @@ export function synthesizesOblique(props: ReadonlyMap<Longhand, ResolvedValue>):
   const style = textFontOfProps(props).style;
   const slope = style.kind === 'italic' ? 14 : style.kind === 'oblique' ? style.degrees : 0;
   return synthesisAllowedOf(props).style && slope >= 14;
+}
+
+/**
+ * Whether Chrome draws an element's text over a face without smcp (Ahem) in synthesized small capitals: font-variant-caps is
+ * small-caps and font-synthesis-small-caps allows it (open_type_caps_support.cc OpenTypeCapsSupport::SyntheticSmallCapsAllowed, and
+ * DetermineFontSupport's kLowerToSmallCaps where the face has no smcp). Lowercase runs are then
+ * uppercased at 70% of the size (text.ts smallCapsFontSize); a real face may have smcp, which the analysis refuses.
+ */
+export function synthesizesSmallCaps(props: ReadonlyMap<Longhand, ResolvedValue>): boolean {
+  const caps = props.get('font-variant-caps') as ResolvedValue;
+  return valueToString(caps.value) === 'small-caps' && valueToString((props.get('font-synthesis-small-caps') as ResolvedValue).value) !== 'none';
 }
 
 /**

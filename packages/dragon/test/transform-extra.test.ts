@@ -1,15 +1,15 @@
-// PNT2: backface-visibility, transform-style and transform-box are accepted at their initial values on every target, and
-// backface-visibility at hidden on any box but an inline one (a normal-flow paint layer, lower/paint/stacking.ts);
-// -webkit-backface-visibility and -webkit-transform-style are aliases; every other keyword is kept as Chrome keeps it and refused where
-// it applies. The Chrome cases are transform-extra-initial, stacking-backface and reject-transform-extra-backface (hidden on an inline
-// box; packages/parity/fixtures); packages/parity/test/transform-extra-parse.test.ts pins the parse.
+// PNT2: backface-visibility, transform-style, transform-box, perspective and perspective-origin are accepted at their initial values
+// on every target, and backface-visibility at hidden on any box but an inline one (a normal-flow paint layer, lower/paint/stacking.ts);
+// their -webkit- names are aliases; every other value is kept as Chrome keeps it and refused where it applies. The Chrome cases are
+// transform-extra-initial, stacking-backface, reject-transform-extra-backface (hidden on an inline box) and
+// reject-transform-extra-perspective (packages/parity/fixtures); packages/parity/test/transform-extra-parse.test.ts pins the parse.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { valueToString } from '../src/analysis/computed.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
-import { DISCRETE } from '../src/css/animation-kinds/kinds.ts';
+import { DISCRETE, UNADMITTED } from '../src/css/animation-kinds/kinds.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
 import { isInitialTransformExtra, TRANSFORM_EXTRA_LONGHANDS } from '../src/css/properties/transform-extra.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -47,9 +47,17 @@ const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VAL
 
 describe('the 3D transform longhands', () => {
   it('follow filter in the registry, animate discretely and know their initial values', () => {
-    expect([...TRANSFORM_EXTRA_LONGHANDS]).toEqual(['backface-visibility', 'transform-style', 'transform-box']);
+    expect([...TRANSFORM_EXTRA_LONGHANDS]).toEqual(['backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin']);
     expect(LONGHANDS[LONGHANDS.indexOf('backface-visibility') - 1]).toBe('filter');
-    for (const p of TRANSFORM_EXTRA_LONGHANDS) expect(ANIMATION_KINDS[p], p).toBe(DISCRETE);
+    for (const p of ['backface-visibility', 'transform-style', 'transform-box'] as const) expect(ANIMATION_KINDS[p], p).toBe(DISCRETE);
+    // perspective and perspective-origin interpolate in Chrome; Dragon has no writer for them.
+    for (const p of ['perspective', 'perspective-origin'] as const) expect(ANIMATION_KINDS[p], p).toBe(UNADMITTED);
+    expect(isInitialTransformExtra('perspective', { kind: 'keyword', value: 'none' })).toBe(true);
+    expect(isInitialTransformExtra('perspective', { kind: 'length', value: 0, unit: 'px' })).toBe(false);
+    expect(isInitialTransformExtra('perspective-origin', { kind: 'position', x: { unit: '%', value: 50 }, y: { unit: '%', value: 50 } })).toBe(true);
+    expect(isInitialTransformExtra('perspective-origin', { kind: 'position', x: { unit: '%', value: 50 }, y: { unit: 'px', value: 50 } })).toBe(false);
+    expect(isInitialTransformExtra('perspective-origin', { kind: 'position', x: { unit: '%', value: 0 }, y: { unit: '%', value: 50 } })).toBe(false);
+    expect(isInitialTransformExtra('perspective-origin', { kind: 'other', type: 'list', text: '50% 50%' })).toBe(false);
     expect(isInitialTransformExtra('backface-visibility', { kind: 'keyword', value: 'visible' })).toBe(true);
     expect(isInitialTransformExtra('backface-visibility', { kind: 'keyword', value: 'hidden' })).toBe(false);
     expect(isInitialTransformExtra('transform-box', { kind: 'keyword', value: 'border-box' })).toBe(false);
@@ -67,6 +75,26 @@ describe('the 3D transform longhands', () => {
     }
   });
 
+  it('parse perspective and perspective-origin as Chrome 145 does, through the aliases', () => {
+    expect(parsed('perspective: NONE')).toEqual(['perspective: none']);
+    expect(parsed('perspective: 100px')).toEqual(['perspective: 100px']);
+    expect(parsed('perspective: 0')).toEqual(['perspective: 0px']);
+    for (const d of ['perspective: -1px', 'perspective: 100', 'perspective: 50%', 'perspective: none 1px']) expect(parsed(d), d).toEqual(['dropped']);
+    // Keywords compute to percentages, and the axes take either order where the keywords tell them apart.
+    for (const v of ['center', '50%', 'center center', 'CENTER 50%', '50% center', 'left 50% top 50%', 'top 50% left 50%']) {
+      expect(parsed(`perspective-origin: ${v}`), v).toEqual(['perspective-origin: 50% 50%']);
+    }
+    expect(parsed('perspective-origin: top left')).toEqual(['perspective-origin: 0% 0%']);
+    expect(parsed('perspective-origin: right 10% bottom 0')).toEqual(['perspective-origin: 90% 100%']);
+    expect(parsed('-webkit-perspective-origin: 10px')).toEqual(['perspective-origin: 10px 50%']);
+    expect(parsed('-webkit-perspective: none')).toEqual(['perspective: none']);
+    // Three values are invalid (ConsumePosition with no three-value feature), as are two keywords on one axis.
+    for (const v of ['left 10px top', 'top left 10px', 'top 10px', 'left right', '50% 50% 0']) expect(parsed(`perspective-origin: ${v}`), v).toEqual(['dropped']);
+    // A unit or calculation Dragon does not compute is refused, never dropped.
+    expect(parsed('perspective-origin: 1em 0')).toEqual(['DRAGON_UNSUPPORTED_VALUE perspective-origin: 1em is unsupported: only px and % offsets are supported in perspective-origin']);
+    expect(parsed('perspective-origin: right 10px top 0')[0]).toMatch(/^DRAGON_UNSUPPORTED_VALUE .*which perspective-origin does not support$/);
+  });
+
   it('accept the initial values on every target, from either name and through the CSS-wide keywords', () => {
     expect(errorsAt('backface-visibility: visible; transform-style: flat; transform-box: view-box')).toEqual([]);
     expect(errorsAt('-webkit-backface-visibility: visible; -webkit-transform-style: flat')).toEqual([]);
@@ -81,6 +109,12 @@ describe('the 3D transform longhands', () => {
     expect(errorsAt('-webkit-backface-visibility: hidden')).toEqual([]);
     expect(errorsAt('--b: hidden; backface-visibility: var(--b)')).toEqual([]);
     expect(errorsAt('transform: scaleX(-1) rotate(30deg); backface-visibility: hidden')).toEqual([]);
+    expect(errorsAt('perspective: none; perspective-origin: 50% 50%')).toEqual([]);
+    expect(errorsAt('-webkit-perspective: none; -webkit-perspective-origin: center')).toEqual([]);
+    expect(errorsAt('perspective: initial; perspective-origin: left 50% top 50%')).toEqual([]);
+    expect(errorsAt('perspective-origin: center', NO_FAULTS, 'perspective: inherit; perspective-origin: inherit')).toEqual([]);
+    expect(errorsAt('perspective: 10px; -webkit-perspective: none')).toEqual([]);
+    expect(errorsAt('--o: center; perspective-origin: var(--o)')).toEqual([]);
   });
 
   it('refuse every other value on every target, once per element where it applies', () => {
@@ -88,6 +122,14 @@ describe('the 3D transform longhands', () => {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
     expect(errorsAt('-webkit-transform-style: preserve-3d')).toEqual(REFUSED);
+    for (const d of ['perspective: 100px', 'perspective: 0', 'perspective: calc(10px + 1px)', 'perspective-origin: left top', 'perspective-origin: 50% 49%', 'perspective-origin: 10px 50%', '-webkit-perspective-origin: right']) {
+      expect(errorsAt(d), d).toEqual(REFUSED);
+    }
+    // -webkit-perspective other than none is refused as it parses, on every target at once (aliases.ts legacyAliasRefusal).
+    expect(errorsAt('-webkit-perspective: 100px')).toEqual(['null DRAGON_UNSUPPORTED_VALUE']);
+    expect(errorsAt('perspective: none; perspective: 100px; perspective-origin: 0 0')).toEqual(REFUSED);
+    expect(errorsAt('--p: 50px; perspective: var(--p)')).toEqual(REFUSED);
+    expect(errorsAt('--o: left; perspective-origin: var(--o)')).toEqual(REFUSED);
     expect(errorsAt('backface-visibility: hidden; transform-style: preserve-3d; transform-box: border-box')).toEqual(REFUSED);
     // A value that arrives through var() is refused as well, and the initial value through var() is accepted.
     expect(errorsAt('--b: preserve-3d; transform-style: var(--b)')).toEqual(REFUSED);
@@ -99,12 +141,12 @@ describe('the 3D transform longhands', () => {
     for (const d of errors) expect(d.message).toMatch(/^transform-style: preserve-3d on <div> a is unsupported: .*only flat is accepted$/);
   });
 
-  it('refuse a hidden backface on an inline box, whose paint layer Dragon does not place, on every target', () => {
+  it('refuse a hidden backface on an inline box, which Chrome gives no paint layer and Dragon does not model, on every target', () => {
     const css = 'body { font-family: Ahem; font-size: 10px; } .s { backface-visibility: hidden; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', [], [el(r, 'b', 'span', ['s'], [text(r, 't', 'XX')])])]));
     const errors = c.diagnostics.filter((x) => x.severity === 'error');
     expect(errors.map((d) => d.target).sort()).toEqual(['android', 'ios', 'web']);
-    for (const d of errors) expect(d.message).toMatch(/^backface-visibility: hidden on the inline box <span> b is unsupported: it gives the box a paint layer of its own/);
+    for (const d of errors) expect(d.message).toMatch(/^backface-visibility: hidden on the inline box <span> b is unsupported: Chrome gives an inline box no paint layer for it/);
     const ok = project(NO_FAULTS).compile(inputFor(`${css} .s { display: inline-block; }`, (r) => [el(r, 'a', 'div', [], [el(r, 'b', 'span', ['s'], [text(r, 't', 'XX')])])]));
     expect(ok.diagnostics.filter((x) => x.severity === 'error' && x.message.includes('backface'))).toEqual([]);
   });
@@ -117,7 +159,7 @@ describe('the 3D transform longhands', () => {
   });
 
   it('are refused in @keyframes, where Dragon has no discrete animation writer', () => {
-    for (const v of ['backface-visibility: hidden', 'backface-visibility: visible', 'transform-style: preserve-3d', 'transform-box: border-box']) {
+    for (const v of ['backface-visibility: hidden', 'backface-visibility: visible', 'transform-style: preserve-3d', 'transform-box: border-box', 'perspective: none', 'perspective: 10px', 'perspective-origin: 50% 50%']) {
       expect(errorsAt('animation: k 1s', NO_FAULTS, `} @keyframes k { to { ${v}; } } .x {`), v).toEqual(['null DRAGON_UNSUPPORTED_VALUE']);
     }
   });
@@ -125,5 +167,6 @@ describe('the 3D transform longhands', () => {
   it('plant transformExtraAccepted: a non-initial value compiles', () => {
     expect(errorsAt('transform-box: border-box', { ...NO_FAULTS, transformExtraAccepted: true })).toEqual([]);
     expect(errorsAt('transform-style: preserve-3d', { ...NO_FAULTS, transformExtraAccepted: true })).toEqual([]);
+    expect(errorsAt('perspective: 100px; perspective-origin: left top', { ...NO_FAULTS, transformExtraAccepted: true })).toEqual([]);
   });
 });

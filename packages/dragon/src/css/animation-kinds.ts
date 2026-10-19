@@ -8,6 +8,7 @@ import type { AnimationKind } from './animation-kinds/kinds.ts';
 import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_LAYERS_ANIMATION } from './animation-kinds/background-layers.ts';
 import { BORDER_ANIMATION } from './animation-kinds/border.ts';
+import { BORDER_IMAGE_ANIMATION } from './animation-kinds/border-image.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
 import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
@@ -21,6 +22,7 @@ import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
+import { ISOLATION_ANIMATION } from './animation-kinds/isolation.ts';
 import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
@@ -56,6 +58,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...BACKGROUND_ANIMATION,
   ...BACKGROUND_LAYERS_ANIMATION,
   ...BORDER_ANIMATION,
+  ...BORDER_IMAGE_ANIMATION,
   ...BOX_ANIMATION,
   ...CLIP_PATH_ANIMATION,
   ...CLIP_RECT_ANIMATION,
@@ -69,6 +72,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_VARIANT_ANIMATION,
   ...GRID_ANIMATION,
   ...INLINE_ANIMATION,
+  ...ISOLATION_ANIMATION,
   ...LINE_CLAMP_ANIMATION,
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,

@@ -10,7 +10,7 @@ import {
   USCRIPT_BOPOMOFO, USCRIPT_COMMON, USCRIPT_HAN, USCRIPT_HIRAGANA, USCRIPT_INHERITED, USCRIPT_KATAKANA, USCRIPT_LATIN,
 } from './script-data.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from './text.ts';
-import { fontMetricLengths, letterSpacingAfter, wordSpacingAfter } from './text.ts';
+import { AHEM_FACE_ID, fontMetricLengths, letterSpacingAfter, smallCapsCodePoint, smallCapsFontSize, wordSpacingAfter } from './text.ts';
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import {
@@ -428,7 +428,8 @@ function hanKerningFeatures(item: ShapeItem, start: number, end: number, isLineS
 // ShapeResult
 
 type ShapingGlyph = { readonly glyph: number; readonly ci: number; readonly advance: number; safe: boolean };
-type ShapingRun = { readonly start: number; readonly numChars: number; readonly glyphs: readonly ShapingGlyph[]; readonly width: number };
+/** size: the font instance size the run is shaped at (the item's, or its small-caps size). */
+type ShapingRun = { readonly start: number; readonly numChars: number; readonly size: number; readonly glyphs: readonly ShapingGlyph[]; readonly width: number };
 
 /** A shaped range [start, end) of the item, with Blink's cached safe-to-break flags and positions per UTF-16 offset. */
 export type ShapeResult = {
@@ -466,6 +467,10 @@ export type ShapeItem = {
   readonly letterSpacing16: number;
   /** The word spacing as TextRunLayoutUnit (16.16), which ShapeResult::ApplySpacing adds after every space; 0 for none. */
   readonly wordSpacing16: number;
+  /** Synthesized small caps: the whole-px size lowercase runs are shaped at (smallCapsFontSize), -1 for none. */
+  readonly smallCapsSize: number;
+  /** The text with every code point small caps uppercases uppercased (the CaseMappingHarfBuzzBufferFiller context), '' for none. */
+  readonly upper: string;
   readonly faults: ShapingFaults;
 };
 
@@ -480,6 +485,8 @@ export type ItemInput = {
   readonly letterSpacing: number;
   /** The used word spacing in px (FontDescription::WordSpacing), 0 for normal. */
   readonly wordSpacing: number;
+  /** The synthesized small-caps size (smallCapsFontSize of the computed size), -1 for font-variant-caps normal. */
+  readonly smallCapsSize: number;
   readonly faults: ShapingFaults;
 };
 
@@ -489,6 +496,16 @@ export function makeItem(input: ItemInput): ItemResult {
   const seg = segmentText(input.text);
   if (!seg.ok) return { ok: false, reason: seg.reason };
   const units = utf16Units(input.text);
+  // Small caps: Dragon ports the case mapping of ASCII only (text.ts smallCapsCodePoint).
+  let upper = '';
+  if (input.smallCapsSize >= 0) {
+    for (const ch of input.text) {
+      const cp = ch.codePointAt(0) as number;
+      const drawn = smallCapsCodePoint(cp);
+      if (drawn < 0) return { ok: false, reason: `U+${cp.toString(16).toUpperCase()} in small-caps text: Dragon maps the case of ASCII only` };
+      upper += drawn === cp ? ch : ch.toUpperCase();
+    }
+  }
   const features: number[] = [];
   if (input.faults.kerningDropped) {
     features.push(TAG_KERN);
@@ -514,7 +531,7 @@ export function makeItem(input: ItemInput): ItemResult {
     item: {
       shaper: input.shaper, face: input.face, size: input.size, text: input.text, units, language: input.language, segments: seg.segments, features,
       hanKerning: input.hanKerning, hanKerningMayApply: hanKerningMayApply(units, 0, units.length), letterSpacing16: textRunLayoutUnit(input.letterSpacing),
-      wordSpacing16: textRunLayoutUnit(input.wordSpacing), faults: input.faults,
+      wordSpacing16: textRunLayoutUnit(input.wordSpacing), smallCapsSize: input.smallCapsSize, upper, faults: input.faults,
     },
   };
 }
@@ -573,22 +590,56 @@ function wordSpacingOf(item: ShapeItem, at: number): number {
   return wordSpacingAfter(cp, item.wordSpacing16);
 }
 
+/** One range HarfBuzzShaper::ShapeSegment shapes: a script segment's part, lowercase (shaped uppercased at the small-caps size) or not. */
+type CaseRange = { readonly seg: ScriptSegment; readonly start: number; readonly end: number; readonly lower: boolean };
+
+/**
+ * The script segments' parts of [start, end), each split where a code point's case behaviour changes when the item has small caps
+ * (harfbuzz_shaper.cc SplitUntilNextCaseChange over small_caps_iterator.cc SmallCapsIterator, which keys a run on
+ * UCHAR_CHANGES_WHEN_UPPERCASED).
+ */
+function caseRanges(item: ShapeItem, start: number, end: number): CaseRange[] {
+  const out: CaseRange[] = [];
+  for (const seg of item.segments) {
+    const s = seg.start > start ? seg.start : start;
+    const e = seg.end < end ? seg.end : end;
+    if (e <= s) continue;
+    if (item.smallCapsSize < 0) {
+      out.push({ seg, start: s, end: e, lower: false });
+      continue;
+    }
+    let from = s;
+    for (let i = s + 1; i <= e; i++) {
+      if (i < e && isSmallCapsLower(item, i) === isSmallCapsLower(item, from)) continue;
+      out.push({ seg, start: from, end: i, lower: isSmallCapsLower(item, from) });
+      from = i;
+    }
+  }
+  return out;
+}
+
+/** Whether the code point at a UTF-16 offset is one small caps uppercases (makeItem admits ASCII and U+200B only). */
+function isSmallCapsLower(item: ShapeItem, offset: number): boolean {
+  const cp = item.units[offset] as number;
+  return smallCapsCodePoint(cp) !== cp;
+}
+
 /** HarfBuzzShaper::Shape over [start, end) with the item as context. */
 function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: boolean, hanStart: boolean, hanEnd: boolean): ShapeResult {
   const runs: ShapingRun[] = [];
   let width = 0;
   let missing = -1;
   const unsafe: number[] = [];
-  for (const seg of item.segments) {
-    const s = seg.start > start ? seg.start : start;
-    const e = seg.end < end ? seg.end : end;
-    if (e <= s) continue;
+  for (const ranges of caseRanges(item, start, end)) {
+    const seg = ranges.seg;
+    const s = ranges.start;
+    const e = ranges.end;
     const extra = hanKerningFeatures(item, s, e, isLineStart && s === start, hanStart && s === start, hanEnd && e === end);
     const features: number[] = [];
     for (const f of item.features) features.push(f);
     for (const f of extra.features) features.push(f);
     for (const u of extra.unsafeBefore) unsafe.push(u);
-    const g = item.shaper.shape(item.face, item.size, item.text, s, e, seg.script, false, item.language, features);
+    const g = ranges.lower ? item.shaper.shape(item.face, item.smallCapsSize, item.upper, s, e, seg.script, false, item.language, features) : item.shaper.shape(item.face, item.size, item.text, s, e, seg.script, false, item.language, features);
     const glyphs: ShapingGlyph[] = [];
     const advances: number[] = [];
     for (let o = 0; o < g.length; o = o + GLYPH_STRIDE) {
@@ -603,7 +654,7 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
       glyphs.push({ glyph: gid, ci: cluster - s, advance, safe });
       advances.push(advance);
     }
-    const run: ShapingRun = { start: s, numChars: e - s, glyphs, width: sumAdvances(advances, item.faults, item.letterSpacing16 === 0 && item.wordSpacing16 === 0) };
+    const run: ShapingRun = { start: s, numChars: e - s, size: ranges.lower ? item.smallCapsSize : item.size, glyphs, width: sumAdvances(advances, item.faults, item.letterSpacing16 === 0 && item.wordSpacing16 === 0) };
     runs.push(run);
     width = accumulate(width, run.width, item.faults);
   }
@@ -782,7 +833,7 @@ export function lineWidth(item: ShapeItem, paragraph: ShapeResult, start: number
 /** ComputedStyle::HyphenString: U+2010 if the face has a glyph for it, else U+002D, shaped as its own item. */
 function hyphenWidth(item: ShapeItem): LineResult {
   const own = (text: string): ShapeResult => {
-    const made = makeItem({ shaper: item.shaper, face: item.face, size: item.size, text, language: item.language, hanKerning: NO_HAN_KERNING, letterSpacing: 0, wordSpacing: 0, faults: item.faults });
+    const made = makeItem({ shaper: item.shaper, face: item.face, size: item.size, text, language: item.language, hanKerning: NO_HAN_KERNING, letterSpacing: 0, wordSpacing: 0, smallCapsSize: -1, faults: item.faults });
     if (!made.ok) return shapeRange(item, 0, 0, false, false, false);
     return shapeItem(made.item);
   };
@@ -1656,22 +1707,25 @@ export type ShapedItem = { readonly ok: true; readonly item: ShapeItem; readonly
 export type ShapedText = {
   /** R2's TextMeasurer, over the face TextFont.family names (the face id: Ahem, or a bundled face's sha256). */
   readonly measurer: TextMeasurer;
-  item(text: string, face: string, size: number, letterSpacing: number, wordSpacing: number): ShapedItem;
+  item(text: string, face: string, size: number, letterSpacing: number, wordSpacing: number, smallCapsSize: number): ShapedItem;
   line(shaped: ShapedItem, start: number, breakOffset: number, available: LU, isBreakable: (offset: number) => boolean): LineResult;
 };
 
 /** The shaping core over the host's faces and HarfBuzz, for text in one language. */
 export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: GlyphShaper, faults: ShapingFaults, language: string): ShapedText {
   const cache = new Map<string, ShapedItem>();
-  const item = (text: string, face: string, size: number, letterSpacing: number, wordSpacing: number): ShapedItem => {
-    const key = `${face}\n${size}\n${letterSpacing}\n${wordSpacing}\n${text}`;
+  const item = (text: string, face: string, size: number, letterSpacing: number, wordSpacing: number, smallCapsSize: number): ShapedItem => {
+    const key = `${face}\n${size}\n${letterSpacing}\n${wordSpacing}\n${smallCapsSize}\n${text}`;
     const hit = cache.get(key);
     if (hit !== undefined) return hit;
     const f = faces.get(face);
     let out: ShapedItem;
     if (f === undefined) out = { ok: false, code: 'text-glyph', reason: `no bundled face ${face}` };
+    // A real face may have smcp, which Blink then applies instead of synthesizing (OpenTypeCapsSupport); Dragon synthesizes over Ahem only.
+    else if (smallCapsSize >= 0 && face !== AHEM_FACE_ID) out = { ok: false, code: 'text-glyph', reason: `small caps in the face ${face}: Dragon synthesizes small capitals over Ahem only` };
+    else if (smallCapsSize >= 0 && (letterSpacing !== 0 || wordSpacing !== 0)) out = { ok: false, code: 'text-glyph', reason: 'small-caps text with letter or word spacing is not shaped yet' };
     else {
-      const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, letterSpacing, wordSpacing, faults });
+      const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, letterSpacing, wordSpacing, smallCapsSize, faults });
       if (!made.ok) out = { ok: false, code: 'text-glyph', reason: made.reason };
       else {
         const result = shapeItem(made.item);
@@ -1685,7 +1739,7 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     if (!shaped.ok) return { ok: false, reason: shaped.reason };
     return lineWidth(shaped.item, shaped.result, start, breakOffset, available, isBreakable);
   };
-  const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size), font.letterSpacing, font.wordSpacing);
+  const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size), font.letterSpacing, font.wordSpacing, font.smallCaps ? smallCapsFontSize(font.size) : -1);
   const measurer: TextMeasurer = {
     // R5: SimpleFontData's rounded ascent and descent of the platform-size font; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {
@@ -1749,14 +1803,14 @@ function offsetOfCodePoint(units: readonly number[], codePoint: number): number 
  * glyph's pen x in px from the piece's left, its HarfBuzz 16.16 advances summed exactly as the cached positions sum them, and the
  * code point of its cluster, counted from the piece's start (a justified line shifts each glyph by its code point's LinePiece shift).
  */
-export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[]; readonly chars: readonly number[] } | { readonly ok: false; readonly reason: string };
+export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[]; readonly chars: readonly number[]; readonly sizes: readonly number[] } | { readonly ok: false; readonly reason: string };
 
 /**
  * The glyphs of code points [start, end) of text as the measurer shapes it (TextMeasurer.shaped): the whole item's shaping, not
  * ShapeLine's reshaping at line edges, and no glyph x or y offsets. Both are exact for Ahem; the real-face slice adds them.
  */
 export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFont, startIn: number, endIn: number): PieceGlyphs {
-  if (endIn <= startIn) return { ok: true, glyphs: [], xs: [], chars: [] };
+  if (endIn <= startIn) return { ok: true, glyphs: [], xs: [], chars: [], sizes: [] };
   // A preserved U+000A (TXT2-c) ends a text item: the piece is shaped in the text between the line feeds that holds it (without
   // one, the whole text and its offsets).
   let k = 0;
@@ -1780,6 +1834,7 @@ export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFo
   const glyphs: number[] = [];
   const xs: number[] = [];
   const chars: number[] = [];
+  const sizes: number[] = [];
   let pen = 0;
   for (const run of s.result.runs) {
     for (const g of run.glyphs) {
@@ -1788,10 +1843,11 @@ export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFo
       glyphs.push(g.glyph);
       xs.push(pen / 65536);
       chars.push(codePointOfOffset(s.item.units, at) - start);
+      sizes.push(run.size);
       pen = pen + g.advance;
     }
   }
-  return { ok: true, glyphs, xs, chars };
+  return { ok: true, glyphs, xs, chars, sizes };
 }
 
 /** R2: the measurer over bundled faces and the host's HarfBuzz. */

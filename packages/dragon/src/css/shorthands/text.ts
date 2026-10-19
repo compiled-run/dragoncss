@@ -116,8 +116,7 @@ const SYNTHESIS_LONGHANDS: readonly Longhand[] = ['font-synthesis-weight', 'font
 
 /**
  * css-fonts-4 §2.8 as Chrome 145 expands it: font sets font-style, font-weight, font-size, line-height (normal when no "/") and
- * font-family, sets or resets font-stretch, resets the font-variant longhands to normal (small-caps is refused, as font-variant-caps
- * refuses it), resets font-kerning, font-optical-sizing and font-language-override to their initial values, resets font-feature-settings and
+ * font-family, sets or resets font-stretch, resets the font-variant longhands to normal (small-caps sets font-variant-caps), resets font-kerning, font-optical-sizing and font-language-override to their initial values, resets font-feature-settings and
  * font-variation-settings to normal, and resets the
  * FONT_RESET_LONGHANDS Dragon does not model, so the system fonts
  * are refused; it does not set font-synthesis. Chrome's parse rules beyond the grammar hold (font-style left and right, the
@@ -141,7 +140,6 @@ export function fontShorthand(faults: FontFaults = NO_FONT_FAULTS): ShorthandHan
         if (v !== null && 'invalid' in v) return refuse(parts.style[1] as CssNode, `font: ${v.invalid}`, 'DRAGON_CSS_INVALID_VALUE');
         if (v !== null && 'refused' in v) return refuse(parts.style[1] as CssNode, `font: ${v.refused}`);
       }
-      if (parts.variant !== null) return refuse(parts.variant, 'font: small-caps sets font-variant-caps: small-caps, which makes Chrome draw small capitals, which Dragon does not draw yet', 'DRAGON_UNSUPPORTED_VALUE', 'Leave small-caps out of the font shorthand.');
       return null;
     },
     expand: (_values, tokens) => {
@@ -159,8 +157,8 @@ export function fontShorthand(faults: FontFaults = NO_FONT_FAULTS): ShorthandHan
       // TXT-FONTFEAT: the width keyword sets font-stretch, which an omitted one resets to normal (properties/font-stretch.ts).
       if (parts.stretch !== null) out.push(explicit('font-stretch', kw(asciiLower(String(parts.stretch['name'])))));
       else if (!faults.stretchNotReset) out.push(implicit('font-stretch', kw('normal')));
-      // Chrome's font shorthand resets every font-variant longhand (properties/font-variant.ts).
-      if (!faults.variantNotReset) out.push(...FONT_VARIANT_LONGHANDS.map((p) => implicit(p, kw('normal'))));
+      // Chrome's font shorthand resets every font-variant longhand (properties/font-variant.ts), and small-caps sets font-variant-caps.
+      out.push(...FONT_VARIANT_LONGHANDS.flatMap((p) => (p === 'font-variant-caps' && parts.variant !== null ? [explicit(p, kw('small-caps'))] : faults.variantNotReset ? [] : [implicit(p, kw('normal'))])));
       // Chrome's font shorthand resets font-kerning, font-optical-sizing and font-language-override (properties/font-tuning.ts).
       if (!faults.tuningNotReset) out.push(...FONT_TUNING_LONGHANDS.map((p) => implicit(p, kw(FONT_TUNING_INITIAL[p]))));
       // Chrome's font shorthand resets both settings (TXT-FONTFEAT, properties/font-features.ts).

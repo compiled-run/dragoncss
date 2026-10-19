@@ -75,7 +75,7 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // SVG-paint-order: two paint orders.
       'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
       'stroke-linecap': ['round', 'square'], 'stroke-linejoin': ['bevel', 'round'], 'stroke-miterlimit': ['1', '10'], 'fill-rule': ['evenodd', 'nonzero'], 'stroke-dasharray': ['2 3', 'none'], 'stroke-dashoffset': ['4px', '-2'],
-      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'], 'rx': ['2px', 'auto'], 'ry': ['auto', '1'],
+      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'], 'rx': ['2px', 'auto'], 'ry': ['auto', '1'], 'vector-effect': ['non-scaling-stroke', 'none'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.
       'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
       'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
@@ -88,8 +88,14 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'mask-image': ['none', 'NONE'], '-webkit-mask-position-x': ['0%', '0%'], '-webkit-mask-position-y': ['0%', '0%'], 'mask-size': ['auto', 'AUTO'],
       'mask-repeat': ['repeat', 'REPEAT'], 'mask-origin': ['border-box', 'BORDER-BOX'], 'mask-clip': ['border-box', 'Border-Box'], 'mask-composite': ['add', 'ADD'],
       'mask-mode': ['match-source', 'MATCH-SOURCE'],
-      // PNT2: the 3D transform longhands, which accept their initial values alone, at those values in two ASCII cases.
-      'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'] };
+      // PNT2: the 3D transform longhands, which accept their initial values alone, at those values in two ASCII cases or spellings.
+      'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'],
+      // MISC-PAINT: the border image longhands, which accept their initial values alone, at those values in two spellings.
+      'border-image-source': ['none', 'NONE'], 'border-image-slice': ['100%', '100.0%'], 'border-image-width': ['1', '1.0'], 'border-image-outset': ['0', '0.0'],
+      'border-image-repeat': ['stretch', 'STRETCH'],
+      perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
+      // isolation, whose isolate makes a stacking context and so changes paint order alone, at auto and isolate.
+      isolation: ['auto', 'isolate'] };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);

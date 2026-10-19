@@ -327,16 +327,16 @@ function inlineChildren(box: LayoutBox): (InlineChild | LayoutBox)[] {
 
 /** A font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts), unspaced. */
 function fontOf(f: FontSpec): TextFont {
-  return { family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0 };
+  return { family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false };
 }
 
-/** A text leaf's font as the measurer reads it: its font with its letter-spacing and word-spacing in px, which the environment pass resolved. */
+/** A text leaf's font as the measurer reads it: its font with its letter-spacing and word-spacing in px, which the environment pass resolved, and its small caps. */
 export function leafFontOf(t: TextLeaf): TextFont {
   const ls = t.letterSpacing;
   if (ls.kind !== 'px') throw new Error(`${t.id}: a ${ls.kind} letter-spacing reached layout; the environment pass resolves it`);
   const ws = t.wordSpacing;
   if (ws.kind !== 'px') throw new Error(`${t.id}: a ${ws.kind} word-spacing reached layout; the environment pass resolves it`);
-  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value, wordSpacing: ws.value };
+  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value, wordSpacing: ws.value, smallCaps: t.smallCaps };
 }
 
 /** A line height after the environment pass, which resolves percentages and calculations to px. */
@@ -511,6 +511,9 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (leafFontOf(t).wordSpacing !== 0) {
       for (const ch of t.text) if ((ch.codePointAt(0) as number) === 0xad) unsupported('word-spacing', t.id, 'css-text-3 §8.1', `${t.id} has word-spacing and a soft hyphen`);
     }
+    // Synthesized small caps is proven over Ahem without letter or word spacing only.
+    if (t.smallCaps && t.font.family !== AHEM_FACE_ID) unsupported('font-variant-caps', t.id, 'css-fonts-4 §6.5', `small caps in the real face of ${t.id}, which may have smcp`);
+    if (t.smallCaps && (leafFontOf(t).letterSpacing !== 0 || leafFontOf(t).wordSpacing !== 0)) unsupported('font-variant-caps', t.id, 'css-fonts-4 §6.5', `${t.id} has small caps and letter-spacing or word-spacing`);
     for (const segment of lineFeedSegments(t)) {
       if (segment === '') continue;
       const m = ctx.measurer.measure(segment, leafFontOf(t));
@@ -637,6 +640,7 @@ function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpa
     // TXT2-b with TXT2-c: spacing after preserved spaces, hanging spaces and segment breaks has no Chrome comparison yet.
     if (leafFontOf(t).letterSpacing !== 0) unsupported('letter-spacing', t.id, 'css-text-3 §8.2', `${t.id} has letter-spacing and white-space-collapse: ${mode}`);
     if (leafFontOf(t).wordSpacing !== 0) unsupported('word-spacing', t.id, 'css-text-3 §8.1', `${t.id} has word-spacing and white-space-collapse: ${mode}`);
+    if (t.smallCaps) unsupported('font-variant-caps', t.id, 'css-fonts-4 §6.5', `${t.id} has small caps and white-space-collapse: ${mode}`);
     for (const ch of t.text) {
       const cp = ch.codePointAt(0) as number;
       if (cp === 0x09) unsupported('tab-stop', t.id, 'css-text-3 §4.2', `a preserved tab in ${t.id}; tab stops are TXT2-c3`);
@@ -716,10 +720,10 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
     const prev = last < 0 ? null : (leaves[last] as TextLeaf);
     const t = leaves[it.leaf] as TextLeaf;
     // ShouldBreakShapingBeforeText (inline_node.cc) breaks the run where the Font differs, and FontDescription's == compares letter
-    // and word spacing, so a span with other spacing is its own run.
+    // and word spacing and the variant caps, so a span with other spacing or caps is its own run.
     const pf = prev === null ? null : leafFontOf(prev);
     const tf = leafFontOf(t);
-    if (prev !== null && pf !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && pf.letterSpacing === tf.letterSpacing && pf.wordSpacing === tf.wordSpacing) {
+    if (prev !== null && pf !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && pf.letterSpacing === tf.letterSpacing && pf.wordSpacing === tf.wordSpacing && pf.smallCaps === tf.smallCaps) {
       unsupported('text-shaping-run', t.id, 'css-text-3 §7.3 (boundary shaping)', `${prev.id} and ${t.id} are adjacent text in one face and size, which Blink shapes as one run`);
     }
     last = it.leaf;
@@ -1537,6 +1541,7 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], lin
     const it = ifc.items[i] as Item;
     if (it.kind === 'char' && leafFontOf(ifc.leaves[it.leaf] as TextLeaf).letterSpacing !== 0) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line with letter-spacing (${(ifc.leaves[it.leaf] as TextLeaf).id}) is not proven against Chrome`);
     if (it.kind === 'char' && leafFontOf(ifc.leaves[it.leaf] as TextLeaf).wordSpacing !== 0) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line with word-spacing (${(ifc.leaves[it.leaf] as TextLeaf).id}) is not proven against Chrome`);
+    if (it.kind === 'char' && (ifc.leaves[it.leaf] as TextLeaf).smallCaps) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line with small caps (${(ifc.leaves[it.leaf] as TextLeaf).id}) is not proven against Chrome`);
   }
   // Blink expands around a CJK ideograph or symbol too (both sides, text-justify auto on 16-bit text); no fixture proves that,
   // so a line holding one, its hanging end included, is refused rather than given Latin-only opportunities.
@@ -1922,6 +1927,7 @@ function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: r
     // How Blink spaces the ellipsis and cuts spaced text at OffsetToFit is not proven against Chrome yet.
     if (font.letterSpacing !== 0) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has letter-spacing on a truncated line of ${box.id}`);
     if (font.wordSpacing !== 0) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has word-spacing on a truncated line of ${box.id}`);
+    if (font.smallCaps) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has small caps on a truncated line of ${box.id}`);
     sources.push({ text: t.text, font, start: p.start, end: p.visibleEnd, x: p.x, width: p.width });
   }
   const r = truncateLine(ctx, box.id, available, fontOf(strut.font), sources, ifc.shaped);

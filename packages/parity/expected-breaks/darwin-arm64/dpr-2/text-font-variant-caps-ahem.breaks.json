@@ -1,0 +1,27 @@
+{
+  "case": "text-font-variant-caps-ahem",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"sc:text0","data":"Ab cd Ef gh","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"fv:text0","data":"Xx pp Pp","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"f15:text0","data":"abc Abc ABC","lines":2,"units":[0,0,0,0,0,0,0,0,1,1,1],"blank":[7]},
+    {"id":"s13:text0","data":"ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"s16:text0","data":"ab XY","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"narrow:text0","data":"abcdefg hi","lines":2,"units":[0,0,0,0,0,0,0,0,1,1],"blank":[7]},
+    {"id":"nsyn:text0","data":"Ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"fsn:text0","data":"Ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"up:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"inl:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"inl:text1","data":" xx","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"sp:text0","data":"ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"inhn:text0","data":"ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"ra:text0","data":"ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"rb:text0","data":"ab","lines":1,"units":[0,0],"blank":[]},
+    {"id":"ca:text0","data":"Ab cd ef","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"cb:text0","data":"xy","lines":1,"units":[0,0],"blank":[]},
+    {"id":"arow:text0","data":"ab c","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"arb:text0","data":"ab","lines":1,"units":[0,0],"blank":[]},
+    {"id":"sha:text0","data":"abcde fg","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]}
+  ]
+}

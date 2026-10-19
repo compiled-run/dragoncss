@@ -18,6 +18,7 @@ import { GEN_B_FAULTS } from '../faults/gen-b.ts';
 import type { TxtFvFaults } from '../faults/txt-fv.ts';
 import { TXT_FV_FAULTS } from '../faults/txt-fv.ts';
 import { checkFontVariant } from './font-variant.ts';
+import { checkSmallCaps } from './small-caps.ts';
 import type { TxtFtFaults } from '../faults/txt-ft.ts';
 import { TXT_FT_FAULTS } from '../faults/txt-ft.ts';
 import { checkFontTuning } from './font-tuning.ts';
@@ -40,7 +41,11 @@ import { checkTransformExtra } from './transform-extra.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
 import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
-import type { Diagnostic } from '../types.ts';
+import type { BorderImageFaults } from '../faults/border-image.ts';
+import { BORDER_IMAGE_FAULTS } from '../faults/border-image.ts';
+import { checkBorderImage } from './border-image.ts';
+import type { Diagnostic, Origin } from '../types.ts';
+import { isolates } from '../css/properties/isolation.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
@@ -310,15 +315,15 @@ function checkRtlAtomics(el: ResolvedElement, run: readonly IfcItem[], diagnosti
 function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   if (isInlineBox(el)) return;
   const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
-  const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string): void => {
+  const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string, origin: Origin = at.element.node.origin): void => {
     for (const t of on) {
       const id = `${t}|inline-${what}|${at.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: at.element.node.origin, target: t, message, manual, basis: 'computed-value' }));
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
     }
   };
-  const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual);
+  const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string, origin?: Origin): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual, origin);
   // INL2c: an atomic inline inside an inline box, or beside text in a real face (Blink's LineBreaker for it is not ported).
   const unproven = (at: ResolvedElement, what: string, message: string, manual: string): void => {
     for (const t of targets) {
@@ -369,6 +374,11 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       if (it.kind === 'open' && ((opacity as number) < 1 || elementWillChange(it.el).includes('opacity'))) {
         const what = (opacity as number) < 1 ? ['opacity', `opacity: ${opacity}`] : ['will-change', 'will-change: opacity'];
         refuseNative(it.el, 'stacking-context', `${what[1]} on the inline box <${it.el.element.tag}> ${it.el.element.address} makes it a stacking context: the native runtime places an inline box's content beside its view, not in it, until INL1b, so the group would be dropped`, `Move the ${what[0]} to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
+      }
+      // isolation: isolate makes an inline box a stacking context too (lower/paint/stacking.ts transformedForStacking), refused alike.
+      if (it.kind === 'open' && isolates(it.el)) {
+        const v = it.el.props.get('isolation') as ResolvedValue;
+        refuseNative(it.el, 'stacking-context', `isolation: isolate on the inline box <${it.el.element.tag}> ${it.el.element.address} makes it a stacking context: the native runtime places an inline box's content beside its view, not in it, until INL1b, so the group would be dropped`, `Move the isolation to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`, v.declaration !== null ? authored(v.declaration.valueSpan) : v.span !== null ? authored(v.span) : undefined);
       }
       const collapse = keywordOf(it.el.props.get('white-space-collapse') as ResolvedValue);
       if (collapse !== 'collapse') refuse(it.el, 'white-space', `white-space-collapse: ${collapse} on the inline box <${it.el.element.tag}> ${it.el.element.address} (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${it.el.element.address}, or make ${it.el.element.address} a block.`);
@@ -995,7 +1005,7 @@ function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics:
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -1038,6 +1048,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
     checkMask(el, targets, diagnostics, reported, faults);
+    checkBorderImage(el, targets, diagnostics, reported, faults);
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
@@ -1051,6 +1062,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
+  // TXT-FONTFEAT: synthesized small caps beside what no Chrome case proves (analysis/small-caps.ts).
+  checkSmallCaps(root, targets, diagnostics, reported, shapedAt);
   // TXT-FX: text shadows a target does not draw as Chrome does (analysis/text-shadow.ts).
   checkTextShadows(root, targets, diagnostics, reported, realFaceAt, faults);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).

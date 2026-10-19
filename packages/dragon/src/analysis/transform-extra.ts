@@ -2,8 +2,8 @@
 // hidden too (css/properties/transform-extra.ts). Any other computed value is refused on every target where it applies, once per
 // element: preserve-3d and another reference box change what a transform draws. A hidden backface hides the box only once it faces
 // away, which no 2D transform makes it do, so what it changes is the paint order: Blink gives the box a paint layer of its own
-// (lower/paint/stacking.ts, a normal-flow layer). That layer is refused on an inline box, which Blink lays out in line fragments the
-// native tree does not place as layers. The values are checked computed, so one that arrives through var() or inherit is checked too.
+// (lower/paint/stacking.ts, a normal-flow layer). An inline box gets no such layer in Blink (LayoutInline::LayerTypeRequired ignores
+// backface-visibility), which Dragon's stack tree does not model, so hidden is refused there. The values are checked computed, so one that arrives through var() or inherit is checked too.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { isInitialTransformExtra, TRANSFORM_EXTRA_INITIAL, TRANSFORM_EXTRA_LONGHANDS } from '../css/properties/transform-extra.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
@@ -33,7 +33,7 @@ export function checkTransformExtra(el: ResolvedElement, targets: readonly strin
       origin,
       target: t,
       message: onInline
-        ? `backface-visibility: hidden on the inline box <${el.element.tag}> ${el.element.address} is unsupported: it gives the box a paint layer of its own, which Dragon places only for a block-level or atomic inline box (PNT2-m)`
+        ? `backface-visibility: hidden on the inline box <${el.element.tag}> ${el.element.address} is unsupported: Chrome gives an inline box no paint layer for it (LayoutInline::LayerTypeRequired), so it changes nothing there, and Dragon does not model that difference from a block-level box yet (PNT2-m)`
         : `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no 3D transform rendering yet (PNT2-m); only ${TRANSFORM_EXTRA_INITIAL[p]} is accepted`,
       manual: onInline ? `Give ${el.element.address} display: inline-block, or remove backface-visibility from it.` : `Remove ${p} from ${el.element.address}, or set ${p}: ${TRANSFORM_EXTRA_INITIAL[p]}.`,
       basis: 'computed-value',
