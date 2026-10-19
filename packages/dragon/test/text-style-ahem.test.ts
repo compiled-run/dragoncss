@@ -59,9 +59,10 @@ describe('font-style over Ahem on native', () => {
     }
   });
 
-  it('em and i shear from the user-agent stylesheet\'s italic; b keeps the synthetic bold refusal', () => {
+  it('em and i shear from the user-agent stylesheet\'s italic; b is drawn unsheared (its synthetic bold is text-weight-bold-ahem\'s); bold with the oblique stays refused', () => {
     for (const tag of ['em', 'i']) expect(shearOf(compile('color: black', tag)), tag).toBe(0.25);
-    expect(errorsOf(compile('color: black', 'b'))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
+    expect(errorsOf(compile('color: black', 'b'))).toEqual([]);
+    expect(shearOf(compile('color: black', 'b'))).toBeNull();
     expect(errorsOf(compile('font-style: italic; font-weight: 700'))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
     expect(errorsOf(compile('font-style: italic; font-weight: 700; font-synthesis: style'))).toEqual([]);
   });

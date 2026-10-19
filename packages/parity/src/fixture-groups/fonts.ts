@@ -72,8 +72,8 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ...FONT_FIXTURES.flatMap((f) => (f.map === null ? [] : [[f.spec.id, f.map] as const])),
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
-  // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
-  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout' && f.id !== 'text-weight-ahem'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem' && f.id !== 'text-word-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin'), ...TEXT_INDENT.filter((f) => f.id === 'text-indent-latin'), ...TEXT_BREAK.filter((f) => f.id === 'text-break-lato')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  // TXT1a-2: the real-font FIXTURES groups compile with the reference map (text-weight's two Ahem cases are no real-font case).
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout' && f.id !== 'text-weight-ahem' && f.id !== 'text-weight-bold-ahem'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem' && f.id !== 'text-word-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin'), ...TEXT_INDENT.filter((f) => f.id === 'text-indent-latin'), ...TEXT_BREAK.filter((f) => f.id === 'text-break-lato')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
   // INL2a: the refusal of an atomic inline beside real-font text.
   ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
   // TXT-FONTFEAT: font-stretch is accepted over Ahem, so the font shorthand's width keyword is refused over a real face.

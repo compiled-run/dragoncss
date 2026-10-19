@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 154,
-  "errors": 149,
+  "diagnostics": 148,
+  "errors": 143,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -149,8 +149,8 @@
    "DRAGON_UNPROVEN_CONTEXT [web]": 2,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
-   "DRAGON_UNSUPPORTED_FONT [android]": 25,
-   "DRAGON_UNSUPPORTED_FONT [ios]": 25,
+   "DRAGON_UNSUPPORTED_FONT [android]": 22,
+   "DRAGON_UNSUPPORTED_FONT [ios]": 22,
    "DRAGON_UNSUPPORTED_PROPERTY": 5,
    "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
@@ -180,7 +180,7 @@
      "DRAGON_UNPROVEN_CONTEXT": 4,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_FONT": 25,
+     "DRAGON_UNSUPPORTED_FONT": 22,
      "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 20
@@ -197,7 +197,7 @@
      "DRAGON_UNPROVEN_CONTEXT": 4,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_FONT": 25,
+     "DRAGON_UNSUPPORTED_FONT": 22,
      "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 20
@@ -304,7 +304,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 58,
    "B-unwrapped": 58,
-   "C-context": 113
+   "C-context": 107
   }
  },
  "features": {
@@ -6000,22 +6000,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Library.tsrx",
-    "text": "Library"
-   },
-   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6176,22 +6160,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Nav.tsrx",
-    "text": "Waves"
-   },
-   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:0:00|font-family: \"Lato\" , sans-serif on page/player-call/time-current:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6320,22 +6288,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Song.tsrx",
-    "text": "{currentSong.name}"
-   },
-   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; android draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/pages/index.tsrx:Demo music streams from the visible YouTube embed. This app does not bundle,\n\t\t\t\tdownload, or redistribute audio.|font-family: \"Lato\" , sans-serif on page/disclosure-text:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6394,22 +6346,6 @@
     "text": "Library"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/library-call/library-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Library.tsrx",
-    "text": "Library"
-   },
-   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6576,22 +6512,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Nav.tsrx",
-    "text": "Waves"
-   },
-   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:0:00|font-family: \"Lato\" , sans-serif on page/player-call/time-current:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6714,22 +6634,6 @@
     "text": "{currentSong.name}"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/song-call/song-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Song.tsrx",
-    "text": "{currentSong.name}"
-   },
-   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; ios draws this text in its one regular face, where Chrome synthesizes the bold (Ahem's synthetic bold keeps every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"

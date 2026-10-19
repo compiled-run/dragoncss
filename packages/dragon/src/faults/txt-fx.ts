@@ -1,7 +1,7 @@
-// TXT-FX: text-shadow, text-stroke and text-fill-color (coverage-rank lane TXT-FX); Dragon accepts text-shadow: none alone.
+// TXT-FX: text-shadow, text-stroke and text-fill-color (coverage-rank lane TXT-FX); analysis/text-shadow.ts rules on text-shadow.
 
 export type TxtFxFaults = {
-  /** A text-shadow other than none is accepted, though no target draws text shadows. */
+  /** Every text-shadow list is accepted on every target, including those the native targets do not draw as Chrome does. */
   readonly textShadowListAccepted: boolean;
 };
 

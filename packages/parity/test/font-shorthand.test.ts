@@ -140,14 +140,18 @@ describe('font-synthesis on native', () => {
     { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, web: {} } },
     { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr' },
   ).compile(htmlInput(css));
-  it('Ahem bold or italic with synthesis off is drawn unsynthesized, so ios accepts it; with synthesis on it is refused', () => {
+  it('Ahem bold or italic is drawn synthesized or unsynthesized as Chrome draws it, so ios accepts it; bold and italic synthesized together are refused', () => {
     const fonts = (css: string): string[] => compile(css).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_FONT').map((d) => `${String(d.target)} ${d.message.split(';')[0]}`);
-    expect(fonts('.a { font: bold 10px Ahem; }')).toEqual(["ios text d:text0 inherits font-weight: 700 from the author's style on <div> d"]);
+    // TXT-W: Ahem's synthetic bold (text-weight-bold-ahem) and oblique (text-style-ahem) are each drawn natively, so either with synthesis
+    // on is accepted since then; Chrome strokes the sheared outline where both apply, which no fixture proves.
+    expect(fonts('.a { font: bold 10px Ahem; }')).toEqual([]);
+    expect(fonts('.a { font: italic 10px Ahem; }')).toEqual([]);
+    expect(fonts('.a { font: bold italic 10px Ahem; }')).toEqual(["ios text d:text0 inherits font-weight: 700 from the author's style on <div> d, and font-style: italic from the author's style on <div> d"]);
     expect(fonts('.a { font: bold italic 10px Ahem; font-synthesis: none; }')).toEqual([]);
     expect(fonts('.a { font: italic 10px Ahem; font-synthesis: weight; }')).toEqual([]);
     expect(fonts('.a { font: bold 10px Ahem; font-synthesis-weight: none; }')).toEqual([]);
     expect(fonts('.a { font: bold 10px Ahem; font-synthesis: style; }')).toEqual([]);
-    expect(fonts('.a { font: bold 10px Ahem; font-synthesis: weight; }')).toEqual(["ios text d:text0 inherits font-weight: 700 from the author's style on <div> d"]);
+    expect(fonts('.a { font: bold 10px Ahem; font-synthesis: weight; }')).toEqual([]);
   });
 });
 
@@ -165,7 +169,7 @@ describe('the font-shorthand group', () => {
   // SVG-a's paint and touch-action; BASE has none of them, so stripping them leaves BASE's captures.
   const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width', 'touch-action', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...TEXT_FILL_STROKE_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box'];
   // The groups that landed after BASE and add files and layout cases only (each prefix matches no BASE case or capture).
-  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|clip-rect-|filter-none|transform-extra-|bg-position-|clip-path-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-|text-font-tuning-|text-font-size-|text-font-stretch-|text-font-features-|text-weight-ahem|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-shadow-none|text-fill-stroke-|alias-background|shadow-webkit-alias|text-style-ahem|alias-font|mask-initial|grid-item-)/;
+  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|clip-rect-|filter-none|bg-position-|clip-path-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-|text-font-tuning-|text-font-size-|text-font-stretch-|text-font-features-|text-weight-ahem|text-weight-bold-ahem|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-shadow-none|text-fill-stroke-|alias-background|shadow-webkit-alias|text-style-ahem|alias-font|mask-initial|text-shadow-|transform-extra-|grid-item-)/;
   it('every capture of BASE is unchanged but for the keys added since, which every node has', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
