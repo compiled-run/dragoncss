@@ -5,6 +5,7 @@
 import type { CssNode } from 'css-tree';
 import type { Span } from '../types.ts';
 import { APPEARANCE_VALUE_PARSERS } from './properties/appearance.ts';
+import { USER_MODIFY_VALUE_PARSERS } from './properties/user-modify.ts';
 import { CLIP_PATH_VALUE_PARSERS } from './properties/clip-path.ts';
 import { CLIP_RECT_VALUE_PARSERS } from './properties/clip-rect.ts';
 import { EFFECTS_VALUE_PARSERS, parseOpacityValue } from './properties/effects.ts';
@@ -58,6 +59,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(FILTER_VALUE_PARSERS),
   ...Object.entries(TOUCH_ACTION_VALUE_PARSERS),
   ...Object.entries(APPEARANCE_VALUE_PARSERS),
+  ...Object.entries(USER_MODIFY_VALUE_PARSERS),
   ...Object.entries(CLIP_RECT_VALUE_PARSERS),
   ...Object.entries(CLIP_PATH_VALUE_PARSERS),
   ...Object.entries(MASK_VALUE_PARSERS),

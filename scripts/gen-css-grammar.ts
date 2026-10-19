@@ -118,6 +118,8 @@ const SUBSET = [
   'appearance',
   // FORM-b: caret-color and accent-color (css-ui-4 §6.2, §6.3), after appearance, as LONGHANDS registers them.
   'caret-color', 'accent-color',
+  // TOUCH: -webkit-user-modify, after caret-color and accent-color, as LONGHANDS registers it.
+  '-webkit-user-modify',
 ] as const;
 
 /**
@@ -162,6 +164,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // css-ui-4 §6.2 adds a second caret-shape colour; Chrome 145 parses one auto or <color> and drops two
   // (packages/parity/test/ui-colors-parse.test.ts).
   'caret-color': 'auto | <color>',
+  // webref has no -webkit-user-modify. Chrome 145 parses read-only, read-write and read-write-plaintext-only; Dragon accepts
+  // read-only and refuses the other two (properties/user-modify.ts), so the grammar takes any value and the parser decides.
+  '-webkit-user-modify': '<any-value>',
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',
@@ -242,6 +247,7 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
  */
 const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string; readonly inherited: string } } = {
   '-webkit-box-orient': { initial: 'horizontal', inherited: 'no' },
+  '-webkit-user-modify': { initial: 'read-only', inherited: 'yes' },
   '-webkit-line-clamp': { initial: 'none', inherited: 'no' },
   // webref lists font-stretch as a legacy alias of css-fonts-4's font-width, without fields; Chrome 145 has no font-width and keeps
   // font-stretch a longhand, initial normal, inherited (css-fonts-4 §2.4).

@@ -238,7 +238,7 @@ export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.jso
  * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
  * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -317,10 +317,10 @@ function withoutTextColors(json: string): string {
 const JSON_APPEARANCE = /,\n[ ]*"appearance": "none"/g;
 const CSS_APPEARANCE = /^[ ]*appearance: none;\n/gm;
 /**
- * caret-color and accent-color, also added after the base, at auto only: in a capture caret-color's auto is the computed object's
+ * caret-color and accent-color, also added after the base, at auto only (and -webkit-user-modify at read-only): in a capture caret-color's auto is the computed object's
  * color (Chrome resolves it), so a caret-color is removed there only where it equals that color. Any other value stays in the text.
  */
-const JSON_ACCENT = /,\n[ ]*"accent-color": "auto"/g;
+const JSON_ACCENT = /,\n[ ]*"(?:accent-color": "auto|-webkit-user-modify": "read-only)"/g;
 const CSS_UI_COLORS = /^[ ]*(?:caret-color|accent-color): auto;\n/gm;
 function withoutCaretColor(json: string): string {
   return json.replace(/"computed": \{[^{}]*\}/g, (block) => {

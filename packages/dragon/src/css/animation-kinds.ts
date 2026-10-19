@@ -49,6 +49,7 @@ import { TOUCH_ACTION_ANIMATION } from './animation-kinds/touch-action.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
 import { UI_COLORS_ANIMATION } from './animation-kinds/ui-colors.ts';
+import { USER_MODIFY_ANIMATION } from './animation-kinds/user-modify.ts';
 import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
 
@@ -99,6 +100,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TRANSFORM_ANIMATION,
   ...TRANSFORM_EXTRA_ANIMATION,
   ...UI_COLORS_ANIMATION,
+  ...USER_MODIFY_ANIMATION,
   ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
 };
