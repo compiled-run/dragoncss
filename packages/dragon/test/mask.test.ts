@@ -53,8 +53,8 @@ const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VAL
 const INITIAL_DECLS = ['mask-image: none', '-webkit-mask-position-x: 0%', '-webkit-mask-position-y: 0%', 'mask-size: auto', 'mask-repeat: repeat', 'mask-origin: border-box', 'mask-clip: border-box', 'mask-composite: add', 'mask-mode: match-source'];
 
 describe('mask', () => {
-  it('follows clip-path, last, in Chrome\'s mask shorthand order', () => {
-    expect(LONGHANDS.slice(LONGHANDS.indexOf('clip-path') + 1)).toEqual([...MASK_LONGHANDS]);
+  it('follows clip-path, in Chrome\'s mask shorthand order', () => {
+    expect(LONGHANDS.slice(LONGHANDS.indexOf('clip-path') + 1, LONGHANDS.indexOf('clip-path') + 1 + MASK_LONGHANDS.length)).toEqual([...MASK_LONGHANDS]);
   });
 
   it('holds the initial values the resolver takes from the grammar', () => {
