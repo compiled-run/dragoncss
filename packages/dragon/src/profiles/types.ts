@@ -35,6 +35,15 @@ export const PROFILE_NOTES = {
 
 export type ProfileNote = keyof typeof PROFILE_NOTES;
 
+/**
+ * PNT1 outline: the native targets draw every outline style but auto, Chrome's focus ring, which they refuse by name wherever it
+ * paints, at any width (analysis/paint-values/outline.ts checkOutline). An auto outline that paints nothing (display: contents)
+ * compiles, but that proves no paint, so a native target claims no row for auto and the value check leaves it to checkOutline.
+ */
+export function nativeOutlinePending(feature: string): boolean {
+  return feature === 'outline-style:auto';
+}
+
 /** The note a target's row for a feature carries, or null: web overflow auto and scroll depend on the scrollbar environment (R3). */
 export function profileNoteFor(target: Target, feature: string): ProfileNote | null {
   return target === 'web' && /^overflow-[xy]:(auto|scroll)$/.test(feature) ? 'overlayScrollbars' : null;
@@ -79,8 +88,11 @@ export function supportedValuesFor(profile: SupportProfile, property: string): s
 }
 
 /** The value subsets of a property with a supported row in one context, sorted (T005 rec 6: alternatives in context). */
+/** Values a profile proves only inside a pattern, never offered alone as an alternative: display: -webkit-box is the line clamp (TXT2-g). */
+const PATTERN_ONLY: ReadonlySet<string> = new Set(['display:-webkit-box']);
+
 export function supportedValuesIn(profile: SupportProfile, property: string, context: string): string[] {
   return [...new Set(profile.rows
-    .filter((r) => r.status !== 'unsupported' && r.context === context && r.feature.startsWith(`${property}:`))
+    .filter((r) => r.status !== 'unsupported' && r.context === context && r.feature.startsWith(`${property}:`) && !PATTERN_ONLY.has(r.feature))
     .map((r) => r.feature.slice(property.length + 1)))].sort();
 }

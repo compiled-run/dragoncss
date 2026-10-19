@@ -7,7 +7,12 @@ import type { FontSpec, InlineChild, LayoutBox, LayoutNode, TextLeaf } from '@dr
 import { rootFontSizeOf } from './ios-layout.ts';
 import type { AnimationAnalysis } from '../analysis/animations.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
+import { analyzeDecorations } from '../analysis/text-decoration.ts';
+import { synthesizesBold, SYNTHETIC_OBLIQUE_SHEAR, synthesizesOblique } from '../analysis/computed.ts';
+import { nativeTextShadows } from '../analysis/text-shadow.ts';
+import { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES } from '../fonts/synthetic-bold.ts';
 import { canonicalJson } from '../digest.ts';
+import type { TxtWFaults } from '../faults/txt-w.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
 import type { Longhand } from '../css/properties.ts';
@@ -43,7 +48,17 @@ export type WriteKind =
   | PaintWrite
   /** A text run's font: the device takes the size from the engine's resolved input at its environment (layout.ts zoomInput). */
   | { readonly kind: 'font'; readonly font: FontSpec }
-  | { readonly kind: 'text-color'; readonly color: Rgba8 };
+  /**
+   * TXT-W: Ahem text Chrome draws in synthetic oblique; the view shears its glyphs about each glyph's baseline origin by shear (x per
+   * unit of height above the baseline), as Skia's skewX does. Advances and line boxes are the upright face's.
+   */
+  | { readonly kind: 'synthetic-oblique'; readonly shear: number }
+  | { readonly kind: 'text-color'; readonly color: Rgba8 }
+  /**
+   * TXT-W: Ahem text Chrome draws in synthetic bold; the view strokes and fills every glyph outline with a miter join (limit 4) at
+   * Skia's fake-bold width for the size it draws at (fonts/synthetic-bold.ts syntheticBoldStroke over these keys and values). Advances are the face's.
+   */
+  | { readonly kind: 'synthetic-bold'; readonly keys: readonly [number, number]; readonly values: readonly [number, number] };
 
 export type ProgramWrite = WriteKind & {
   /** The applied key in the backend's own vocabulary: what the emitter writes and what the dump reads back. */
@@ -89,11 +104,15 @@ export const VOCABULARY: { readonly [B in NativeBackend]: Vocabulary } = {
     ...paintVocabulary('uikit'),
     font: { key: 'font', technique: 'native-property', detail: 'the bundled Ahem registered with CTFontManagerRegisterFontsForURL(.process), UIFont point size = CSS px' },
     'text-color': { key: 'foregroundColor', technique: 'native-property', detail: 'DragonTextView fill colour (sRGB) for CTFontDrawGlyphs; Dragon places every glyph at the engine advances' },
+    'synthetic-oblique': { key: 'glyphShear', technique: 'native-property', detail: 'DragonTextView concatenates the shear [1 shear; 0 1] to the y-up glyph context at each baseline before CTFontDrawGlyphs' },
+    'synthetic-bold': { key: 'syntheticBold', technique: 'native-property', detail: 'DragonTextView draws with CGTextDrawingMode.fillStroke, a miter join (limit 4) and the line width Skia\'s fake bold gives the device size, in a transparency layer when the colour is translucent' },
   },
   'android-views': {
     ...paintVocabulary('android-views'),
     font: { key: 'textPaint.typeface', technique: 'native-property', detail: 'the bundled Ahem built with Font.Builder and Typeface.CustomFallbackBuilder under the Dragon id dragon:Ahem; textSize = the engine zoomed font size in device px' },
     'text-color': { key: 'textPaint.color', technique: 'native-property', detail: 'TextPaint.color (ARGB) for Canvas.drawGlyphs; Dragon places every glyph at the engine advances' },
+    'synthetic-oblique': { key: 'glyphShear', technique: 'native-property', detail: 'DragonTextView skews the canvas by Canvas.skew(-shear, 0) at each baseline before Canvas.drawGlyphs' },
+    'synthetic-bold': { key: 'syntheticBold', technique: 'native-property', detail: 'DragonTextView draws with Paint.Style.FILL_AND_STROKE, a miter join (limit 4) and the stroke width Skia\'s fake bold gives the text size' },
   },
 };
 
@@ -102,6 +121,8 @@ export const WRITE_CSS: { readonly [K in WriteKind['kind']]: readonly Longhand[]
   ...paintWriteCss(),
   font: ['font-family', 'font-size'],
   'text-color': ['color'],
+  'synthetic-oblique': ['font-style', 'font-synthesis-style'],
+  'synthetic-bold': ['font-weight', 'font-synthesis-weight'],
 };
 
 export const NATIVE_CLASSES: { readonly [B in NativeBackend]: { readonly box: string; readonly text: string } } = {
@@ -122,17 +143,21 @@ type NodePaint = {
   readonly facts: Readonly<Record<string, unknown>>;
 };
 
-function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, movingTransforms: ReadonlySet<string>): NodePaint[] {
+function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, movingTransforms: ReadonlySet<string>, plants: TextPlants): NodePaint[] {
   const elements = new Map<string, ResolvedElement>();
-  const texts = new Map<string, ResolvedText>();
+  const texts = new Map<string, OwnedText>();
   const walk = (el: ResolvedElement): void => {
     elements.set(el.element.address, el);
     for (const c of el.children) {
       if (c.kind === 'element') walk(c);
-      else texts.set(c.node.address, c);
+      else texts.set(c.node.address, { text: c, owner: el });
     }
   };
   walk(resolved);
+  // TDEC-b: the decorations each text leaf draws, which the text-decoration module writes on the leaf's container box.
+  const decorations = analyzeDecorations(resolved).applied;
+  // TXT-FX: the shadows each text leaf draws, which the text-shadow module writes on the leaf's container box.
+  const textShadows = nativeTextShadows(resolved);
   const out: NodePaint[] = [];
   const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8, ancestorMoves: boolean): void => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
@@ -141,7 +166,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
-    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves });
+    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, decorations, textShadows });
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: clipsChildren(b), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
@@ -157,7 +182,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   // container's view, in tree order. Inline boxes are unpainted (their decorations are INL1b) and a <br> draws nothing.
   const inline = (c: InlineChild, container: string): void => {
     if (c.kind === 'text') {
-      out.push(textPaint(c, container, texts));
+      out.push(textPaint(c, container, texts, plants));
       return;
     }
     // The dump schema (native-dump.ts) knows element, text and anonymous nodes: an inline box and a <br> are element nodes. Its view
@@ -173,12 +198,24 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   return out;
 }
 
-function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, ResolvedText>): NodePaint {
-  const r = texts.get(t.id);
-  if (r === undefined) throw new ProgramError(`${t.id}: no resolved text for the text leaf`);
-  const color = r.props.get('color');
+/** A resolved text and the element whose computed font it is drawn in. */
+type OwnedText = { readonly text: ResolvedText; readonly owner: ResolvedElement };
+
+/** The TXT-W plants the lowering reads: the synthetic bold from 700 instead of 600 or never stroked, and the oblique never sheared. */
+export type TextPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked' | 'ahemObliqueUnsheared'>;
+const NO_TEXT_PLANTS: TextPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false };
+
+function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, OwnedText>, plants: TextPlants): NodePaint {
+  const owned = texts.get(t.id);
+  if (owned === undefined) throw new ProgramError(`${t.id}: no resolved text for the text leaf`);
+  const color = owned.text.props.get('color');
   if (color === undefined) throw new ProgramError(`${t.id}: color did not resolve`);
-  return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes: [{ kind: 'font', font: t.font }, { kind: 'text-color', color: colorChannels(color.value, t.id) }], facts: {} };
+  const writes: WriteKind[] = [{ kind: 'font', font: t.font }, { kind: 'text-color', color: colorChannels(color.value, t.id) }];
+  // Native draws only Ahem (a real face is refused on native), whose one regular face Chrome shears for a slope of 14deg and up
+  // and emboldens from weight 600 (both together are refused, computed-checks.ts syntheticTextFont).
+  if (t.font.family === 'Ahem' && synthesizesOblique(owned.owner.props) && !plants.ahemObliqueUnsheared) writes.push({ kind: 'synthetic-oblique', shear: SYNTHETIC_OBLIQUE_SHEAR });
+  if (t.font.family === 'Ahem' && synthesizesBold(owned.owner.props, plants.ahemSyntheticBoldFrom700 ? 700 : 600) && !plants.ahemBoldUnstroked) writes.push({ kind: 'synthetic-bold', keys: SYNTHETIC_BOLD_KEYS, values: SYNTHETIC_BOLD_VALUES });
+  return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes, facts: {} };
 }
 
 function toBackend(backend: NativeBackend, root: LayoutBox, rootFontSize: number, paint: readonly NodePaint[]): NativeProgram {
@@ -232,8 +269,8 @@ export function movingTransforms(cases: readonly (ResolvedElement | null)[], ani
 }
 
 /** Both backends' programs of one case, from one shared layout tree and one paint lowering. */
-export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set()): { readonly [B in NativeBackend]: NativeProgram } {
-  const paint = sharedPaint(root, resolved, images, moving);
+export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set(), plants: TextPlants = NO_TEXT_PLANTS): { readonly [B in NativeBackend]: NativeProgram } {
+  const paint = sharedPaint(root, resolved, images, moving, plants);
   const rootFontSize = rootFontSizeOf(resolved);
   return { uikit: toBackend('uikit', root, rootFontSize, paint), 'android-views': toBackend('android-views', root, rootFontSize, paint) };
 }

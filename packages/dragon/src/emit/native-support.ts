@@ -127,8 +127,8 @@ public func dragonMetricUnits(head: [UInt8], hhea: [UInt8], hmtx: [UInt8], cmap:
 }
 
 /// The raw data as the translated measurer's FontData.
-public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double], xHeight: Double, capHeight: Double, zeroAdvance: Double) -> FontData {
-  return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances), xHeight, capHeight, zeroAdvance)
+public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double], xHeight: Double, capHeight: Double, zeroAdvance: Double, ellipsisAdvance: Double) -> FontData {
+  return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances), xHeight, capHeight, zeroAdvance, ellipsisAdvance)
 }
 
 /// The bridge self-check: the raw data read from the bundled font equal the Ahem constants of the translated engine.
@@ -142,6 +142,7 @@ public func dragonSelfCheck(_ d: FontData) -> [String] {
   if d.xHeight != want.xHeight { out.append("xHeight \(d.xHeight), Ahem \(want.xHeight)") }
   if d.capHeight != want.capHeight { out.append("capHeight \(d.capHeight), Ahem \(want.capHeight)") }
   if d.zeroAdvance != want.zeroAdvance { out.append("zeroAdvance \(d.zeroAdvance), Ahem \(want.zeroAdvance)") }
+  if d.ellipsisAdvance != want.ellipsisAdvance { out.append("ellipsisAdvance \(d.ellipsisAdvance), Ahem \(want.ellipsisAdvance)") }
   let cps = try! text_coveredCodePoints().items
   if d.advances.items.count != want.advances.items.count { out.append("\(d.advances.items.count) advances, Ahem \(want.advances.items.count)") }
   for (k, cp) in cps.enumerated() where k < d.advances.items.count && k < want.advances.items.count {
@@ -236,6 +237,10 @@ public final class DragonBoxView: UIView, DragonNodeView {
   public var dragonReplacedContent: [Double]? = nil
   public var dragonReplacedDest: [Double]? = nil
   public var dragonReplacedDrawn: [Double]? = nil
+  /// Whether the box paints its own decorations (visibility, T150a); set only by dragonVisibility. The view itself is never hidden.
+  public var dragonVisible = true
+  /// The text views whose runs this element's visibility governs (its own and its anonymous boxes'), from DragonTree.textNode.
+  public var dragonTextLeaves: [DragonTextView] = []
 ${boxMembers('uikit')}  public init(dragonId: String, kind: String, parent: String?) {
     self.dragonId = dragonId
     self.dragonKind = kind
@@ -260,7 +265,8 @@ ${boxMembers('uikit')}  public init(dragonId: String, kind: String, parent: Stri
 
 /// One engine line of a text node, as Dragon places it: the line text and its glyph ids, each glyph's origin in device px from the
 /// view's left (the engine's advances), the run's left and width in LU (1/64 device px) from the view's left, the line box top and
-/// the baseline in device px from the view's top, and the line's UTF-16 offsets in the node's text.
+/// the baseline in device px from the view's top, and the line's UTF-16 offsets in the node's text. A truncated line (TXT2-f) also
+/// carries its ellipsis glyphs and their origins, drawn at the ellipsis font's instance size in device px (0 when it has none).
 public struct DragonLineSpec {
   public let text: String
   public let glyphs: [CGGlyph]
@@ -271,6 +277,9 @@ public struct DragonLineSpec {
   public let baseline: Double
   public let start: Int
   public let end: Int
+  public let ellipsisGlyphs: [CGGlyph]
+  public let ellipsisXs: [Double]
+  public let ellipsisSize: Double
 }
 
 /// Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink.
@@ -308,6 +317,10 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonColor = DragonRGBA8(0, 0, 0, 255)
   public private(set) var dragonTextColor: UIColor? = nil
   public private(set) var dragonFont: UIFont? = nil
+  /// TXT-W: Skia's fake-bold (size, scale) keys and values when Chrome draws this text in synthetic bold, else nil.
+  public private(set) var dragonSyntheticBold: (keys: [Double], values: [Double])? = nil
+  /// TXT-W: the synthetic oblique's shear (x per unit of height above the baseline), 0 for upright glyphs; Chrome's is Skia's skewX(-1/4).
+  public private(set) var dragonGlyphShear: Double = 0
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
   private let glyphLayer = DragonGlyphLayer()
@@ -336,6 +349,29 @@ public final class DragonTextView: UIView, DragonNodeView {
     accessibilityLabel = text
   }
 
+  /// The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's.
+  public func dragonSetGlyphShear(_ shear: Double) {
+    dragonGlyphShear = shear
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// The synthetic bold from the program: every glyph outline is stroked and filled; advances are the face's.
+  public func dragonSetSyntheticBold(keys: [Double], values: [Double]) {
+    dragonSyntheticBold = (keys, values)
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// Skia's fake-bold stroke width in device px at a size in device px (SkFloatInterpFunc, then size * scale, in Float); 0 when upright.
+  func dragonBoldStroke(_ size: Double) -> Double {
+    guard let b = dragonSyntheticBold, b.keys.count == 2, b.values.count == 2 else { return 0 }
+    let s = Float(size), k0 = Float(b.keys[0]), k1 = Float(b.keys[1]), v0 = Float(b.values[0]), v1 = Float(b.values[1])
+    let f: Float
+    if s <= k0 { f = v0 } else if s > k1 { f = v1 } else { let t: Float = (s - k0) / (k1 - k0); let d: Float = (v1 - v0) * t; f = v0 + d }
+    return Double(s * f)
+  }
+
   /// The engine's data at the device scale: the instance font and the placed lines.
   public func dragonConfigure(font: UIFont, lines: [DragonLineSpec], scale: Double) {
     dragonFont = font
@@ -357,13 +393,26 @@ public final class DragonTextView: UIView, DragonNodeView {
   func dragonInkFrame() -> CGRect {
     var r = bounds
     if let font = dragonFont {
-      let box = CTFontGetBoundingBox(font as CTFont)
-      for l in specs where !l.glyphs.isEmpty {
-        guard let lo = l.xs.min(), let hi = l.xs.max() else { continue }
-        let y = CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale)
-        let x0 = CGFloat((lo + dragonGlyphPlantDevicePx) / scale) + box.minX
-        let x1 = CGFloat((hi + dragonGlyphPlantDevicePx) / scale) + box.maxX
-        r = r.union(CGRect(x: x0, y: y - box.maxY, width: x1 - x0, height: box.height))
+      // A sheared glyph's ink reaches shear times its height above (right) and below (left) the baseline.
+      let upright = CTFontGetBoundingBox(font as CTFont)
+      let k = CGFloat(dragonGlyphShear)
+      let box = CGRect(x: upright.minX + min(k * upright.minY, k * upright.maxY), y: upright.minY, width: upright.width + abs(k) * upright.height, height: upright.height)
+      func y(_ l: DragonLineSpec) -> CGFloat { return CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale) }
+      func ink(_ xs: [Double], _ y: CGFloat, _ b: CGRect) {
+        guard let lo = xs.min(), let hi = xs.max() else { return }
+        let x0 = CGFloat((lo + dragonGlyphPlantDevicePx) / scale) + b.minX
+        let x1 = CGFloat((hi + dragonGlyphPlantDevicePx) / scale) + b.maxX
+        r = r.union(CGRect(x: x0, y: y - b.maxY, width: x1 - x0, height: b.height))
+      }
+      // A fake-bold stroke reaches past the outline by at most its miter limit (4) times half its width.
+      func grown(_ b: CGRect, _ sizeDevicePx: Double) -> CGRect {
+        let h = CGFloat(2 * dragonBoldStroke(sizeDevicePx) / scale)
+        return b.insetBy(dx: -h, dy: -h)
+      }
+      for l in specs {
+        ink(l.xs, y(l), grown(box, Double(font.pointSize) * scale))
+        let k = CGFloat(l.ellipsisSize / scale) / font.pointSize
+        ink(l.ellipsisXs, y(l), grown(CGRect(x: box.minX * k, y: box.minY * k, width: box.width * k, height: box.height * k), l.ellipsisSize))
       }
     }
     let s = CGFloat(scale)
@@ -381,23 +430,62 @@ public final class DragonTextView: UIView, DragonNodeView {
     ctx.setAllowsFontSubpixelPositioning(true)
     ctx.setShouldSubpixelPositionFonts(true)
     ctx.setShouldSubpixelQuantizeFonts(false)
-    ctx.setFillColor(color.cgColor)
-    for l in specs where !l.glyphs.isEmpty {
+    // TXT-W: Skia strokes and fills a fake-bold outline as one path, so a translucent colour is drawn opaque in a layer at its alpha. One
+    // layer covers the run while Chrome composites each glyph alone, so the compiler refuses a translucent synthetic bold
+    // (computed-checks.ts); the layer keeps stroke and fill from blending twice.
+    let bold = dragonSyntheticBold != nil
+    let alpha = color.cgColor.alpha
+    let paint = bold ? (color.cgColor.copy(alpha: 1) ?? color.cgColor) : color.cgColor
+    if bold && alpha < 1 {
+      ctx.setAlpha(alpha)
+      ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+    }
+    ctx.setFillColor(paint)
+    ctx.setStrokeColor(paint)
+    // y is up from the baseline here: a fake-bold run is each glyph's outline at its origin, stroked with a miter join and filled.
+    func drawRun(_ f: CTFont, _ glyphs: [CGGlyph], _ at: [CGPoint], _ sizeDevicePx: Double) {
+      let w = dragonBoldStroke(sizeDevicePx)
+      if w <= 0 {
+        CTFontDrawGlyphs(f, glyphs, at, glyphs.count, ctx)
+        return
+      }
+      let outline = CGMutablePath()
+      for (g, p) in zip(glyphs, at) {
+        var move = CGAffineTransform(translationX: p.x, y: p.y)
+        if let path = CTFontCreatePathForGlyph(f, g, &move) { outline.addPath(path) }
+      }
+      ctx.addPath(outline)
+      ctx.setLineWidth(CGFloat(w / scale))
+      ctx.setLineJoin(.miter)
+      ctx.setMiterLimit(4)
+      ctx.drawPath(using: .fillStroke)
+    }
+    for l in specs {
       ctx.saveGState()
       ctx.textMatrix = .identity
       ctx.translateBy(x: 0, y: CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale))
       ctx.scaleBy(x: 1, y: -1)
+      // y is up from the baseline here and every glyph origin is at y 0, so the shear moves only the outlines.
+      if dragonGlyphShear != 0 { ctx.concatenate(CGAffineTransform(a: 1, b: 0, c: CGFloat(dragonGlyphShear), d: 1, tx: 0, ty: 0)) }
       let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
-      CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx)
+      if !l.glyphs.isEmpty { drawRun(ct, l.glyphs, positions, Double(font.pointSize) * scale) }
+      if !l.ellipsisGlyphs.isEmpty {
+        let dots = l.ellipsisXs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
+        drawRun(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisSize)
+      }
       ctx.restoreGState()
     }
+    if bold && alpha < 1 { ctx.endTransparencyLayer() }
   }
 
   public func dragonApplied() -> DumpJsonObject {
-    return [
+    var out: DumpJsonObject = [
       ("font", dragonFont.map { DumpJson.object([("name", .string($0.fontName)), ("pointSize", .number(Double($0.pointSize)))]) } ?? .null),
       ("foregroundColor", dragonColorJson(dragonTextColor)),
     ]
+    if dragonGlyphShear != 0 { out.append(("glyphShear", .number(dragonGlyphShear))) }
+    if let b = dragonSyntheticBold { out.append(("syntheticBold", .object([("keys", .array(b.keys.map { DumpJson.number($0) })), ("values", .array(b.values.map { DumpJson.number($0) }))]))) }
+    return out
   }
 }
 `;
@@ -460,7 +548,9 @@ public final class DragonBridge {
     }
     guard let os2Data = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableOS2), []) as Data?, let locaData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableLoca), []) as Data?, let glyfData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableGlyf), []) as Data? else { fatalError("dragon bridge: OS/2, loca or glyf is missing") }
     let units = dragonMetricUnits(head: [UInt8](headData), hhea: hhea, hmtx: hmtx, cmap: cmap, os2: [UInt8](os2Data), loca: [UInt8](locaData), glyf: [UInt8](glyfData))
-    data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance)
+    // The ellipsis text-overflow draws (U+2026), measured only when the font maps it.
+    let ellipsis = dragonGlyph(cmap: cmap, 0x2026)
+    data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance, ellipsisAdvance: ellipsis == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, ellipsis))
     selfCheck = dragonSelfCheck(data)
     layoutShaper = DragonBridge.shaper
     fontDataMeasurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
@@ -538,7 +628,7 @@ public final class DragonTree {
   private var parents: [String: String?] = [:]
   /// Per text view: each line's half-leading (its content top below the line top, INL1a: it differs by line), and the view's
   /// one ascent and descent.
-  private var textMetrics: [String: (halfLeadings: [Double], ascent: Double, descent: Double)] = [:]
+  private var textMetrics: [String: (topsLU: [Double], ascent: Double, descent: Double)] = [:]
   /// Each inline box's fragments (INL1a): edges relative to the box's own snapped edges, and the line's baseline from the fragment top.
   private var inlineLines: [String: [(edges: [Double], baseline: Double)]] = [:]
   private var hosts: [String: String] = [:]
@@ -561,6 +651,12 @@ public final class DragonTree {
   public func textNode(_ id: String, parent: String?, kind: String) -> DragonTextView {
     let v = DragonTextView(dragonId: id, kind: kind, parent: parent)
     views[id] = v
+    // Visibility (T150a): the run follows its element, through an anonymous box, which inherits the element's value.
+    var owner = parent.flatMap { views[$0] as? DragonBoxView }
+    if let o = owner, o.dragonKind == "anonymous" { owner = o.dragonParent.flatMap { views[$0] as? DragonBoxView } }
+    guard let o = owner else { fatalError("dragon: text \(id) has no built box \(parent ?? "nil") to take its visibility from") }
+    o.dragonTextLeaves.append(v)
+    v.isHidden = !o.dragonVisible
     return v
   }
 
@@ -578,7 +674,8 @@ public final class DragonTree {
     let boxes = ok.boxes.items
     let snapped = try snap_snapEdges(ok.boxes).items
     let abs = try layout_absoluteRects(ok.boxes)
-    let zoomed = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
+    // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
+    let zoomed = try lineClamp_clampedInput(try layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     var zBoxes: [String: LayoutBox] = [:]
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
@@ -650,7 +747,7 @@ public final class DragonTree {
       if z.position.description != "absolute" { return nil }
       var at = zParent[id]
       while let a = at, let st = zStyles[a], st.position.description == "static" { at = zParent[a] }
-      guard let a = at else { return units_fromCssPx(zoomed.viewport.width) }
+      guard let a = at else { return try units_fromCssPx(zoomed.viewport.width) }
       guard let st = zStyles[a], let r = rects[a] else { fatalError("dragon: the containing block \(a) of \(id) is not placed") }
       let bor = try box_resolveBorder(st, zoomed.devicePixelRatio)
       return r.width - bor.left - bor.right
@@ -748,51 +845,98 @@ public final class DragonTree {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       let size = try units_platformFontSize(leaves[li].font.size)
       var specs: [DragonLineSpec] = []
-      var viewMetrics: (halfLeadings: [Double], ascent: Double, descent: Double)? = nil
+      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
+      // points and glyph pens in zoomed px from the root.
+      var geometry: [[Double]] = []
+      var geometryCps: [[Double]] = []
+      var geometryPens: [[Double]] = []
+      var viewMetrics: (topsLU: [Double], ascent: Double, descent: Double)? = nil
       var firstBaselineOffset: Double? = nil
-      for line in placed {
-        guard let piece = line.pieces.items.first(where: { Int($0.leaf) == li }) else { continue }
-        // One font per text view: every line's ascent and descent are the view's; its content top below the line top is the line's.
-        let halfLeading = (piece.top - line.top) / lu
-        if let m = viewMetrics, m.ascent != piece.ascent / lu || m.descent != piece.descent / lu { fatalError("dragon: \(id): line ascent \(piece.ascent / lu) and descent \(piece.descent / lu) differ from the text view's \(m.ascent) and \(m.descent)") }
-        viewMetrics = ((viewMetrics?.halfLeadings ?? []) + [halfLeading], piece.ascent / lu, piece.descent / lu)
-        let k = specs.count
-        if k >= pieces.count { fatalError("dragon: \(id): the engine's breaks give more lines than its layout (\(pieces.count))") }
-        let (i, r) = pieces[k]
-        if piece.width != r.width { fatalError("dragon: \(id) line \(k): the engine's break gives width \(piece.width) LU, its layout \(r.width) LU") }
-        guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(r.id)") }
-        let top = try units_snapEdge(a.y - (piece.top - line.top))
-        var baseline = snapped[i].top + piece.ascent / lu
-        // The single-run-baseline plant: every line takes the first line's baseline below its line top.
-        if let f = firstBaselineOffset, dragonSingleRunBaselinePlant != 0 { baseline = top + f } else if firstBaselineOffset == nil { firstBaselineOffset = baseline - top }
-        // Dragon places every glyph: the pen starts at the engine's run left. Shaped, the glyph ids and advances are HarfBuzz's for
-        // the piece (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit advance /
-        // unitsPerEm, summed in float as textAdvanceAt does.
-        let xLU = a.x - e[0] * lu
-        let shown = Array(scalars[Int(piece.start)..<Int(piece.visibleEnd)])
+      // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
+      // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
+      // advance / unitsPerEm, summed in float as textAdvanceAt does.
+      func glyphRun(_ text: JsString, _ font: TextFont, _ from: Double, _ to: Double, _ x: Double, _ shifts: [Double], _ what: String) throws -> (glyphs: [CGGlyph], xs: [Double]) {
+        // A justified line (text-align: justify) moves each glyph right by its code point's shift, the expansions before it.
+        func shift(_ c: Int) -> Double { return shifts.isEmpty ? 0 : shifts[c] }
         var glyphs: [CGGlyph] = []
         var xs: [Double] = []
+        if from >= to { return (glyphs, xs) }
         if bridge.shaped {
-          let pg = try shaping_pieceGlyphs(measurer, leaves[li].text, try inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
-          guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) line \(k): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
+          let pg = try shaping_pieceGlyphs(measurer, text, font, from, to)
+          guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) \(what): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
           for (j, gid) in g.glyphs.items.enumerated() {
             glyphs.append(CGGlyph(dragonCheckedInt(gid, "\(id) glyph id")))
-            xs.append(xLU / lu + g.xs.items[j])
+            xs.append(x + g.xs.items[j] + shift(dragonCheckedInt(g.chars.items[j], "\(id) glyph code point")))
           }
         } else {
+          let runSize = try units_platformFontSize(font.size)
+          // Letter and word spacing follow each glyph as the engine adds them (text.ts letterSpacingAfter and wordSpacingAfter, 16.16).
+          let spacing16 = try units_textRunLayoutUnit(font.letterSpacing)
+          let word16 = try units_textRunLayoutUnit(font.wordSpacing)
           var pen: Float = 0
-          for sc in shown {
+          for (n, sc) in Array(text.description.unicodeScalars)[Int(from)..<Int(to)].enumerated() {
             let gid = bridge.glyph(Int(sc.value))
             glyphs.append(CGGlyph(gid))
-            xs.append(xLU / lu + Double(pen))
-            pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
+            xs.append(x + Double(pen) + shift(n))
+            let spacing = try text_letterSpacingAfter(Double(sc.value), spacing16) + text_wordSpacingAfter(Double(sc.value), word16)
+            pen = pen + Float(runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm) + Float(spacing / 65536)
           }
         }
-        specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: glyphs, xs: xs, xLU: xLU, widthLU: piece.width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end))))
+        return (glyphs, xs)
+      }
+      let leafFont = try inline_leafFontOf(leaves[li])
+      // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
+      for line in placed {
+        for piece in line.pieces.items where Int(piece.leaf) == li {
+        // One font per text view: every line's ascent and descent are the view's; its content top below the view top is the line's.
+        if let m = viewMetrics, m.ascent != piece.ascent / lu || m.descent != piece.descent / lu { fatalError("dragon: \(id): line ascent \(piece.ascent / lu) and descent \(piece.descent / lu) differ from the text view's \(m.ascent) and \(m.descent)") }
+        // TXT2-f: a truncated piece is two fragments, its whole run unpainted and then its painted part (inline.ts collectFragments);
+        // the line's ellipsis follows the leaf it names, on the line's baseline in the line's font (truncate.ts).
+        let widths = piece.truncated ? [piece.width, piece.truncatedWidth] : [piece.width]
+        let ellipsis = line.ellipsis.flatMap { Int($0.leaf) == li ? $0 : nil }
+        for (n, width) in widths.enumerated() {
+          let k = specs.count
+          if k >= pieces.count { fatalError("dragon: \(id): the engine's breaks give more lines than its layout (\(pieces.count))") }
+          let (i, r) = pieces[k]
+          if width != r.width { fatalError("dragon: \(id) line \(k): the engine's break gives width \(width) LU, its layout \(r.width) LU") }
+          guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(r.id)") }
+          // The content top in LU below the view's snapped top, unsnapped like xLU: an atomic inline can put it off the device px grid.
+          viewMetrics = ((viewMetrics?.topsLU ?? []) + [a.y - e[1] * lu], piece.ascent / lu, piece.descent / lu)
+          let top = try units_snapEdge(a.y - (piece.top - line.top))
+          var baseline = snapped[i].top + piece.ascent / lu
+          // The single-run-baseline plant: every line takes the first line's baseline below its line top.
+          if let f = firstBaselineOffset, dragonSingleRunBaselinePlant != 0 { baseline = top + f } else if firstBaselineOffset == nil { firstBaselineOffset = baseline - top }
+          let xLU = a.x - e[0] * lu
+          let painted = n == widths.count - 1
+          let paintEnd = painted ? piece.paintEnd : piece.start
+          let run = try glyphRun(leaves[li].text, leafFont, piece.start, paintEnd, xLU / lu, piece.shifts.items, "line \(k)")
+          var dots: (glyphs: [CGGlyph], xs: [Double]) = ([], [])
+          var dotsSize: Double = 0
+          if painted, let el = ellipsis {
+            dots = try glyphRun(el.text, el.font, 0, Double(el.text.description.unicodeScalars.count), (xLU + el.x - piece.x) / lu, [], "ellipsis")
+            dotsSize = try units_platformFontSize(el.font.size)
+          }
+          let shown = Array(scalars[Int(piece.start)..<Int(paintEnd)])
+          // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
+          if painted {
+            geometry.append([a.x / lu, width / lu, a.y / lu])
+            geometryCps.append(shown.map { Double($0.value) })
+            geometryPens.append(run.xs.map { $0 + e[0] })
+          }
+          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize))
+        }
+        }
       }
       if specs.count != pieces.count { fatalError("dragon: \(id): the engine's breaks give \(specs.count) lines, its layout \(pieces.count)") }
       textMetrics[id] = viewMetrics
       tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(size / s)), lines: specs, scale: s)
+      // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
+      // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
+      if let cv = views[pId] as? DragonBoxView, let strut = p.strut, let m = viewMetrics {
+        var boxFonts: [String: [Double]] = [:]
+        for (b, ib) in ifc.boxes.items.enumerated() { boxFonts[ib.id.description] = [ifc.boxMetrics.items[b].ascent / lu, ifc.boxMetrics.items[b].ascent / lu, ib.font.size] }
+        dragonAfterText(cv, tv, DragonTextGeometry(id: id, lines: geometry, cps: geometryCps, pens: geometryPens, textFont: [m.ascent, m.ascent, leaves[li].font.size], strutFont: [ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size], boxFonts: boxFonts, origin: [e[0], e[1]], scale: s))
+      }
     }
     // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
     inlineLines = [:]
@@ -808,7 +952,7 @@ public final class DragonTree {
       var offsets: [Double] = []
       let placedLines = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
       for line in placedLines {
-        for (k, x) in line.boxes.items.enumerated() where Int(x) == b { offsets.append(line.baseline - line.boxRects.items[k].y) }
+        for r in try inline_boxLineRects(ctx, ifc, line, Double(b)).items { offsets.append(line.baseline - r.y) }
       }
       // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
       // on no line, so its baseline is its own top.
@@ -833,10 +977,12 @@ public final class DragonTree {
       if let tv = v as? DragonTextView, !tv.specs.isEmpty {
         guard let m = textMetrics[id] else { fatalError("dragon: \(id): a text view with lines has no line metrics") }
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
-        if m.halfLeadings.count != tv.specs.count { fatalError("dragon: \(id): \(m.halfLeadings.count) line metrics for \(tv.specs.count) lines") }
+        if m.topsLU.count != tv.specs.count { fatalError("dragon: \(id): \(m.topsLU.count) line metrics for \(tv.specs.count) lines") }
         for (k, x) in tv.specs.enumerated() {
-          let top = t + x.top + m.halfLeadings[k]
-          let bottom = top + m.ascent + m.descent
+          // The content box snapped from its LU edges like left and right (snapRect): at a fractional DPR its top below the
+          // line top need not be whole device px (INL2a: an atomic inline sets the line's baseline).
+          let top = try! units_snapEdge(t * units_LU_PER_PX + m.topsLU[k])
+          let bottom = try! units_snapEdge(t * units_LU_PER_PX + m.topsLU[k] + (m.ascent + m.descent) * units_LU_PER_PX)
           let left = try! units_snapEdge(l * units_LU_PER_PX + x.xLU)
           let right = try! units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           let baseline = t + x.baseline
@@ -1033,7 +1179,7 @@ fun dragonMetricUnits(head: ByteArray, hhea: ByteArray, hmtx: ByteArray, cmap: B
 }
 
 /** The raw data as the translated measurer's FontData. */
-fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>, xHeight: Double, capHeight: Double, zeroAdvance: Double): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances), xHeight, capHeight, zeroAdvance)
+fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>, xHeight: Double, capHeight: Double, zeroAdvance: Double, ellipsisAdvance: Double): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances), xHeight, capHeight, zeroAdvance, ellipsisAdvance)
 
 /** The bridge self-check: the raw data read from the bundled font equal the Ahem constants of the translated engine. */
 fun dragonSelfCheck(d: FontData): List<String> {
@@ -1046,6 +1192,7 @@ fun dragonSelfCheck(d: FontData): List<String> {
   if (d.xHeight != want.xHeight) out.add("xHeight " + d.xHeight + ", Ahem " + want.xHeight)
   if (d.capHeight != want.capHeight) out.add("capHeight " + d.capHeight + ", Ahem " + want.capHeight)
   if (d.zeroAdvance != want.zeroAdvance) out.add("zeroAdvance " + d.zeroAdvance + ", Ahem " + want.zeroAdvance)
+  if (d.ellipsisAdvance != want.ellipsisAdvance) out.add("ellipsisAdvance " + d.ellipsisAdvance + ", Ahem " + want.ellipsisAdvance)
   val cps = text_coveredCodePoints()
   if (d.advances.size != want.advances.size) out.add("" + d.advances.size + " advances, Ahem " + want.advances.size)
   for (k in cps.indices) {
@@ -1149,6 +1296,10 @@ class DragonBoxView(ctx: Context, override val dragonId: String, override val dr
   var dragonReplacedContent: DoubleArray? = null
   var dragonReplacedDest: DoubleArray? = null
   var dragonReplacedDrawn: DoubleArray? = null
+  /** Whether the box paints its own decorations (visibility, T150a); set only by dragonVisibility. The view itself is never hidden. */
+  var dragonVisible = true
+  /** The text views whose runs this element's visibility governs (its own and its anonymous boxes'), from DragonTree.textNode. */
+  val dragonTextLeaves = ArrayList<DragonTextView>()
 ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonClipView ?: this
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
@@ -1160,9 +1311,10 @@ ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonCli
 /**
  * One engine line of a text node, as Dragon places it: the line text and its glyph ids, each glyph's origin in device px from the
  * view's left (the engine's advances), the run's left and width in LU (1/64 device px) from the view's left, the line box top and
- * baseline in device px from the view's top, and the UTF-16 offsets of the line in the node's text.
+ * baseline in device px from the view's top, and the UTF-16 offsets of the line in the node's text. A truncated line (TXT2-f) also
+ * carries its ellipsis glyphs and their origins, drawn at the ellipsis font's instance size in device px (0 when it has none).
  */
-class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int)
+class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int, val ellipsisGlyphs: IntArray, val ellipsisXs: DoubleArray, val ellipsisSize: Double)
 
 /** Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink. */
 const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0
@@ -1186,6 +1338,13 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var specs: List<DragonLineSpec> = emptyList()
     private set
+  /** TXT-W: the synthetic oblique's shear (x per unit of height above the baseline), 0 for upright glyphs; Chrome's is Skia's skewX(-1/4). */
+  var dragonGlyphShear = 0.0
+  /** TXT-W: Skia's fake-bold (size, scale) keys and values when Chrome draws this text in synthetic bold, else null. */
+  var dragonBoldKeys: DoubleArray? = null
+    private set
+  var dragonBoldValues: DoubleArray? = null
+    private set
   private var font: android.graphics.fonts.Font? = null
 
   /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
@@ -1194,6 +1353,52 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     dragonFamily = family
     dragonColor = color
     contentDescription = text
+  }
+
+  /** The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's. */
+  fun dragonSetGlyphShear(shear: Double) {
+    dragonGlyphShear = shear
+    invalidate()
+  }
+
+  /** The synthetic bold from the program: every glyph outline is stroked and filled; advances are the face's. */
+  fun dragonSetSyntheticBold(keys: DoubleArray, values: DoubleArray) {
+    dragonBoldKeys = keys
+    dragonBoldValues = values
+    dragonBoldPaints.clear()
+    invalidate()
+  }
+
+  /** Skia's fake-bold stroke width in device px at a text size in device px (SkFloatInterpFunc, then size * scale, in Float); 0 when upright. */
+  fun dragonBoldStroke(size: Float): Float {
+    val k = dragonBoldKeys ?: return 0f
+    val v = dragonBoldValues ?: return 0f
+    if (k.size != 2 || v.size != 2) return 0f
+    val k0 = k[0].toFloat()
+    val k1 = k[1].toFloat()
+    val v0 = v[0].toFloat()
+    val v1 = v[1].toFloat()
+    val f = if (size <= k0) v0 else if (size > k1) v1 else { val t: Float = (size - k0) / (k1 - k0); val d: Float = (v1 - v0) * t; v0 + d }
+    return size * f
+  }
+
+  /** The fake-bold paints made so far, by text size, so a frame draws without allocating one per run. */
+  private val dragonBoldPaints = HashMap<Float, Paint>()
+
+  /** The paint a run is drawn with: a fake-bold run strokes and fills its outlines as one path with a miter join, as Skia's fake bold. */
+  private fun dragonRunPaint(p: Paint): Paint {
+    val w = dragonBoldStroke(p.textSize)
+    if (w <= 0f) return p
+    val cached = dragonBoldPaints[p.textSize]
+    if (cached != null && cached.color == p.color && cached.typeface == p.typeface) return cached
+    val made = Paint(p).apply {
+      style = Paint.Style.FILL_AND_STROKE
+      strokeWidth = w
+      strokeJoin = Paint.Join.MITER
+      strokeMiter = 4f
+    }
+    dragonBoldPaints[p.textSize] = made
+    return made
   }
 
   /** The engine's data at the device scale: the instance text size and the placed lines. */
@@ -1209,14 +1414,23 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
   override fun onDraw(canvas: Canvas) {
     val f = font ?: return
     for (l in specs) {
-      if (l.glyphs.isEmpty()) continue
       val y = (l.baseline + DRAGON_GLYPH_PLANT_Y_DEVICE_PX).toFloat()
-      val positions = FloatArray(2 * l.glyphs.size)
-      for (k in l.glyphs.indices) {
-        positions[2 * k] = (l.xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
-        positions[2 * k + 1] = y
+      fun draw(glyphs: IntArray, xs: DoubleArray, p: Paint) {
+        if (glyphs.isEmpty()) return
+        val positions = FloatArray(2 * glyphs.size)
+        for (k in glyphs.indices) {
+          positions[2 * k] = (xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
+          positions[2 * k + 1] = 0f
+        }
+        // The origin is on the baseline (y down), so the shear moves only the outlines: x - shear * y, Skia's skewX(-shear).
+        canvas.save()
+        canvas.translate(0f, y)
+        if (dragonGlyphShear != 0.0) canvas.skew((-dragonGlyphShear).toFloat(), 0f)
+        canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, dragonRunPaint(p))
+        canvas.restore()
       }
-      canvas.drawGlyphs(l.glyphs, 0, positions, 0, l.glyphs.size, f, paint)
+      draw(l.glyphs, l.xs, paint)
+      if (l.ellipsisGlyphs.isNotEmpty()) draw(l.ellipsisGlyphs, l.ellipsisXs, TextPaint(paint).apply { textSize = l.ellipsisSize.toFloat() })
     }
   }
 
@@ -1225,7 +1439,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     return listOf(
       Pair("textPaint.typeface", if (face != null && face === DragonBridge.shared(context).typeface) DumpJson.Obj(listOf(Pair("typeface", DumpJson.Str("dragon:" + dragonFamily)), Pair("textSize", DumpJson.Num(paint.textSize.toDouble())))) else DumpJson.Null),
       Pair("textPaint.color", dragonColorJson(paint.color)),
-    )
+    ) + (if (dragonGlyphShear != 0.0) listOf(Pair("glyphShear", DumpJson.Num(dragonGlyphShear))) else emptyList()) + (if (dragonBoldKeys != null && dragonBoldValues != null) listOf(Pair("syntheticBold", DumpJson.Obj(listOf(Pair("keys", DumpJson.Arr(dragonBoldKeys!!.map { DumpJson.Num(it) })), Pair("values", DumpJson.Arr(dragonBoldValues!!.map { DumpJson.Num(it) })))))) else emptyList())
   }
 }
 `;
@@ -1299,7 +1513,9 @@ class DragonBridge private constructor(ctx: Context) {
       advances.add(if (gid == 0) -1.0 else dragonAdvance(hhea, hmtx, gid))
     }
     val units = dragonMetricUnits(dragonSfntTable(raw, "head"), hhea, hmtx, cmap, dragonSfntTable(raw, "OS/2"), dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
-    data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2])
+    // The ellipsis text-overflow draws (U+2026), measured only when the font maps it.
+    val ellipsis = dragonGlyph(cmap, 0x2026)
+    data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2], if (ellipsis == 0) -1.0 else dragonAdvance(hhea, hmtx, ellipsis))
     selfCheck = dragonSelfCheck(data)
     layoutShaper = shaper
     fontDataMeasurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
@@ -1376,6 +1592,7 @@ import dev.dragon.layout.PieceGlyphs_okTrue
 import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
 import dev.dragon.layout.paint_replacedPaint
+import dev.dragon.layout.TextFont
 import dev.dragon.layout.TextLeaf
 import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
@@ -1384,22 +1601,27 @@ import dev.dragon.layout.box_resolvePadding
 import dev.dragon.layout.InlineBox
 import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
+import dev.dragon.layout.inline_boxLineRects
 import dev.dragon.layout.inline_buildIfc
-import dev.dragon.layout.inline_fontOf
+import dev.dragon.layout.inline_leafFontOf
 import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
+import dev.dragon.layout.lineClamp_clampedInput
 import dev.dragon.layout.overflow_scrollRanges
 import dev.dragon.layout.ScrollRangesResult_ok
 import dev.dragon.layout.ScrollRangesResult_refused
 import dev.dragon.layout.shaping_pieceGlyphs
 import dev.dragon.layout.snap_snapEdges
+import dev.dragon.layout.text_letterSpacingAfter
+import dev.dragon.layout.text_wordSpacingAfter
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
 import dev.dragon.layout.units_platformFontSize
 import dev.dragon.layout.units_snapEdge
+import dev.dragon.layout.units_textRunLayoutUnit
 
 /** One compiled case in the app: its identity, the engine input as typed constructor calls, and the view-building function. */
 class DragonCase(
@@ -1452,6 +1674,12 @@ class DragonTree(val context: Context) {
   fun textNode(id: String, parent: String?, kind: String): DragonTextView {
     val v = DragonTextView(context, id, kind, parent)
     views[id] = v
+    // Visibility (T150a): the run follows its element, through an anonymous box, which inherits the element's value.
+    var owner = parent?.let { views[it] as? DragonBoxView }
+    if (owner != null && owner.dragonKind == "anonymous") owner = owner.dragonParent?.let { views[it] as? DragonBoxView }
+    if (owner == null) throw IllegalStateException("dragon: text " + id + " has no built box " + parent + " to take its visibility from")
+    owner.dragonTextLeaves.add(v)
+    v.visibility = if (owner.dragonVisible) android.view.View.VISIBLE else android.view.View.INVISIBLE
     return v
   }
 
@@ -1471,7 +1699,8 @@ class DragonTree(val context: Context) {
     val boxes = ok.boxes
     val snapped = snap_snapEdges(ok.boxes)
     val abs = layout_absoluteRects(ok.boxes)
-    val zoomed = layout_zoomInput(input, block_NO_ENGINE_FAULTS)
+    // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
+    val zoomed = lineClamp_clampedInput(layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     val zBoxes = HashMap<String, LayoutBox>()
     val zStyles = HashMap<String, LayoutStyle>()
     val zLeaves = ArrayList<ReplacedLeaf>()
@@ -1653,56 +1882,100 @@ class DragonTree(val context: Context) {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       val size = units_platformFontSize(leaves[li].font.size)
       val specs = ArrayList<DragonLineSpec>()
+      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
+      // points and glyph pens in zoomed px from the root.
+      val geometry = ArrayList<DoubleArray>()
+      val geometryCps = ArrayList<DoubleArray>()
+      val geometryPens = ArrayList<DoubleArray>()
       var viewMetrics: DoubleArray? = null
       var firstBaselineOffset: Double? = null
-      for (line in placed) {
-        val piece = line.pieces.firstOrNull { it.leaf.toInt() == li } ?: continue
-        // One font per text view: every line's ascent and descent are the view's; its content top below the line top is the line's.
+      // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
+      // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
+      // advance / unitsPerEm, summed in float as textAdvanceAt does.
+      fun glyphRun(text: String, font: TextFont, from: Double, to: Double, x: Double, shifts: List<Double>, what: String): Pair<IntArray, DoubleArray> {
+        // A justified line (text-align: justify) moves each glyph right by its code point's shift, the expansions before it.
+        fun shift(c: Int): Double = if (shifts.isEmpty()) 0.0 else shifts[c]
+        if (from >= to) return Pair(IntArray(0), DoubleArray(0))
+        if (bridge.shaped) {
+          val pg = shaping_pieceGlyphs(measurer, text, font, from, to)
+          val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " " + what + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
+          return Pair(IntArray(g.glyphs.size) { dragonCheckedInt(g.glyphs[it], id + " glyph id") }, DoubleArray(g.xs.size) { x + g.xs[it] + shift(dragonCheckedInt(g.chars[it], id + " glyph code point")) })
+        }
+        val runSize = units_platformFontSize(font.size)
+        val cps = text.codePoints().toArray().copyOfRange(from.toInt(), to.toInt())
+        val glyphs = IntArray(cps.size)
+        val xs = DoubleArray(cps.size)
+        // Letter and word spacing follow each glyph as the engine adds them (text.ts letterSpacingAfter and wordSpacingAfter, 16.16).
+        val spacing16 = units_textRunLayoutUnit(font.letterSpacing)
+        val word16 = units_textRunLayoutUnit(font.wordSpacing)
+        var pen = 0f
+        for ((n, cp) in cps.withIndex()) {
+          val gid = bridge.glyph(cp)
+          glyphs[n] = gid
+          xs[n] = x + pen.toDouble() + shift(n)
+          pen = pen + (runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + ((text_letterSpacingAfter(cp.toDouble(), spacing16) + text_wordSpacingAfter(cp.toDouble(), word16)) / 65536).toFloat()
+        }
+        return Pair(glyphs, xs)
+      }
+      val leafFont = inline_leafFontOf(leaves[li])
+      // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
+      for (line in placed) for (piece in line.pieces) {
+        if (piece.leaf.toInt() != li) continue
+        // One font per text view: every line's ascent and descent are the view's; its content top below the view top is the line's.
         val known = viewMetrics
         if (known != null && (known[0] != piece.ascent / lu || known[1] != piece.descent / lu)) throw IllegalStateException("dragon: " + id + ": line ascent " + (piece.ascent / lu) + " and descent " + (piece.descent / lu) + " differ from the text view's " + known[0] + " and " + known[1])
-        viewMetrics = (known ?: doubleArrayOf(piece.ascent / lu, piece.descent / lu)) + doubleArrayOf((piece.top - line.top) / lu)
-        val k = specs.size
-        if (k >= pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give more lines than its layout (" + pieces.size + ")")
-        val i = pieces[k]
-        val r = boxes[i]
-        if (piece.width != r.width) throw IllegalStateException("dragon: " + id + " line " + k + ": the engine's break gives width " + piece.width + " LU, its layout " + r.width + " LU")
-        val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + r.id)
-        val top = units_snapEdge(a.y - (piece.top - line.top))
-        var baseline = snapped[i].top + piece.ascent / lu
-        // The single-run-baseline plant: every line takes the first line's baseline below its line top.
-        val f = firstBaselineOffset
-        if (f != null && DRAGON_SINGLE_RUN_BASELINE_PLANT != 0.0) baseline = top + f else if (f == null) firstBaselineOffset = baseline - top
-        // Dragon places every glyph: the pen starts at the engine's run left. Shaped, the glyph ids and advances are HarfBuzz's for
-        // the piece (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit advance /
-        // unitsPerEm, summed in float as textAdvanceAt does.
-        val xLU = a.x - e[0] * lu
-        val from = utf16(piece.start.toInt())
-        val text = leafText.substring(from, utf16(piece.visibleEnd.toInt()))
-        val glyphs: IntArray
-        val xs: DoubleArray
-        if (bridge.shaped) {
-          val pg = shaping_pieceGlyphs(measurer, leafText, inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
-          val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " line " + k + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
-          glyphs = IntArray(g.glyphs.size) { dragonCheckedInt(g.glyphs[it], id + " glyph id") }
-          xs = DoubleArray(g.xs.size) { xLU / lu + g.xs[it] }
-        } else {
-          val cps = text.codePoints().toArray()
-          glyphs = IntArray(cps.size)
-          xs = DoubleArray(cps.size)
-          var pen = 0f
-          for ((n, cp) in cps.withIndex()) {
-            val gid = bridge.glyph(cp)
-            glyphs[n] = gid
-            xs[n] = xLU / lu + pen.toDouble()
-            pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
+        // TXT2-f: a truncated piece is two fragments, its whole run unpainted and then its painted part (inline.ts collectFragments);
+        // the line's ellipsis follows the leaf it names, on the line's baseline in the line's font (truncate.ts).
+        val widths = if (piece.truncated) doubleArrayOf(piece.width, piece.truncatedWidth) else doubleArrayOf(piece.width)
+        val ellipsis = line.ellipsis?.takeIf { it.leaf.toInt() == li }
+        for ((n, width) in widths.withIndex()) {
+          val k = specs.size
+          if (k >= pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give more lines than its layout (" + pieces.size + ")")
+          val i = pieces[k]
+          val r = boxes[i]
+          if (width != r.width) throw IllegalStateException("dragon: " + id + " line " + k + ": the engine's break gives width " + width + " LU, its layout " + r.width + " LU")
+          val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + r.id)
+          // The content top in LU below the view's snapped top, unsnapped like xLU: an atomic inline can put it off the device px grid.
+          viewMetrics = (viewMetrics ?: doubleArrayOf(piece.ascent / lu, piece.descent / lu)) + doubleArrayOf(a.y - e[1] * lu)
+          val top = units_snapEdge(a.y - (piece.top - line.top))
+          var baseline = snapped[i].top + piece.ascent / lu
+          // The single-run-baseline plant: every line takes the first line's baseline below its line top.
+          val f = firstBaselineOffset
+          if (f != null && DRAGON_SINGLE_RUN_BASELINE_PLANT != 0.0) baseline = top + f else if (f == null) firstBaselineOffset = baseline - top
+          val xLU = a.x - e[0] * lu
+          val painted = n == widths.size - 1
+          val paintEnd = if (painted) piece.paintEnd else piece.start
+          val from = utf16(piece.start.toInt())
+          val text = leafText.substring(from, utf16(paintEnd.toInt()))
+          val run = glyphRun(leafText, leafFont, piece.start, paintEnd, xLU / lu, piece.shifts, "line " + k)
+          var dots = Pair(IntArray(0), DoubleArray(0))
+          var dotsSize = 0.0
+          if (painted && ellipsis != null) {
+            dots = glyphRun(ellipsis.text, ellipsis.font, 0.0, ellipsis.text.codePointCount(0, ellipsis.text.length).toDouble(), (xLU + ellipsis.x - piece.x) / lu, emptyList(), "ellipsis")
+            dotsSize = units_platformFontSize(ellipsis.font.size)
           }
+          // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
+          if (painted) {
+            geometry.add(doubleArrayOf(a.x / lu, width / lu, a.y / lu))
+            geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
+            geometryPens.add(DoubleArray(run.second.size) { run.second[it] + e[0] })
+          }
+          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize))
         }
-        specs.add(DragonLineSpec(text, glyphs, xs, xLU, piece.width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt())))
       }
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)
       val vm = viewMetrics
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
       tv.dragonConfigure(bridge, size.toFloat(), specs)
+      // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
+      // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
+      val cv = views[pId] as? DragonBoxView
+      val strut = p.strut
+      if (cv != null && strut != null && vm != null) {
+        val boxFonts = HashMap<String, DoubleArray>()
+        for ((b, ib) in ifc.boxes.withIndex()) boxFonts[ib.id] = doubleArrayOf(ifc.boxMetrics[b].ascent / lu, ifc.boxMetrics[b].ascent / lu, ib.font.size)
+        dragonAfterText(cv, tv, DragonTextGeometry(id, geometry, geometryCps, geometryPens, doubleArrayOf(vm[0], vm[0], leaves[li].font.size), doubleArrayOf(ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size), boxFonts, doubleArrayOf(e[0], e[1]), scale))
+      }
     }
     // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
     inlineLines.clear()
@@ -1723,7 +1996,7 @@ class DragonTree(val context: Context) {
       val offsets = ArrayList<Double>()
       val placedLines = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
       for (line in placedLines) {
-        for (k in line.boxes.indices) if (line.boxes[k].toInt() == b) offsets.add(line.baseline - line.boxRects[k].y)
+        for (r in inline_boxLineRects(ctx, ifc, line, b.toDouble())) offsets.add(line.baseline - r.y)
       }
       // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
       // on no line, so its baseline is its own top.
@@ -1751,8 +2024,10 @@ class DragonTree(val context: Context) {
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
         if (m.size != 2 + v.specs.size) throw IllegalStateException("dragon: " + id + ": " + (m.size - 2) + " line metrics for " + v.specs.size + " lines")
         for ((k, x) in v.specs.withIndex()) {
-          val top = t + x.top + m[2 + k]
-          val bottom = top + m[0] + m[1]
+          // The content box snapped from its LU edges like left and right (snapRect): at a fractional DPR its top below the
+          // line top need not be whole device px (INL2a: an atomic inline sets the line's baseline).
+          val top = units_snapEdge(t * units_LU_PER_PX + m[2 + k])
+          val bottom = units_snapEdge(t * units_LU_PER_PX + m[2 + k] + (m[0] + m[1]) * units_LU_PER_PX)
           val left = units_snapEdge(l * units_LU_PER_PX + x.xLU)
           val right = units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           val baseline = t + x.baseline
@@ -1890,6 +2165,7 @@ function paintStagesSource(backend: NativeBackend): string {
   const stages = PAINT_STAGES.map((st) => `  // ${st}\n${calls(stagePainters(backend, st), ios ? 'v, ctx, shape' : 'v, canvas, shape')}`).join('');
   const after = calls(paints.flatMap((m) => (m.native.afterLayout === null ? [] : [m.native.afterLayout])), 'v, shape, scale');
   const applied = paints.flatMap((m) => (m.native.applied === null ? [] : [m.native.applied]));
+  const afterText = calls(paints.flatMap((m) => (m.native.afterText === undefined ? [] : [m.native.afterText])), 'v, tv, g');
   const rounded = soleHook(backend, 'roundedPath');
   const container = soleHook(backend, 'container');
   if (ios) {
@@ -1898,11 +2174,32 @@ function paintStagesSource(backend: NativeBackend): string {
 /// Registration point (EMS): the box paint stages in CSS order (outer shadow, background, background layers, inset shadow, border,
 /// outline); each stage calls its paint modules' painters in registry order. backgroundColor is drawn by UIKit beneath draw(_:).
 public func dragonPaintBox(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
+  // Visibility (T150a): a hidden box paints none of its own stages.
+  if !v.dragonVisible { return }
 ${stages}}
 
 /// Registration point (EMS): after every layout, each paint module's hook in registry order.
 public func dragonAfterLayout(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
 ${after}}
+
+/// TDEC-b: the engine geometry of one text view after the text pass: per line the piece's left, width and top in zoomed px from
+/// the root, and (TDEC-d) its shown code points and glyph pens in zoomed px from the root; the text's, the container strut's and
+/// each inline box's [float ascent, ascent, zoomed size]; the text view's absolute origin in device px; the device scale.
+public struct DragonTextGeometry {
+  public let id: String
+  public let lines: [[Double]]
+  public let cps: [[Double]]
+  public let pens: [[Double]]
+  public let textFont: [Double]
+  public let strutFont: [Double]
+  public let boxFonts: [String: [Double]]
+  public let origin: [Double]
+  public let scale: Double
+}
+
+/// Registration point (TDEC-b): after the text pass configures a text view, each paint module's after-text hook in registry order.
+public func dragonAfterText(_ v: DragonBoxView, _ tv: DragonTextView, _ g: DragonTextGeometry) {
+${afterText}}
 
 /// Registration point (EMS): a box's applied values, each paint module's readback in registry order.
 public func dragonPaintApplied(_ v: DragonBoxView) -> DumpJsonObject {
@@ -1934,11 +2231,24 @@ import dev.dragon.dump.DumpJson
  * outline); each stage calls its paint modules' painters in registry order. The ColorDrawable background is drawn beneath onDraw.
  */
 fun dragonPaintBox(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
+  // Visibility (T150a): a hidden box paints none of its own stages.
+  if (!v.dragonVisible) return
 ${stages}}
 
 /** Registration point (EMS): after every layout, each paint module's hook in registry order. */
 fun dragonAfterLayout(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
 ${after}}
+
+/**
+ * TDEC-b: the engine geometry of one text view after the text pass: per line the piece's left, width and top in zoomed px from the
+ * root, and (TDEC-d) its shown code points and glyph pens in zoomed px from the root; the text's, the container strut's and each
+ * inline box's [float ascent, ascent, zoomed size]; the text view's absolute origin in device px; the device scale.
+ */
+class DragonTextGeometry(val id: String, val lines: List<DoubleArray>, val cps: List<DoubleArray>, val pens: List<DoubleArray>, val textFont: DoubleArray, val strutFont: DoubleArray, val boxFonts: Map<String, DoubleArray>, val origin: DoubleArray, val scale: Double)
+
+/** Registration point (TDEC-b): after the text pass configures a text view, each paint module's after-text hook in registry order. */
+fun dragonAfterText(v: DragonBoxView, tv: DragonTextView, g: DragonTextGeometry) {
+${afterText}}
 
 /** Registration point (EMS): a box's applied values, each paint module's readback in registry order. */
 fun dragonPaintApplied(v: DragonBoxView): List<Pair<String, DumpJson>> {
@@ -1996,9 +2306,19 @@ export function checkedConversionSource(backend: NativeBackend): string {
   return backend === 'uikit' ? SWIFT_CHECKED : KOTLIN_CHECKED;
 }
 
-/** The digest of the emitted support code of a backend, recorded in the generated case headers. */
+const supportDigests = new Map<NativeBackend, string>();
+
+/**
+ * The digest of the emitted support code of a backend, recorded in the generated case headers. The support code is fixed for a
+ * build, so it is hashed once per backend: every compile's native digests read it, and rehashing was a quarter of a compile.
+ */
 export function supportDigest(backend: NativeBackend): string {
-  return sha256Hex(emitNativeSupport(backend).map((f) => `${f.path}\n${f.text}`).join('\n')).slice(0, 16);
+  let d = supportDigests.get(backend);
+  if (d === undefined) {
+    d = sha256Hex(emitNativeSupport(backend).map((f) => `${f.path}\n${f.text}`).join('\n')).slice(0, 16);
+    supportDigests.set(backend, d);
+  }
+  return d;
 }
 
 // ---------------------------------------------------------------- shared emission helpers
@@ -2033,12 +2353,12 @@ export const STYLE_FIELDS = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
-  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
+  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
   px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx',
-  fr: 'Fr', 'min-content': 'MinContent', 'max-content': 'MaxContent',
+  fr: 'Fr', 'min-content': 'MinContent', 'max-content': 'MaxContent', 'fit-content': 'FitContent',
 };
 
 /** The translated engine's union type of TrackSize (grid.ts input), the element type of a track-size array. */
@@ -2058,8 +2378,29 @@ function trackSizeValue(lang: Lang, t: TrackSizeInput, str: (s: string) => strin
   return `TrackSize_fitContent(${str('fit-content')}, ${engineValue(lang, t.limit)})`;
 }
 
+function gridLineValue(s: import('@dragon/layout').GridLine, str: (s: string) => string): string {
+  switch (s.kind) {
+    case 'auto':
+      return `GridLine_auto(${str('auto')})`;
+    case 'line':
+      return `GridLine_line(${str('line')}, ${doubleLit(s.n)})`;
+    case 'named-line':
+      return `GridLine_namedLine(${str('named-line')}, ${doubleLit(s.n)}, ${doubleLit(s.name)})`;
+    case 'span':
+      return `GridLine_span(${str('span')}, ${doubleLit(s.n)})`;
+    case 'named-span':
+      return `GridLine_namedSpan(${str('named-span')}, ${doubleLit(s.n)}, ${doubleLit(s.name)})`;
+    case 'area':
+      return `GridLine_area(${str('area')}, ${doubleLit(s.implicitName)}, ${doubleLit(s.name)})`;
+  }
+}
+
 function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string): string {
-  return s.kind === 'definite' ? `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})` : `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
+  if (s.kind === 'definite') return `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})`;
+  if (s.kind === 'auto') return `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
+  if (s.kind === 'start-line') return `GridSpan_startLine(${str('start-line')}, ${doubleLit(s.line)})`;
+  if (s.kind === 'end-line') return `GridSpan_endLine(${str('end-line')}, ${doubleLit(s.line)})`;
+  return `GridSpan_lines(${str('lines')}, ${gridLineValue(s.start, str)}, ${gridLineValue(s.end, str)})`;
 }
 
 /** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */
@@ -2073,9 +2414,15 @@ function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: 
   const g = v as import('@dragon/layout').GridContainerStyle;
   const sizes = (ts: readonly TrackSizeInput[]): string => engineArray(lang, TRACK_SIZE_UNION, true, ts.map((t) => trackSizeValue(lang, t, str)));
   const reps = (rs: readonly import('@dragon/layout').TrackRepeater[]): string => engineArray(lang, 'TrackRepeater', false, rs.map((r) => `TrackRepeater(${doubleLit(r.count)}, ${sizes(r.sizes)})`));
+  const lines = (ls: readonly number[]): string => engineArray(lang, 'Double', false, ls.map(doubleLit));
+  const autoRepeat = (r: import('@dragon/layout').GridAutoRepeat | null): string => {
+    if (r === null) return lang === 'swift' ? 'nil' : 'null';
+    const names = engineArray(lang, 'GridLineName', false, r.lineNames.map((n) => `GridLineName(${lines(n.explicit)}, ${lines(n.repeat)}, ${lines(n.implicit)})`));
+    return `GridAutoRepeat(${str(r.type)}, ${doubleLit(r.index)}, ${sizes(r.sizes)}, ${names})`;
+  };
   return `GridContainerStyle(${[
     reps(g.templateColumns), reps(g.templateRows), sizes(g.autoColumns), sizes(g.autoRows), doubleLit(g.explicitColumnCount), doubleLit(g.explicitRowCount),
-    str(g.autoFlow), g.dense ? 'true' : 'false', str(g.justifyItems),
+    autoRepeat(g.autoRepeatColumns), autoRepeat(g.autoRepeatRows), str(g.autoFlow), g.dense ? 'true' : 'false', str(g.justifyItems),
   ].join(', ')})`;
 }
 
@@ -2190,7 +2537,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   };
   const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);
   const inline = (c: import('@dragon/layout').InlineChild): string => {
-    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`;
+    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${engineValue(lang, c.wordSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)})`;
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };

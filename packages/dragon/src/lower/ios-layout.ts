@@ -13,6 +13,7 @@ import type {
   FontSpec,
   GapValue,
   InlineChild,
+  InlineSizeValue,
   InsetValue,
   JustifyContent,
   LayoutBox,
@@ -25,13 +26,21 @@ import type {
   LineStrut,
   MarginValue,
   Overflow,
+  MaxInlineSizeValue,
   MaxSizeValue,
   PaddingValue,
   Position,
   SizeValue,
   TextAlign,
+  TextIndentValue,
+  TextOverflow,
   TextLeaf,
   TextWrapMode,
+  OverflowWrap,
+  WordBreak,
+  VerticalAlignKeyword,
+  VerticalAlignValue,
+  WhiteSpaceCollapse,
 } from '@dragon/layout';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
@@ -39,6 +48,7 @@ import type { CssValue } from '../css/stylesheet.ts';
 import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
+import { lineClampOf } from '../analysis/line-clamp.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
@@ -46,7 +56,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
-import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem } from './grid-layout.ts';
+import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -113,6 +123,22 @@ function maxSize(id: string, get: Get, p: Longhand, l: Lowering): MaxSizeValue {
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | none') : lp;
 }
 
+// css-sizing-3 §3.2: width, min-width and max-width also take min-content, max-content and fit-content; the engine reads them on a
+// block-level box in block flow and refuses them elsewhere.
+const INTRINSIC_SIZE_KEYWORDS = ['min-content', 'max-content', 'fit-content'] as const;
+
+function inlineSize(id: string, get: Get, p: Longhand, l: Lowering): InlineSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && (INTRINSIC_SIZE_KEYWORDS as readonly string[]).includes(v.value)) return { kind: v.value as (typeof INTRINSIC_SIZE_KEYWORDS)[number] };
+  return size(id, get, p, l);
+}
+
+function maxInlineSize(id: string, get: Get, p: Longhand, l: Lowering): MaxInlineSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && (INTRINSIC_SIZE_KEYWORDS as readonly string[]).includes(v.value)) return { kind: v.value as (typeof INTRINSIC_SIZE_KEYWORDS)[number] };
+  return maxSize(id, get, p, l);
+}
+
 function padding(id: string, get: Get, p: Longhand, l: Lowering): PaddingValue {
   const lp = lengthPercentage(id, get, p, 'non-negative', l);
   return lp === null ? fail(id, p, get(p), 'px | % | a viewport length | a calculation') : lp;
@@ -168,6 +194,12 @@ function gap(id: string, get: Get, p: Longhand, l: Lowering): GapValue {
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | normal') : lp;
 }
 
+// css-text-3 §8.1: text-indent is a length, a percentage of the line's available width or a calculation, negative allowed.
+function textIndent(id: string, get: Get, l: Lowering): TextIndentValue {
+  const lp = lengthPercentage(id, get, 'text-indent', 'all', l);
+  return lp === null ? fail(id, 'text-indent', get('text-indent'), 'px | % | a viewport length | a calculation') : lp;
+}
+
 // css-sizing-4 §5.1: the engine takes Blink's layout ratio as raw LayoutUnits (analysis/computed-checks.ts refuses the rest).
 function aspectRatio(id: string, get: Get): AspectRatioValue {
   const v = get('aspect-ratio');
@@ -196,20 +228,29 @@ export function rootFontSizeOf(root: ResolvedElement): number {
   return px;
 }
 
-export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null): LayoutStyle {
+/**
+ * Where last baseline self-alignment lays out (GRID G3b): align-items on a grid container, align-self on a child of one. Everywhere
+ * else (a flex container or item, a block) it stays refused.
+ */
+export type LastBaselineContext = { readonly items: boolean; readonly self: boolean };
+const NO_LAST_BASELINE: LastBaselineContext = { items: false, self: false };
+
+export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null, lastBaseline: LastBaselineContext = NO_LAST_BASELINE): LayoutStyle {
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const fonts = { em: fontPx(get('font-size')), rem: rootFontSize };
-  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts);
+  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline, lineClampOf(el));
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
 
 // css-lists-3 §3: a list item without a marker is a block (Blink LayoutListItem is a LayoutBlockFlow); computed-checks.ts refuses the rest.
-function displayOfStyle(id: string, get: Get): Display {
+function displayOfStyle(id: string, get: Get, lineClamp: number): Display {
   const v = get('display');
   if (v.kind === 'keyword' && v.value === 'list-item') return 'block';
-  return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline']);
+  // TXT2-g: a line-clamp container computes to flow-root; with overflow: hidden (analysis/line-clamp.ts) it lays out as a block.
+  if (lineClamp > 0) return 'block';
+  return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid']);
 }
 
 /**
@@ -241,19 +282,39 @@ export function viewportOverflow(root: ResolvedElement, faults: CompilerFaults):
   return { source: null, overflowX: 'auto', overflowY: 'auto', direction };
 }
 
-// css-align-3 §4.2: first baseline is baseline; last baseline has no layout mapping.
-function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[]): T {
+const VERTICAL_ALIGN_KEYWORDS: readonly VerticalAlignKeyword[] = ['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom'];
+
+// CSS2 §10.8.1: only inline-level boxes read vertical-align, so every other box takes baseline, whatever it computes to.
+function verticalAlign(id: string, get: Get, l: Lowering): VerticalAlignValue {
+  const display = keywordOf(get('display'));
+  if (display !== 'inline' && display !== 'inline-block' && display !== 'inline-flex' && display !== 'inline-grid') return { kind: 'keyword', value: 'baseline' };
+  const v = get('vertical-align');
+  if (v.kind === 'keyword') return { kind: 'keyword', value: keyword(id, get, 'vertical-align', VERTICAL_ALIGN_KEYWORDS) };
+  const lp = lengthPercentage(id, get, 'vertical-align', 'all', l);
+  return lp === null ? fail(id, 'vertical-align', v, `${VERTICAL_ALIGN_KEYWORDS.join(' | ')} | px | % | a viewport length | a calculation`) : lp;
+}
+
+// css-align-3 §4.2: first baseline is baseline; last baseline has a layout mapping only where lastBaseline allows it (grid).
+function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[], lastBaseline: boolean): T {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'first baseline') return 'baseline' as T;
+  if (v.kind === 'keyword' && v.value === 'last baseline') {
+    if (lastBaseline) return 'last baseline' as T;
+    return fail(id, p, v, `${allowed.join(' | ')}; last baseline aligns grid items only`);
+  }
   return keyword(id, get, p, allowed);
 }
 
-function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }): LayoutStyle {
+/**
+ * lineClamp: N for a line-clamp container, decided in analysis from the specified display (analysis/line-clamp.ts lineClampOf), else
+ * 0; an anonymous box and a replaced element never clamp.
+ */
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0): LayoutStyle {
   const l: Lowering = { em: fonts.em, rem: fonts.rem, faults };
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
-    display: displayOfStyle(id, get),
+    display: displayOfStyle(id, get, lineClamp),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
@@ -263,11 +324,11 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     overflowY: keyword<Overflow>(id, get, 'overflow-y', OVERFLOW_VALUES),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
-    width: size(id, get, 'width', l),
+    width: inlineSize(id, get, 'width', l),
     height: size(id, get, 'height', l),
-    minWidth: size(id, get, 'min-width', l),
+    minWidth: inlineSize(id, get, 'min-width', l),
     minHeight: size(id, get, 'min-height', l),
-    maxWidth: maxSize(id, get, 'max-width', l),
+    maxWidth: maxInlineSize(id, get, 'max-width', l),
     maxHeight: maxSize(id, get, 'max-height', l),
     marginTop: margin(id, get, 'margin-top', l),
     marginRight: margin(id, get, 'margin-right', l),
@@ -290,17 +351,19 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     justifyContent: keyword<JustifyContent>(id, get, 'justify-content', [
       'normal', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'stretch', 'start', 'end', 'left', 'right',
     ]),
-    alignItems: alignKeyword<AlignItems>(id, get, 'align-items', ALIGN_ITEMS),
-    alignSelf: alignKeyword<AlignSelf>(id, get, 'align-self', ['auto', ...ALIGN_ITEMS]),
+    alignItems: alignKeyword<AlignItems>(id, get, 'align-items', ALIGN_ITEMS, lastBaseline.items),
+    alignSelf: alignKeyword<AlignSelf>(id, get, 'align-self', ['auto', ...ALIGN_ITEMS], lastBaseline.self),
     alignContent: alignKeyword<AlignContent>(id, get, 'align-content', [
       'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'baseline', 'start', 'end',
-    ]),
+    ], false),
     rowGap: gap(id, get, 'row-gap', l),
     columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
     aspectRatio: aspectRatio(id, get),
-    // CSS2 §10.8.1: vertical-align is not a Dragon longhand; every box takes its initial value, which only inline boxes read.
-    verticalAlign: { kind: 'keyword', value: 'baseline' },
+    verticalAlign: verticalAlign(id, get, l),
+    textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
+    textIndent: textIndent(id, get, l),
+    lineClamp,
     grid: null,
     gridItem: null,
   };
@@ -334,14 +397,17 @@ export function textFontProblem(t: ResolvedText): string | null {
  */
 export type EngineFace = { readonly kind: 'face'; readonly id: string } | { readonly kind: 'refused'; readonly reason: string };
 
-/** The lowering mode: native targets lay out Ahem only; the engine lane also lays out the bundled static faces it resolves. */
-export type LowerMode = { readonly kind: 'native' } | { readonly kind: 'engine'; readonly faceOf: (address: string) => EngineFace };
+/**
+ * The lowering mode: native targets lay out Ahem and the real bundled faces the compiler resolved (TXT1a-2, faceOf refuses every
+ * other node); the engine lane also lays out the bundled static faces it resolves.
+ */
+export type LowerMode = { readonly kind: 'native' | 'engine'; readonly faceOf: (address: string) => EngineFace };
 
 /** The face family the engine reads: Ahem, or in engine mode the resolved bundled face; anything else is a lowering failure. */
 function lowerFamily(id: string, family: CssValue, mode: LowerMode): string {
   if (family.kind === 'family' && family.value === 'Ahem') return AHEM_FACE;
-  if (mode.kind === 'native') return fail(id, 'font-family', family, AHEM_EXPECTED);
   const face = mode.faceOf(id);
+  if (mode.kind === 'native' && face.kind === 'refused') return fail(id, 'font-family', family, AHEM_EXPECTED);
   if (face.kind === 'refused') throw new LoweringError(id, 'font-family', `font-family: ${valueToString(family)} on ${id}: ${face.reason}`);
   return face.id;
 }
@@ -360,16 +426,37 @@ function lowerFont(id: string, get: (p: TextLonghand) => CssValue, mode: LowerMo
   return { font: { family: face, size: fs.value, specifiedSize: { kind: 'px', value: fs.value }, absoluteSize: true }, lineHeight };
 }
 
+/** The white-space-collapse values the engine lays out (input.ts WhiteSpaceCollapse). */
+const WHITE_SPACE_COLLAPSE: readonly string[] = ['collapse', 'preserve', 'preserve-breaks', 'break-spaces'] satisfies readonly WhiteSpaceCollapse[];
+
 // goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
 function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   const id = t.node.address;
   const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
   const { font, lineHeight } = lowerFont(id, get, mode);
   const collapse = get('white-space-collapse');
-  if (collapse.kind !== 'keyword' || collapse.value !== 'collapse') fail(id, 'white-space-collapse', collapse, 'collapse');
+  if (collapse.kind !== 'keyword' || !WHITE_SPACE_COLLAPSE.includes(collapse.value)) return fail(id, 'white-space-collapse', collapse, WHITE_SPACE_COLLAPSE.join(' | '));
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode };
+  const overflowWrap = get('overflow-wrap');
+  if (overflowWrap.kind !== 'keyword' || !OVERFLOW_WRAP.includes(overflowWrap.value)) return fail(id, 'overflow-wrap', overflowWrap, OVERFLOW_WRAP.join(' | '));
+  const wordBreak = get('word-break');
+  if (wordBreak.kind !== 'keyword' || !WORD_BREAK.includes(wordBreak.value)) return fail(id, 'word-break', wordBreak, WORD_BREAK.join(' | '));
+  return {
+    kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerSpacing(id, 'letter-spacing', get('letter-spacing')), wordSpacing: lowerSpacing(id, 'word-spacing', get('word-spacing')),
+    overflowWrap: overflowWrap.value as OverflowWrap, wordBreak: wordBreak.value as WordBreak,
+  };
+}
+
+/** The overflow-wrap and word-break values the engine reads (input.ts OverflowWrap, WordBreak); it refuses the word-break values TXT2-d adds. */
+const OVERFLOW_WRAP: readonly string[] = ['normal', 'break-word', 'anywhere'] satisfies readonly OverflowWrap[];
+const WORD_BREAK: readonly string[] = ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'] satisfies readonly WordBreak[];
+
+/** css-text-3 §8.1 and §8.2: a computed word-spacing or letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
+function lowerSpacing(id: string, property: 'letter-spacing' | 'word-spacing', v: CssValue): Px {
+  if (v.kind === 'keyword' && v.value === 'normal') return { kind: 'px', value: 0 };
+  if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
+  return fail(id, property, v, 'normal | px');
 }
 
 /**
@@ -398,9 +485,12 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
   }
 }
 
-/** CSS2 §9.2.2: inline-level content: text, and an element whose box is an inline box (display: inline, <br> included). */
-// A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line (atomic inlines are INL2).
-const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag));
+/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box among inline content (INL2a, G-INL). */
+const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'element' && (displayOf(c) === 'inline-block' || displayOf(c) === 'inline-flex' || displayOf(c) === 'inline-grid');
+
+/** CSS2 §9.2.2: inline-level content: text, an element whose box is an inline box (display: inline, <br> included), or an atomic inline. */
+// A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line.
+const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag)) || isAtomic(c);
 
 /** propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. */
 type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null };
@@ -416,15 +506,22 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const id = c.element.address;
   const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');
-  const block = kids.find((k) => !isInlineLevel(k));
+  const block = kids.find((k) => !isInlineLevel(k) || isAtomic(k));
   if (block !== undefined && block.kind === 'element') {
+    if (isAtomic(block)) throw new LoweringError(block.element.address, 'display', `atomic inline <${block.element.tag}> ${block.element.address} inside inline box ${id} is not laid out (INL2c)`);
     throw new LoweringError(block.element.address, 'display', `block-level <${block.element.tag}> ${block.element.address} inside inline box ${id} (CSS2 §9.2.1.1 block-in-inline) is not laid out`);
   }
-  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
+  // An inline box is never a grid item (a grid blockifies its children, analysis/blockify.ts), so last baseline stays refused on it.
+  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
+}
+
+/** A block container's inline-level child: an atomic inline is a box among its inline content (INL2a), the rest lowerInline. */
+function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | InlineChild {
+  return isAtomic(c) ? lowerBox(c as ResolvedElement, l, null) : lowerInline(c, l);
 }
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
@@ -435,10 +532,12 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   const values = new Map<Longhand, CssValue>();
   for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p, l.ua));
   values.set('display', { kind: 'keyword', value: 'block' });
-  // Every non-inherited property of an anonymous box is its initial value.
-  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null });
+  // Every non-inherited property of an anonymous box is its initial value; in a grid it is a grid item (align-self: auto).
+  const parentDisplay = displayOf(parent);
+  const lastBaseline: LastBaselineContext = { items: false, self: parentDisplay === 'grid' || parentDisplay === 'inline-grid' };
+  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null }, lastBaseline);
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInline(c, l)) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInlineLevel(c, l)) };
 }
 
 /**
@@ -466,11 +565,11 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
     const v = raw(p);
     return (p === 'overflow-x' || p === 'overflow-y') && v.kind === 'keyword' && v.value === 'clip' ? { kind: 'keyword', value: 'visible' } : v;
   };
-  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize });
+  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize }, { items: false, self: gridParent !== null });
   // css-grid-2 §5: a replaced element establishes no grid container; display: grid on one is not modelled.
-  if (own.display === 'grid') throw new LoweringError(id, 'display', `display: grid on the replaced element ${id} is not supported`);
-  // css-grid-2 §8: an in-flow replaced child of a grid container is a grid item and carries its placement.
-  const gridItem = gridParent !== null && own.position !== 'absolute' ? gridStep(id, () => lowerGridItem(gridParent, raw)) : null;
+  if (own.display === 'grid' || own.display === 'inline-grid') throw new LoweringError(id, 'display', `display: ${own.display} on the replaced element ${id} is not supported`);
+  // css-grid-2 §8 and §9: a replaced child of a grid container carries its placement (an absolutely positioned one, its lines).
+  const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, raw) : lowerGridItem(gridParent, raw)));
   const style: LayoutStyle = gridItem === null ? own : { ...own, gridItem };
   let natural: ReplacedLeaf['natural'] = { kind: 'none' };
   if (el.element.tag === 'img') {
@@ -505,14 +604,16 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
-  const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
+  const display = displayOf(el);
+  const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null });
   // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible.
   const own: LayoutStyle = id === l.propagated ? { ...lowered, overflowX: 'visible', overflowY: 'visible' } : lowered;
-  // css-grid-2 §7 and §8: a grid container carries its tracks; each in-flow child of one carries its placement.
-  const grid = own.display === 'grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
-  const gridItem = gridParent !== null && own.position !== 'absolute' ? gridStep(id, () => lowerGridItem(gridParent, get)) : null;
+  // css-grid-2 §7, §8 and §9: a grid container carries its tracks; each child of one carries its placement (an absolutely
+  // positioned one, the lines of its containing block).
+  const grid = own.display === 'grid' || own.display === 'inline-grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
+  const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, get) : lowerGridItem(gridParent, get)));
   const style: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
-  const container = displayOf(el) === 'flex' || displayOf(el) === 'grid';
+  const container = displayOf(el) === 'flex' || displayOf(el) === 'inline-flex' || displayOf(el) === 'grid' || displayOf(el) === 'inline-grid';
   const inline = kids.filter(isInlineLevel);
   const wrap = inline.length > 0 && (container || inline.length !== kids.length);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
@@ -536,10 +637,12 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     }
     else {
       if (c.kind === 'text') assertTextCarriesContainer(style, id, c);
-      children.push(lowerInline(c, l));
+      children.push(lowerInlineLevel(c, l));
     }
   }
   flush();
-  // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a).
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind !== 'box' && c.kind !== 'replaced'), l.mode), children };
+  // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
+  // atomic inline is on a line (INL2a).
+  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
 }

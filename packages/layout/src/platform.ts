@@ -46,6 +46,11 @@ export function shapingFaultsOf(faults: EngineFaults): ShapingFaults {
     wholePixelPositions: faults.wholePixelPositions,
     softHyphenWidthMissing: faults.softHyphenWidthMissing,
     metricRoundingSwapped: faults.metricRoundingSwapped,
+    trailingSpacingDropped: faults.trailingSpacingDropped,
+    spacingPerCodePoint: faults.spacingPerCodePoint,
+    ligaturesKept: faults.ligaturesKept,
+    wordSpacingAtItemStart: faults.wordSpacingAtItemStart,
+    wordSpacingSkipsNbsp: faults.wordSpacingSkipsNbsp,
   };
 }
 

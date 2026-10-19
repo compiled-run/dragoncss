@@ -1,0 +1,15 @@
+{
+  "case": "text-overflow-fonts",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"f1s:text0","data":"XXXXXXXXXXXXXXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"f2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f2s:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"f3:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"f3:text1","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f3s:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"f4:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f4s:text0","data":"XXXXXXXXXXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

@@ -8,7 +8,7 @@ import { isScrollContainer } from '../src/box.ts';
 import type { PlacedLine } from '../src/inline.ts';
 import { ZERO } from '../src/units.ts';
 import { OverflowRefusal, PLACED_LINE_FIELDS, refuseLineLevelBoxes, scrollMetrics, scrollMetricsWithFaults, scrollRanges } from '../src/overflow.ts';
-import { box, br, divStyle, neutralEnvironment, pct, px, span, text } from './helpers.ts';
+import { ahemFont, box, br, divStyle, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 const input = (children: (LayoutBox | ReplacedLeaf)[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
   viewport: { width: 400, height: 300 },
@@ -110,18 +110,35 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     expect(p.kind === 'ok' ? p.containers[0]?.scrollRect.width : null).toBe(lu(310));
   });
 
-  it('a grid container is refused, whether it scrolls or sits in a scroll container or the viewport, never measured as a block', () => {
-    const g = (style: Partial<LayoutStyle>): LayoutBox => {
-      const item = box('a', { height: px(150), gridItem: { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' } });
-      const grid = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], autoRows: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
-      return box('g', { display: 'grid', grid, ...style }, [item]);
-    };
-    for (const i of [input([g(sc('auto'))]), input([box('s', sc('auto'), [g({})])]), input([g({})])]) {
-      expect(validateLayoutInput(JSON.parse(JSON.stringify(i))).ok).toBe(true);
-      expect(layout(i, ahemMeasurer).kind).toBe('ok');
-      const r = scrollMetrics(i, ahemMeasurer, 'ltr');
-      expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['g', expect.stringContaining('a grid container')]);
-    }
+  // G-OVF (Blink GridLayoutAlgorithm::LayoutInternal SetInflowBounds): a grid scroll container's inflow bounds are its tracks, not its items.
+  const gridOf = (style: Partial<LayoutStyle>, items: readonly Partial<LayoutStyle>[], track: number | null): LayoutBox => {
+    const size = track === null ? { kind: 'breadth' as const, breadth: { kind: 'auto' as const } } : { kind: 'breadth' as const, breadth: px(track) };
+    const grid = { templateColumns: [], templateRows: [], autoColumns: [size], autoRows: [size], explicitColumnCount: 0, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
+    const item = { column: { kind: 'auto' as const, span: 1 }, row: { kind: 'auto' as const, span: 1 }, justifySelf: 'start' as const };
+    return box('g', { display: 'grid', grid, ...style }, items.map((k, n) => box(`a${n}`, { alignSelf: 'start', gridItem: item, ...k })));
+  };
+
+  it('a grid scroll container scrolls its tracks and end padding, not its items: a 200px track with a 30px item scrolls 220', () => {
+    expect(size(input([gridOf(sc('auto', pad(10)), [{ width: px(30), height: px(30) }], 200)]), 'g')).toEqual([lu(220), lu(220), lu(120), lu(120)]);
+  });
+
+  it("a grid item's margins do not reach the inflow bounds, as they do in block flow", () => {
+    expect(size(input([gridOf(sc('auto', pad(10)), [{ width: px(30), height: px(30), marginRight: px(500), marginBottom: px(500) }], 200)]), 'g')).toEqual([lu(220), lu(220), lu(120), lu(120)]);
+  });
+
+  it('an item past its track adds its border box but no end padding', () => {
+    expect(size(input([gridOf(sc('auto', pad(10)), [{ width: px(400), height: px(30) }], 200)]), 'g')).toEqual([lu(410), lu(220), lu(120), lu(120)]);
+  });
+
+  it('in rtl the tracks extend to the left', () => {
+    const m = metrics(input([gridOf(sc('auto', { direction: 'rtl' }), [{ width: px(30), height: px(30) }], 300)])).containers[0];
+    expect(m?.scrollRect.x).toBe(lu(-200));
+    expect(m?.scrollRect.width).toBe(lu(300));
+  });
+
+  it('a grid that does not scroll adds its items to the scroll container around it', () => {
+    expect(size(input([box('s', sc('auto'), [gridOf({}, [{ width: px(30), height: px(150) }], null)])]), 's')).toEqual([lu(100), lu(150), lu(100), lu(100)]);
+    expect(validateLayoutInput(JSON.parse(JSON.stringify(input([gridOf(sc('auto'), [{}], null)])))).ok).toBe(true);
   });
 
   it('a relative offset with a percentage top inside a scroll container is refused, not guessed', () => {
@@ -134,8 +151,8 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
 describe('line items (R16: a new PlacedLine item kind is never skipped)', () => {
   const unhandled = (line: object): string[] => Object.keys(line).filter((k) => !PLACED_LINE_FIELDS.includes(k));
   it('addLines accounts for every PlacedLine field; a stub item kind is caught', () => {
-    expectTypeOf<keyof PlacedLine>().toEqualTypeOf<'top' | 'height' | 'baseline' | 'pieces' | 'boxes' | 'boxRects' | 'breaks' | 'breakRects'>();
-    const line: PlacedLine = { top: ZERO, height: ZERO, baseline: ZERO, pieces: [], boxes: [], boxRects: [], breaks: [], breakRects: [] };
+    expectTypeOf<keyof PlacedLine>().toEqualTypeOf<'top' | 'height' | 'baseline' | 'pieces' | 'boxes' | 'boxRects' | 'breaks' | 'breakRects' | 'ellipsis'>();
+    const line: PlacedLine = { top: ZERO, height: ZERO, baseline: ZERO, pieces: [], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null };
     expect(unhandled(line)).toEqual([]);
     expect(unhandled({ ...line, atomics: [] })).toEqual(['atomics']);
   });
@@ -159,6 +176,14 @@ describe('replaced leaves and line-level boxes (pre-landing review of #96)', () 
     const atomic = { ...ifc, children: [...ifc.children, box('k', { width: px(10), height: px(10) })] };
     expect(() => refuseLineLevelBoxes(atomic)).toThrow(OverflowRefusal);
     expect(() => refuseLineLevelBoxes(atomic)).toThrow('an atomic inline in the inline formatting context of s');
+  });
+
+  it('an atomic inline alone in a scroll container, with no text, is an inline formatting context and is refused, never measured as a block child', () => {
+    const k = box('k', { display: 'inline-block', width: px(50), height: px(150), marginBottom: px(20) });
+    const s = box('s', sc('auto', { height: px(50), paddingBottom: px(10) }), [k], { font: ahemFont(10), lineHeight: { kind: 'normal' } });
+    expect(() => refuseLineLevelBoxes(s)).toThrow('an atomic inline in the inline formatting context of s');
+    const r = scrollMetrics(input([s]), ahemMeasurer, 'ltr');
+    expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['k', expect.stringContaining('(R16, INL2)')]);
   });
 
   it('an inline box or a <br> in an inline formatting context (INL1a line items addLines does not measure) is refused', () => {

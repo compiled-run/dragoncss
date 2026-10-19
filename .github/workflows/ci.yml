@@ -54,10 +54,10 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
-      # land.yml holds the landing token and land-checks.yml runs a tree's commands for it; actionlint (with shellcheck) checks
-      # their expressions and shell steps. Only these two: the others use custom runner labels actionlint does not know.
+      # land.yml holds the landing token, land-checks.yml runs a tree's commands for it, and device-refresh.yml merges into master;
+      # actionlint (with shellcheck) checks their expressions and shell steps. Only these three: the others use custom runner labels actionlint does not know.
       - name: Lint the landing workflows (actionlint 1.7.12)
-        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color .github/workflows/land.yml .github/workflows/land-checks.yml
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color .github/workflows/land.yml .github/workflows/land-checks.yml .github/workflows/device-refresh.yml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck
@@ -75,3 +75,4 @@ jobs:
           packages/parity/test/api-floor.test.ts
           packages/parity/test/floor-merge.test.ts
           packages/parity/test/macroscope-ignore.test.ts
+          packages/parity/test/committed-captures.test.ts

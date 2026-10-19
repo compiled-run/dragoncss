@@ -1,0 +1,12 @@
+{
+  "case": "text-overflow-blocks",
+  "dpr": 3,
+  "texts": [
+    {"id":"c1:text0","lines":[[0,2]]},
+    {"id":"c2:text0","lines":[[0,6]]},
+    {"id":"d1:text0","lines":[[0,6]]},
+    {"id":"d2:text0","lines":[[0,6]]},
+    {"id":"g:text0","lines":[[0,9]]},
+    {"id":"g1:text0","lines":[[0,9]]}
+  ]
+}

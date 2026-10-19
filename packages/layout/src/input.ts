@@ -89,6 +89,12 @@ export type LengthCalc = { readonly kind: 'calc'; readonly expr: CalcExpr; reado
 export type SizeValue = Px | Percent | Auto | LengthCalc;
 export type MinSizeValue = Px | Percent | Auto | LengthCalc;
 export type MaxSizeValue = Px | Percent | NoneValue | LengthCalc;
+/** css-sizing-3 §3.2 fit-content: min(max-content, max(min-content, the stretch size)). */
+export type FitContent = { readonly kind: 'fit-content' };
+/** css-sizing-3 §3.2: the intrinsic size keywords of an inline size, read only on a block-level box in block flow. */
+export type IntrinsicSizeKeyword = MinContent | MaxContent | FitContent;
+export type InlineSizeValue = SizeValue | IntrinsicSizeKeyword;
+export type MaxInlineSizeValue = MaxSizeValue | IntrinsicSizeKeyword;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -119,9 +125,10 @@ export type AspectRatioValue =
 
 /**
  * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
- * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid.
+ * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block, inline-flex or inline-grid for an atomic inline
+ * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
-export type Display = 'block' | 'flex' | 'grid' | 'inline';
+export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
 /**
@@ -146,6 +153,7 @@ export type JustifyContent =
   | 'end'
   | 'left'
   | 'right';
+/** css-align-3 §4.2: baseline is first baseline; last baseline aligns grid items only (the compiler refuses it on a flex item). */
 export type AlignItems =
   | 'normal'
   | 'stretch'
@@ -153,6 +161,7 @@ export type AlignItems =
   | 'flex-end'
   | 'center'
   | 'baseline'
+  | 'last baseline'
   | 'start'
   | 'end'
   | 'self-start'
@@ -171,6 +180,13 @@ export type AlignContent =
   | 'start'
   | 'end';
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
+export type TextOverflow = 'clip' | 'ellipsis';
+/**
+ * css-text-3 §8.1 text-indent: <length-percentage>, negative allowed, on the first formatted line of a block container. A percentage
+ * is of the line's available inline size, and of nothing (0) at min-content and max-content (Blink LineBreaker::ComputeTextIndent).
+ */
+export type TextIndentValue = Px | Percent | LengthCalc;
 /** CSS2 §10.8.1 vertical-align keywords. */
 export type VerticalAlignKeyword = 'baseline' | 'sub' | 'super' | 'text-top' | 'text-bottom' | 'middle' | 'top' | 'bottom';
 /** A vertical-align keyword value. */
@@ -198,13 +214,51 @@ export type TrackSize =
  */
 export type TrackRepeater = { readonly count: number; readonly sizes: readonly TrackSize[] };
 /**
- * An item's lines in one axis, resolved by the compiler (Blink GridLineResolver::ResolveGridPositionsFromStyle): definite lines
- * as 0-based indices from the explicit grid's start line, which are negative before it; or an automatic position of span lines.
+ * The automatic repeater of a track list (css-grid-2 §7.2.3.2, Blink GridTrackRepeater kAutoFill and kAutoFit), at most one per
+ * axis. It stands before template[index] (at the end when index is the template's length); the engine computes its repetitions
+ * from the container's available size. lineNames are the axis's line names, by the ids its items' GridLine positions carry.
+ */
+export type GridAutoRepeat = {
+  readonly type: 'auto-fill' | 'auto-fit';
+  readonly index: number;
+  readonly sizes: readonly TrackSize[];
+  readonly lineNames: readonly GridLineName[];
+};
+/**
+ * One line name of an axis with an automatic repeater, as Blink's GridNamedLineCollection reads it, each list ascending.
+ * explicit: the template's lines with the name, counting the automatic repeater as one track; repeat: the lines with the name
+ * inside one repetition (0 to its track count); implicit: the lines grid-template-areas names (css-grid-2 §7.3).
+ */
+export type GridLineName = { readonly explicit: readonly number[]; readonly repeat: readonly number[]; readonly implicit: readonly number[] };
+/**
+ * A grid-*-start or grid-*-end value (Blink GridPosition) that the engine resolves, with names as GridLineName ids: auto;
+ * <integer>; <integer> <name>; span <integer>; span <integer> <name>; or a lone <name>, which reads the side's implicit
+ * <name>-start or <name>-end id first.
+ */
+export type GridLine =
+  | { readonly kind: 'auto' }
+  | { readonly kind: 'line'; readonly n: number }
+  | { readonly kind: 'named-line'; readonly n: number; readonly name: number }
+  | { readonly kind: 'span'; readonly n: number }
+  | { readonly kind: 'named-span'; readonly n: number; readonly name: number }
+  | { readonly kind: 'area'; readonly implicitName: number; readonly name: number };
+/**
+ * An item's lines in one axis (Blink GridLineResolver::ResolveGridPositionsFromStyle): resolved by the compiler as definite lines,
+ * 0-based from the explicit grid's start line and negative before it, or an automatic position of span lines; or, in an axis with
+ * an automatic repeater, whose explicit grid the engine sizes, the start and end positions the engine resolves. An absolutely
+ * positioned child also takes start-line or end-line when only that side is not auto (css-grid-2 §9.1: an auto line is the
+ * padding edge); its auto span means both lines are auto, and its lines resolve as GridPlacement::ResolveOutOfFlowItemGridLines.
  */
 export type GridSpan =
   | { readonly kind: 'definite'; readonly start: number; readonly end: number }
-  | { readonly kind: 'auto'; readonly span: number };
-/** css-align-3 §6.1 self positions in a grid container; normal and stretch stretch an auto size. */
+  | { readonly kind: 'auto'; readonly span: number }
+  | { readonly kind: 'lines'; readonly start: GridLine; readonly end: GridLine }
+  | { readonly kind: 'start-line'; readonly line: number }
+  | { readonly kind: 'end-line'; readonly line: number };
+/**
+ * css-align-3 §6.1 self positions in a grid container, and §4.2 baseline alignment (baseline is first baseline); normal and stretch
+ * stretch an auto size.
+ */
 export type GridSelfAlign =
   | 'normal'
   | 'stretch'
@@ -216,10 +270,13 @@ export type GridSelfAlign =
   | 'flex-start'
   | 'flex-end'
   | 'left'
-  | 'right';
+  | 'right'
+  | 'baseline'
+  | 'last baseline';
 /**
  * A grid container's own grid properties (css-grid-2 §7). The explicit track counts are the larger of the template's and the
- * template areas' (css-grid-2 §7.1); tracks beyond the template are sized by the automatic tracks. autoColumns and autoRows
+ * template areas' (css-grid-2 §7.1), not counting an automatic repeater, whose tracks the engine adds; tracks beyond the
+ * template are sized by the automatic tracks. autoColumns and autoRows
  * are never empty (the initial value is one auto track). justifyItems is the computed value with legacy already resolved.
  */
 export type GridContainerStyle = {
@@ -229,6 +286,8 @@ export type GridContainerStyle = {
   readonly autoRows: readonly TrackSize[];
   readonly explicitColumnCount: number;
   readonly explicitRowCount: number;
+  readonly autoRepeatColumns: GridAutoRepeat | null;
+  readonly autoRepeatRows: GridAutoRepeat | null;
   readonly autoFlow: 'row' | 'column';
   readonly dense: boolean;
   readonly justifyItems: GridSelfAlign;
@@ -251,11 +310,11 @@ export type LayoutStyle = {
   readonly overflowY: Overflow;
   readonly direction: Direction;
   readonly boxSizing: BoxSizing;
-  readonly width: SizeValue;
+  readonly width: InlineSizeValue;
   readonly height: SizeValue;
-  readonly minWidth: MinSizeValue;
+  readonly minWidth: InlineSizeValue;
   readonly minHeight: MinSizeValue;
-  readonly maxWidth: MaxSizeValue;
+  readonly maxWidth: MaxInlineSizeValue;
   readonly maxHeight: MaxSizeValue;
   readonly marginTop: MarginValue;
   readonly marginRight: MarginValue;
@@ -284,9 +343,16 @@ export type LayoutStyle = {
   readonly textAlign: TextAlign;
   readonly aspectRatio: AspectRatioValue;
   readonly verticalAlign: VerticalAlignValue;
+  readonly textOverflow: TextOverflow;
+  readonly textIndent: TextIndentValue;
+  /**
+   * css-overflow-4 §4.2 -webkit-line-clamp on a block container (the compiler's display: -webkit-box line-clamp pattern, which
+   * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
+   */
+  readonly lineClamp: number;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
-  /** Written for the in-flow children of a grid container only; null otherwise. */
+  /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
 };
 
@@ -294,7 +360,11 @@ export type LayoutStyle = {
  * The font a measurer reads: the face and the computed font size in zoomed px. family names the bundled face (text.ts
  * AHEM_FACE_ID for the bundled Ahem, else sha256:<hex> of its bytes, as the font manifest names a face).
  */
-export type TextFont = { readonly family: string; readonly size: number };
+/**
+ * A text item's font as the measurer reads it: the face, the computed size and the used letter-spacing in px (css-text-3 §8.2,
+ * 0 for normal), which Blink keeps in the FontDescription and adds after every cluster (ShapeResult::ApplySpacing).
+ */
+export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number };
 
 /**
  * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
@@ -305,21 +375,37 @@ export type TextFont = { readonly family: string; readonly size: number };
  */
 export type FontSpec = { readonly family: string; readonly size: number; readonly specifiedSize: CalcExpr; readonly absoluteSize: boolean };
 
-/** css-text-4 §3.1 white-space-collapse: only collapse is supported; the compiler has already applied phase I collapsing. */
-export type WhiteSpaceCollapse = 'collapse';
+/**
+ * css-text-4 §3.1 white-space-collapse; the compiler has already applied phase I (resolve.ts). collapse text arrives collapsed;
+ * preserve and break-spaces text arrives as authored, and preserve-breaks text with its spaces collapsed, each U+000A a forced break.
+ */
+export type WhiteSpaceCollapse = 'collapse' | 'preserve' | 'preserve-breaks' | 'break-spaces';
 /** css-text-4 §5.1 text-wrap-mode. */
 export type TextWrapMode = 'wrap' | 'nowrap';
+/** css-text-3 §5.5 overflow-wrap (word-wrap is its alias). */
+export type OverflowWrap = 'normal' | 'break-word' | 'anywhere';
+/** css-text-3 §5.2 word-break; break-all, keep-all and auto-phrase are refused (code word-break, TXT2-d). */
+export type WordBreak = 'normal' | 'break-all' | 'keep-all' | 'break-word' | 'auto-phrase';
 
 /** A text run with every inherited text property written on it by the compiler (goal.md principle 3). */
 export type TextLeaf = {
   readonly kind: 'text';
   readonly id: string;
-  /** Text after white-space phase I collapsing (css-text-3 §4.1.1): no tabs, segment breaks or doubled spaces. */
+  /** Text after white-space phase I (css-text-3 §4.1.1): collapse text holds no tabs, segment breaks or doubled spaces. */
   readonly text: string;
   readonly font: FontSpec;
   readonly lineHeight: LineHeightValue;
   readonly whiteSpaceCollapse: WhiteSpaceCollapse;
   readonly textWrapMode: TextWrapMode;
+  /**
+   * css-text-3 §8.2 letter-spacing as a length expression in CSS px at zoom 1 (normal is px 0); the environment pass resolves it
+   * to zoomed px (Blink StyleBuilderConverter::ConvertSpacing, a Length::Fixed), which layout reads.
+   */
+  readonly letterSpacing: CalcExpr;
+  /** css-text-3 §8.1 word-spacing as letterSpacing is held (normal is px 0); Blink adds it after every space (ShapeResult::ApplySpacing). */
+  readonly wordSpacing: CalcExpr;
+  readonly overflowWrap: OverflowWrap;
+  readonly wordBreak: WordBreak;
 };
 
 /** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */

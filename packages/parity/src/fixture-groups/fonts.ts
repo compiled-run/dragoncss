@@ -9,6 +9,16 @@ import type { FontMap, FrontEndResult } from 'dragon';
 import type { FixtureSpec } from '../fixtures.ts';
 import { FONT_REFERENCE_MAP, VENDOR_FONTS, vendorFontBytes } from '../font-reference.ts';
 import { layout, reject } from './define.ts';
+import { TEXT_CALIBRATION } from './text-calibration.ts';
+import { INLINE_TAGS } from './inline-tags.ts';
+import { TEXT_WEIGHT } from './text-weight.ts';
+import { FONT_SHORTHAND } from './font-shorthand.ts';
+import { TEXT_INDENT } from './text-indent.ts';
+import { TEXT_BREAK } from './text-break.ts';
+import { TEXT_JUSTIFY } from './text-justify.ts';
+import { TEXT_LATIN } from './text-latin.ts';
+import { TEXT_SPACING } from './text-spacing.ts';
+import { WHITE_SPACE } from './white-space.ts';
 
 /** A web-only fonts fixture: its font map (null: none), and the face Chrome must render each element's text with in both documents. */
 export type FontFixture = {
@@ -26,6 +36,24 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   font('fonts-lato', FONT_REFERENCE_MAP, { regular: 'Lato-Regular', bold: 'Lato-Bold', italic: 'Lato-Regular' }),
   font('fonts-declared', null, { regular: 'Roboto-Regular', bold: 'Inter-Bold' }),
   font('fonts-platform', FONT_REFERENCE_MAP, { text: 'platform' }),
+  // T133: em and i over Lato, which has no italic face (synthetic oblique, refused on native), and i inside b (Lato-Bold).
+  font('fonts-tags', FONT_REFERENCE_MAP, { regular: 'Lato-Regular', em: 'Lato-Regular', i: 'Lato-Regular', b: 'Lato-Bold', bi: 'Lato-Bold' }),
+  // TXT-W1: synthesized text, which native refuses (DRAGON_SYNTHETIC_FONT_STYLE); Chrome draws the base face, emboldened or skewed.
+  font('fonts-weight-synthetic', FONT_REFERENCE_MAP, { lit: 'Lato-Regular', lo20: 'Lato-Regular', lbi: 'Lato-Bold', mb: 'NotoSansMono-Regular', m600: 'NotoSansMono-Regular', mi: 'NotoSansMono-Regular' }),
+  // TDEC-a: decorated text, drawn on web only until TDEC-b; decoration-capture.ts proves the decoration pixels against Chrome.
+  font('text-decoration-lines', FONT_REFERENCE_MAP, Object.fromEntries([...['l1', 'l2', 'l3', 'l4', 't1', 't2', 't3', 'o1', 'o2', 'o3', 'o4', 'o5', 'o6', 'c1', 'c2', 's1'].map((id) => [id, 'Lato-Regular']), ['i1', 'Inter-Regular'], ['i2', 'Inter-Bold']])),
+  font('text-decoration-boxes', FONT_REFERENCE_MAP, Object.fromEntries(['b1a', 'b1b', 'b2a', 'b2b', 'b2c', 'b3a', 'b3b', 'b4a', 'b4b', 'b5c', 'b5b'].map((id) => [id, 'Lato-Regular']))),
+  font('text-decoration-wrap', FONT_REFERENCE_MAP, { w: 'Lato-Regular' }),
+  font('text-decoration-north-star', FONT_REFERENCE_MAP, { yt: 'Lato-Regular', gp: 'Lato-Regular' }),
+  font('text-decoration-ahem', FONT_REFERENCE_MAP, { a1: 'Ahem', a2: 'Ahem', a3: 'Ahem' }),
+  // The skip-ink probe: Ahem's glyph boxes cross an auto underline, so the engine refuses it (skip-ink-intercepts, TDEC-d).
+  font('text-decoration-ahem-auto', FONT_REFERENCE_MAP, { a: 'Ahem' }),
+  // TDEC-d at other sizes and lengths: Ahem auto underlines at 15, 13 and 25px (15px is 39.375 at DPR 2.625, which Chrome draws at
+  // 39.37), px and percent thicknesses, px and percent offsets, and a 6px line whose dilation passes kDecorationClipMaxDilation (13
+  // device px) at DPR 3.
+  font('text-decoration-ahem-skip', FONT_REFERENCE_MAP, Object.fromEntries(['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'].map((id) => [id, 'Ahem']))),
+  // TDEC-c: double under, over and line-through lines in Lato (auto, px and percent thicknesses, at 16px and 15px) and Ahem.
+  font('text-decoration-double', FONT_REFERENCE_MAP, { d1: 'Lato-Regular', d2: 'Lato-Regular', d3: 'Lato-Regular', d4: 'Lato-Regular', d5: 'Lato-Regular', d6: 'Ahem' }),
 ];
 
 /** An invalid map: a pinned entry with no faces. */
@@ -44,6 +72,12 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ...FONT_FIXTURES.flatMap((f) => (f.map === null ? [] : [[f.spec.id, f.map] as const])),
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
+  // TXT1a-2: the real-font FIXTURES groups compile with the reference map (text-weight's two Ahem cases are no real-font case).
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout' && f.id !== 'text-weight-ahem' && f.id !== 'text-weight-bold-ahem'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout'), ...TEXT_SPACING.filter((f) => f.kind === 'layout' && f.id !== 'text-spacing-ahem' && f.id !== 'text-word-spacing-ahem'), ...WHITE_SPACE.filter((f) => f.id === 'white-space-lato'), ...TEXT_JUSTIFY.filter((f) => f.id === 'text-justify-latin'), ...TEXT_INDENT.filter((f) => f.id === 'text-indent-latin'), ...TEXT_BREAK.filter((f) => f.id === 'text-break-lato')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  // INL2a: the refusal of an atomic inline beside real-font text.
+  ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
+  // TXT-FONTFEAT: font-stretch is accepted over Ahem, so the font shorthand's width keyword is refused over a real face.
+  ['reject-font-shorthand-stretch', FONT_REFERENCE_MAP],
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */

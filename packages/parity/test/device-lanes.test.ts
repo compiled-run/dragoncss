@@ -7,12 +7,14 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CaseReference, DeviceCheckLane, FailureKind, TrustCase } from '../src/device-lanes.ts';
-import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, plantVerdict, readDump, splitByLines, STAGE_RGBA, trustFailuresOf } from '../src/device-lanes.ts';import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
+import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, plantVerdict, programOf, readDump, splitByLines, STAGE_RGBA, trustFailuresOf } from '../src/device-lanes.ts';import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
 import { REFERENCE_LANE, validateNativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
-import { androidCommands, appCacheKey, casesCodeProblems, expand, hostSources, iosCommands, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { androidCommands, appCacheKey, casesCodeProblems, expand, hostSources, iosCommands, iosModules, nativeCases, nativeOut, referenceMeasurer, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { checkDumpBreaks, engineTextLines } from '../src/line-breaks.ts';
+import { programInput } from 'dragon';
 import { PLANT_RULES } from '../src/device-run.ts';
 import { repoPath } from '../src/paths.ts';
 import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
@@ -20,18 +22,19 @@ import type { NativeTarget } from '../src/targets.ts';
 
 const cases = nativeCases();
 
-/** A dump as a perfect device would write it: the engine frames snapped, the expected applied values, the break vector's line
- * offsets and the Chrome PNG's pixels at the generated points. */
+/** A dump as a perfect device would write it: the engine frames snapped, the expected applied values, each line fragment's offsets
+ * as the device's text loop gives them (engineTextLines) and the Chrome PNG's pixels at the generated points. */
 function perfectDump(target: NativeTarget, dpr: number, n: NativeCase, ref: CaseReference, all: readonly NativeDump[]): NativeDump {
   const d = all.find((x) => x.case.id === n.case.id);
-  if (d === undefined || ref.breaks === null || ref.pixels === null) throw new Error(`${n.case.id}: no reference`);
-  const lines = new Map(ref.breaks.texts.map((t) => [t.id, t.lines]));
+  if (d === undefined || ref.pixels === null) throw new Error(`${n.case.id}: no reference`);
+  const texts = engineTextLines(programInput(programOf(n, target), n.case.environment.viewport, dpr), referenceMeasurer());
+  const fragments = new Map(texts.map((t) => [t.id, t.lines.flatMap((l) => l.fragments)]));
   const size = rasterSize(n.case.environment.viewport, dpr);
   return {
     ...d,
     device: { ...d.device, platform: target },
     // An element's lines (an inline box's fragments) have no own text: a device writes 0 and 0 (T058J3 E).
-    nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: lines.get(x.id)?.[j]?.[0] ?? null, end: lines.get(x.id)?.[j]?.[1] ?? null } : { ...l, start: 0, end: 0 })) })),
+    nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: fragments.get(x.id)?.[j]?.[0] ?? null, end: fragments.get(x.id)?.[j]?.[1] ?? null } : { ...l, start: 0, end: 0 })) })),
     pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: size.width, height: size.height, sha256: 'a'.repeat(64), samples: readSamples(ref.pixels, ref.points) },
   };
 }
@@ -55,6 +58,14 @@ describe.each([['ios', 3], ['android', 2.625], ['android', 2]] as const)('device
     const ref = refs.get(n.case.id) as CaseReference;
     expect(evaluateCase(target, n, dpr, null, ref).failures.map((f) => [f.lane, f.kind])).toEqual([['device-frames', 'dump-missing'], ['device-applied', 'dump-missing'], ['device-lines', 'dump-missing'], ['device-pixels', 'dump-missing']]);
     expect(evaluateCase(target, n, dpr, { schema: 'x' }, ref).failures.every((f) => f.kind === 'dump-invalid')).toBe(true);
+  });
+  it('a dump the host could not encode (its error recorded in its place) fails every lane as dump-invalid, naming the error', () => {
+    const n = sample[0] as NativeCase;
+    const ref = refs.get(n.case.id) as CaseReference;
+    const error = 'java.lang.IllegalStateException: dump nodes.lines.deviceEdges.top: 1393.5 is not an integer';
+    const got = evaluateCase(target, n, dpr, { dumpError: error }, ref).failures;
+    expect(got.map((f) => [f.lane, f.kind])).toEqual([['device-frames', 'dump-invalid'], ['device-applied', 'dump-invalid'], ['device-lines', 'dump-invalid'], ['device-pixels', 'dump-invalid']]);
+    expect(got.every((f) => f.detail.includes(error))).toBe(true);
   });
   it.each([...DUMP_FAULTS])('planted %s is caught by its named check, in its lane, with its kind, on every dump it applies to', (fault: DumpFault) => {
     let applicable = 0;
@@ -374,10 +385,14 @@ describe('device dump element lines (T058J3 E): an inline box fragment has no ow
   it.each([['ios', 3], ['ios', 2], ['android', 2], ['android', 3], ['android', 2.625]] as const)('every existing case\'s perfect %s dump at DPR %s validates', (target, dpr) => {
     const all = relabelledReferenceDumps(target, dpr);
     for (const c of cases) {
-      const v = validateNativeDump(perfectDump(target, dpr, c, caseReference(target, c, dpr), all));
+      const ref = caseReference(target, c, dpr);
+      const v = validateNativeDump(perfectDump(target, dpr, c, ref, all));
       expect(v.ok || v.errors.slice(0, 3), c.case.id).toBe(true);
+      // The device's fragments, grouped into break lines (breakLineGroups), equal the committed break vector on every case.
+      if (v.ok) expect(ref.breaks === null ? ['no break vector'] : checkDumpBreaks(v.dump, ref.breaks).problems, c.case.id).toEqual([]);
     }
-  });
+    // Every case of the corpus at one DPR: master's ios DPR 3 run takes about 105 s of the 120 s default on the CI runner, and 122 s with INL2a's cases.
+  }, 600_000);
 });
 
 // #72 landing device run: an image sample failure must name its rule as its node, like every other sample kind, or the

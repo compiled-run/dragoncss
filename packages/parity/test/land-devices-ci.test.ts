@@ -7,6 +7,7 @@ import { LandFailure } from '../../../scripts/land-lib.ts';
 import { repoPath } from '../src/paths.ts';
 import { artifactMissing, PatchRefused, abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch, DEVICE_RUN_STEP, TOOLING_STEP, VERDICT_STEP } from '../../../scripts/land-devices-ci.ts';
 import { TOOLING_EXIT } from '../src/device-ci.ts';
+import { PLANT_DEVICES } from '../src/device-run.ts';
 
 const SHA = 'a'.repeat(40);
 const T0 = Date.parse('2026-10-04T12:00:00Z');
@@ -361,12 +362,40 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(yml).not.toMatch(/^\s*- run: pnpm install/m);
     expect(yml).toContain('retry brew install openjdk@17\n');
     expect(yml).toContain('retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/');
-    expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n          retry sdk_install\n');
+    expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n');
+    // sdkmanager runs beside the Homebrew JDK install; the step waits for it, prints its retries, and fails when it failed.
+    expect(yml).toContain('          retry sdk_install > "$RUNNER_TEMP/sdk-install.log" 2>&1 &\n          sdk_pid=$!\n');
+    expect(yml).toContain('          sdk_code=0\n          wait "$sdk_pid" || sdk_code=$?\n          cat "$RUNNER_TEMP/sdk-install.log"\n          [ "$sdk_code" = 0 ] || exit 1\n          installed=$(');
+    expect(yml.indexOf('sdk_pid=$!')).toBeLessThan(yml.indexOf('retry brew install openjdk@17'));
     // The retry warnings are never sent to /dev/null with the command's output.
     expect(yml).not.toMatch(/retry [^\n]*>\s*\/dev\/null/);
     expect(yml).toContain('for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done');
     expect(yml).toMatch(/for i in 1 2 3; do have && break; xcodebuild -downloadPlatform iOS -buildVersion 23F77/);
     expect(yml).toContain('echo "::error::$* failed 3 times"; return 1; }');
+  });
+  it('device-lanes.yml runs a plant dispatch on the plant devices only, with no outcome, record or verdict step the driver reads', () => {
+    const yml = readFileSync(repoPath('.github/workflows/device-lanes.yml'), 'utf8');
+    expect(yml).toMatch(/\n {6}plant:\n {8}description: [^\n]+\n {8}required: false\n {8}default: ''\n {8}type: string\n/);
+    expect(yml).toContain('[[ -z "$PLANT" || "$PLANT" =~ ^[a-z0-9-]+$ ]] || { echo "::error::not a plant name: $PLANT"; exit 1; }');
+    // A plant run's title is never the one the driver finds its device run by.
+    const runName = /\nrun-name: ([^\n]+)\n/.exec(yml)?.[1] ?? '';
+    expect(runName).toBe(`\${{ inputs.plant && format('device plant {0} of {1}', inputs.plant, inputs.sha) || format('${runTitle('{0}')}', inputs.sha || github.event.pull_request.head.sha) }}`);
+    expect(runTitle(SHA).startsWith('device plant ')).toBe(false);
+    for (const [target, next] of [['ios', 'android'], ['android', 'merge']] as const) {
+      const job = yml.slice(yml.indexOf(`\n  ${target}:\n`), yml.indexOf(`\n  ${next}:\n`));
+      expect(job, target).toContain(`include: \${{ fromJSON(inputs.plant && '[{"device":"${PLANT_DEVICES[target]}","parts":"plant"}]' || '[`);
+      expect(job, target).toContain("- name: Device run ${{ matrix.device }}\n        if: ${{ !inputs.plant }}\n");
+      const name = `Plant \${{ inputs.plant }} on the ${target} plant device`;
+      expect(job, target).toContain(`- name: ${name}\n        if: \${{ inputs.plant }}\n`);
+      expect(VERDICT_STEP.test(name.replace('${{ inputs.plant }}', 'decoration-above-text')), target).toBe(false);
+      expect(name.startsWith(TOOLING_STEP), target).toBe(false);
+      expect(job, target).toContain(`native-devices.ts --target ${target} --plant "$PLANT"`);
+      // Every outcome and dump upload is skipped on a plant run; its own upload is named apart from outcome-*.
+      for (const m of job.matchAll(/- uses: actions\/upload-artifact@v4\n {8}if: ([^\n]+)\n {8}with:\n {10}name: ([^\n]+)\n/g)) {
+        expect(m[1], `${target} ${m[2]}`).toBe(m[2]!.startsWith('plant-') ? '${{ always() && inputs.plant }}' : '${{ always() && !inputs.plant }}');
+      }
+    }
+    expect(yml).toContain('\n  merge:\n    # A plant dispatch merges nothing: no device-outcomes or device-records come from it.\n    if: ${{ !inputs.plant }}\n');
   });
   it('does not blame the tree for a summary that failed because a shard died in setup and wrote no report (#199 review)', () => {
     const job = (name: string, stepName: string) => ({ name, status: 'completed', conclusion: 'failure', steps: [{ name: stepName, status: 'completed', conclusion: 'failure' }] });
@@ -459,18 +488,18 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
   it('blames the PR at the call site\'s step when a regen round failed on CI or its patch or artifact is refused; the driver\'s own trouble applying it, or no run, judged nothing', () => {
     expect(failure(() => regen(fake({ title: regenTitle(SHA), conclusion: 'failure' }), 'regen-after-devices'))).toMatchObject({ step: 'regen-after-devices', message: expect.stringContaining('the CI regen run https://ci/run/7 concluded failure') });
     const step = (name: string) => [{ name: 'chrome-1 / round', status: 'completed', conclusion: 'failure', steps: [{ name, status: 'completed', conclusion: 'failure' }] }];
-    expect(failedJobs(step('pnpm regen --skip lanes-host --skip tw-sweep')).verdict).toHaveLength(1);
+    expect(failedJobs(step('pnpm regen --skip lanes-host')).verdict).toHaveLength(1);
     expect(failedJobs(step('pnpm regen --only lanes-host')).verdict).toHaveLength(1);
     expect(failedJobs([{ name: 'converge', status: 'completed', conclusion: 'failure', steps: [{ name: 'Pick the last round', status: 'completed', conclusion: 'failure' }] }]).verdict).toHaveLength(1);
     expect(failedJobs(step('Host side - JDK 17 and kotlinc, checked against the toolchains lanes.json records')).setup).toHaveLength(1);
     expect(failedJobs(step('Chrome side - fetch the WPT copy when the cache missed')).setup).toHaveLength(1);
     // A regen cut off (the job's 300-min timeout, a lost runner, a cancel) judged nothing: only a regen step that ran to its end
     // and failed blames the tree (#220 review).
-    const cut = (jobConclusion: string, stepStatus: string, stepConclusion: string | null) => failedJobs([{ name: 'chrome-1 / round', status: 'completed', conclusion: jobConclusion, steps: [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, { name: 'pnpm regen --skip lanes-host --skip tw-sweep', status: stepStatus, conclusion: stepConclusion }] }]);
-    expect(cut('timed_out', 'completed', 'cancelled')).toEqual({ verdict: [], setup: ['chrome-1 / round (pnpm regen --skip lanes-host --skip tw-sweep)'] });
+    const cut = (jobConclusion: string, stepStatus: string, stepConclusion: string | null) => failedJobs([{ name: 'chrome-1 / round', status: 'completed', conclusion: jobConclusion, steps: [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, { name: 'pnpm regen --skip lanes-host', status: stepStatus, conclusion: stepConclusion }] }]);
+    expect(cut('timed_out', 'completed', 'cancelled')).toEqual({ verdict: [], setup: ['chrome-1 / round (pnpm regen --skip lanes-host)'] });
     expect(cut('failure', 'in_progress', null).verdict).toEqual([]);
     expect(cut('failure', 'completed', 'cancelled').verdict).toEqual([]);
-    expect(cut('failure', 'completed', 'failure').verdict).toEqual(['chrome-1 / round (pnpm regen --skip lanes-host --skip tw-sweep)']);
+    expect(cut('failure', 'completed', 'failure').verdict).toEqual(['chrome-1 / round (pnpm regen --skip lanes-host)']);
     // Other workflows' verdicts are judged as before: a timed-out test shard is still the tree's.
     expect(failedJobs([{ name: 'native (3)', status: 'completed', conclusion: 'timed_out', steps: [{ name: 'vitest run (native files, shard 3/4)', status: 'completed', conclusion: 'cancelled' }] }]).verdict).toHaveLength(1);
     const unavailable = (f: () => unknown): CiUnavailable => {
@@ -506,7 +535,7 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     const minutes = [...round.matchAll(/timeout-minutes: (\d+)/g)].map((m) => Number(m[1]));
     expect(minutes.length).toBeGreaterThan(0);
     const rounds = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml/g)].length;
-    expect(rounds).toBe(6);
+    expect(rounds).toBe(5);
     expect(DEFAULT_REGEN_WAIT_S).toBeGreaterThanOrEqual(rounds * Math.max(...minutes) * 60);
   });
   it('master\'s warm cache run yields to branch regens but never to the driver\'s patch-mode runs (#220 review)', () => {
@@ -523,10 +552,16 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(yml).toContain('echo "mode=patch"');
     // Each round is told not to save in patch mode, and the round saves only when told to.
     const calls = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml\n {4}with: \{([^\n]*)\}/g)].map((m) => m[1]!);
-    expect(calls).toHaveLength(6);
+    expect(calls).toHaveLength(5);
     for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.mode != 'patch' }}"`);
     expect(round).toContain('save_cache: { type: boolean, required: false, default: true }');
-    expect(round).toMatch(/- name: Save the regen cache\n {8}if: success\(\) && inputs\.save_cache\n {8}uses: actions\/cache\/save@v4/);
+    // ...and only on the last round (each round's store holds the earlier ones): the one regen-on-ci.yml follows with no other.
+    const save = /- name: Save the regen cache\n {8}if: ([^\n]+)\n {8}uses: actions\/cache\/save@v4/.exec(round)?.[1];
+    expect(save).toBe("success() && inputs.save_cache && (steps.next.outputs.next == 'false' || (steps.regen.outputs.changed == 'false' && inputs.name != 'chrome-1') || inputs.name == 'chrome-3')");
+    // Those are exactly the cases the next round's gate stops on: host-1 follows chrome-1 unless next is false, and every later
+    // round needs changed true and next not false from the one before; chrome-3 has no round after it.
+    expect(yml).toContain("host-1:\n    needs: [resolve, chrome-1]\n    if: needs.chrome-1.outputs.next != 'false'\n");
+    for (const [prev, name] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) expect(yml).toContain(`${name}:\n    needs: [resolve, ${prev}]\n    if: needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false'\n`);
     // setup-node's pnpm cache saves in a post step: off unless the round may save (#220 review).
     expect([...round.matchAll(/\n {10}cache: ([^\n]+)/g)].map((m) => m[1])).toEqual(["${{ inputs.save_cache && 'pnpm' || '' }}"]);
     // Every cache step that saves (actions/cache or actions/cache/save) is gated on save_cache.
@@ -534,8 +569,8 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(steps.length).toBe(2);
     for (const st of steps) expect(st, st.split('\n')[0]).toMatch(/if: [^\n]*inputs\.save_cache/);
     // The push job runs only in branch mode; the patch job only in patch mode, and uploads the combined patch.
-    expect(yml).toContain("if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'push'");
-    expect(yml).toContain("if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'patch'");
+    expect(yml).toContain("if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'push'");
+    expect(yml).toContain("if: always() && needs.converge.result == 'success' && needs.resolve.outputs.mode == 'patch'");
     const from = yml.indexOf('\n  patch:\n');
     const patch = yml.slice(from, yml.indexOf('\n  push:\n', from));
     expect(from).toBeGreaterThan(yml.indexOf('\njobs:\n'));

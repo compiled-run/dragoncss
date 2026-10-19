@@ -1,14 +1,22 @@
 // The host paint model of the PNT1 tests (pnt1-radius, pnt1-shadow): boxes in tree order, each filling its rounded border box,
-// borders between the rounded border-box and padding-edge shapes (a corner's side by the outer-to-inner diagonal), rounded overflow
-// clips of ancestors, and Skia's 8-bit source-over. It predicts the colour of a sample pixel from the program and the TS
-// paint-radius.ts geometry, for comparison with the committed Chrome PNGs.
-import { hasRoundedCorner, LU_PER_PX, NO_RADIUS_FAULTS, roundedShape, snapEdges } from '@dragon/layout';
+// borders between the rounded border-box and padding-edge shapes (a corner's side by the outer-to-inner diagonal; a rounded double
+// border's two rings), replaced images inside their drawn part and padding-edge curve, rounded overflow clips of ancestors, and
+// Skia's 8-bit source-over. It predicts the colour of a sample pixel from the program and the TS paint-radius.ts geometry, for
+// comparison with the committed Chrome PNGs.
+import { inflateSync } from 'node:zlib';
+import type { ReplacedPaint } from '@dragon/layout';
+import { borderDoubleRings, hasRoundedCorner, LU_PER_PX, NO_RADIUS_FAULTS, roundedShape, snapEdges } from '@dragon/layout';
 import type { NativeProgram, ProgramNode } from 'dragon';
-import { borderDevicePx, programInput } from 'dragon';
+import { borderDevicePx, programInput, replacedGeometries } from 'dragon';
+import { decodePng } from '../../dragon/src/images/png.ts';
+import type { RgbaImage } from '../src/native-compare.ts';
 import { expectedEngine } from '../src/native-host.ts';
 
 export type Rgba = readonly [number, number, number, number];
-export type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[]; readonly radii: readonly number[] | null };
+/** A replaced image's paint rects (device px) and decoded pixels. */
+export type ModelImage = { readonly paint: ReplacedPaint; readonly pixels: RgbaImage };
+/** size: the layout border-box size in device px before snapping (what percentages resolve against). */
+export type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[]; readonly radii: readonly number[] | null; readonly size?: readonly [number, number]; readonly image?: ModelImage };
 
 /** SkMulDiv255Round. */
 const mul255 = (a: number, b: number): number => {
@@ -52,6 +60,7 @@ export function boxes(p: NativeProgram, viewport: { width: number; height: numbe
   if (out.kind !== 'ok') throw new Error('the engine refused the case');
   const snapped = snapEdges(out.boxes);
   const borders = borderDevicePx(engine, input);
+  const paints = replacedGeometries(engine, input, out.boxes);
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const list: Box[] = [];
   out.boxes.forEach((r, i) => {
@@ -61,16 +70,23 @@ export function boxes(p: NativeProgram, viewport: { width: number; height: numbe
     const border = borders.get(r.id) ?? [0, 0, 0, 0];
     const facts = n.facts['radius'] as { lengths: { percent: boolean; value: number }[] } | undefined;
     const shape = facts === undefined ? null : roundedShape(s.left, s.top, s.right, s.bottom, r.width / LU_PER_PX, r.height / LU_PER_PX, border, facts.lengths, dpr, NO_RADIUS_FAULTS);
-    list.push({ node: n, l: s.left, t: s.top, r: s.right, b: s.bottom, border, radii: shape !== null && hasRoundedCorner(shape.slice(0, 8)) ? shape : null });
+    const w = n.writes.find((x) => x.kind === 'replaced-image');
+    const paint = paints.get(r.id);
+    if (w !== undefined && paint === undefined) throw new Error(`${r.id}: an image write with no replaced paint`);
+    const radii = shape !== null && hasRoundedCorner(shape.slice(0, 8)) ? shape : null;
+    const size: [number, number] = [r.width / LU_PER_PX, r.height / LU_PER_PX];
+    if (w === undefined || w.kind !== 'replaced-image' || paint === undefined) list.push({ node: n, l: s.left, t: s.top, r: s.right, b: s.bottom, border, radii, size });
+    else list.push({ node: n, l: s.left, t: s.top, r: s.right, b: s.bottom, border, radii, size, image: { paint, pixels: decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d))) } });
   });
   return list;
 }
 
 /**
  * The model's colour at the centre of pixel (x, y): white canvas, then every box in tree order, clipped by clipping ancestors; with
- * a stop, only the boxes before the stop's index (and the stop box's background when asked).
+ * a stop, only the boxes before the stop's index (and the stop box's background when asked). doubleSolid is the double-solid plant's
+ * fault: a rounded double border painted as one solid band.
  */
-export function modelAt(list: readonly Box[], x: number, y: number, stop: { readonly index: number; readonly background: boolean } | null = null): Rgba {
+export function modelAt(list: readonly Box[], x: number, y: number, stop: { readonly index: number; readonly background: boolean } | null = null, doubleSolid = false): Rgba {
   const cx = x + 0.5;
   const cy = y + 0.5;
   const byId = new Map(list.map((b) => [b.node.id, b]));
@@ -86,11 +102,19 @@ export function modelAt(list: readonly Box[], x: number, y: number, stop: { read
       if (!insideRounded(cx, cy, pl, pt, pr, pb, a.radii === null ? null : a.radii.slice(8, 16))) clipped = true;
     }
     if (clipped || !insideRounded(cx, cy, b.l, b.t, b.r, b.b, b.radii === null ? null : b.radii.slice(0, 8))) continue;
+    // T150a: a box that is not visible paints no background or border of its own (html's and body's background is the canvas's).
+    const hidden = b.node.writes.find((w) => w.kind === 'visibility');
+    if (hidden !== undefined && hidden.kind === 'visibility' && !hidden.canvas) continue;
     const bg = b.node.writes.find((w) => w.kind === 'background-color');
     if (bg !== undefined && bg.kind === 'background-color') colour = over(colour, channels(bg.color));
     if (stop !== null && index === stop.index) break;
+    if (hidden !== undefined) continue;
     const [pl, pt, pr, pb] = padding(b);
-    if (insideRounded(cx, cy, pl, pt, pr, pb, b.radii === null ? null : b.radii.slice(8, 16))) continue;
+    if (insideRounded(cx, cy, pl, pt, pr, pb, b.radii === null ? null : b.radii.slice(8, 16))) {
+      // A replaced image over its background, inside its drawn part and its padding-edge curve (a rounded img has no padding).
+      if (b.image !== undefined) colour = over(colour, imageAt(b.image, x, y) ?? [0, 0, 0, 0]);
+      continue;
+    }
     const styles = b.node.writes.find((w) => w.kind === 'border-styles');
     const colours = b.node.writes.find((w) => w.kind === 'border-colors');
     if (styles === undefined || styles.kind !== 'border-styles' || colours === undefined || colours.kind !== 'border-colors') continue;
@@ -98,9 +122,31 @@ export function modelAt(list: readonly Box[], x: number, y: number, stop: { read
     const side = sideOf(cx, cy, b, [pl, pt, pr, pb]);
     const style = styles.styles[side];
     if (style === 'none' || style === 'hidden' || (b.border[side] as number) === 0) continue;
+    // A rounded box with four double sides of 3 device px or more paints Blink's two rings (borderDoubleRings); the gap shows through.
+    if (!doubleSolid && b.radii !== null && styles.styles.every((st, k) => st === 'double' && (b.border[k] as number) >= 3)) {
+      const v = borderDoubleRings(b.l, b.t, b.r, b.b, b.border, b.radii.slice(0, 8));
+      const ring = (o: number): boolean => insideRounded(cx, cy, v[o] as number, v[o + 1] as number, v[o + 2] as number, v[o + 3] as number, v.slice(o + 8, o + 16)) && !insideRounded(cx, cy, v[o + 4] as number, v[o + 5] as number, v[o + 6] as number, v[o + 7] as number, v.slice(o + 16, o + 24));
+      if (!ring(0) && !ring(24)) continue;
+    }
     colour = over(colour, channels(colours.colors[side] as { r: number; g: number; b: number; alpha: number }));
   }
   return colour;
+}
+
+/**
+ * The source pixel a device pixel of a drawn image maps to (nearest, as replaced-paint.test.ts reads flat content), or null outside
+ * the drawn part. Sample points on an image are only on flat content (paint-samples/image.ts), so the nearest source pixel is exact.
+ */
+function imageAt(m: ModelImage, x: number, y: number): Rgba | null {
+  const d = m.paint.drawn;
+  if (d === null || x < d.x || y < d.y || x >= d.x + d.width || y >= d.y + d.height) return null;
+  const dest = m.paint.dest;
+  const img = m.pixels;
+  const sx = Math.floor(((x + 0.5 - dest.x) * img.width) / dest.width);
+  const sy = Math.floor(((y + 0.5 - dest.y) * img.height) / dest.height);
+  if (sx < 0 || sy < 0 || sx >= img.width || sy >= img.height) throw new Error(`image pixel (${x}, ${y}) maps outside the source at (${sx}, ${sy})`);
+  const i = (sy * img.width + sx) * 4;
+  return [img.data[i] as number, img.data[i + 1] as number, img.data[i + 2] as number, img.data[i + 3] as number];
 }
 
 /** The border side a point of the border band paints: the band it lies in, or across a corner the side of the outer-to-inner diagonal. */

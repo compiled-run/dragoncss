@@ -40,6 +40,22 @@ const asAlias = (p: Parsed, alias: string, property: string): Parsed => ({
 /** Values for each standard property: a typical value, a multi-token value where the grammar has one, and an invalid value. */
 const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'box-sizing': ['border-box', 'content-box'],
+  'background-clip': ['padding-box', 'CONTENT-BOX, border-box', 'text', 'border'],
+  'box-shadow': ['1px 2px 3px red', 'inset 0 0 0 2px rgb(0 0 0 / 50%), 3px 3px currentcolor', 'none', '1px 2px calc(1px + 1px)', '1vw 0', '1px'],
+  opacity: ['0', '50%', '0.5', '1.5', 'calc(50% + 10%)'],
+  'font-feature-settings': ['"liga" 1', '"smcp", "tnum" on, "ss01" 3', 'normal', '"lig"'],
+  filter: ['none', 'NONE', 'blur(4px)', 'opacity(0) grayscale(1)', 'url(#f)', 'none blur(1px)'],
+  'backface-visibility': ['visible', 'HIDDEN', 'none'],
+  'transform-style': ['flat', 'Preserve-3d', 'flat flat'],
+  'user-select': ['none', 'TEXT', 'all', 'contain'],
+  mask: ['none', 'NONE', 'url(m.svg) no-repeat center / contain', 'none, none'],
+  'mask-clip': ['border-box', 'padding-box', 'no-clip'],
+  'mask-composite': ['add', 'exclude, add'],
+  'mask-image': ['none', 'linear-gradient(black, transparent)', 'url(m.svg), none'],
+  'mask-origin': ['border-box', 'content-box'],
+  'mask-position': ['0% 0%', 'center', '10px 20%, left top'],
+  'mask-repeat': ['repeat', 'no-repeat', 'repeat-x, space round'],
+  'mask-size': ['auto', 'cover', '10px auto'],
   'align-content': ['center', 'space-between', 'first baseline'],
   'align-items': ['flex-end', 'last baseline', 'safe center'],
   'align-self': ['auto', 'stretch', 'baseline'],
@@ -108,7 +124,7 @@ const COMMON = ['inherit', 'initial', 'unset', 'revert', 'var(--x)', 'var(--x, 1
 
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(64);
+    expect(ALIASES.length).toBe(80);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
@@ -137,7 +153,7 @@ describe('legacy aliases parse as their property', () => {
     expect(parsed('margin-block-start: foo').diagnostics).toEqual([['DRAGON_CSS_INVALID_VALUE', '"foo" is not a valid value for margin-block-start (@webref/css grammar)']]);
   });
   it('aliases Chrome parses with legacy rules, and non-aliases, stay refused as unknown properties', () => {
-    for (const name of ['-webkit-perspective', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-orient', '-webkit-box-flex']) {
+    for (const name of ['-webkit-perspective', '-webkit-writing-mode', '-webkit-box-reflect', '-webkit-background-origin', '-webkit-background-size']) {
       expect(parse(`${name}: none`).diagnostics.map((d) => d.code), name).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
     }
     // PNT1-radius: -webkit-border-radius is the radius family's own shorthand with Chrome's legacy two-value parsing, not an alias.
@@ -201,17 +217,25 @@ describe('an alias and its property share one cascade', () => {
     .ml { -webkit-margin-start: 5px; margin-left: 7px; }
     .lm { margin-left: 7px; -webkit-margin-start: 5px; }
     .mix { margin-inline-start: 1px; -webkit-margin-start: 2px; margin-inline-start: 3px; -webkit-margin-end: 4px; }
-    .sh { -webkit-flex: 2 0 10px; -webkit-flex-basis: 20px; }`;
+    .sh { -webkit-flex: 2 0 10px; -webkit-flex-basis: 20px; }
+    .bs { -webkit-box-shadow: 1px 2px red; box-shadow: none; -webkit-background-clip: content-box; background-clip: padding-box; -webkit-opacity: 0; opacity: 1; }
+    .sb { box-shadow: none; -webkit-box-shadow: 1px 2px red; background-clip: padding-box; -webkit-background-clip: content-box; opacity: 1; -webkit-opacity: 0; }`;
   const tree = inputFor(css, (r) => [
     div(r, 'as', ['as']), div(r, 'sa', ['sa']), div(r, 'imp', ['imp']), div(r, 'spec', ['spec']),
     div(r, 'ml', ['ml']), div(r, 'lm', ['lm']), div(r, 'mix', ['mix']), div(r, 'sh', ['sh']),
-    div(r, 'rml', ['rtl', 'ml']), div(r, 'rlm', ['rtl', 'lm']),
+    div(r, 'rml', ['rtl', 'ml']), div(r, 'rlm', ['rtl', 'lm']), div(r, 'bs', ['bs']), div(r, 'sb', ['sb']),
   ]);
   const compiled = { ltr: project('ltr').compile(tree), rtl: project('rtl').compile(tree) };
   const value = (node: string, property: string, target: 'web' | 'ios' | 'android' = 'web') => explainOne(compiled.ltr, target, node, property).value;
   it('the later of the alias and the property wins, on every target', () => {
     for (const target of ['web', 'ios', 'android'] as const) {
       expect([value('as', 'flex-direction', target), value('sa', 'flex-direction', target)], target).toEqual(['row', 'column']);
+    }
+  });
+  it('the paint aliases (-webkit-box-shadow, -webkit-background-clip, -webkit-opacity) compete with their property, on every target', () => {
+    for (const target of ['web', 'ios', 'android'] as const) {
+      const of = (node: string) => [value(node, 'box-shadow', target), value(node, 'background-clip', target), value(node, 'opacity', target)];
+      expect([of('bs'), of('sb')], target).toEqual([['none', 'padding-box', '1'], ['rgb(255, 0, 0) 1px 2px 0px 0px', 'content-box', '0']]);
     }
   });
   it('importance and specificity decide before order, as for any declaration', () => {
@@ -256,8 +280,10 @@ describe('profile diagnostics name the alias as written', () => {
 });
 
 describe('the alias fixtures cover every alias', () => {
-  it('each alias appears in a fixture of the aliases group, or the animation ones in the anim-webkit frame fixture', () => {
-    const html = ['alias-flex', 'alias-logical', 'alias-paint'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
+  it('each alias appears in a fixture of the aliases group or its property\'s group, or the animation ones in the anim-webkit frame fixture', () => {
+    // shadow-webkit-alias (shadow group), opacity-cascade (effects group), filter-none (filter group), mask-initial (mask group) and
+    // transform-extra-initial (transform-extra group) hold the paint aliases where their pixel tests read them.
+    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
     const frames = readFileSync(new URL('../../parity/fixtures/anim-webkit/view.css', import.meta.url), 'utf8');
     for (const [alias] of ALIASES) expect((alias.includes('-transition') || alias.includes('-animation') ? frames : html).includes(`${alias}:`), alias).toBe(true);
     expect(frames).toContain('@-webkit-keyframes');

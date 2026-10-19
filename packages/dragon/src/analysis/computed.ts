@@ -10,10 +10,14 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { positionOffsetText, positionValue, ratioValue } from '../css/values.ts';
+import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
+import type { TxtFsFaults } from '../faults/txt-fs.ts';
+import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
-import { uaRows } from '../ua/datasets.ts';
+import { textFontsOf, uaRows } from '../ua/datasets.ts';
+import type { SynthesisAllowed, TextFontValue } from '../fonts/weight.ts';
+import { computeFontStyle, computeTextFont, fontStyleCssValue, INITIAL_TEXT_FONT } from '../fonts/weight.ts';
 import type { Span } from '../types.ts';
 import type { Candidate } from './cascade.ts';
 import type { LinkedElement } from './link.ts';
@@ -62,7 +66,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   let v: CssValue;
   const only = children[0];
   const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
-  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
+  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property) || property === 'fill' || property === 'stroke';
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
   else if (color !== null && color.ok) v = color.kind === 'keyword' ? { kind: 'keyword', value: color.keyword } : { kind: 'color', value: color.value, syntax: color.syntax };
@@ -72,7 +76,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   else if (only.type === 'Percentage') v = { kind: 'percentage', value: Number(only['value']) };
   else if (only.type === 'Number') {
     const n = Number(only['value']);
-    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
+    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
   } else v = { kind: 'other', type: only.type, text };
   valueCache.set(key, v);
   return v;
@@ -176,6 +180,16 @@ export function pxOf(v: CssValue): number | null {
 }
 
 /**
+ * css-fonts-4 §2.5 <absolute-size> as Chrome 145 computes it at its default medium size of 16px: Chrome's own table (a Chrome
+ * observation, checked by the text-font-size-values fixture), not the spec's scaling factors (which give 9.6, 12, 14.2...). The size
+ * does not depend on the parent. Chrome uses another row for the generic monospace alone, which Dragon's web output never names: a
+ * pinned monospace is written as its bundled family.
+ */
+const ABSOLUTE_SIZE_PX: { readonly [k: string]: number } = { 'xx-small': 9, 'x-small': 10, small: 13, medium: 16, large: 18, 'x-large': 24, 'xx-large': 32, 'xxx-large': 48 };
+/** The plant absoluteSizeSpecTable: css-fonts-4 §2.5's scaling factors (3/5, 3/4, 8/9, 1, 6/5, 3/2, 2, 3) of 16px. */
+const SPEC_ABSOLUTE_SIZE_PX: { readonly [k: string]: number } = { 'xx-small': 9.6, 'x-small': 12, small: 128 / 9, medium: 16, large: 19.2, 'x-large': 24, 'xx-large': 32, 'xxx-large': 48 };
+
+/**
  * css-values-4 §6: every length an author declared in a registered unit other than px computes to px. font-size goes first: its
  * em is the parent's computed font-size and its rem the root's, the initial font-size on the root itself (§6.1.1); Blink keeps
  * the result as a float (FontDescription); the compiler keeps double, since rounding lives in the engine and css/color.ts
@@ -183,7 +197,7 @@ export function pxOf(v: CssValue): number | null {
  * element's own computed font-size and rem against the root's (rootFontSize null: this element is the root). Inherited values
  * are already px. rem uses text scale 1 (docs/decisions.md, Text scale).
  */
-export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSize: number | null, rootFontSize: number | null): void {
+export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSize: number | null, rootFontSize: number | null, faults: TxtFsFaults = TXT_FS_FAULTS): void {
   const toPx = (p: Longhand, em: number | null, rem: number | null): void => {
     const v = props.get(p) as ResolvedValue;
     if (v.value.kind !== 'length' || v.value.unit === CANONICAL_LENGTH_UNIT) return;
@@ -199,10 +213,59 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   if (fs.value.kind === 'keyword' && (fs.value.value === 'smaller' || fs.value.value === 'larger') && parentFontSize !== null) {
     props.set('font-size', { ...fs, value: { kind: 'length', value: fs.value.value === 'smaller' ? parentFontSize / 1.2 : parentFontSize * 1.2, unit: CANONICAL_LENGTH_UNIT } });
   }
+  const kw = fs.value.kind === 'keyword' ? (faults.absoluteSizeSpecTable ? SPEC_ABSOLUTE_SIZE_PX : ABSOLUTE_SIZE_PX)[fs.value.value] : undefined;
+  if (kw !== undefined) props.set('font-size', { ...fs, value: { kind: 'length', value: kw, unit: CANONICAL_LENGTH_UNIT } });
+  // style_builder_converter.cc ConvertFontSize (928-974): a percentage is that share of the parent's computed size.
+  const of = faults.fontSizePercentOfRoot ? (rootFontSize ?? parentFontSize) : parentFontSize;
+  if (fs.value.kind === 'percentage' && of !== null) {
+    props.set('font-size', { ...fs, value: { kind: 'length', value: (fs.value.value * of) / 100, unit: CANONICAL_LENGTH_UNIT } });
+  }
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
   computePaintValues(props, { em: own, rem: rootFontSize ?? own });
+}
+
+/** Inherited lengths whose value may be a calculation: their em and rem compute at the declaring element (css-values-4 §6). */
+const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset', 'text-indent'];
+const EM_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(r?em)(?![\w-])/gi;
+
+/**
+ * css-values-4 §6: an em or rem inside a calculation in an inherited length computes to px at the element that declares it, so a
+ * descendant inherits the absolute length (calc(0.5em + 1px) under a 20px font is 11px on every descendant, whatever its own size).
+ */
+export function computeInheritedMathLengths(props: Map<Longhand, ResolvedValue>, em: number | null, rem: number | null): void {
+  if (em === null || rem === null) return;
+  for (const p of INHERITED_MATH_LENGTHS) {
+    const v = props.get(p) as ResolvedValue;
+    if (v.origin === 'inherited' || v.value.kind !== 'other' || v.value.type.startsWith(REFUSED_MATH_PREFIX)) continue;
+    const text = v.value.text.replace(EM_IN_MATH, (all, before: string, n: string, unit: string) => {
+      const px = lengthToPx(Number(n), unit.toLowerCase(), { em, rem });
+      return px === null || !Number.isFinite(px) || /e/i.test(String(px)) ? all : `${before}${String(px)}${CANONICAL_LENGTH_UNIT}`;
+    });
+    if (text !== v.value.text) props.set(p, { ...v, value: { ...v.value, text } });
+  }
+}
+
+/**
+ * css-text-3 §8.2 as Chrome 145 computes letter-spacing (longhands_custom.cc LetterSpacing::CSSValueFromComputedStyleInternal): a
+ * zero length computes to normal. Planted fault zeroNotNormal keeps the zero length.
+ */
+export function computeLetterSpacing(props: Map<Longhand, ResolvedValue>, zeroNotNormal: boolean): void {
+  const v = props.get('letter-spacing') as ResolvedValue;
+  if (zeroNotNormal || (v.value.kind !== 'length' && v.value.kind !== 'number') || v.value.value !== 0) return;
+  props.set('letter-spacing', { ...v, value: { kind: 'keyword', value: 'normal' } });
+}
+
+/**
+ * css-text-3 §8.1 as Chrome 145 computes word-spacing (longhands_custom.cc WordSpacing::CSSValueFromComputedStyleInternal): a fixed
+ * length, normal (0) included, computes to px. Planted fault wordNormalNotZero keeps normal.
+ */
+export function computeWordSpacing(props: Map<Longhand, ResolvedValue>, wordNormalNotZero: boolean): void {
+  const v = props.get('word-spacing') as ResolvedValue;
+  if (wordNormalNotZero) return;
+  if (v.value.kind === 'keyword' && v.value.value === 'normal') props.set('word-spacing', { ...v, value: { kind: 'length', value: 0, unit: 'px' } });
+  else if (v.value.kind === 'number' && v.value.value === 0) props.set('word-spacing', { ...v, value: { kind: 'length', value: 0, unit: 'px' } });
 }
 
 /** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */
@@ -225,6 +288,78 @@ export function computeJustifyItems(props: Map<Longhand, ResolvedValue>, parent:
   const inherited = parent === null ? null : (parent.get('justify-items') as ResolvedValue).value;
   const legacy = inherited !== null && inherited.kind === 'keyword' && inherited.value.startsWith('legacy ');
   props.set('justify-items', { ...v, value: legacy ? inherited : { kind: 'keyword', value: 'normal' } });
+}
+
+/**
+ * css-fonts-4 §2.2, §2.3 as Blink computes them (fonts/weight.ts): a font-weight or font-style no author declaration set takes the
+ * tag's specified html.css value (userAgentTextFonts: bold, bolder, italic) or else its parent's; then font-weight computes to a
+ * number (bolder and lighter against the parent's computed weight) and font-style to normal, italic or oblique <n>deg.
+ */
+export function computeFontStyleLonghands(tag: string, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ReadonlyMap<Longhand, ResolvedValue> | null, ua: UaDataset, reverted: ReadonlySet<Longhand>): void {
+  const none = { span: null, declaration: null, declared: null, losing: [] } as const;
+  const row = textFontsOf(ua, tag);
+  for (const p of ['font-weight', 'font-style'] as const) {
+    const text = row[p];
+    // A reverted longhand keeps its author declaration (its profile row and losing list); only the value is the UA's.
+    if (defaulted.has(p) && text !== undefined) props.set(p, { ...(reverted.has(p) ? (props.get(p) as ResolvedValue) : none), value: parseValueText(p, text), origin: 'user-agent' });
+  }
+  const w = props.get('font-weight') as ResolvedValue;
+  const st = props.get('font-style') as ResolvedValue;
+  const specified = (v: ResolvedValue): CssValue | null => (v.origin === 'inherited' && parent !== null ? null : v.value);
+  const parentFont = parent === null ? INITIAL_TEXT_FONT : textFontOfProps(parent);
+  // A calculation Dragon refuses keeps its refused value, which no profile row supports, so every target refuses the declaration.
+  const known = (v: ResolvedValue): CssValue | null => (isRefusedMath(v.value) ? null : specified(v));
+  const font = computeTextFont({ weight: known(w), style: known(st) }, parentFont);
+  if (font === null) throw new Error(`font-weight ${valueToString(w.value)} or font-style ${valueToString(st.value)} has no computed value`);
+  if (!isRefusedMath(w.value)) props.set('font-weight', { ...w, value: { kind: 'number', value: font.weight } });
+  if (!isRefusedMath(st.value)) props.set('font-style', { ...st, value: fontStyleCssValue(font.style) });
+}
+
+/** Whether Chrome may synthesize bold and oblique for an element (font-synthesis-weight and -style). */
+export function synthesisAllowedOf(props: ReadonlyMap<Longhand, ResolvedValue>): SynthesisAllowed {
+  const on = (p: Longhand): boolean => valueToString((props.get(p) as ResolvedValue).value) !== 'none';
+  return { weight: on('font-synthesis-weight'), style: on('font-synthesis-style') };
+}
+
+export const isRefusedMath = (v: CssValue): boolean => v.kind === 'other' && v.type.startsWith(REFUSED_MATH_PREFIX);
+
+/** The computed text font of resolved properties; a refused calculation counts as the initial value, since its declaration is refused. */
+export function textFontOfProps(props: ReadonlyMap<Longhand, ResolvedValue>): TextFontValue {
+  const v = (props.get('font-style') as ResolvedValue).value;
+  const style = isRefusedMath(v) ? INITIAL_TEXT_FONT.style : computeFontStyle(v);
+  if (style === null) throw new Error('font-style is not computed');
+  return { weight: weightOf(props.get('font-weight') as ResolvedValue), style };
+}
+
+/**
+ * Whether Chrome draws an element's text over a face without a slope range (Ahem's one regular face) in synthetic oblique:
+ * font-synthesis-style allows it and the computed slope is 14deg or more (css_segmented_font_face.cc, fonts/weight.ts synthesisOf).
+ */
+export function synthesizesOblique(props: ReadonlyMap<Longhand, ResolvedValue>): boolean {
+  const style = textFontOfProps(props).style;
+  const slope = style.kind === 'italic' ? 14 : style.kind === 'oblique' ? style.degrees : 0;
+  return synthesisAllowedOf(props).style && slope >= 14;
+}
+
+/**
+ * The shear Chrome draws a synthetic oblique with, in x per unit of height above the baseline: Skia's SkFont::setSkewX(-1/4) in
+ * y-down glyph space (font_platform_data_mac.mm CreateSkFont, line 256), the same at every angle.
+ */
+export const SYNTHETIC_OBLIQUE_SHEAR = 0.25;
+
+/** A computed font-weight's number; a refused calculation counts as the initial weight, since its declaration is refused. */
+export function weightOf(v: ResolvedValue): number {
+  if (isRefusedMath(v.value)) return INITIAL_TEXT_FONT.weight;
+  if (v.value.kind !== 'number') throw new Error(`font-weight ${valueToString(v.value)} is not computed`);
+  return v.value.value;
+}
+
+/**
+ * Whether Chrome draws an element's text over a face below weight 600 (Ahem's one regular face) in synthetic bold: font-synthesis-weight
+ * allows it and the computed weight is 600 or more (fonts/weight.ts synthesisOf, kBoldThreshold).
+ */
+export function synthesizesBold(props: ReadonlyMap<Longhand, ResolvedValue>, from = 600): boolean {
+  return synthesisAllowedOf(props).weight && textFontOfProps(props).weight >= from;
 }
 
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).

@@ -4,6 +4,9 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
+import type { SvgScene } from './analysis/elements/svg.ts';
+export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
+import { svgSceneOf } from './analysis/elements/svg.ts';
 import type { Rgba8 } from './css/color.ts';
 import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
@@ -26,9 +29,10 @@ export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
-export { PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
+export { nativeOutlinePending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
+export { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES, syntheticBoldStroke } from './fonts/synthetic-bold.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
 export type { UaDataset, UaDatasetChoice } from './ua/datasets.ts';
 export { REFERENCE_PLATFORM, ReferencePlatformUnavailable, referenceDataset, uaDatasetFor } from './ua/datasets.ts';
@@ -54,7 +58,9 @@ export { DIAGNOSTIC_CODES } from './diagnostics/codes.ts';
 export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
 export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
-export { collapseInlineContext, collapseInlineRun } from './analysis/resolve.ts';
+export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
+export { applyTextTransform } from './analysis/text-transform.ts';
+export type { TextTransform } from './analysis/text-transform.ts';
 export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
@@ -62,6 +68,7 @@ export type { BorderStyleName, NativeBackend, NativeProgram, ProgramNode, Progra
 export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
 export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
+export { clipPathInsets, clipPathRect } from './emit/paint/clip.ts';
 export type { EmitCase } from './emit/native-support.ts';
 export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES, SUPPORT_PLANTS } from './emit/native-support.ts';
 export type { SupportPlant } from './emit/native-support.ts';
@@ -178,6 +185,23 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   return out;
 }
 
+/** SVG-a1: the scene of every rendered <svg> of a case, in document order (analysis/elements/svg.ts). */
+export function svgScenes(compiled: object, assignment: Assignment): readonly SvgScene[] | null {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  const out: SvgScene[] = [];
+  const walk = (el: ResolvedElement): void => {
+    // An element with display: none lays out no box, so an <svg> in it (or that is it) draws nothing.
+    const display = el.props.get('display')?.value;
+    if (display !== undefined && display.kind === 'keyword' && display.value === 'none') return;
+    const scene = svgSceneOf(el);
+    if (scene !== null) out.push(scene);
+    else for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  return out;
+}
+
 /** One laid-out text node of a case (docs/api.md §10, projected literal text): who authored it and where it is inserted. */
 export type TextTopologyEntry = {
   readonly address: string;
@@ -274,7 +298,7 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record)) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -429,7 +453,7 @@ export function nativeBandPrograms(compiled: object, assignment: Assignment, ban
   if (c === undefined) return { kind: 'blocked', reason: `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}` };
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: `the case has no native lowering in band ${band}` };
   try {
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record)) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;

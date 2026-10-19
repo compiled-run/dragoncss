@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox, LayoutStyle } from '@dragon/layout';
 import type { FrontEndResult } from '../src/index.ts';
+import type { SourceRef, TreeNode } from '../src/types.ts';
 import { createProject } from '../src/index.ts';
 import { applyFix, CATALOGUE, compiledFeatures, createProjectWith, iosLayoutProjection, LONGHANDS, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, textTopology, WEB_CSS_PATH } from '../src/internal.ts';
 import { initialValue } from '../src/analysis/resolve.ts';
@@ -57,18 +58,49 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
     // Two values of each paint longhand: two colours, or for the PNT2 and BG2 longhands two values of their own syntax, and for
-    // PNT1's two opacities and z-indexes, and two box-shadow lists, on static boxes (ios refuses a shadow on a positioned box).
+    // PNT1's two opacities and z-indexes, and two box-shadow lists, on static boxes (ios refuses a shadow on a positioned box), and
+    // for PNT1's outline longhands two values that paint nothing natively (.x is positioned, which a painting outline refuses).
     const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'], opacity: ['0', '100%'], 'z-index': ['3', '-1'], 'box-shadow': ['1px 2px #102030', 'inset 0 0 4px 1px rgba(200, 100, 50, 0.5)'],
+      'outline-style': ['none', 'solid; outline-width: 0'], 'outline-width': ['0', '4px'], 'outline-offset': ['0', '3px'],
       // BG2's layer longhands, each with two values of its own syntax that paint no image.
-      'background-image': ['none', 'none, none'], 'background-position-x': ['0%', 'right 4px'], 'background-position-y': ['0%', '25%'], 'background-size': ['auto', 'cover'], 'background-repeat': ['repeat', 'no-repeat'], 'background-attachment': ['scroll', 'scroll, scroll'], 'background-origin': ['padding-box', 'content-box'], 'background-clip': ['border-box', 'padding-box'] };
+      'background-image': ['none', 'none, none'], 'background-position-x': ['0%', 'right 4px'], 'background-position-y': ['0%', '25%'], 'background-size': ['auto', 'cover'], 'background-repeat': ['repeat', 'no-repeat'], 'background-attachment': ['scroll', 'scroll, scroll'], 'background-origin': ['padding-box', 'content-box'], 'background-clip': ['border-box', 'padding-box'],
+      // T150a: visibility's two keywords that paint nothing.
+      visibility: ['hidden', 'collapse'],
+      // MASK-CLIP: two rects on a relatively positioned box, where clip does not apply.
+      clip: ['rect(0, 0, 0, 0)', 'rect(1px 2px 3px 4px)'],
+      // MASK-CLIP: two clip-path insets, on boxes without text (natively a clip-path over any text is refused, below).
+      'clip-path': ['inset(0)', 'inset(-2px 0 0 -10%)'],
+      // SVG-a1: two stroke widths; SVG-opacity: two fill and stroke opacities; SVG-stroke: two caps, joins, miter limits and fill rules;
+      // SVG-dash: two dash lists and offsets; SVG-geometry: two of each geometry property;
+      // SVG-paint-order: two paint orders.
+      'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
+      'stroke-linecap': ['round', 'square'], 'stroke-linejoin': ['bevel', 'round'], 'stroke-miterlimit': ['1', '10'], 'fill-rule': ['evenodd', 'nonzero'], 'stroke-dasharray': ['2 3', 'none'], 'stroke-dashoffset': ['4px', '-2'],
+      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'], 'rx': ['2px', 'auto'], 'ry': ['auto', '1'],
+      // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.
+      'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
+      'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
+      // TXT-FX: the fill colour is compared at currentcolor, the only fill Dragon accepts, the stroke at zero widths (any colour), and
+      // text-shadow, which accepts none alone, at none on both.
+      '-webkit-text-fill-color': ['currentcolor', 'currentColor'], '-webkit-text-stroke-width': ['0', '0px'], 'text-shadow': ['none', 'none'],
+      // FX: filter, which accepts none alone, at none in two ASCII cases.
+      filter: ['none', 'NONE'],
+      // MASK-CLIP: the mask longhands, which accept their initial values alone, at those values in two ASCII cases.
+      'mask-image': ['none', 'NONE'], '-webkit-mask-position-x': ['0%', '0%'], '-webkit-mask-position-y': ['0%', '0%'], 'mask-size': ['auto', 'AUTO'],
+      'mask-repeat': ['repeat', 'REPEAT'], 'mask-origin': ['border-box', 'BORDER-BOX'], 'mask-clip': ['border-box', 'Border-Box'], 'mask-composite': ['add', 'ADD'],
+      'mask-mode': ['match-source', 'MATCH-SOURCE'],
+      // PNT2: the 3D transform longhands, which accept their initial values alone, at those values in two ASCII cases.
+      'backface-visibility': ['visible', 'VISIBLE'], 'transform-style': ['flat', 'FLAT'], 'transform-box': ['view-box', 'View-Box'] };
+
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const position = p === 'box-shadow' ? 'static' : 'relative';
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: ${position}; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
+      // A clip-path over text is refused natively (the accessibility rule), so its boxes hold an empty block instead of text.
+      const inner = (r: SourceRef, id: string): TreeNode => (p === 'clip-path' ? div(r, id, []) : text(r, id, 'XX XX'));
+      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: ${position}; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [inner(r, 'at')]), div(r, 'b', ['x', 'b'], [inner(r, 'bt')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);
-      expect(JSON.stringify(a.children).replaceAll('a:text0', 'b:text0'), p).toBe(JSON.stringify(b.children));
+      expect(JSON.stringify(a.children).replaceAll('a:text0', 'b:text0').replaceAll('"id":"at"', '"id":"bt"'), p).toBe(JSON.stringify(b.children));
     }
   });
   it('(iii) colour conversion stays in css/color.ts', () => {
@@ -82,6 +114,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       // CASC 2: css/chrome-number.ts writes registered @property numbers as Chrome 145 serialises them (six significant digits, %g; probed in casc-property); only that file.
       if (f.endsWith(join('src', 'css', 'chrome-number.ts'))) continue;
+      // SVG-a1: analysis/elements/svg-path.ts reproduces Chrome's float32 path-number arithmetic (svg.test.ts pins it); only that file.
+      if (f.endsWith(join('src', 'analysis', 'elements', 'svg-path.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });

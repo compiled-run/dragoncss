@@ -15,7 +15,8 @@ import { compareZoomedLayout } from './compare.ts';
 import { referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import { canonicalJsonText } from './state-cases.ts';
-import { chromeArgsAt, CHROME_VERSION, openFrozenPage } from './chrome.ts';
+import { chromeArgsAt, CHROME_VERSION, injectHarness, launchArgsOf, openFrozenPage } from './chrome.ts';
+import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import type { ChromeBreaks, ChromeBreakText } from './line-breaks.ts';
 import { captureBreakTexts } from './line-breaks.ts';
 import type { RgbaImage } from './native-compare.ts';
@@ -68,7 +69,33 @@ function renderings(c: AnimCase, steps: readonly FrameStep[], rendering: 'author
 
 /** Captures one frame case at one DPR in one rendering. */
 export async function captureFrames(browser: Browser, c: AnimCase, steps: readonly FrameStep[], dpr: number, rendering: 'authored' | 'compiled' = 'authored', css: string | null = null): Promise<FrameCapture> {
-  return (await runFrames(browser, c, steps, dpr, rendering, css, null)).capture;
+  return (await runFramesMemo(browser, c, steps, dpr, rendering, css, null)).capture;
+}
+
+/** The code that decides a frame run beside its pages: this driver, the frozen page setup, the break reader and the raster rule. */
+const FRAME_CODE = ['packages/parity/src/frame-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/pixel-reference.ts', 'packages/parity/src/transform-capture.ts'];
+/** Remembered and fresh frame runs of this process (chrome-memo.ts). */
+export const FRAME_MEMO: MemoStats = { hits: 0, misses: 0 };
+
+type StoredRun = { readonly capture: FrameCapture; readonly refs: { readonly breaks: FrameRefs['breaks']; readonly pixels: readonly (readonly [number, string])[] } | null };
+
+/**
+ * runFrames, remembered (chrome-memo.ts) by everything sent to the page: the harnessed initial page, every morph, advance and
+ * dump, the tracked properties, the viewport, DPR and direction, the samples screenshotted, and the browser's launch flags. The
+ * case id and the dump times are in the key too, as they are written into the capture. A browser launchChrome did not start
+ * always runs.
+ */
+async function runFramesMemo(browser: Browser, c: AnimCase, steps: readonly FrameStep[], dpr: number, rendering: 'authored' | 'compiled', css: string | null, pixels: ReadonlySet<number> | null): Promise<{ readonly capture: FrameCapture; readonly refs: FrameRefs | null }> {
+  const args = launchArgsOf(browser);
+  if (args === null) return runFrames(browser, c, steps, dpr, rendering, css, pixels);
+  const { initial, pageSteps } = renderings(c, steps, rendering, css);
+  const env = { viewport: c.viewport, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' as const };
+  const parts = { case: c.id, rendering, initial: injectHarness(initial, env), pageSteps, steps, tracked: trackedProperties(c.ap), env, pixels: pixels === null ? null : [...pixels].sort((a, b) => a - b), args };
+  const stored = await memoizedJson<StoredRun>('frames', parts, FRAME_CODE, FRAME_MEMO, async () => {
+    const r = await runFrames(browser, c, steps, dpr, rendering, css, pixels);
+    return { capture: r.capture, refs: r.refs === null ? null : { breaks: r.refs.breaks, pixels: [...r.refs.pixels].map(([k, png]) => [k, png.toString('base64')] as const) } };
+  });
+  return { capture: stored.capture, refs: stored.refs === null ? null : { breaks: stored.refs.breaks, pixels: new Map(stored.refs.pixels.map(([k, b64]) => [k, Buffer.from(b64, 'base64')])) } };
 }
 
 /** The device lanes' per-sample Chrome references (R18): the breaks at every dump, and the PNG at each pixel sample (dump index). */
@@ -76,9 +103,39 @@ export type FrameRefs = { readonly breaks: readonly (readonly ChromeBreakText[])
 
 /** captureFrames in the authored rendering, also reading Chrome's breaks at every dump and screenshotting each of `pixels`. */
 export async function captureFramesWithRefs(browser: Browser, c: AnimCase, steps: readonly FrameStep[], dpr: number, pixels: readonly number[]): Promise<{ readonly capture: FrameCapture; readonly refs: FrameRefs }> {
-  const r = await runFrames(browser, c, steps, dpr, 'authored', null, new Set(pixels));
+  const r = await runFramesMemo(browser, c, steps, dpr, 'authored', null, new Set(pixels));
   if (r.refs === null) throw new Error(`${c.id}: no references were read`);
   return { capture: r.capture, refs: r.refs };
+}
+
+/** Page.captureScreenshot as a PNG buffer. */
+async function screenshot(cdp: CDPSession): Promise<Buffer> {
+  return Buffer.from(((await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string }).data, 'base64');
+}
+
+/** A base background no fixture shows, so setting it, and clearing it again, changes every pixel the page does not paint over. */
+const REPAINT_BACKGROUND = { r: 255, g: 0, b: 255, a: 1 };
+
+/**
+ * A screenshot of the page's current state that does not depend on the frames Chrome happened to raster before it. The page
+ * moves through every sample's state but rasters only the states a compositor frame happened to catch, and Chrome re-rasters
+ * only the rectangles it invalidates. At a fractional DPR such a rectangle can miss the antialiased device column of an edge
+ * that moved, so a column of an earlier frame stayed in the screenshot. anim-layout-margin-rtl at 2.625 and 3 showed it: k7
+ * (at 501), k9 (at 600) and k10 (at 601) differed only in device column 358, the margin's edge at an earlier sample, depending on
+ * which frames had been rastered. Changing the base background invalidates the whole view; each change is rastered by its own
+ * screenshot, so the kept one is painted from scratch. Two such repaints must give the same bytes, or the capture fails closed.
+ */
+async function repaintedScreenshot(cdp: CDPSession, at: string): Promise<Buffer> {
+  const repaint = async (): Promise<Buffer> => {
+    await cdp.send('Emulation.setDefaultBackgroundColorOverride', { color: REPAINT_BACKGROUND });
+    await screenshot(cdp);
+    await cdp.send('Emulation.setDefaultBackgroundColorOverride', {});
+    return screenshot(cdp);
+  };
+  const a = await repaint();
+  const b = await repaint();
+  if (!a.equals(b)) throw new Error(`${at}: two full repaints of the same frame gave different screenshots; the frame is not pinned`);
+  return a;
 }
 
 async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameStep[], dpr: number, rendering: 'authored' | 'compiled', css: string | null, pixels: ReadonlySet<number> | null): Promise<{ readonly capture: FrameCapture; readonly refs: FrameRefs | null }> {
@@ -174,9 +231,9 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
       if (transformed.length > 0) throw new Error(`${c.id} sample ${k}: ${transformed.join(', ')} transformed; the frame break capture refuses the transform twin`);
       breaks.push(await captureBreakTexts(page));
       if (!pixels.has(k)) continue;
-      // As parity:pixel-capture shoots: CDP Page.captureScreenshot, checked against the raster size rule.
+      // As parity:pixel-capture shoots: CDP Page.captureScreenshot, checked against the raster size rule, but from a full repaint.
       cdp ??= await page.context().newCDPSession(page);
-      const png = Buffer.from(((await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string }).data, 'base64');
+      const png = await repaintedScreenshot(cdp, `${c.id}@${dpr} sample ${k}`);
       const img = decodePng(png);
       const want = rasterSize(c.viewport, dpr);
       if (img.width !== want.width || img.height !== want.height) throw new Error(`${c.id}@${dpr} sample ${k}: Chrome captured ${img.width}x${img.height}, the raster rule is ${want.width}x${want.height}`);
@@ -269,7 +326,7 @@ function authoredFor(path: string, caseId: string, dpr: number, chrome: unknown,
 const isBreakText = (t: unknown): t is ChromeBreakText => {
   const x = (typeof t === 'object' && t !== null ? t : {}) as Record<string, unknown>;
   const ints = (v: unknown): boolean => Array.isArray(v) && v.every((n) => Number.isInteger(n));
-  return typeof x['id'] === 'string' && typeof x['data'] === 'string' && Number.isInteger(x['lines']) && ints(x['units']) && ints(x['blank']);
+  return typeof x['id'] === 'string' && typeof x['data'] === 'string' && Number.isInteger(x['lines']) && ints(x['units']) && ints(x['blank']) && (x['transform'] === undefined || typeof x['transform'] === 'string');
 };
 
 /** Chrome's breaks at every dump of a frame case at a device DPR, in dump order; null when none are committed. */

@@ -12,8 +12,7 @@ import { emittedPath, expectedDir, expectedPath } from '../committed.ts';
 import { environmentsOf, FIXTURES } from '../fixtures.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 import { repoPath } from '../paths.ts';
-import { compileFixture, forcedCases } from '../pipeline.ts';
-import { prepareOf } from '../forced-pseudo.ts';
+import { authoredPrepareOf, compileFixture, forcedCases } from '../pipeline.ts';
 import { FONT_FIXTURES } from '../fixture-groups/fonts.ts';
 import { fontCases, fontEmittedDir, fontEmittedPath, fontExpectedDir, fontExpectedPath, liveFontAuthored } from '../fonts-run.ts';
 import { ENV_FIXTURES } from '../fixture-groups/env.ts';
@@ -36,10 +35,10 @@ try {
   const layout = FIXTURES.filter((spec) => spec.kind === 'layout');
   await inOrder(layout, CHROME_PAGES, async (spec) => {
     const cases = casesOf(spec, fixtureInput(spec));
-    for (const c of cases) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra)));
+    for (const c of cases) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c))));
     // SELD-R2a: each forced case's authored rendering with its pseudo-classes forced (CSS.forcePseudoState).
     const forced = forcedCases(spec);
-    for (const c of forced) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, prepareOf(c))));
+    for (const c of forced) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c))));
     const notes: string[] = [];
     if (reference) {
       for (const env of environmentsOf(spec)) {

@@ -363,6 +363,7 @@ public final class DragonInteractionMachine {
         case .borderStyles(let s): v.dragonBorderStyles = s
         case .borderColors(let c): v.dragonBorderColors = c
         case .clip: v.dragonEnableClip()
+        case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -675,6 +676,7 @@ class DragonInteractionMachine(
           is DragonStateWrite.BorderStyles -> v.dragonBorderStyles = w.s
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = w.c
           is DragonStateWrite.Clip -> v.dragonEnableClip()
+          is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }

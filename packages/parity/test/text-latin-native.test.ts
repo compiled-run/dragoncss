@@ -1,6 +1,7 @@
-// TXT1a-1 R3: the text-latin vectors (packages/layout/vectors/text-latin) replay in the generated Swift and Kotlin engines, through
-// the translated harness's transcript replay, with the TypeScript harness's results. Split from text-latin.test.ts, whose other
-// cases need Chrome, so this file runs on the native shards (scripts/test-shards.ts TOOLCHAIN_USE).
+// TXT1a-1 R3: the text-latin vectors (packages/layout/vectors/text-latin, written by layout:vectors and layout:dpr-vectors since
+// TXT1a-2) replay in the generated Swift and Kotlin engines, through the translated harness's transcript replay, with the TypeScript
+// harness's results. Split from text-latin.test.ts, whose other cases need Chrome, so this file runs on the native shards
+// (scripts/test-shards.ts TOOLCHAIN_USE).
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -17,9 +18,12 @@ const vecs = [1, 2, 3, 2.625].flatMap((d) => {
 });
 const lines = vecs.map((v) => JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls } }));
 
-describe('TXT1a-1 phase B: text-latin vectors replay in the generated native engines (R3)', () => {
+describe('TXT1a-1 phase B and TXT1a-2 phase F: text-latin vectors replay in the generated native engines (R3)', () => {
   it('reads every text-latin vector, each laid out by the TypeScript harness', () => {
-    expect(vecs.length).toBe(28);
+    // TXT1a-2: the 11 shaped FIXTURES cases (text-latin.test.ts NEW_IDS), INL1a-tags' 2 (TAG_IDS), TXT-W1's 12 text-weight cases, TXT-W2's 4, TXT2-b's 2 text-spacing-lato cases,
+    // TXT2-c's white-space-lato, TXT2's 2 text-justify-latin cases, TXT2-b's 3 word-spacing cases (text-word-spacing-lato ltr and rtl,
+    // text-word-spacing-nbsp) TXT2-h's 2 text-indent-latin cases and TXT2-a's text-break-lato at DPR 1, 2, 3 and 2.625.
+    expect(vecs.length).toBe((11 + 2 + 12 + 4 + 2 + 1 + 2 + 3 + 2 + 1) * 4);
     for (const line of lines) expect(JSON.parse(runEngineCase(line))[0]).toBe('ok');
   });
 

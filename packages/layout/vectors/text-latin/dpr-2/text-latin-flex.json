@@ -13,7 +13,8 @@
     "advances": [],
     "xHeight": 1013,
     "capHeight": 1433,
-    "zeroAdvance": 1160
+    "zeroAdvance": 1160,
+    "ellipsisAdvance": 1500
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -1137,6 +1138,12 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
+    "textIndent": {
+     "kind": "px",
+     "value": 0
+    },
+    "lineClamp": 0,
     "grid": null,
     "gridItem": null
    },
@@ -1257,6 +1264,12 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
+      "textIndent": {
+       "kind": "px",
+       "value": 0
+      },
+      "lineClamp": 0,
       "grid": null,
       "gridItem": null
      },
@@ -1378,6 +1391,12 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1498,6 +1517,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1533,7 +1558,17 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -1652,6 +1687,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1687,7 +1728,17 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -1809,6 +1860,12 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -1929,6 +1986,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -1964,7 +2027,17 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -2083,6 +2156,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
@@ -2118,7 +2197,17 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }

@@ -76,6 +76,10 @@ function at(xs: readonly number[], i: number): number {
 function styleRank(style: string): number {
   if (style === 'none') return 0;
   if (style === 'hidden') return 1;
+  if (style === 'inset') return 2;
+  if (style === 'groove') return 3;
+  if (style === 'outset') return 4;
+  if (style === 'ridge') return 5;
   if (style === 'dotted') return 6;
   if (style === 'dashed') return 7;
   if (style === 'solid') return 8;
@@ -83,9 +87,24 @@ function styleRank(style: string): number {
   throw new Error(`paint-dash: border style ${style} has no side painter`);
 }
 
-/** BorderEdge::EffectiveStyle for the styles Dragon lowers: double under 3 device px is solid. */
+/** BorderEdge::EffectiveStyle: double under 3 device px is solid, and so are groove and ridge of 1 device px or less. */
 function effectiveStyle(style: string, width: number): string {
-  return style === 'double' && width < 3 ? 'solid' : style;
+  if (style === 'double' && width < 3) return 'solid';
+  if ((style === 'groove' || style === 'ridge') && width <= 1) return 'solid';
+  return style;
+}
+
+/** The styles a border side reaches this file with (lower/paint/border.ts); the 3D styles come from outlines only. */
+function isBorderStyle(style: string): boolean {
+  return style === 'none' || style === 'hidden' || style === 'solid' || style === 'dotted' || style === 'dashed' || style === 'double';
+}
+
+function isGrooveOrRidge(style: string): boolean {
+  return style === 'groove' || style === 'ridge';
+}
+
+function isThreeD(style: string): boolean {
+  return style === 'inset' || style === 'outset' || isGrooveOrRidge(style);
 }
 
 function isDottedOrDashed(style: string): boolean {
@@ -128,6 +147,7 @@ function sidePriority(side: number): number {
 /** kStylePriority (box_border_painter.cc:354-365). */
 function stylePriority(style: string): number {
   if (style === 'solid') return 3;
+  if (isThreeD(style)) return 2;
   if (style === 'dotted' || style === 'dashed' || style === 'double') return 1;
   return 0;
 }
@@ -153,6 +173,7 @@ export function borderNeedsSidePainter(widths: readonly number[], styles: readon
 function makeEdge(widths: readonly number[], styles: readonly string[], colors: readonly number[], side: number): DashEdge {
   const s = styles[side];
   if (s === undefined) throw new Error(`paint-dash: no style for side ${side}`);
+  if (!isBorderStyle(s)) throw new Error(`paint-dash: border style ${s} has no side painter`);
   const w = at(widths, side);
   return { width: w, style: effectiveStyle(s, w), r: at(colors, 4 * side), g: at(colors, 4 * side + 1), b: at(colors, 4 * side + 2), a: at(colors, 4 * side + 3) };
 }
@@ -169,8 +190,20 @@ type DashPainter = {
   readonly innerBottom: number;
   readonly edges: readonly DashEdge[];
   readonly faults: DashFaults;
+  /** An outline's operations name a tone (TONE_*) in side; a border's name the side whose colour they take. */
+  readonly tones: boolean;
   readonly out: BorderOp[];
 };
+
+/** An outline operation's colour (outlinePaintOps): the outline colour, or the lighter or the darker colour of a 3D style. */
+const TONE_BASE = 0;
+const TONE_LIGHT = 1;
+const TONE_DARK = 2;
+
+/** The side field of a coloured operation: the side, or for an outline its tone. */
+function slotOf(p: DashPainter, side: number, tone: number): number {
+  return p.tones ? tone : side;
+}
 
 /**
  * The drawing operations of one box's border (BoxBorderPainter::Paint's complex path) in device px: the outer border box
@@ -194,7 +227,7 @@ export function borderPaintOps(left: number, top: number, right: number, bottom:
   clampWidth(edgeAt(edges, RIGHT), right - left);
   clampWidth(edgeAt(edges, BOTTOM), bottom - top);
   clampWidth(edgeAt(edges, LEFT), right - left);
-  const p: DashPainter = { left, top, right, bottom, innerLeft, innerTop, innerRight, innerBottom, edges, faults, out };
+  const p: DashPainter = { left, top, right, bottom, innerLeft, innerTop, innerRight, innerBottom, edges, faults, tones: false, out };
   const groups = opacityGroups(p);
   paintOpacityGroup(p, groups, 0, 1);
   return out;
@@ -330,20 +363,30 @@ function paintSide(p: DashPainter, side: number, alpha: number, completed: reado
     miter1 = 'none';
     miter2 = 'none';
   }
-  drawLineForBoxSide(p, x1, y1, x2, y2, side, alpha, e.style, miter1 !== 'none' ? edgeAt(p.edges, adj1).width : 0, miter2 !== 'none' ? edgeAt(p.edges, adj2).width : 0);
+  drawLineForBoxSide(p, x1, y1, x2, y2, side, alpha, e.style, miter1 !== 'none' ? edgeAt(p.edges, adj1).width : 0, miter2 !== 'none' ? edgeAt(p.edges, adj2).width : 0, TONE_BASE);
   if (clip) p.out.push({ op: 'restore', side: -1, alpha: 1, antialias: false, points: [] });
 }
 
-/** ComputeMiter (box_border_painter.cc:1651-1680). */
+/**
+ * BorderStyleHasUnmatchedColorsAtCorner (box_border_painter.cc:80-95): a 3D style darkens the bottom and right sides (outset) or the
+ * top and left ones (inset), so its colours differ at the top-right and bottom-left corners.
+ */
+function unmatchedColorsAtCorner(style: string, side: number, adjacent: number): boolean {
+  if (!isThreeD(style)) return false;
+  const a = side < adjacent ? side : adjacent;
+  const b = side < adjacent ? adjacent : side;
+  return (a === TOP && b === RIGHT) || (a === BOTTOM && b === LEFT);
+}
+
+/** ComputeMiter (box_border_painter.cc:1651-1680), with ColorsMatchAtCorner (:2453-2463) and BorderStylesRequireMiter (:116-134). */
 function computeMiter(p: DashPainter, side: number, adjacent: number, completed: readonly DashDone[]): Miter {
   const adj = edgeAt(p.edges, adjacent);
   if (adj.width === 0) return 'none';
   // WillOverdraw: the adjacent side is still to be drawn and fills its whole band.
   if (!doneAt(completed, adjacent) && !(isDottedOrDashed(adj.style) || adj.style === 'double')) return 'none';
   const e = edgeAt(p.edges, side);
-  if (!(shouldRender(adj) && sharesColor(e, adj))) return 'soft';
-  // BorderStylesRequireMiter for the styles Dragon lowers.
-  if (e.style === 'double' || adj.style === 'double') return 'hard';
+  if (!(shouldRender(adj) && sharesColor(e, adj)) || unmatchedColorsAtCorner(e.style, side, adjacent)) return 'soft';
+  if (e.style === 'double' || adj.style === 'double' || isGrooveOrRidge(adj.style)) return 'hard';
   if (isDottedOrDashed(e.style) !== isDottedOrDashed(adj.style)) return 'hard';
   if (e.style !== adj.style) return 'hard';
   return 'none';
@@ -442,12 +485,12 @@ function clipBorderSidePolygon(p: DashPainter, side: number, m1: Miter, m2: Mite
   }
 }
 
-function fillRect(p: DashPainter, side: number, alpha: number, l: number, t: number, r: number, b: number, antialias: boolean): void {
-  p.out.push({ op: 'fill', side, alpha, antialias, points: [l, t, r, t, r, b, l, b] });
+function fillRect(p: DashPainter, side: number, alpha: number, l: number, t: number, r: number, b: number, antialias: boolean, tone: number): void {
+  p.out.push({ op: 'fill', side: slotOf(p, side, tone), alpha, antialias, points: [l, t, r, t, r, b, l, b] });
 }
 
-/** DrawLineForBoxSide (box_border_painter.cc:900-956) for the styles Dragon lowers. */
-function drawLineForBoxSide(p: DashPainter, x1: number, y1: number, x2: number, y2: number, side: number, alpha: number, style: string, adj1: number, adj2: number): void {
+/** DrawLineForBoxSide (box_border_painter.cc:900-956); tone is the colour of a solid line, an inset or outset line takes its own. */
+function drawLineForBoxSide(p: DashPainter, x1: number, y1: number, x2: number, y2: number, side: number, alpha: number, style: string, adj1: number, adj2: number, tone: number): void {
   const horizontal = side === TOP || side === BOTTOM;
   const thickness = horizontal ? y2 - y1 : x2 - x1;
   const length = horizontal ? x2 - x1 : y2 - y1;
@@ -455,13 +498,46 @@ function drawLineForBoxSide(p: DashPainter, x1: number, y1: number, x2: number, 
   const s = effectiveStyle(style, thickness);
   if (isDottedOrDashed(s)) drawDashedOrDottedBoxSide(p, x1, y1, x2, y2, side, alpha, thickness, s);
   else if (s === 'double') drawDoubleBoxSide(p, x1, y1, x2, y2, length, side, alpha, thickness, adj1, adj2);
-  else drawSolidBoxSide(p, x1, y1, x2, y2, side, alpha, adj1, adj2);
+  else if (isGrooveOrRidge(s)) drawRidgeOrGrooveBoxSide(p, x1, y1, x2, y2, side, alpha, s, adj1, adj2);
+  else if (s === 'inset' || s === 'outset') drawSolidBoxSide(p, x1, y1, x2, y2, side, alpha, adj1, adj2, darkenBoxSide(side, s) ? TONE_DARK : TONE_LIGHT);
+  else drawSolidBoxSide(p, x1, y1, x2, y2, side, alpha, adj1, adj2, tone);
+}
+
+/** DarkenBoxSide (box_border_painter.cc:611-614): inset darkens the top and left sides, outset the bottom and right ones. */
+function darkenBoxSide(side: number, style: string): boolean {
+  return (side === TOP || side === LEFT) === (style === 'inset');
+}
+
+/** C++ a / 2 of an int (truncates toward zero). */
+function halfOf(a: number): number {
+  return idiv(a, 2);
+}
+
+/** DrawRidgeOrGrooveBoxSide (box_border_painter.cc:752-822): an inset and an outset half, the outer half first. */
+function drawRidgeOrGrooveBoxSide(p: DashPainter, x1: number, y1: number, x2: number, y2: number, side: number, alpha: number, style: string, adj1: number, adj2: number): void {
+  const s1 = style === 'groove' ? 'inset' : 'outset';
+  const s2 = style === 'groove' ? 'outset' : 'inset';
+  const big1 = halfOf(adj1 > 0 ? adj1 + 1 : adj1 - 1);
+  const big2 = halfOf(adj2 > 0 ? adj2 + 1 : adj2 - 1);
+  if (side === TOP) {
+    drawLineForBoxSide(p, x1 + halfOf(maxNum(-adj1, 0)), y1, x2 - halfOf(maxNum(-adj2, 0)), halfOf(y1 + y2 + 1), side, alpha, s1, big1, big2, TONE_BASE);
+    drawLineForBoxSide(p, x1 + halfOf(maxNum(adj1 + 1, 0)), halfOf(y1 + y2 + 1), x2 - halfOf(maxNum(adj2 + 1, 0)), y2, side, alpha, s2, halfOf(adj1), halfOf(adj2), TONE_BASE);
+  } else if (side === LEFT) {
+    drawLineForBoxSide(p, x1, y1 + halfOf(maxNum(-adj1, 0)), halfOf(x1 + x2 + 1), y2 - halfOf(maxNum(-adj2, 0)), side, alpha, s1, big1, big2, TONE_BASE);
+    drawLineForBoxSide(p, halfOf(x1 + x2 + 1), y1 + halfOf(maxNum(adj1 + 1, 0)), x2, y2 - halfOf(maxNum(adj2 + 1, 0)), side, alpha, s2, halfOf(adj1), halfOf(adj2), TONE_BASE);
+  } else if (side === BOTTOM) {
+    drawLineForBoxSide(p, x1 + halfOf(maxNum(adj1, 0)), y1, x2 - halfOf(maxNum(adj2, 0)), halfOf(y1 + y2 + 1), side, alpha, s2, big1, big2, TONE_BASE);
+    drawLineForBoxSide(p, x1 + halfOf(maxNum(-adj1 + 1, 0)), halfOf(y1 + y2 + 1), x2 - halfOf(maxNum(-adj2 + 1, 0)), y2, side, alpha, s1, halfOf(adj1), halfOf(adj2), TONE_BASE);
+  } else {
+    drawLineForBoxSide(p, x1, y1 + halfOf(maxNum(adj1, 0)), halfOf(x1 + x2 + 1), y2 - halfOf(maxNum(adj2, 0)), side, alpha, s2, big1, big2, TONE_BASE);
+    drawLineForBoxSide(p, halfOf(x1 + x2 + 1), y1 + halfOf(maxNum(-adj1 + 1, 0)), x2, y2 - halfOf(maxNum(-adj2 + 1, 0)), side, alpha, s1, halfOf(adj1), halfOf(adj2), TONE_BASE);
+  }
 }
 
 /** DrawSolidBoxSide (box_border_painter.cc:839-898). */
-function drawSolidBoxSide(p: DashPainter, x1: number, y1: number, x2: number, y2: number, side: number, alpha: number, adj1: number, adj2: number): void {
+function drawSolidBoxSide(p: DashPainter, x1: number, y1: number, x2: number, y2: number, side: number, alpha: number, adj1: number, adj2: number, tone: number): void {
   if (adj1 === 0 && adj2 === 0) {
-    fillRect(p, side, alpha, x1, y1, x2, y2, true);
+    fillRect(p, side, alpha, x1, y1, x2, y2, true, tone);
     return;
   }
   const pts: number[] = [];
@@ -486,7 +562,7 @@ function drawSolidBoxSide(p: DashPainter, x1: number, y1: number, x2: number, y2
     push2(pts, x2, y2 - maxNum(-adj2, 0));
     push2(pts, x2, y1 + maxNum(-adj1, 0));
   }
-  p.out.push({ op: 'fill', side, alpha, antialias: true, points: pts });
+  p.out.push({ op: 'fill', side: slotOf(p, side, tone), alpha, antialias: true, points: pts });
 }
 
 /** DrawDoubleBoxSide (box_border_painter.cc:647-752). */
@@ -494,11 +570,11 @@ function drawDoubleBoxSide(p: DashPainter, x1: number, y1: number, x2: number, y
   const third = idiv(thickness + 1, 3);
   if (adj1 === 0 && adj2 === 0) {
     if (side === TOP || side === BOTTOM) {
-      fillRect(p, side, alpha, x1, y1, x1 + length, y1 + third, true);
-      fillRect(p, side, alpha, x1, y2 - third, x1 + length, y2, true);
+      fillRect(p, side, alpha, x1, y1, x1 + length, y1 + third, true, TONE_BASE);
+      fillRect(p, side, alpha, x1, y2 - third, x1 + length, y2, true, TONE_BASE);
     } else {
-      fillRect(p, side, alpha, x1, y1, x1 + third, y1 + length, true);
-      fillRect(p, side, alpha, x2 - third, y1, x2, y1 + length, true);
+      fillRect(p, side, alpha, x1, y1, x1 + third, y1 + length, true, TONE_BASE);
+      fillRect(p, side, alpha, x2 - third, y1, x2, y1 + length, true, TONE_BASE);
     }
     return;
   }
@@ -509,17 +585,17 @@ function drawDoubleBoxSide(p: DashPainter, x1: number, y1: number, x2: number, y
   const i1 = maxNum(idiv(adj1 * 2 + 1, 3), 0);
   const i2 = maxNum(idiv(adj2 * 2 + 1, 3), 0);
   if (side === TOP) {
-    drawLineForBoxSide(p, x1 + o1, y1, x2 - o2, y1 + third, side, alpha, 'solid', big1, big2);
-    drawLineForBoxSide(p, x1 + i1, y2 - third, x2 - i2, y2, side, alpha, 'solid', big1, big2);
+    drawLineForBoxSide(p, x1 + o1, y1, x2 - o2, y1 + third, side, alpha, 'solid', big1, big2, TONE_BASE);
+    drawLineForBoxSide(p, x1 + i1, y2 - third, x2 - i2, y2, side, alpha, 'solid', big1, big2, TONE_BASE);
   } else if (side === LEFT) {
-    drawLineForBoxSide(p, x1, y1 + o1, x1 + third, y2 - o2, side, alpha, 'solid', big1, big2);
-    drawLineForBoxSide(p, x2 - third, y1 + i1, x2, y2 - i2, side, alpha, 'solid', big1, big2);
+    drawLineForBoxSide(p, x1, y1 + o1, x1 + third, y2 - o2, side, alpha, 'solid', big1, big2, TONE_BASE);
+    drawLineForBoxSide(p, x2 - third, y1 + i1, x2, y2 - i2, side, alpha, 'solid', big1, big2, TONE_BASE);
   } else if (side === BOTTOM) {
-    drawLineForBoxSide(p, x1 + i1, y1, x2 - i2, y1 + third, side, alpha, 'solid', big1, big2);
-    drawLineForBoxSide(p, x1 + o1, y2 - third, x2 - o2, y2, side, alpha, 'solid', big1, big2);
+    drawLineForBoxSide(p, x1 + i1, y1, x2 - i2, y1 + third, side, alpha, 'solid', big1, big2, TONE_BASE);
+    drawLineForBoxSide(p, x1 + o1, y2 - third, x2 - o2, y2, side, alpha, 'solid', big1, big2, TONE_BASE);
   } else {
-    drawLineForBoxSide(p, x1, y1 + i1, x1 + third, y2 - i2, side, alpha, 'solid', big1, big2);
-    drawLineForBoxSide(p, x2 - third, y1 + o1, x2, y2 - o2, side, alpha, 'solid', big1, big2);
+    drawLineForBoxSide(p, x1, y1 + i1, x1 + third, y2 - i2, side, alpha, 'solid', big1, big2, TONE_BASE);
+    drawLineForBoxSide(p, x2 - third, y1 + o1, x2, y2 - o2, side, alpha, 'solid', big1, big2, TONE_BASE);
   }
 }
 
@@ -609,10 +685,10 @@ function enforceDotsAtEndpoints(p: DashPainter, pts: DashLine, length: number, w
     const x = pts.x1;
     const y = pts.y1;
     if (vertical) {
-      fillRect(p, side, alpha, x - half, y, x + width - half, y + width + startGrowth, false);
+      fillRect(p, side, alpha, x - half, y, x + width - half, y + width + startGrowth, false, TONE_BASE);
       pts.y1 = y + (2 * width + startOffset);
     } else {
-      fillRect(p, side, alpha, x, y - half, x + width + startGrowth, y + width - half, false);
+      fillRect(p, side, alpha, x, y - half, x + width + startGrowth, y + width - half, false, TONE_BASE);
       pts.x1 = x + (2 * width + startOffset);
     }
   }
@@ -620,10 +696,10 @@ function enforceDotsAtEndpoints(p: DashPainter, pts: DashLine, length: number, w
     const x = pts.x2;
     const y = pts.y2;
     if (vertical) {
-      fillRect(p, side, alpha, x - half, y - width - endGrowth, x + width - half, y, false);
+      fillRect(p, side, alpha, x - half, y - width - endGrowth, x + width - half, y, false, TONE_BASE);
       pts.y2 = y - (width + endGrowth + 1);
     } else {
-      fillRect(p, side, alpha, x - width - endGrowth, y - half, x, y + width - half, false);
+      fillRect(p, side, alpha, x - width - endGrowth, y - half, x, y + width - half, false, TONE_BASE);
       pts.x2 = x - (width + endGrowth + 1);
     }
   }
@@ -692,7 +768,7 @@ function strokeLine(p: DashPainter, x0: number, y0: number, x1: number, y1: numb
     const bx = f32(x0 + f32(tx * e));
     const ay = f32(y0 + f32(ty * d0));
     const by = f32(y0 + f32(ty * e));
-    p.out.push({ op: 'fill', side, alpha, antialias: true, points: [f32(ax + nx), f32(ay + ny), f32(bx + nx), f32(by + ny), f32(bx - nx), f32(by - ny), f32(ax - nx), f32(ay - ny)] });
+    p.out.push({ op: 'fill', side: slotOf(p, side, TONE_BASE), alpha, antialias: true, points: [f32(ax + nx), f32(ay + ny), f32(bx + nx), f32(by + ny), f32(bx - nx), f32(by - ny), f32(ax - nx), f32(ay - ny)] });
   };
   if (dash === null) {
     segment(0, length);
@@ -707,11 +783,39 @@ function strokeLine(p: DashPainter, x0: number, y0: number, x1: number, y1: numb
       if (dash.round) {
         // A zero-length segment stroked with round caps: a dot of the stroke width at the SkContourMeasure position.
         const t = f32(f32(distance) / length);
-        p.out.push({ op: 'dot', side, alpha, antialias: true, points: [f32(x0 + f32(dx * t)), f32(y0 + f32(dy * t)), half] });
+        p.out.push({ op: 'dot', side: slotOf(p, side, TONE_BASE), alpha, antialias: true, points: [f32(x0 + f32(dx * t)), f32(y0 + f32(dy * t)), half] });
       } else segment(f32(distance), f32(distance + dlen));
     }
     distance = distance + dlen;
     index = index === 0 ? 1 : 0;
     dlen = index === 0 ? dash.on : dash.off;
   }
+}
+
+// ---------------------------------------------------------------- outlines
+
+/** Whether outlinePaintOps draws an outline style: the styles that take BoxBorderPainter's side painter, not its fast path. */
+export function outlineNeedsSidePainter(style: string): boolean {
+  return isDottedOrDashed(style) || isThreeD(style);
+}
+
+/**
+ * The drawing operations of a square-cornered outline in a dotted, dashed or 3D style, in device px, as Blink 145 paints a single
+ * rect outline (outline_painter.cc PaintOutlineRects, BoxBorderPainter::PaintSingleRectOutline: one BorderEdge of the outline
+ * width, style and colour on every side, around the outer rect, its inner rect the outer one less the width): the side painter of
+ * borderPaintOps. Each operation's side names its colour: 0 the outline colour, 1 the lighter and 2 the darker colour of a 3D
+ * style (CalculateInsetOutsetColor, which the caller resolves). outer is the integer device px outer rect, width the device width.
+ */
+export function outlinePaintOps(left: number, top: number, right: number, bottom: number, width: number, style: string, r: number, g: number, b: number, a: number, faults: DashFaults): BorderOp[] {
+  if (!outlineNeedsSidePainter(style)) throw new Error(`paint-dash: outline style ${style} has no side painter`);
+  if (!(width > 0) || right - left < 2 * width || bottom - top < 2 * width) throw new Error(`paint-dash: an outline ${width} device px wide does not fit ${left},${top},${right},${bottom}`);
+  const out: BorderOp[] = [];
+  const edges: DashEdge[] = [];
+  for (let side = 0; side < 4; side++) edges.push({ width, style: effectiveStyle(style, width), r, g, b, a });
+  if (!shouldRender(edgeAt(edges, 0))) return out;
+  const widths = [width, width, width, width];
+  const inner = innerBorderRect(left, top, right, bottom, widths);
+  const p: DashPainter = { left, top, right, bottom, innerLeft: at(inner, 0), innerTop: at(inner, 1), innerRight: at(inner, 2), innerBottom: at(inner, 3), edges, faults, tones: true, out };
+  paintOpacityGroup(p, opacityGroups(p), 0, 1);
+  return out;
 }

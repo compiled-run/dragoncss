@@ -138,11 +138,13 @@ export const MILESTONE_1: readonly FixtureSpec[] = [
   rejectTree('reject-tree-initial-domain', 'DRAGON_STATE_VALUE_DOMAIN', 'checked: boolean = "false"'),
   rejectTree('reject-tree-producer-error', 'DRAGON_PRODUCER_ERROR', '<div broken class="'),
   rejectTree('reject-tree-raw-html', 'DRAGON_TREE_RAW_HTML', '{@html "<b>bold</b>"}'),
-  reject('reject-white-space-pre', 'DRAGON_UNSUPPORTED_VALUE', 'pre'),
+  // TXT2-c lays out white-space: pre; a tab in preserved text stays refused (tab-size is TXT2-c3).
+  reject('reject-white-space-pre', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="a" class="a">XX\tXX</div>', 'a tab in '),
   reject('reject-nesting-ampersand', 'DRAGON_UNSUPPORTED_NESTED_RULE', '& .b { width: 5px; }'),
   reject('reject-nested-media', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (min-width: 1px) { width: 30px; }'),
   reject('reject-overflow-single-axis', 'DRAGON_UNSUPPORTED_VALUE', 'clip'),
-  reject('reject-last-baseline', 'DRAGON_UNSUPPORTED_VALUE', 'last baseline'),
+  // GRID G3b proves last baseline in grid containers only; in a flex container it stays unproven.
+  reject('reject-last-baseline', 'DRAGON_UNPROVEN_CONTEXT', 'last baseline'),
   reject('reject-bidi-neutral', 'DRAGON_UNSUPPORTED_BIDI', 'AB 12.'),
   reject('reject-position-fixed', 'DRAGON_UNSUPPORTED_VALUE', 'fixed'),
   reject('reject-position-sticky', 'DRAGON_UNSUPPORTED_VALUE', 'sticky'),

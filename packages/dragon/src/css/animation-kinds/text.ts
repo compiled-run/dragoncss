@@ -5,6 +5,13 @@ import type { TEXT_FAMILY_LONGHANDS } from '../properties/text.ts';
 export const TEXT_ANIMATION: { readonly [P in (typeof TEXT_FAMILY_LONGHANDS)[number]]: AnimationKind } = {
   'font-size': UNADMITTED,
   'font-family': DISCRETE,
+  // TXT-W1: Chrome interpolates font-weight as a number and font-style's oblique angle; Dragon admits neither animation yet.
+  'font-weight': UNADMITTED,
+  'font-style': UNADMITTED,
+  // TXT-W2: the font-synthesis longhands are keywords, which Chrome animates discretely.
+  'font-synthesis-weight': DISCRETE,
+  'font-synthesis-style': DISCRETE,
+  'font-synthesis-small-caps': DISCRETE,
   'line-height': UNADMITTED,
   'text-align': DISCRETE,
   'white-space-collapse': DISCRETE,

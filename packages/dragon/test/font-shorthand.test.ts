@@ -1,0 +1,63 @@
+// TXT-W2 (T147 part 2): the font and font-synthesis shorthands' expansion, CSS-wide keywords and refusals. Their agreement with
+// Chrome is packages/parity/test/font-shorthand.test.ts.
+import { describe, expect, it } from 'vitest';
+import { valueToString } from '../src/analysis/resolve.ts';
+import { parseStylesheet } from '../src/css/stylesheet.ts';
+import type { Diagnostic } from '../src/types.ts';
+
+const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
+/** The font-variant longhands, which the font shorthand resets to normal. */
+const VARIANTS = ['font-variant-ligatures', 'font-variant-caps', 'font-variant-alternates', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-position', 'font-variant-emoji'].map((p) => `${p}=normal (reset)`);
+/** font-kerning, font-optical-sizing and font-language-override, which the font shorthand resets. */
+const TUNING = ['font-kerning=auto (reset)', 'font-optical-sizing=auto (reset)', 'font-language-override=normal (reset)'];
+
+function longhands(decl: string): { set: string[]; codes: string[] } {
+  const css = `.a { ${decl}; }`;
+  const diagnostics: Diagnostic[] = [];
+  const rules = parseStylesheet(css, { source: SRC, start: 0, end: css.length }, { id: 's', owner: 'doc', scope: 'document' }, 0, diagnostics);
+  const set = (rules[0]?.declarations[0]?.longhands ?? []).map((l) => `${l.property}=${valueToString(l.value)}${l.explicit ? '' : ' (reset)'}`);
+  return { set, codes: diagnostics.map((d) => d.code) };
+}
+
+/** TXT-FONTFEAT: the font shorthand also sets font-stretch, after the family: normal unless the value has a width keyword. */
+const STRETCH = 'font-stretch=normal (reset)';
+/** TXT-FONTFEAT: the font shorthand also resets font-feature-settings and font-variation-settings, after the family. */
+const SETTINGS = ['font-feature-settings=normal (reset)', 'font-variation-settings=normal (reset)'];
+
+describe('the font shorthand', () => {
+  it('sets style, weight, size, line height and family, resetting what the value omits, and never font-synthesis', () => {
+    expect(longhands('font: 12px x').set).toEqual(['font-style=normal (reset)', 'font-weight=normal (reset)', 'font-size=12px', 'line-height=normal (reset)', 'font-family=x', STRETCH, ...VARIANTS, ...TUNING, ...SETTINGS]);
+    expect(longhands('font: oblique 20deg 600 12px/1.5 "a b", serif').set).toEqual(['font-style=oblique 20deg', 'font-weight=600', 'font-size=12px', 'line-height=1.5', 'font-family="a b" , serif', STRETCH, ...VARIANTS, ...TUNING, ...SETTINGS]);
+    expect(longhands('font: normal bold normal 2em x').set).toEqual(['font-style=normal (reset)', 'font-weight=bold', 'font-size=2em', 'line-height=normal (reset)', 'font-family=x', STRETCH, ...VARIANTS, ...TUNING, ...SETTINGS]);
+  });
+  it('takes a math function by the type it resolves to: a number is the weight, an angle after oblique the oblique angle', () => {
+    expect(longhands('font: calc(600) 10px x')).toEqual({ set: ['font-style=normal (reset)', 'font-weight=600', 'font-size=10px', 'line-height=normal (reset)', 'font-family=x', STRETCH, ...VARIANTS, ...TUNING, ...SETTINGS], codes: [] });
+    expect(longhands('font: italic calc(600) 12px/1 x').set).toEqual(['font-style=italic', 'font-weight=600', 'font-size=12px', 'line-height=1', 'font-family=x', STRETCH, ...VARIANTS, ...TUNING, ...SETTINGS]);
+    // As font-style: oblique calc(20deg) is: the angle is the style's, refused as a calculation, never taken as the size.
+    expect(longhands('font: oblique calc(20deg) 12px x').codes).toEqual(longhands('font-style: oblique calc(20deg)').codes);
+    expect(longhands('font: oblique calc(20deg) 12px x').codes).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(longhands('font: calc(10px + 2px) x').set[1]).toBe('font-weight=normal (reset)');
+    // A number calculation is never the size, so a value with nothing after the size has no family.
+    expect(longhands('font: calc(600) x').codes).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+  });
+  it('a CSS-wide keyword sets each modelled longhand', () => {
+    for (const k of ['inherit', 'initial', 'unset']) expect(longhands(`font: ${k}`).set, k).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-stretch', ...VARIANTS.map((v) => v.split('=')[0] as string), ...TUNING.map((v) => v.split('=')[0] as string), 'font-feature-settings', 'font-variation-settings'].map((p) => `${p}=${k}`));
+  });
+  it('sets font-stretch from a width keyword', () => {
+    expect(longhands('font: condensed 12px x').set).toEqual(['font-style=normal (reset)', 'font-weight=normal (reset)', 'font-size=12px', 'line-height=normal (reset)', 'font-family=x', 'font-stretch=condensed', ...VARIANTS, ...TUNING, ...SETTINGS]);
+    expect(longhands('font: italic ultra-expanded 700 12px x').set.at(5)).toBe('font-stretch=ultra-expanded');
+  });
+  it('refuses small-caps and the system fonts; drops what Chrome does not parse', () => {
+    for (const v of ['small-caps 12px x', 'caption', 'status-bar', 'oblique 2turn 12px x']) expect(longhands(`font: ${v}`).codes, v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    for (const v of ['left 12px x', 'oblique 91deg 12px x', '12px', 'x', '0 12px x']) expect(longhands(`font: ${v}`).codes, v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+  });
+});
+
+describe('font-synthesis', () => {
+  it('none, or the listed kinds on and the rest off; position and oblique-only are not Chrome values', () => {
+    expect(longhands('font-synthesis: none').set).toEqual(['font-synthesis-weight=none', 'font-synthesis-style=none', 'font-synthesis-small-caps=none']);
+    expect(longhands('font-synthesis: style weight').set).toEqual(['font-synthesis-weight=auto', 'font-synthesis-style=auto', 'font-synthesis-small-caps=none']);
+    expect(longhands('font-synthesis: weight position').codes).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    expect(longhands('font-synthesis-style: oblique-only').codes).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+  });
+});

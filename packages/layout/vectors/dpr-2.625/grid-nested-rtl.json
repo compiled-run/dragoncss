@@ -143,6 +143,12 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
+    "textIndent": {
+     "kind": "px",
+     "value": 0
+    },
+    "lineClamp": 0,
     "grid": null,
     "gridItem": null
    },
@@ -263,6 +269,12 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
+      "textIndent": {
+       "kind": "px",
+       "value": 0
+      },
+      "lineClamp": 0,
       "grid": null,
       "gridItem": null
      },
@@ -385,6 +397,12 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
+        "lineClamp": 0,
         "grid": {
          "templateColumns": [
           {
@@ -430,6 +448,8 @@
          ],
          "explicitColumnCount": 2,
          "explicitRowCount": 0,
+         "autoRepeatColumns": null,
+         "autoRepeatRows": null,
          "autoFlow": "row",
          "dense": false,
          "justifyItems": "normal"
@@ -553,6 +573,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": {
            "templateColumns": [
             {
@@ -599,6 +625,8 @@
            ],
            "explicitColumnCount": 2,
            "explicitRowCount": 0,
+           "autoRepeatColumns": null,
+           "autoRepeatRows": null,
            "autoFlow": "row",
            "dense": false,
            "justifyItems": "normal"
@@ -734,6 +762,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": {
              "column": {
@@ -865,6 +899,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": {
              "column": {
@@ -910,7 +950,17 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "wordSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -1031,6 +1081,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": {
              "column": {
@@ -1164,6 +1220,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": {
            "column": {
@@ -1296,6 +1358,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": null
            },
@@ -1417,6 +1485,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": null
            },
@@ -1452,7 +1526,17 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "wordSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }
@@ -1576,6 +1660,12 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
+        "lineClamp": 0,
         "grid": {
          "templateColumns": [
           {
@@ -1621,6 +1711,8 @@
          ],
          "explicitColumnCount": 2,
          "explicitRowCount": 0,
+         "autoRepeatColumns": null,
+         "autoRepeatRows": null,
          "autoFlow": "row",
          "dense": false,
          "justifyItems": "normal"
@@ -1744,6 +1836,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": {
            "column": {
@@ -1789,7 +1887,17 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -1910,6 +2018,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": {
            "column": {
@@ -2041,6 +2155,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": {
            "column": {
@@ -2086,7 +2206,17 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "letterSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "wordSpacing": {
+            "kind": "px",
+            "value": 0
+           },
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -2208,6 +2338,12 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
@@ -2328,6 +2464,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": {
            "templateColumns": [
             {
@@ -2374,6 +2516,8 @@
            ],
            "explicitColumnCount": 2,
            "explicitRowCount": 0,
+           "autoRepeatColumns": null,
+           "autoRepeatRows": null,
            "autoFlow": "row",
            "dense": false,
            "justifyItems": "normal"
@@ -2497,6 +2641,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": {
              "column": {
@@ -2542,7 +2692,17 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "wordSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -2663,6 +2823,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": {
              "column": {
@@ -2796,6 +2962,12 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": {
            "templateColumns": [
             {
@@ -2842,6 +3014,8 @@
            ],
            "explicitColumnCount": 2,
            "explicitRowCount": 0,
+           "autoRepeatColumns": null,
+           "autoRepeatRows": null,
            "autoFlow": "row",
            "dense": false,
            "justifyItems": "normal"
@@ -2967,6 +3141,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": {
              "column": {
@@ -3098,6 +3278,12 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
+            "textIndent": {
+             "kind": "px",
+             "value": 0
+            },
+            "lineClamp": 0,
             "grid": null,
             "gridItem": {
              "column": {
@@ -3143,7 +3329,17 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "letterSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "wordSpacing": {
+              "kind": "px",
+              "value": 0
+             },
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }

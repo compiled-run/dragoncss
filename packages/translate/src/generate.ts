@@ -66,6 +66,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('overflow.ts'), name: 'scrollMetricsWithFaults' },
     // OVFL-B: each scroll container's offset range in device px, which the native scroll views clamp to.
     { file: at('overflow.ts'), name: 'scrollRanges' },
+    // TXT2-g: the line-clamp containers' children as the layout clamped them, whose lines the native text views place.
+    { file: at('line-clamp.ts'), name: 'clampedInput' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;
@@ -88,6 +90,12 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     for (const st of sf.statements) {
       if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
     }
+  }
+  // TDEC-b (T148J, RT-13): the text decoration geometry the native text views' decoration views are placed by.
+  const decoration = program.getSourceFile(at('text-decoration.ts'));
+  if (decoration === undefined) throw new Error('the root file text-decoration.ts is not an engine file');
+  for (const st of decoration.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('text-decoration.ts'), name: st.name.text });
   }
   // SELD-R1b (T047 RT-9): the hit test and tap dispatch.
   const hit = program.getSourceFile(at('rt-hit.ts')) as ts.SourceFile;

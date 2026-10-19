@@ -2,11 +2,12 @@
 // list over top-left, top-right, bottom-right and bottom-left as the four sides expand (a missing vertical list copies the
 // horizontal one). -webkit-border-radius is the same but for Chrome's legacy parsing (css_parsing_utils.cc ConsumeRadii with
 // use_legacy_parsing): exactly two values and no "/" mean one horizontal and one vertical radius for every corner. Their values
-// are parsed by the paint value hook (css/paint-parsers.ts); a CSS-wide keyword sets each corner.
+// are parsed by the paint value hook (css/paint-parsers.ts); a CSS-wide keyword sets each corner. A flow-relative corner
+// (css-logical-1 §7) sets one physical corner per direction, each value tagged with it, a CSS-wide keyword included.
 import type { CssNode } from 'css-tree';
 import type { Span } from '../../types.ts';
-import type { RadiusComponent } from '../properties/radius.ts';
-import { cornerValue, RADIUS_LONGHANDS, radiusToken } from '../properties/radius.ts';
+import type { LogicalRadius, RadiusComponent } from '../properties/radius.ts';
+import { cornerValue, LOGICAL_CORNERS, RADIUS_LONGHANDS, radiusToken } from '../properties/radius.ts';
 import type { LonghandValue, ParsedValue } from '../stylesheet.ts';
 import type { ShorthandHandler } from './shared.ts';
 
@@ -51,7 +52,20 @@ const hooked = (): never => {
   throw new Error('border-radius values are parsed by the paint value hook (css/paint-parsers.ts)');
 };
 
+function logicalCorner(property: LogicalRadius): ShorthandHandler {
+  const { ltr, rtl } = LOGICAL_CORNERS[property];
+  return {
+    longhands: [ltr, rtl],
+    expand: hooked,
+    expandWide: (value) => [{ property: ltr, value, explicit: true, direction: 'ltr' }, { property: rtl, value, explicit: true, direction: 'rtl' }],
+  };
+}
+
 export const RADIUS_SHORTHANDS = {
   'border-radius': { longhands: RADIUS_LONGHANDS, expand: hooked },
   '-webkit-border-radius': { longhands: RADIUS_LONGHANDS, expand: hooked },
+  'border-start-start-radius': logicalCorner('border-start-start-radius'),
+  'border-start-end-radius': logicalCorner('border-start-end-radius'),
+  'border-end-start-radius': logicalCorner('border-end-start-radius'),
+  'border-end-end-radius': logicalCorner('border-end-end-radius'),
 } as const satisfies { readonly [s: string]: ShorthandHandler };

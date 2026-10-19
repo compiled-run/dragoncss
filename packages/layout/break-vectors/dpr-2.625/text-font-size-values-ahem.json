@@ -1,0 +1,28 @@
+{
+  "case": "text-font-size-values-ahem",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","lines":[[0,5]]},
+    {"id":"b:text0","lines":[[0,5]]},
+    {"id":"c:text0","lines":[[0,4]]},
+    {"id":"d:text0","lines":[[0,4]]},
+    {"id":"e:text0","lines":[[0,4]]},
+    {"id":"f:text0","lines":[[0,4]]},
+    {"id":"g:text0","lines":[[0,4]]},
+    {"id":"h:text0","lines":[[0,4]]},
+    {"id":"i:text0","lines":[[0,4]]},
+    {"id":"j:text0","lines":[[0,4]]},
+    {"id":"k:text0","lines":[[0,4]]},
+    {"id":"l1:text0","lines":[[0,4]]},
+    {"id":"m1:text0","lines":[[0,4]]},
+    {"id":"n:text0","lines":[[0,4]]},
+    {"id":"o:text0","lines":[[0,3]]},
+    {"id":"o1:text0","lines":[[0,2]]},
+    {"id":"o:text1","lines":[[0,3]]},
+    {"id":"o2:text0","lines":[[0,2]]},
+    {"id":"o:text2","lines":[[0,3]]},
+    {"id":"o3:text0","lines":[[0,2]]},
+    {"id":"o:text3","lines":[[0,2]]},
+    {"id":"p1:text0","lines":[[0,4]]}
+  ]
+}

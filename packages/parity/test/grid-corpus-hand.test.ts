@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { GridFaults } from '@dragon/layout';
 import { NO_ENGINE_FAULTS, NO_GRID_FAULTS } from '@dragon/layout';
 import type { CorpusCase } from '../src/grid-corpus.ts';
-import { caseDocument, GRID_CORPUS_DIR, GRID_DEVIATIONS, GRID_PLANTS, HORIZONTAL_ENVS, parseCorpusFamily, readGridCorpus, runGridCase } from '../src/grid-corpus.ts';
+import { caseDocument, GRID_CORPUS_DIR, GRID_DEVIATIONS, GRID_ENGINE_PLANTS, GRID_PLANTS, HORIZONTAL_ENVS, parseCorpusFamily, readGridCorpus, runGridCase } from '../src/grid-corpus.ts';
 import { repoPath } from '../src/paths.ts';
 import { runShard } from './grid-corpus/shard.ts';
 
@@ -14,9 +14,9 @@ const HAND = ['abspos', 'alignment', 'auto-repeat', 'baselines', 'fr', 'gutters'
 
 /** Pinned from the run that introduced the test; a change in any count is a regression or a newly supported case to review. */
 const PINNED = {
-  matched: 1272,
+  matched: 1692,
   known: [],
-  refused: { 'abspos-item': 88, 'auto-repeat': 96, 'baseline-alignment': 96, calc: 8, 'calc-percent-gap': 8, contain: 8, float: 16, 'grid-scroll-overflow': 16, 'inline-grid': 104, 'safe-alignment': 112, 'sizing-keyword': 24, subgrid: 64, 'writing-mode': 152 },
+  refused: { 'bidi-atomic': 4, calc: 8, 'calc-percent-gap': 8, contain: 8, float: 16, 'safe-alignment': 112, subgrid: 64, 'writing-mode': 152 },
 };
 
 let cases: CorpusCase[] | null = null;
@@ -41,7 +41,8 @@ describe('G-P differential test: hand-written families against Chrome 145', () =
     it(`plant ${p.fault} is caught by ${p.kase}: every environment matches without it, and some environment differs with it`, () => {
       const c = kase(p.kase);
       expect(kinds(c, NO_GRID_FAULTS)).toEqual(HORIZONTAL_ENVS.map(() => 'match'));
-      const planted = p.fault === 'ignoreOrder' ? kinds(c, NO_GRID_FAULTS, { ...NO_ENGINE_FAULTS, ignoreOrder: true }) : kinds(c, { ...NO_GRID_FAULTS, [p.fault]: true });
+      const engine = GRID_ENGINE_PLANTS.find((f) => f === p.fault);
+      const planted = engine !== undefined ? kinds(c, NO_GRID_FAULTS, { ...NO_ENGINE_FAULTS, [engine]: true }) : kinds(c, { ...NO_GRID_FAULTS, [p.fault]: true });
       expect(planted).not.toContain('refused');
       expect(planted).toContain('mismatch');
     });
@@ -83,6 +84,18 @@ describe('G-P differential test: hand-written families against Chrome 145', () =
     const missingEnv: CorpusCase = { ...c, results: new Map([...c.results].filter(([env]) => env !== 'dpr2-rtl-horizontal-tb')) };
     const m = runGridCase(missingEnv, NO_GRID_FAULTS).envs.get('dpr2-rtl-horizontal-tb');
     expect(m?.kind === 'mismatch' && m.detail.includes('no result')).toBe(true);
+  });
+
+  it('an inline-grid case with after text compares the text box with Chrome: matched in ltr, a moved box reported, refused in rtl', () => {
+    const c = kase('b-container-baseline');
+    const byEnv = (k: CorpusCase): Record<string, string> => Object.fromEntries([...runGridCase(k, NO_GRID_FAULTS).envs].map(([env, r]) => [env, r.kind]));
+    const want = (ltr: string): Record<string, string> => Object.fromEntries(HORIZONTAL_ENVS.map((e) => [e.name, e.direction === 'ltr' ? ltr : 'refused']));
+    expect(byEnv(c)).toEqual(want('match'));
+    const moved: CorpusCase = { ...c, results: new Map([...c.results].map(([env, r]) => [env, r.a === undefined ? r : { ...r, a: [r.a[0], r.a[1] + 1, r.a[2], r.a[3]] as const }])) };
+    expect(byEnv(moved)).toEqual(want('mismatch'));
+    const r = runGridCase(moved, NO_GRID_FAULTS).envs.get('dpr1-ltr-horizontal-tb');
+    expect(r?.kind === 'mismatch' && r.detail.startsWith('after text: ')).toBe(true);
+    expect(caseDocument(c).html).toContain('</div>X</div></body>');
   });
 
   it('the corpus reader rejects incomplete files instead of skipping their cases', () => {

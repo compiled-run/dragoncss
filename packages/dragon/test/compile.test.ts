@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as publicEntry from '../src/index.ts';
 import { createProject } from '../src/index.ts';
-import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, webClassMap } from '../src/internal.ts';
+import { COMMITTED_PROFILES, compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, webClassMap } from '../src/internal.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
 import type { Diagnostic } from '../src/index.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text as textNode } from './helpers.ts';
+import { MASK_LONGHANDS } from '../src/css/properties/mask.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const ios = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } });
@@ -28,23 +29,23 @@ describe('createProject().compile() and check()', () => {
     expect(Object.isFrozen(c)).toBe(true);
   });
 
-  it('rejects display: inline-grid with a typed diagnostic, a UTF-16 span and a blocked ios output', () => {
-    const css = '.g { display: inline-grid; }';
+  it('rejects display: inline-table with a typed diagnostic, a UTF-16 span and a blocked ios output', () => {
+    const css = '.g { display: inline-table; }';
     const c = ios().compile(inputFor(css, (r) => [div(r, 'g', ['g'])]));
     expect(c.ok).toBe(false);
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
     if (d === undefined || d.origin.kind !== 'authored') throw new Error('no span');
-    expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe('inline-grid');
+    expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe('inline-table');
     expect(d.target).toBe('ios');
     expect(d.fix !== null && 'manual' in d.fix ? d.fix.manual : '').toMatch(/block|flex|none/);
-    expect(d.profile).toMatchObject({ target: 'ios', feature: 'display:inline-grid', status: 'unsupported' });
+    expect(d.profile).toMatchObject({ target: 'ios', feature: 'display:inline-table', status: 'unsupported' });
     expectCatalogued(c.diagnostics);
     expect(c.outputs.ios.kind).toBe('blocked');
     expect(iosLayoutProjection(c, ENV, []).kind).toBe('blocked');
   });
 
   it('check() reports the same diagnostics without outputs', () => {
-    const input = inputFor('.g { float: left; }', (r) => [div(r, 'g', ['g'])]);
+    const input = inputFor('.g { column-count: 2; }', (r) => [div(r, 'g', ['g'])]);
     const r = ios().check(input);
     expect(r.ok).toBe(false);
     expect(r.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
@@ -63,8 +64,12 @@ describe('createProject().compile() and check()', () => {
     const rules = text.split('\n').filter((l) => l.endsWith('{'));
     expect(rules).toEqual(['.dg0 {', '.dg1 {', '.dg2 {']);
     expect(text).not.toMatch(/\.a\b|\.b\b|body|html/);
-    // Every longhand is written on every rule, except the insets, which are written only when one of them is not auto.
-    for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(['top', 'right', 'bottom', 'left'].includes(p) ? 0 : 3);
+    // Every longhand is written on every rule, except the insets, which are written only when one of them is not auto, and the
+    // outline longhands, which are written only when an author declaration sets one (Chrome's UA :focus-visible ring stays), and the
+    // line-clamp longhands, which are written only where one is not initial (TXT2-g), clip, written only where it is not auto, and
+    // clip-path, written only where it is not none, and the mask longhands, written only where one is not initial (MASK-CLIP).
+    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS];
+    for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');
     expect(text).toContain('  margin-top: 8px;');
@@ -76,7 +81,7 @@ describe('createProject().compile() and check()', () => {
     const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]));
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('analysis-only');
-    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { float: left; }', (r) => [div(r, 'a', ['a'])]));
+    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { column-count: 2; }', (r) => [div(r, 'a', ['a'])]));
     expect(g.outputs.web.kind).toBe('blocked');
   });
 
@@ -172,7 +177,7 @@ describe('createProject().compile() and check()', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     const a = p.input.root.children[0]?.kind === 'box' ? p.input.root.children[0].children[0] : undefined;
     const text = a?.kind === 'box' ? a.children[0] : undefined;
-    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20, specifiedSize: { kind: 'px', value: 20 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
+    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20, specifiedSize: { kind: 'px', value: 20 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' });
   });
 
   it('the public entry exposes only the public API', () => {
@@ -193,6 +198,17 @@ describe('createProject().compile() and check()', () => {
     const derived = createProjectWith(config, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     expect(enforced.digest).toBe(ios().compile(input).digest);
     expect(derived.digest).not.toBe(enforced.digest);
+  });
+
+  it('a derive compile reads none of the given profiles, so its digest and output are the same whatever they hold; an enforced digest covers them', () => {
+    const input = inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]);
+    const config = { projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 26 } } } as const;
+    const empty = { web: { ...COMMITTED_PROFILES.web, rows: [] }, ios: { ...COMMITTED_PROFILES.ios, rows: [] }, android: { ...COMMITTED_PROFILES.android, rows: [] } };
+    const compile = (profiles: 'enforce' | 'derive', supportProfiles: typeof COMMITTED_PROFILES) => createProjectWith(config, { faults: NO_FAULTS, profiles, direction: 'ltr', supportProfiles }).compile(input);
+    const [committed, emptied] = [compile('derive', COMMITTED_PROFILES), compile('derive', empty)];
+    expect(emptied.digest).toBe(committed.digest);
+    expect(JSON.stringify(emptied.outputs)).toBe(JSON.stringify(committed.outputs));
+    expect(compile('enforce', empty).digest).not.toBe(compile('enforce', COMMITTED_PROFILES).digest);
   });
 });
 

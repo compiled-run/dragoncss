@@ -8,14 +8,13 @@ import { writeFileSync } from 'node:fs';
 import { NO_ENGINE_FAULTS } from '../packages/layout/src/block.ts';
 import { NO_FAULTS } from '../packages/dragon/src/faults.ts';
 import { launchChrome } from '../packages/parity/src/chrome.ts';
+import { CHROME_PAGES, inOrder } from '../packages/parity/src/chrome-pool.ts';
 import { committedAuthored } from '../packages/parity/src/committed.ts';
 import { FIXTURES } from '../packages/parity/src/fixtures.ts';
 import { FONT_FIXTURES } from '../packages/parity/src/fixture-groups/fonts.ts';
 import { committedFontAuthored, runFontFixture } from '../packages/parity/src/fonts-run.ts';
 import { ENV_FIXTURES } from '../packages/parity/src/fixture-groups/env.ts';
 import { committedEnvAuthored, runEnvFixture } from '../packages/parity/src/env-run.ts';
-import { TEXT_LATIN_FIXTURES } from '../packages/parity/src/fixture-groups/text-latin.ts';
-import { committedTextLatinOptions, runTextLatinFixture } from '../packages/parity/src/text-latin-run.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
 import { runFixture } from '../packages/parity/src/pipeline.ts';
@@ -29,28 +28,20 @@ import { animationFeatures, mediaFeatures } from '../packages/dragon/src/interna
 const browser = await launchChrome();
 const cases: CaseOutcome[] = [];
 try {
-  for (const spec of FIXTURES) {
-    if (spec.kind !== 'layout') continue;
-    const outcome = await runFixture(spec, browser, { authored: committedAuthored, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' });
+  // CHROME_PAGES fixtures at a time, so one fixture's Chrome reads overlap another's compile; the outcomes come back in fixture order.
+  const layoutSpecs = FIXTURES.filter((spec) => spec.kind === 'layout');
+  for (const outcome of await inOrder(layoutSpecs, CHROME_PAGES, (spec) => runFixture(spec, browser, { authored: committedAuthored, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' }))) {
     cases.push(...outcome.cases);
     for (const c of outcome.cases) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }
-  // TXT1-C: the web-only fonts fixtures prove web rows through chrome-dual alone; their ios features are empty.
-  for (const f of FONT_FIXTURES) {
-    const outcomes = await runFontFixture(f, browser, { authored: committedFontAuthored, faults: NO_FAULTS, profiles: 'derive' });
-    cases.push(...outcomes);
-    for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
-  }
-  // TXT1a-1: the text-latin registry proves web font-family rows only (runTextLatinFixture keeps those keys; its ios features are
-  // empty, since native refuses these faces until TXT1a-2).
-  for (const f of TEXT_LATIN_FIXTURES) {
-    const outcomes = await runTextLatinFixture(f, browser, { ...committedTextLatinOptions, profiles: 'derive' });
+  // TXT1-C: the web-only fonts fixtures prove web rows through chrome-dual alone; their ios features are empty. CHROME_PAGES at a
+  // time, the outcomes in fixture order, as the layout fixtures.
+  for (const outcomes of await inOrder(FONT_FIXTURES, CHROME_PAGES, (f) => runFontFixture(f, browser, { authored: committedFontAuthored, faults: NO_FAULTS, profiles: 'derive' }))) {
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }
   // ENV-SAFE: the web-only env() fixtures prove web rows through chrome-dual alone, under their insets; their ios features are empty.
-  for (const f of ENV_FIXTURES) {
-    const outcomes = await runEnvFixture(f, browser, { authored: committedEnvAuthored(f), faults: NO_FAULTS, profiles: 'derive' });
+  for (const outcomes of await inOrder(ENV_FIXTURES, CHROME_PAGES, (f) => runEnvFixture(f, browser, { authored: committedEnvAuthored(f), faults: NO_FAULTS, profiles: 'derive' }))) {
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }

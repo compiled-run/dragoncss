@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+html { vertical-align: middle; }
+body { margin: 0; font-family: Ahem; font-size: 10px; vertical-align: top; }
+.blk { width: 120px; line-height: 30px; margin-bottom: 4px; }
+.row { display: flex; width: 200px; height: 40px; column-gap: 5px; margin-bottom: 4px; }
+.col { display: flex; flex-direction: column; width: 80px; margin-bottom: 4px; }
+.grd { display: grid; grid-template-columns: 30px 40px 50px; width: 150px; margin-bottom: 4px; }
+.rel { position: relative; top: 3px; width: 60px; }
+.box { position: relative; width: 200px; height: 60px; }
+.abs { position: absolute; left: 10px; top: 5px; width: 30px; height: 20px; }
+.ib { display: inline-block; }
+.a2 { left: 60px; }
+.c { width: 20px; height: 10px; }
+.t { width: 15px; height: 25px; }
+.va-mid { vertical-align: middle; }
+.va-top { vertical-align: top; }
+.va-bottom { vertical-align: bottom; }
+.va-sub { vertical-align: sub; }
+.va-super { vertical-align: super; }
+.va-tt { vertical-align: text-top; }
+.va-tb { vertical-align: text-bottom; }
+.va-wbm { vertical-align: -webkit-baseline-middle; }
+.va-base { vertical-align: baseline; }
+.va-px { vertical-align: 10px; }
+.va-neg { vertical-align: -7px; }
+.va-em { vertical-align: 1.5em; }
+.va-pct { vertical-align: 50%; }
+.va-calc { vertical-align: calc(5% + 3px); }
+.va-zero { vertical-align: 0; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b1" class="blk va-mid">XX YY</div>
+<div data-dragon-id="b2" class="blk va-px">XX</div>
+<div data-dragon-id="b3" class="blk va-pct"><div data-dragon-id="b3c" class="c va-sub"></div><div data-dragon-id="b3t" class="t va-em">X</div></div>
+<div data-dragon-id="row" class="row va-bottom"><div data-dragon-id="r1" class="c va-top">X</div><div data-dragon-id="r2" class="t va-neg"></div><span data-dragon-id="r3" class="va-super">XX</span><div data-dragon-id="r4" class="c ib va-calc">Y</div></div>
+<div data-dragon-id="col" class="col va-base"><div data-dragon-id="k1" class="c va-tt"></div><div data-dragon-id="k2" class="t va-tb">X</div><div data-dragon-id="k3" class="c va-wbm"></div></div>
+<div data-dragon-id="grd" class="grd va-sub"><div data-dragon-id="g1" class="c va-super">X</div><div data-dragon-id="g2" class="t va-px"></div><div data-dragon-id="g3" class="c va-zero">XX</div></div>
+<div data-dragon-id="rel" class="rel va-mid">XX</div>
+<div data-dragon-id="box" class="box va-base"><div data-dragon-id="a1" class="abs va-bottom">X</div><div data-dragon-id="a2" class="abs a2 va-pct"></div></div>
+<div data-dragon-id="inl" class="blk va-base">aa <span data-dragon-id="s" class="va-base">XX</span> bb</div>
+</body>
+</html>

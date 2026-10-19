@@ -16,7 +16,10 @@ import { SCROLL_LOWERING } from './scroll.ts';
 import { SCROLLBAR_LOWERING } from './scrollbar.ts';
 import { SHADOW_LOWERING } from './shadow.ts';
 import { STACKING_LOWERING } from './stacking.ts';
+import { TEXT_DECORATION_LOWERING } from './text-decoration.ts';
+import { TEXT_SHADOW_LOWERING } from './text-shadow.ts';
 import { TRANSFORM_LOWERING } from './transform.ts';
+import { VISIBILITY_LOWERING } from './visibility.ts';
 import type { BoxPaintContext, NativeBackend, PaintLowering, VocabularyEntry } from './types.ts';
 import { PAINT_MODULE_NAMES } from './types.ts';
 
@@ -38,6 +41,9 @@ const LOWERINGS = [
   IMAGE_LOWERING,
   FOREIGN_VIEW_LOWERING,
   CONTROL_LOWERING,
+  VISIBILITY_LOWERING,
+  TEXT_DECORATION_LOWERING,
+  TEXT_SHADOW_LOWERING,
 ] as const;
 
 type WriteOf<L> = L extends PaintLowering<infer W> ? W : never;

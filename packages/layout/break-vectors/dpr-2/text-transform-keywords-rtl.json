@@ -1,0 +1,24 @@
+{
+  "case": "text-transform-keywords-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"up:text0","lines":[[0,12],[12,17]]},
+    {"id":"lo:text0","lines":[[0,12],[12,17]]},
+    {"id":"cap:text0","lines":[[0,12],[12,22],[22,26]]},
+    {"id":"none:text0","lines":[[0,11],[11,16]]},
+    {"id":"reset:text0","lines":[[0,8],[8,15]]},
+    {"id":"inherit:text0","lines":[[0,10],[10,15]]},
+    {"id":"nodes:text0","lines":[[0,2]]},
+    {"id":"s1:text0","lines":[[0,2]]},
+    {"id":"s2:text0","lines":[[0,3]]},
+    {"id":"nodes:text1","lines":[[0,2]]},
+    {"id":"mixed:text0","lines":[[0,6]]},
+    {"id":"m1:text0","lines":[[0,4]]},
+    {"id":"mixed:text1","lines":[[1,6]]},
+    {"id":"m2:text0","lines":[[0,6],[6,11]]},
+    {"id":"ra:text0","lines":[[0,9]]},
+    {"id":"row:text0","lines":[[0,19]]},
+    {"id":"ca:text0","lines":[[0,11]]},
+    {"id":"col:text0","lines":[[0,17],[17,21]]}
+  ]
+}

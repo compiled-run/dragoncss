@@ -31,17 +31,20 @@ describe('EMS: engine paint seams', () => {
   });
   it('index.ts exports the paint seam with one line, and each filled seam with its own lines', () => {
     const lines = readFileSync(join(layout, 'src/index.ts'), 'utf8').split('\n').filter((l) => l.includes("'./paint"));
-    // REPL-a adds the replacedPaint root and its result type beside the seam's BoxShape; PNT1 adds opacityAlpha8 to its line.
+    // REPL-a adds the replacedPaint root and its result type beside the seam's BoxShape; PNT1 adds opacityAlpha8 to its line, and
+    // the outline styles add outlineNeedsSidePainter and outlinePaintOps to paint-dash's. TXT-FX adds textShadowLayerOver to
+    // paint-shadow's, and the blur margin helpers its text-shadow sample points read.
     expect(lines).toEqual([
       "export type { ReplacedPaint } from './paint.ts';",
       "export { opacityAlpha8, replacedPaint } from './paint.ts';",
       "export type { BoxShape } from './paint.ts';",
       "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
-      "export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';",
+      "export { borderDoubleRings, hasRoundedCorner, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from './paint-radius.ts';",
       "export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from './paint-shadow.ts';",
-      "export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver } from './paint-shadow.ts';",
+      "export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, textShadowLayerOver } from './paint-shadow.ts';",
+      "export { boxBlurMargin, hasNoBlur, NO_BLUR_FAULTS, shadowSigma } from './paint-blur.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
-      "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';",
+      "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from './paint-dash.ts';",
       "export type { OriginPoint, TransformOrigin } from './paint-transform.ts';",
       "export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';",
       "export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';",

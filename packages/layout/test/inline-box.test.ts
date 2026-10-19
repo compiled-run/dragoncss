@@ -147,9 +147,9 @@ const ours = (r: LayoutRect, origin: LayoutRect): number[] => [r.x - origin.x, r
 
 /**
  * The cases INL1a refuses, with the code: a nowrap span in a wrapping context (mixed-text-wrap-mode, from the engine), and pre-wrap
- * (bad-value, from the validator: the engine input holds white-space-collapse: collapse only).
+ * text beside an inline box (mixed-white-space, from the engine: TXT2-c lays out preserved text alone in its formatting context).
  */
-const REFUSED: Record<string, string> = { 'f3-nowrap-span': 'mixed-text-wrap-mode', 'f3-trailing-spaces-close': 'bad-value' };
+const REFUSED: Record<string, string> = { 'f3-nowrap-span': 'mixed-text-wrap-mode', 'f3-trailing-spaces-close': 'mixed-white-space' };
 
 function compare(id: string, c: ProbeCase, faults: EngineFaults): string[] {
   const problems: string[] = [];

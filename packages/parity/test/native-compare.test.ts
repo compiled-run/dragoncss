@@ -15,17 +15,16 @@ import type { DumpNode, NativeDump } from '../src/native-dump.ts';
 import { frameOf, validateNativeDump } from '../src/native-dump.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
+import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 import type { GlyphBox, SampleBox } from '../src/samples.ts';
 import { generateGlyphSamples, generateSamples } from '../src/samples.ts';
 import type { NativeTarget } from '../src/targets.ts';
-import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
+import { nativeTargets, vectorCaseIds } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 const all = layoutCases();
-const measurer = (() => {
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(m.detail);
-  return m.measurer;
-})();
+// TXT1a-2: the engine the device mirrors measures every face through HarfBuzz.
+const measurer = referenceShapedMeasurer();
 
 function reference(caseId: string, dpr: number, platform: NativeTarget, faults: ReferenceFaults = NO_REFERENCE_FAULTS): { dump: NativeDump; engine: readonly LayoutRect[]; capture: WebCapture } {
   const f = all.find((x) => x.cases.some((c) => c.id === caseId));
@@ -62,7 +61,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
   it.each(all.map((f) => [f.spec.id, f] as const))('%s at every device DPR of each target', (_id, f) => {
     expect(proofOf(f).flatMap((p) => p.rows.flatMap((r) => r.failures))).toEqual([]);
   });
-  it('every layout case at 2 and 3 on ios and at 2, 3 and 2.625 on android', () => {
+  it('every device case at 2 and 3 on ios and at 2, 3 and 2.625 on android', () => {
     const sum = (rows: readonly (ReferenceRow | undefined)[]): ReferenceRow => {
       const first = rows[0];
       if (first === undefined || rows.some((r) => r?.dpr !== first.dpr || r.role !== first.role)) throw new Error('the fixture proofs do not share one DPR row order');
@@ -81,7 +80,8 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
     });
     const perFixture = all.map(proofOf);
     const proof = nativeTargets().map((t, i) => ({ target: t.target, rows: t.dprs.map((_d, j) => sum(perFixture.map((p) => (p[i]?.target === t.target ? p[i]?.rows[j] : undefined)))) }));
-    const cases = layoutCaseIds().length;
+    // TXT1a-2: the device cases are every layout case but the shaped ones (no device case until phase R).
+    const cases = vectorCaseIds().length;
     expect(proof.map((p) => [p.target, p.rows.map((r) => r.dpr)])).toEqual([['ios', [2, 3]], ['android', [2, 3, 2.625]]]);
     for (const p of proof) {
       for (const r of p.rows) {
@@ -91,7 +91,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
         expect(r.chromeCompared).toBeGreaterThan(0);
       }
     }
-    expect(cases).toBe(declaredLayoutCaseCount());
+    expect(cases + shapedCaseIds().size).toBe(declaredLayoutCaseCount());
   });
 });
 
@@ -153,7 +153,7 @@ describe('negative checks', () => {
     let failing = 0;
     let checked = 0;
     for (const dprX of [2.625, 3]) {
-      for (const id of layoutCaseIds()) {
+      for (const id of vectorCaseIds()) {
         const off = reference(id, dprX, 'android', { snap: 'off' });
         expect(validateNativeDump(clone(off.dump)).ok).toBe(true);
         checked++;

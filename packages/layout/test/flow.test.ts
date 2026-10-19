@@ -260,7 +260,7 @@ describe('the validator (C4, C6)', () => {
 
 describe('Ahem metrics at fractional sizes (fixture text-fractional-font-size)', () => {
   it('ascent and descent round to the nearest whole px, an exact half down (Chrome 145 oracle)', () => {
-    const m = (size: number) => ahemMeasurer.metrics({ family: 'Ahem', size });
+    const m = (size: number) => ahemMeasurer.metrics({ family: 'Ahem', size, letterSpacing: 0, wordSpacing: 0 });
     expect([m(12.5).ascent, m(12.5).descent]).toEqual([10 * 64, 2 * 64]);
     expect([m(10.625).ascent, m(10.625).descent]).toEqual([8 * 64, 2 * 64]);
     expect([m(12.51).ascent, m(12.51).descent]).toEqual([10 * 64, 3 * 64]);
@@ -269,16 +269,16 @@ describe('Ahem metrics at fractional sizes (fixture text-fractional-font-size)',
     expect(u.roundFontMetricToWholePx(2.502)).toBe(192);
   });
   it('the font instance is created at the size times 100, truncated: 10.625px shapes as 10.62px (probe p14: 1, 4 and 8 glyphs)', () => {
-    const w = (n: number, size: number) => { const m = ahemMeasurer.measure('X'.repeat(n), { family: 'Ahem', size }); return m.ok ? m.measure.width : -1; };
+    const w = (n: number, size: number) => { const m = ahemMeasurer.measure('X'.repeat(n), { family: 'Ahem', size, letterSpacing: 0, wordSpacing: 0 }); return m.ok ? m.measure.width : -1; };
     expect([w(1, 10.625), w(4, 10.625), w(8, 10.625)]).toEqual([680, 2719, 5438]);
     expect([w(1, 10.375), w(4, 10.375), w(8, 10.375)]).toEqual([664, 2655, 5310]);
     expect([w(1, 10.3), w(4, 10.3), w(8, 10.3)]).toEqual([660, 2637, 5274]);
     expect([u.platformFontSize(10.629), u.platformFontSize(13.7), u.platformFontSize(11.1111)]).toEqual([10.62, 13.7, 11.11]);
     // Metrics use the same size: 10.629px has ascent 8 (8.496), 10.631px ascent 9 (8.504); Chrome glyph heights 10 and 11 px.
-    expect([ahemMeasurer.metrics({ family: 'Ahem', size: 10.629 }).ascent, ahemMeasurer.metrics({ family: 'Ahem', size: 10.631 }).ascent]).toEqual([512, 576]);
+    expect([ahemMeasurer.metrics({ family: 'Ahem', size: 10.629, letterSpacing: 0, wordSpacing: 0 }).ascent, ahemMeasurer.metrics({ family: 'Ahem', size: 10.631, letterSpacing: 0, wordSpacing: 0 }).ascent]).toEqual([512, 576]);
   });
   it('advances ceil per piece: 12.51px is raw 801 per glyph', () => {
-    const w = ahemMeasurer.measure('X', { family: 'Ahem', size: 12.51 });
+    const w = ahemMeasurer.measure('X', { family: 'Ahem', size: 12.51, letterSpacing: 0, wordSpacing: 0 });
     expect(w.ok && w.measure.width).toBe(801);
     expect(layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('root', {}, [box('a', {}, [t('a:t', 'X', { font: ahemFont(12.51) })])]) }, ahemMeasurer).kind).toBe('ok');
     void G;

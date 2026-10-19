@@ -14,15 +14,27 @@ export type UnsupportedCode =
   | 'flex-intrinsic-wrap-column'
   | 'replaced-out-of-flow'
   | 'line-break'
-  | 'grid-baseline'
-  | 'grid-abspos'
+  | 'abspos-self-alignment'
   | 'grid-replaced'
+  | 'abspos-grid-lines'
+  | 'grid-last-baseline'
   | 'mixed-text-wrap-mode'
   | 'inline-box-decoration'
   | 'vertical-align'
   | 'inline-box-position'
   | 'inline-empty-line'
-  | 'text-shaping-run';
+  | 'text-shaping-run'
+  | 'intrinsic-size-keyword'
+  | 'atomic-beside-shaped-text'
+  | 'letter-spacing'
+  | 'word-spacing'
+  | 'text-overflow'
+  | 'tab-stop'
+  | 'preserved-control'
+  | 'mixed-white-space'
+  | 'text-indent'
+  | 'word-break'
+  | 'line-clamp';
 
 /** The refusals a TextMeasurer returns: a code point with no glyph, or text outside the measurer's scripts (R4, notes/T056-txt1a-spec.md). */
 export type TextRefusalCode = 'text-glyph' | 'text-script';

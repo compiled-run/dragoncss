@@ -38,7 +38,13 @@ type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly orig
 /** A border box in absolute LU. */
 type AbsoluteRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
-type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, AbsoluteRect>; readonly pending: Pending[] };
+type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, AbsoluteRect>; readonly pending: Pending[]; readonly inflow: InflowBounds[] };
+
+/** A grid scroll container's inflow bounds (Frag.inflow) in its border box; overflow.ts reads them for its scrollable overflow. */
+export type InflowBounds = { readonly id: string; readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
+
+/** A layout with the inflow bounds its grid scroll containers set (empty when it is refused). */
+export type LayoutWithInflow = { readonly result: LayoutResult; readonly inflow: readonly InflowBounds[] };
 
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
@@ -47,6 +53,11 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
 
 /** layoutWithFaults with seeded grid errors; only the G-P differential test passes anything but NO_GRID_FAULTS. */
 export function layoutWithGridFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults, gridFaults: GridFaults): LayoutResult {
+  return layoutWithInflow(given, measurer, faults, gridFaults).result;
+}
+
+/** layoutWithGridFaults with the inflow bounds of its grid scroll containers (overflow.ts). */
+export function layoutWithInflow(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults, gridFaults: GridFaults): LayoutWithInflow {
   const m = layoutMeasurer(measurer, faults);
   try {
     const input = resolvedInput(given, measurer, faults);
@@ -67,12 +78,12 @@ export function layoutWithGridFaults(given: LayoutInput, measurer: TextMeasurer,
       bfcLineOffset: ZERO,
     });
     const offset = relativeOffsetWith(root, icbWidth, { kind: 'definite', value: icbHeight }, icbDirection, ctx.faults);
-    const out: Placement = { boxes: [], absolute: new Map(), pending: [] };
+    const out: Placement = { boxes: [], absolute: new Map(), pending: [], inflow: [] };
     flatten(r.frag, null, add(inline.x, offset.dx), add(inline.marginTop, offset.dy), ZERO, ZERO, out);
     placeOutOfFlow(ctx, input, out, { x: ZERO, y: ZERO, width: icbWidth, height: icbHeight, direction: icbDirection });
-    return { kind: 'ok', boxes: out.boxes, dependencies: environmentDependencies(given) };
+    return { result: { kind: 'ok', boxes: out.boxes, dependencies: environmentDependencies(given) }, inflow: out.inflow };
   } catch (e) {
-    if (e instanceof UnsupportedSignal) return { kind: 'unsupported', unsupported: e.unsupported };
+    if (e instanceof UnsupportedSignal) return { result: { kind: 'unsupported', unsupported: e.unsupported }, inflow: [] };
     throw e;
   }
 }
@@ -82,6 +93,7 @@ function flatten(frag: Frag, parent: string | null, x: LU, y: LU, parentX: LU, p
   const absY = add(parentY, y);
   out.boxes.push({ id: frag.id, parent, x, y, width: frag.width, height: frag.height });
   out.absolute.set(frag.id, { x: absX, y: absY, width: frag.width, height: frag.height });
+  if (frag.inflow !== null) out.inflow.push({ id: frag.id, x: frag.inflow.x, y: frag.inflow.y, width: frag.inflow.width, height: frag.inflow.height });
   for (const oof of frag.outOfFlow) out.pending.push({ oof, parent: frag.id, originX: absX, originY: absY });
   for (const c of frag.children) flatten(c.frag, frag.id, c.x, c.y, absX, absY, out);
 }
@@ -143,7 +155,10 @@ function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Conta
   const parentOf = parents(input.root);
   for (let i = 0; i < out.pending.length; i++) {
     const p = out.pending[i] as Pending;
-    const cb = containingBlock(ctx, p.oof.box, parentOf, out, icb);
+    const area = p.oof.area;
+    const own = containingBlock(ctx, p.oof.box, parentOf, out, icb);
+    // css-grid-2 §9.1: a positioned grid parent is the containing block, and the child's grid area its rectangle.
+    const cb: ContainingBlock = area === null ? own : { x: add(p.originX, area.x), y: add(p.originY, area.y), width: area.width, height: area.height, direction: own.direction };
     const staticX: StaticAxis = { offset: add(p.originX, p.oof.x.offset), edge: p.oof.x.edge };
     const staticY: StaticAxis = { offset: add(p.originY, p.oof.y.offset), edge: p.oof.y.edge };
     const r = layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY);

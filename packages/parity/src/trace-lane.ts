@@ -51,9 +51,9 @@ function scriptOf(id: string): Derived {
   return d;
 }
 
-/** Every device-traces script id, in interaction group order. */
+/** Every device-traces script id, in interaction group order (an id is its group's alone, so no trace is derived for it). */
 export function traceScriptIds(): string[] {
-  return derive().map((d) => d.id);
+  return interactionGroups().map(traceScriptId);
 }
 
 /** The scripts whose derived trace was cut at MAX_TRACE_STEPS, with how many steps were left out. */

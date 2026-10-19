@@ -9,6 +9,7 @@ import { isAnimationProperty } from '../css/properties/animation.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { Compound, InteractionPseudo, PseudoClass, Selector } from '../css/selectors.ts';
 import type { Rule } from '../css/stylesheet.ts';
+import type { VarPart } from '../css/variables.ts';
 import type { CssValue } from '../css/values.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { UaDataset } from '../ua/datasets.ts';
@@ -383,9 +384,20 @@ export function firstInteractionPseudo(r: Rule): InteractionPseudo | null {
  */
 export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   const out: Diagnostic[] = [];
+  // ANIM-v: the custom properties a transition or animation value reads through var(), which an interaction rule may not set either.
+  const names = (parts: readonly VarPart[]): string[] => parts.flatMap((p) => (p.kind === 'var' ? [p.name, ...names(p.fallback ?? [])] : []));
+  const animVars = new Set(rules.flatMap((r) => r.declarations.flatMap((d) => names(d.animation?.pending?.parts ?? []))));
   for (const r of rules) {
     if (!ruleIsInteractive(r)) continue;
     for (const d of r.declarations) {
+      if (d.custom !== undefined && animVars.has(d.custom.name)) {
+        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+          origin: authored(d.span),
+          message: `${d.property} in a rule that tests :hover, :active, :focus or :focus-visible is not supported: a transition or animation value reads it through var(), and those values are resolved without the interaction states (a later SELD-R2 package)`,
+          manual: `Set ${d.property} in a rule without :hover, :active, :focus or :focus-visible, or write the transition or animation value without var(${d.property}).`,
+        }));
+        continue;
+      }
       if (d.animation !== undefined || isAnimationProperty(d.property)) {
         out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
           origin: authored(d.span),
@@ -446,6 +458,7 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
+const zeroLength = (v: CssValue): boolean => v.kind === 'length' && v.value === 0;
 // OVFL: rt-hit clips hidden and clip at the padding box. auto and scroll are native scroll views (OVFL-B) the user scrolls, and the
 // hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
 const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
@@ -471,6 +484,32 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // SVG-a1: the svg family paints only an <svg>'s shapes, never a box; an <svg> itself is an unmodelled fact (hitUnmodelledFact),
+  // as Chrome hits its painted shapes (pointer-events: visiblePainted), which the hit test does not model yet.
+  ['fill', all],
+  ['stroke', all],
+  ['stroke-width', all],
+  ['fill-opacity', all],
+  ['stroke-opacity', all],
+  ['stroke-linecap', all],
+  ['stroke-linejoin', all],
+  ['stroke-miterlimit', all],
+  ['fill-rule', all],
+  ['stroke-dasharray', all],
+  ['stroke-dashoffset', all],
+  ['cx', all],
+  ['cy', all],
+  ['r', all],
+  ['x', all],
+  ['y', all],
+  ['paint-order', all],
+  ['rx', all],
+  ['ry', all],
+  // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
+  ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
+  ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['outline-width', zeroLength],
+  ['outline-offset', zeroLength],
 ]);
 
 /**
@@ -494,6 +533,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
   // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible, so its overflow is no fact of its box.
   const propagated = propagatedFrom(root);
   const visit = (el: ResolvedElement): { property: Longhand; address: string } | null => {
+    if (el.element.tag === 'svg') return { property: 'fill', address: el.element.address };
     // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
     const partner = (p: Longhand): ResolvedValue | undefined => (p === 'overflow-x' ? el.props.get('overflow-y') : p === 'overflow-y' ? el.props.get('overflow-x') : undefined);
     for (const [p, v] of el.props) {

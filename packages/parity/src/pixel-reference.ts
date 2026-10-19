@@ -6,16 +6,18 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import type { LayoutBox, LayoutRect } from '@dragon/layout';
-import { AHEM_FONT_DATA, coveredIndex, LU_PER_PX, pieceGlyphs, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
+import { AHEM_FONT_DATA, coveredCodePoints, coveredIndex, ELLIPSIS, LU_PER_PX, pieceGlyphs, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
-import { borderDevicePx, programInput } from 'dragon';
+import { borderDevicePx, programInput, syntheticBoldStroke } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from './chrome.ts';
 import { dprLabel } from './dpr.ts';
+import { cssFontSizes } from './ahem-lines.ts';
 import { engineTextLines } from './line-breaks.ts';
 import type { CheckResult, RgbaImage } from './native-compare.ts';
 import { checkPixels } from './native-compare.ts';
 import type { DumpSample } from './native-dump.ts';
-import { expectedEngine, referenceMeasurer } from './native-host.ts';
+import { expectedEngine, glyphMeasurer, referenceMeasurer } from './native-host.ts';
+import { shapedInk } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { GlyphBox, GlyphLine, ImageSize, SampleBox, SamplePoint, SampleResult } from './samples.ts';
@@ -23,6 +25,13 @@ import { SAMPLE_INSET_DEVICE_PX, sampleBoxes, sampleGlyphs } from './samples.ts'
 import { withPaintSamples } from './paint-samples/registry.ts';
 
 // ---------------------------------------------------------------- PNG
+
+/** A PNG's width and height from its IHDR chunk, without inflating the pixels. */
+export function pngSize(buf: Uint8Array): ImageSize {
+  const b = Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (b.length < 24 || b.readUInt32BE(0) !== 0x89504e47 || b.readUInt32BE(4) !== 0x0d0a1a0a || b.toString('ascii', 12, 16) !== 'IHDR') throw new Error('not a PNG with a leading IHDR chunk');
+  return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
+}
 
 /** Decodes a non-interlaced 8-bit greyscale, RGB or RGBA PNG (Chrome, simctl io and screencap write these) into RGBA8. */
 export function decodePng(buf: Uint8Array): RgbaImage {
@@ -150,8 +159,9 @@ export function pixelManifest(sets: readonly { dpr: number; raster: RasterPath; 
       dpr: s.dpr,
       flags: chromeArgsAt(s.dpr),
       raster: { rasterization: s.raster.rasterization, gpu_compositing: s.raster.gpu_compositing },
+      // The size from the IHDR chunk: inflating every PNG only to read it took most of a warm run (about 100 s of 125 s).
       cases: s.cases.map((c) => {
-        const img = decodePng(c.png);
+        const img = pngSize(c.png);
         return { case: c.case, width: img.width, height: img.height, sha256: createHash('sha256').update(c.png).digest('hex') };
       }),
     })),
@@ -245,8 +255,8 @@ export function ahemGlyphBoxes(): ReadonlyMap<number, FontBox | null> {
   };
   const offset = (g: number): number => (longLoca ? f.readUInt32BE(loca + 4 * g) : 2 * f.readUInt16BE(loca + 2 * g));
   const out = new Map<number, FontBox | null>();
-  for (let cp = 0; cp <= 0x200b; cp++) {
-    if (coveredIndex(cp) < 0) continue;
+  // TXT2-f: U+2026, the ellipsis text-overflow draws, beside the covered code points.
+  for (const cp of [...coveredCodePoints(), ELLIPSIS]) {
     const g = glyphOf(cp);
     const o = offset(g);
     const len = offset(g + 1) - o;
@@ -265,49 +275,80 @@ export function ahemGlyphBoxes(): ReadonlyMap<number, FontBox | null> {
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
 
-function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number; text: string }> {
-  const out = new Map<string, { family: string; size: number; text: string }>();
-  // Text leaves sit in their block container or, through any depth of inline boxes, inside it (INL1a).
-  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox>): void => {
-    if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size, text: c.text });
-    else if (c.kind === 'inline') for (const k of c.children) inline(k);
-  };
-  const walk = (b: LayoutBox): void => {
-    for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
-      else inline(c);
-    }
-  };
-  walk(root);
+
+/**
+ * The glyph lines of a program at a DPR, as the device places them: each Ahem glyph at the line's absolute x plus its pen position
+ * from the shaped item (pieceGlyphs, HarfBuzz's 16.16 advances), with size = platformFontSize(zoomFontSize(css size, DPR)); the
+ * baseline is the snapped line top plus the engine's ascent. Each Ahem glyph's box is its font box scaled by size / unitsPerEm; a real
+ * face's are its shaped glyphs' HarfBuzz extents (TXT1a-2). A text with a synthetic-bold write strokes each outline at Skia's fake-bold
+ * width for the size, so its box grows by half that width on every side (an Ahem box keeps its right-angled corners under a miter join).
+ * A text with a synthetic-oblique write draws each glyph sheared about its baseline origin, so its box is the bounding box of the sheared
+ * box and carries the slanted sides (shearedBox).
+ */
+export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
+  const sheared = glyphShears(p);
+  return uprightGlyphLines(p, viewport, dpr).map((l) => {
+    const k = sheared.get(l.id.slice(0, l.id.lastIndexOf(':line')));
+    return k === undefined ? { id: l.id, glyphs: l.glyphs } : { id: l.id, glyphs: l.glyphs.map((g) => shearedBox(g, l.baseline, k)) };
+  });
+}
+
+/** The shear of each text node a synthetic-oblique write shears, by node id. */
+export function glyphShears(p: NativeProgram): ReadonlyMap<string, number> {
+  const out = new Map<string, number>();
+  for (const n of p.nodes) for (const w of n.writes) if (w.kind === 'synthetic-oblique') out.set(n.id, w.shear);
   return out;
 }
 
 /**
- * The glyph lines of a program at a DPR, as the device places them: each glyph at the line's absolute x plus its pen position from
- * the shaped item (pieceGlyphs, HarfBuzz's 16.16 advances), with size = platformFontSize(zoomFontSize(css size, DPR)); the baseline
- * is the snapped line top plus the engine's ascent. Each glyph's box is its font box scaled by size / unitsPerEm. Only Ahem is accepted.
+ * A glyph box sheared about the baseline (device y down) by k: x moves by k times the height above it. Its box is the bounding box of
+ * the sheared ink and its slant the sheared sides, which the clearance and the glyph scanlines follow (samples.ts glyphClearance).
  */
-export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
+export function shearedBox(g: GlyphBox, baseline: number, k: number): GlyphBox {
+  const lo = k * (baseline - g.bottom);
+  const hi = k * (baseline - g.top);
+  return { left: g.left + Math.min(lo, hi), right: g.right + Math.max(lo, hi), top: g.top, bottom: g.bottom, slant: { k, baseline, left: g.left, right: g.right } };
+}
+
+/** A glyph line with its baseline in device px. */
+export type BaselineLine = GlyphLine & { readonly baseline: number };
+
+/** glyphLines before any shear: each glyph's upright box (grown by a synthetic bold), and each line's baseline. */
+export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): BaselineLine[] {
   const input = programInput(p, viewport, dpr);
   const sizes = cssFontSizes(input.root);
-  // The glyph rule's own refusal comes first: the engine's font-data measurer refuses a face other than Ahem too (TXT1a-1).
-  for (const [id, css] of sizes) if (css.family !== 'Ahem') throw new Error(`${id}: the glyph rule refuses the font family ${css.family}; glyph boxes are known for Ahem only`);
-  const m = referenceMeasurer();
+  const m = glyphMeasurer();
   const texts = engineTextLines(input, m);
   const boxes = ahemGlyphBoxes();
   const upem = AHEM_FONT_DATA.unitsPerEm;
-  const out: GlyphLine[] = [];
+  const bolds = glyphBolds(p);
+  const out: BaselineLine[] = [];
   for (const t of texts) {
     const css = sizes.get(t.id);
     if (css === undefined) throw new Error(`no text leaf ${t.id}`);
-    if (css.family !== 'Ahem') throw new Error(`${t.id}: the glyph rule refuses the font family ${css.family}; glyph boxes are known for Ahem only`);
     const size = platformFontSize(zoomFontSize(css.size, dpr));
-    const metrics = m.metrics(t.font);
+    const bold = bolds.get(t.id);
+    if (bold !== undefined && css.family !== 'Ahem') throw new Error(`${t.id}: a synthetic-bold write on ${css.family}, which native draws only over Ahem`);
+    // Half the fake-bold stroke at a size: how far the stroked outline reaches past the upright one.
+    const grow = (at: number): number => (bold === undefined ? 0 : syntheticBoldStroke(at, bold.keys, bold.values) / 2);
+    const metrics = m.metrics(t.textFont);
     for (const [j, line] of t.lines.entries()) {
       const baseline = line.snapped.top + metrics.ascent / 64;
+      if (css.family !== 'Ahem') {
+        // TXT1a-2: a real face's glyph boxes are HarfBuzz's extents of the shaped line (text-shaper-host.ts shapedInk), from its left.
+        const x0 = line.rect.x / 64;
+        // A justified line moves each glyph by its cluster's code point shift (the line's code points are in the BMP).
+        const shift = (shifts: readonly number[], cluster: number): number => (shifts.length === 0 ? 0 : (shifts[cluster] as number));
+        const inkAt = (x: number, ink: ReturnType<typeof shapedInk>, shifts: readonly number[]): GlyphBox[] =>
+          ink.flatMap((g) => (g === null ? [] : [{ left: x + shift(shifts, g.cluster) + g.left, right: x + shift(shifts, g.cluster) + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
+        const e = line.ellipsis;
+        const dots = e === null ? [] : inkAt(e.x / 64, shapedInk(css.family, platformFontSize(e.font.size), String.fromCodePoint(...e.cps), e.font.letterSpacing, e.font.wordSpacing), []);
+        out.push({ id: `${t.id}:line${j}`, baseline, glyphs: [...inkAt(x0, shapedInk(css.family, size, String.fromCodePoint(...line.cps), t.textFont.letterSpacing, t.textFont.wordSpacing), line.shifts), ...dots] });
+        continue;
+      }
       // The piece's code points: the leaf's code points before its UTF-16 start, then the shown ones.
       const start = [...css.text.slice(0, line.start)].length;
-      const shaped = pieceGlyphs(m, css.text, t.font, start, start + line.cps.length);
+      const shaped = pieceGlyphs(m, css.text, t.textFont, start, start + line.cps.length);
       if (!shaped.ok) throw new Error(`${t.id} line ${j}: ${shaped.reason}`);
       // Ahem shapes one glyph per code point, so each glyph's box is its code point's.
       if (shaped.xs.length !== line.cps.length) throw new Error(`${t.id} line ${j}: ${shaped.xs.length} glyphs for ${line.cps.length} code points`);
@@ -315,12 +356,34 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
       for (const [n, cp] of line.cps.entries()) {
         if (coveredIndex(cp) < 0) throw new Error(`${t.id}: U+${cp.toString(16)} is not covered by Ahem`);
         const b = boxes.get(cp);
-        const x = line.rect.x / 64 + (shaped.xs[n] as number);
-        if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem, right: x + (b.xMax * size) / upem, top: baseline - (b.yMax * size) / upem, bottom: baseline - (b.yMin * size) / upem });
+        const x = line.rect.x / 64 + (shaped.xs[n] as number) + (line.shifts.length === 0 ? 0 : (line.shifts[n] as number));
+        const h = grow(size);
+        if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem - h, right: x + (b.xMax * size) / upem + h, top: baseline - (b.yMax * size) / upem - h, bottom: baseline - (b.yMin * size) / upem + h });
       }
-      out.push({ id: `${t.id}:line${j}`, glyphs });
+      // TXT2-f: the ellipsis glyphs after the painted text, in the line's font, on the same baseline.
+      const e = line.ellipsis;
+      if (e !== null) {
+        const dots = String.fromCodePoint(...e.cps);
+        const eSize = platformFontSize(e.font.size);
+        const eShaped = pieceGlyphs(m, dots, e.font, 0, e.cps.length);
+        if (!eShaped.ok) throw new Error(`${t.id} line ${j} ellipsis: ${eShaped.reason}`);
+        for (const [n, cp] of e.cps.entries()) {
+          const b = boxes.get(cp);
+          const x = e.x / 64 + (eShaped.xs[n] as number);
+          const h = grow(eSize);
+          if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * eSize) / upem - h, right: x + (b.xMax * eSize) / upem + h, top: baseline - (b.yMax * eSize) / upem - h, bottom: baseline - (b.yMin * eSize) / upem + h });
+        }
+      }
+      out.push({ id: `${t.id}:line${j}`, baseline, glyphs });
     }
   }
+  return out;
+}
+
+/** The fake-bold keys and values of each text node a synthetic-bold write emboldens, by node id. */
+export function glyphBolds(p: NativeProgram): ReadonlyMap<string, { readonly keys: readonly [number, number]; readonly values: readonly [number, number] }> {
+  const out = new Map<string, { readonly keys: readonly [number, number]; readonly values: readonly [number, number] }>();
+  for (const n of p.nodes) for (const w of n.writes) if (w.kind === 'synthetic-bold') out.set(n.id, { keys: w.keys, values: w.values });
   return out;
 }
 
@@ -371,13 +434,13 @@ export function caseBoxes(p: NativeProgram, viewport: { readonly width: number; 
 }
 
 /**
- * The points the device pixel lanes compare: casePoints, without those a translucent group (an opacity write strictly between 0 and
- * 1) paints. Native refuses such a group (dragon analysis/paint-values/effects.ts, PNT1-opacity-b), and only a lane-only case reaches
+ * The points the device pixel lanes compare: casePoints, without those of a translucent paint native refuses (translucentPaintKept)
+ * and those a translucent group (an opacity write strictly between 0 and 1) paints. Native refuses such a group (dragon analysis/paint-values/effects.ts, PNT1-opacity-b), and only a lane-only case reaches
  * a device with one: its pixels are proven against Chrome on the host (pnt1-effects.test), and the platforms composite it with
  * their own rounding. A point is the group's when its rule names a node of the group's subtree or it lies in a snapped box of one.
  */
 export function devicePoints(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SamplePoint[] {
-  const points = casePoints(p, viewport, dpr);
+  const points = translucentPaintKept(p, casePoints(p, viewport, dpr));
   const groups = p.nodes.filter((n) => n.writes.some((w) => w.kind === 'opacity' && w.opacity > 0 && w.opacity < 1));
   if (groups.length === 0) return points;
   const children = new Map<string, string[]>();
@@ -397,6 +460,33 @@ export function devicePoints(p: NativeProgram, viewport: { readonly width: numbe
     const named = q.rule.slice(q.rule.indexOf(':') + 1);
     if (ids.some((id) => named === id || named.startsWith(`${id}:`))) return false;
     return !rects.some((r) => q.x + 1 > r.left && q.x < r.right && q.y + 1 > r.top && q.y < r.bottom);
+  });
+}
+
+/** The outline styles the native side painter draws (dragon lower/paint/outline.ts), each through a layer when translucent. */
+const SIDE_PAINTER_OUTLINES: readonly string[] = ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset'];
+const translucent = (alpha: number): boolean => alpha > 0 && alpha < 255;
+
+/**
+ * points without those a translucent paint native refuses would draw (dragon analysis/paint-values outline.ts and radius.ts, PNT1):
+ * a dotted, dashed or 3D outline's points (rules naming the node's outline) and every point naming a rounded double border's box.
+ * Only a lane-only case (outline-web, radius-double-web) reaches a device with one; its pixels are proven against Chrome on the host
+ * (pnt1-outline.test, pnt1-radius.test), and the platforms blend it with their own rounding.
+ */
+function translucentPaintKept(p: NativeProgram, points: SamplePoint[]): SamplePoint[] {
+  const outlines = new Set<string>();
+  const boxes = new Set<string>();
+  for (const n of p.nodes) {
+    for (const w of n.writes) if (w.kind === 'outline' && SIDE_PAINTER_OUTLINES.includes(w.style) && translucent(w.color.alpha)) outlines.add(n.id);
+    const styles = n.writes.find((w) => w.kind === 'border-styles');
+    const colors = n.writes.find((w) => w.kind === 'border-colors');
+    const rounded = n.writes.some((w) => w.kind === 'border-radius');
+    if (rounded && styles?.kind === 'border-styles' && styles.styles.every((st) => st === 'double') && colors?.kind === 'border-colors' && colors.colors.some((c) => translucent(c.alpha))) boxes.add(n.id);
+  }
+  if (outlines.size === 0 && boxes.size === 0) return points;
+  return points.filter((q) => {
+    const named = q.rule.slice(q.rule.indexOf(':') + 1);
+    return ![...boxes].some((id) => named === id || named.startsWith(`${id}:`)) && ![...outlines].some((id) => named.startsWith(`${id}:outline-`));
   });
 }
 

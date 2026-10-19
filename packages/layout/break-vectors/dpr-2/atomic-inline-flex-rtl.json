@@ -1,0 +1,24 @@
+{
+  "case": "atomic-inline-flex-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"row:text0","lines":[[0,1]]},
+    {"id":"row-i1:text0","lines":[[0,1]]},
+    {"id":"row-i2:text0","lines":[[0,1]]},
+    {"id":"row-i2:text1","lines":[[0,1]]},
+    {"id":"row:text1","lines":[[0,1]]},
+    {"id":"col:text0","lines":[[0,1]]},
+    {"id":"col-i1:text0","lines":[[0,1]]},
+    {"id":"col-i2:text0","lines":[[0,1]]},
+    {"id":"col:text1","lines":[[0,1]]},
+    {"id":"empty:text0","lines":[[0,1]]},
+    {"id":"empty:text1","lines":[[0,1]]},
+    {"id":"base:text0","lines":[[0,1]]},
+    {"id":"base-i1:text0","lines":[[0,1]]},
+    {"id":"base-i2:text0","lines":[[0,1]]},
+    {"id":"base:text1","lines":[[0,1]]},
+    {"id":"over:text0","lines":[[0,1]]},
+    {"id":"over-i1:text0","lines":[[0,1]]},
+    {"id":"over:text1","lines":[[0,1]]}
+  ]
+}

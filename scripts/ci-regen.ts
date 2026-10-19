@@ -7,7 +7,10 @@
 // Exit codes: 0 done (the regen commit pushed, or already at a fixed point), 1 failed, 2 usage or gh error, a cancelled run or a
 // run that is not the one asked for, 3 pending.
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { failedSteps, gh, repoOf, runIdOfDispatch } from './ci-test-files.ts';
 import { type CiJob, DEFAULT_REGEN_WAIT_S, parseJobs } from './land-devices-ci.ts';
 
@@ -69,6 +72,10 @@ export type Deps = {
   readonly log: (line: string) => void;
   /** A fresh token for one dispatch. */
   readonly nonce: () => string;
+  /** When this machine first waited to dispatch the given branch and head (now, the first time): --once polls share one wait. */
+  readonly since?: (key: string) => number;
+  /** Forgets that wait once the dispatch goes, so a later dispatch of the same head (a retry) waits afresh. */
+  readonly forget?: (key: string) => void;
 };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -130,6 +137,76 @@ export function findReusable(runs: readonly Run[], branch: string, head: string)
   return null;
 }
 
+/** regen-on-ci.yml's own REGEN_BRANCH_SLOTS and LANDING_YIELD_SECONDS: the branch regens it lets run at once, and how long one waits for a landing. */
+export const REGEN_BRANCH_SLOTS = 2;
+export const LANDING_YIELD_S = 5400;
+export const SLOT_POLL_S = 120;
+
+/**
+ * The branch regens (dispatched in branch mode) and the landing's runs (a pull request's regen label, a patch-mode regen, a device
+ * lanes run) queued or running now: what regen-on-ci.yml's "Wait for a branch regen slot" counts, with the same per-status lists.
+ */
+export function slotState(deps: Deps, repo: string): { readonly branch: number; readonly landing: number } {
+  const seen = new Set<number>();
+  let branch = 0;
+  let landing = 0;
+  for (const st of ['queued', 'in_progress', 'waiting', 'pending']) {
+    for (const r of parseRuns(deps.gh(['api', `repos/${repo}/actions/workflows/${WORKFLOW}/runs?status=${st}&per_page=100`]))) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      if (r.event === 'workflow_dispatch' && r.title.startsWith('regen of branch ')) branch++;
+      else if (r.event === 'pull_request' || (r.event === 'workflow_dispatch' && /^regen of [0-9a-f]{40}$/.test(r.title))) landing++;
+    }
+    for (const r of parseRuns(deps.gh(['api', `repos/${repo}/actions/workflows/device-lanes.yml/runs?status=${st}&per_page=100`]))) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      landing++;
+    }
+  }
+  return { branch, landing };
+}
+
+/**
+ * Waits here, before dispatching, while a landing run is queued or running or every branch regen slot is taken, for at most
+ * LANDING_YIELD_S from the first wait for this branch and head (shared by --once polls); then the dispatch goes and the run waits
+ * for its slot itself. A dispatched run waits inside its resolve job, which holds a runner the whole time: a few waiting runs
+ * filled the repository's concurrent jobs and queued the landing's own rounds. Returns 'go' at once, 'waited' after sleeping (the
+ * caller reads the head and the runs again), or 'pending' with --once (not dispatched). A failed listing dispatches anyway; the
+ * workflow's own wait still guards the runners.
+ */
+export function waitForSlot(deps: Deps, repo: string, key: string, o: { readonly once: boolean; readonly pollS?: number }): 'go' | 'waited' | 'pending' {
+  let t0: number | null = null;
+  let slept = false;
+  let told = '';
+  const go = (): 'go' | 'waited' => {
+    if (t0 !== null) deps.forget?.(key);
+    return slept ? 'waited' : 'go';
+  };
+  for (;;) {
+    let s: { readonly branch: number; readonly landing: number };
+    try {
+      s = slotState(deps, repo);
+    } catch (e) {
+      deps.log(`listing the queued and running regens failed (${e instanceof Error ? e.message : String(e)}); dispatching, and the run waits for its slot itself`);
+      return go();
+    }
+    const busy = s.landing > 0 ? `${s.landing} landing run(s) are queued or running` : s.branch >= REGEN_BRANCH_SLOTS ? `${s.branch} branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once)` : null;
+    // The wait starts at the first busy poll (kept across --once polls), never at a dispatch that did not wait.
+    if (busy !== null) t0 ??= deps.since?.(key) ?? deps.now();
+    const why = busy !== null && t0 !== null && deps.now() - t0 < LANDING_YIELD_S * 1000 ? busy : null;
+    if (why === null) return go();
+    if (o.once) {
+      deps.log(`PENDING (not dispatched): ${why}; run the same command again (it dispatches anyway ${LANDING_YIELD_S / 60} minutes after the first wait)`);
+      return 'pending';
+    }
+    if (why !== told) deps.log(`waiting to dispatch: ${why}`);
+    told = why;
+    // Up to 30 s apart, so the waiters do not all dispatch on the same poll when a slot frees.
+    deps.sleep((o.pollS ?? SLOT_POLL_S) * 1000 + (Number.parseInt(deps.nonce().slice(0, 4), 16) % 30_000));
+    slept = true;
+  }
+}
+
 /** Dispatches a branch regen of `head` and returns its run: from the dispatch's answer, else found by its run-name. */
 export function dispatch(deps: Deps, repo: string, a: Args, head: string, appearS = 180): { readonly runId: number; readonly nonce: string } {
   const nonce = deps.nonce();
@@ -162,7 +239,8 @@ export function parseCommits(text: string): Commit[] {
 }
 
 /**
- * The regen commit the run pushed, checked: its message names the run and the head as its base, and its only parent is that head.
+ * The regen commit the run pushed, checked: its message names the run and the head as its base, and its only parent is that head
+ * or the newer head its Onto: line names.
  * Throws when the branch's newest commits hold no commit naming the run, or when that commit is not on top of the head expected.
  */
 export function pushedCommit(commits: readonly Commit[], runUrl: string, head: string, branch: string): string {
@@ -170,7 +248,9 @@ export function pushedCommit(commits: readonly Commit[], runUrl: string, head: s
   if (mine.length !== 1) throw new Error(`${mine.length === 0 ? 'no' : mine.length} commit${mine.length === 1 ? '' : 's'} among the newest ${commits.length} of ${branch} name${mine.length === 1 ? 's' : ''} the run ${runUrl}; expected exactly 1`);
   const c = mine[0] as Commit;
   const lines = c.message.split('\n').map((l) => l.trim());
-  if (lines[0] !== COMMIT_SUBJECT || !lines.includes(`Base: ${head}`) || c.parents.length !== 1 || c.parents[0] !== head) {
+  // A branch moved forward during the run carries the outputs on its new head, which the message names after Onto: (regen-on-ci.yml).
+  const onto = (p: string | undefined): boolean => p !== undefined && lines.some((l) => l.startsWith(`Onto: ${p} `));
+  if (lines[0] !== COMMIT_SUBJECT || !lines.includes(`Base: ${head}`) || c.parents.length !== 1 || (c.parents[0] !== head && !onto(c.parents[0]))) {
     throw new Error(`the commit ${c.sha} naming ${runUrl} is not a regen commit on top of ${head} (parents ${c.parents.join(', ') || 'none'})`);
   }
   return c.sha;
@@ -261,11 +341,22 @@ export function main(argv: readonly string[], deps: Deps, repo: () => string): n
     const r = repo();
     if (a.runId !== null) return waitFor(deps, r, a.runId, { branch: a.branch, head: a.head }, { once: a.once });
     // With --head, a run of that head is found even after its regen commit moved the branch on, so the same command polls it.
-    const head = a.head ?? branchHead(deps, r, a.branch);
-    const reuse = findReusable(listRuns(deps, r, a.from), a.branch, head);
-    if (reuse !== null) {
+    let head = a.head ?? branchHead(deps, r, a.branch);
+    const reused = (): number | null => {
+      const reuse = findReusable(listRuns(deps, r, a.from), a.branch, head);
+      if (reuse === null) return null;
       deps.log(`run ${reuse.id} already regenerates ${a.branch} at ${head}: ${reuse.url}`);
       return waitFor(deps, r, reuse.id, { branch: a.branch, head }, { once: a.once });
+    };
+    const first = reused();
+    if (first !== null) return first;
+    const slot = waitForSlot(deps, r, `${a.branch}@${head}`, { once: a.once });
+    if (slot === 'pending') return EXIT.pending;
+    if (slot === 'waited') {
+      // The branch may have moved, or another invocation dispatched this head, while this one waited.
+      head = a.head ?? branchHead(deps, r, a.branch);
+      const again = reused();
+      if (again !== null) return again;
     }
     if (a.head !== null) {
       const now = branchHead(deps, r, a.branch);
@@ -280,6 +371,9 @@ export function main(argv: readonly string[], deps: Deps, repo: () => string): n
   }
 }
 
+/** Where `since` keeps the first wait for a branch and head. */
+const waitFile = (key: string): string => join(tmpdir(), `ci-regen-wait-${createHash('sha256').update(key).digest('hex').slice(0, 16)}`);
+
 if (import.meta.main) {
   let r = '';
   const repo = (): string => (r ||= repoOf(process.env['GH_REPO'], execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' })));
@@ -289,6 +383,19 @@ if (import.meta.main) {
     now: () => Date.now(),
     log: (l) => console.log(l),
     nonce: () => randomBytes(6).toString('hex'),
+    since: (key) => {
+      const file = waitFile(key);
+      try {
+        const t = Number(readFileSync(file, 'utf8'));
+        if (Number.isFinite(t) && t > 0) return t;
+      } catch {
+        // First wait for this branch and head.
+      }
+      const now = Date.now();
+      writeFileSync(file, String(now));
+      return now;
+    },
+    forget: (key) => rmSync(waitFile(key), { force: true }),
   };
   process.exit(main(process.argv.slice(2), deps, repo));
 }

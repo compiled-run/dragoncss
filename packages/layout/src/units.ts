@@ -156,6 +156,36 @@ export function divInt(a: LU, n: number): LU {
   return saturate(Math.trunc(a / n));
 }
 
+/** A float px value as a 16.16 raw value, unrounded: a whole number exactly when the float is exact in 16.16. */
+export function floatToInlineRaw(px: number): number {
+  return Math.fround(px) * 65536;
+}
+
+/** Blink FixedPoint operator/(int): an InlineLayoutUnit (16.16 raw, int64) divided by a non-zero integer, truncating toward zero. */
+export function inlineDivInt(raw: number, n: number): number {
+  if (!Number.isInteger(n) || n === 0) throw new Error(`non-zero integer divisor expected, got ${n}`);
+  return Math.trunc(raw / n);
+}
+
+/** Blink operator/(LayoutUnit, LayoutUnit): 64 * a.raw / b.raw in int64, truncating toward zero, clamped to the raw range. */
+export function divLu(a: LU, b: LU): LU {
+  if (b === 0) throw new Error('LayoutUnit division by zero');
+  return saturate(Math.trunc((a * LU_PER_PX) / b));
+}
+
+/** Blink FloorToInt(LayoutUnit): the raw value shifted right by 6, or kIntMin within one px of the raw minimum. */
+export function floorToInt(a: LU): number {
+  if (a <= INT_MIN + LU_PER_PX - 1) return Math.trunc(INT_MIN / LU_PER_PX);
+  return Math.floor(a / LU_PER_PX);
+}
+
+/** Blink CeilToInt(LayoutUnit): up to whole px when non-negative, toward zero when negative, kIntMax within one px of the raw maximum. */
+export function ceilToInt(a: LU): number {
+  if (a >= INT_MAX - LU_PER_PX + 1) return Math.trunc(INT_MAX / LU_PER_PX);
+  if (a >= 0) return Math.trunc((a + LU_PER_PX - 1) / LU_PER_PX);
+  return Math.trunc(a / LU_PER_PX);
+}
+
 /** Blink LayoutUnit::Floor(): the largest whole px not above the value, as LU. */
 export function floorToWholePx(a: LU): LU {
   return saturate(Math.floor(a / LU_PER_PX) * LU_PER_PX);
@@ -651,6 +681,16 @@ export function unzoomMetric(metricPx: number, fontZoom: number, zoom: number): 
 /** A font-relative leaf in px, value * float metric, in double (ZoomedComputedPixels kExs, kChs, kCaps, kLhs). */
 export function metricLeafPx(value: number, metricPx: number): number {
   return value * Math.fround(metricPx);
+}
+
+/** TextRunLayoutUnit(float) (FixedPoint<16, int32_t>): float(px) * 65536 in float, truncated toward zero into the int range. */
+export function textRunLayoutUnit(px: number): number {
+  return saturatedInt(Math.fround(Math.fround(px) * 65536));
+}
+
+/** SkiaScalarToHarfBuzzPosition of a glyph advance of units at an instance size: float(units * size / upem) * 65536, truncated. */
+export function glyphAdvance16(units: number, instanceSizePx: number, unitsPerEm: number): number {
+  return saturatedInt(Math.fround(Math.fround((units * instanceSizePx) / unitsPerEm) * 65536));
 }
 
 /** base::saturated_cast<int>(double): NaN is 0, and the value truncates toward zero into the int range. */

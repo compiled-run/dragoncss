@@ -58,14 +58,14 @@ function numberText(n: number): string {
 
 const lengthText = (l: ShadowLength): string => `${numberText(l.value)}${l.unit}`;
 
-/** The text of a shadow list in Chrome's computed order. */
-export function shadowListText(shadows: readonly Shadow[]): string {
-  return shadows.map((s) => `${s.color === 'currentcolor' ? 'currentcolor' : serializeColor(s.color)} ${lengthText(s.x)} ${lengthText(s.y)} ${lengthText(s.blur)} ${lengthText(s.spread)}${s.inset ? ' inset' : ''}`).join(', ');
+/** The text of a shadow list in Chrome's computed order; withSpread false leaves the spread out, as Chrome serializes text-shadow. */
+export function shadowListText(shadows: readonly Shadow[], withSpread = true): string {
+  return shadows.map((s) => `${s.color === 'currentcolor' ? 'currentcolor' : serializeColor(s.color)} ${lengthText(s.x)} ${lengthText(s.y)} ${lengthText(s.blur)}${withSpread ? ` ${lengthText(s.spread)}` : ''}${s.inset ? ' inset' : ''}`).join(', ');
 }
 
 /** The CssValue of a shadow list (none for an empty list). */
-export function shadowValue(shadows: readonly Shadow[]): CssValue {
-  return shadows.length === 0 ? { kind: 'keyword', value: 'none' } : { kind: 'other', type: SHADOW_LIST, text: shadowListText(shadows) };
+export function shadowValue(shadows: readonly Shadow[], withSpread = true): CssValue {
+  return shadows.length === 0 ? { kind: 'keyword', value: 'none' } : { kind: 'other', type: SHADOW_LIST, text: shadowListText(shadows, withSpread) };
 }
 
 type Read = { readonly ok: Shadow[] } | { readonly refused: ParsedValue } | { readonly invalid: string };

@@ -18,6 +18,8 @@ import { FIXTURE_GROUPS, FIXTURES, LEGACY_RUN_ORDER } from '../src/fixtures.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { repoPath } from '../src/paths.ts';
+import { layoutCaseIds } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 const VALUES = (FIXTURE_GROUPS.find((g) => g.id === 'values') as { fixtures: readonly FixtureSpec[] }).fixtures;
 const LAYOUT = VALUES.filter((f) => f.kind === 'layout');
@@ -30,6 +32,13 @@ describe('values group registration (fixture-groups/values.ts)', () => {
   it('is the last legacy group before SELD-R1b\'s states; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
     // Groups added after the per-feature split run after the legacy groups (fixtures.ts LEGACY_RUN_ORDER).
     expect(FIXTURE_GROUPS.map((g) => g.id).slice(LEGACY_RUN_ORDER.length - 2, LEGACY_RUN_ORDER.length)).toEqual(['values', 'states']);
+    // TXT1a-2, T133, TXT-W1 and TXT-W2: every case of the text groups, inline-tags, text-weight and font-shorthand is shaped, so they add no plain vector to the corpus the values- prefix keys.
+    // TXT-W2's one Ahem case (font: inherit over Ahem, the native proof of font-size and line-height inherit) is plain: its vector
+    // sorts among the earlier vectors, before the values group's (corpus-dpr.ts m2VectorCases).
+    const shaped = shapedCaseIds();
+    // TXT-W's Ahem cases (text-weight-ahem, weights below 600, and text-weight-bold-ahem, synthetic bold) are plain the same way.
+    const AHEM = ['font-shorthand-inherit', 'text-weight-ahem', 'text-weight-bold-ahem'];
+    for (const g of FIXTURE_GROUPS.filter((x) => ['text-latin', 'text-calibration', 'inline-tags', 'text-weight', 'font-shorthand'].includes(x.id))) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(!AHEM.includes(f.id));
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);

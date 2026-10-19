@@ -5,7 +5,8 @@
 //   parses: whether Chrome keeps a declaration or selector that Dragon reports invalid (CSS.supports).
 import { availableParallelism } from 'node:os';
 import type { Browser, Page } from 'playwright';
-import { harnessStyle, launchChrome } from '../../parity/src/chrome.ts';
+import { harnessStyle, launchArgsOf, launchChrome } from '../../parity/src/chrome.ts';
+import { type MemoStats, memoizedJson } from '../../parity/src/chrome-memo.ts';
 import { ELEMENT_IDS, SWEEP_ENVIRONMENT } from './dragon.ts';
 
 export type DualCase = { readonly key: string; readonly authoredHtml: string; readonly compiledHtml: string };
@@ -96,6 +97,11 @@ export function compareCaptures(authored: readonly Captured[], compiled: readonl
   return problems;
 }
 
+/** The code that decides a dual check beside the two pages: this file's page script and comparison, and the pinned launch. */
+const DUAL_CODE = ['packages/tailwind-sweep/src/chrome.ts', 'packages/parity/src/chrome.ts'];
+/** Remembered and fresh dual checks of this process (chrome-memo.ts). */
+export const DUAL_MEMO: MemoStats = { hits: 0, misses: 0 };
+
 export type ChromeSession = {
   /** How many calls the session serves at once, each on its own page. */
   readonly pages: number;
@@ -129,9 +135,13 @@ export async function openChrome(pages: number = DEFAULT_PAGES): Promise<ChromeS
         else next(page);
       }
     };
+    const live = (c: DualCase): Promise<string[]> => withPage(async (page) => compareCaptures(await capture(page, c.authoredHtml), await capture(page, c.compiledHtml)));
+    // A dual check is remembered by its two pages, the sweep environment, the element ids the capture must find and the launch
+    // flags: its verdict, not the captures.
+    const args = launchArgsOf(browser);
     return {
       pages,
-      dual: (c) => withPage(async (page) => compareCaptures(await capture(page, c.authoredHtml), await capture(page, c.compiledHtml))),
+      dual: (c) => (args === null ? live(c) : memoizedJson('tw-dual', { authored: injected(c.authoredHtml), compiled: injected(c.compiledHtml), env: SWEEP_ENVIRONMENT, ids: ELEMENT_IDS, args }, DUAL_CODE, DUAL_MEMO, () => live(c))),
       supports: (condition) =>
         withPage(async (page) => {
           await page.setContent('<!DOCTYPE html><html><head></head><body></body></html>');

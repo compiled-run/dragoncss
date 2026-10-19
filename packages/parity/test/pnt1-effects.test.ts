@@ -14,13 +14,14 @@ import { describe, expect, it } from 'vitest';
 import { opacityAlpha8, snapEdges } from '@dragon/layout';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
-import { androidProfile, borderDevicePx, createProjectWith, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
+import { androidProfile, borderDevicePx, createProjectWith, engineLayoutProjection, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS, FIXTURES as CORPUS } from '../src/fixtures.ts';
-import { expectedEngine, nativeCompile } from '../src/native-host.ts';
+import { expectedEngine, nativeCompile, nativeCompileOnce } from '../src/native-host.ts';
 import { casePoints, committedPixels, devicePoints, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 type Px = [number, number, number, number];
 
@@ -282,7 +283,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity and stacking fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -333,13 +334,13 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
 
 // The cases of the rest of the corpus whose paint order PNT1 changes (every layer item gets a placement): the model in the Appendix E
 // order equals Chrome at every non-edge point. A case is left out only for paint the model does not draw, each named by modelOut and
-// pinned in OUT below, so a new case outside the model is seen: an image or a web view, a transform other than a whole-device-px
-// translation, a border style other than solid, or flow siblings the engine lays out in another order than the tree's (flex order and
+// pinned in OUT below, so a new case outside the model is seen: an image, a web view or background layers (gradients), a transform
+// other than a whole-device-px translation, a border style other than solid, or flow siblings the engine lays out in another order than the tree's (flex order and
 // reversed directions: Chrome paints them in order-modified document order, which the native views follow and the model does not).
 function modelOut(p: NativeProgram, viewport: { width: number; height: number }): string | null {
   for (const n of p.nodes) {
     for (const w of n.writes) {
-      if (w.kind === 'replaced-image' || w.kind === 'foreign-view') return `${n.id} draws ${w.kind}`;
+      if (w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'background-layers') return `${n.id} draws ${w.kind}`;
       if (w.kind === 'border-styles' && w.styles.some((x) => x !== 'solid' && x !== 'none' && x !== 'hidden')) return `${n.id} has a ${w.styles.join(' ')} border`;
     }
   }
@@ -368,17 +369,24 @@ function modelOut(p: NativeProgram, viewport: { width: number; height: number })
 
 /** The corpus cases outside the model (modelOut), pinned: a change here is a decision, not drift. */
 const OUT = [
-  'hit-order', 'hit-order-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
+  'alias-paint', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
   'transform-clip', 'transform-demo', 'transform-direction', 'transform-direction-rtl', 'transform-flex', 'transform-matrix', 'transform-nested',
   'transform-origin', 'transform-rotate', 'transform-scale', 'transform-text', 'transform-translate', 'transform-will-change', 'var-logical',
   'var-logical-rtl',
 ];
 
 describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'s order', () => {
+  // A case native refuses only for its real faces (deferred to TXT1a-2 phase R) gets the engine lowering instead; it is left out here.
+  const refusedFaces = new Map<string, string>();
   const reached = CORPUS.filter((f) => f.kind === 'layout' && !GROUPS.some((g) => FIXTURE_GROUPS.find((x) => x.id === g)?.fixtures.includes(f))).flatMap((spec) =>
     casesOf(spec, fixtureInput(spec)).flatMap((c) => {
-      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
-      if (r.kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
+      const compiled = nativeCompileOnce(spec, c.environment.direction);
+      const r = nativePrograms(compiled, c.assignment);
+      if (r.kind !== 'ready') {
+        if (engineLayoutProjection(compiled, c.environment, c.assignment).kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
+        refusedFaces.set(c.id, r.reason);
+        return [];
+      }
       const p = r.programs.uikit;
       return p.nodes.some((n) => n.writes.some((w) => w.kind === 'paint-order')) ? [{ spec, c, p, out: modelOut(p, c.environment.viewport) }] : [];
     }),
@@ -386,6 +394,11 @@ describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'
   it('reaches the positioned, flex-abspos, context, phrasing and values cases, and leaves out exactly the pinned cases', () => {
     expect(reached.filter((r) => r.out === null).length).toBeGreaterThan(80);
     expect(reached.filter((r) => r.out !== null).map((r) => r.c.id).sort()).toEqual(OUT);
+  });
+  it('leaves out only shaped cases native refuses for their faces', () => {
+    expect(refusedFaces.size).toBeGreaterThan(0);
+    expect([...refusedFaces.keys()].filter((id) => !shapedCaseIds().has(id))).toEqual([]);
+    for (const [id, reason] of refusedFaces) expect(reason, id).toMatch(/^the (ios|android) target is blocked$/);
   });
   for (const { c, p, out } of reached) {
     if (out !== null) continue;

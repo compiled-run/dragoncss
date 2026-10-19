@@ -1,0 +1,13 @@
+{
+  "case": "font-shorthand-synthesis",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","lines":[[0,25]]},
+    {"id":"b:text0","lines":[[0,22]]},
+    {"id":"c:text0","lines":[[0,23]]},
+    {"id":"d:text0","lines":[[0,21]]},
+    {"id":"e:text0","lines":[[0,20]]},
+    {"id":"g:text0","lines":[[0,19]]},
+    {"id":"h:text0","lines":[[0,33]]}
+  ]
+}

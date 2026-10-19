@@ -5,14 +5,19 @@ import { BACKGROUND_SHORTHANDS } from './background.ts';
 import { BORDER_SHORTHANDS } from './border.ts';
 import { BOX_SHORTHANDS } from './box.ts';
 import { FLEX_SHORTHANDS } from './flex.ts';
+import { FONT_VARIANT_SHORTHANDS } from './font-variant.ts';
 import { GRID_SHORTHANDS } from './grid.ts';
 import { LISTS_SHORTHANDS } from './lists.ts';
 import { LOGICAL_SHORTHANDS } from './logical.ts';
+import { MASK_SHORTHANDS } from './mask.ts';
 import { OVERFLOW_SHORTHANDS } from './overflow.ts';
 import { OUTLINE_SHORTHANDS } from './outline.ts';
 import { RADIUS_SHORTHANDS } from './radius.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { TEXT_SHORTHANDS } from './text.ts';
+import { TEXT_BREAK_SHORTHANDS } from './text-break.ts';
+import { TEXT_DECORATION_SHORTHANDS } from './text-decoration.ts';
+import { TEXT_FILL_STROKE_SHORTHANDS } from './text-fill-stroke.ts';
 import { WRITING_MODE_SHORTHANDS } from './writing-mode.ts';
 
 export type { ShorthandHandler } from './shared.ts';
@@ -23,6 +28,7 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...FLEX_SHORTHANDS,
   ...OVERFLOW_SHORTHANDS,
   ...TEXT_SHORTHANDS,
+  ...TEXT_DECORATION_SHORTHANDS,
   ...LOGICAL_SHORTHANDS,
   ...BACKGROUND_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
@@ -32,6 +38,10 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...RADIUS_SHORTHANDS,
   ...OUTLINE_SHORTHANDS,
   ...LISTS_SHORTHANDS,
+  ...TEXT_BREAK_SHORTHANDS,
+  ...FONT_VARIANT_SHORTHANDS,
+  ...TEXT_FILL_STROKE_SHORTHANDS,
+  ...MASK_SHORTHANDS,
 };
 
 export function shorthandHandler(property: Shorthand): ShorthandHandler {

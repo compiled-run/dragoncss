@@ -6,7 +6,8 @@
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Browser } from 'playwright';
-import { launchChrome, openPage } from '../chrome.ts';
+import { chromeArgsAt, injectHarness, launchChrome, openPage } from '../chrome.ts';
+import { type MemoStats, memoized } from '../chrome-memo.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import type { ParityCase } from '../cases.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
@@ -27,6 +28,7 @@ const cases = nativeCases();
 async function shoot(browser: Browser, c: ParityCase, dpr: number): Promise<Buffer> {
   const page = await openPage(browser, c.authoredHtml, atDpr(c.environment, dpr));
   try {
+    if (c.authoredPrepare !== null) await c.authoredPrepare(page);
     const cdp = await page.context().newCDPSession(page);
     const r = (await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string };
     const png = Buffer.from(r.data, 'base64');
@@ -37,6 +39,17 @@ async function shoot(browser: Browser, c: ParityCase, dpr: number): Promise<Buff
   } finally {
     await page.context().close();
   }
+}
+
+// The code that decides a screenshot's bytes beside the page itself: this capture, the page setup and the DPR environment.
+const PIXEL_CODE = ['packages/parity/src/cli/pixel-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/dpr.ts'];
+const memo: MemoStats = { hits: 0, misses: 0 };
+
+/** shoot, remembered by its page (chrome-memo.ts); a case with a prepare script runs code the key cannot see, so it always shoots. */
+function shootMemo(browser: Browser, c: ParityCase, dpr: number): Promise<Buffer> {
+  if (c.authoredPrepare !== null) return shoot(browser, c, dpr);
+  const env = atDpr(c.environment, dpr);
+  return memoized('pixel', { html: injectHarness(c.authoredHtml, env), env, args: chromeArgsAt(dpr), raster: rasterSize(c.environment.viewport, dpr) }, PIXEL_CODE, memo, () => shoot(browser, c, dpr));
 }
 
 function dirBytes(dir: string): number {
@@ -86,13 +99,16 @@ for (const dpr of DPRS) {
       for (const f of readdirSync(dir)) if (f.endsWith('.png')) rmSync(join(dir, f));
       // Each case in its own context, CHROME_PAGES at a time; the manifest keeps case order.
       const set = await inOrder(cases, CHROME_PAGES, async (n) => {
-        const png = await shoot(browser, n.case, dpr);
+        const png = await shootMemo(browser, n.case, dpr);
         writeFileSync(expectedPixelsPath(n.case.id, dpr, platform), png);
         return { case: n.case.id, png: png as Uint8Array };
       });
       sets.push({ dpr, raster, cases: set });
       const written = readdirSync(dir).filter((f) => f.endsWith('.png')).length;
       if (written !== cases.length) throw new Error(`DPR ${dpr}: ${written} PNGs written, ${cases.length} cases`);
+      console.log(`parity:pixel-capture: DPR ${dpr}: ${memo.hits} remembered, ${memo.misses} shot (chrome-memo.ts)`);
+      memo.hits = 0;
+      memo.misses = 0;
       console.log(`parity:pixel-capture: DPR ${dpr}: ${written} cases in ${((Date.now() - t) / 1000).toFixed(1)} s -> packages/parity/expected-pixels/${platform}/dpr-${dpr}`);
     }
     await zoomGuard(browser, dpr);
