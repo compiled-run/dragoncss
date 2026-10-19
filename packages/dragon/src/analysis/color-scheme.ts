@@ -1,7 +1,8 @@
 // color-scheme (css-color-adjust-1 §2.1) is accepted where its scheme changes nothing (css/properties/color-scheme.ts). A computed
 // value that names dark is refused, once per element, where the element paints with the scheme's system colours (measured against
-// Chrome 145): the root (its canvas and text colour), a link (its UA colour), a form control, an element whose colour is initial
-// (CanvasText), and on the web a scroll container, whose scrollbar Chrome draws dark. The value is checked computed, so one that is
+// Chrome 145): the root (its canvas and text colour), a link (its UA colour), a form control, an element or SVG shape whose colour is
+// initial (CanvasText), an auto outline (Chrome's focus ring takes the scheme's colours, even beside an author colour), and on the
+// web a scroll container, whose scrollbar Chrome draws dark. The value is checked computed, so one that is
 // inherited or arrives through var() is checked too.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { namesDark } from '../css/properties/color-scheme.ts';
@@ -20,6 +21,8 @@ function darkPaint(el: ResolvedElement, isRoot: boolean, target: string): string
   if (isAnyLink(el.element) || (tag === 'area' && el.element.attributes.has('href'))) return 'a link, whose UA colour it lightens';
   if (FORM_CONTROL_TAGS.has(tag)) return 'a form control, whose UA colours it darkens';
   if ((el.props.get('color') as ResolvedValue).origin === 'initial') return 'an element whose color is initial (CanvasText), which it turns white';
+  const outline = (el.props.get('outline-style') as ResolvedValue | undefined)?.value;
+  if (outline !== undefined && outline.kind === 'keyword' && outline.value === 'auto') return 'an auto outline, whose focus ring colours it changes';
   if (target === 'web') {
     const scrolls = (['overflow-x', 'overflow-y'] as const).some((p) => { const v = (el.props.get(p) as ResolvedValue).value; return v.kind === 'keyword' && (v.value === 'scroll' || v.value === 'auto'); });
     if (scrolls) return 'a scroll container, whose scrollbar Chrome draws dark';

@@ -60,6 +60,19 @@ describe('color-scheme', () => {
     expect(at('dark', 'overflow: auto')).toEqual(['web DRAGON_UNSUPPORTED_VALUE']);
     expect(at('dark', 'overflow: hidden')).toEqual([]);
   });
+  it('is refused on an SVG shape whose colour is initial, and on an auto outline, which Chrome recolours under dark', () => {
+    const shape = (r: SourceRef): ElementNode => {
+      const rect: ElementNode = { ...div(r, 'r', ['r']), tag: 'rect', attributes: [{ name: 'width', value: [{ when: always, value: '10' }], origin: div(r, 'x', []).origin }, { name: 'height', value: [{ when: always, value: '10' }], origin: div(r, 'x', []).origin }] };
+      return { ...div(r, 'd', ['d']), children: [{ ...div(r, 's', ['s']), tag: 'svg', attributes: [{ name: 'width', value: [{ when: always, value: '20' }], origin: div(r, 'x', []).origin }, { name: 'height', value: [{ when: always, value: '20' }], origin: div(r, 'x', []).origin }], children: [rect] }] };
+    };
+    const svg = (css: string): string[] => project.compile(inputFor(css, (r) => [shape(r)])).diagnostics
+      .filter((d) => d.severity !== 'info' && d.message.includes('color-scheme')).map((d) => `${String(d.target)} ${d.code}`).sort();
+    expect(svg('.d { color-scheme: dark; } .s { display: block; } .r { color: initial; fill: currentcolor; }')).toEqual(REFUSED);
+    expect(svg('.d { color-scheme: light; } .s { display: block; } .r { color: initial; fill: currentcolor; }')).toEqual([]);
+    expect(at('dark', 'outline: auto 2px')).toEqual(REFUSED);
+    expect(at('dark', 'outline: auto 2px red')).toEqual(REFUSED);
+    expect(at('dark', 'outline: 2px solid red')).toEqual([]);
+  });
   it('is refused on the root, at the declaration', () => {
     const input = inputFor(':root { color-scheme: light dark; }', (r) => [div(r, 'a', [])]);
     const ds = project.compile(input).diagnostics.filter((d) => d.severity !== 'info');

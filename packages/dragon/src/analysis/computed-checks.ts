@@ -1011,6 +1011,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
+      checkColorScheme(el, false, targets, diagnostics, reported);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
