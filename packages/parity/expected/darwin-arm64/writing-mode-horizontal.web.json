@@ -196,6 +196,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -385,6 +386,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -574,6 +576,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -763,6 +766,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -982,6 +986,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1201,6 +1206,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1420,6 +1426,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1639,6 +1646,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1848,6 +1856,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2067,6 +2076,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2276,6 +2286,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2485,6 +2496,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2674,6 +2686,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2863,6 +2876,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3052,6 +3066,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3241,6 +3256,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3460,6 +3476,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3679,6 +3696,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -3868,6 +3886,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -4057,6 +4076,7 @@
         "mask-clip": "border-box",
         "mask-composite": "add",
         "mask-mode": "match-source",
+        "appearance": "none",
         "writing-mode": "horizontal-tb"
       }
     }

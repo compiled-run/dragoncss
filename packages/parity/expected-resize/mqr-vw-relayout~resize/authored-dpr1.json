@@ -218,7 +218,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -406,7 +407,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -594,7 +596,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -782,7 +785,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -970,7 +974,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -1158,7 +1163,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -1346,7 +1352,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -1534,7 +1541,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     }
    ]
@@ -1730,7 +1738,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -1918,7 +1927,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -2106,7 +2116,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -2294,7 +2305,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -2482,7 +2494,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -2670,7 +2683,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -2858,7 +2872,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -3046,7 +3061,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     }
    ]
@@ -3242,7 +3258,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -3430,7 +3447,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -3618,7 +3636,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -3806,7 +3825,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -3994,7 +4014,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -4182,7 +4203,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -4370,7 +4392,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -4558,7 +4581,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     }
    ]
@@ -4754,7 +4778,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -4942,7 +4967,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -5130,7 +5156,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -5318,7 +5345,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -5506,7 +5534,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -5694,7 +5723,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -5882,7 +5912,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     },
     {
@@ -6070,7 +6101,8 @@
       "mask-origin": "border-box",
       "mask-clip": "border-box",
       "mask-composite": "add",
-      "mask-mode": "match-source"
+      "mask-mode": "match-source",
+      "appearance": "none"
      }
     }
    ]

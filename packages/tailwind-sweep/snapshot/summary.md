@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4703 (20.2%) | 18582 (79.8%) | 1 | 0 | 0 |
-| ios | 4683 (20.1%) | 18562 (79.7%) | 1 | 0 | 40 |
-| android | 4683 (20.1%) | 18562 (79.7%) | 1 | 0 | 40 |
+| web | 4705 (20.2%) | 18580 (79.8%) | 1 | 0 | 0 |
+| ios | 4685 (20.1%) | 18560 (79.7%) | 1 | 0 | 40 |
+| android | 4685 (20.1%) | 18560 (79.7%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4394, ios 4415 and android 4415 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4396, ios 4417 and android 4417 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -27,7 +27,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4394, ios 4
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
 | transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
 | transforms | 680 | 13 / 667 / 0 / 0 / 0 | 13 / 667 / 0 / 0 / 0 | 13 / 667 / 0 / 0 / 0 |
-| interactivity | 1246 | 12 / 1234 / 0 / 0 / 0 | 11 / 1197 / 0 / 0 / 38 | 11 / 1197 / 0 / 0 / 38 |
+| interactivity | 1246 | 14 / 1232 / 0 / 0 / 0 | 13 / 1195 / 0 / 0 / 38 | 13 / 1195 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
 | accessibility | 4 | 2 / 2 / 0 / 0 / 0 | 2 / 0 / 0 / 0 / 2 | 2 / 0 / 0 / 0 / 2 |
 
