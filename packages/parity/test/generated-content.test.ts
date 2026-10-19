@@ -51,16 +51,22 @@ describe('snapshotGeneratedText (R9)', () => {
     const noId = snapshot();
     (noId.documents[0]?.nodes.attributes as number[][])[3] = [];
     expect(() => snapshotGeneratedText(noId, 2, page)).toThrow(/host has no data-dragon-id/);
+    const other = { ...snapshot(), strings: [...snapshot().strings.slice(0, 5), 'first-letter', ...snapshot().strings.slice(6)] };
+    expect(() => snapshotGeneratedText(other, 2, page)).toThrow(/text in a ::first-letter pseudo-element/);
+  });
+  it('skips a ::marker\'s text (Dragon has no marker text node) but still requires its host\'s data-dragon-id', () => {
     const marker = { ...snapshot(), strings: [...snapshot().strings.slice(0, 5), 'marker', ...snapshot().strings.slice(6)] };
-    expect(() => snapshotGeneratedText(marker, 2, page)).toThrow(/text in a ::marker pseudo-element/);
+    expect(snapshotGeneratedText(marker, 2, page).texts).toEqual([]);
+    (marker.documents[0]?.nodes.attributes as number[][])[3] = [];
+    expect(() => snapshotGeneratedText(marker, 2, page)).toThrow(/a ::marker box's host has no data-dragon-id/);
   });
 });
 
 describe('pseudoNodesOf and generatedNodes', () => {
-  it('lists ::before and ::after by host and refuses any other pseudo-element or a host without an id', () => {
-    const doc = { nodeId: 1, nodeType: 9, children: [{ nodeId: 2, nodeType: 1, attributes: ['data-dragon-id', 'd'], pseudoElements: [{ nodeId: 3, nodeType: 1, pseudoType: 'before' }, { nodeId: 4, nodeType: 1, pseudoType: 'after' }] }] };
-    expect(pseudoNodesOf(doc)).toEqual([{ host: 'd', type: 'before', nodeId: 3 }, { host: 'd', type: 'after', nodeId: 4 }]);
-    expect(() => pseudoNodesOf({ nodeId: 1, nodeType: 1, attributes: ['data-dragon-id', 'li'], pseudoElements: [{ nodeId: 2, nodeType: 1, pseudoType: 'marker' }] })).toThrow(/::marker/);
+  it('lists ::marker, ::before and ::after by host and refuses any other pseudo-element or a host without an id', () => {
+    const doc = { nodeId: 1, nodeType: 9, children: [{ nodeId: 2, nodeType: 1, attributes: ['data-dragon-id', 'd'], pseudoElements: [{ nodeId: 5, nodeType: 1, pseudoType: 'marker' }, { nodeId: 3, nodeType: 1, pseudoType: 'before' }, { nodeId: 4, nodeType: 1, pseudoType: 'after' }] }] };
+    expect(pseudoNodesOf(doc)).toEqual([{ host: 'd', type: 'marker', nodeId: 5 }, { host: 'd', type: 'before', nodeId: 3 }, { host: 'd', type: 'after', nodeId: 4 }]);
+    expect(() => pseudoNodesOf({ nodeId: 1, nodeType: 1, attributes: ['data-dragon-id', 'li'], pseudoElements: [{ nodeId: 2, nodeType: 1, pseudoType: 'backdrop' }] })).toThrow(/::backdrop/);
     expect(() => pseudoNodesOf({ nodeId: 1, nodeType: 1, pseudoElements: [{ nodeId: 2, nodeType: 1, pseudoType: 'before' }] })).toThrow(/no data-dragon-id/);
   });
   it('records the box, its line fragments when inline, its text node and the text\'s lines', () => {
@@ -77,6 +83,10 @@ describe('pseudoNodesOf and generatedNodes', () => {
     const block = generatedNodes({ host: 'd', type: 'after' }, null, { display: 'block' }, undefined);
     expect(block.map((n) => [n.id, n.hasBox])).toEqual([['d::after', false]]);
   });
+  it('records a ::marker as one element node with the union of its content quads and no text node', () => {
+    const nodes = generatedNodes({ host: 'li', type: 'marker' }, [[34, 0, 6, 16]], { display: 'inline-block', color: 'rgb(0, 0, 0)' }, undefined);
+    expect(nodes).toEqual([{ id: 'li::marker', kind: 'element', hasBox: true, x: 34, y: 0, width: 6, height: 16, computed: { display: 'inline-block', color: 'rgb(0, 0, 0)' } }]);
+  });
 });
 
 describe('pseudoSetProblems (R9 set check)', () => {
@@ -86,6 +96,13 @@ describe('pseudoSetProblems (R9 set check)', () => {
     expect(pseudoSetProblems(capture, ['html', 'd'])).toEqual(['d::before: Chrome generates this box but Dragon does not']);
     expect(pseudoSetProblems(capture, ['d', 'd::before', 'd::after'])).toEqual(['d::after: Dragon generates this box but Chrome does not']);
     expect(pseudoSetProblems(capture, ['html', 'd'], { ...NO_PSEUDO_CAPTURE_FAULTS, pseudoSetUnchecked: true })).toEqual([]);
+  });
+  it('a ::marker only Chrome or only Dragon has is a problem', () => {
+    const lists = { nodes: [...capture.nodes, ...generatedNodes({ host: 'a', type: 'marker' }, [[34, 0, 6, 16]], { display: 'inline-block' }, undefined)] };
+    expect(pseudoSetProblems(lists, ['d::before', 'a::marker'])).toEqual([]);
+    expect(pseudoSetProblems(lists, ['d::before'])).toEqual(['a::marker: Chrome generates this box but Dragon does not']);
+    expect(pseudoSetProblems(lists, ['d::before', 'a::marker', 'b::marker'])).toEqual(['b::marker: Dragon generates this box but Chrome does not']);
+    expect(pseudoSetProblems(lists, ['d::before'], { ...NO_PSEUDO_CAPTURE_FAULTS, pseudoSetUnchecked: true })).toEqual([]);
   });
 });
 
