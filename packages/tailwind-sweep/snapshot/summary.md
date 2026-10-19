@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4702 (20.2%) | 18583 (79.8%) | 1 | 0 | 0 |
-| ios | 4682 (20.1%) | 18563 (79.7%) | 1 | 0 | 40 |
-| android | 4682 (20.1%) | 18563 (79.7%) | 1 | 0 | 40 |
+| web | 4709 (20.2%) | 18576 (79.8%) | 1 | 0 | 0 |
+| ios | 4659 (20.0%) | 18586 (79.8%) | 1 | 0 | 40 |
+| android | 4659 (20.0%) | 18586 (79.8%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4400, ios 4421 and android 4421 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4400, ios 4405 and android 4405 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -19,13 +19,13 @@ As published (before the shell pre-pass), the sheet compiles for web 4400, ios 4
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
 | typography | 261 | 187 / 74 / 0 / 0 / 0 | 187 / 74 / 0 / 0 / 0 | 187 / 74 / 0 / 0 / 0 |
-| colours | 14842 | 100 / 14742 / 0 / 0 / 0 | 100 / 14742 / 0 / 0 / 0 | 100 / 14742 / 0 / 0 / 0 |
+| colours | 14842 | 101 / 14741 / 0 / 0 / 0 | 101 / 14741 / 0 / 0 / 0 | 101 / 14741 / 0 / 0 / 0 |
 | backgrounds | 151 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 |
 | borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
-| effects | 1178 | 56 / 1122 / 0 / 0 / 0 | 37 / 1141 / 0 / 0 / 0 | 37 / 1141 / 0 / 0 / 0 |
+| effects | 1178 | 62 / 1116 / 0 / 0 / 0 | 43 / 1135 / 0 / 0 / 0 | 43 / 1135 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
-| transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
+| transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
 | transforms | 680 | 13 / 667 / 0 / 0 / 0 | 13 / 667 / 0 / 0 / 0 | 13 / 667 / 0 / 0 / 0 |
 | interactivity | 1246 | 12 / 1234 / 0 / 0 / 0 | 11 / 1197 / 0 / 0 / 38 | 11 / 1197 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
