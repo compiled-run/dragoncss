@@ -143,7 +143,7 @@ public func dragonPaintSvg(_ v: DragonBoxView, _ ctx: CGContext) {
       ctx.fillPath(using: (shape.fillRule == "evenodd") != dragonSvgPlantEvenOdd ? .evenOdd : .winding)
     }
     func paintStroke() {
-      guard let k = stroke, shape.width > 0 else { return }
+      guard let sc = stroke, shape.width > 0 else { return }
       ctx.addPath(path)
       // SVG-vector-effect: a non-scaling stroke's width and dashes are in the svg's px, so in user units they divide by the
       // viewBox scale.
@@ -159,7 +159,7 @@ public func dragonPaintSvg(_ v: DragonBoxView, _ ctx: CGContext) {
       } else {
         ctx.setLineDash(phase: 0, lengths: [])
       }
-      ctx.setStrokeColor(dragonUIColor(k).cgColor)
+      ctx.setStrokeColor(dragonUIColor(sc).cgColor)
       ctx.strokePath()
     }
     if (shape.strokeFirst && !dragonSvgPlantPaintOrderNormal) != dragonSvgPlantStrokeFirst { paintStroke(); paintFill() } else { paintFill(); paintStroke() }
