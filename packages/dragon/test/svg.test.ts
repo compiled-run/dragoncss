@@ -587,6 +587,23 @@ describe('the svg model in a compile', () => {
     expect(svgAttributeRefusal('path', 'clip-rule', 'bogus')).not.toBeNull();
     expect(svgAttributeRefusal('rect', 'clip-rule', 'evenodd')).toBeNull();
   });
+  it('SVG-inert-b: the stop, flood, lighting, mask-type, text-anchor and baseline longhands compile on every target, as CSS and as attributes, and change no native write', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'p', 'path', [['d', 'M0 0 H4 V4 Z'], ['stop-color', 'green'], ['flood-opacity', '0.3'], ['text-anchor', 'middle'], ['alignment-baseline', 'before-edge']]), shape(o, 'c', 'circle', [['r', '4']])];
+    const program = (css: string) => {
+      const c = compile(svgTree(css, shapes), false);
+      expect(errors(c), css).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      return JSON.stringify(p.programs.uikit.nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes'));
+    };
+    expect(program('svg { stop-color: red; stop-opacity: 50%; flood-color: currentcolor; flood-opacity: 2; lighting-color: blue; mask-type: alpha; text-anchor: end; dominant-baseline: use-script; alignment-baseline: middle; } circle { stop-opacity: 0; mask-type: ALPHA; dominant-baseline: central; }')).toBe(program(''));
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false));
+    expect(refused('circle { alignment-baseline: text-top; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "text-top" is not a valid value for alignment-baseline (@webref/css grammar)']);
+    expect(refused('circle { stop-color: none; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "none" is not a valid value for stop-color (@webref/css grammar)']);
+    expect(svgAttributeRefusal('rect', 'dominant-baseline', 'hanging')).toBeNull();
+    expect(svgAttributeRefusal('rect', 'lighting-color', 'red')).toBeNull();
+    expect(svgAttributeRefusal('rect', 'mask-type', 'bogus')).not.toBeNull();
+  });
   it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect; a negative in CSS is invalid', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];
     const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();

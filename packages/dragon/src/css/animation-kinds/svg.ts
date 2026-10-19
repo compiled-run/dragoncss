@@ -37,4 +37,15 @@ export const SVG_ANIMATION: { readonly [P in (typeof SVG_LONGHANDS)[number]]: An
   'marker-start': DISCRETE,
   'marker-mid': DISCRETE,
   'marker-end': DISCRETE,
+  // SVG-inert-b: the colours and opacities interpolate in Chrome (css_properties.json5 interpolable), and no animation package
+  // admits them; mask-type, text-anchor and the baselines are keywords, discrete in Chrome.
+  'stop-color': UNADMITTED,
+  'stop-opacity': UNADMITTED,
+  'flood-color': UNADMITTED,
+  'flood-opacity': UNADMITTED,
+  'lighting-color': UNADMITTED,
+  'mask-type': DISCRETE,
+  'text-anchor': DISCRETE,
+  'dominant-baseline': DISCRETE,
+  'alignment-baseline': DISCRETE,
 };

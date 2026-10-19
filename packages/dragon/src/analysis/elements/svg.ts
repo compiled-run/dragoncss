@@ -21,8 +21,8 @@ import type { ResolvedElement } from '../resolve.ts';
 export const SVG_TAG = 'svg';
 
 /** The presentation attributes Dragon maps to its svg property family (SVG 2 §6.6); author rules beat them. */
-export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order' | 'vector-effect' | 'clip-rule' | 'marker-start' | 'marker-mid' | 'marker-end';
-export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order', 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end'];
+export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order' | 'vector-effect' | 'clip-rule' | 'marker-start' | 'marker-mid' | 'marker-end' | 'stop-color' | 'stop-opacity' | 'flood-color' | 'flood-opacity' | 'lighting-color' | 'mask-type' | 'text-anchor' | 'dominant-baseline' | 'alignment-baseline';
+export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order', 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', 'stop-color', 'stop-opacity', 'flood-color', 'flood-opacity', 'lighting-color', 'mask-type', 'text-anchor', 'dominant-baseline', 'alignment-baseline'];
 
 /** The attributes each SVG tag compiles: its geometry, the paint presentation attributes, and xmlns (no effect in HTML). */
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
