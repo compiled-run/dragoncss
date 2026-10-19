@@ -14,6 +14,10 @@ import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/trans
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 import { MASK_LONGHANDS, MASK_SHORTHANDS } from '../packages/dragon/src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS, BORDER_IMAGE_SHORTHANDS } from '../packages/dragon/src/css/properties/border-image.ts';
+import { OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS } from '../packages/dragon/src/css/properties/overscroll.ts';
+import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../packages/dragon/src/css/properties/scroll-snap.ts';
+import { CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS } from '../packages/dragon/src/css/properties/containment.ts';
+import { CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS } from '../packages/dragon/src/css/properties/container-query.ts';
 
 type WebrefEntry = {
   name: string;
@@ -28,6 +32,12 @@ const webrefDir = dirname(require.resolve('@webref/css/package.json'));
 const webrefVersion = (JSON.parse(readFileSync(join(webrefDir, 'package.json'), 'utf8')) as { version: string }).version;
 if (webrefVersion !== '8.7.5') throw new Error(`@webref/css must be 8.7.5, found ${webrefVersion}`);
 const css = JSON.parse(readFileSync(join(webrefDir, 'css.json'), 'utf8')) as WebrefCss;
+
+/** The initial-only families' longhands and shorthands. */
+const INITIAL_ONLY_PROPERTIES = [
+  ...OVERSCROLL_LONGHANDS, ...OVERSCROLL_SHORTHANDS, ...SCROLL_SNAP_LONGHANDS, ...SCROLL_SNAP_SHORTHANDS,
+  ...CONTAINMENT_LONGHANDS, ...CONTAINMENT_SHORTHANDS, ...CONTAINER_QUERY_LONGHANDS, ...CONTAINER_QUERY_SHORTHANDS,
+];
 
 /** Longhands and shorthands the milestone-1 compiler reads. Support status lives in the profiles, not here. */
 const SUBSET = [
@@ -120,6 +130,8 @@ const SUBSET = [
   // MISC-PAINT: the border image longhands (css-backgrounds-3 §4), then border-image and -webkit-border-image, after mask, as LONGHANDS
   // registers them.
   ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
+  // The initial-only families (css/properties/initial-only.ts), after the mask family, as LONGHANDS registers them.
+  ...INITIAL_ONLY_PROPERTIES,
 ] as const;
 
 /**
@@ -165,6 +177,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // refused, never dropped where Chrome would apply it. webref has no -webkit-border-image. Pinned against Chrome by
   // packages/parity/test/border-image-parse.test.ts.
   ...Object.fromEntries([...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS].map((p) => [p, '<any-value>'])),
+  // The overscroll, scroll-snap, containment and container-query families: Dragon accepts their initial values alone and refuses
+  // every other value where it applies (analysis/scroll-containment.ts), so the grammar takes any value, and a value webref's grammar
+  // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
+  // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
+  ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',

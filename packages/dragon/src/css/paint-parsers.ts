@@ -15,6 +15,10 @@ import { FONT_STRETCH_VALUE_PARSERS } from './properties/font-stretch.ts';
 import { FONT_FEATURES_VALUE_PARSERS } from './properties/font-features.ts';
 import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
 import { MASK_VALUE_PARSERS } from './properties/mask.ts';
+import { CONTAINMENT_VALUE_PARSERS } from './properties/containment.ts';
+import { CONTAINER_QUERY_VALUE_PARSERS } from './properties/container-query.ts';
+import { OVERSCROLL_VALUE_PARSERS } from './properties/overscroll.ts';
+import { SCROLL_SNAP_VALUE_PARSERS } from './properties/scroll-snap.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
@@ -63,4 +67,8 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(ZOOM_VALUE_PARSERS),
   ...Object.entries(MASK_VALUE_PARSERS),
   ...Object.entries(BORDER_IMAGE_VALUE_PARSERS),
+  ...Object.entries(OVERSCROLL_VALUE_PARSERS),
+  ...Object.entries(SCROLL_SNAP_VALUE_PARSERS),
+  ...Object.entries(CONTAINMENT_VALUE_PARSERS),
+  ...Object.entries(CONTAINER_QUERY_VALUE_PARSERS),
 ]);

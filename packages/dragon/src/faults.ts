@@ -19,6 +19,7 @@ import { MEDIA_FAULTS } from './faults/media.ts';
 import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
+import { SCROLL_CONTAINMENT_FAULTS } from './faults/scroll-containment.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
 import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
@@ -56,6 +57,7 @@ export const FAULT_GROUPS = {
   'milestone-1': MILESTONE_1_FAULTS,
   'mq-r0': MQ_R0_FAULTS,
   ovfl: OVFL_FAULTS,
+  'scroll-containment': SCROLL_CONTAINMENT_FAULTS,
   seld: SELD_FAULTS,
   'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,

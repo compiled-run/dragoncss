@@ -20,7 +20,7 @@ const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VAL
 
 describe('zoom', () => {
   it('is a registered longhand after the 3D transform longhands, discrete in animations', () => {
-    expect(LONGHANDS[LONGHANDS.indexOf('zoom') - 1]).toBe('transform-box');
+    expect(LONGHANDS[LONGHANDS.indexOf('zoom') - 1]).toBe('perspective-origin');
     expect(ANIMATION_KINDS.zoom).toBe(DISCRETE);
   });
   it('computes a percentage to its number, and 0 and normal to 1', () => {
