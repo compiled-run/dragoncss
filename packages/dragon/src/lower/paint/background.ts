@@ -1,6 +1,7 @@
 // background-color: a native property filling the border box (UIView.backgroundColor, a ColorDrawable).
 import type { Rgba8 } from '../../css/color.ts';
 import { TRANSPARENT } from '../../css/color.ts';
+import { textClipFillOf } from '../../analysis/paint-values/gradient.ts';
 import { usedColors } from './colors.ts';
 import type { PaintLowering } from './types.ts';
 
@@ -13,6 +14,7 @@ export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
     'android-views': { 'background-color': { key: 'background.color', technique: 'native-property', detail: 'View.background = ColorDrawable(ARGB), filling the border box' } },
   },
   css: { 'background-color': ['background-color'] },
-  // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transparent.
-  lower: ({ el }) => [{ kind: 'background-color', color: el === null ? TRANSPARENT : usedColors(el)['background-color'] }],
+  // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transparent. A colour clipped to
+  // text is drawn by the box's glyphs instead (native-program.ts textPaint).
+  lower: ({ el }) => [{ kind: 'background-color', color: el === null || textClipFillOf(el) !== null ? TRANSPARENT : usedColors(el)['background-color'] }],
 };
