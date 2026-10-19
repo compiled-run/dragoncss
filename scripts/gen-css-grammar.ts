@@ -105,6 +105,9 @@ const SUBSET = [
   // PNT2: the 3D transform longhands (css-transforms-2 §5, §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
   // Chrome 145's (css_properties.json5 keywords); perspective-origin's <position> is parsed as object-position's (values.ts positionValue).
   'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin',
+  // css-break-4 §5.4: box-decoration-break, after the 3D transform longhands, as LONGHANDS registers it. webref's keywords are
+  // Chrome 145's (css_properties.json5 keywords).
+  'box-decoration-break',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
