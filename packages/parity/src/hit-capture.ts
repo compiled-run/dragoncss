@@ -283,9 +283,20 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['vertical-align', 'baseline'], ['float', 'none'], ['clear', 'none'], ['letter-spacing', 'normal'], ['word-spacing', '0px'],
   ['text-overflow', 'clip'], ['text-transform', 'none'], ['text-indent', '0px'], ['overflow-wrap', 'normal'], ['word-break', 'normal'],
   ['-webkit-box-orient', 'horizontal'], ['-webkit-line-clamp', 'none'],
+  ['font-variant-ligatures', 'normal'], ['font-variant-caps', 'normal'], ['font-variant-alternates', 'normal'], ['font-variant-numeric', 'normal'],
+  ['font-variant-east-asian', 'normal'], ['font-variant-position', 'normal'], ['font-variant-emoji', 'normal'], ['font-kerning', 'auto'],
+  ['font-optical-sizing', 'auto'], ['font-language-override', 'normal'], ['font-stretch', '100%'], ['font-feature-settings', 'normal'],
+  ['font-variation-settings', 'normal'], ['-webkit-text-fill-color', '[^"\\n;]*'], ['-webkit-text-stroke-color', '[^"\\n;]*'], ['-webkit-text-stroke-width', '0px'],
 ];
-const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
-const CSS_TEXT = new RegExp(`^[ ]*(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
+/** The paint, transform and mask longhands added after the base, at their initial values (filter none, mask-image none and the like). */
+const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
+  ['text-shadow', 'none'], ['filter', 'none'], ['backface-visibility', 'visible'], ['transform-style', 'flat'], ['transform-box', 'view-box'],
+  ['clip', 'auto'], ['clip-path', 'none'], ['mask-image', 'none'], ['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%'],
+  ['mask-size', 'auto'], ['mask-repeat', 'repeat'], ['mask-origin', 'border-box'], ['mask-clip', 'border-box'], ['mask-composite', 'add'],
+  ['mask-mode', 'match-source'],
+];
+const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
+const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
 /** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
 const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
 const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
