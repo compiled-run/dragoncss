@@ -1,4 +1,5 @@
 // Internal entry for the parity harness, selected by the "dragon-internal" export condition. Not a public API.
+import { TRANSPARENT } from './css/color.ts';
 import type { LayoutInput } from '@dragon/layout';
 import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
@@ -182,6 +183,12 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
+  // GEN-c: a ::marker box inherits its item's color and has its initial background (transparent) and border colours (currentcolor).
+  for (const m of listItemMarkers(c.resolved)) {
+    const item = out.get(m.address);
+    if (m.type.kind === 'none' || item === undefined) continue;
+    out.set(`${m.address}::marker`, { color: item.color, 'background-color': TRANSPARENT, 'border-top-color': item.color, 'border-right-color': item.color, 'border-bottom-color': item.color, 'border-left-color': item.color });
+  }
   return out;
 }
 
