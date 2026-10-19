@@ -32,8 +32,8 @@ describe('element keys (ELB-2)', () => {
     expect(light.elementKeyDeclared.img.ltr).toEqual({ 'overflow-x': 'clip', 'overflow-y': 'clip' });
   });
   it('list the UA-set properties no longhand models, and the forced longhands', () => {
-    expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ appearance: 'auto', cursor: 'default' });
-    expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ appearance: 'auto', cursor: 'text' });
+    expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ cursor: 'default' });
+    expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ cursor: 'text' });
     expect(light.userAgentUnmodelled['a[href]']?.ltr).toMatchObject({ cursor: 'pointer', 'text-decoration-line': 'underline' });
     // GEN-b (T151 R13): list-style-type is a longhand now, so ol's decimal is a declared UA value, no longer unmodelled.
     expect(light.userAgentUnmodelled['ol']?.ltr).toEqual({ 'unicode-bidi': 'isolate' });

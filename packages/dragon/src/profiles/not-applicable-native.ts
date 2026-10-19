@@ -2,7 +2,7 @@
 // touch-native iOS and Android. On native the compiler emits nothing for an entry and reports DRAGON_NOT_APPLICABLE_NATIVE (info);
 // the web target still refuses it until a Chrome proof exists. Nothing is not-applicable by default: anything off this list is
 // refused as before. Reviewed and left off: text-rendering (optimizeSpeed turns off kerning and ligatures); break-*, orphans and
-// widows (they fragment columns too); scrollbar-width and -webkit-appearance (visible on native); will-change (transform makes a
+// widows (they fragment columns too); scrollbar-width (visible on native); -webkit-appearance (a property now, properties/appearance.ts); will-change (transform makes a
 // containing block and stacking context, analysis/paint-values/transform.ts); color-scheme (dark changes the UA colours,
 // ua/datasets.ts); ::-webkit-slider-thumb (its appearance decides how a range paints, forms/appearance.ts); ::-moz-range-thumb
 // (Chrome drops it, so Dragon already drops the rule on every target); scrollbar-color and ::-webkit-scrollbar* rules (several
