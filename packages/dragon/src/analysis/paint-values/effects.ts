@@ -395,7 +395,7 @@ export function refuseAnimatedGroups(analysis: AnimationAnalysis, roots: readonl
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
           origin: d === undefined ? root.element.node.origin : authored(d.valueSpan),
           target: t,
-          message: `${animates ? 'an animation' : 'a transition'} on ${ea.address}, which a pre-composited opacity group draws or composites over: the group's composite is recomputed on layout and paint changes, not on animation frames (package PNT1-opacity-b)`,
+          message: `${animates ? 'an animation' : 'a transition'} on ${ea.address}, which a pre-composited opacity or filter group draws or composites over: the group's composite is recomputed on layout and paint changes, not on animation frames (package PNT1-opacity-b)`,
           manual: 'Remove the animation or transition, or move it out of the opacity group and the boxes beneath it.',
         }));
       }
