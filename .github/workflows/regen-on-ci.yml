@@ -326,12 +326,14 @@ jobs:
             git apply --binary --check "$prev/outputs.patch" || { echo "run $RESUME's chrome-1 outputs do not apply to $SHA; chrome-1 runs"; exit 0; }
             git apply --binary "$prev/outputs.patch"
           fi
-          # Only regen outputs (.gitattributes merge=dragon-generated, which regen.test keeps equal to the steps' outputs) come
-          # from the earlier run; a path no step claims is never judged by --explain below, so it is not taken.
+          # Only regen outputs come from the earlier run: a path no step claims is never judged by --explain below, so it is not
+          # taken. The steps' outputs are this commit's .gitattributes merge=dragon-generated lines (read at $SHA, so the patch
+          # cannot claim its own paths) and MERGE_BY_HAND's files (scripts/regen.ts); regen.test keeps the two equal to them.
           git add -A
           names=$(git diff --cached --name-only --no-renames "$SHA")
+          by_hand='packages/parity/out/lanes.json packages/wpt/expectations/web.json'
           unclaimed=""
-          [ -z "$names" ] || unclaimed=$(git check-attr --stdin merge <<<"$names" | { grep -v ': merge: dragon-generated$' || true; } | sed 's/: merge: [^:]*$//' | head -n 5 | paste -sd ' ' -)
+          [ -z "$names" ] || unclaimed=$(git check-attr --source "$SHA" --stdin merge <<<"$names" | { grep -v ': merge: dragon-generated$' || true; } | sed 's/: merge: [^:]*$//' | { grep -vxF -f <(tr ' ' '\n' <<<"$by_hand") || true; } | head -n 5 | paste -sd ' ' -)
           [ -z "$unclaimed" ] || { echo "run $RESUME's chrome-1 changes files no regen step claims ($unclaimed); chrome-1 runs"; exit 0; }
           mkdir -p .git/dragon-regen
           zstd -dcq "$prev/store.tar.zst" | tar -xf - -C .git/dragon-regen
@@ -366,6 +368,7 @@ jobs:
           path: ${{ runner.temp }}/out
           if-no-files-found: error
           compression-level: 0
+          overwrite: true
       - name: Resumed or not
         id: done
         env:

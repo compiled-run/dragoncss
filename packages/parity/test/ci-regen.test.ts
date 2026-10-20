@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, DEVICE_YIELD_S, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, REGEN_BRANCH_SLOTS, type Run, runTitle, SLOT_POLL_S } from '../../../scripts/ci-regen.ts';
 import { regenTitle } from '../../../scripts/land-devices-ci.ts';
+import { MERGE_BY_HAND } from '../../../scripts/regen.ts';
 import { repoPath } from '../src/paths.ts';
 
 const REPO = 'o/r';
@@ -561,6 +562,17 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     const patch = git(w, 'diff', '--binary') + '\n';
     writeFileSync(join(w, 'pad.txt'), 'a\nB\nc\n');
     const wide = git(w, 'diff', '--binary') + '\n';
+    writeFileSync(join(w, '.gitattributes'), 'out.json merge=dragon-generated\npad.txt merge=dragon-generated\n');
+    const claiming = git(w, 'diff', '--binary') + '\n';
+    // MERGE_BY_HAND's files are regen outputs too.
+    git(w, 'checkout', '-q', '--', '.');
+    writeFileSync(join(w, 'out.json'), '2\n');
+    mkdirSync(join(w, 'packages', 'wpt', 'expectations'), { recursive: true });
+    writeFileSync(join(w, 'packages', 'wpt', 'expectations', 'web.json'), '{}\n');
+    git(w, 'add', '-N', 'packages');
+    const byHand = git(w, 'diff', '--binary') + '\n';
+    git(w, 'rm', '-q', '--cached', '-r', 'packages');
+    rmSync(join(w, 'packages'), { recursive: true });
     git(w, 'checkout', '-q', '--', '.');
     writeFileSync(join(w, 'later.ts'), 'y\n');
     git(w, 'add', '.');
@@ -801,11 +813,22 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
     const patch = git(w, 'diff', '--binary') + '\n';
     writeFileSync(join(w, 'pad.txt'), 'a\nB\nc\n');
     const wide = git(w, 'diff', '--binary') + '\n';
+    writeFileSync(join(w, '.gitattributes'), 'out.json merge=dragon-generated\npad.txt merge=dragon-generated\n');
+    const claiming = git(w, 'diff', '--binary') + '\n';
+    // MERGE_BY_HAND's files are regen outputs too.
+    git(w, 'checkout', '-q', '--', '.');
+    writeFileSync(join(w, 'out.json'), '2\n');
+    mkdirSync(join(w, 'packages', 'wpt', 'expectations'), { recursive: true });
+    writeFileSync(join(w, 'packages', 'wpt', 'expectations', 'web.json'), '{}\n');
+    git(w, 'add', '-N', 'packages');
+    const byHand = git(w, 'diff', '--binary') + '\n';
+    git(w, 'rm', '-q', '--cached', '-r', 'packages');
+    rmSync(join(w, 'packages'), { recursive: true });
     git(w, 'checkout', '-q', '--', '.');
     writeFileSync(join(w, 'host.kt'), 'fix\n');
     git(w, 'add', '.');
     git(w, 'commit', '-q', '-m', 'host fix');
-    return { w, sha: git(w, 'rev-parse', 'HEAD'), patch, wide };
+    return { w, sha: git(w, 'rev-parse', 'HEAD'), patch, wide, claiming, byHand };
   }
   /** RUNNER_TEMP with prev/outputs.patch and prev/store.tar.zst (a plain tar: zstd is stubbed as cat), and stubs for zstd and node. */
   function temp(patch: string, chrome: object[], host: object[]) {
@@ -844,6 +867,11 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
     const r2 = repo();
     const all = runJudge(r2, temp(r2.patch, [skipped('capture')], [skipped('lanes-host')]));
     expect(all.out).toEqual({ ok: 'true', changed: 'true', next: 'false' });
+    // A MERGE_BY_HAND output (the WPT expectations) is taken like any other output.
+    const r4 = repo();
+    expect(runJudge(r4, temp(r4.byHand, [skipped('wpt')], [skipped('lanes-host')])).out).toEqual({ ok: 'true', changed: 'true', next: 'false' });
+    // The judge's list of them is MERGE_BY_HAND's.
+    expect(/by_hand='([^']*)'/.exec(judge)?.[1]?.split(' ')).toEqual(MERGE_BY_HAND.map((h) => h.path).sort());
     // An earlier chrome-1 at its fixed point: an empty patch, changed false.
     const r3 = repo();
     const fixed = runJudge(r3, temp('', [skipped('capture')], [skipped('lanes-host')]));
@@ -857,6 +885,8 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
       ['none', (r) => temp(r.patch, [], []), 'regen --explain judged no step; chrome-1 runs'],
       // Only regen outputs come from the earlier run: a patch that also changes another file (pad.txt) is not taken.
       ['unclaimed', (r) => temp(r.wide, [skipped('capture')], []), 'changes files no regen step claims (pad.txt); chrome-1 runs'],
+      // A patch cannot claim its own paths: .gitattributes is read at this commit.
+      ['self-claim', (r) => temp(r.claiming, [skipped('capture')], []), 'changes files no regen step claims (.gitattributes pad.txt); chrome-1 runs'],
     ];
     for (const [name, make, msg] of cases) {
       const r = repo();
