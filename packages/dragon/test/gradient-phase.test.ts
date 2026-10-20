@@ -40,6 +40,7 @@ function writeOf(css: string, id: string, body: Body = one, faults: CompilerFaul
  * device px with 1 device px for a thinner non-zero one, or given in device px for an initial medium).
  */
 function plan(w: GradientWrite, dpr: number, box: { x: number; y: number; w: number; h: number; border: number; padding: number; borderDevice?: number }, shift = { x: 0, y: 0 }): boolean {
+  if (w.kind === 'mask-layer') throw new Error('plan reads a background write, not a mask layer');
   const lu = (v: number): number => Math.round(v * dpr * 64);
   const device = box.border * dpr;
   const b = (box.borderDevice ?? (device >= 1 ? Math.floor(device) : device > 0 ? 1 : 0)) * 64;
