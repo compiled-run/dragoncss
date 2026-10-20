@@ -71,8 +71,8 @@ describe('math functions Chrome rejects are invalid CSS (T131)', () => {
     for (const [p, v] of CAPTURE.rows) {
       const context = mathContextFor(p);
       const reason = mathInvalidity(v, mathGrammarFor(p));
-      // flex tries a number first, and font-size and line-height refuse every calculation, so they keep their own paths.
-      if ('refused' in context || p === 'flex' || reason === null) continue;
+      // flex and line-height try a number first, and the font shorthand refuses every calculation, so they keep their own paths.
+      if ('refused' in context || p === 'flex' || p === 'line-height' || reason === null) continue;
       expect(parseMath(v, context), `${p}: ${v}`).toEqual({ ok: false, reason: `${reason}, so Chrome drops the declaration`, fix: 'Write a calculation Chrome accepts for this property.' });
     }
   });
