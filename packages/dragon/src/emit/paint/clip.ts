@@ -159,6 +159,8 @@ const KOTLIN_MEMBERS = String.raw`  /** The view the children are hosted in over
     if (dragonClipRectLabel != null) return
     super.addChildrenForAccessibility(outChildren)
   }
+  /** The clip label's box takes every hover event itself, so explore-by-touch reaches the box's node, never a child text view. */
+  override fun onInterceptHoverEvent(event: android.view.MotionEvent): Boolean = dragonClipRectLabel != null || super.onInterceptHoverEvent(event)
   /**
    * clip-path: the canvas is clipped around the box's own paint and its children's; the views' visibility is untouched. The clip
    * label: the box draws nothing, nor do its children, and stays visible to accessibility.

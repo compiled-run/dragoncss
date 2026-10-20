@@ -32,6 +32,7 @@ import { valueToString } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
 import { paintedOutlineStyle } from './outline.ts';
 import { clipLabelRefusal } from './clip-label.ts';
+import { exposedTextInside } from './clip-hidden-text.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
 const keywordOf = (el: Pick<ResolvedElement, 'props'>, p: Longhand): string => {
@@ -96,7 +97,7 @@ const checkClip: PaintCheck = (el, targets, diagnostics, reported) => {
   const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
   const hides = clipHidesBox(el);
   const why = hides === true ? viewOutsideClip(el) : null;
-  const text = hides === true && why === null ? textInside(el) : null;
+  const text = hides === true && why === null ? exposedTextInside(el) : null;
   const unlabelled = text === null ? null : clipLabelRefusal(el);
   if (hides === true && why === null && unlabelled === null) return;
   const at = `${el.element.address}`;

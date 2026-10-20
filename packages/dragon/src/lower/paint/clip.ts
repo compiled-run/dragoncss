@@ -4,6 +4,7 @@
 // descendant (Chrome's clip node covers both), so its view is hidden with everything inside it; when the subtree has text, which
 // Chrome keeps in its accessibility tree, the view instead draws nothing and carries that text as its one accessibility label.
 // Any other applied clip is refused (analysis/paint-values/clip.ts).
+import { hiddenTexts } from '../../analysis/paint-values/clip-hidden-text.ts';
 import { clipLabelOf } from './clip-label.ts';
 // css-masking-1 §6.1: clip-path: inset() clips the box and every descendant to its border box inset by the four edges (Chrome's
 // clip-path clip node, paint_property_tree_builder.cc UpdateClipPathClip); the box view masks itself and its subviews to that rect.
@@ -43,7 +44,7 @@ export const CLIP_LOWERING: PaintLowering<ClipWrite> = {
     if (el === null) return out;
     const hides = clipHidesBox(el);
     if (hides === null) throw new ProgramError(`${el.element.address}: clip applies with a rect that is not empty at every size, which has no native technique (MASK-CLIP)`);
-    const label = hides ? clipLabelOf(box) : null;
+    const label = hides ? clipLabelOf(box, hiddenTexts(el)) : null;
     if (hides) out.push(label === null ? { kind: 'clip-rect-empty' } : { kind: 'clip-rect-label', label });
     const edges = clipPathEdges(el);
     if (edges !== null) {

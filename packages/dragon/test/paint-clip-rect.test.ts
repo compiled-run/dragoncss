@@ -167,6 +167,12 @@ describe('clip: native refusals', () => {
     expect(both('.a { position: absolute; clip: rect(0, 0, 0, 0); }', (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'c1', [], [text(r, 'c1-t', 'Hi')]), div(r, 'c2', [], [text(r, 'c2-t', 'Hi')])])])])).toEqual([]);
     // Inline emphasis, a paragraph and a generated ::before run together in the label.
     expect(both(`${HIDDEN} .b::before { content: "Z"; }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [{ ...div(r, 'b', ['b'], [text(r, 'b-t', 'YY')]), tag: 'p' }, { ...div(r, 's', [], [text(r, 's-t', 'QQ')]), tag: 'strong' }])])])).toEqual([]);
+    // Tags that read as their text, an anchor without href among them (u, code, abbr and sup are allowed too, but Dragon does not
+    // support those elements yet).
+    const all = (css: string, body: (r: SourceRef) => TreeNode[]) => errors(compileInput(inputFor(BASE + css, body), { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }));
+    for (const tag of ['label', 'a', 'span', 'b']) expect(all(HIDDEN, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'XX'), { ...div(r, 'b', ['b'], [text(r, 'b-t', 'YY')]), tag }])])]), tag).toEqual([]);
+    // Text under visibility: hidden is not in Chrome's accessibility tree either: it is left out of the label, not refused.
+    expect(all(`${HIDDEN} .b { visibility: hidden; }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'XX'), div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])])).toEqual([]);
     // Text under display: none is in no accessibility tree, so a focusable box there does not matter.
     expect(both(`${HIDDEN} .b { display: none; }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'XX'), { ...div(r, 'b', ['b'], [text(r, 'b-t', 'YY')]), tag: 'button' }])])])).toEqual([]);
   });
@@ -181,7 +187,6 @@ describe('clip: native refusals', () => {
       ['', inner((b) => ({ ...b, attributes: [attr('aria-hidden', 'true')] })), /but b has the aria-hidden attribute, which changes what Chrome exposes beyond its text;/],
       ['', inner((b) => ({ ...b, attributes: [attr('role', 'heading')] })), /but b has the role attribute/],
       ['', inner((b) => ({ ...b, attributes: [attr('title', 'T')] })), /but b has the title attribute/],
-      ['.b { visibility: hidden; }', inner(same), /but b is hidden, which Chrome leaves out of its accessibility tree while its text would stay in the label;/],
       ['.b { position: fixed; }', inner(same), /but b is fixed, and its view may be hosted outside the box view;/],
       ['.b { position: absolute; clip: rect(0, 0, 0, 0); }', inner(same), /but b is hidden by its own clip too, and nested labels are not proven;/],
       ['.a { height: 0; }', inner(same), /but it has height 0px, and a view with no area is not visible to the user \(View\.isVisibleToUser\), so TalkBack would skip its label;/],
@@ -217,6 +222,19 @@ describe('clip: the label of a box its empty rect hides (lower/paint/clip-label.
     }
     expect(p.uikit.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label')).toEqual(expect.objectContaining({ key: 'dragonClipRect.label', technique: 'native-property' }));
     expect(p['android-views'].nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label')).toEqual(expect.objectContaining({ key: 'dragonClipRect.label' }));
+  });
+  it('runs an inline-block in with the inline text around it, in tree order and with no separator of its own', () => {
+    const ib = (r: SourceRef, id: string, value: string) => ({ ...div(r, id, ['ib'], [text(r, `${id}-t`, value)]), tag: 'span' });
+    const label = (body: (r: SourceRef) => TreeNode[]) => lowered(`${HIDDEN} .ib { display: inline-block; }`, body).uikit.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label');
+    expect(label((r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'Hello '), ib(r, 's', 'world')])])])).toEqual(expect.objectContaining({ label: 'Hello world' }));
+    expect(label((r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'X'), ib(r, 's', 'Y'), text(r, 'a-u', 'Z')])])])).toEqual(expect.objectContaining({ label: 'XYZ' }));
+  });
+  it('leaves out text under visibility: hidden, and keeps the hidden write when that is all the text', () => {
+    const kinds = (css: string) => lowered(`${HIDDEN} ${css}`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY'), div(r, 'c', ['c'], [text(r, 'c-t', 'ZZ')])])])])]).uikit.nodes.find((n) => n.id === 'a')?.writes.filter((w) => w.kind.startsWith('clip-rect'));
+    expect(kinds('.b { visibility: hidden; }')).toEqual([expect.objectContaining({ kind: 'clip-rect-empty' })]);
+    // A visible element under a hidden one is exposed again (visibility inherits, and Chrome reads the element's own value).
+    expect(kinds('.b { visibility: hidden; } .c { visibility: visible; }')).toEqual([expect.objectContaining({ kind: 'clip-rect-label', label: 'ZZ' })]);
+    expect(clipErrors(compileInput(inputFor(`${BASE + HIDDEN} .b { visibility: hidden; }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])]), NATIVE))).toEqual([]);
   });
   it('reads a <br> as a space and leaves the descendants unwritten; a box without text keeps the hidden write', () => {
     const p = lowered(HIDDEN, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'AB'), { ...div(r, 'br', []), tag: 'br' }, text(r, 'a-u', 'CD')])])]);
@@ -292,6 +310,7 @@ describe('clip: emission', () => {
         const box = files.map((f) => f.text).join('\n');
         expect(box).toContain('  override fun draw(canvas: Canvas) {\n    if (dragonClipRectLabel != null) return\n');
         expect(box).toContain('  override fun addChildrenForAccessibility(outChildren: ArrayList<View>) {\n    if (dragonClipRectLabel != null) return\n');
+        expect(box).toContain('  override fun onInterceptHoverEvent(event: android.view.MotionEvent): Boolean = dragonClipRectLabel != null || super.onInterceptHoverEvent(event)\n');
       }
       // The plant ignores the label writer too: nothing is masked or labelled.
       expect(clip).toContain(ios ? 'public func dragonClipRectLabel(_ v: DragonBoxView, _ label: String) {\n  if dragonClipRectPlantIgnored { return }\n' : 'fun dragonClipRectLabel(v: DragonBoxView, label: String) {\n  if (DRAGON_CLIP_RECT_PLANT_IGNORED) return\n');

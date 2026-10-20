@@ -2,17 +2,16 @@
 // does any descendant, while Chrome keeps the subtree's text in its accessibility tree: clip is not one of the style facts that hide
 // a node there (AXObject::IsHiddenViaStyle reads display, visibility and content-visibility), so screen readers read it. Natively the
 // box view then takes the clip label write (lower/paint/clip.ts): it draws nothing and is one accessibility element whose label is
-// the subtree's text. That stands for Chrome's tree only when the text is plain: the refusals below name what one label would lose.
+// the subtree's text that Chrome exposes (text under visibility: hidden is not). That stands for Chrome's tree only when the text is
+// plain: the refusals below name what one label would lose.
 import { clipHidesBox } from '../../css/properties/clip-rect.ts';
-import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
-import type { ResolvedValue } from '../computed.ts';
 import { valueToString } from '../computed.ts';
 import { GENERATED_TAGS } from '../elements.ts';
 import { isFocusable } from '../interaction.ts';
 import type { ResolvedElement } from '../resolve.ts';
 
 /** Tags whose Chrome accessibility role screen readers do not announce over the text: their text reads the same as one label. */
-const PLAIN_TAGS: ReadonlySet<string> = new Set(['div', 'span', 'p', 'b', 'i', 'em', 'strong', 'small', 'br', ...GENERATED_TAGS]);
+const PLAIN_TAGS: ReadonlySet<string> = new Set(['div', 'span', 'p', 'b', 'i', 'u', 'em', 'strong', 'small', 'code', 'abbr', 'sup', 'label', 'a', 'br', ...GENERATED_TAGS]);
 
 /** Attributes that change the node, name or role Chrome exposes, which one label of the text would not carry. */
 const A11Y_ATTRIBUTE = /^(aria-.+|role|title|tabindex|lang|contenteditable|alt)$/;
@@ -47,8 +46,6 @@ export function clipLabelRefusal(box: ResolvedElement): string | null {
     const attribute = [...e.element.attributes.keys()].find((a) => A11Y_ATTRIBUTE.test(a));
     if (attribute !== undefined) return `${who} has the ${attribute} attribute, which changes what Chrome exposes beyond its text`;
     if (!root) {
-      const visibility = (e.props.get('visibility') as ResolvedValue).value;
-      if (!paintsOwn(visibilityOf(visibility))) return `${who} is ${valueToString(visibility)}, which Chrome leaves out of its accessibility tree while its text would stay in the label`;
       if (keywordOf(e, 'position') === 'fixed') return `${who} is fixed, and its view may be hosted outside the box view`;
       if (clipHidesBox(e) === true) return `${who} is hidden by its own clip too, and nested labels are not proven`;
     }
