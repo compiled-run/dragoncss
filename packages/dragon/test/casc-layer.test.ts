@@ -93,17 +93,20 @@ describe('CASC 3: refusals', () => {
       'DRAGON_UNSUPPORTED_AT_RULE: @keyframes inside @layer', 'DRAGON_UNSUPPORTED_AT_RULE: @property in @layer', 'DRAGON_UNSUPPORTED_AT_RULE: @font-face in @layer',
     ]);
     expect(messages('@layer initial;')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer initial in the stylesheet is not supported: "initial" is a CSS-wide keyword or default, which Dragon does not accept as a layer name']);
-    expect(messages('.x { @layer a { width: 1px; } }').filter((m) => m.includes('@layer'))).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer a in a rule block is not supported: @layer nested in a style rule is not built yet']);
-    expect(messages('@layer a { .x { width: revert-layer; --y: revert-layer; } } .z { width: revert-layer; }')).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
-      'DRAGON_UNSUPPORTED_VALUE: --y: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
-      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+    // Its block parses as declarations (css/parser.ts), so it raises no parse error (one stopped the whole analysis).
+    expect(messages('.x { @layer a { width: 1px; } }')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer a in a rule block is not supported: @layer nested in a style rule is not built yet']);
+    // A plain, normal revert-layer rolls back (rollBackLayers); !important, a custom property, direction and transitions do not.
+    expect(messages('@layer a { .x { width: revert-layer; --y: revert-layer; height: revert-layer !important; direction: revert-layer; transition: revert-layer; } } .z { width: revert-layer; margin: REVERT-LAYER; }')).toEqual([
+      'DRAGON_UNSUPPORTED_VALUE: --y: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
+      'DRAGON_UNSUPPORTED_VALUE: height: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
+      'DRAGON_UNSUPPORTED_VALUE: direction: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
+      'DRAGON_UNSUPPORTED_VALUE: transition: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
     ]);
-    // revert-layer reaching a value through var() (a fallback, or a custom property's value) or written with an escape is refused too.
+    // revert-layer reaching a value through var() (a fallback, or a custom property's value) is refused too; an escaped keyword is
+    // the keyword once escapes are read (css-syntax-3 §4.3.7), so it rolls back.
     expect(messages('@layer a; .z { width: var(--u, revert-layer); --v: var(--w, REVERT-LAYER); height: var(--v); margin: r\\65vert-layer; }')).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
-      'DRAGON_UNSUPPORTED_VALUE: --v: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
-      'DRAGON_UNSUPPORTED_VALUE: margin: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
+      'DRAGON_UNSUPPORTED_VALUE: --v: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
     ]);
     // Not a revert-layer identifier: a string, or a longer name.
     expect(messages('@layer a; .z { font-family: "revert-layer", revert-layers; }')).toEqual([]);
@@ -131,5 +134,60 @@ describe('CASC 3: refusals', () => {
   it(':host matches nothing in a document (css-scoping-1), and is refused inside a selector argument', () => {
     expect(messages(':root, :host { --a: 1px; } :host .x, :host.y { width: 1px; }')).toEqual([]);
     expect(messages(':is(:host, div) { width: 1px; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR: :host inside a selector argument is not supported: it matches nothing here, but its specificity would still count']);
+  });
+});
+
+// css-cascade-5 §7.4: the parity fixture casc-layer-revert proves these against Chrome 145 (fixture-groups/casc-layer.ts).
+const REVERT = (/<style>([\s\S]*)<\/style>/.exec(readFileSync(new URL('../../parity/fixtures/casc-layer-revert.html', import.meta.url), 'utf8')) as RegExpExecArray)[1] as string;
+const REVERT_IDS = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r8', 'r9', 'r10', 'r11', 'r12'];
+const WIDE_R8 = '@media (min-width: 100px) { .r8 { margin-left: revert-layer; } }';
+const WIDE_R9 = '@media (min-width: 100px) { @layer base { .r9 { margin-left: 11px; } } }';
+
+/** The fixture's sheet resolved with both @media blocks holding (Chrome's 400px viewport) or neither (a band below 100px). */
+function resolveRevert(wide: boolean, faults: CompilerFaults = NO_FAULTS): (id: string, p: Longhand) => string {
+  expect(REVERT.includes(WIDE_R8) && REVERT.includes(WIDE_R9)).toBe(true);
+  const sheet = wide ? REVERT.replace(WIDE_R8, '.r8 { margin-left: revert-layer; }').replace(WIDE_R9, '@layer base { .r9 { margin-left: 11px; } }') : REVERT.replace(WIDE_R8, '').replace(WIDE_R9, '');
+  const { rules, diagnostics } = parse(sheet, faults);
+  expect(diagnostics.map((d) => d.message)).toEqual([]);
+  const kids = REVERT_IDS.map((id) => el(id, ['box', id], [], id === 'r3' ? 'p' : 'div'));
+  const root = resolveTree(el('html', [], [el('body', [], kids, 'body')], 'html'), rules, faults, { direction: 'ltr', rootFont: 'ahem', ua: referenceDataset() });
+  const byId = new Map<string, ResolvedElement>();
+  const walk = (e: ResolvedElement): void => {
+    byId.set(e.element.address, e);
+    for (const c of e.children) if (c.kind === 'element') walk(c);
+  };
+  walk(root);
+  return (id, p) => valueToString(((byId.get(id) as ResolvedElement).props.get(p) as { value: Parameters<typeof valueToString>[0] }).value);
+}
+
+describe('CASC 3: revert-layer rolls back to the layers below', () => {
+  it('takes the winner of the lower layers, through chains, sublayers, anonymous layers, unlayered rules, shorthands and @media', () => {
+    const v = resolveRevert(true);
+    expect(REVERT_IDS.filter((id) => id !== 'r3' && id !== 'r6').map((id) => [id, v(id, 'margin-left')])).toEqual([
+      ['r1', '15px'], ['r2', '6px'], ['r4', '12px'], ['r5', '9px'], ['r8', '7px'], ['r9', '11px'], ['r10', '2px'], ['r11', '16px'], ['r12', '4px'],
+    ]);
+    // r3: nothing below base, so revert-layer reverts to the user-agent margin of a p (1em); r6: display rolls back to base's flex.
+    expect([v('r3', 'margin-top'), v('r6', 'display'), v('r12', 'margin-top'), v('r12', 'margin-right'), v('r12', 'margin-bottom')]).toEqual(['16px', 'flex', '1px', '2px', '3px']);
+  });
+  it('in a band where the @media blocks do not hold, r8 keeps its own layer value and r9 reverts to the user agent', () => {
+    const v = resolveRevert(false);
+    expect([v('r8', 'margin-left'), v('r9', 'margin-left'), v('r1', 'margin-left')]).toEqual(['30px', '0px', '15px']);
+  });
+  it('revertLayerAsRevert moves every rolled-back value to the user agent', () => {
+    const v = resolveRevert(true, { ...NO_FAULTS, revertLayerAsRevert: true });
+    expect([v('r1', 'margin-left'), v('r4', 'margin-left'), v('r6', 'display'), v('r10', 'margin-left'), v('r3', 'margin-top')]).toEqual(['0px', '0px', 'block', '0px', '16px']);
+  });
+  it('compiles for web, iOS and Android with no diagnostic', () => {
+    const input = inputFor(`body { margin: 0; } ${REVERT}`, (r) => REVERT_IDS.map((id) => div(r, id, ['box', id])));
+    const c = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }).compile(input);
+    expect(c.diagnostics.map((d) => `${d.code}: ${d.message}`)).toEqual([]);
+  });
+  it('a refused @layer nested in a style rule leaves the enclosed analysis of a top-level @container whole', () => {
+    const css = 'body { margin: 0; font-family: Ahem; font-size: 10px; }\n@container (min-width: 1px) { .a { display: inline-table; } }\n.b { width: 5px; @layer x { margin-right: 6mm; } }\n';
+    const c = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }).compile(inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]));
+    expect(c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE', 'DRAGON_UNSUPPORTED_AT_RULE']);
+    const [container, layer] = c.diagnostics as [Diagnostic, Diagnostic];
+    expect(container.related.map((r) => r.message.split(':')[0])).toEqual(['DRAGON_UNSUPPORTED_VALUE [ios]', 'DRAGON_UNSUPPORTED_VALUE [web]']);
+    expect(layer.related.map((r) => r.message.split(':')[0])).toEqual(['DRAGON_UNPROVEN_CONTEXT [ios]', 'DRAGON_UNPROVEN_CONTEXT [web]']);
   });
 });

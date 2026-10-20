@@ -42,6 +42,7 @@ import { CASC_FAULTS } from '../faults/casc.ts';
 import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
 import { layerLonghandValue } from './shorthands/background.ts';
 import { isBackgroundLayerLonghand } from './properties/background-layers.ts';
+import { parseCss } from './parser.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -124,7 +125,7 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: 'the stylesheet holds a U+0000 code point, which Chrome 145 reads differently by position', manual: 'Remove the U+0000, or write the escape \\FFFD for U+FFFD.' }));
   }
   const errors: { message: string; offset: number }[] = [];
-  const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
+  const ast = parseCss(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
   // Only a backslash spells an escape once the input is preprocessed.
   if (text.includes('\\')) canonicalizeEscapes(ast);
   // An @media prelude is parsed by media/parse.ts, which Chrome 145 proves (an invalid query is `not all`); css-tree's own

@@ -14,6 +14,7 @@ import type { InteractionState } from './match.ts';
 import { NO_INTERACTION, pseudoSelectorMatches, selectorMatches, specificityFor } from './match.ts';
 import type { CustomProperties, SubstitutedDeclaration, Substitution, VarScope } from './variables.ts';
 import { computeCustoms } from './variables.ts';
+import { rollBackLayers } from './layers.ts';
 
 /**
  * One declared longhand value competing in the cascade, with the specificity of the selector that matched it. substitution: set by
@@ -119,6 +120,8 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
       }
     }
   }
+  // css-cascade-5 §7.4: a revert-layer winner takes the winner of the layers below it (layers.ts).
+  rollBackLayers(winners, candidates, beats, faults);
   return {
     winners: cascadeGroups(winners, candidates, chain[chain.length - 1] as LinkedElement),
     matched,

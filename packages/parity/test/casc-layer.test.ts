@@ -1,6 +1,7 @@
 // CASC 3's planted compiler faults through runFixture, with the committed Chrome captures as the authored side.
 // layersIgnored cascades the layered rules as unlayered ones, so specificity decides b1, n and d; layerImportantNotReversed lets the
-// last layer's !important win on imp. Unfaulted, casc-layer passes both lanes in both directions.
+// last layer's !important win on imp; revertLayerAsRevert sends casc-layer-revert's revert-layer to the user agent. Unfaulted, both
+// fixtures pass both lanes in both directions.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
@@ -33,15 +34,17 @@ const run = async (id: string, faults: CompilerFaults) => {
 };
 
 describe.sequential('CASC 3 planted compiler faults', () => {
-  it('unfaulted, casc-layer passes chrome-dual and linux-dragon-layout in both directions', async () => {
-    const clean = await run('casc-layer', NO_FAULTS);
-    expect(clean.reason).toBeNull();
-    expect(clean.status).toBe('pass');
-    expect(clean.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual([['ltr', 'pass', 'pass'], ['rtl', 'pass', 'pass']]);
-  });
-  for (const [fault, moved] of [['layersIgnored', ['b1', 'n', 'd']], ['layerImportantNotReversed', ['imp']]] as const) {
-    it(`${fault}: casc-layer fails chrome-dual in both directions on the boxes it moves`, async () => {
-      const faulty = await run('casc-layer', { ...NO_FAULTS, [fault]: true });
+  for (const id of ['casc-layer', 'casc-layer-revert']) {
+    it(`unfaulted, ${id} passes chrome-dual and linux-dragon-layout in both directions`, async () => {
+      const clean = await run(id, NO_FAULTS);
+      expect(clean.reason).toBeNull();
+      expect(clean.status).toBe('pass');
+      expect(clean.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual([['ltr', 'pass', 'pass'], ['rtl', 'pass', 'pass']]);
+    });
+  }
+  for (const [fault, id, moved] of [['layersIgnored', 'casc-layer', ['b1', 'n', 'd']], ['layerImportantNotReversed', 'casc-layer', ['imp']], ['revertLayerAsRevert', 'casc-layer-revert', ['r1', 'r4', 'r10', 'r11']]] as const) {
+    it(`${fault}: ${id} fails chrome-dual in both directions on the boxes it moves`, async () => {
+      const faulty = await run(id, { ...NO_FAULTS, [fault]: true });
       expect(faulty.status).toBe('fail');
       expect(faulty.cases.map((c) => c.direction)).toEqual(['ltr', 'rtl']);
       for (const c of faulty.cases) {
