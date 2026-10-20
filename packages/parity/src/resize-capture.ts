@@ -103,7 +103,10 @@ export function blinkPointerArgs(p: PointerReadings): string[] {
   return [`--blink-settings=primaryPointerType=${POINTER_TYPE[p.pointer]},availablePointerTypes=${available},primaryHoverType=${HOVER_TYPE[p.hover]},availableHoverTypes=${HOVER_TYPE[p.anyHover]}`];
 }
 
-/** The media queries that read a device's pointer, hover and motion readings, and the answers the readings give them. */
+/**
+ * The media queries that read a device's pointer, hover, motion and colour-scheme readings, and the answers the readings give them
+ * (the boolean (prefers-color-scheme) in either scheme, as PrefersColorSchemeMediaFeatureEval answers it).
+ */
 export function readingQueries(d: Omit<MediaDevice, 'dpr'>): [string, boolean][] {
   const any: readonly string[] = d.anyPointer.length === 0 ? ['none'] : d.anyPointer;
   return [
@@ -112,6 +115,8 @@ export function readingQueries(d: Omit<MediaDevice, 'dpr'>): [string, boolean][]
     ...(['none', 'hover'] as const).map((k): [string, boolean] => [`(hover: ${k})`, d.hover === k]),
     ...(['none', 'hover'] as const).map((k): [string, boolean] => [`(any-hover: ${k})`, d.anyHover === k]),
     ...(['no-preference', 'reduce'] as const).map((k): [string, boolean] => [`(prefers-reduced-motion: ${k})`, d.reducedMotion === k]),
+    ...(['light', 'dark'] as const).map((k): [string, boolean] => [`(prefers-color-scheme: ${k})`, d.colorScheme === k]),
+    ['(prefers-color-scheme)', true],
   ];
 }
 
@@ -159,6 +164,7 @@ const DESKTOP_READINGS = { pointer: 'fine', anyPointer: ['fine'], hover: 'hover'
 /** The readings after an env step. */
 export function readingsAfter(d: MediaDevice, s: ResizeStep & { kind: 'env' }): MediaDevice {
   if (s.reading === 'motion') return { ...d, reducedMotion: s.value };
+  if (s.reading === 'scheme') return { ...d, colorScheme: s.value };
   if (s.reading === 'pointers') return { ...d, pointer: s.value.pointer, anyPointer: [...s.value.anyPointer], hover: s.value.hover, anyHover: s.value.anyHover };
   return { ...d, ...(s.value === 'touch' ? TOUCH_READINGS : DESKTOP_READINGS) };
 }
@@ -333,13 +339,15 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
         }
       }
     };
-    // MQ-R2: an env step switches touch emulation (pointer and hover, M7) or emulates prefers-reduced-motion, on the live page. The
-    // overrides belong to the CDP session that set them (a detached session's are cleared), so one session holds them to the end.
+    // MQ-R2: an env step switches touch emulation (pointer and hover, M7) or emulates prefers-reduced-motion and prefers-color-scheme,
+    // on the live page. The overrides belong to the CDP session that set them (a detached session's are cleared), so one session
+    // holds them to the end. setEmulatedMedia replaces every emulated feature (measured), so it always sends both settings of the
+    // point the step reaches.
     let emulation: Awaited<ReturnType<ReturnType<typeof page.context>['newCDPSession']>> | null = null;
-    const emulate = async (s: ResizeStep & { kind: 'env'; reading: 'pointer' | 'motion' }): Promise<void> => {
+    const emulate = async (s: ResizeStep & { kind: 'env'; reading: 'pointer' | 'motion' | 'scheme' }, d: MediaDevice): Promise<void> => {
       emulation ??= await page.context().newCDPSession(page);
       if (s.reading === 'pointer') await emulation.send('Emulation.setTouchEmulationEnabled', s.value === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
-      else await emulation.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: s.value }] });
+      else await emulation.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: d.reducedMotion }, { name: 'prefers-color-scheme', value: d.colorScheme }] });
     };
     await dump(first.size);
     for (let i = 0; i < c.script.steps.length; i++) {
@@ -347,14 +355,14 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
       const at = points[i + 1] as ScriptPoint;
       if (s.kind === 'resize') await page.setViewportSize({ width: s.width, height: s.height });
       else if (s.kind === 'env' && s.reading === 'pointers') {
-        // A new page at the step's size in a Chrome launched with its readings; the reduced-motion setting is emulated again there.
+        // A new page at the step's size in a Chrome launched with its readings; the motion and scheme settings are emulated again there.
         if (browserFor === null) throw new Error(`${c.id}: a pointers step needs browserFor`);
         const next = await open(await browserFor(s.value), at);
         await page.context().close();
         page = next;
         emulation = null;
-        if (at.device.reducedMotion === 'reduce') await emulate({ kind: 'env', reading: 'motion', value: 'reduce' });
-      } else if (s.kind === 'env') await emulate(s);
+        if (at.device.reducedMotion !== DESKTOP_DEVICE.reducedMotion || at.device.colorScheme !== DESKTOP_DEVICE.colorScheme) await emulate({ kind: 'env', reading: 'motion', value: at.device.reducedMotion }, at.device);
+      } else if (s.kind === 'env') await emulate(s, at.device);
       else await page.evaluate(pageStep, { kind: 'morph', html: rendering(c, at.assignment, r) } as PageStep);
       await settle();
       await dump(at.size);

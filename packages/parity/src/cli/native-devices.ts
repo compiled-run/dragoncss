@@ -37,7 +37,7 @@ if (onlyArg !== null && onlyArg !== 'ios' && onlyArg !== 'android') {
 const only: NativeTarget | null = onlyArg;
 const plant = args.includes('--plant') ? (args[args.indexOf('--plant') + 1] as SupportPlant) : null;
 if (plant !== null && !SUPPORT_PLANTS.includes(plant)) throw new Error(`--plant takes one of ${SUPPORT_PLANTS.join(', ')}`);
-if (plant !== null && isMediaPlant(plant)) throw new Error(`${plant} is a device-env plant: run it with pnpm run parity:device-mqr -- --target android --plant ${plant}`);
+if (plant !== null && isMediaPlant(plant)) throw new Error(`${plant} is a device-env plant: run it with pnpm run parity:device-mqr -- --target ios|android --plant ${plant}`);
 const targets: NativeTarget[] = (['ios', 'android'] as const).filter((t) => only === null || t === only);
 const log = (s: string): void => console.log(`native:devices: ${s}`);
 

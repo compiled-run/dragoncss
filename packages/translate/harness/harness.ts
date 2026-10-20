@@ -2722,7 +2722,7 @@ function bandOp(v: JsonValue, path: string): BandOp {
 
 function bandFeature(v: JsonValue, path: string): BandFeature {
   const t = str(v, path);
-  if (t === 'width' || t === 'height' || t === 'orientation' || t === 'aspect-ratio' || t === 'resolution' || t === 'pointer' || t === 'any-pointer' || t === 'hover' || t === 'any-hover' || t === 'prefers-reduced-motion') return t;
+  if (t === 'width' || t === 'height' || t === 'orientation' || t === 'aspect-ratio' || t === 'resolution' || t === 'pointer' || t === 'any-pointer' || t === 'hover' || t === 'any-hover' || t === 'prefers-reduced-motion' || t === 'prefers-color-scheme') return t;
   return fail(`${path}: unknown band feature ${t}`);
 }
 
@@ -2732,7 +2732,7 @@ function bandAtom(v: JsonValue, path: string): BandAtom {
   if (a.length !== 3) return fail(`${path}: expected [feature, keyword, comparisons]`);
   const kw = str(item(a, 1, path), `${path}[1]`);
   let k: BandKeyword = 'none';
-  if (kw === 'portrait' || kw === 'landscape' || kw === 'none' || kw === 'any' || kw === 'coarse' || kw === 'fine' || kw === 'hover' || kw === 'no-preference' || kw === 'reduce') k = kw;
+  if (kw === 'portrait' || kw === 'landscape' || kw === 'none' || kw === 'any' || kw === 'coarse' || kw === 'fine' || kw === 'hover' || kw === 'no-preference' || kw === 'reduce' || kw === 'light' || kw === 'dark') k = kw;
   else return fail(`${path}[1]: unknown keyword ${kw}`);
   const comparisons: BandComparison[] = [];
   arr(item(a, 2, path), `${path}[2]`).forEach((c, i) => {
@@ -2770,10 +2770,10 @@ function rtBandResult(a: readonly JsonValue[]): string {
     const w = arg(g, 0);
     const hh = arg(g, 1);
     const dpr = arg(g, 2);
-    // MQ-R2: the readings as [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion].
+    // MQ-R2: the readings as [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion, darkScheme].
     const r = arr(item(g, 3, p), `${p}[3]`);
-    if (r.length !== 6) fail(`${p}[3]: expected [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion]`);
-    const env: BandEnvironment = { dpr, pointer: str(item(r, 0, p), `${p}[3][0]`), hover: bool(item(r, 1, p), `${p}[3][1]`), anyCoarse: bool(item(r, 2, p), `${p}[3][2]`), anyFine: bool(item(r, 3, p), `${p}[3][3]`), anyHover: bool(item(r, 4, p), `${p}[3][4]`), reducedMotion: bool(item(r, 5, p), `${p}[3][5]`) };
+    if (r.length !== 7) fail(`${p}[3]: expected [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion, darkScheme]`);
+    const env: BandEnvironment = { dpr, pointer: str(item(r, 0, p), `${p}[3][0]`), hover: bool(item(r, 1, p), `${p}[3][1]`), anyCoarse: bool(item(r, 2, p), `${p}[3][2]`), anyFine: bool(item(r, 3, p), `${p}[3][3]`), anyHover: bool(item(r, 4, p), `${p}[3][4]`), reducedMotion: bool(item(r, 5, p), `${p}[3][5]`), darkScheme: bool(item(r, 6, p), `${p}[3][6]`) };
     out += `${out === '' ? '' : ','}[${h(mediaSize(w, dpr))},${h(mediaSize(hh, dpr))},${h(bandAtPx(table, w, hh, env, noFaults))}]`;
   });
   return `[${out}]`;

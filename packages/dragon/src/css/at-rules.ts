@@ -6,7 +6,7 @@ import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { MediaQueryList } from '../media/index.ts';
-import { featuresOfList, parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
+import { parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
 import { charsetAtRule } from './at-rules/charset.ts';
@@ -76,12 +76,13 @@ export const acceptFontFace: AtRuleHandler = (at) => {
 };
 
 /** The media features @media may use (MQ-a, MQ-R0, MQ-R2), as the refusal names them. */
-const SUPPORTED_MEDIA_FEATURES = 'width, height, orientation, aspect-ratio, resolution, -webkit-device-pixel-ratio, pointer, any-pointer, hover, any-hover and prefers-reduced-motion';
+const SUPPORTED_MEDIA_FEATURES = 'width, height, orientation, aspect-ratio, resolution, -webkit-device-pixel-ratio, pointer, any-pointer, hover, any-hover, prefers-reduced-motion and prefers-color-scheme';
 
 /**
  * MQ-a, MQ-R0 and MQ-R2: @media whose features are all viewport features (width, height, orientation, aspect-ratio) or the
- * device features MQ-R2 reads (resolution, pointer, hover, prefers-reduced-motion; T067 R9) is conditional. A feature that
- * depends on the device or the user (until MQ-R2 or MQ-R3, notes/T067 §1) and a value Dragon does not evaluate are refused.
+ * device features MQ-R2 reads (resolution, pointer, hover, prefers-reduced-motion, prefers-color-scheme; T067 R9) is
+ * conditional. A feature that depends on the device or the user (until MQ-R3, notes/T067 §1) and a value Dragon does not
+ * evaluate are refused.
  */
 export const mediaAtRule: AtRuleHandler = (at) => {
   const prelude = at.node['prelude'] as CssNode | null | undefined;
@@ -90,10 +91,9 @@ export const mediaAtRule: AtRuleHandler = (at) => {
   const refused = refusalsOf(list);
   const env = refused.filter((r) => r.reason === 'environment').map((r) => r.feature);
   const values = refused.filter((r) => r.reason === 'value').map((r) => r.feature);
-  // T067 §1: the environment features MQ-R2 reads (R9), and the rest MQ-R3 does.
-  const envPackage = featuresOfList(list).every((f) => f.refused !== 'environment' || MQ_R2_FEATURES.has(f.base)) ? 'MQ-R2' : 'MQ-R3';
+  // T067 §1: MQ-R2 reads every environment feature R9 assigns it (DEVICE_FEATURES), so a refused one waits for MQ-R3.
   const why = env.length > 0
-    ? `${env.join(', ')} depends on the device or the user, which Dragon does not read yet (package ${envPackage})`
+    ? `${env.join(', ')} depends on the device or the user, which Dragon does not read yet (package MQ-R3)`
     : values.length > 0 ? `${values.join(', ')} uses a value Dragon does not evaluate` : null;
   if (why === null) return { kind: 'conditional', condition: { list, text, span: at.span } };
   return {
@@ -104,9 +104,6 @@ export const mediaAtRule: AtRuleHandler = (at) => {
     }),
   };
 };
-
-/** The environment features notes/T067 R9 assigns to package MQ-R2; every other one waits for MQ-R3. */
-const MQ_R2_FEATURES: ReadonlySet<string> = new Set(['prefers-color-scheme', 'prefers-reduced-motion', 'hover', 'any-hover', 'pointer', 'any-pointer', 'resolution', '-webkit-device-pixel-ratio']);
 
 /**
  * The known at-rules, keyed by lowercased name, one entry each so packages that support different at-rules edit different

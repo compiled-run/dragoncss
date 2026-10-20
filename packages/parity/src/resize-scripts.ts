@@ -3,8 +3,8 @@
 // first k steps, then a dump, so the device lanes compare frames, applied values and pixels after every step. Script k's reference
 // is the per-case program of (the app assignment after step k, the band MQ-R0's partition gives its size) laid out at that size,
 // Chrome's resize capture after step k at the device DPR, and Chrome's pixels after step k. MQ-R2: a script of a sheet with device
-// features starts by injecting Chrome's desktop readings (a mouse, no motion preference) and its env steps inject theirs, so the
-// device answers them as Chrome's emulation did; the band and program of a step can then differ by DPR (resolution).
+// features starts by injecting Chrome's desktop readings (a mouse, no motion preference, the light scheme) and its env steps inject
+// theirs, so the device answers them as Chrome's emulation did; the band and program of a step can then differ by DPR (resolution).
 import { rtBand } from '@dragon/layout';
 import type { MediaDevice, NativeBackend, NativeProgram, ScriptStep, StateEmit } from 'dragon';
 import { expectedDigest, expectedDump, nativeBandOfViewport, nativeBandPrograms, nativeBands } from 'dragon';
@@ -42,7 +42,7 @@ export type ResizePrefix = {
 const readsDevice = (c: ResizeCase): boolean => (nativeBands(c.compiled)?.table.atoms ?? []).some((a) => !['width', 'height', 'orientation', 'aspect-ratio'].includes(a.feature));
 
 /** Chrome's start readings, injected first by the script of a sheet that reads the device. */
-const START_STEPS: readonly ScriptStep[] = [{ kind: 'env', reading: 'pointer', value: 'desktop' }, { kind: 'env', reading: 'motion', value: 'no-preference' }];
+const START_STEPS: readonly ScriptStep[] = [{ kind: 'env', reading: 'pointer', value: 'desktop' }, { kind: 'env', reading: 'motion', value: 'no-preference' }, { kind: 'env', reading: 'scheme', value: 'light' }];
 
 /** Every prefix script of a resize case, with both backends' end programs at each DPR. */
 export function resizePrefixes(c: ResizeCase): ResizePrefix[] {

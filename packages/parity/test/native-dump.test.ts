@@ -6,7 +6,7 @@ import { NATIVE_DUMP_SCHEMA, REFERENCE_LANE, validateNativeDump } from '../src/n
 
 const edges = { left: 60, top: 60, right: 420, bottom: 180 };
 /** An iPhone's platform readings (MQ-R2): a touch screen, no motion preference. */
-const READINGS = { pointer: 'coarse', hover: 'none', anyPointer: ['coarse'], anyHover: 'none', reducedMotion: 'no-preference', source: 'platform', inputs: [0, 0] } as const;
+const READINGS = { pointer: 'coarse', hover: 'none', anyPointer: ['coarse'], anyHover: 'none', reducedMotion: 'no-preference', colorScheme: 'light', source: 'platform', inputs: [0, 0] } as const;
 const frame = { x: 20, y: 20, width: 120, height: 40 };
 
 /** A device dump with every field present and non-null, as P5 writes it. */
@@ -78,7 +78,7 @@ describe('the schema description', () => {
     expect(env(base)).toBe(false);
     expect(validateNativeDump({ ...v, schema: 'dragon.native-dump/2' }).ok).toBe(false);
     expect(env({ ...base, readings: { ...READINGS, pointer: 'coarse', anyPointer: ['coarse', 'fine'], anyHover: 'hover', source: 'injected' } })).toBe(true);
-    for (const bad of [{ pointer: 'touch' }, { hover: true }, { anyPointer: ['none'] }, { reducedMotion: 'reduced' }, { source: 'os' }, { inputs: ['4098'] }]) expect(env({ ...base, readings: { ...READINGS, ...bad } }), JSON.stringify(bad)).toBe(false);
+    for (const bad of [{ pointer: 'touch' }, { hover: true }, { anyPointer: ['none'] }, { reducedMotion: 'reduced' }, { colorScheme: 'dusk' }, { source: 'os' }, { inputs: ['4098'] }]) expect(env({ ...base, readings: { ...READINGS, ...bad } }), JSON.stringify(bad)).toBe(false);
   });
   it('a complete device dump validates, and so does a reference dump with its reference-only nulls', () => {
     expect(validateNativeDump(clone(deviceDump()))).toMatchObject({ ok: true });

@@ -2,9 +2,9 @@
 // fixture with @media bands: its native band table and root sizes in whole device px at DPR 1, 1.75, 2, 2.625, 3 and 3.5: every
 // whole px within 2 of each threshold at each DPR (where Chrome's 1/64 px slack and the float media size decide the band), squares
 // and the neighbours of every aspect ratio, and the Chrome measurements M4 (1080 x 2208 at 2.625) and the review's 1400 px at 3.5.
-// MQ-R2: a table with device atoms is also looked up with every pointer, hover and reduced-motion reading, at each DPR and at the
-// float scales next to each resolution query. The translate corpus runs them on the TypeScript harness for the expected results;
-// Swift and Kotlin must equal them. No browser.
+// MQ-R2: a table with device atoms is also looked up with every pointer, hover, reduced-motion and colour-scheme reading, at each
+// DPR and at the float scales next to each resolution query. The translate corpus runs them on the TypeScript harness for the
+// expected results; Swift and Kotlin must equal them. No browser.
 import type { rtBand } from '@dragon/layout';
 import { nativeBands } from 'dragon';
 import { FIXTURES } from './fixtures.ts';
@@ -21,23 +21,29 @@ function bitsHex(x: number): string {
 
 export const BAND_VECTORS_PATH = 'packages/layout/rt-vectors/band/cases.json';
 export const BAND_VECTOR_DPRS: readonly number[] = [1, 1.75, 2, 2.625, 3, 3.5];
-export const BAND_VECTORS_SCHEMA = 'dragon-band-vectors/2';
+/** /3 (MQ-R2's colour scheme) adds darkScheme to the readings. */
+export const BAND_VECTORS_SCHEMA = 'dragon-band-vectors/3';
 
-/** The readings as the harness takes them: [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion]. */
-type Readings = readonly [string, boolean, boolean, boolean, boolean, boolean];
+/** The readings as the harness takes them: [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion, darkScheme]. */
+type Readings = readonly [string, boolean, boolean, boolean, boolean, boolean, boolean];
 type Size = readonly [number, number, number, Readings];
 
-/** Headless Chrome's desktop readings (a mouse, no motion preference). */
-const DESKTOP: Readings = ['fine', true, false, true, true, false];
+/** Headless Chrome's desktop readings (a mouse, no motion preference, the light scheme). */
+const DESKTOP: Readings = ['fine', true, false, true, true, false, false];
 
-/** Every reading a device can report: the primary pointer one of those present, hover only when some device hovers. */
+/**
+ * Every reading a device can report (the primary pointer one of those present, hover only when some device hovers), with each
+ * motion and colour-scheme setting.
+ */
 export function allReadings(): Readings[] {
   const out: Readings[] = [];
   for (const [anyCoarse, anyFine] of [[false, false], [true, false], [false, true], [true, true]] as const) {
     const pointers = [...(anyCoarse ? ['coarse'] : []), ...(anyFine ? ['fine'] : [])];
     for (const pointer of pointers.length === 0 ? ['none'] : pointers) {
       for (const anyHover of [false, true]) {
-        for (const hover of anyHover ? [false, true] : [false]) for (const reducedMotion of [false, true]) out.push([pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion]);
+        for (const hover of anyHover ? [false, true] : [false]) {
+          for (const reducedMotion of [false, true]) for (const darkScheme of [false, true]) out.push([pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion, darkScheme]);
+        }
       }
     }
   }

@@ -11,7 +11,8 @@ import { DEVICE_FEATURES } from './features.ts';
 
 /**
  * MQ-R2 (T067 R9): the device readings the device features answer from. dpr is the device scale (resolution and
- * -webkit-device-pixel-ratio); pointer and hover are the primary pointing device's, anyPointer and anyHover every one's.
+ * -webkit-device-pixel-ratio); pointer and hover are the primary pointing device's, anyPointer and anyHover every one's;
+ * reducedMotion and colorScheme are the user's settings.
  */
 export type MediaDevice = {
   readonly dpr: number;
@@ -20,12 +21,16 @@ export type MediaDevice = {
   readonly hover: 'none' | 'hover';
   readonly anyHover: 'none' | 'hover';
   readonly reducedMotion: 'no-preference' | 'reduce';
+  readonly colorScheme: 'light' | 'dark';
 };
 
-/** Headless Chrome's desktop page at DPR 1 (M7): a mouse, no motion preference. Every capture without its own device is this. */
-export const DESKTOP_DEVICE: MediaDevice = { dpr: 1, pointer: 'fine', anyPointer: ['fine'], hover: 'hover', anyHover: 'hover', reducedMotion: 'no-preference' };
+/**
+ * Headless Chrome's desktop page at DPR 1 (M7): a mouse, no motion preference, the light scheme (Chrome's default, measured:
+ * the media corpus's (prefers-color-scheme: dark) never matches). Every capture without its own device is this.
+ */
+export const DESKTOP_DEVICE: MediaDevice = { dpr: 1, pointer: 'fine', anyPointer: ['fine'], hover: 'hover', anyHover: 'hover', reducedMotion: 'no-preference', colorScheme: 'light' };
 /** A touch-only page (hasTouch, with or without isMobile, M7): a coarse pointer that cannot hover. */
-export const TOUCH_DEVICE: MediaDevice = { dpr: 1, pointer: 'coarse', anyPointer: ['coarse'], hover: 'none', anyHover: 'none', reducedMotion: 'no-preference' };
+export const TOUCH_DEVICE: MediaDevice = { dpr: 1, pointer: 'coarse', anyPointer: ['coarse'], hover: 'none', anyHover: 'none', reducedMotion: 'no-preference', colorScheme: 'light' };
 
 export type MediaEnvironment = {
   readonly width: number;
@@ -129,8 +134,9 @@ function evaluateDevice(f: MediaFeature, d: MediaDevice, faults: MediaFaults): b
       return r.unit === 'dpcm' ? compareExact(twoDecimals(actual), op, twoDecimals(dppx)) : compareExact(actual, op, dppx);
     });
   }
-  const reading: readonly string[] = f.base === 'pointer' ? [d.pointer] : f.base === 'any-pointer' ? (d.anyPointer.length === 0 ? ['none'] : d.anyPointer) : f.base === 'hover' ? [d.hover] : f.base === 'any-hover' ? [d.anyHover] : [d.reducedMotion];
-  // The boolean form holds unless the reading is none (no-preference for prefers-reduced-motion).
+  const reading: readonly string[] = f.base === 'pointer' ? [d.pointer] : f.base === 'any-pointer' ? (d.anyPointer.length === 0 ? ['none'] : d.anyPointer) : f.base === 'hover' ? [d.hover] : f.base === 'any-hover' ? [d.anyHover] : f.base === 'prefers-color-scheme' ? [d.colorScheme] : [d.reducedMotion];
+  // The boolean form holds unless the reading is none (no-preference for prefers-reduced-motion). prefers-color-scheme has no such
+  // value, so its boolean form always holds (PrefersColorSchemeMediaFeatureEval returns true for a value-less query).
   if (f.form === 'boolean') return !reading.includes('none') && !reading.includes('no-preference');
   return reading.includes((f.value as MediaValue & { kind: 'ident' }).name);
 }

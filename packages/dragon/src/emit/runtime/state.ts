@@ -26,11 +26,13 @@ export type ScriptStep =
   /** MQ-R1 (T067 R7 (a)): the media root's new size in CSS px; the mount's root observes it and the machine moves the band. */
   | { readonly kind: 'resize'; readonly width: number; readonly height: number }
   /**
-   * MQ-R2 (T067 R9): new device readings, injected exactly: a touch screen's or a desktop mouse's pointer and hover readings, or the
-   * reduced-motion setting. Injected readings stay until the script ends; the platform's own changes no longer reach the machine.
+   * MQ-R2 (T067 R9): new device readings, injected exactly: a touch screen's or a desktop mouse's pointer and hover readings, the
+   * reduced-motion setting, or the colour scheme. Injected readings stay until the script ends; the platform's own changes no
+   * longer reach the machine.
    */
   | { readonly kind: 'env'; readonly reading: 'pointer'; readonly value: 'touch' | 'desktop' }
   | { readonly kind: 'env'; readonly reading: 'motion'; readonly value: 'reduce' | 'no-preference' }
+  | { readonly kind: 'env'; readonly reading: 'scheme'; readonly value: 'light' | 'dark' }
   /** Every pointer and hover reading at once (a touch screen with a mouse, no pointer at all...), as Chrome's --blink-settings set them. */
   | { readonly kind: 'env'; readonly reading: 'pointers'; readonly value: PointerReadings }
   | { readonly kind: 'dump' };
@@ -121,7 +123,7 @@ public struct DragonStateDelta {
 
 /// One case-script step: set state s to its v-th domain value, advance the virtual clock, resize the media root (CSS px), inject
 /// device readings (MQ-R2: env(0, v) the pointer, v 0 a desktop mouse and 1 a touch screen; env(1, v) reduced motion, v 1 reduce;
-/// env(2, bits) every pointer and hover reading, DragonReadings.pointers), or mark the dump.
+/// env(2, bits) every pointer and hover reading, DragonReadings.pointers; env(3, v) the colour scheme, v 1 dark), or mark the dump.
 public enum DragonScriptStep {
   case set(Int, Int)
   case advance(Double)
@@ -332,9 +334,10 @@ public final class DragonStateMount {
   /// render. display: drive the animator from the display (CADisplayLink) while it is busy; off for the lanes, whose clock is the script's.
   public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge, size: (Double, Double), display: Bool = false) {
     self.machine = machine; self.stage = stage; self.measurer = measurer; self.scale = scale; self.bridge = bridge
-    machine.readings = DragonReadings.platform()
     media = DragonMediaRoot(scale: scale)
     stage.addSubview(media)
+    // The colour scheme is the root's own trait collection, which it takes from the stage once it is in the hierarchy.
+    machine.readings = DragonReadings.platform(media)
     media.frame = CGRect(x: 0, y: 0, width: CGFloat(size.0), height: CGFloat(size.1))
     media.layoutIfNeeded()
     machine.resize(media.sizePx.0, media.sizePx.1, css: size, scale: scale)
@@ -351,7 +354,11 @@ public final class DragonStateMount {
     }
     observer = DragonReadingsObserver { [weak self] in
       guard let self = self, !self.injected else { return }
-      self.machine.setReadings(DragonReadings.platform())
+      self.machine.setReadings(DragonReadings.platform(self.media))
+    }
+    media.onStyle = { [weak self] in
+      guard let self = self, !self.injected else { return }
+      self.machine.setReadings(DragonReadings.platform(self.media))
     }
     // A clock step renders when the tree is next read (a script's dump) or at once on the display driver's tick.
     machine.onFrame = { [weak self] in self?.stale = true }
@@ -421,7 +428,7 @@ public struct DragonStateScript {
       case .set(let a, let b): m.machine.set(a, b)
       case .advance(let ms): m.machine.advance(ms)
       case .resize(let w, let h): m.resize(w, h)
-      case .env(let reading, let v): m.inject(reading == 0 ? m.machine.readings.pointing(touch: v == 1) : reading == 1 ? m.machine.readings.motion(reduce: v == 1) : m.machine.readings.pointers(v))
+      case .env(let reading, let v): m.inject(reading == 0 ? m.machine.readings.pointing(touch: v == 1) : reading == 1 ? m.machine.readings.motion(reduce: v == 1) : reading == 3 ? m.machine.readings.scheme(dark: v == 1) : m.machine.readings.pointers(v))
       case .dump: break
       }
     }
@@ -475,7 +482,7 @@ sealed class DragonScriptStep {
   class Resize(val width: Double, val height: Double) : DragonScriptStep()
   /**
    * MQ-R2: inject device readings: reading 0 the pointer (v 0 a desktop mouse, 1 a touch screen), reading 1 reduced motion (v 1
-   * reduce), reading 2 every pointer and hover reading (v the bits of DragonReadings.pointers).
+   * reduce), reading 2 every pointer and hover reading (v the bits of DragonReadings.pointers), reading 3 the colour scheme (v 1 dark).
    */
   class Env(val reading: Int, val v: Int) : DragonScriptStep()
   object Dump : DragonScriptStep()
@@ -738,6 +745,10 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     observer = DragonReadingsObserver(stage.context) {
       if (!injected) machine.setReadings(DragonReadings.platform(stage.context))
     }
+    // The colour scheme: the configuration the system hands the root when the night mode changes in place.
+    media.onConfiguration = { c ->
+      if (!injected) machine.setReadings(DragonReadings.platform(stage.context, c))
+    }
   }
 
   /** MQ-R2: a script's env step: the readings it names, exactly, from now on. */
@@ -795,7 +806,7 @@ class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateM
         is DragonScriptStep.Set -> m.machine.set(s.s, s.v)
         is DragonScriptStep.Advance -> m.machine.advance(s.ms)
         is DragonScriptStep.Resize -> m.resize(s.width, s.height)
-        is DragonScriptStep.Env -> m.inject(if (s.reading == 0) m.machine.readings.pointing(s.v == 1) else if (s.reading == 1) m.machine.readings.motion(s.v == 1) else m.machine.readings.pointers(s.v))
+        is DragonScriptStep.Env -> m.inject(if (s.reading == 0) m.machine.readings.pointing(s.v == 1) else if (s.reading == 1) m.machine.readings.motion(s.v == 1) else if (s.reading == 3) m.machine.readings.scheme(s.v == 1) else m.machine.readings.pointers(s.v))
         is DragonScriptStep.Dump -> {}
       }
     }
@@ -969,8 +980,8 @@ function stepLit(lang: Lang, sp: StateProgram, id: string, step: ScriptStep): st
       return lang === 'swift' ? `.resize(${doubleLit(step.width)}, ${doubleLit(step.height)})` : `DragonScriptStep.Resize(${doubleLit(step.width)}, ${doubleLit(step.height)})`;
     case 'env': {
       if (step.reading === 'pointers') return lang === 'swift' ? `.env(2, ${pointerBits(step.value)})` : `DragonScriptStep.Env(2, ${pointerBits(step.value)})`;
-      const reading = step.reading === 'pointer' ? 0 : 1;
-      const v = step.value === 'touch' || step.value === 'reduce' ? 1 : 0;
+      const reading = step.reading === 'pointer' ? 0 : step.reading === 'motion' ? 1 : 3;
+      const v = step.value === 'touch' || step.value === 'reduce' || step.value === 'dark' ? 1 : 0;
       return lang === 'swift' ? `.env(${reading}, ${v})` : `DragonScriptStep.Env(${reading}, ${v})`;
     }
     case 'dump':
