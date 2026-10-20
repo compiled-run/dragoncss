@@ -5,7 +5,7 @@
 // with its parent element's computed color in both renderings. A fixture's computedExtra background longhands must equal, in both
 // renderings, the initial value Dragon holds them at. There is no tolerance anywhere in this lane.
 import type { ElementColors, Rgba8 } from 'dragon';
-import { BACKGROUND_RESET_LONGHANDS, COLOR_LONGHANDS, LONGHANDS, parseComputedColor, serializeColor, WRITING_MODE_RESET_LONGHANDS } from 'dragon';
+import { BACKGROUND_RESET_LONGHANDS, COLOR_LONGHANDS, computedColorMatches, LONGHANDS, serializeColor, WRITING_MODE_RESET_LONGHANDS } from 'dragon';
 import type { WebCapture } from './capture.ts';
 
 export type DualNode = {
@@ -29,8 +29,6 @@ export type DualComparison = {
   readonly channelsEqual: number;
   readonly problems: readonly string[];
 };
-
-const sameChannels = (a: Rgba8, b: Rgba8): boolean => a.r === b.r && a.g === b.g && a.b === b.b && a.alpha === b.alpha;
 
 /** The element a captured text node belongs to: "<element>:text<k>" or "<element>:space<k>". */
 export function textParent(id: string): string {
@@ -82,10 +80,8 @@ export function compareDual(authored: WebCapture, compiled: WebCapture, colors: 
         for (const p of COLOR_LONGHANDS) {
           if (dragon === undefined) break;
           channelsCompared++;
-          const fromAuthored = parseComputedColor(String(ac[p]));
-          const fromCompiled = parseComputedColor(String(cc[p]));
           const mine = dragon[p];
-          if (fromAuthored !== null && fromCompiled !== null && sameChannels(fromAuthored, mine) && sameChannels(fromCompiled, mine)) channelsEqual++;
+          if (computedColorMatches(String(ac[p]), mine) && computedColorMatches(String(cc[p]), mine)) channelsEqual++;
           else problems.push(`${a.id}: ${p} channels authored "${String(ac[p])}" compiled "${String(cc[p])}" Dragon "${serializeColor(mine)}"`);
         }
       }
@@ -96,9 +92,8 @@ export function compareDual(authored: WebCapture, compiled: WebCapture, colors: 
       const cp = byId.get(parent);
       const mine = textColors.get(a.id);
       channelsCompared++;
-      const fromAuthored = ap === undefined || ap.computed === null ? null : parseComputedColor(String(ap.computed['color']));
-      const fromCompiled = cp === undefined || cp.computed === null ? null : parseComputedColor(String(cp.computed['color']));
-      if (mine !== undefined && fromAuthored !== null && fromCompiled !== null && sameChannels(fromAuthored, mine) && sameChannels(fromCompiled, mine)) channelsEqual++;
+      const matches = (n: typeof ap): boolean => mine !== undefined && n !== undefined && n.computed !== null && computedColorMatches(String(n.computed['color']), mine);
+      if (matches(ap) && matches(cp)) channelsEqual++;
       else problems.push(`${a.id}: text color authored parent "${String(ap?.computed?.['color'])}" compiled parent "${String(cp?.computed?.['color'])}" Dragon "${mine === undefined ? 'none' : serializeColor(mine)}"`);
     }
     nodes.push({ id: a.id, kind: a.kind, boxesEqual, valuesCompared, valuesEqual, channelsCompared, channelsEqual });

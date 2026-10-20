@@ -25,7 +25,8 @@ function item(name: string, v: string): Item {
   const value = code === null ? lh[0]?.value : undefined;
   if (value === undefined) return { name, v, code, value: null };
   const kw = value.kind === 'keyword' ? value.value : null;
-  const computed = kw === 'currentcolor' || (kw === 'auto' && name === 'caret-color') ? COLOR : kw === 'transparent' ? 'rgba(0, 0, 0, 0)' : valueText(value);
+  // A colour function's web text is nine digits (COL4), which Chrome computes to its six-digit css.
+  const computed = kw === 'currentcolor' || (kw === 'auto' && name === 'caret-color') ? COLOR : kw === 'transparent' ? 'rgba(0, 0, 0, 0)' : value.kind === 'color' && value.css !== undefined ? value.css : valueText(value);
   return { name, v, code, value: computed };
 }
 
@@ -79,7 +80,7 @@ describe('caret-color and accent-color: Chrome 145 parsing', () => {
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
-    expect(real.filter((it) => it.value !== null).length).toBe(26);
+    expect(real.filter((it) => it.value !== null).length).toBe(30);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
   }, 120_000);
 });

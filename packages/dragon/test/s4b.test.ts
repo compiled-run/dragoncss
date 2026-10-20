@@ -129,6 +129,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   it('(iii) colour conversion stays in css/color.ts', () => {
     for (const f of files(src)) {
       if (f.endsWith(join('css', 'color.ts'))) continue;
+      // COL4: css/color-space.ts ports Blink's Color, gfx colour conversions and skcms in float32 (Math.fround) with color.ts; only that file.
+      if (f.endsWith(join('css', 'color-space.ts'))) continue;
       // The font metrics port Blink's float32 arithmetic (Math.fround, floorf), so src/fonts/** is exempt by path.
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.

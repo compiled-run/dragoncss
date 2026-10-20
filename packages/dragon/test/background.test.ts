@@ -45,7 +45,7 @@ describe('background shorthand: parse and expansion', () => {
     ['red', { kind: 'color', value: { r: 255, g: 0, b: 0, alpha: 255 }, syntax: 'named-color' }],
     ['#0f0', { kind: 'color', value: { r: 0, g: 255, b: 0, alpha: 255 }, syntax: 'hex-color' }],
     ['rgb(1 2 3 / 50%)', { kind: 'color', value: { r: 1, g: 2, b: 3, alpha: 128 }, syntax: 'rgb()' }],
-    ['hsla(120, 100%, 25%, 0.5)', { kind: 'color', value: { r: 0, g: 128, b: 0, alpha: 128 }, syntax: 'hsla()' }],
+    ['hsla(120, 100%, 25%, 0.5)', { kind: 'color', value: { r: 0, g: 128, b: 0, alpha: 128 }, syntax: 'hsla()', fractional: true }],
     ['transparent', { kind: 'keyword', value: 'transparent' }],
     ['currentcolor', { kind: 'keyword', value: 'currentcolor' }],
   ];
@@ -183,11 +183,11 @@ describe('background shorthand: refusals', () => {
   }
 
   it('a colour outside the subset is refused on the colour token with the colour fix', () => {
-    const { declaration, diagnostics, css } = declare('none lab(50% 40 59)');
+    const { declaration, diagnostics, css } = declare('none light-dark(red, blue)');
     expect(declaration).toBeNull();
     expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
-    expect(spanOf(css, diagnostics[0] as Diagnostic)).toBe('lab(50% 40 59)');
-    expect((diagnostics[0] as Diagnostic).message).toMatch(/^background: lab\(50% 40 59\) is unsupported/);
+    expect(spanOf(css, diagnostics[0] as Diagnostic)).toBe('light-dark(red, blue)');
+    expect((diagnostics[0] as Diagnostic).message).toMatch(/^background: light-dark\(red, blue\) is unsupported/);
   });
 
   it('invalid syntax is DRAGON_CSS_INVALID_VALUE: colour outside the final layer, size without a position, three boxes, two colours', () => {

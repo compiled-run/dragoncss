@@ -120,7 +120,7 @@ describe('createProject().compile() and check()', () => {
   });
 
   it('refuses colour syntax outside the milestone subset with DRAGON_UNSUPPORTED_VALUE on its span', () => {
-    for (const value of ['lab(50% 40 59)', 'color-mix(in srgb, red, blue)', 'Canvas', 'light-dark(red, blue)', 'hwb(1 2% 3%)', 'oklch(0.5 0.1 20)']) {
+    for (const value of ['color-mix(in srgb, currentcolor, blue)', 'Canvas', 'light-dark(red, blue)', 'rgb(from currentcolor r g b)', 'color(display-p3 1 0 0 / 0.5)']) {
       const css = `.a { color: ${value}; }`;
       const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
       const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');

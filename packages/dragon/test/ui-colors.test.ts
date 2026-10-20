@@ -54,7 +54,7 @@ describe('caret-color and accent-color: registry and parse', () => {
     for (const name of UI_COLORS_LONGHANDS) {
       for (const v of ['auto', 'AUTO', 'red', 'currentcolor', 'transparent', '#abc', 'rgb(1 2 3 / 50%)', 'hsl(120 50% 50%)', 'inherit', 'var(--x)']) expect(parse(v, name).codes, `${name}: ${v}`).toEqual([]);
       for (const v of ['auto auto', 'red blue', 'red auto', 'none', '1px']) expect(parse(v, name).codes, `${name}: ${v}`).toEqual(['DRAGON_CSS_INVALID_VALUE']);
-      for (const v of ['color-mix(in srgb, red, blue)', 'oklch(0.5 0.1 120)']) expect(parse(v, name).codes, `${name}: ${v}`).not.toEqual([]);
+      for (const v of ['light-dark(red, blue)', 'color(display-p3 1 0 0 / 0.5)']) expect(parse(v, name).codes, `${name}: ${v}`).not.toEqual([]);
     }
   });
 });

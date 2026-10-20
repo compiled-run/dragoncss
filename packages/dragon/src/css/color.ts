@@ -1,16 +1,27 @@
 // Colour resolution for the milestone subset (css-color-4). This is the only file in the core that converts or rounds colours.
 // Chrome 145 keeps legacy sRGB colours (named, hex, rgb(), hsl()) as 8-bit channels; each rule below was measured against it.
+import { generate, parse } from 'css-tree';
 import type { CssNode, List } from 'css-tree';
+import type { ColorSpace, HueMethod } from './color-space.ts';
+import { BlinkColor, isLegacySpace } from './color-space.ts';
 import { asciiLower } from './escapes.ts';
 
 /** 8-bit sRGB channels and alpha, each an integer in [0, 255], as Chrome stores legacy colours. */
 export type Rgba8 = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
 
 /** The authored notation, which names the support-profile feature. */
-export type ColorSyntax = 'hex-color' | 'named-color' | 'rgb()' | 'rgba()' | 'hsl()' | 'hsla()';
+export type ColorSyntax =
+  | 'hex-color' | 'named-color' | 'rgb()' | 'rgba()' | 'hsl()' | 'hsla()'
+  | 'hwb()' | 'lab()' | 'lch()' | 'oklab()' | 'oklch()' | 'color()' | 'color-mix()' | 'relative-color';
 
 export type ColorParse =
-  | { readonly ok: true; readonly kind: 'rgba'; readonly value: Rgba8; readonly syntax: ColorSyntax }
+  /** css is Chrome's computed serialization when it is not the rgb()/rgba() of the 8-bit value (COL4 colour functions). */
+  /**
+   * css: Chrome's computed serialization, when it is not the 8-bit rgb() one; web: that colour to nine significant digits, which web
+   * output writes so Chrome paints the same bytes. oklab: Chrome animates it in oklab (Color::GetColorInterpolationSpace).
+   * fractional: an hsl() or hwb() colour Chrome interpolates in float sRGB between 8-bit steps.
+   */
+  | { readonly ok: true; readonly kind: 'rgba'; readonly value: Rgba8; readonly syntax: ColorSyntax; readonly css?: string; readonly web?: string; readonly oklab?: true; readonly fractional?: true }
   | { readonly ok: true; readonly kind: 'keyword'; readonly keyword: 'transparent' | 'currentcolor' }
   | { readonly ok: false; readonly reason: string };
 
@@ -204,6 +215,431 @@ export function parseColorNode(node: CssNode): ColorParse {
   return { ok: false, reason: `${node.type} is not a supported colour` };
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// COL4 colour functions: color-mix(), relative colours (<function>(from <color> ...)), hwb(), lab(), lch(), oklab(), oklch() and
+// color(), parsed as Chrome 145 parses them (third_party/blink/renderer/core/css/properties/css_color_function_parser.cc,
+// css_parsing_utils.cc ConsumeColorMixFunction) and resolved in the Blink colour model of css/color-space.ts.
+
+type Refusal = { readonly refused: string };
+const refusal = (refused: string): Refusal => ({ refused });
+const isRefusal = (v: unknown): v is Refusal => typeof v === 'object' && v !== null && 'refused' in v;
+
+const FUNCTION_SPACE: { readonly [name: string]: ColorSpace } = { rgb: 'rgb', rgba: 'rgb', hsl: 'hsl', hsla: 'hsl', hwb: 'hwb', lab: 'lab', lch: 'lch', oklab: 'oklab', oklch: 'oklch' };
+// ColorSpaceFromColorSpaceArgument; rec2100-linear sits behind a runtime flag that Chrome 145 leaves off (display-p3-linear does not).
+const PREDEFINED_SPACE: { readonly [name: string]: ColorSpace } = {
+  srgb: 'srgb', 'srgb-linear': 'srgb-linear', 'display-p3': 'display-p3', 'display-p3-linear': 'display-p3-linear', 'a98-rgb': 'a98-rgb', 'prophoto-rgb': 'prophoto-rgb', rec2020: 'rec2020',
+  xyz: 'xyz-d65', 'xyz-d50': 'xyz-d50', 'xyz-d65': 'xyz-d65',
+};
+const MIX_SPACE: { readonly [name: string]: ColorSpace } = { ...PREDEFINED_SPACE, lab: 'lab', oklab: 'oklab', lch: 'lch', oklch: 'oklch', hsl: 'hsl', hwb: 'hwb' };
+const POLAR: ReadonlySet<ColorSpace> = new Set(['hsl', 'hwb', 'lch', 'oklch']);
+const HUE_METHODS: ReadonlySet<string> = new Set(['shorter', 'longer', 'increasing', 'decreasing']);
+
+/** ColorFunction::MetadataForColorSpace: each channel's keyword and the number 100% stands for (NaN: percentages do not apply). */
+function channelMetadata(space: ColorSpace): { readonly names: readonly [string, string, string]; readonly percent: readonly [number, number, number] } {
+  switch (space) {
+    case 'rgb':
+      return { names: ['r', 'g', 'b'], percent: [255, 255, 255] };
+    case 'xyz-d50':
+    case 'xyz-d65':
+      return { names: ['x', 'y', 'z'], percent: [1, 1, 1] };
+    case 'lab':
+      return { names: ['l', 'a', 'b'], percent: [100, 125, 125] };
+    case 'oklab':
+      return { names: ['l', 'a', 'b'], percent: [1, 0.4, 0.4] };
+    case 'lch':
+      return { names: ['l', 'c', 'h'], percent: [100, 150, NaN] };
+    case 'oklch':
+      return { names: ['l', 'c', 'h'], percent: [1, 0.4, NaN] };
+    case 'hsl':
+      return { names: ['h', 's', 'l'], percent: [NaN, 100, 100] };
+    case 'hwb':
+      return { names: ['h', 'w', 'b'], percent: [NaN, 100, 100] };
+    default:
+      return { names: ['r', 'g', 'b'], percent: [1, 1, 1] };
+  }
+}
+
+const isHueChannel = (space: ColorSpace, i: number): boolean => ((space === 'hsl' || space === 'hwb') && i === 0) || ((space === 'lch' || space === 'oklch') && i === 2);
+const ident = (n: CssNode | undefined): string | null => (n !== undefined && n.type === 'Identifier' ? asciiLower(String(n['name'])) : null);
+// css-tree keeps the whitespace around + and - in calc() (" + "), which CSS requires there.
+const isOperator = (n: CssNode | undefined, op: string): boolean => n !== undefined && n.type === 'Operator' && String(n['value']).trim() === op;
+
+const isRelative = (n: CssNode): boolean => n.type === 'Function' && ident(list(n, 'children').find((c) => c.type !== 'WhiteSpace')) === 'from';
+
+/**
+ * A value's text with each relative colour (a function whose first argument is from) replaced by #000, for the webref grammar check:
+ * the grammar's rgb()/hsl()/lab() productions do not name the channel keywords, so the relative colour is validated by parseColorValue
+ * as Blink's css_color_function_parser.cc does. Null when the value has no relative colour.
+ */
+export function relativeColorGrammarText(node: CssNode): string | null {
+  let found = false;
+  const text = (n: CssNode): string => {
+    if (isRelative(n)) {
+      found = true;
+      return '#000';
+    }
+    if (n.type === 'Function') return `${String(n['name'])}(${list(n, 'children').map(text).join(' ')})`;
+    if (n.type === 'Parentheses') return `(${list(n, 'children').map(text).join(' ')})`;
+    if (n.type === 'Value') return list(n, 'children').map(text).join(' ');
+    return generate(n);
+  };
+  const out = text(node);
+  return found ? out : null;
+}
+
+// The canonical angle units of css-values-4 §7.1, as CSSPrimitiveValue::ComputeDegrees applies them (css_primitive_value.cc).
+function degreesOf(n: CssNode): number | null {
+  const v = Number(n['value']);
+  switch (asciiLower(String(n['unit']))) {
+    case 'deg':
+      return v;
+    case 'rad':
+      return v * (180 / Math.PI);
+    case 'grad':
+      return v * 0.9;
+    case 'turn':
+      return v * 360;
+    default:
+      return null;
+  }
+}
+
+/**
+ * A relative colour channel as Blink's CalculationValue evaluates it (calculation_value.cc, calculation_expression_node.cc): float32
+ * at every step, channel keywords replaced by the origin's parameters. Supports numbers, channel keywords, + - * /, parentheses and
+ * calc(), min(), max() and clamp(); percentages, angles and other math functions inside a calculation are refused.
+ */
+type Calc = (keywords: ReadonlyMap<string, number>) => number;
+
+function calcExpression(nodes: readonly CssNode[], names: ReadonlySet<string>): Calc | Refusal {
+  const items = nodes.filter((n) => n.type !== 'WhiteSpace');
+  let at = 0;
+  const value = (): Calc | Refusal => {
+    const n = items[at++];
+    if (n === undefined) return refusal('a calculation in a relative colour ends early');
+    if (n.type === 'Number') {
+      const v = f32(Number(n['value']));
+      return () => v;
+    }
+    if (n.type === 'Identifier') {
+      const name = asciiLower(String(n['name']));
+      if (!names.has(name)) return refusal(`${name} is not a channel keyword of this relative colour`);
+      return (k) => k.get(name) as number;
+    }
+    if (n.type === 'Parentheses') return calcExpression(list(n, 'children'), names);
+    if (n.type === 'Function') return mathFunction(n, names);
+    return refusal(`${n.type} inside a relative colour calculation is not supported yet (COL4 takes numbers and channel keywords)`);
+  };
+  const product = (): Calc | Refusal => {
+    let left = value();
+    while (!isRefusal(left) && (isOperator(items[at], '*') || isOperator(items[at], '/'))) {
+      const divide = isOperator(items[at++], '/');
+      const right = value();
+      if (isRefusal(right)) return right;
+      const l = left;
+      // css_math_expression_node.cc rewrites a / b as a * (1 / b); kInvert evaluates 1.0 / b in double and returns a float.
+      left = divide ? (k) => f32(l(k) * f32(1 / right(k))) : (k) => f32(l(k) * right(k));
+    }
+    return left;
+  };
+  let sum = product();
+  while (!isRefusal(sum) && (isOperator(items[at], '+') || isOperator(items[at], '-'))) {
+    const minus = isOperator(items[at++], '-');
+    const right = product();
+    if (isRefusal(right)) return right;
+    const l = sum;
+    sum = minus ? (k) => f32(l(k) - right(k)) : (k) => f32(l(k) + right(k));
+  }
+  if (!isRefusal(sum) && at !== items.length) return refusal('a relative colour calculation has a token it cannot read');
+  return sum;
+}
+
+function mathFunction(fn: CssNode, names: ReadonlySet<string>): Calc | Refusal {
+  const name = asciiLower(String(fn['name']));
+  const args: CssNode[][] = [[]];
+  for (const c of list(fn, 'children')) {
+    if (isOperator(c, ',')) args.push([]);
+    else (args[args.length - 1] as CssNode[]).push(c);
+  }
+  const parts = args.map((a) => calcExpression(a, names));
+  const bad = parts.find(isRefusal);
+  if (bad !== undefined) return bad;
+  const f = parts as Calc[];
+  if (name === 'calc' && f.length === 1) return f[0] as Calc;
+  if (name === 'min') return (k) => f.reduce((m, g) => Math.min(m, g(k)), (f[0] as Calc)(k));
+  if (name === 'max') return (k) => f.reduce((m, g) => Math.max(m, g(k)), (f[0] as Calc)(k));
+  if (name === 'clamp' && f.length === 3) return (k) => Math.max((f[0] as Calc)(k), Math.min((f[1] as Calc)(k), (f[2] as Calc)(k)));
+  return refusal(`${name}() in a relative colour channel is not supported yet (COL4 takes calc(), min(), max() and clamp())`);
+}
+
+/** One parsed channel: none, a resolved number (angles in degrees), a percentage, or a relative channel (keyword or calculation). */
+type Channel =
+  | { readonly t: 'none' }
+  | { readonly t: 'number'; readonly v: number }
+  | { readonly t: 'percent'; readonly v: number }
+  | { readonly t: 'relative'; readonly calc: Calc };
+
+function channel(n: CssNode | undefined, hue: boolean, relative: ReadonlySet<string> | null): Channel | Refusal {
+  if (n === undefined) return refusal('a colour function is missing a channel');
+  if (ident(n) === 'none') return { t: 'none' };
+  if (n.type === 'Number') return { t: 'number', v: Number(n['value']) };
+  if (hue && n.type === 'Dimension') {
+    const d = degreesOf(n);
+    return d === null ? refusal(`${String(n['unit'])} is not an angle unit`) : { t: 'number', v: d };
+  }
+  if (!hue && n.type === 'Percentage') return { t: 'percent', v: Number(n['value']) };
+  if (relative !== null && n.type === 'Identifier' && relative.has(asciiLower(String(n['name'])))) {
+    const name = asciiLower(String(n['name']));
+    return { t: 'relative', calc: (k) => k.get(name) as number };
+  }
+  if (n.type === 'Function' && ['calc', 'min', 'max', 'clamp'].includes(asciiLower(String(n['name'])))) {
+    if (relative === null) return refusal('calc() in a colour channel is not supported yet (COL4)');
+    const calc = mathFunction(n, relative);
+    return isRefusal(calc) ? calc : { t: 'relative', calc };
+  }
+  return refusal(`${n.type === 'Identifier' ? String(n['name']) : n.type} is not a valid colour channel here`);
+}
+
+/** ColorFunctionParser::MakePerColorSpaceAdjustments. */
+function adjust(relative: boolean, legacy: boolean, space: ColorSpace, channels: (number | null)[], alpha: number | null): number | null {
+  for (let i = 0; i < 3; i++) {
+    const v = channels[i];
+    if (v === null || v === undefined || !isHueChannel(space, i)) continue;
+    const finite = Number.isFinite(v) ? v : 0;
+    channels[i] = (((finite % 360) + 360) % 360);
+  }
+  let a = alpha;
+  if (space === 'rgb') {
+    for (let i = 0; i < 3; i++) {
+      const v = channels[i];
+      if (v === null || v === undefined) continue;
+      if (!Number.isFinite(v)) channels[i] = v > 0 ? 255 : 0;
+      else if (!relative) channels[i] = clamp(v, 0, 255);
+    }
+    if (!relative && a !== null) a = Math.round(a * 255) / 255;
+  }
+  if (space === 'hsl' || space === 'hwb') {
+    for (const i of [1, 2]) {
+      const v = channels[i];
+      if (v === null || v === undefined) continue;
+      const val = v / 100;
+      channels[i] = legacy ? clamp(val, 0, 1) : relative ? val : Math.max(0, val);
+    }
+  }
+  return a;
+}
+
+type Parsed = { readonly color: BlinkColor; readonly relative: boolean; readonly mix: boolean };
+
+/** ColorFunctionParser::ConsumeFunctionalSyntaxColor and, for relative colours, StyleColor::UnresolvedRelativeColor::Resolve. */
+function functionalColor(fn: CssNode, name: string): Parsed | Refusal {
+  const items = list(fn, 'children').filter((c) => c.type !== 'WhiteSpace');
+  let at = 0;
+  let origin: BlinkColor | null = null;
+  if (ident(items[0]) === 'from') {
+    const o = blinkColor(items[1]);
+    if (isRefusal(o)) return o;
+    origin = o.color;
+    at = 2;
+  }
+  let space: ColorSpace | undefined = FUNCTION_SPACE[name];
+  if (name === 'color') {
+    const arg = ident(items[at++]);
+    space = arg === null ? undefined : PREDEFINED_SPACE[arg];
+    if (space === undefined) return refusal(`color() needs a predefined colour space, not ${arg ?? 'that'}`);
+  }
+  if (space === undefined) return refusal(`${name}() is not a colour function`);
+  const meta = channelMetadata(space);
+  const keywords = origin === null ? null : new Set([...meta.names, 'alpha']);
+  const channels: Channel[] = [];
+  let legacy = false;
+  for (let i = 0; i < 3; i++) {
+    const c = channel(items[at++], isHueChannel(space, i), keywords);
+    if (isRefusal(c)) return c;
+    channels.push(c);
+    if (i < 2 && isOperator(items[at], ',')) {
+      if (i === 1 && !legacy) return refusal(`${name}() mixes commas and spaces`);
+      if (origin !== null) return refusal('a relative colour cannot use commas');
+      legacy = true;
+      at++;
+    } else if (i < 2 && legacy) {
+      return refusal(`${name}() mixes commas and spaces`);
+    }
+  }
+  let alpha: Channel | null = null;
+  if (legacy ? isOperator(items[at], ',') : isOperator(items[at], '/')) {
+    if (legacy && space !== 'rgb' && space !== 'hsl' && space !== 'hwb') return refusal(`${name}() has no comma syntax`);
+    at++;
+    const a = items[at++];
+    const c = a !== undefined && a.type === 'Percentage' ? ({ t: 'percent', v: Number(a['value']) } as Channel) : channel(a, false, keywords);
+    if (isRefusal(c)) return c;
+    alpha = c;
+  }
+  if (at !== items.length) return refusal(`${name}() has more arguments than a colour takes`);
+  if (legacy) {
+    if (channels.some((c) => c.t === 'none') || alpha?.t === 'none') return refusal('none is not part of the legacy comma syntax');
+    if (space === 'rgb' && channels.some((c) => c.t === 'percent') && channels.some((c) => c.t === 'number')) return refusal('rgb() with commas takes all numbers or all percentages');
+    if (space === 'hwb') return refusal('hwb() has no comma syntax');
+    if (space === 'hsl' && (channels[1]?.t === 'number' || channels[2]?.t === 'number')) return refusal('hsl() with commas takes percentages for saturation and lightness');
+  }
+
+  if (origin === null) {
+    const values = channels.map((c, i) => (c.t === 'none' ? null : c.t === 'percent' ? (c.v / 100) * (meta.percent[i] as number) : (c as { v: number }).v));
+    let a: number | null = 1;
+    if (alpha !== null) a = alpha.t === 'none' ? null : alpha.t === 'percent' ? clamp(alpha.v / 100, 0, 1) : clamp((alpha as { v: number }).v, 0, 1);
+    a = adjust(false, legacy, space, values, a);
+    return { color: BlinkColor.of(space, values[0] as number | null, values[1] as number | null, values[2] as number | null, a), relative: false, mix: false };
+  }
+
+  const resolved = origin.copy();
+  resolved.convert(space);
+  const values = new Map<string, number>([
+    [meta.names[0], resolved.p[0]],
+    [meta.names[1], space === 'hsl' || space === 'hwb' ? f32(resolved.p[1] * 100) : resolved.p[1]],
+    [meta.names[2], space === 'hsl' || space === 'hwb' ? f32(resolved.p[2] * 100) : resolved.p[2]],
+    ['alpha', resolved.alpha],
+  ]);
+  const evaluate = (c: Channel, percent: number): number | null => {
+    if (c.t === 'none') return null;
+    const max = f32(Number.isNaN(percent) ? 3.4028234663852886e38 : percent);
+    if (c.t === 'relative') return f32(c.calc(values));
+    if (c.t === 'percent') return f32(f32(f32(f32(c.v) / 100) * max));
+    return f32(c.v);
+  };
+  const params = channels.map((c, i) => evaluate(c, meta.percent[i] as number));
+  const alphaParam = alpha === null ? resolved.alpha : evaluate(alpha, 1);
+  // Probed on Chrome 145: calc(1 / 0) in a relative channel computes to a huge finite value (1.33444e+36), not infinity.
+  if ([...params, alphaParam].some((v) => v !== null && !Number.isFinite(v))) return refusal('a relative colour channel calculation is infinite or NaN (it divides by zero), which Dragon does not carry (COL4)');
+  const a = adjust(true, false, space, params, alphaParam);
+  return { color: BlinkColor.of(space, params[0] as number | null, params[1] as number | null, params[2] as number | null, a), relative: true, mix: false };
+}
+
+/** ConsumeColorMixFunction, CSSColorMixValue::NormalizePercentages and Color::FromColorMix. */
+function colorMix(fn: CssNode): Parsed | Refusal {
+  const items = list(fn, 'children').filter((c) => c.type !== 'WhiteSpace');
+  let at = 0;
+  let space: ColorSpace = 'oklab';
+  let hue: HueMethod = 'shorter';
+  if (ident(items[0]) === 'in') {
+    const name = ident(items[1]);
+    const s = name === null ? undefined : MIX_SPACE[name];
+    if (s === undefined) return refusal(`color-mix() cannot interpolate in ${name ?? 'that'}`);
+    space = s;
+    at = 2;
+    const method = ident(items[at]);
+    if (POLAR.has(space) && method !== null && HUE_METHODS.has(method)) {
+      if (ident(items[at + 1]) !== 'hue') return refusal(`color-mix() needs hue after ${method}`);
+      hue = method as HueMethod;
+      at += 2;
+    }
+    if (!isOperator(items[at++], ',')) return refusal('color-mix() needs a comma after its interpolation method');
+  }
+  const operand = (): { readonly color: BlinkColor; readonly percent: number | null } | Refusal => {
+    let percent: number | null = null;
+    let color: BlinkColor | null = null;
+    for (let k = 0; k < 2 && at < items.length && !isOperator(items[at], ','); k++) {
+      const n = items[at++] as CssNode;
+      if (n.type === 'Percentage' && percent === null) {
+        percent = Number(n['value']);
+        if (percent < 0 || percent > 100) return refusal('a color-mix() percentage must be between 0% and 100%');
+      } else if (color === null) {
+        const c = blinkColor(n);
+        if (isRefusal(c)) return c;
+        color = c.color;
+      } else {
+        return refusal('a color-mix() operand is one colour and an optional percentage');
+      }
+    }
+    return color === null ? refusal('a color-mix() operand needs a colour') : { color, percent };
+  };
+  const first = operand();
+  if (isRefusal(first)) return first;
+  if (!isOperator(items[at++], ',')) return refusal('color-mix() takes two colours separated by a comma');
+  const second = operand();
+  if (isRefusal(second)) return second;
+  if (at !== items.length) return refusal('color-mix() takes two colours');
+  if (first.percent === 0 && second.percent === 0) return refusal('color-mix() percentages cannot both be 0%');
+  let p1 = first.percent === null ? 0.5 : first.percent / 100;
+  let p2 = second.percent === null ? 0.5 : second.percent / 100;
+  if (first.percent !== null && second.percent === null) p2 = 1 - p1;
+  else if (second.percent !== null && first.percent === null) p1 = 1 - p2;
+  let alphaMultiplier = 1;
+  const scale = p1 + p2;
+  if (scale !== 0) {
+    p1 /= scale;
+    p2 /= scale;
+    if (scale <= 1) alphaMultiplier = scale;
+  }
+  const amount = p1 === 0 ? 1 : p2;
+  return { color: BlinkColor.mix(space, hue, first.color, second.color, amount, alphaMultiplier), relative: false, mix: true };
+}
+
+/** Any <color> as a Blink colour; currentcolor and system colours are refused. */
+function blinkColor(node: CssNode | undefined): Parsed | Refusal {
+  if (node === undefined) return refusal('a colour is missing');
+  if (node.type === 'Hash') {
+    const h = fromHex(String(node['value']));
+    return h.ok && h.kind === 'rgba' ? { color: BlinkColor.rgba32(h.value.r, h.value.g, h.value.b, h.value.alpha), relative: false, mix: false } : refusal(h.ok ? 'not a colour' : h.reason);
+  }
+  if (node.type === 'Identifier') {
+    const name = asciiLower(String(node['name']));
+    if (name === 'transparent') return { color: BlinkColor.rgba32(0, 0, 0, 0), relative: false, mix: false };
+    if (name === 'currentcolor') return refusal('currentcolor inside a colour function resolves on each element; Dragon does not resolve it there yet (COL4)');
+    const hex = NAMED[name];
+    if (hex === undefined) return refusal(`the colour keyword ${name} is not supported (system colours depend on the platform)`);
+    return { color: BlinkColor.rgba32((hex >> 16) & 255, (hex >> 8) & 255, hex & 255, 255), relative: false, mix: false };
+  }
+  if (node.type === 'Function') {
+    const name = asciiLower(String(node['name']));
+    if (name === 'color-mix') return colorMix(node);
+    if (name === 'color' || FUNCTION_SPACE[name] !== undefined) return functionalColor(node, name);
+    return refusal(`${name}() colours are not supported yet`);
+  }
+  return refusal(`${node.type} is not a colour`);
+}
+
+const syntaxOf = (node: CssNode, p: Parsed): ColorSyntax =>
+  p.mix ? 'color-mix()' : p.relative ? 'relative-color' : node.type === 'Function' ? (`${asciiLower(String(node['name']))}()` as ColorSyntax) : 'named-color';
+
+/**
+ * A property's <color>: the legacy forms as parseColorNode resolves them, and the COL4 colour functions in Chrome's colour model,
+ * carrying Chrome's computed serialization (css) and the 8-bit colour Chrome paints.
+ */
+export function parseColorValue(node: CssNode): ColorParse {
+  if (node.type !== 'Function') return parseColorNode(node);
+  const name = asciiLower(String(node['name']));
+  const relative = ident(list(node, 'children').find((c) => c.type !== 'WhiteSpace')) === 'from';
+  if (!relative && (name === 'rgb' || name === 'rgba' || name === 'hsl' || name === 'hsla')) {
+    const legacy = parseColorNode(node);
+    if (!legacy.ok || legacy.kind !== 'rgba') return legacy;
+    // color.cc GetColorInterpolationSpace: a legacy colour with a none component animates in oklab.
+    if (list(node, 'children').some((c) => ident(c) === 'none')) return { ...legacy, oklab: true };
+    const hsl = name === 'hsl' || name === 'hsla' ? blinkColor(node) : null;
+    return hsl !== null && !isRefusal(hsl) && fractionalSrgb(hsl.color) ? { ...legacy, fractional: true } : legacy;
+  }
+  const p = blinkColor(node);
+  if (isRefusal(p)) return { ok: false, reason: p.refused };
+  const color = p.color.copy();
+  // style_builder_converter.cc ResolveColorValue: a relative colour or color-mix() that resolves to a legacy space is color(srgb ...);
+  // rgb() carries its missing components across, hsl() and hwb() resolve them.
+  if ((p.relative || p.mix) && (color.space === 'rgb' || color.space === 'hsl' || color.space === 'hwb')) color.convert('srgb', color.space !== 'rgb');
+  if (!color.finite()) return { ok: false, reason: 'the colour has an infinite or NaN channel, which Dragon does not carry (COL4)' };
+  // Probed on Chrome 145: a translucent colour outside the sRGB gamut blends before it clamps, so its 8-bit colour paints differently.
+  if (color.alpha < 1 && color.alpha > 0 && color.toSrgb().some((v) => v < 0 || v > 1)) {
+    return { ok: false, reason: `${color.serialize()} is translucent and outside the sRGB gamut; Chrome blends it before clamping, which an 8-bit colour cannot reproduce (COL4)` };
+  }
+  const value = { ok: true, kind: 'rgba', value: color.paintChannels(), syntax: syntaxOf(node, p), css: color.serialize(), web: color.serialize(9) } as const;
+  if (!isLegacySpace(color.space) || color.none.some((n) => n) || color.alphaNone) return { ...value, oklab: true };
+  return fractionalSrgb(color) ? { ...value, fractional: true } : value;
+}
+
+/**
+ * An hsl() or hwb() colour whose sRGB channels fall between 8-bit steps: Chrome keeps and interpolates them in float (hwb(10 20% 30%)
+ * has red 178.5), so an animation between its 8-bit bytes differs from Chrome's at a step.
+ */
+const fractionalSrgb = (c: BlinkColor): boolean =>
+  (c.space === 'hsl' || c.space === 'hwb') && c.toSrgb().some((v) => Math.abs(v * 255 - Math.round(v * 255)) > 1e-3);
+
 export const TRANSPARENT: Rgba8 = { r: 0, g: 0, b: 0, alpha: 0 };
 
 /** Chrome's paint alpha byte of an opacity: @dragon/layout paint.ts opacityAlpha8 (Skia's getAlpha, in float), pinned equal by test. */
@@ -228,14 +664,53 @@ export function serializeColor(c: Rgba8): string {
   return c.alpha === 255 ? `rgb(${c.r}, ${c.g}, ${c.b})` : `rgba(${c.r}, ${c.g}, ${c.b}, ${serializeAlpha(c.alpha)})`;
 }
 
-/** Parses Chrome's computed colour string back into channels; null for anything else. */
+/**
+ * Parses Chrome's computed colour string back into the 8-bit colour it paints: a legacy rgb()/rgba(), or (COL4) the color(), lab(),
+ * lch(), oklab() and oklch() forms Chrome computes the colour functions to, through Chrome's colour model; null for anything else, and
+ * for a colour function text that is not its own computed serialization.
+ */
 export function parseComputedColor(text: string): Rgba8 | null {
   const m = /^rgba?\((\d{1,3}), (\d{1,3}), (\d{1,3})(?:, (0|1|0?\.\d+))?\)$/.exec(text);
-  if (m === null) return null;
+  if (m === null) return /^(color|lab|lch|oklab|oklch)\(/.test(text) ? parseComputedColorFunction(text) : null;
   const alphaText = m[4];
   const alpha = alphaText === undefined ? 255 : Math.round(Number(alphaText) * 255);
   if (alphaText !== undefined && serializeAlpha(alpha) !== alphaText) return null;
   return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]), alpha };
+}
+
+/** A computed colour function text as the 8-bit colour it reparses to, and per channel whether its float sits at a .5 step of 255. */
+function computedColorFunction(text: string): { readonly paint: Rgba8; readonly halfStep: readonly boolean[] } | null {
+  let node: CssNode | undefined;
+  try {
+    node = (parse(text, { context: 'value' })['children'] as { toArray(): CssNode[] }).toArray()[0];
+  } catch {
+    return null;
+  }
+  if (node === undefined || node.type !== 'Function') return null;
+  // Not parseColorValue: six digits can put a translucent colour Chrome holds in gamut a hair outside it, which Dragon would refuse.
+  const p = blinkColor(node);
+  if (isRefusal(p) || !p.color.finite() || p.color.serialize() !== text) return null;
+  const half = (v: number): boolean => Math.abs(((Math.min(1, Math.max(0, v)) * 255) % 1) - 0.5) < 0.01;
+  return { paint: p.color.paintChannels(), halfStep: [...p.color.toSrgb(), p.color.alpha].map(half) };
+}
+
+const parseComputedColorFunction = (text: string): Rgba8 | null => computedColorFunction(text)?.paint ?? null;
+
+/**
+ * Whether Chrome's computed colour text is the 8-bit colour Dragon paints. A legacy rgb()/rgba() text is exact. A colour function
+ * text carries six significant digits, so a channel Chrome holds at a .5 step of 255 can reparse one step off what Chrome paints
+ * (color(srgb 0.5 0.75098 0.5) is 191.5 for green, painted 192): such a channel may differ by one, and every other must be exact.
+ * The painted bytes are proven exactly by the pixel lanes and test/color-functions.test.ts.
+ */
+export function computedColorMatches(text: string, mine: Rgba8): boolean {
+  if (text.startsWith('rgb')) {
+    const got = parseComputedColor(text);
+    return got !== null && got.r === mine.r && got.g === mine.g && got.b === mine.b && got.alpha === mine.alpha;
+  }
+  const f = computedColorFunction(text);
+  if (f === null) return false;
+  const pairs = [[f.paint.r, mine.r], [f.paint.g, mine.g], [f.paint.b, mine.b], [f.paint.alpha, mine.alpha]] as const;
+  return pairs.every(([got, want], i) => got === want || (f.halfStep[i] === true && Math.abs(got - want) === 1));
 }
 
 /** The colour-only planted fault: moves every red channel by one step without touching anything else. */
