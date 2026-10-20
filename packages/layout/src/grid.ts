@@ -2349,8 +2349,9 @@ function outOfFlowItem(ctx: Ctx, grid: GridState, box: LayoutBox): GridOutOfFlow
   const inlineEdge = outOfFlowEdge(ctx, grid, box, 'columns');
   const blockEdge = outOfFlowEdge(ctx, grid, box, 'rows');
   const gi = box.style.gridItem;
-  // Blink IsAbsoluteContainer: only a positioned grid container is the containing block, whose rectangle is the grid area.
-  if (grid.style.position === 'static' || gi === null) return { box, inlineStart: null, inlineEnd: null, blockStart: null, blockEnd: null, inlineEdge, blockEdge };
+  // Blink IsAbsoluteContainer: only a positioned grid container is the containing block, whose rectangle is the grid area; never
+  // a fixed box's, whose containing block is the viewport (CSS2 §10.1 item 3).
+  if (grid.style.position === 'static' || box.style.position === 'fixed' || gi === null) return { box, inlineStart: null, inlineEnd: null, blockStart: null, blockEnd: null, inlineEdge, blockEdge };
   const columns = outOfFlowLines(ctx, outOfFlowSpan(grid.columnTracks, gi.column, ctx.gridFaults), grid.columnStartOffset, grid.columns);
   const rows = outOfFlowLines(ctx, outOfFlowSpan(grid.rowTracks, gi.row, ctx.gridFaults), grid.rowStartOffset, grid.rows);
   return {

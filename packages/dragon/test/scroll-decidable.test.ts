@@ -163,6 +163,14 @@ describe('OVFL-B: the compiler refuses an undecided native scroll container', ()
     expect(refusals(pctHeight)).toEqual(both(`${prefix('p')}a percentage height on a box whose end margins may collapse through it: its basis is not decided here (OVFL-B)`));
   });
 
+  it('POSX-f: a fixed box inside auto or scroll is refused on ios and android only (it would scroll with the native content)', () => {
+    const fixed = compile('.f { position: fixed; top: 0; width: 10px; height: 10px; } .k { height: 50px; }', (r) => [div(r, 'k', ['k']), div(r, 'f', ['f'])]);
+    const errors = fixed.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target}: ${d.message}`).sort();
+    const m = 'the fixed f inside the scroll container a would scroll with its content on native, where Chrome keeps it in place (package POSX-f)';
+    expect(errors).toEqual([`DRAGON_UNSUPPORTED_VALUE android: ${m}`, `DRAGON_UNSUPPORTED_VALUE ios: ${m}`]);
+    expect([fixed.outputs.ios.kind, fixed.outputs.android.kind, fixed.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
+  });
+
   it('a decidable scroll container compiles everywhere, and hidden is never refused (it is no scroll view)', () => {
     const ok = compile('.p { height: 50%; padding-bottom: 1px; } .k { height: 10px; margin-bottom: 5px; }', (r) => [div(r, 'p', ['p'], [div(r, 'k', ['k'], [text(r, 't', 'XX')])])]);
     expect(ok.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);

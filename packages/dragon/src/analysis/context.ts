@@ -62,12 +62,14 @@ export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'grid' | 
 /**
  * Row contexts. Item properties of a positioned box carry the positioning scheme: a relative box its parent's context and
  * direction (its containing block); an absolute box the context and direction of its parent (which gives its static position)
- * and the direction of its containing block. Paint properties carry only the element's direction.
+ * and the direction of its containing block; a fixed box likewise, its containing block the viewport (POSX-f). Paint properties
+ * carry only the element's direction.
  */
 export type FormattingContext =
   | `${BoxContext}/${DirectionFacet}`
   | `relative-in-${ItemBase}/${DirectionFacet}`
   | `absolute-in-${ItemBase}/${DirectionFacet}/cb-${DirectionFacet}`
+  | `fixed-in-${ItemBase}/${DirectionFacet}/cb-${DirectionFacet}`
   | `paint/${DirectionFacet}`
   | TextContext;
 
@@ -129,6 +131,8 @@ export function formattingContext(property: Longhand, el: ResolvedElement, ances
   const position = keyword(el, 'position');
   if (position === 'relative') return `relative-in-${base}/${dir}`;
   if (position === 'absolute') return `absolute-in-${base}/${dir}/cb-${containingBlockDirection(el, ancestors)}`;
+  // POSX-f: a fixed box's containing block is the viewport (CSS2 §10.1 item 3), in the root's direction.
+  if (position === 'fixed') return `fixed-in-${base}/${dir}/cb-${directionFacet(ancestors.length === 0 ? el : (ancestors[0] as ResolvedElement))}`;
   return `${base}/${dir}`;
 }
 
@@ -157,9 +161,9 @@ export function textContext(el: ResolvedElement, parent: ResolvedElement | null)
   // CSS2 §9.2.1.1: text beside block-level boxes is wrapped in an anonymous block.
   if (el.children.some((c) => c.kind === 'element' && keyword(c, 'display') !== 'none')) return `text-in-anonymous-block/${dir}`;
   // css-flexbox-1 §4.1: an absolutely positioned child of a flex container is not a flex item.
-  if (parent !== null && isFlexContainer(parent) && keyword(el, 'position') !== 'absolute') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
+  if (parent !== null && isFlexContainer(parent) && keyword(el, 'position') !== 'absolute' && keyword(el, 'position') !== 'fixed') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
   // css-grid-2 §9: an absolutely positioned child of a grid container is not a grid item.
-  if (parent !== null && isGridContainer(parent) && keyword(el, 'position') !== 'absolute') return `text-in-grid-item/${dir}`;
+  if (parent !== null && isGridContainer(parent) && keyword(el, 'position') !== 'absolute' && keyword(el, 'position') !== 'fixed') return `text-in-grid-item/${dir}`;
   return `text-in-block/${dir}`;
 }
 

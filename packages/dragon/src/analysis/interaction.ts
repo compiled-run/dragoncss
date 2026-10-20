@@ -529,20 +529,22 @@ export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedV
 }
 
 /**
- * FLT: the first float in block flow of a resolved tree whose float compiles, in preorder, or null. rt-hit.ts refuses a float in a
- * block or inline-block container (no Chrome hit capture yet).
+ * The first box of a resolved tree the hit table does not model whose value compiles, in preorder, or null: a float in block flow
+ * (FLT), which rt-hit.ts refuses in a block or inline-block container, and a fixed box (POSX-f). No Chrome hit capture has them yet.
  */
-export function hitUnmodelledFloat(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): string | null {
+export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box'; readonly pkg: 'FLT' | 'POSX-f' } | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
     const v = el.props.get(p);
     return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
   };
-  const visit = (el: ResolvedElement): string | null => {
+  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box'; pkg: 'FLT' | 'POSX-f' } | null => {
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
       const f = c.props.get('float');
-      if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return c.element.address;
+      const p = c.props.get('position');
+      if (p !== undefined && key(c, 'position') === 'fixed' && compiles(p)) return { address: c.element.address, kind: 'fixed box', pkg: 'POSX-f' };
+      if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return { address: c.element.address, kind: 'float', pkg: 'FLT' };
       const found = visit(c);
       if (found !== null) return found;
     }

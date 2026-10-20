@@ -213,7 +213,11 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
     if (b.kind === 'replaced') return;
     for (const k of b.children) {
       if (k.kind !== 'box' && k.kind !== 'replaced') continue;
-      if (isOutOfFlow(ctx, k)) {
+      if (isOutOfFlow(ctx, k) && k.style.position === 'fixed') {
+        // POSX-f: a fixed box's containing block is the viewport, and it is in no box's scrollable overflow, the viewport's
+        // included: scrolling never moves it (css-overflow-3 §2.2; Blink skips fixed-position descendants of the LayoutView).
+        walk(k, b, icbWidth, nextPositioned, true);
+      } else if (isOutOfFlow(ctx, k)) {
         // CSS2 §10.1: the containing block is the padding box of the nearest positioned ancestor, or the initial one.
         const cb = nextPositioned;
         const key = cb === null ? '' : cb.id;

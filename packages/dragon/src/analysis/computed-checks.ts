@@ -577,15 +577,17 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Wrap the text beside the absolutely positioned element in its own element, or position a descendant of the root instead.', basis: 'computed-value' }));
     }
   };
-  if (isRoot && keywordOf(el.props.get('position') as ResolvedValue) === 'absolute') refuse(el, `position: absolute on the root element ${el.element.address} is not supported in milestone 1`);
+  const own = keywordOf(el.props.get('position') as ResolvedValue);
+  if (isRoot && (own === 'absolute' || own === 'fixed')) refuse(el, `position: ${own} on the root element ${el.element.address} is not supported in milestone 1`);
   // Inline content: text, or an inline box (INL1a), beside which the box would take a static position in the formatting context.
   if (!el.children.some((c) => c.kind === 'text' || displayKeyword(c) === 'inline' || isAtomic(c))) return;
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
-    if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
+    const pos = keywordOf(c.props.get('position') as ResolvedValue);
+    if (pos !== 'absolute' && pos !== 'fixed') continue;
     refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
-      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination`
-      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
+      ? `position: ${pos} on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination`
+      : `position: ${pos} on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
   }
 }
 
@@ -650,6 +652,38 @@ function checkFloats(root: ResolvedElement, propagated: ResolvedElement | null, 
     }
   };
   walk(root, [], { at: null, parent: null });
+}
+
+// POSX-f2 (css-position-3 §2.1, filter-effects-1 §5, css-will-change-1 §3): a filter, or will-change naming filter or perspective,
+// makes an element the containing block of its fixed descendants, which the engine places against the viewport: refused on every
+// target (transforms are refused in paint-values/transform.ts). POSX-f: a native fixed box is a view of its parent's host, so in an
+// auto or scroll container it would scroll with the container's content (the native viewport itself does not scroll yet): refused on
+// ios and android. Both at the fixed box's position declaration.
+function checkFixedContainingBlocks(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (el: ResolvedElement, on: readonly string[], what: string, message: string, manual: string): void => {
+    const v = el.props.get('position') as ResolvedValue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of on) {
+      const id = `${t}|fixed-${what}|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  const holderWhat = (h: ResolvedElement): string => (keywordOf(h.props.get('filter') as ResolvedValue) !== 'none' ? 'a filter' : `will-change: ${elementWillChange(h).join(', ')}`);
+  const walk = (el: ResolvedElement, holder: ResolvedElement | null, scroller: ResolvedElement | null): void => {
+    if (displayKeyword(el) === 'none') return;
+    if (keywordOf(el.props.get('position') as ResolvedValue) === 'fixed') {
+      const address = el.element.address;
+      if (holder !== null) refuse(el, targets, 'cb', `${holderWhat(holder)} on ${holder.element.address} makes it the containing block of the fixed ${address} (filter-effects-1 §5, css-will-change-1 §3; package POSX-f2)`, `Move ${address} outside ${holder.element.address}.`);
+      else if (scroller !== null) refuse(el, native, 'scroller', `the fixed ${address} inside the scroll container ${scroller.element.address} would scroll with its content on native, where Chrome keeps it in place (package POSX-f)`, `Move ${address} outside ${scroller.element.address}.`);
+    }
+    const filtered = keywordOf(el.props.get('filter') as ResolvedValue) !== 'none' || elementWillChange(el).some((p) => p === 'filter' || p === 'perspective');
+    const scrolls = el !== propagated && (['overflow-x', 'overflow-y'] as const).some((p) => ['auto', 'scroll'].includes(keywordOf(el.props.get(p) as ResolvedValue)));
+    for (const c of el.children) if (c.kind === 'element') walk(c, filtered ? el : holder, scrolls ? el : scroller);
+  };
+  walk(root, null, null);
 }
 
 const RATIO_BLOCK_SIZES: readonly Longhand[] = ['height', 'min-height', 'max-height'];
@@ -1120,6 +1154,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   walk(root, false, 'viewport');
   // FLT: floats beside what the engine does not move (checkFloats).
   checkFloats(root, propagated, targets, diagnostics, reported);
+  // POSX-f2: fixed boxes whose containing block a filter would make (checkFixedContainingBlocks).
+  checkFixedContainingBlocks(root, propagated, targets, diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

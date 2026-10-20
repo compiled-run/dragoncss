@@ -121,7 +121,7 @@ const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto',
 
 export const styleSchema = obj({
   display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
-  position: lit('static', 'relative', 'absolute'),
+  position: lit('static', 'relative', 'absolute', 'fixed'),
   float: lit('none', 'left', 'right'),
   top: inset,
   right: inset,
@@ -524,7 +524,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (isRecord(style)) {
       if (style['overflowX'] !== style['overflowY']) errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
       // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
-      if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
+      if (style['position'] === 'absolute' || style['position'] === 'fixed') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
       checkFloat(value, style, path, parentId, errors);
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
@@ -540,7 +540,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   const style = value['style'];
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
-  if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
+  if (isAtomic(value) && isRecord(style) && (style['position'] === 'absolute' || style['position'] === 'fixed')) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
   if (isAtomic(value) && parentId === null) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'the root box is blockified: it is never inline-block, inline-flex or inline-grid' });
   if (isRecord(style)) checkFloat(value, style, path, parentId, errors);
   const children = childrenOf(value, path, errors);
@@ -593,7 +593,7 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
     if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced') || !isRecord(child['style'])) return;
     const cs = child['style'];
     const item = cs['gridItem'];
-    const outOfFlow = cs['position'] === 'absolute';
+    const outOfFlow = cs['position'] === 'absolute' || cs['position'] === 'fixed';
     const at = `${path}.children[${i}].style.gridItem`;
     if (isGrid !== (item !== null && item !== undefined)) bad(at, 'a grid placement is written for each child of a grid container and only there');
     if (!isRecord(item)) return;
@@ -723,7 +723,7 @@ const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'te
 function checkFloat(node: Record<string, unknown>, style: Record<string, unknown>, path: string, parentId: string | null, errors: ValidationError[]): void {
   if (style['float'] !== 'left' && style['float'] !== 'right') return;
   if (parentId === null) errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'the root box does not float' });
-  if (style['position'] === 'absolute') errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'an absolutely positioned box does not float (its float computes to none)' });
+  if (style['position'] === 'absolute' || style['position'] === 'fixed') errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'an absolutely positioned box does not float (its float computes to none)' });
   if (isAtomic(node)) errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'a float is blockified: it is never an atomic inline' });
 }
 
@@ -969,7 +969,7 @@ export function validateLayoutInput(json: unknown): ValidationResult {
       errors.push({ path: '$.root.style.gridItem', code: 'grid-shape', message: 'the root box is not a grid item' });
     }
     // CSS2 §10.1: the root box is laid out in the initial containing block; the engine places it in flow.
-    if (isRecord(root) && isRecord(root['style']) && root['style']['position'] === 'absolute') {
+    if (isRecord(root) && isRecord(root['style']) && (root['style']['position'] === 'absolute' || root['style']['position'] === 'fixed')) {
       errors.push({ path: '$.root.style.position', code: 'bad-value', message: 'the root box cannot be absolutely positioned' });
     }
   }

@@ -25,7 +25,7 @@ import { ProgramError } from './types.ts';
 /** One box of the stacking tree: its positioning, z-index (null for auto or where it has no effect), opacity and clip. */
 export type StackNode = {
   readonly id: string;
-  /** fixed and sticky come from the resolved tree only (the engine refuses them; POSX-f): both always make a stacking context. */
+  /** fixed (POSX-f) and sticky (from the resolved tree only; the engine refuses it) always make a stacking context. */
   readonly position: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
   /** The z-index when it applies (a positioned box, or a flex or grid item: Blink StyleAdjuster), else null. */
   readonly z: number | null;
@@ -358,7 +358,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       id: b.id,
       position: b.style.position,
       z: b.style.position !== 'static' || item ? z : null,
-      ...(item && b.style.position !== 'absolute' ? { order: b.style.order } : {}),
+      ...(item && b.style.position !== 'absolute' && b.style.position !== 'fixed' ? { order: b.style.order } : {}),
       opacity,
       transformed: el !== null && transformedForStacking(el),
       // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), and overflow never applies to an inline box.

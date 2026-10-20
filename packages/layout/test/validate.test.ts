@@ -46,7 +46,7 @@ describe('validateLayoutInput', () => {
   it('S4b: rejects bad position and inset fields, a missing inset, and an absolutely positioned root', () => {
     const bad = clone(good) as unknown as { root: { style: Record<string, unknown>; children: { style: Record<string, unknown> }[] } };
     const kid = bad.root.children[0] as { style: Record<string, unknown> };
-    kid.style['position'] = 'fixed';
+    kid.style['position'] = 'sticky';
     kid.style['top'] = { kind: 'em', value: 1 };
     kid.style['left'] = { kind: 'px', value: Number.NaN };
     delete kid.style['bottom'];

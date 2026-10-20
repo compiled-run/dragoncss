@@ -27,7 +27,12 @@ import { unsupported } from './unsupported.ts';
 
 /** CSS2 §9.3.1: an absolutely positioned box leaves the flow (planted fault absposInFlow lays it out as static). */
 export function isOutOfFlow(ctx: Ctx, box: LayoutNode): boolean {
-  return box.style.position === 'absolute' && !ctx.faults.absposInFlow;
+  return isAbsolutelyPositioned(box) && !ctx.faults.absposInFlow;
+}
+
+/** CSS2 §9.6: position absolute or fixed (fixed is absolute positioning against the viewport, §9.6.1). */
+export function isAbsolutelyPositioned(box: LayoutNode): boolean {
+  return box.style.position === 'absolute' || box.style.position === 'fixed';
 }
 
 /**

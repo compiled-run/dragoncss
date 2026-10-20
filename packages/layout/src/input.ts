@@ -131,8 +131,11 @@ export type AspectRatioValue =
  * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
 export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
-/** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
-export type Position = 'static' | 'relative' | 'absolute';
+/**
+ * CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4), and so does fixed, whose
+ * containing block is the viewport (§10.1 item 3, POSX-f). sticky is refused by the compiler.
+ */
+export type Position = 'static' | 'relative' | 'absolute' | 'fixed';
 /**
  * CSS2 §9.5: a float leaves the flow and is shifted to the left or right of its containing block (FLT). The compiler computes none
  * for an absolutely positioned box (§9.7) and on the root; a flex or grid item ignores it. inline-start and inline-end are refused.

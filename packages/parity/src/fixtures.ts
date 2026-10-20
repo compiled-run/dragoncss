@@ -22,6 +22,7 @@ import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FILTER } from './fixture-groups/filter.ts';
+import { FIXED } from './fixture-groups/fixed.ts';
 import { FLOAT } from './fixture-groups/float.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
@@ -157,6 +158,7 @@ export const GROUPS = {
   effects: EFFECTS,
   env: ENV,
   filter: FILTER,
+  fixed: FIXED,
   float: FLOAT,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,

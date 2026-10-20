@@ -10,7 +10,7 @@ export type ScrollUndecided = { readonly containerId: string; readonly nodeId: s
 type Child = LayoutBox | ReplacedLeaf | InlineChild;
 
 const isNode = (k: Child): k is LayoutBox | ReplacedLeaf => k.kind === 'box' || k.kind === 'replaced';
-const outOfFlow = (k: LayoutNode): boolean => k.style.position === 'absolute';
+const outOfFlow = (k: LayoutNode): boolean => k.style.position === 'absolute' || k.style.position === 'fixed';
 const userScrolls = (b: LayoutNode): boolean => b.kind === 'box' && [b.style.overflowX, b.style.overflowY].some((o) => o === 'auto' || o === 'scroll');
 const scrollContainer = (b: LayoutNode): boolean => [b.style.overflowX, b.style.overflowY].some((o) => o === 'hidden' || o === 'auto' || o === 'scroll');
 const hasInlineContent = (b: LayoutBox): boolean => b.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br');
@@ -50,8 +50,10 @@ function oofsOf(b: LayoutNode): LayoutNode[] {
   const walk = (p: LayoutBox): void => {
     for (const k of p.children) {
       if (!isNode(k)) continue;
-      if (outOfFlow(k)) out.push(k);
-      else if (k.kind === 'box' && k.style.position === 'static') walk(k);
+      // A fixed box's containing block is the viewport, and it is in no scrollable overflow (overflow.ts indexOf).
+      if (outOfFlow(k)) {
+        if (k.style.position === 'absolute') out.push(k);
+      } else if (k.kind === 'box' && k.style.position === 'static') walk(k);
     }
   };
   walk(b);
@@ -72,7 +74,7 @@ function unknownPadding(root: LayoutBox): ReadonlySet<string> {
     const grid = b.style.display === 'grid' || b.style.display === 'inline-grid';
     for (const k of b.children) {
       if (!isNode(k)) continue;
-      walk(k, outOfFlow(k) ? !(grid && b.style.position !== 'static') : known && !grid);
+      walk(k, k.style.position === 'fixed' || (outOfFlow(k) ? !(grid && b.style.position !== 'static') : known && !grid));
     }
   };
   walk(root, true);

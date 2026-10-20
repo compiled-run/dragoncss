@@ -113,8 +113,10 @@ function parents(root: LayoutBox): Map<string, LayoutBox> {
 }
 
 // CSS2 §10.1 items 4 and 1: the containing block of an absolutely positioned box is the padding box of its nearest positioned
-// ancestor, or the initial containing block (planted fault cbIgnoresPadding uses the content box, px padding only).
+// ancestor, or the initial containing block (planted fault cbIgnoresPadding uses the content box, px padding only). Item 3: a
+// fixed box's is the viewport, which at scroll offset 0 is the initial containing block (POSX-f).
 function containingBlock(ctx: Ctx, box: LayoutBox, parentOf: Map<string, LayoutBox>, out: Placement, icb: ContainingBlock): ContainingBlock {
+  if (box.style.position === 'fixed') return icb;
   let at = parentOf.get(box.id);
   while (at !== undefined && at.style.position === 'static') at = parentOf.get(at.id);
   if (at === undefined) return icb;
