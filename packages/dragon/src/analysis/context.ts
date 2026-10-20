@@ -7,6 +7,7 @@ import { featureOf } from '../css/stylesheet.ts';
 import type { FamilyKeyContext } from '../css/values.ts';
 import { GENERATED_TAGS } from './elements.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
+import { markerOf } from './resolve.ts';
 
 /** The direction facet (docs/api.md §10.1): a left-to-right proof never covers right-to-left. */
 export type DirectionFacet = 'ltr' | 'rtl';
@@ -216,6 +217,14 @@ export function usedKeys(root: ResolvedElement, fonts?: FamilyKeyContext): UsedK
       const feature = featureOf(p, v.declared);
       const context = p === 'content' && GENERATED_TAGS.has(el.element.tag) ? pseudoContext(el, chain) : formattingContext(p, el, chain);
       out.push({ key: rowKey(feature, context), feature, context, property: p, declaration: v.declaration, address: el.element.address });
+    }
+    // A list item's ::marker takes only color from its own rules (generated.ts markerRuleRefusals), keyed in the paint context.
+    const marker = markerOf(el);
+    const color = marker === undefined ? undefined : (marker.props.get('color') as ResolvedValue);
+    if (marker !== undefined && color !== undefined && color.declaration !== null && color.declared !== null) {
+      const feature = featureOf('color', color.declared);
+      const context = formattingContext('color', marker, [...chain, el]);
+      out.push({ key: rowKey(feature, context), feature, context, property: 'color', declaration: color.declaration, address: marker.element.address });
     }
     for (const c of el.children) {
       if (c.kind === 'element') {

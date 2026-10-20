@@ -1,0 +1,14 @@
+{
+  "case": "text-tab-size-ahem",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a4:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"a0:text0","data":"XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"af:text0","data":"XXXX XX","lines":2,"units":[0,0,0,0,0,1,1],"blank":[4]},
+    {"id":"inh:text0","data":"XX XXX XX","lines":2,"units":[0,0,0,0,0,0,0,1,1],"blank":[6]},
+    {"id":"aem:text0","data":"XXXXX X","lines":2,"units":[0,0,0,0,0,0,1],"blank":[5]},
+    {"id":"ra:text0","data":"XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"rb:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

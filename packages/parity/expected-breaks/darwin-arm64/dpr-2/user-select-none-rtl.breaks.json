@@ -11,6 +11,10 @@
     {"id":"v:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
     {"id":"f1:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
     {"id":"f2:text0","data":"X","lines":1,"units":[0],"blank":[]},
-    {"id":"abs:text0","data":"X","lines":1,"units":[0],"blank":[]}
+    {"id":"abs:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"au:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"tx:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"tk:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"wt:text0","data":"X","lines":1,"units":[0],"blank":[]}
   ]
 }

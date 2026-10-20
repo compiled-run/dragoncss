@@ -283,7 +283,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity and stacking fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -325,7 +325,12 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
           const byId = new Map(boxes(p, c.environment.viewport, dpr).map((b) => [b.node.id, b]));
           return casePoints(p, c.environment.viewport, dpr).some((pt) => effectsModelAt(items, byId, pt.x, pt.y, dpr).join() !== effectsModelAt(planted, byId, pt.x, pt.y, dpr).join());
         });
-        if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
+        // opacity-fold's groups fold into their fills, so it has no opacity write for the plant to ignore: its alpha is the fills'
+        // (of-f's 0.00196 rounds to byte 0, of-g's 0.999 to 255, and of-i has no fill).
+        if (spec.id === 'opacity-fold') {
+          expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'opacity')).map((n) => n.id)).toEqual([]);
+          expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-color' && w.color.alpha > 0 && w.color.alpha < 255)).map((n) => n.id)).toEqual(['of-a', 'of-b', 'of-d', 'of-e', 'of-h', 'of-j']);
+        } else if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
         if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
       });
     }
@@ -334,13 +339,13 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
 
 // The cases of the rest of the corpus whose paint order PNT1 changes (every layer item gets a placement): the model in the Appendix E
 // order equals Chrome at every non-edge point. A case is left out only for paint the model does not draw, each named by modelOut and
-// pinned in OUT below, so a new case outside the model is seen: an image, a web view or background layers (gradients), a transform
+// pinned in OUT below, so a new case outside the model is seen: an image, a web view, background layers (gradients) or a url() layer, a transform
 // other than a whole-device-px translation, a border style other than solid, or flow siblings the engine lays out in another order than the tree's (flex order and
 // reversed directions: Chrome paints them in order-modified document order, which the native views follow and the model does not).
 function modelOut(p: NativeProgram, viewport: { width: number; height: number }): string | null {
   for (const n of p.nodes) {
     for (const w of n.writes) {
-      if (w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'background-layers') return `${n.id} draws ${w.kind}`;
+      if (w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'background-layers' || w.kind === 'background-image') return `${n.id} draws ${w.kind}`;
       if (w.kind === 'border-styles' && w.styles.some((x) => x !== 'solid' && x !== 'none' && x !== 'hidden')) return `${n.id} has a ${w.styles.join(' ')} border`;
     }
   }
@@ -410,8 +415,9 @@ describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'
   }
 });
 
-// The fractional opacity cases (opacity-web): native refuses a fraction (PNT1-opacity-b), so the lanes compile the fixture as a
-// lane-only case, which proves web rows only, and the device pixel lanes skip what its translucent groups paint.
+// The fractional opacity cases (opacity-web): native refuses a fraction on a group of more than one fill (PNT1-opacity-b), so the
+// lanes compile the fixture as a lane-only case, which proves web rows only, and the device pixel lanes skip what its translucent
+// groups paint. opacity-fold holds only groups of one opaque fill, which native draws folded into the fill.
 describe('PNT1 opacity: fractions are proven on web only', () => {
   const spec = FIXTURES.find((f) => f.id === 'opacity-web');
   it('is lane-only on native, refused by name in a user compile, and its groups are the device lanes\' blind spot alone', () => {
@@ -429,8 +435,10 @@ describe('PNT1 opacity: fractions are proven on web only', () => {
       for (const dpr of DPRS) {
         const all = casePoints(r.programs.uikit, c.environment.viewport, dpr);
         const kept = devicePoints(r.programs.uikit, c.environment.viewport, dpr);
-        // Every point named for a group's node goes; the stage, rows and spacers keep theirs.
-        expect(kept.filter((q) => /^[a-z-]+:ow-/.test(q.rule)), `${c.id}@${dpr}`).toEqual([]);
+        // Every point named for a group's node goes; the stage, rows and spacers keep theirs, and so do ow-fold and ow-pct, whose
+        // groups of one opaque fill fold into the fill (PNT1-opacity-b, first part), so native draws them without a group.
+        expect(kept.filter((q) => /^[a-z-]+:ow-/.test(q.rule) && !/^[a-z-]+:ow-(fold|pct)(:|$)/.test(q.rule)), `${c.id}@${dpr}`).toEqual([]);
+        expect(kept.some((q) => /^[a-z-]+:ow-fold(:|$)/.test(q.rule)), `${c.id}@${dpr}`).toBe(true);
         expect(kept.some((q) => q.rule.startsWith('interior:stage') || q.rule.startsWith('interior:sp')), `${c.id}@${dpr}`).toBe(true);
         expect(kept.length, `${c.id}@${dpr}`).toBeLessThan(all.length);
       }

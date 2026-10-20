@@ -4,30 +4,30 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 5089 (21.9%) | 18196 (78.1%) | 1 | 0 | 0 |
-| ios | 5070 (21.8%) | 17593 (75.6%) | 1 | 0 | 622 |
-| android | 5070 (21.8%) | 17593 (75.6%) | 1 | 0 | 622 |
+| web | 5482 (23.5%) | 17800 (76.4%) | 3 | 1 | 0 |
+| ios | 5432 (23.3%) | 17229 (74.0%) | 3 | 0 | 622 |
+| android | 5432 (23.3%) | 17229 (74.0%) | 3 | 0 | 622 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4739, ios 4760 and android 4760 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 5040, ios 5043 and android 5043 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1454 / 97 / 0 / 0 / 0 | 1454 / 97 / 0 / 0 / 0 | 1454 / 97 / 0 / 0 / 0 |
+| layout | 1551 | 1464 / 85 / 2 / 0 / 0 | 1464 / 85 / 2 / 0 / 0 | 1464 / 85 / 2 / 0 / 0 |
 | flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
-| typography | 261 | 182 / 79 / 0 / 0 / 0 | 182 / 79 / 0 / 0 / 0 | 182 / 79 / 0 / 0 / 0 |
+| typography | 261 | 229 / 32 / 0 / 0 / 0 | 229 / 32 / 0 / 0 / 0 | 229 / 32 / 0 / 0 / 0 |
 | colours | 14842 | 402 / 14440 / 0 / 0 / 0 | 402 / 13858 / 0 / 0 / 582 | 402 / 13858 / 0 / 0 / 582 |
-| backgrounds | 151 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 |
+| backgrounds | 151 | 25 / 126 / 0 / 0 / 0 | 25 / 126 / 0 / 0 / 0 | 25 / 126 / 0 / 0 / 0 |
 | borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
-| effects | 1178 | 62 / 1116 / 0 / 0 / 0 | 43 / 1135 / 0 / 0 / 0 | 43 / 1135 / 0 / 0 / 0 |
+| effects | 1178 | 63 / 1115 / 0 / 0 / 0 | 44 / 1134 / 0 / 0 / 0 | 44 / 1134 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 45 / 66 / 0 / 0 / 0 | 45 / 66 / 0 / 0 / 0 | 45 / 66 / 0 / 0 / 0 |
-| transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
-| transforms | 680 | 15 / 665 / 0 / 0 / 0 | 15 / 665 / 0 / 0 / 0 | 15 / 665 / 0 / 0 / 0 |
-| interactivity | 1246 | 43 / 1203 / 0 / 0 / 0 | 43 / 1165 / 0 / 0 / 38 | 43 / 1165 / 0 / 0 / 38 |
+| transitions-animation | 36 | 31 / 4 / 0 / 1 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
+| transforms | 680 | 87 / 593 / 0 / 0 / 0 | 87 / 593 / 0 / 0 / 0 | 87 / 593 / 0 / 0 / 0 |
+| interactivity | 1246 | 304 / 942 / 0 / 0 / 0 | 304 / 904 / 0 / 0 / 38 | 304 / 904 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
 | accessibility | 4 | 2 / 2 / 0 / 0 / 0 | 2 / 0 / 0 / 0 / 2 | 2 / 0 / 0 / 0 / 2 |
 
@@ -40,38 +40,38 @@ As published (before the shell pre-pass), the sheet compiles for web 4739, ios 4
 | `at-rule @supports` | 1192 | 1192 | 1192 | 6 |
 | `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
 | `property scrollbar-color` | 582 | 0 | 0 | 2 |
-| `property translate` | 444 | 444 | 444 | 24 |
+| `value calc()` | 521 | 521 | 521 | 17 |
 | `value box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-o` | 298 | 298 | 298 | 2 |
-| `profile scroll-margin-block-start:<non-initial-value>` | 132 | 132 | 132 | 4 |
-| `profile scroll-margin-inline-start:<non-initial-value>` | 132 | 132 | 132 | 4 |
-| `profile scroll-margin-top:<non-initial-value>` | 132 | 132 | 132 | 4 |
-| `property scale` | 90 | 90 | 90 | 10 |
+| `profile scroll-margin-top:<calc()>` | 260 | 260 | 260 | 8 |
+| `profile scroll-margin-right:<calc()>` | 195 | 195 | 195 | 6 |
+| `profile scroll-margin-bottom:<calc()>` | 130 | 130 | 130 | 4 |
+| `profile scroll-padding-top:<calc()>` | 128 | 128 | 128 | 4 |
+| `unproven context scroll-padding-left:<calc()>` | 96 | 96 | 96 | 3 |
 | `value transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-` | 90 | 90 | 90 | 12 |
 | `property -webkit-backdrop-filter` | 74 | 74 | 74 | 9 |
-| `profile scroll-margin-block-end:<non-initial-value>` | 66 | 66 | 66 | 2 |
-| `profile scroll-margin-bottom:<non-initial-value>` | 66 | 66 | 66 | 2 |
-| `profile scroll-margin-inline-end:<non-initial-value>` | 66 | 66 | 66 | 2 |
-| `profile scroll-margin-left:<non-initial-value>` | 66 | 66 | 66 | 2 |
-| `profile scroll-margin-right:<non-initial-value>` | 66 | 66 | 66 | 2 |
-| `profile scroll-padding-block-start:<non-initial-value>` | 66 | 66 | 66 | 2 |
-| `profile scroll-padding-inline-start:<non-initial-value>` | 66 | 66 | 66 | 2 |
-| `profile scroll-padding-top:<non-initial-value>` | 66 | 66 | 66 | 2 |
 | `profile -webkit-border-vertical-spacing:<calc()>` | 64 | 64 | 64 | 2 |
+| `profile scroll-padding-bottom:<calc()>` | 64 | 64 | 64 | 2 |
 | `profile filter:<filter-value-list>` | 59 | 59 | 59 | 9 |
-| `value calc()` | 52 | 52 | 52 | 4 |
-| `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
 | `property cursor` | 36 | 0 | 0 | 36 |
-| `profile scroll-padding-block-end:<non-initial-value>` | 33 | 33 | 33 | 1 |
-| `profile scroll-padding-bottom:<non-initial-value>` | 33 | 33 | 33 | 1 |
-| `profile scroll-padding-inline-end:<non-initial-value>` | 33 | 33 | 33 | 1 |
-| `profile scroll-padding-left:<non-initial-value>` | 33 | 33 | 33 | 1 |
-| `profile scroll-padding-right:<non-initial-value>` | 33 | 33 | 33 | 1 |
 | `profile background-image:unset` | 26 | 26 | 26 | 3 |
 | `property columns` | 26 | 26 | 26 | 1 |
-| `property rotate` | 19 | 19 | 19 | 3 |
 | `property mix-blend-mode` | 18 | 18 | 18 | 18 |
-| `property background-blend-mode` | 16 | 16 | 16 | 16 |
 | `unproven context grid-column-start:<span-integer>` | 12 | 12 | 12 | 1 |
 | `unproven context grid-row-end:<span-integer>` | 12 | 12 | 12 | 1 |
-| `property break-after` | 8 | 8 | 8 | 8 |
-| `property break-before` | 8 | 8 | 8 | 8 |
+| `value scale: var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z) substitutes to "1 1` | 10 | 10 | 10 | 1 |
+| `profile letter-spacing:<calc()>` | 6 | 6 | 6 | 1 |
+| `value used line height` | 6 | 6 | 6 | 6 |
+| `profile contain:<non-initial-value>` | 5 | 5 | 5 | 5 |
+| `profile perspective:<length-px>` | 5 | 5 | 5 | 1 |
+| `profile scroll-margin-right:<length-rem>` | 4 | 4 | 4 | 4 |
+| `profile scroll-padding-top:<length-rem>` | 4 | 4 | 4 | 4 |
+| `profile height:fit-content` | 3 | 3 | 3 | 3 |
+| `profile height:max-content` | 3 | 3 | 3 | 3 |
+| `profile height:min-content` | 3 | 3 | 3 | 3 |
+| `profile scroll-padding-right:<length-rem>` | 3 | 3 | 3 | 3 |
+| `property -webkit-hyphens` | 3 | 3 | 3 | 3 |
+| `value border-top-left-radius: calc(infinity*1px) is unsupported: a calculation in a bo` | 3 | 3 | 3 | 3 |
+| `value translate: var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z) sub` | 3 | 3 | 3 | 3 |
+| `at-rule @media` | 2 | 2 | 2 | 2 |
+| `profile -webkit-border-horizontal-spacing:<length-rem>` | 2 | 2 | 2 | 2 |
+| `profile align-content:baseline` | 2 | 2 | 2 | 2 |

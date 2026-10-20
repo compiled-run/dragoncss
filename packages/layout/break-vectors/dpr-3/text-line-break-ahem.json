@@ -1,0 +1,14 @@
+{
+  "case": "text-line-break-ahem",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","lines":[[0,3],[3,14],[14,16]]},
+    {"id":"b:text0","lines":[[0,3],[3,14],[14,16]]},
+    {"id":"c:text0","lines":[[0,4],[4,8],[8,11]]},
+    {"id":"e:text0","lines":[[0,5]]},
+    {"id":"e1:text0","lines":[[0,3],[3,6]]},
+    {"id":"e:text1","lines":[[1,2]]},
+    {"id":"r1:text0","lines":[[0,4],[4,6]]},
+    {"id":"r2:text0","lines":[[0,3],[3,6]]}
+  ]
+}

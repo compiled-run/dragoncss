@@ -130,6 +130,14 @@ jobs:
           if (have === null || have !== want) { console.error(`the runner's ${target} toolchain differs from the committed lanes.json host lane's`); process.exit(1); }
           EOF
           node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" ios
+      # MQ-R1 device-env (the cases part) judges each device's band against Chrome's (device-env.ts envOracleBrowser, launchChrome
+      # in packages/parity/src/chrome.ts: Playwright 1.58.2, chromium-1208, Chrome 145.0.7632.6, which it refuses to differ from).
+      - name: Playwright 1.58.2 Chromium for the device-env band oracle
+        if: ${{ !inputs.plant && contains(matrix.parts, 'cases') }}
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
+          retry pnpm --filter @dragon/parity exec playwright install chromium
       # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
       - name: Device run ${{ matrix.device }}
         if: ${{ !inputs.plant }}
@@ -294,6 +302,14 @@ jobs:
           # This avdmanager writes AVDs under ~/.config/.android whatever ANDROID_AVD_HOME says; one directory serves both.
           mkdir -p "$HOME/.android/avd" "$HOME/.config"
           ln -sfn "$HOME/.android" "$HOME/.config/.android"
+      # MQ-R1 device-env (the cases part) judges each device's band against Chrome's (device-env.ts envOracleBrowser, launchChrome
+      # in packages/parity/src/chrome.ts: Playwright 1.58.2, chromium-1208, Chrome 145.0.7632.6, which it refuses to differ from).
+      - name: Playwright 1.58.2 Chromium for the device-env band oracle
+        if: ${{ !inputs.plant && contains(matrix.parts, 'cases') }}
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
+          retry pnpm --filter @dragon/parity exec playwright install --with-deps chromium
       # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
       - name: Device run ${{ matrix.device }}
         if: ${{ !inputs.plant }}

@@ -5,7 +5,7 @@ import type { ColorSyntax, Rgba8 } from './color.ts';
 import { parseColorNode } from './color.ts';
 import { asciiLower, decodeName, serializeString } from './escapes.ts';
 import type { Longhand } from './properties.ts';
-import { foldNumber, mathContextFor, mathHasEnv, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
+import { foldableUnits, foldNumber, mathContextFor, mathHasEnv, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
 import { CANONICAL_LENGTH_UNIT, lengthFeatureType, normalizeUnit } from './units.ts';
 import { GENERIC_FAMILY_KEYWORDS } from '../fonts/font-face.ts';
 import type { FontMap } from '../fonts/font-map.ts';
@@ -135,6 +135,9 @@ export function toValue(node: CssNode, property: string): CssValue {
  */
 export const REFUSED_MATH_PREFIX = 'refused ';
 
+/** The properties whose length calculations fold to px at build time (CALC-2). */
+export const FOLDED_MATH_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height']);
+
 function mathValue(node: CssNode, name: string, property: string): CssValue {
   const text = generate(node);
   const refused = (reason: string): CssValue => ({ kind: 'other', type: `${REFUSED_MATH_PREFIX}${name}()`, text: `${text} /* ${reason} */` });
@@ -145,10 +148,20 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
     const n = parseMath(text, { type: 'number' });
     if (n.ok) return { kind: 'number', value: nonNegative(foldNumber(n.node)) };
   }
+  // CALC-2: line-height takes a number calculation too (Blink ConsumeLineHeight), which computes to that number and inherits as one.
+  if (property === 'line-height') {
+    const n = parseMath(text, { type: 'number' });
+    if (n.ok) return { kind: 'number', value: nonNegative(foldNumber(n.node)) };
+  }
   const context = mathContextFor(property);
   if ('refused' in context) return refused(context.refused);
   const parsed = parseMath(text, context);
   if (!parsed.ok) return refused(parsed.reason);
+  // CALC-2: a font-size or line-height calculation folds to px at build time (analysis/computed.ts computeLengths), so it holds
+  // only lengths that do not change on the device.
+  if (FOLDED_MATH_PROPERTIES.has(property) && !foldableUnits(parsed.node)) {
+    return refused(`a calculation in ${property} is supported with px, %, em, rem and absolute lengths only; a viewport, safe-area, container or font-metric unit there changes the text on the device, which Dragon does not resolve yet`);
+  }
   if (context.type === 'number') {
     const folded = foldNumber(parsed.node);
     const value = property === 'flex-grow' || property === 'flex-shrink' || property === 'stroke-miterlimit' ? nonNegative(folded) : folded;
