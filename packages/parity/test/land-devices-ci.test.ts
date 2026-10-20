@@ -560,15 +560,19 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     // Each round is told not to save in patch mode, and the round saves only when told to.
     const calls = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml\n {4}with: \{([^\n]*)\}/g)].map((m) => m[1]!);
     expect(calls).toHaveLength(5);
-    for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.mode != 'patch' }}"`);
+    // resolve's save is false in patch mode (and when a run resumes); ci-regen.test.ts runs that step.
+    for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.save == 'true' }}"`);
+    expect(yml).toContain(`if [ "$MODE" != patch ] && [ -z "\${RESUME:-}" ] && [ -z "$resume" ]; then save=true; fi`);
     expect(round).toContain('save_cache: { type: boolean, required: false, default: true }');
     // ...and only on the last round (each round's store holds the earlier ones): the one regen-on-ci.yml follows with no other.
     const save = /- name: Save the regen cache\n {8}if: ([^\n]+)\n {8}uses: actions\/cache\/save@v4/.exec(round)?.[1];
     expect(save).toBe("success() && inputs.save_cache && (steps.next.outputs.next == 'false' || (steps.regen.outputs.changed == 'false' && inputs.name != 'chrome-1') || inputs.name == 'chrome-3')");
     // Those are exactly the cases the next round's gate stops on: host-1 follows chrome-1 unless next is false, and every later
     // round needs changed true and next not false from the one before; chrome-3 has no round after it.
-    expect(yml).toContain("host-1:\n    needs: [resolve, chrome-1]\n    if: needs.chrome-1.outputs.next != 'false'\n");
-    for (const [prev, name] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) expect(yml).toContain(`${name}:\n    needs: [resolve, ${prev}]\n    if: needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false'\n`);
+    // (chrome-1 may come from resume-chrome-1, so the gates test the round before them themselves: ci-regen.test.ts.)
+    expect(yml).toContain("host-1:\n    needs: [resolve, resume-chrome-1, chrome-1]\n");
+    expect(yml).toContain("(needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false' }}\n");
+    for (const [prev, name] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) expect(yml).toContain(`${name}:\n    needs: [resolve, ${prev}]\n    if: \${{ !cancelled() && needs.${prev}.result == 'success' && needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false' }}\n`);
     // setup-node's pnpm cache saves in a post step: off unless the round may save (#220 review).
     expect([...round.matchAll(/\n {10}cache: ([^\n]+)/g)].map((m) => m[1])).toEqual(["${{ inputs.save_cache && 'pnpm' || '' }}"]);
     // Every cache step that saves (actions/cache or actions/cache/save) is gated on save_cache.
