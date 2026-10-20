@@ -1,0 +1,19 @@
+{
+  "case": "bg-clip-text",
+  "dpr": 3,
+  "texts": [
+    {"id":"fill-a:text0","lines":[[0,2]]},
+    {"id":"fill-b:text0","lines":[[0,2]]},
+    {"id":"fill-c:text0","lines":[[0,2]]},
+    {"id":"fill-d:text0","lines":[[0,2]]},
+    {"id":"fill-e:text0","lines":[[0,2]]},
+    {"id":"fill-f:text0","lines":[[0,2]]},
+    {"id":"fill-g:text0","lines":[[0,2]]},
+    {"id":"keep-e:text0","lines":[[0,2]]},
+    {"id":"keep-a:text0","lines":[[0,2]]},
+    {"id":"keep-k:text0","lines":[[0,2]]},
+    {"id":"keep-c:text0","lines":[[0,2]]},
+    {"id":"keep-d:text0","lines":[[0,2]]},
+    {"id":"fill-h:text0","lines":[[0,6]]}
+  ]
+}

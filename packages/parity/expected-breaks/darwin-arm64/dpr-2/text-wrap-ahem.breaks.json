@@ -1,0 +1,16 @@
+{
+  "case": "text-wrap-ahem",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"nw:text0","data":"XX XXX XX","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"wr:text0","data":"XX XXX XX X","lines":3,"units":[0,0,0,1,1,1,1,2,2,2,2],"blank":[2,6]},
+    {"id":"st:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"sa:text0","data":"X XX XXX XX","lines":3,"units":[0,0,0,0,0,1,1,1,1,2,2],"blank":[4,8]},
+    {"id":"inh:text0","data":"XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1],"blank":[5]},
+    {"id":"both:text0","data":"XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"ws:text0","data":"XXX XXX XX","lines":3,"units":[0,0,0,0,1,1,1,1,2,2],"blank":[3,7]},
+    {"id":"ra:text0","data":"XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"rb:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

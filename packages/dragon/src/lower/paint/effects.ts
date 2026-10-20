@@ -1,8 +1,10 @@
 // opacity (css-color-4 §14.1): a native property (T046 §1), UIView.alpha and View.setAlpha, which composite the subtree as a group
 // as CSS does. The write carries the computed opacity; the device takes Chrome's alpha byte from it with the translated paint.ts
 // opacityAlpha8 (Skia's getAlpha, in float) and sets the native alpha to byte / 255. An opacity of 1 has no write; any opacity
-// below 1 makes a stacking context (lower/paint/stacking.ts).
+// below 1 makes a stacking context (lower/paint/stacking.ts). A group that folds into its one opaque fill (background.ts
+// foldedOpacity) has no write: the fill carries the alpha.
 import { opacityOf } from '../../css/properties/effects.ts';
+import { foldedOpacity } from './background.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
@@ -19,13 +21,17 @@ export const EFFECTS_LOWERING: PaintLowering<EffectsWrite> = {
   },
   css: { opacity: ['opacity'] },
   // An anonymous box takes the initial opacity (CSS2 §9.2.1.1): 1, so no write.
-  lower: ({ el, facts }) => {
+  lower: ({ box, el, facts }) => {
     if (el === null) return [];
     const v = el.props.get('opacity');
     if (v === undefined) throw new ProgramError(`${el.element.address}: opacity did not resolve`);
     const opacity = opacityOf(v.value);
     if (opacity === null) throw new ProgramError(`${el.element.address}: opacity did not compute to a number`);
     if (opacity === 1) return [];
+    if (foldedOpacity(el) !== null) {
+      if (box.kind !== 'box' || box.children.length > 0) throw new ProgramError(`${el.element.address}: a folded opacity group has content in its layout box`);
+      return [];
+    }
     const effects: EffectsFacts = { opacity };
     facts['effects'] = effects;
     return [{ kind: 'opacity', opacity }];
