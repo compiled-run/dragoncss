@@ -7,7 +7,7 @@
 //
 // A band is resolved twice: without @container rules, to find each container and its width (no @container rule can change them,
 // which the second pass checks), then with them.
-import type { ContainerCondition, Rule } from '../css/stylesheet.ts';
+import type { ContainerCondition, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { Band, Interval, MediaLength, MediaQueryList } from '../media/index.ts';
 import { comparisonsOf, contains, evaluateMediaQueryList, featuresOfList, MEDIA_EPSILON, parseMediaQueryList, resolveLength } from '../media/index.ts';
@@ -213,7 +213,7 @@ export function resolveWithContainers(root: LinkedElement, rules: readonly Rule[
       const c = found.get(candidates[k] as LinkedElement);
       if (c === undefined || !matchesName(c, condition)) continue;
       if (typeof c.width === 'string') return refuse(condition, `the width of its query container cannot be read: ${c.width}; Dragon reads a container's width only through block boxes in flow with px widths, margins and padding and no left or right border`);
-      if (!uniformInBand(c.width, condition.list, band)) return refuse(condition, 'the width of its query container changes with an interaction state, which Dragon does not resolve');
+      if (!uniformInBand(c.width, condition.list, band)) return refuse(condition, 'the width of its query container differs inside this band from the width its switch points were made from (an interaction state or another rule changes it), which Dragon does not resolve');
       const r = evaluateMediaQueryList(condition.list, { width: widthAt(c.width, band.rep), height: 0 });
       return r.kind === 'matches' && r.matches;
     }
@@ -224,8 +224,41 @@ export function resolveWithContainers(root: LinkedElement, rules: readonly Rule[
   const after = containersOf(resolved, faults);
   const same = after.size === found.size && [...after].every(([el, c]) => JSON.stringify(found.get(el)) === JSON.stringify(c));
   if (!same) {
-    const first = rules.find((r) => r.container !== undefined)?.container?.[0];
-    if (first !== undefined) refuse(first, 'a @container rule changes the container-type, container-name or width of a query container, which Dragon does not resolve');
+    const offending = changingCondition(resolved, rules, found, after) ?? rules.find((r) => r.container !== undefined)?.container?.[0];
+    if (offending !== undefined) refuse(offending, 'a @container rule changes the container-type, container-name or width of a query container, which Dragon does not resolve');
   }
   return resolved;
+}
+
+// The longhands a query container's names and width are read from (isQueryContainer, namesOf, containerWidth).
+const CONTAINER_INPUTS = ['container-type', 'container-name', 'display', 'position', 'float', 'overflow-x', 'margin-left', 'margin-right', 'border-left-style', 'border-right-style', 'border-left-width', 'border-right-width', 'padding-left', 'padding-right', 'box-sizing', 'width', 'min-width', 'max-width'] as const;
+
+/**
+ * The condition of a @container rule that changed a query container: one whose declaration wins on a container that changed
+ * between the passes, or on one of its ancestors (whose box the container's width follows). Null when none is found.
+ */
+function changingCondition(resolved: ResolvedElement, rules: readonly Rule[], found: Map<LinkedElement, QueryContainer>, after: Map<LinkedElement, QueryContainer>): ContainerCondition | null {
+  const conditionOf = new Map<Declaration, ContainerCondition>();
+  for (const r of rules) {
+    const c = r.container?.[0];
+    if (c !== undefined) for (const d of r.declarations) conditionOf.set(d, c);
+  }
+  const changed = (el: LinkedElement): boolean => JSON.stringify(found.get(el)) !== JSON.stringify(after.get(el));
+  const visit = (el: ResolvedElement, chain: ResolvedElement[]): ContainerCondition | null => {
+    const here = [...chain, el];
+    if (changed(el.element)) {
+      for (const x of [...here].reverse()) for (const p of CONTAINER_INPUTS) {
+        const d = (x.props.get(p) as ResolvedValue).declaration;
+        const c = d === null ? undefined : conditionOf.get(d);
+        if (c !== undefined) return c;
+      }
+    }
+    for (const k of el.children) {
+      if (k.kind !== 'element') continue;
+      const c = visit(k, here);
+      if (c !== null) return c;
+    }
+    return null;
+  };
+  return visit(resolved, []);
 }

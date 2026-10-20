@@ -113,7 +113,11 @@ export const mediaAtRule: AtRuleHandler = (at) => {
 // css-conditional-5 §3.1: a <container-name> is a <custom-ident> other than none, and, not, or and default (Blink
 // ConsumeContainerName, as container-name parses it: css/properties/container-query.ts).
 const NOT_CONTAINER_NAMES: ReadonlySet<string> = new Set(['none', 'and', 'not', 'or', 'default', 'inherit', 'initial', 'unset', 'revert', 'revert-layer']);
-const LEADING_NAME = /^\s*(-?[A-Za-z_][A-Za-z0-9_-]*)(?=\s|\(|$)/;
+// css-syntax-3 §4.3.10: an ident starts with --, or an optional - and a name-start code point (non-ASCII included). It must end
+// at whitespace or the end: `card(` is a function token, so Chrome drops `@container card(min-width: 1px)` (and Dragon refuses it).
+const LEADING_NAME = /^\s*(--[A-Za-z0-9_\u0080-\uFFFF-]*|-?[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF-]*)(?=\s|$)/;
+// css-syntax-3 §4.3.2: a comment is consumed with no token, so one between the name and the condition is whitespace.
+const COMMENT = /\/\*[\s\S]*?(?:\*\/|$)/g;
 
 /**
  * CQ: @container [<container-name>] <container-condition>. The condition is read with the media parser (css-conditional-5 §3.2
@@ -122,7 +126,7 @@ const LEADING_NAME = /^\s*(-?[A-Za-z_][A-Za-z0-9_-]*)(?=\s|\(|$)/;
  * a name with no condition, and a prelude Chrome drops.
  */
 export const containerAtRule: AtRuleHandler = (at) => {
-  const prelude = at.prelude ?? '';
+  const prelude = (at.prelude ?? '').replace(COMMENT, ' ');
   const named = LEADING_NAME.exec(prelude);
   const name = named === null || named[1] === undefined || asciiLower(named[1]) === 'not' ? null : named[1];
   const rest = name === null ? prelude : prelude.slice((named as RegExpExecArray)[0].length);
