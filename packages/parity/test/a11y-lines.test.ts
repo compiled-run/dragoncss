@@ -2,10 +2,11 @@
 // exposes (packages/parity/src/ax-lines.ts axLinesOf, from the engine's layout of the document compiled for native) must be Chrome's
 // InlineTextBoxes: the same text nodes in tree order, the same names, and frames on the same px.
 import { describe, expect, it } from 'vitest';
-import { createProjectWith, nativePrograms, NO_FAULTS, programInput } from 'dragon';
-import type { LayoutInput } from '../../layout/src/input.ts';
+import type { NativeProgram } from 'dragon';
+import { createProjectWith, nativePrograms, NO_FAULTS } from 'dragon';
 import type { AxLine } from '../src/ax-lines.ts';
-import { axLinesOf, chromeAxLines } from '../src/ax-lines.ts';
+import { axLinesOfProgram, checkAccessibleLines, chromeAxLines, exposedAsModelled } from '../src/ax-lines.ts';
+import type { NativeDump } from '../src/native-dump.ts';
 import { launchChrome, openPage } from '../src/chrome.ts';
 import { fixtureToInput } from '../src/fixture-reader.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
@@ -66,7 +67,7 @@ const AX_DOCS: readonly AxDoc[] = [
   },
 ];
 
-function nativeInput(d: AxDoc): { readonly input: LayoutInput; readonly hidden: readonly string[]; readonly headingOf: (leaf: string) => number } {
+function nativeProgram(d: AxDoc): NativeProgram {
   const project = createProjectWith(
     { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } },
     { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport },
@@ -76,17 +77,7 @@ function nativeInput(d: AxDoc): { readonly input: LayoutInput; readonly hidden: 
   if (errors.length > 0) throw new Error(`${d.id} does not compile: ${errors.map((x) => x.message).join('; ')}`);
   const p = nativePrograms(compiled, []);
   if (p.kind !== 'ready') throw new Error(`${d.id}: no native programs: ${p.reason}`);
-  const hidden = p.programs.uikit.nodes.filter((n) => n.writes.some((w) => w.kind === 'visibility')).map((n) => n.id);
-  // A text node's heading: its nearest ancestor with a heading write (the role module, lower/paint/role.ts).
-  const nodes = new Map(p.programs.uikit.nodes.map((n) => [n.id, n]));
-  const headingOf = (leaf: string): number => {
-    for (let at = nodes.get(leaf)?.parent ?? null; at !== null; at = nodes.get(at)?.parent ?? null) {
-      const w = nodes.get(at)?.writes.find((x) => x.kind === 'heading');
-      if (w !== undefined && w.kind === 'heading') return w.level;
-    }
-    return 0;
-  };
-  return { input: programInput(p.programs.uikit, ENVIRONMENT.viewport, 1), hidden, headingOf };
+  return p.programs.uikit;
 }
 
 // A whole line (a truncated leaf, exposed as one element) compares by name: Chrome's StaticText has no fragment of its own.
@@ -99,8 +90,7 @@ describe('per-line accessibility (P6b): native lines against Chrome InlineTextBo
     let lines = 0;
     try {
       for (const d of AX_DOCS) {
-        const n = nativeInput(d);
-        const modelLines = axLinesOf(n.input, referenceMeasurer(), n.hidden, n.headingOf);
+        const modelLines = axLinesOfProgram(nativeProgram(d), ENVIRONMENT.viewport, 1, referenceMeasurer);
         const whole = new Set(modelLines.filter((l) => l.whole === true).map((l) => l.leaf));
         const model = modelLines.map(show);
         const chrome = (await chromeAxLines(await openPage(browser, axHtml(d), ENVIRONMENT), whole)).map(show);
@@ -113,4 +103,59 @@ describe('per-line accessibility (P6b): native lines against Chrome InlineTextBo
     expect(problems).toEqual([]);
     expect(lines).toBeGreaterThan(30);
   }, 120_000);
+});
+
+describe('the device-lines accessibility check (P6b)', () => {
+  const frame = { x: 10, y: 20, width: 40, height: 10 };
+  const edges = { left: 20, top: 40, right: 100, bottom: 60 };
+  type Accessible = { name: string; frame: typeof frame } | null;
+  const line = (start: number, end: number, accessible: Accessible) => ({ frame, deviceEdges: edges, baseline: 8, start, end, accessible });
+  const node = (id: string, lines: ReturnType<typeof line>[], accessible: Accessible = null) => ({ id, parent: 'a', kind: 'text', native: 'DragonTextView', frame, deviceEdges: edges, applied: {}, lines, accessible });
+  const dump = (...texts: ReturnType<typeof node>[]): NativeDump =>
+    ({ case: { dpr: 2 }, nodes: [...texts, { id: 'a', parent: null, kind: 'element', native: 'DragonBoxView', frame, deviceEdges: edges, applied: {}, lines: [line(0, 0, null)], accessible: null }] }) as unknown as NativeDump;
+  const rect = [0, 0, 0, 0] as const;
+  // a:text0 wraps with a hanging space, b:text0 ends its first line at a <br> (no space in the name), c:text0 is truncated (whole),
+  // and h:text0 is hidden (no lines in the model).
+  const model: AxLine[] = [
+    { leaf: 'a:text0', name: 'AAAA ', rect, heading: 0 },
+    { leaf: 'a:text0', name: 'BB', rect, heading: 0 },
+    { leaf: 'b:text0', name: 'CC', rect, heading: 0 },
+    { leaf: 'b:text0', name: 'DD', rect, heading: 0 },
+    { leaf: 'c:text0', name: 'EEEE EEEE', rect, heading: 0, whole: true },
+  ];
+  // A device frame may be off the line's by up to a device px (x by a quarter of a css px at DPR 2, here).
+  const good = (off = 0.25): NativeDump =>
+    dump(
+      node('a:text0', [line(0, 5, { name: 'AAAA ', frame }), line(5, 7, { name: 'BB', frame: { ...frame, x: 10 + off } })]),
+      node('b:text0', [line(0, 3, { name: 'CC', frame }), line(3, 5, { name: 'DD', frame })]),
+      node('c:text0', [line(0, 9, null), line(0, 4, null)], { name: 'EEEE EEEE', frame }),
+      node('h:text0', [line(0, 2, null)]),
+    );
+  it("passes lines named as the model names them (a hanging space kept, none before a <br>), a whole leaf's view, hidden text with no element", () => {
+    expect(checkAccessibleLines(good(), model)).toEqual({ compared: 6, problems: [] });
+  });
+  it('writes what it passes for a made-up device dump (exposedAsModelled)', () => {
+    const bare = dump(...good().nodes.filter((n) => n.kind === 'text').map((n) => node(n.id, n.lines.map((l) => line(l.start ?? 0, l.end ?? 0, null)))));
+    expect(exposedAsModelled(bare.nodes, model)).toEqual(good(0).nodes);
+  });
+  it("catches a dropped line, a wrong name, a frame off by more than a device px, a whole leaf's line element or missing view element, and exposed hidden text", () => {
+    const r = checkAccessibleLines(
+      dump(
+        node('a:text0', [line(0, 5, null), line(5, 7, { name: 'BB', frame: { ...frame, width: 41 } })]),
+        node('b:text0', [line(0, 3, { name: 'CC ', frame }), line(3, 5, { name: 'DD', frame })], { name: 'CC DD', frame }),
+        node('c:text0', [line(0, 9, null), line(0, 4, { name: 'EEEE', frame })]),
+        node('h:text0', [line(0, 2, { name: 'HH', frame })]),
+      ),
+      model,
+    );
+    expect(r.problems.map((p) => p.detail)).toEqual([
+      'a:text0:line0: no accessibility element exposes the line',
+      'a:text0:line1: accessibility frame edge delta [0,0,1,0] css px exceeds 1 device px',
+      'b:text0: the view is an accessibility element itself, named "CC DD"',
+      'b:text0:line0: named "CC ", expected "CC"',
+      'c:text0:line1: the leaf is exposed whole, but an element exposes the line',
+      'c:text0: the leaf is exposed whole, but the view is not an accessibility element',
+      "h:text0:line0: the model exposes none of this text (hidden, or a marker's), but an element exposes the line",
+    ]);
+  });
 });

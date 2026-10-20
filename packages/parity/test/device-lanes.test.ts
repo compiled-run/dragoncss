@@ -14,6 +14,7 @@ import { REFERENCE_LANE, validateNativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { androidCommands, appCacheKey, casesCodeProblems, expand, hostSources, iosCommands, iosModules, nativeCases, nativeOut, referenceMeasurer, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
 import { checkDumpBreaks, engineTextLines } from '../src/line-breaks.ts';
+import { axLinesOfProgram, exposedAsModelled } from '../src/ax-lines.ts';
 import { programInput } from 'dragon';
 import { PLANT_RULES } from '../src/device-run.ts';
 import { repoPath } from '../src/paths.ts';
@@ -34,7 +35,11 @@ function perfectDump(target: NativeTarget, dpr: number, n: NativeCase, ref: Case
     ...d,
     device: { ...d.device, platform: target },
     // An element's lines (an inline box's fragments) have no own text: a device writes 0 and 0 (T058J3 E).
-    nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: fragments.get(x.id)?.[j]?.[0] ?? null, end: fragments.get(x.id)?.[j]?.[1] ?? null } : { ...l, start: 0, end: 0 })) })),
+    // The accessibility elements are the model's (P6b, ax-lines.ts exposedAsModelled).
+    nodes: exposedAsModelled(
+      d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: fragments.get(x.id)?.[j]?.[0] ?? null, end: fragments.get(x.id)?.[j]?.[1] ?? null } : { ...l, start: 0, end: 0 })) })),
+      axLinesOfProgram(programOf(n, target), n.case.environment.viewport, dpr, referenceMeasurer),
+    ),
     pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: size.width, height: size.height, sha256: 'a'.repeat(64), samples: readSamples(ref.pixels, ref.points) },
   };
 }

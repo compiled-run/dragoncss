@@ -4,9 +4,14 @@
 // its layout gives each fragment's rect (DOMSnapshot's text boxes, the same fragments). Native exposes one element per line piece of
 // a text view (native-support.ts dragonSetAccessibleLines) from the engine's own line placement, as the model here reads it: the
 // piece's code points [start, end) (end past its hanging spaces, which a line ended by a <br> drops as Chrome does) and its
-// fragment's rect (<leaf>:line<j>). A leaf text-overflow truncates is exposed whole for now: one element named with its text, as
-// Chrome's StaticText is, since Chrome's InlineTextBoxes there (the hidden full run, the painted part and the ellipsis) are not lines.
+// fragment's rect (<leaf>:line<j>), which the device snaps to whole device px as the dump snaps the line (the documents here are
+// at DPR 1 on whole px, where snapping changes nothing). A leaf text-overflow truncates is exposed whole for now: one element named
+// with its text, as Chrome's StaticText is, since Chrome's InlineTextBoxes there (the hidden full run, the painted part and the
+// ellipsis) are not lines. On a device, checkAccessibleLines holds every dumped line's element, or a whole leaf's one element (the
+// text view itself), to the model's name and to the line's frame, or the view's (device-lines).
 import type { CDPSession, Page } from 'playwright';
+import type { NativeProgram } from 'dragon';
+import { programInput } from 'dragon';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
@@ -15,9 +20,10 @@ import { buildIfc, placeIfcLines } from '../../layout/src/inline.ts';
 import type { InlineChild, LayoutBox, LayoutInput } from '../../layout/src/input.ts';
 import { absoluteRects, layout, resolvedInput } from '../../layout/src/layout.ts';
 import type { TextMeasurer } from '../../layout/src/text.ts';
+import { GATE_DEVICE_PX } from './compare.ts';
+import type { NativeDump } from './native-dump.ts';
 import { sub, ZERO } from '../../layout/src/units.ts';
 
-/**
 /**
  * One line's accessibility element: the text node it is a line of, its name, its frame in CSS px from the root, and the level of the
  * heading it is read under (0 for none); or, for a truncated leaf, the leaf's one element (whole) with its text, framed on the text
@@ -111,6 +117,35 @@ export function axLinesOf(input: LayoutInput, measurer: TextMeasurer, hidden: re
   return lines;
 }
 
+/**
+ * The lines native exposes for a compiled program at a viewport and DPR (axLinesOf over programInput): a text view is hidden when
+ * its element has a visibility write, and a line's heading is the level of its text node's nearest ancestor with a heading write
+ * (the role module, lower/paint/role.ts), as DragonTree's headingOf reads the views. The lines are laid out with the reference
+ * measurer (native-host.ts referenceMeasurer, which the caller passes, so this module needs no host), made once per program, viewport
+ * and DPR: the device checks and the host tests' made-up dumps ask for the same program's lines many times.
+ */
+export function axLinesOfProgram(program: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, referenceMeasurer: () => TextMeasurer): readonly AxLine[] {
+  const byView = programLines.get(program) ?? new Map<string, readonly AxLine[]>();
+  programLines.set(program, byView);
+  const key = `${viewport.width}x${viewport.height}@${dpr}`;
+  const known = byView.get(key);
+  if (known !== undefined) return known;
+  const hidden = program.nodes.filter((n) => n.writes.some((w) => w.kind === 'visibility')).map((n) => n.id);
+  const nodes = new Map(program.nodes.map((n) => [n.id, n]));
+  const headingOf = (leaf: string): number => {
+    for (let at = nodes.get(leaf)?.parent ?? null; at !== null; at = nodes.get(at)?.parent ?? null) {
+      const w = nodes.get(at)?.writes.find((x) => x.kind === 'heading');
+      if (w !== undefined && w.kind === 'heading') return w.level;
+    }
+    return 0;
+  };
+  const lines = axLinesOf(programInput(program, viewport, dpr), referenceMeasurer(), hidden, headingOf);
+  byView.set(key, lines);
+  return lines;
+}
+
+const programLines = new WeakMap<NativeProgram, Map<string, readonly AxLine[]>>();
+
 // In the page, on a text node: its leaf's name.
 const LEAF_NAME = 'function () { const p = this.parentNode; return p.getAttribute("data-dragon-id") + ":text" + [...p.childNodes].filter((c) => c.nodeType === 3).indexOf(this); }';
 
@@ -177,4 +212,87 @@ export async function chromeAxLines(page: Page, whole: ReadonlySet<string> = new
   } finally {
     await cdp.detach();
   }
+}
+
+type NativeDumpNode = NativeDump['nodes'][number];
+
+/** One accessibility problem a device dump shows: the text node and what is wrong. */
+export type AxProblem = { readonly id: string; readonly detail: string };
+
+/**
+ * The device-lines accessibility check (P6b) against the model's lines (axLinesOfProgram), by text node. A text node the model
+ * exposes line by line has an element per dumped line, in order, named as the model names that line (its code points with the
+ * collapsible space it hangs at the line's end, none before a <br>; a11y-lines.test.ts proves the rule against Chrome) and framed on
+ * the dumped line within GATE_DEVICE_PX on every edge, and the view is not an element itself. A leaf the model exposes whole (one
+ * text-overflow truncates) has no line elements, and the view is one element named with the leaf's text and framed on the view. A
+ * text node the model exposes nothing of (hidden, or a list marker's text) has no element at all.
+ */
+export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine[]): { readonly compared: number; readonly problems: readonly AxProblem[] } {
+  const problems: AxProblem[] = [];
+  let compared = 0;
+  const dpr = dump.case.dpr;
+  const byLeaf = new Map<string, AxLine[]>();
+  for (const l of expected) byLeaf.set(l.leaf, [...(byLeaf.get(l.leaf) ?? []), l]);
+  type Frame = NativeDumpNode['frame'];
+  const framed = (id: string, at: string, a: Frame, f: Frame): void => {
+    const delta = [a.x - f.x, a.y - f.y, a.x + a.width - (f.x + f.width), a.y + a.height - (f.y + f.height)];
+    if (delta.some((d) => Math.abs(d) * dpr > GATE_DEVICE_PX)) problems.push({ id, detail: `${at}: accessibility frame edge delta ${JSON.stringify(delta)} css px exceeds ${GATE_DEVICE_PX} device px` });
+  };
+  for (const n of dump.nodes) {
+    if (n.kind !== 'text') continue;
+    const want = byLeaf.get(n.id) ?? [];
+    const whole = want.find((l) => l.whole === true);
+    const exposed = n.lines.flatMap((l, j) => (l.accessible === null ? [] : [j]));
+    if (whole !== undefined) {
+      compared++;
+      for (const j of exposed) problems.push({ id: n.id, detail: `${n.id}:line${j}: the leaf is exposed whole, but an element exposes the line` });
+      const a = n.accessible;
+      if (a === null) problems.push({ id: n.id, detail: `${n.id}: the leaf is exposed whole, but the view is not an accessibility element` });
+      else {
+        if (a.name !== whole.name) problems.push({ id: n.id, detail: `${n.id}: named ${JSON.stringify(a.name)}, expected ${JSON.stringify(whole.name)}` });
+        framed(n.id, n.id, a.frame, n.frame);
+      }
+      continue;
+    }
+    if (n.accessible !== null) problems.push({ id: n.id, detail: `${n.id}: the view is an accessibility element itself, named ${JSON.stringify(n.accessible.name)}` });
+    if (want.length === 0) {
+      compared += n.lines.length;
+      for (const j of exposed) problems.push({ id: n.id, detail: `${n.id}:line${j}: the model exposes none of this text (hidden, or a marker's), but an element exposes the line` });
+      continue;
+    }
+    if (want.length !== n.lines.length) {
+      problems.push({ id: n.id, detail: `${n.id}: ${n.lines.length} dumped lines, but the model exposes ${want.length}` });
+      continue;
+    }
+    n.lines.forEach((l, j) => {
+      compared++;
+      const at = `${n.id}:line${j}`;
+      const a = l.accessible;
+      if (a === null) return void problems.push({ id: n.id, detail: `${at}: no accessibility element exposes the line` });
+      const name = (want[j] as AxLine).name;
+      if (a.name !== name) problems.push({ id: n.id, detail: `${at}: named ${JSON.stringify(a.name)}, expected ${JSON.stringify(name)}` });
+      framed(n.id, at, a.frame, l.frame);
+    });
+  }
+  return { compared, problems };
+}
+
+/**
+ * A dump's nodes with the accessibility fields a correct device writes for the model's lines (checkAccessibleLines): each exposed
+ * line's element named as the model names it and framed on the line, a whole leaf's view named with its text and framed on the view,
+ * and nothing else. For the host tests' made-up device dumps.
+ */
+export function exposedAsModelled(nodes: readonly NativeDumpNode[], expected: readonly AxLine[]): NativeDumpNode[] {
+  const byLeaf = new Map<string, AxLine[]>();
+  for (const l of expected) byLeaf.set(l.leaf, [...(byLeaf.get(l.leaf) ?? []), l]);
+  return nodes.map((n) => {
+    const want = n.kind === 'text' ? (byLeaf.get(n.id) ?? []) : [];
+    const whole = want.find((l) => l.whole === true);
+    const lined = whole === undefined && want.length === n.lines.length;
+    return {
+      ...n,
+      lines: n.lines.map((l, j) => ({ ...l, accessible: lined ? { name: (want[j] as AxLine).name, frame: l.frame } : null })),
+      accessible: whole === undefined ? null : { name: whole.name, frame: n.frame },
+    };
+  });
 }

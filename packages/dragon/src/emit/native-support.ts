@@ -367,12 +367,15 @@ public final class DragonTextView: UIView, DragonNodeView {
 
   /// P6b: the accessibility elements, one per line in order, from dragonSetAccessibleLines.
   public private(set) var dragonAccessibleLines: [UIAccessibilityElement] = []
+  /// P6b: the index into specs of each accessibility element's line (a truncated line's unpainted run has none).
+  public private(set) var dragonAccessibleSpecs: [Int] = []
 
   /// P6b: each line's name (its code points, with the collapsible space it hangs at the line's end, as Chrome's InlineTextBox names
   /// it) and frame (its fragment, in device px from the view's top-left) as a static text element in the view's space; under a
   /// heading (heading, its level, else 0) each is a header too.
-  public func dragonSetAccessibleLines(names: [String], rects: [[Double]], scale: Double, heading: Int) {
+  public func dragonSetAccessibleLines(names: [String], rects: [[Double]], specs: [Int], scale: Double, heading: Int) {
     let s = CGFloat(scale)
+    dragonAccessibleSpecs = specs
     dragonAccessibleLines = zip(names, rects).map { name, r in
       let e = UIAccessibilityElement(accessibilityContainer: self)
       e.accessibilityLabel = name
@@ -390,6 +393,7 @@ public final class DragonTextView: UIView, DragonNodeView {
   /// Under a heading it is a header too.
   public func dragonSetAccessibleWhole(_ text: String, heading: Int) {
     dragonAccessibleLines = []
+    dragonAccessibleSpecs = []
     accessibilityElements = nil
     isAccessibilityElement = true
     accessibilityTraits = heading > 0 ? [.staticText, .header] : .staticText
@@ -1151,9 +1155,11 @@ public final class DragonTree {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       let size = try units_platformFontSize(leaves[li].font.size)
       var specs: [DragonLineSpec] = []
-      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left.
+      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left, its LU edges snapped as
+      // the dump snaps the line's.
       var axNames: [String] = []
       var axRects: [[Double]] = []
+      var axSpecs: [Int] = []
       // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
       // points and glyph pens in zoomed px from the root.
       var geometry: [[Double]] = []
@@ -1215,7 +1221,12 @@ public final class DragonTree {
             // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
             let nameEnd = !line.breaks.items.isEmpty && line.pieces.items.last === piece ? piece.visibleEnd : piece.end
             axNames.append(scalars[Int(piece.start)..<Int(nameEnd)].map { String($0) }.joined())
-            axRects.append([a.x / lu - e[0], a.y / lu - e[1], a.width / lu, a.height / lu])
+            let ax0 = try units_snapEdge(a.x)
+            let ay0 = try units_snapEdge(a.y)
+            let ax1 = try units_snapEdge(a.x + a.width)
+            let ay1 = try units_snapEdge(a.y + a.height)
+            axRects.append([ax0 - e[0], ay0 - e[1], ax1 - ax0, ay1 - ay0])
+            axSpecs.append(specs.count)
             geometry.append([a.x / lu, width / lu, a.y / lu])
             geometryCps.append(shown.map { Double($0.value) })
             geometryPens.append(run.xs.map { $0 + e[0] })
@@ -1228,7 +1239,7 @@ public final class DragonTree {
       textMetrics[id] = viewMetrics
       // The leaf's face (Ahem or a bundled real face, as the measurer laid it out) at the instance size in points.
       tv.dragonConfigure(font: bridge.font(face: leafFont.family.description, pointSize: CGFloat(size / s)), face: leafFont.family.description, lines: specs, scale: s)
-      if elided { tv.dragonSetAccessibleWhole(leaves[li].text.description, heading: headingOf(id)) } else { tv.dragonSetAccessibleLines(names: axNames, rects: axRects, scale: s, heading: headingOf(id)) }
+      if elided { tv.dragonSetAccessibleWhole(leaves[li].text.description, heading: headingOf(id)) } else { tv.dragonSetAccessibleLines(names: axNames, rects: axRects, specs: axSpecs, scale: s, heading: headingOf(id)) }
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       if let cv = views[pId] as? DragonBoxView, let strut = p.strut, let m = viewMetrics {
@@ -1286,16 +1297,29 @@ public final class DragonTree {
           let left = try! units_snapEdge(l * units_LU_PER_PX + x.xLU)
           let right = try! units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           let baseline = t + x.baseline
-          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: left / s, y: top / s, width: (right - left) / s, height: (bottom - top) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: left, top: top, right: right, bottom: bottom), baseline: (baseline - top) / s, start: Double(x.start), end: Double(x.end)))
+          // P6b: the line's accessibility element as UIKit holds it in the view's live accessibilityElements, framed from the view's
+          // live position; a hidden view exposes none.
+          var accessible: DumpNodesLinesAccessible? = nil
+          if !tv.isHidden, let j = tv.dragonAccessibleSpecs.firstIndex(of: k), let live = tv.accessibilityElements, j < live.count, let el = live[j] as? UIAccessibilityElement {
+            let f = el.accessibilityFrameInContainerSpace
+            accessible = DumpNodesLinesAccessible(name: el.accessibilityLabel ?? "", frame: DumpNodesLinesAccessibleFrame(x: Double(r.minX + f.minX), y: Double(r.minY + f.minY), width: Double(f.width), height: Double(f.height)))
+          }
+          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: left / s, y: top / s, width: (right - left) / s, height: (bottom - top) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: left, top: top, right: right, bottom: bottom), baseline: (baseline - top) / s, start: Double(x.start), end: Double(x.end), accessible: accessible))
         }
       } else if let frags = inlineLines[id] {
         // An inline box's lines are its fragments, placed from the box view's live position; it has no text, so offsets 0 to 0.
         for f in frags {
           let e = [l + f.edges[0], t + f.edges[1], l + f.edges[2], t + f.edges[3]]
-          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: e[0] / s, y: e[1] / s, width: (e[2] - e[0]) / s, height: (e[3] - e[1]) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: e[0], top: e[1], right: e[2], bottom: e[3]), baseline: f.baseline / s, start: 0, end: 0))
+          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: e[0] / s, y: e[1] / s, width: (e[2] - e[0]) / s, height: (e[3] - e[1]) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: e[0], top: e[1], right: e[2], bottom: e[3]), baseline: f.baseline / s, start: 0, end: 0, accessible: nil))
         }
       }
-      nodes.append(DumpNodes(id: id, parent: parents[id] ?? nil, kind: v.dragonKind, native: String(describing: type(of: v)), frame: DumpNodesFrame(x: l / s, y: t / s, width: (rr - l) / s, height: (b - t) / s), deviceEdges: DumpNodesDeviceEdges(left: l, top: t, right: rr, bottom: b), applied: v.dragonApplied(), lines: lines))
+      // P6b: the view as one accessibility element of its own (a whole leaf, or a control), named and framed as UIKit reports it to VoiceOver.
+      var accessible: DumpNodesAccessible? = nil
+      if !v.isHidden, v.isAccessibilityElement {
+        let f = UIAccessibility.convertFromScreenCoordinates(v.accessibilityFrame, in: root)
+        accessible = DumpNodesAccessible(name: v.accessibilityLabel ?? "", frame: DumpNodesAccessibleFrame(x: Double(f.minX), y: Double(f.minY), width: Double(f.width), height: Double(f.height)))
+      }
+      nodes.append(DumpNodes(id: id, parent: parents[id] ?? nil, kind: v.dragonKind, native: String(describing: type(of: v)), frame: DumpNodesFrame(x: l / s, y: t / s, width: (rr - l) / s, height: (b - t) / s), deviceEdges: DumpNodesDeviceEdges(left: l, top: t, right: rr, bottom: b), applied: v.dragonApplied(), lines: lines, accessible: accessible))
     }
     return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing, environment: environment)
   }
@@ -1690,6 +1714,9 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
   /** The level of the heading the lines are under, or 0. */
   var dragonAccessibleHeading = 0
     private set
+  /** The index into specs of each line's virtual child (a truncated line's unpainted run has none). */
+  var dragonAccessibleSpecs: List<Int> = emptyList()
+    private set
   /** The line holding accessibility focus, or -1. */
   private var dragonAccessibleFocus = -1
   /** The line under the hover pointer, or -1. */
@@ -1700,8 +1727,9 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
    * it) and frame (its fragment, in device px from the view's top-left), each a virtual child of the view's node provider; under a
    * heading (heading, its level, else 0) each is a heading too.
    */
-  fun dragonSetAccessibleLines(names: List<String>, rects: List<DoubleArray>, heading: Int) {
+  fun dragonSetAccessibleLines(names: List<String>, rects: List<DoubleArray>, specs: List<Int>, heading: Int) {
     dragonAccessibleNames = names
+    dragonAccessibleSpecs = specs
     dragonAccessibleRects = rects
     dragonAccessibleHeading = heading
     dragonAccessibleFocus = -1
@@ -1717,7 +1745,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
    * heading too.
    */
   fun dragonSetAccessibleWhole(text: String, heading: Int) {
-    dragonSetAccessibleLines(emptyList(), emptyList(), heading)
+    dragonSetAccessibleLines(emptyList(), emptyList(), emptyList(), heading)
     contentDescription = text
     isAccessibilityHeading = heading > 0
     importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -2135,9 +2163,13 @@ import dev.dragon.dump.DumpCaseViewport
 import dev.dragon.dump.DumpDevice
 import dev.dragon.dump.DumpEnvironment
 import dev.dragon.dump.DumpNodes
+import dev.dragon.dump.DumpNodesAccessible
+import dev.dragon.dump.DumpNodesAccessibleFrame
 import dev.dragon.dump.DumpNodesDeviceEdges
 import dev.dragon.dump.DumpNodesFrame
 import dev.dragon.dump.DumpNodesLines
+import dev.dragon.dump.DumpNodesLinesAccessible
+import dev.dragon.dump.DumpNodesLinesAccessibleFrame
 import dev.dragon.dump.DumpNodesLinesDeviceEdges
 import dev.dragon.dump.DumpNodesLinesFrame
 import dev.dragon.dump.DumpPixels
@@ -2605,9 +2637,11 @@ class DragonTree(val context: Context) {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       val size = units_platformFontSize(leaves[li].font.size)
       val specs = ArrayList<DragonLineSpec>()
-      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left.
+      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left, its LU edges snapped as
+      // the dump snaps the line's.
       val axNames = ArrayList<String>()
       val axRects = ArrayList<DoubleArray>()
+      val axSpecs = ArrayList<Int>()
       // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
       // points and glyph pens in zoomed px from the root.
       val geometry = ArrayList<DoubleArray>()
@@ -2674,7 +2708,12 @@ class DragonTree(val context: Context) {
             // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
             val nameEnd = if (line.breaks.isNotEmpty() && line.pieces.last() === piece) piece.visibleEnd else piece.end
             axNames.add(leafText.substring(from, utf16(nameEnd.toInt())))
-            axRects.add(doubleArrayOf(a.x / lu - e[0], a.y / lu - e[1], a.width / lu, a.height / lu))
+            val ax0 = units_snapEdge(a.x)
+            val ay0 = units_snapEdge(a.y)
+            val ax1 = units_snapEdge(a.x + a.width)
+            val ay1 = units_snapEdge(a.y + a.height)
+            axRects.add(doubleArrayOf(ax0 - e[0], ay0 - e[1], ax1 - ax0, ay1 - ay0))
+            axSpecs.add(specs.size)
             geometry.add(doubleArrayOf(a.x / lu, width / lu, a.y / lu))
             geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
             geometryPens.add(DoubleArray(run.second.size) { run.second[it] + e[0] })
@@ -2687,7 +2726,7 @@ class DragonTree(val context: Context) {
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
       // The leaf's face (Ahem or a bundled real face, as the measurer laid it out).
       tv.dragonConfigure(bridge, leafFont.family, size.toFloat(), specs, scale)
-      if (elided) tv.dragonSetAccessibleWhole(leafText, headingOf(id)) else tv.dragonSetAccessibleLines(axNames, axRects, headingOf(id))
+      if (elided) tv.dragonSetAccessibleWhole(leafText, headingOf(id)) else tv.dragonSetAccessibleLines(axNames, axRects, axSpecs, headingOf(id))
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       val cv = views[pId] as? DragonBoxView
@@ -2753,16 +2792,36 @@ class DragonTree(val context: Context) {
           val left = units_snapEdge(l * units_LU_PER_PX + x.xLU)
           val right = units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           val baseline = t + x.baseline
-          lines.add(DumpNodesLines(DumpNodesLinesFrame(left / s, top / s, (right - left) / s, (bottom - top) / s), DumpNodesLinesDeviceEdges(left, top, right, bottom), (baseline - top) / s, x.start.toDouble(), x.end.toDouble()))
+          // P6b: the line's virtual node as the view's live node provider builds it, framed from the view's live position; a view
+          // that is not visible exposes none.
+          var accessible: DumpNodesLinesAccessible? = null
+          val j = v.dragonAccessibleSpecs.indexOf(k)
+          val info = if (j < 0 || view.visibility != android.view.View.VISIBLE) null else v.accessibilityNodeProvider?.createAccessibilityNodeInfo(j)
+          if (info != null) {
+            val bounds = android.graphics.Rect()
+            @Suppress("DEPRECATION")
+            info.getBoundsInParent(bounds)
+            accessible = DumpNodesLinesAccessible(info.text?.toString() ?: "", DumpNodesLinesAccessibleFrame((l + bounds.left) / s, (t + bounds.top) / s, bounds.width() / s, bounds.height() / s))
+          }
+          lines.add(DumpNodesLines(DumpNodesLinesFrame(left / s, top / s, (right - left) / s, (bottom - top) / s), DumpNodesLinesDeviceEdges(left, top, right, bottom), (baseline - top) / s, x.start.toDouble(), x.end.toDouble(), accessible))
         }
       } else {
         // An inline box's lines are its fragments, placed from the box view's live position; it has no text, so offsets 0 to 0.
         for (f in inlineLines[id] ?: emptyList()) {
           val e = doubleArrayOf(l + f[0], t + f[1], l + f[2], t + f[3])
-          lines.add(DumpNodesLines(DumpNodesLinesFrame(e[0] / s, e[1] / s, (e[2] - e[0]) / s, (e[3] - e[1]) / s), DumpNodesLinesDeviceEdges(e[0], e[1], e[2], e[3]), f[4] / s, 0.0, 0.0))
+          lines.add(DumpNodesLines(DumpNodesLinesFrame(e[0] / s, e[1] / s, (e[2] - e[0]) / s, (e[3] - e[1]) / s), DumpNodesLinesDeviceEdges(e[0], e[1], e[2], e[3]), f[4] / s, 0.0, 0.0, null))
         }
       }
-      nodes.add(DumpNodes(id, parents[id], v.dragonKind, view.javaClass.name, DumpNodesFrame(l / s, t / s, (rr - l) / s, (b - t) / s), DumpNodesDeviceEdges(l, t, rr, b), v.dragonApplied(), lines))
+      // P6b: the view as one accessibility element of its own (a whole leaf, or a control), named and framed by the node info it gives TalkBack.
+      var accessible: DumpNodesAccessible? = null
+      if (view.visibility == android.view.View.VISIBLE && view.importantForAccessibility == android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES && view.accessibilityNodeProvider == null && view.contentDescription != null) {
+        val info = view.createAccessibilityNodeInfo()
+        val bounds = android.graphics.Rect()
+        @Suppress("DEPRECATION")
+        info.getBoundsInParent(bounds)
+        accessible = DumpNodesAccessible(info.contentDescription?.toString() ?: "", DumpNodesAccessibleFrame((l + bounds.left) / s, (t + bounds.top) / s, bounds.width() / s, bounds.height() / s))
+      }
+      nodes.add(DumpNodes(id, parents[id], v.dragonKind, view.javaClass.name, DumpNodesFrame(l / s, t / s, (rr - l) / s, (b - t) / s), DumpNodesDeviceEdges(l, t, rr, b), v.dragonApplied(), lines, accessible))
     }
     return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing, environment)
   }

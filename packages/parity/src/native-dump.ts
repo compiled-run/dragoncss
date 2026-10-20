@@ -80,7 +80,15 @@ export const NATIVE_DUMP_SCHEMA = obj([
       orNull('baseline', num, 'css px from the line top', 'reference-lane'),
       orNull('start', { kind: 'integer', min: 0, max: null }, 'first text offset of the line', 'reference-lane'),
       orNull('end', { kind: 'integer', min: 0, max: null }, 'text offset after the line', 'reference-lane'),
+      orNull('accessible', obj([
+        field('name', str, 'the name a screen reader reads, from the live accessibility element (iOS) or node info (Android)'),
+        field('frame', FRAME, 'its frame, css px, absolute, from the live element or node info'),
+      ]), "the line's accessibility element (P6b); null for an inline box fragment, a line no element exposes (a hidden view's, a whole leaf's), and in a ts-reference dump", 'always'),
     ])), 'one entry per line box of a text node, in order; empty for other nodes'),
+    orNull('accessible', obj([
+      field('name', str, 'the name a screen reader reads, from the live view (iOS accessibilityLabel) or its node info (Android contentDescription)'),
+      field('frame', FRAME, 'its frame, css px, absolute, from the live accessibilityFrame or node info'),
+    ]), 'the view as one accessibility element of its own (P6b: a leaf text-overflow truncates is exposed whole; device-lines checks text views only); null for a view that is not one, a hidden view, and in a ts-reference dump', 'always'),
   ])), 'every laid-out node'),
   orNull('pixels', obj([
     field('capture', { kind: 'enum', values: ['drawHierarchy', 'PixelCopy'] }, 'the compositor capture; layer.render and View.draw are banned'),

@@ -18,9 +18,9 @@ function deviceDump(): NativeDump {
     device: { platform: 'ios', os: '26.5 (23F77)', model: 'iPhone 17', abi: 'arm64', scale: 3, toolchain: 'Xcode 27.0 (27A266a)', renderer: 'simulator-metal' },
     units: 'css-px',
     nodes: [
-      { id: 'html', parent: null, kind: 'element', native: 'UIView', frame, deviceEdges: edges, applied: {}, lines: [] },
-      { id: 'n3', parent: 'html', kind: 'element', native: 'UIView', frame, deviceEdges: edges, applied: { 'layer.cornerRadius': 8, backgroundColor: [0.2, 0.4, 1, 1] }, lines: [] },
-      { id: 'n3:text0', parent: 'n3', kind: 'text', native: 'DragonTextView', frame, deviceEdges: edges, applied: {}, lines: [{ frame, deviceEdges: edges, baseline: 10.5, start: 0, end: 3 }] },
+      { id: 'html', parent: null, kind: 'element', native: 'UIView', frame, deviceEdges: edges, applied: {}, lines: [], accessible: null },
+      { id: 'n3', parent: 'html', kind: 'element', native: 'UIView', frame, deviceEdges: edges, applied: { 'layer.cornerRadius': 8, backgroundColor: [0.2, 0.4, 1, 1] }, lines: [], accessible: null },
+      { id: 'n3:text0', parent: 'n3', kind: 'text', native: 'DragonTextView', frame, deviceEdges: edges, applied: {}, lines: [{ frame, deviceEdges: edges, baseline: 10.5, start: 0, end: 3, accessible: { name: 'abc', frame } }], accessible: { name: 'abc', frame } },
     ],
     pixels: { capture: 'drawHierarchy', colorSpace: 'sRGB', width: 1200, height: 900, sha256: 'abc', samples: [{ x: 240, y: 120, rgba: [51, 102, 255, 255], rule: 'interior:n3' }] },
     timing: { settleMs: 3, dumpMs: 1 },

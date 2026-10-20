@@ -510,13 +510,13 @@ export function referenceDump(c: ReferenceCase, faults: ReferenceFaults = NO_REF
     const g = geometry(r, i);
     if (isLineRect(r)) {
       const list = lines.get(r.parent as string) ?? [];
-      list.push({ ...g, baseline: null, start: null, end: null });
+      list.push({ ...g, baseline: null, start: null, end: null, accessible: null });
       lines.set(r.parent as string, list);
       return;
     }
     const kind = kinds.get(r.id);
     if (kind === undefined) throw new Error(`${c.caseId}: engine rect ${r.id} is not a node of the layout input`);
-    nodes.push({ id: r.id, node: { id: r.id, parent: r.parent, kind, native: 'ts-reference', ...g, applied: {} } });
+    nodes.push({ id: r.id, node: { id: r.id, parent: r.parent, kind, native: 'ts-reference', ...g, applied: {}, accessible: null } });
   });
   return {
     schema: NATIVE_DUMP_SCHEMA_ID,
