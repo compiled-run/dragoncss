@@ -12,6 +12,10 @@
 // PNT1-filter: a group with a colour-matrix filter is written through dragonSetFilterGroup with its functions as (code, amount)
 // pairs; its overlay builds the matrices once (paint-group.ts groupFilterMatrices) and composites every pixel with
 // groupFilterComposite instead (the filter, then the opacity; a filtered layer never folds).
+// S2: a group holding translucent paint or a nested group (written through dragonSetNestedGroup, which keeps alpha 1) has its layer
+// built in software instead of by the platform: each box's fill and sides blitted with paint-group.ts groupFill, each text view drawn
+// by the platform into the layer over what it holds, each nested group composited into it as the group is over its backdrop (per
+// tile, its one op at groupFoldAlpha where cc folds it, else groupComposite), so the platform never blends a translucent colour.
 import { COLOR_MATRIX_FILTERS } from '../../css/properties/filter.ts';
 import type { FilterFunction } from '../../css/properties/filter.ts';
 import type { EffectsWrite } from '../../lower/paint/effects.ts';
@@ -161,8 +165,8 @@ func dragonGroupTranslucent(_ b: DragonBoxView) -> Bool {
 struct DragonGroupFrame {
   let root: UIView
   let ext: [Int]
-  let w: Int
-  let h: Int
+  let width: Int
+  let height: Int
   let s: Double
   let space: CGColorSpace
   let tileSize: Double
@@ -383,7 +387,7 @@ public final class DragonGroupView: UIView {
     var q: [UInt8]
     if software {
       q = bp
-      let f = DragonGroupFrame(root: root, ext: ext, w: w, h: h, s: s, space: space, tileSize: tileSize, originX: originX)
+      let f = DragonGroupFrame(root: root, ext: ext, width: w, height: h, s: s, space: space, tileSize: tileSize, originX: originX)
       dragonSoftwareGroup(&q, g, f, dragonAlpha8, dragonAlphaPlantIgnored ? 1 : g.dragonOpacity, dragonMatrices)
     } else {
     // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
@@ -484,7 +488,7 @@ public final class DragonGroupView: UIView {
     let c = b.dragonBackgroundColor
     for y in y0..<y1 {
       for x in x0..<x1 {
-        let i = ((y - f.ext[1]) * f.w + (x - f.ext[0])) * 4
+        let i = ((y - f.ext[1]) * f.width + (x - f.ext[0])) * 4
         if c.a > 0 { dragonSoftwareBlend(&buf, i, c, Double(c.a)) }
         var side = -1
         if shown[0] && y < e[1] + bw[0] { side = 0 } else if shown[1] && x >= e[2] - bw[1] { side = 1 } else if shown[2] && y >= e[3] - bw[2] { side = 2 } else if shown[3] && x < e[0] + bw[3] { side = 3 }
@@ -497,9 +501,9 @@ public final class DragonGroupView: UIView {
   func dragonSoftwareText(_ buf: inout [UInt8], _ tv: DragonTextView, _ f: DragonGroupFrame) {
     let r = dragonLayoutRect(tv, in: f.root)
     buf.withUnsafeMutableBytes { raw in
-      guard let ctx = CGContext(data: raw.baseAddress, width: f.w, height: f.h, bitsPerComponent: 8, bytesPerRow: f.w * 4, space: f.space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("dragon: no RGBA8 context for a group's text") }
+      guard let ctx = CGContext(data: raw.baseAddress, width: f.width, height: f.height, bitsPerComponent: 8, bytesPerRow: f.width * 4, space: f.space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("dragon: no RGBA8 context for a group's text") }
       ctx.interpolationQuality = .none
-      ctx.translateBy(x: 0, y: CGFloat(f.h))
+      ctx.translateBy(x: 0, y: CGFloat(f.height))
       ctx.scaleBy(x: CGFloat(f.s), y: -CGFloat(f.s))
       ctx.translateBy(x: r.minX - CGFloat(Double(f.ext[0]) / f.s), y: r.minY - CGFloat(Double(f.ext[1]) / f.s))
       tv.layer.render(in: ctx)
@@ -561,7 +565,7 @@ public final class DragonGroupView: UIView {
   /// then, per cc raster tile, its one op drawn at the folded alpha (groupFoldAlpha, groupFill) or the layer blitted at its alpha
   /// byte (groupComposite); with a colour-matrix filter, the filter and then the alpha (groupFilterComposite), never folded.
   func dragonSoftwareGroup(_ dst: inout [UInt8], _ b: DragonBoxView, _ f: DragonGroupFrame, _ alpha8: Int, _ opacity: Double, _ matrices: JsArray<Double>?) {
-    var l = [UInt8](repeating: 0, count: f.w * f.h * 4)
+    var l = [UInt8](repeating: 0, count: f.width * f.height * 4)
     dragonSoftwareBox(&l, b, f)
     dragonSoftwareChildren(&l, b, f)
     var draws: [Double] = []
@@ -583,9 +587,9 @@ public final class DragonGroupView: UIView {
         foldCache[key] = k
         return k
       }
-      for y in 0..<f.h {
-        for x in 0..<f.w {
-          let i = (y * f.w + x) * 4
+      for y in 0..<f.height {
+        for x in 0..<f.width {
+          let i = (y * f.width + x) * 4
           let packed: Double
           if let m = matrices {
             packed = try paintGroup_groupFilterComposite(Double(l[i]), Double(l[i + 1]), Double(l[i + 2]), Double(l[i + 3]), Double(dst[i]), Double(dst[i + 1]), Double(dst[i + 2]), Double(dst[i + 3]), m, a8)
@@ -753,7 +757,7 @@ fun dragonGroupTranslucent(b: DragonBoxView): Boolean {
 }
 
 /** S2: the frame a group's software layer is built in: the root, the extent in root device px and its size, and the cc tiles. */
-class DragonGroupFrame(val root: View, val ext: IntArray, val w: Int, val h: Int, val tileSize: Double, val originX: Double)
+class DragonGroupFrame(val root: View, val ext: IntArray, val width: Int, val height: Int, val tileSize: Double, val originX: Double)
 
 /**
  * The draw ops of a group member box's display item (Blink box_border_painter.cc PaintBorderFastPath): its background fill, then
@@ -1082,7 +1086,7 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     val c = b.dragonBackgroundColor
     for (y in y0 until y1) {
       for (x in x0 until x1) {
-        val i = ((y - f.ext[1]) * f.w + (x - f.ext[0])) * 4
+        val i = ((y - f.ext[1]) * f.width + (x - f.ext[0])) * 4
         if (c.a > 0) blend(buf, i, c, c.a.toDouble())
         val side = if (shown[0] && y < e[1] + bw[0]) 0 else if (shown[1] && x >= e[2] - bw[1]) 1 else if (shown[2] && y >= e[3] - bw[2]) 2 else if (shown[3] && x < e[0] + bw[3]) 3 else -1
         if (side >= 0 && b.dragonBorderColors[side].a > 0) blend(buf, i, b.dragonBorderColors[side], b.dragonBorderColors[side].a.toDouble())
@@ -1092,7 +1096,7 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
 
   /** A text view drawn by the platform into a layer, over what the layer holds, as View.draw draws it in the group's render. */
   private fun softwareText(buf: ByteArray, tv: DragonTextView, f: DragonGroupFrame) {
-    val bm = Bitmap.createBitmap(f.w, f.h, Bitmap.Config.ARGB_8888)
+    val bm = Bitmap.createBitmap(f.width, f.height, Bitmap.Config.ARGB_8888)
     bm.copyPixelsFromBuffer(ByteBuffer.wrap(buf))
     val canvas = Canvas(bm)
     val o = dragonLayoutOffset(tv, f.root)
@@ -1160,7 +1164,7 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
    * (groupComposite); with a colour-matrix filter, the filter and then the alpha (groupFilterComposite), never folded.
    */
   private fun softwareGroup(dst: ByteArray, b: DragonBoxView, f: DragonGroupFrame, alpha8: Int, opacity: Double, matrices: JsArray<Double>?) {
-    val l = ByteArray(f.w * f.h * 4)
+    val l = ByteArray(f.width * f.height * 4)
     softwareBox(l, b, f)
     softwareChildren(l, b, f)
     val draws = ArrayList<Double>()
@@ -1180,9 +1184,9 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     }
     val a8 = alpha8.toDouble()
     fun u(x: Byte): Double = (x.toInt() and 0xff).toDouble()
-    for (y in 0 until f.h) {
-      for (x in 0 until f.w) {
-        val i = (y * f.w + x) * 4
+    for (y in 0 until f.height) {
+      for (x in 0 until f.width) {
+        val i = (y * f.width + x) * 4
         val v: Long
         if (matrices != null) v = paintGroup_groupFilterComposite(u(l[i]), u(l[i + 1]), u(l[i + 2]), u(l[i + 3]), u(dst[i]), u(dst[i + 1]), u(dst[i + 2]), u(dst[i + 3]), matrices, a8).toLong()
         else {

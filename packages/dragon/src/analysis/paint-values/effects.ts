@@ -217,7 +217,8 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
     if (style !== 'solid') return `${a} has a ${style} border`;
     const c = colors[`border-${side}-color` as 'border-top-color'];
     if (c.alpha !== 255) {
-      if (!content) return `${a} has a border side that is not opaque`;
+      // Blink still records a transparent side's box as a display item, which the fold count would miss (measured).
+      if (!content || c.alpha === 0) return `${a} has a border side that is not opaque`;
       translucent = true;
     }
     sides.push(`${c.r},${c.g},${c.b},${c.alpha}`);

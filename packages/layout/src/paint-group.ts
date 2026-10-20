@@ -120,7 +120,7 @@ export function groupTileFolds(draws: readonly number[], tileLeft: number, tileT
 // ---------------------------------------------------------------- a group's layer built in software (PNT1-opacity-b, S2)
 // A group holding translucent paint or a nested group has its layer built by the device from its draw list, as Chrome's CPU raster
 // draws into a layer: a solid colour of alpha ca is premultiplied and blitted with blit_row_color32 at full coverage (Skia 2ab8add5
-// src/core/SkBlitter_ARGB32.cpp:1449-1455 SkARGB32_Blitter, 1463-1468 blitH, src/opts/SkBlitRow_opts.h:243-270), over whatever the
+// src/core/SkBlitter_ARGB32.cpp:1450-1456 SkARGB32_Blitter, 1463-1468 blitH, src/opts/SkBlitRow_opts.h:243-270), over whatever the
 // layer holds, whose alpha may be below 255; a nested group composites into its parent's layer as groupComposite does over the
 // backdrop. A folded op takes the colour's alpha times the group's (cc/paint/scoped_raster_flags.h:47-50, in float), which the
 // blitter rounds to its byte (src/core/SkColor.cpp:142-144 toSkColor, src/core/SkSwizzlePriv.h:53-60 Sk4f_toL32). Pinned against
