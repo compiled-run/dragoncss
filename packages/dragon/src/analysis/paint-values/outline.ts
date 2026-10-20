@@ -57,7 +57,8 @@ const NATIVE_OUTLINES = 'solid and double outlines, and dotted, dashed, groove, 
  * the rounded path: the outline's outset grows its positive component, and the sides beside it (every side, for groove and ridge)
  * take DrawCurvedBoxSide or DrawCurvedDashedDottedBoxSide.
  */
-const rounds = (el: ResolvedElement): boolean =>
+/** Whether any corner of an element has a non-zero radius. */
+export const rounds = (el: ResolvedElement): boolean =>
   RADIUS_LONGHANDS.some((p) => {
     const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
     return c !== null && (c[0].value > 0 || c[1].value > 0);

@@ -41,7 +41,7 @@ export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which 
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint'];
 export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;
 export const STACKING_OUT: readonly string[] = [
-  'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'stacking-basic',
+  'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
   'stacking-grid-items-rtl',
 ];
