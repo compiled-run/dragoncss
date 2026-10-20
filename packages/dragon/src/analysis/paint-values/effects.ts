@@ -10,6 +10,8 @@
 // or text in the group, or a translucent fill, differs. The lowering folds such a box (lower/paint/background.ts, effects.ts) and native draws it as it
 // draws any translucent background.
 import { opacityOf } from '../../css/properties/effects.ts';
+import type { FilterFunction } from '../../css/properties/filter.ts';
+import { colorMatrixFilters, filterApplies } from '../../css/properties/filter.ts';
 import { SIDES } from '../../css/properties.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
 import { isReplacedTag, SVG_SHAPE_TAGS } from '../elements/replaced.ts';
@@ -31,6 +33,7 @@ export function checkTranslucent(root: ResolvedElement, targets: readonly string
     const d = (el.props.get('display') as ResolvedValue).value;
     if (d.kind === 'keyword' && d.value === 'none') return;
     checkOpacity(el, plans.get(el.element.address) ?? null, targets, diagnostics, reported);
+    checkFilterGroup(el, plans.get(el.element.address) ?? null, targets, diagnostics, reported);
     for (const c of el.children) if (c.kind === 'element') walk(c);
   };
   walk(root);
@@ -101,17 +104,46 @@ function checkOpacity(el: ResolvedElement, plan: GroupPlan | null, targets: read
   }
 }
 
+/** The colour-matrix functions of an element's filter (empty for none), or null for a list Dragon does not draw (checkFilter refuses it). */
+function matrixFilterOf(el: ResolvedElement): readonly FilterFunction[] | null {
+  const read = colorMatrixFilters((el.props.get('filter') as ResolvedValue).value);
+  return read.kind === 'none' ? [] : read.kind === 'list' ? read.functions : null;
+}
+
+// PNT1-filter: a colour-matrix filter is drawn on native only by a pre-composited group's overlay (filter, then opacity), so a filter
+// on a box that is no admitted group is refused there; a box of opacity 0 draws nothing, filtered or not.
+function checkFilterGroup(el: ResolvedElement, plan: GroupPlan | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const fns = matrixFilterOf(el);
+  if (fns === null || fns.length === 0 || opacityAt(el) <= 0 || plan?.kind === 'group') return;
+  const v = el.props.get('filter') as ResolvedValue;
+  const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  for (const t of targets) {
+    if (t === 'web') continue;
+    const id = `${t}|filter-group|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin,
+      target: t,
+      message: `${el.element.address} has filter: ${fns.map((f) => `${f.name}(${f.amount})`).join(' ')}; ${t} has no filter that rounds as Chrome's Skia pipeline does, so Dragon draws a colour-matrix filter only on a group it pre-composites (PNT1-filter), and this one is not: ${plan === null ? 'it is not a group' : plan.reason}`,
+      manual: 'Remove the filter, or keep the filtered box to opaque square fills, solid borders and opaque text over opaque square fills.',
+      basis: 'computed-value',
+    }));
+  }
+}
+
 // ---------------------------------------------------------------- pre-composited groups (PNT1-opacity-b, S1)
 // Native keeps a group G at alpha 1 and covers it with an overlay that shows Q, Chrome's composite: G's layer (rendered by the
 // platform) over a software backdrop, blitted per cc raster tile as Chrome does (@dragon/layout paint-group.ts). The backdrop
 // is modelled from G's backdrop box B (the nearest ancestor that clips and has an opaque background, or the canvas) and the
 // painters before G inside it, so each of them must be a square opaque fill, solid border sides in one opaque colour, or an earlier
 // such group. G's own content must be what the platform renders exactly at whole device px: square opaque fills and solid
-// opaque borders, and opaque text, with nothing that composites, moves or animates.
+// opaque borders, and opaque text, with nothing that composites, moves or animates. PNT1-filter: G may instead (or as well) have a
+// colour-matrix filter, which the overlay applies to G's layer before its opacity (layout paint-group.ts groupFilterComposite).
 
-/** An admitted group: its backdrop box (null for the canvas) and the painters before it there, in paint order; or why not. */
+/** An admitted group: its colour-matrix filter (empty for none), its backdrop box (null for the canvas) and the painters before it there, in paint order; or why not. */
 export type GroupPlan =
-  | { readonly kind: 'group'; readonly backdrop: string | null; readonly painters: readonly string[] }
+  | { readonly kind: 'group'; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[] }
   | { readonly kind: 'refused'; readonly reason: string };
 
 const GROUP_KEYWORDS = FOLD_KEYWORDS.filter(([p]) => p !== 'position' && p !== 'overflow-x' && p !== 'overflow-y');
@@ -130,13 +162,16 @@ const clipsAt = (el: ResolvedElement): boolean => (keywordAt(el, 'overflow-x') ?
  * Why a box cannot be drawn by the overlay's models (null when it can): as a member of a group (its paint rendered by the
  * platform) or as a backdrop painter (its paint modelled in software); a painter that is an ancestor of the group may clip.
  */
-function boxProblem(el: ResolvedElement, role: 'member' | 'painter' | 'ancestor-painter'): string | null {
+function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 'ancestor-painter'): string | null {
   const a = el.element.address;
   const tag = el.element.tag;
   const canvasTag = tag === 'html' || tag === 'body';
-  if ((FOLD_TAGS_OUT.has(tag) && !(canvasTag && role !== 'member')) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag)) return `${a} is a <${tag}>, a control, replaced or svg box`;
+  const content = role === 'group' || role === 'member';
+  if ((FOLD_TAGS_OUT.has(tag) && !(canvasTag && !content)) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag)) return `${a} is a <${tag}>, a control, replaced or svg box`;
   if (!FOLD_DISPLAYS.includes(keywordAt(el, 'display') ?? '')) return `${a} has display ${keywordAt(el, 'display')}, not a plain block or inline-block box`;
   for (const [p, ok] of GROUP_KEYWORDS) {
+    // The group's own filter is what the overlay applies (matrixFilterOf admits it).
+    if (p === 'filter' && role === 'group') continue;
     const k = keywordAt(el, p);
     if (k !== null && !ok.includes(k)) return `${a} has a ${p} (a shadow, image, filter, clip, transform or will-change)`;
   }
@@ -183,7 +218,7 @@ function textProblem(owner: ResolvedElement): string | null {
 
 const groupPlansOf = new WeakMap<ResolvedElement, ReadonlyMap<string, GroupPlan>>();
 
-/** The plan of every fractional, unfolded opacity of a case (by address); computed once per resolved tree. */
+/** The plan of every fractional, unfolded opacity and every colour-matrix filter of a case (by address); computed once per resolved tree. */
 export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, GroupPlan> {
   const known = groupPlansOf.get(root);
   if (known !== undefined) return known;
@@ -211,7 +246,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
   const plans = new Map<string, GroupPlan>();
   const admitted = (el: ResolvedElement): boolean => plans.get(el.element.address)?.kind === 'group';
 
-  const planOf = (g: ResolvedElement): GroupPlan => {
+  const planOf = (g: ResolvedElement, filter: readonly FilterFunction[]): GroupPlan => {
     const refused = (reason: string): GroupPlan => ({ kind: 'refused', reason });
     // The group's own content.
     const members: ResolvedElement[] = [];
@@ -221,7 +256,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     };
     collect(g);
     for (const m of members) {
-      const bad = boxProblem(m, 'member');
+      const bad = boxProblem(m, m === g ? 'group' : 'member');
       if (bad !== null) return refused(bad);
       if (m !== g && opacityAt(m) < 1) return refused(`${m.element.address} inside it has opacity ${opacityAt(m)}, a nested group`);
       if (m.children.some((c) => c.kind === 'text')) {
@@ -234,6 +269,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     for (const a of up) {
       const at = a.element.address;
       if (opacityAt(a) < 1) return refused(`it is inside ${at}, which has opacity ${opacityAt(a)}`);
+      if (filterApplies((a.props.get('filter') as ResolvedValue).value)) return refused(`it is inside ${at}, which has a filter`);
       if (transformedForStacking(a)) return refused(`it is inside ${at}, which is transformed or will change`);
       const position = keywordAt(a, 'position') ?? 'static';
       // An absolute box's containing block may skip the backdrop's clip.
@@ -264,15 +300,18 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       if (bad !== null) return refused(`a painter before it in its backdrop: ${bad}`);
       painters.push(id);
     }
-    return { kind: 'group', backdrop: b === null ? null : b.element.address, painters };
+    return { kind: 'group', filter, backdrop: b === null ? null : b.element.address, painters };
   };
 
   for (const id of order) {
     const el = byId.get(id);
     if (el === undefined) continue;
     const o = opacityAt(el);
-    if (o <= 0 || o >= 1 || opacityFolds(el)) continue;
-    plans.set(id, elementWillChange(el).includes('opacity') ? { kind: 'refused', reason: 'it has will-change: opacity, a compositor layer' } : planOf(el));
+    // A filter list Dragon does not draw is refused by checkFilter; its box is no group.
+    const filter = matrixFilterOf(el);
+    if (o <= 0 || filter === null) continue;
+    if (filter.length === 0 && (o >= 1 || opacityFolds(el))) continue;
+    plans.set(id, elementWillChange(el).includes('opacity') ? { kind: 'refused', reason: 'it has will-change: opacity, a compositor layer' } : planOf(el, filter));
   }
   groupPlansOf.set(root, plans);
   return plans;

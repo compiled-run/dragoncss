@@ -616,6 +616,7 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
       case 'opacity':
       case 'opacity-group':
+      case 'filter-group':
         // PNT1 writes opacity on the static program only; the state runtime has no opacity writer yet (nor a group overlay).
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       case 'scroll-container':

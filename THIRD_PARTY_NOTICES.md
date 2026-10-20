@@ -12,6 +12,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
 - `cc/paint/draw_looper.cc`: Copyright 2024 The Chromium Authors
 - `cc/paint/paint_op_buffer_iterator.cc`: Copyright 2017 The Chromium Authors
+- `cc/paint/render_surface_filters.cc`: Copyright 2012 The Chromium Authors
 - `cc/trees/layer_tree_settings.cc`: Copyright 2011 The Chromium Authors
 - `third_party/blink/renderer/core/animation/animation_time_delta.h`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/animation/css/css_keyframe_effect_model.cc`: Copyright 2020 The Chromium Authors
@@ -99,6 +100,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/geometry/contoured_rect.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/path_builder.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/physical_size.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/platform/graphics/compositing/paint_chunks_to_cc_layer.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/platform/text/capitalize.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data.h`: Copyright 2016 The Chromium Authors
@@ -174,6 +176,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkStrikeSpec.cpp`: Copyright 2019 The Android Open Source Project
 - `third_party/skia/src/core/SkStroke.cpp`: Copyright 2008 The Android Open Source Project
 - `third_party/skia/src/core/SkTextFormatParams.h`: Copyright 2010 The Android Open Source Project
+- `third_party/skia/src/effects/colorfilters/SkComposeColorFilter.cpp`: Copyright 2023 Google LLC
+- `third_party/skia/src/effects/colorfilters/SkMatrixColorFilter.cpp`: Copyright 2011 Google Inc.
 - `third_party/skia/src/opts/SkBlitRow_opts.h`: Copyright 2015 Google Inc.
 - `third_party/skia/src/opts/SkRasterPipeline_opts.h`: Copyright 2018 Google Inc.
 - `third_party/skia/src/ports/SkScalerContext_mac_ct.cpp`: Copyright 2006 The Android Open Source Project

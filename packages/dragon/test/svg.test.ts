@@ -503,7 +503,7 @@ describe('the svg model in a compile', () => {
     }
     const e = errors(compile(svgTree('rect { filter: blur(2px); mask-image: linear-gradient(red, blue); }', shapes), false));
     expect(e.filter((m) => m.includes('on <rect> r is unsupported')).map((m) => m.split(' ').slice(2).join(' ')).sort()).toEqual([
-      ...['android', 'ios', 'web'].map(() => 'filter: blur(2px) on <rect> r is unsupported: Dragon draws no filter yet (FX); only none is accepted'),
+      ...['android', 'ios', 'web'].map(() => 'filter: blur(2px) on <rect> r is unsupported: Dragon draws no filter on an SVG shape (FX)'),
       ...['android', 'ios', 'web'].map(() => 'mask-image: linear-gradient(red,blue) on <rect> r is unsupported: Dragon draws no mask yet (MASK-CLIP); only the initial value is accepted'),
     ]);
     // Refused on every target, whether as a property no target supports yet (a target-free error) or as a value refused per target.

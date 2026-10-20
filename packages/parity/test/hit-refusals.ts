@@ -45,7 +45,7 @@ export const TRANSFORM_REASON = /^transform on .+: hit testing through transform
 export const STACKING_OUT: readonly string[] = [
   'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-clipped', 'opacity-group-clipped-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
-  'stacking-grid-items-rtl',
+  'stacking-grid-items-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl',
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in

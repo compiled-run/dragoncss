@@ -9,6 +9,11 @@
 // translated paint-group.ts groupComposite. Q covers the group's extent at whole device px with nearest filtering. Any box layout
 // or paint change marks every overlay stale; each recomputes once in its next layout (iOS) or pre-draw (Android) pass. The
 // overlay is not interactive, hidden from accessibility, never a dump node and sorted after every other child.
+// PNT1-filter: a group with a colour-matrix filter is written through dragonSetFilterGroup with its functions as (code, amount)
+// pairs; its overlay builds the matrices once (paint-group.ts groupFilterMatrices) and composites every pixel with
+// groupFilterComposite instead (the filter, then the opacity; a filtered layer never folds).
+import { COLOR_MATRIX_FILTERS } from '../../css/properties/filter.ts';
+import type { FilterFunction } from '../../css/properties/filter.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 import { nativeString } from './stacking.ts';
@@ -17,6 +22,23 @@ const opacityLit = (v: number): string => {
   if (!Number.isFinite(v) || v < 0 || v >= 1) throw new Error(`opacity ${v} is not in [0, 1)`);
   const n = String(v);
   return /[.eE]/.test(n) ? n.replace(/e\+?/, 'E') : `${n}.0`;
+};
+
+/** A finite non-negative amount as a Swift or Kotlin Double literal. */
+const amountLit = (v: number): string => {
+  if (!Number.isFinite(v) || v < 0) throw new Error(`filter amount ${v} is not finite and non-negative`);
+  const n = String(v);
+  return /[.eE]/.test(n) ? n.replace(/e\+?/, 'E') : `${n}.0`;
+};
+
+/** A filter list as the flat (code, amount) pairs the runtime takes: the code is the function's index in COLOR_MATRIX_FILTERS. */
+export function filterPairs(fns: readonly FilterFunction[]): number[] {
+  return fns.flatMap((f) => [COLOR_MATRIX_FILTERS.indexOf(f.name), f.amount]);
+}
+
+const pairsLit = (lang: 'swift' | 'kotlin', fns: readonly FilterFunction[]): string => {
+  const xs = filterPairs(fns).map(amountLit).join(', ');
+  return lang === 'swift' ? `[${xs}]` : `listOf<Double>(${xs})`;
 };
 
 const SWIFT_MEMBERS = String.raw`  /// Chrome's paint alpha byte of the box's opacity; 255 is opaque.
@@ -45,7 +67,11 @@ public func dragonSetOpacity(_ v: DragonBoxView, _ opacity: Double) {
 /// The readback of the effects module: the live alpha, when the box has an opacity below 1; for a pre-composited group, the
 /// live alpha (1), the alpha byte its overlay composites with and its backdrop box.
 public func dragonAppliedEffects(_ v: DragonBoxView) -> DumpJsonObject {
-  if let g = v.dragonGroup { return [("dragonGroup", .array([.number(Double(v.alpha)), .number(Double(g.dragonAlpha8)), g.dragonBackdrop.map { DumpJson.string($0) } ?? .null]))] }
+  if let g = v.dragonGroup {
+    let head: [DumpJson] = [.number(Double(v.alpha)), .number(Double(g.dragonAlpha8)), g.dragonBackdrop.map { DumpJson.string($0) } ?? .null]
+    if g.dragonFilter.isEmpty { return [("dragonGroup", .array(head))] }
+    return [("dragonFilterGroup", .array(head + g.dragonFilter.map { DumpJson.number($0) }))]
+  }
   if v.dragonAlpha8 == 255 { return [] }
   return [("alpha", .number(Double(v.alpha)))]
 }
@@ -79,6 +105,24 @@ public func dragonSetOpacityGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity
   v.dragonContainer.addSubview(g)
 }
 
+/// PNT1-filter: the group write of a box with a colour-matrix filter (runtime writer): its computed opacity (1 for none), the
+/// filter as (code, amount) pairs, its backdrop box and painters. The overlay applies the filter to the layer, then the opacity.
+public func dragonSetFilterGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity: Double, _ filter: [Double], _ backdrop: String?, _ painters: [String]) {
+  if !(opacity > 0 && opacity <= 1) { fatalError("dragon: \(v.dragonId): filter group opacity \(opacity) is not in (0, 1]") }
+  if filter.isEmpty { fatalError("dragon: \(v.dragonId): a filter group with no filter function") }
+  let raw: Double
+  do { raw = try paint_opacityAlpha8(opacity) } catch { fatalError("dragon: \(v.dragonId): paint_opacityAlpha8 failed: \(error)") }
+  let alpha8 = dragonCheckedInt(raw, "\(v.dragonId) alpha byte")
+  let matrices: JsArray<Double>
+  do { matrices = try paintGroup_groupFilterMatrices(JsArray(filter)) } catch { fatalError("dragon: \(v.dragonId): paintGroup_groupFilterMatrices failed: \(error)") }
+  v.dragonAlpha8 = alpha8
+  v.alpha = 1
+  if v.dragonGroup != nil { fatalError("dragon: \(v.dragonId): a second group write") }
+  let g = DragonGroupView(tree: t, group: v, alpha8: dragonAlphaPlantIgnored ? 255 : alpha8, backdrop: backdrop, painters: painters, filter: filter, matrices: matrices)
+  v.dragonGroup = g
+  v.dragonContainer.addSubview(g)
+}
+
 /// A device px rect [left, top, right, bottom] of a view's layout rect in root's coordinates; its edges are whole device px.
 func dragonGroupEdges(_ r: CGRect, _ s: Double) -> [Int] {
   return [Double(r.minX) * s, Double(r.minY) * s, Double(r.maxX) * s, Double(r.maxY) * s].map { Int(dragonWholeDevicePx($0, "a group view edge")) }
@@ -105,17 +149,22 @@ public final class DragonGroupView: UIView {
   public let dragonAlpha8: Int
   public let dragonBackdrop: String?
   public let dragonPainters: [String]
+  /// PNT1-filter: the group's colour-matrix filter as (code, amount) pairs, and its matrices; empty and nil for an opacity group.
+  public let dragonFilter: [Double]
+  let dragonMatrices: JsArray<Double>?
   public let bitmapLayer = CALayer()
   var dragonDirty = true
   /// The last composite, premultiplied sRGB RGBA8, and its rect [left, top, right, bottom] in page device px.
   public private(set) var dragonQ: [UInt8] = []
   public private(set) var dragonQRect: [Int] = [0, 0, 0, 0]
-  public init(tree: DragonTree, group: DragonBoxView, alpha8: Int, backdrop: String?, painters: [String]) {
+  public init(tree: DragonTree, group: DragonBoxView, alpha8: Int, backdrop: String?, painters: [String], filter: [Double] = [], matrices: JsArray<Double>? = nil) {
     dragonTree = tree
     dragonGroupBox = group
     dragonAlpha8 = alpha8
     dragonBackdrop = backdrop
     dragonPainters = painters
+    dragonFilter = filter
+    dragonMatrices = matrices
     super.init(frame: .zero)
     isOpaque = false
     backgroundColor = nil
@@ -294,7 +343,12 @@ public final class DragonGroupView: UIView {
       for y in 0..<h {
         for x in 0..<w {
           let i = (y * w + x) * 4
-          let packed = try paintGroup_groupComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))
+          let packed: Double
+          if let m = dragonMatrices {
+            packed = try paintGroup_groupFilterComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), m, a8)
+          } else {
+            packed = try paintGroup_groupComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))
+          }
           let v = Int(packed)
           q[i] = UInt8(v & 0xff); q[i + 1] = UInt8((v >> 8) & 0xff); q[i + 2] = UInt8((v >> 16) & 0xff); q[i + 3] = UInt8((v >> 24) & 0xff)
         }
@@ -331,6 +385,8 @@ import android.view.ViewTreeObserver
 import dev.dragon.dump.DumpJson
 import dev.dragon.layout.JsArray
 import dev.dragon.layout.paintGroup_groupComposite
+import dev.dragon.layout.paintGroup_groupFilterComposite
+import dev.dragon.layout.paintGroup_groupFilterMatrices
 import dev.dragon.layout.paintGroup_groupTileFolds
 import dev.dragon.layout.paintGroup_groupTileIndex
 import dev.dragon.layout.paintGroup_groupTileSize
@@ -357,7 +413,11 @@ fun dragonSetOpacity(v: DragonBoxView, opacity: Double) {
  */
 fun dragonAppliedEffects(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val g = v.dragonGroup
-  if (g != null) return listOf(Pair("dragonGroup", DumpJson.Arr(listOf(DumpJson.Num(v.alpha.toDouble()), DumpJson.Num(g.dragonAlpha8.toDouble()), g.dragonBackdrop?.let { DumpJson.Str(it) } ?: DumpJson.Null))))
+  if (g != null) {
+    val head = listOf(DumpJson.Num(v.alpha.toDouble()), DumpJson.Num(g.dragonAlpha8.toDouble()), g.dragonBackdrop?.let { DumpJson.Str(it) } ?: DumpJson.Null)
+    if (g.dragonFilter.isEmpty()) return listOf(Pair("dragonGroup", DumpJson.Arr(head)))
+    return listOf(Pair("dragonFilterGroup", DumpJson.Arr(head + g.dragonFilter.map { DumpJson.Num(it) })))
+  }
   if (v.dragonAlpha8 == 255) return emptyList()
   return listOf(Pair("alpha", DumpJson.Num(v.alpha.toDouble())))
 }
@@ -397,10 +457,27 @@ fun dragonSetOpacityGroup(t: DragonTree, v: DragonBoxView, opacity: Double, back
 }
 
 /**
+ * PNT1-filter: the group write of a box with a colour-matrix filter (runtime writer): its computed opacity (1 for none), the filter
+ * as (code, amount) pairs, its backdrop box and painters. The overlay applies the filter to the layer, then the opacity.
+ */
+fun dragonSetFilterGroup(t: DragonTree, v: DragonBoxView, opacity: Double, filter: List<Double>, backdrop: String?, painters: List<String>) {
+  if (!(opacity > 0.0 && opacity <= 1.0)) throw IllegalStateException("dragon: " + v.dragonId + ": filter group opacity " + opacity + " is not in (0, 1]")
+  if (filter.isEmpty()) throw IllegalStateException("dragon: " + v.dragonId + ": a filter group with no filter function")
+  val alpha8 = dragonCheckedInt(paint_opacityAlpha8(opacity), v.dragonId + " alpha byte")
+  val matrices = paintGroup_groupFilterMatrices(JsArray(filter))
+  v.dragonAlpha8 = alpha8
+  v.alpha = 1f
+  if (v.dragonGroup != null) throw IllegalStateException("dragon: " + v.dragonId + ": a second group write")
+  val g = DragonGroupView(v.context, t, v, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else alpha8, backdrop, painters, filter, matrices)
+  v.dragonGroup = g
+  v.dragonContainer.addView(g)
+}
+
+/**
  * A pre-composited group's overlay: the last child of the group's view, framed at the group's extent (which may reach outside the
  * group's box), drawing the composite Q pixel for pixel. It draws nothing while the group is drawn into its layer.
  */
-class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupBox: DragonBoxView, val dragonAlpha8: Int, val dragonBackdrop: String?, val dragonPainters: List<String>) : View(ctx), ViewTreeObserver.OnPreDrawListener {
+class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupBox: DragonBoxView, val dragonAlpha8: Int, val dragonBackdrop: String?, val dragonPainters: List<String>, val dragonFilter: List<Double> = emptyList(), private val dragonMatrices: JsArray<Double>? = null) : View(ctx), ViewTreeObserver.OnPreDrawListener {
   /** This view's frame in the group's view: left, top, right, bottom in device px. */
   val dragonFrame = IntArray(4)
   var dragonDirty = true
@@ -612,7 +689,8 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     for (y in 0 until h) {
       for (x in 0 until w) {
         val i = (y * w + x) * 4
-        val v = paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y)).toLong()
+        val m = dragonMatrices
+        val v = (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
         q[i] = (v and 0xffL).toByte(); q[i + 1] = ((v shr 8) and 0xffL).toByte(); q[i + 2] = ((v shr 16) and 0xffL).toByte(); q[i + 3] = ((v shr 24) and 0xffL).toByte()
       }
     }
@@ -630,16 +708,22 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
 const strList = (lang: 'swift' | 'kotlin', xs: readonly string[]): string => (lang === 'swift' ? `[${xs.map((x) => nativeString('swift', x)).join(', ')}]` : `listOf<String>(${xs.map((x) => nativeString('kotlin', x)).join(', ')})`);
 const optStr = (lang: 'swift' | 'kotlin', x: string | null): string => (x === null ? (lang === 'swift' ? 'nil' : 'null') : nativeString(lang, x));
 
-export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group', 'alpha-ignored'> = {
+const lineOf = (lang: 'swift' | 'kotlin', v: string, w: { readonly kind: 'opacity'; readonly opacity: number } | { readonly kind: 'opacity-group'; readonly opacity: number; readonly backdrop: string | null; readonly painters: readonly string[] } | { readonly kind: 'filter-group'; readonly opacity: number; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[] }): string => {
+  if (w.kind === 'opacity') return `  dragonSetOpacity(${v}, ${opacityLit(w.opacity)})`;
+  if (w.kind === 'opacity-group') return `  dragonSetOpacityGroup(t, ${v}, ${opacityLit(w.opacity)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)})`;
+  return `  dragonSetFilterGroup(t, ${v}, ${w.opacity === 1 ? '1.0' : opacityLit(w.opacity)}, ${pairsLit(lang, w.filter)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)})`;
+};
+
+export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter-group', 'alpha-ignored'> = {
   name: 'effects',
-  kinds: ['opacity', 'opacity-group'],
+  kinds: ['opacity', 'opacity-group', 'filter-group'],
   lines: {
-    uikit: (v, _n, w) => (w.kind === 'opacity' ? [`  dragonSetOpacity(${v}, ${opacityLit(w.opacity)})`] : [`  dragonSetOpacityGroup(t, ${v}, ${opacityLit(w.opacity)}, ${optStr('swift', w.backdrop)}, ${strList('swift', w.painters)})`]),
-    'android-views': (v, _n, w) => (w.kind === 'opacity' ? [`  dragonSetOpacity(${v}, ${opacityLit(w.opacity)})`] : [`  dragonSetOpacityGroup(t, ${v}, ${opacityLit(w.opacity)}, ${optStr('kotlin', w.backdrop)}, ${strList('kotlin', w.painters)})`]),
+    uikit: (v, _n, w) => [lineOf('swift', v, w)],
+    'android-views': (v, _n, w) => [lineOf('kotlin', v, w)],
   },
   // Both read back a float32: UIView.alpha is backed by CALayer.opacity (a Float), and Android's View alpha is a Float. A group
-  // reads back its live alpha (1), its alpha byte and its backdrop box.
-  applied: (e, _b, w) => (w.kind === 'opacity' ? e.float32(e.opacityAlpha8(w.opacity) / 255) : [1, e.opacityAlpha8(w.opacity), w.backdrop]),
+  // reads back its live alpha (1), its alpha byte and its backdrop box; a filter group then its filter's (code, amount) pairs.
+  applied: (e, _b, w) => (w.kind === 'opacity' ? e.float32(e.opacityAlpha8(w.opacity) / 255) : w.kind === 'opacity-group' ? [1, e.opacityAlpha8(w.opacity), w.backdrop] : [1, e.opacityAlpha8(w.opacity), w.backdrop, ...filterPairs(w.filter)]),
   native: {
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, applied: 'dragonAppliedEffects' },
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, afterLayout: 'dragonAfterLayoutEffects', applied: 'dragonAppliedEffects' },
