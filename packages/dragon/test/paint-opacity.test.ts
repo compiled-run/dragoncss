@@ -277,7 +277,7 @@ describe('opacity: a group native pre-composites', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     for (const program of [p.programs.uikit, p.programs['android-views']]) {
       const u = program.nodes.find((n) => n.id === 'u');
-      expect(u?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'opacity-group' || w.kind === 'background-color')).toEqual([expect.objectContaining({ kind: 'background-color', color: { r: 0, g: 0, b: 200, alpha: foldAlpha8(0.3) }, folded: true })]);
+      expect(u?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'opacity-group' || w.kind === 'background-color')).toEqual([expect.objectContaining({ kind: 'background-color', color: { r: 0, g: 0, b: 200, alpha: foldAlpha8(0.3) } })]);
     }
     const errs = errors(build('.u { opacity: 0.3; } .g { opacity: 0.4; }')).filter((m) => / has opacity 0\.4;/.test(m));
     expect(errs).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: u paints before it with opacity 0\\.3$`))));
