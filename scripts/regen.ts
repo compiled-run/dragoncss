@@ -82,8 +82,8 @@ const LEGACY_STEPS: readonly Step[] = [
     name: 'profile-rows',
     argv: pnpm('profile:rows'),
     outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'],
-    // The CI device code is digested only by device-evidence.ts, which profile:rows does not load (lanes-file.ts, lane-ids.ts).
-    reads: [FIXTURES, FONTS, ...EVIDENCE_READS.filter((p) => !p.includes('device-ci')), 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
+    // EVIDENCE_READS are digested only by device-evidence.ts, which profile:rows does not load (lanes-file.ts, lane-ids.ts).
+    reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
   },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
   { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json'], reads: [FIXTURES, FONTS], lists: ['packages/parity/expected-hit'] },
