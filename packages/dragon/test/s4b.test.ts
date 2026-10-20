@@ -93,7 +93,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // MISC-PAINT: the border image longhands, which accept their initial values alone, at those values in two spellings.
       'border-image-source': ['none', 'NONE'], 'border-image-slice': ['100%', '100.0%'], 'border-image-width': ['1', '1.0'], 'border-image-outset': ['0', '0.0'],
       'border-image-repeat': ['stretch', 'STRETCH'],
-      perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'] };
+      perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
+      // PNT2: the individual transforms, which move no layout box.
+      translate: ['10px', '-5px 20%'], rotate: ['30deg', '-1turn'], scale: ['2', '0.5 1.5'] };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);

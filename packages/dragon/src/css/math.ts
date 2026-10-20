@@ -659,13 +659,16 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
  * 145.0.7632.6): ConsumeLength takes kCalcLength only (a <line-width>), ConsumeLengthOrPercent a length, a percentage or a mix
  * (kCalcLengthFunction), ConsumeNumber and ConsumeInteger a number, and ConsumeLineHeight or the flex shorthand either.
  */
-export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage' | 'angle' | 'font';
+export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-percentage' | 'number-or-length-percentage' | 'number-or-angle' | 'angle' | 'font';
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 // font-feature-settings and font-variation-settings: a setting's value is an <integer> or a <number> (css-fonts-4 §6.12, §7.2).
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber, as StrokeMiterlimit::ParseSingleValue does; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
 const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit']);
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
+// rotate: its axis numbers are ConsumeNumber and its angle ConsumeAngle; scale: each factor is ConsumeNumberOrPercent (css-transforms-2 §4).
+const NUMBER_OR_ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['rotate']);
+const NUMBER_OR_PERCENT_GRAMMAR: ReadonlySet<string> = new Set(['scale']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 /** opacity, fill-opacity and stroke-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
@@ -681,6 +684,8 @@ const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-
 export function mathGrammarFor(property: string): MathGrammar {
   if (NUMBER_GRAMMAR.has(property)) return 'number';
   if (ANGLE_GRAMMAR.has(property)) return 'angle';
+  if (NUMBER_OR_PERCENT_GRAMMAR.has(property)) return 'number-or-percentage';
+  if (NUMBER_OR_ANGLE_GRAMMAR.has(property)) return 'number-or-angle';
   if (FONT_GRAMMAR.has(property)) return 'font';
   if (NUMBER_OR_LENGTH_GRAMMAR.has(property)) return 'number-or-length-percentage';
   if (LINE_WIDTH.test(property) || LENGTH_GRAMMAR.has(property)) return 'length';
@@ -1073,6 +1078,8 @@ const GRAMMAR_ACCEPTS: { readonly [g in MathGrammar]: readonly VCategory[] } = {
   length: ['length'],
   'length-percentage': ['length', 'percent', 'length-function'],
   number: ['number'],
+  'number-or-percentage': ['number', 'percent'],
+  'number-or-angle': ['number', 'angle'],
   'number-or-length-percentage': ['number', 'length', 'percent', 'length-function'],
   angle: ['angle'],
   font: ['number', 'length', 'percent', 'length-function', 'angle'],
@@ -1081,6 +1088,8 @@ const GRAMMAR_NAMES: { readonly [g in MathGrammar]: string } = {
   length: 'a length without a percentage (a <line-width> takes no percentage, css-backgrounds-3 §3.3)',
   'length-percentage': 'a length or a percentage',
   number: 'a number',
+  'number-or-percentage': 'a number or a percentage',
+  'number-or-angle': 'a number or an angle',
   'number-or-length-percentage': 'a number, a length or a percentage',
   angle: 'an angle',
   font: 'a number, a length, a percentage or an angle (the font shorthand\'s parts)',

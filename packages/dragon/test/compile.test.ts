@@ -69,8 +69,8 @@ describe('createProject().compile() and check()', () => {
     // outline longhands, which are written only when an author declaration sets one (Chrome's UA :focus-visible ring stays), and the
     // line-clamp longhands, which are written only where one is not initial (TXT2-g), clip, written only where it is not auto, and
     // clip-path, written only where it is not none, and the mask longhands, written only where one is not initial (MASK-CLIP), as are
-    // the border image longhands (MISC-PAINT).
-    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS];
+    // the border image longhands (MISC-PAINT), and translate, rotate and scale, written only where one is not none (PNT2).
+    const unwritten = ['translate', 'rotate', 'scale', 'top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS];
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');

@@ -1,11 +1,12 @@
-// PNT2: the computed values of transform and transform-origin (lengths in px, as css-transforms-1 §5 and §7 compute them: em and
-// rem against the element's font sizes, absolute units by their ratio), and the refusals that depend on where a transform sits in
+// PNT2: the computed values of transform, translate and transform-origin (lengths in px, as css-transforms-1 §5 and §7 compute them:
+// em and rem against the element's font sizes, absolute units by their ratio), the effective transform of an element (translate,
+// rotate, scale, then transform, css-transforms-2 §4), and the refusals that depend on where a transform sits in
 // the tree: a transform (or will-change: transform) makes its element the containing block of positioned descendants
 // (css-transforms-1 §3), which the layout engine does not model yet, so every case where that would move a box is refused.
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Longhand } from '../../css/properties.ts';
-import type { TransformFnDecl, TransformLengthDecl, TransformOriginDecl } from '../../css/properties/transform.ts';
-import { inFloatRange, lengthText, originText, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, willChangeFeatures } from '../../css/properties/transform.ts';
+import type { IndividualTransform, TransformFnDecl, TransformLengthDecl, TransformOriginDecl } from '../../css/properties/transform.ts';
+import { individualTransformOf, INDIVIDUAL_TRANSFORMS, INDIVIDUAL_TYPE, inFloatRange, lengthText, originText, skewsBox, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, translateDecl, willChangeFeatures } from '../../css/properties/transform.ts';
 import { lengthToPx } from '../../css/units.ts';
 import type { Diagnostic, Origin } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -40,6 +41,11 @@ export const TRANSFORM_VALUES: PaintValues = {
       const text = transformListText(transformFunctionsOf(t.value.text).map((f) => computedFunction(f, ctx)));
       props.set('transform', { ...t, value: { kind: 'other', type: TRANSFORM_LIST_TYPE, text } });
     }
+    const tr = props.get('translate');
+    if (tr !== undefined && tr.value.kind === 'other' && tr.value.type === INDIVIDUAL_TYPE.translate) {
+      const f = individualTransformOf('translate', tr.value.text);
+      if (f.kind === 'translate') props.set('translate', { ...tr, value: { kind: 'other', type: INDIVIDUAL_TYPE.translate, text: translateDecl(toPx(f.x, ctx), toPx(f.y, ctx)).text } });
+    }
     const o = props.get('transform-origin');
     // The initial value parses as a two-token list ("50% 50%"); every origin gets the one canonical form.
     if (o !== undefined && o.value.kind === 'other') {
@@ -50,10 +56,25 @@ export const TRANSFORM_VALUES: PaintValues = {
   },
 };
 
-/** The computed transform functions of an element; [] for none. */
-export function elementTransform(el: ResolvedElement): readonly TransformFnDecl[] {
+/** The computed transform functions of an element's transform property alone; [] for none. */
+function ownTransform(el: ResolvedElement): readonly TransformFnDecl[] {
   const v = (el.props.get('transform') as ResolvedValue).value;
   return v.kind === 'other' && v.type === TRANSFORM_LIST_TYPE ? transformFunctionsOf(v.text) : [];
+}
+
+/** The function of one of an element's individual transforms, or null for none. */
+function individual(el: ResolvedElement, p: IndividualTransform): TransformFnDecl | null {
+  const v = el.props.get(p)?.value;
+  return v !== undefined && v.kind === 'other' && v.type === INDIVIDUAL_TYPE[p] ? individualTransformOf(p, v.text) : null;
+}
+
+/**
+ * The effective transform functions of an element, all about transform-origin: translate, rotate, scale, then transform's list
+ * (css-transforms-2 §4, as Blink's ComputedStyle::ApplyTransform in third_party/blink/renderer/core/style/computed_style.cc:1506-1568
+ * applies them); [] when all four are none.
+ */
+export function elementTransform(el: ResolvedElement): readonly TransformFnDecl[] {
+  return [...INDIVIDUAL_TRANSFORMS.flatMap((p) => individual(el, p) ?? []), ...ownTransform(el)];
 }
 
 /** The computed transform origin of an element. */
@@ -93,11 +114,11 @@ export function transformsDescendants(el: ResolvedElement): boolean {
   return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || hasPerspective(el);
 }
 
-/** Where to report a transform refusal: the transform declaration, else the will-change one, else the element. */
+/** Where to report a transform refusal: the transform, translate, rotate or scale declaration, else the will-change one, else the element. */
 function transformOrigin(el: ResolvedElement): Origin {
-  for (const p of ['transform', 'will-change', 'perspective'] as const) {
+  for (const p of ['transform', ...INDIVIDUAL_TRANSFORMS, 'will-change', 'perspective'] as const) {
     const v = el.props.get(p) as ResolvedValue;
-    const applies = p === 'will-change' ? elementWillChange(el).includes('transform') : p === 'perspective' ? hasPerspective(el) : elementTransform(el).length > 0;
+    const applies = p === 'will-change' ? elementWillChange(el).includes('transform') : p === 'perspective' ? hasPerspective(el) : p === 'transform' ? ownTransform(el).length > 0 : individual(el, p) !== null;
     if (v.declaration !== null && applies) return authored(v.declaration.valueSpan);
   }
   return el.element.node.origin;
@@ -130,6 +151,8 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
     if (own) {
       const what = transformWord(el);
       const tag = el.element.tag;
+      // A transform list that skews is refused as it parses; translate, rotate and scale compose with it only here.
+      if (skewsBox(elementTransform(el))) refuse(el, 'skew', `translate, rotate, scale and transform on ${address} compose a rotation after a non-uniform scale, which skews the box and Android's View transform cannot express (package PNT2-m)`, `Remove the rotation or make the scale uniform on ${address}.`);
       if (tag === 'html' || tag === 'body') refuse(el, 'root', `${what} on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
       if (display !== 'block' && display !== 'flex') refuse(el, 'display', `${what} on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
       if (position === 'static') {

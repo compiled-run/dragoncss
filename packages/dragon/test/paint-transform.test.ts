@@ -175,7 +175,7 @@ describe('PNT2: lowering and emission', () => {
     const w = n.uikit.writes.find((x) => x.kind === 'transform');
     expect(w).toMatchObject({
       key: 'dragonTransform',
-      css: ['transform', 'transform-origin'],
+      css: ['transform', 'transform-origin', 'translate', 'rotate', 'scale'],
       ops: [
         { fn: 'translate', x: { kind: 'percent', px: 0, percent: -50 }, y: { kind: 'px', px: 2, percent: 0 }, angle: 0, sx: 1, sy: 1 },
         { fn: 'rotate', angle: 0 },

@@ -7,4 +7,8 @@ export const TRANSFORM_ANIMATION: { readonly [P in (typeof TRANSFORM_LONGHANDS)[
   transform: UNADMITTED,
   'transform-origin': UNADMITTED,
   'will-change': DISCRETE,
+  // css-transforms-2 §4: interpolable in css_properties.json5; their writers are not built.
+  translate: UNADMITTED,
+  rotate: UNADMITTED,
+  scale: UNADMITTED,
 };

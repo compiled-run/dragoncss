@@ -252,6 +252,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/css_axis_value.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "ed4426f96102524b14cd3c22ba3c4c0a6cf1b213ef10a7b39ba4e378f5c8d71e",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "45-77", "symbol": "CSSAxisValue::CSSAxisValue", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/properties/transform.ts", "symbol": "isZAxis", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/css_font_face_src_value.cc",
       "licence": "bsd-apple",
       "noticeText": "header-bsd-2",
@@ -2125,7 +2140,8 @@
       "dragon": [
         { "file": "packages/dragon/src/analysis/text-decoration.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" },
-        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/paint-values/transform.ts", "symbol": "elementTransform", "use": "reference" }
       ]
     },
     {
@@ -3891,9 +3907,17 @@
         { "lines": "10996-11003", "symbol": "WebkitBorderImage::ApplyValue", "source": "located" },
         { "lines": "7287-7294", "symbol": "ObjectPosition::ParseSingleValue", "source": "located" },
         { "lines": "8293-8316", "symbol": "Perspective::ParseSingleValue", "source": "located" },
-        { "lines": "8329-8336", "symbol": "PerspectiveOrigin::ParseSingleValue", "source": "located" }
+        { "lines": "8329-8336", "symbol": "PerspectiveOrigin::ParseSingleValue", "source": "located" },
+        { "lines": "10647-10683", "symbol": "Translate::ParseSingleValue", "source": "located" },
+        { "lines": "10690-10716", "symbol": "Translate::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "8578-8611", "symbol": "Rotate::ParseSingleValue", "source": "located" },
+        { "lines": "8613-8638", "symbol": "Rotate::CSSValueFromComputedStyleInternal", "source": "located" },
+        { "lines": "8698-8734", "symbol": "Scale::ParseSingleValue", "source": "located" },
+        { "lines": "8736-8762", "symbol": "Scale::CSSValueFromComputedStyleInternal", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/css/properties/transform.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/parity/test/transform-indiv-parse.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "parseListsValue", "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" },

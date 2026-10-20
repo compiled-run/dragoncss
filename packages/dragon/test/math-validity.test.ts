@@ -133,7 +133,10 @@ describe('math functions Chrome rejects are invalid CSS (T131)', () => {
       const percent = /<(length-percentage|percentage)\b/.test(s);
       const length = percent || /<length\b/.test(s);
       if (!number && !length) continue;
-      const expected = number ? (length ? 'number-or-length-percentage' : 'number') : percent ? 'length-percentage' : 'length';
+      // rotate's axis takes numbers and its angle an angle; scale's factors are numbers or percentages, never lengths (Blink
+      // Rotate and Scale ::ParseSingleValue), which this walk, reading <percentage> as a length-percentage, cannot tell.
+      const own: { readonly [p: string]: string } = { rotate: 'number-or-angle', scale: 'number-or-percentage' };
+      const expected = own[p] ?? (number ? (length ? 'number-or-length-percentage' : 'number') : percent ? 'length-percentage' : 'length');
       if (mathGrammarFor(p) !== expected) problems.push(`${p}: ${mathGrammarFor(p)}, its syntax gives ${expected}`);
     }
     expect(problems).toEqual([]);

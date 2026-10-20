@@ -227,7 +227,7 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
       if (pixels === null || dumps.length === k) continue;
       if (dumps.length !== k + 1) throw new Error(`${c.id}: a reference chunk gave ${dumps.length - k} dumps`);
       // captureBreakTexts' transform twin would restyle the running script, so a transformed element is refused instead.
-      const transformed = await page.evaluate(() => Array.from(document.querySelectorAll('[data-dragon-id]')).filter((el) => getComputedStyle(el).transform !== 'none').map((el) => el.getAttribute('data-dragon-id')));
+      const transformed = await page.evaluate(() => Array.from(document.querySelectorAll('[data-dragon-id]')).filter((el) => ['transform', 'translate', 'rotate', 'scale'].some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none')).map((el) => el.getAttribute('data-dragon-id')));
       if (transformed.length > 0) throw new Error(`${c.id} sample ${k}: ${transformed.join(', ')} transformed; the frame break capture refuses the transform twin`);
       breaks.push(await captureBreakTexts(page));
       if (!pixels.has(k)) continue;
