@@ -15,7 +15,7 @@ import { FIXTURE_GROUPS } from '../fixtures.ts';
 import type { ColumnCapture, GalleryCell, GalleryColumn } from '../gallery.ts';
 import { captureColumn, captureEach, captureInBatches, cropImage, encodePng, featureLabels, galleryExitCode, galleryHtml, parseGalleryArgs, selectGalleryCases } from '../gallery.ts';
 import type { NativeCase } from '../native-host.ts';
-import { BACKEND_OF, buildAndroid, buildIos, nativeCases } from '../native-host.ts';
+import { BACKEND_OF, buildAndroid, buildIos, deviceCheckCases, nativeCases } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import { casePoints, decodePng, rasterSize, runFileText } from '../pixel-reference.ts';
 import type { NativeTarget } from '../targets.ts';
@@ -92,7 +92,9 @@ async function deviceColumn(target: NativeTarget): Promise<{ readonly column: Ga
     try {
       const build = target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
       for (const l of build.log) log(`${target} build: ${l}`);
-      if (build.cases !== all.length) throw new Error(`the app holds ${build.cases} cases, the corpus ${all.length}`);
+      // The app holds the device check cases: the layout device cases, then the forced device cases (SELD-R2 PR 5).
+      const appCases = deviceCheckCases().length;
+      if (build.cases !== appCases) throw new Error(`the app holds ${build.cases} cases, the device check cases ${appCases}`);
       artifact = build.artifact;
     } catch (e) {
       throw new Error(`build failed: ${e instanceof Error ? e.message : String(e)}`);

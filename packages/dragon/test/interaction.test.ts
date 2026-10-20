@@ -9,7 +9,7 @@
 // - Identity: a document without interaction rules, or with one that matches nothing, compiles as it did.
 import { describe, expect, it } from 'vitest';
 import type { CompilerFaults, Diagnostic, FrontEndResult, InteractionPartition, InteractionState } from '../src/internal.ts';
-import { anyFocusable, interactionContext, interactionInputs, interactionPartition, interactionRowFeature, isFocusable } from '../src/analysis/interaction.ts';
+import { anyFocusable, interactionContext, interactionInputs, interactionPartition, interactionRowFeature, isFocusable, provesPointerRow, rulesMayScroll } from '../src/analysis/interaction.ts';
 import type { ProfileRow } from '../src/profiles/types.ts';
 import type { SupportProfiles } from '../src/project.ts';
 import type { ElementNode } from '../src/types.ts';
@@ -231,7 +231,7 @@ describe('interaction states: compile', () => {
 
 describe('interaction states: the native profile gate (SELD-R2 PR 5, gateInteractionFeatures)', () => {
   const NATIVE_TARGETS = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } };
-  const row = (p: 'hover' | 'active' | 'focus' | 'focus-visible', i: 'forced-only' | 'mouse' | 'touch'): ProfileRow => ({ feature: interactionRowFeature(p), context: interactionContext(i), status: 'exact', proofs: [] });
+  const row = (p: 'hover' | 'active' | 'focus' | 'focus-visible', i: 'forced-only' | 'keyboard' | 'mouse' | 'touch'): ProfileRow => ({ feature: interactionRowFeature(p), context: interactionContext(i), status: 'exact', proofs: [] });
   const FOCUS_ROWS = [row('focus', 'forced-only'), row('focus-visible', 'forced-only')];
   const withRows = (rows: readonly ProfileRow[]): Required<SupportProfiles> => ({
     web: COMMITTED_PROFILES.web,
@@ -273,11 +273,14 @@ describe('interaction states: the native profile gate (SELD-R2 PR 5, gateInterac
     expect(d?.profile).toEqual({ target: 'ios', profileRevision: rev('ios'), feature: 'selector:pseudo-class(:focus)', context: 'interaction/forced-only', status: 'unsupported' });
   });
 
-  it('refuses :focus where an element of the case is focusable (a with href, a valid tabindex), since a tap or click reaches it', () => {
+  /** The gate's refusal of :focus where an input can focus an element: the keyboard, mouse and touch rows are missing. */
+  const reachableFocus = (t: string) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :focus is not supported on ${t}: no passing device proof of selector:pseudo-class(:focus) in interaction/keyboard, selector:pseudo-class(:focus) in interaction/mouse, selector:pseudo-class(:focus) in interaction/touch (support profile ${COMMITTED_PROFILES[t as 'ios'].revision})`;
+
+  it('refuses :focus where an element of the case is focusable (a with href, a valid tabindex), since a key, tap or click reaches it', () => {
     for (const [tag, attrs] of [['a', [['href', '#']]], ['div', [['tabindex', '0']]], ['span', [['tabindex', '-1']]]] as const) {
       const input = doc(tag, attrs, '.f:focus { width: 80px; }');
       const c = gated(input, withRows(FOCUS_ROWS));
-      expect(gateErrors(c.diagnostics), tag).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :focus is not supported on ${t}: no passing device proof of selector:pseudo-class(:focus) in interaction/mouse, selector:pseudo-class(:focus) in interaction/touch (support profile ${COMMITTED_PROFILES[t as 'ios'].revision})`));
+      expect(gateErrors(c.diagnostics), tag).toEqual(['ios', 'android'].map(reachableFocus));
       // The refusal comes from the linked case's focusability, not from a missing case list.
       const record = internalRecord(c);
       if (record === undefined || record.linked === null) throw new Error(`${tag}: no linked cases`);
@@ -297,7 +300,68 @@ describe('interaction states: the native profile gate (SELD-R2 PR 5, gateInterac
     expect(interactionInputs('hover', false)).toEqual(['mouse', 'touch']);
     expect(interactionInputs('active', false)).toEqual(['mouse', 'touch']);
     expect(interactionInputs('focus', false)).toEqual(['forced-only']);
-    expect(interactionInputs('focus-visible', true)).toEqual(['mouse', 'touch']);
+    expect(interactionInputs('focus-visible', true)).toEqual(['keyboard', 'mouse', 'touch']);
+  });
+
+  it('counts every element Chrome 145 may focus as focusable, failing closed: an iframe, contenteditable, any unlisted tag', () => {
+    // An iframe is focused by a click into it, so :focus on one is refused with the forced-only rows present. (A rule with no
+    // declaration changes no state's output, so no gate refuses it, as the literal refusal before the gate did not.)
+    for (const css of ['.f:focus { width: 80px; }', '.f:focus { } .f:focus-visible { height: 7px; }']) {
+      const want = css.includes('focus-visible') ? ['ios', 'android'].map((t) => reachableFocus(t).replaceAll(':focus', ':focus-visible')) : ['ios', 'android'].map(reachableFocus);
+      expect(gateErrors(gated(doc('iframe', [], css), withRows(FOCUS_ROWS)).diagnostics), css).toEqual(want);
+    }
+    expect(gateErrors(gated(doc('div', [['contenteditable', '']], '.f:focus { width: 80px; }'), withRows(FOCUS_ROWS)).diagnostics)).toEqual(['ios', 'android'].map(reachableFocus));
+    const el = (tag: string, attrs: readonly (readonly [string, string])[] = []): LinkedElement => ({ tag, attributes: new Map(attrs) }) as unknown as LinkedElement;
+    for (const tag of ['iframe', 'button', 'input', 'select', 'textarea', 'summary', 'audio', 'video', 'area', 'details', 'object', 'embed', 'no-such-tag']) expect(isFocusable(el(tag)), tag).toBe(true);
+    for (const v of ['', 'true', 'plaintext-only']) expect(isFocusable(el('div', [['contenteditable', v]])), v).toBe(true);
+    expect(isFocusable(el('div', [['contenteditable', 'false']]))).toBe(false);
+    expect(isFocusable(el('input', [['type', 'hidden'], ['tabindex', '0']]))).toBe(false);
+    for (const tag of ['div', 'span', 'p', 'img', 'svg', 'label', 'a']) expect(isFocusable(el(tag)), tag).toBe(false);
+  });
+
+  it('counts a rule that may make a scroller as focus reachable: Chrome 145 keyboard-focuses a scroller with no focusable child', () => {
+    const scroller = (css: string): FrontEndResult => inputFor(`${BODY}${css}`, (r) => [div(r, 's', ['s'], [div(r, 'tall', ['tall'])])]);
+    const tall = '.tall { height: 100px; } ';
+    for (const css of ['.s { overflow: auto; height: 20px; }', '.s { overflow-y: scroll; height: 20px; }', '.s { overflow-x: hidden; height: 20px; }', '.s { --o: auto; overflow: var(--o); height: 20px; }']) {
+      const c = gated(scroller(`${tall}${css} .s:focus { width: 80px; }`), withRows(FOCUS_ROWS));
+      expect(gateErrors(c.diagnostics), css).toEqual(['ios', 'android'].map(reachableFocus));
+      const record = internalRecord(c);
+      if (record === undefined || record.linked === null) throw new Error(`${css}: no linked cases`);
+      // No element is focusable on its own; the rules alone make focus reachable.
+      expect(anyFocusable(record.linked.cases), css).toBe(false);
+    }
+    // overflow visible or clip never scrolls, so forced-only focus is still accepted there.
+    for (const css of ['.s { overflow: visible; height: 20px; }', '.s { overflow: clip; height: 20px; }']) {
+      expect(gateErrors(gated(scroller(`${tall}${css} .s:focus { width: 80px; }`), withRows(FOCUS_ROWS)).diagnostics), css).toEqual([]);
+    }
+    const rulesOf = (css: string) => {
+      const src = input(css, tree).snapshot.sources[0];
+      if (src === undefined) throw new Error('no source');
+      return parseStylesheet(css, { source: src.ref, start: 0, end: css.length }, { id: 's', owner: DOC, scope: 'document' }, 0, []);
+    };
+    expect(rulesMayScroll(rulesOf('.s { width: 1px; overflow: visible; }'))).toBe(false);
+    expect(rulesMayScroll(rulesOf('.s { overflow: hidden; }'))).toBe(true);
+  });
+
+  it('requires the keyboard row for :focus with a focusable element, which no device lane proves yet', () => {
+    const pointer = (['focus', 'focus-visible'] as const).flatMap((p) => [row(p, 'mouse'), row(p, 'touch')]);
+    expect(gateErrors(gated(doc('div', [['tabindex', '0']], '.f:focus { width: 80px; }'), withRows(pointer)).diagnostics)).toEqual(['ios', 'android'].map((t) =>
+      `DRAGON_UNSUPPORTED_SELECTOR [${t}] :focus is not supported on ${t}: no passing device proof of selector:pseudo-class(:focus) in interaction/keyboard (support profile ${COMMITTED_PROFILES[t as 'ios'].revision})`));
+    // The committed profiles prove no keyboard, mouse or touch row.
+    for (const t of ['ios', 'android'] as const) {
+      expect(COMMITTED_PROFILES[t].rows.filter((r) => /^interaction\/(keyboard|mouse|touch)$/.test(r.context)), t).toEqual([]);
+      expect(provesPointerRow(COMMITTED_PROFILES[t]), t).toBe(false);
+    }
+  });
+
+  it('runs the hit model (R13) outside the lanes once a profile proves a pointer row, so an accepted :hover is still refused on a grid', () => {
+    const hover = withRows([row('hover', 'mouse'), row('hover', 'touch')]);
+    expect(provesPointerRow(hover.ios)).toBe(true);
+    const grid = inputFor(`${BODY}.g { display: grid; grid-template-columns: 50px 50px; } .i { height: 10px; } .k:hover { background-color: #0c0; }`, (r) => [div(r, 'g', ['g'], [div(r, 'i1', ['i']), div(r, 'i2', ['i'])]), div(r, 'k', ['k'])]);
+    const found = errors(gated(grid, hover).diagnostics);
+    expect(found.filter((m) => m.includes('no passing device proof of'))).toEqual([]);
+    expect(found).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the grid container g, which is not built yet (package GRID hit model)`));
+    expect(errors(gated(grid, hover, { faults: { hitUnmodelledNotRefused: true } }).diagnostics)).toEqual([]);
   });
 
   it('a derive compile reads no profile, so it refuses forced-only focus too; a lanes compile records the gate as lane-only', () => {

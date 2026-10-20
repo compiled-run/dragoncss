@@ -10,6 +10,7 @@ import { PROJECT_ID } from '../src/fixture-reader.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
 import { emitCases, forcedNativeCases, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
+import { forcedDeviceCases } from '../src/forced-device.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import { ANIMATION_CONTEXT } from '../src/profile-rows.ts';
 import { resizeCaseReport, resizeCases, resizeProgram } from '../src/resize-capture.ts';
@@ -117,10 +118,12 @@ describe('the android profile follows the iOS rule', () => {
   });
 
   it('every case proving an android interaction row is a forced device case whose state programs are ready, which the gate accepts and the emitter generates', () => {
+    // A row's proof names the host forced case "<case>~ix<k>" (chrome-dual); its device case "<case>~fx<digest>" is what runs.
+    const deviceOf = new Map(forcedDeviceCases().map((f) => [f.hostId, f.case.id]));
     const forced = new Map(forcedNativeCases().map((n) => [n.case.id, n]));
     const proving = [...new Set(promotedInteraction.flatMap((r) => r.proofs.flatMap((p) => p.cases)))];
     for (const id of proving) {
-      const n = forced.get(id);
+      const n = forced.get(deviceOf.get(id) ?? '');
       if (n === undefined) throw new Error(`${id} proves an android interaction row and is not a forced device case`);
       expect(nativePrograms(n.compiled, n.case.assignment, n.case.interaction ?? null).kind, id).toBe('ready');
       const c = enforcedOf(n.spec, n.case.environment.direction);
@@ -129,10 +132,11 @@ describe('the android profile follows the iOS rule', () => {
         expect(c.diagnostics.filter((x) => x.target === 'android' && x.message.includes(`${r.feature} in ${r.context}`)).map((x) => x.message), `${id} ${r.feature}`).toEqual([]);
       }
     }
-    const emitted = emitCases('android').filter((e) => proving.includes(e.id));
-    expect(emitted.map((e) => e.id).sort()).toEqual([...proving].sort());
+    const devices = proving.map((id) => deviceOf.get(id) as string);
+    const emitted = emitCases('android').filter((e) => devices.includes(e.id));
+    expect(emitted.map((e) => e.id).sort()).toEqual([...devices].sort());
     const text = emitAndroidViewsCases(emitted).map((f) => f.text).join('\n');
-    for (const id of proving) expect(text.includes(`// case ${id}\n`), id).toBe(true);
+    for (const id of devices) expect(text.includes(`// case ${id}\n`), id).toBe(true);
   });
 
   it('every resize case proving a media row compiles for android unblocked, enforced, and runs its android-views band program on the resize lanes', () => {

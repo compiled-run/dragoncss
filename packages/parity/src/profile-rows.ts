@@ -107,15 +107,30 @@ export function deriveAnimationRows(target: ProfileTarget, passing: readonly Pas
  */
 export const INTERACTION_ROW_LANES = [...DEVICE_CHECK_LANES, TRACE_LANE] as const;
 
-/** Why a forced device case is not device-proven on a target, or null when it passes every INTERACTION_ROW_LANES lane at every DPR (pure). */
-export function interactionDeviceBlocker(ev: DeviceEvidence, id: string): string | null {
+/** A force step of a device-traces script as keptForceSteps (trace-lane.ts) names it. */
+export const forceStepKey = (f: { readonly pseudo: string; readonly address: string }): string => `${f.pseudo}@${f.address}`;
+
+/** The pseudo-classes a forced device case forces that its group's device-traces script does not keep after the step cut (pure). */
+export function cutForceSteps(force: readonly { readonly pseudo: string; readonly address: string }[], kept: ReadonlySet<string>): string[] {
+  return force.map(forceStepKey).filter((k) => !kept.has(k));
+}
+
+/** A forced device case as the rows read it: its host case id, its device case id, the force steps its trace cut, its features. */
+export type ForcedRowCase = { readonly id: string; readonly device: string; readonly cut: readonly string[]; readonly features: readonly string[] };
+
+/**
+ * Why a forced device case is not device-proven on a target, or null when it passes every INTERACTION_ROW_LANES lane at every DPR
+ * (pure): the check lanes run its device id, device-traces its host case's group script, which must keep every step it forces.
+ */
+export function interactionDeviceBlocker(ev: DeviceEvidence, c: Pick<ForcedRowCase, 'id' | 'device' | 'cut'>): string | null {
   if (ev.unavailable !== null) return ev.unavailable;
   for (const lane of INTERACTION_ROW_LANES) {
     const l = ev.lanes.find((x) => x.lane === lane);
     if (l === undefined) return `${ev.target} has no ${lane} lane`;
-    const run = lane === TRACE_LANE ? traceScriptOfForced(id) : id;
+    const run = lane === TRACE_LANE ? traceScriptOfForced(c.id) : c.device;
     if (!l.cases.has(run)) return `${run} is not run by ${ev.target} ${lane} at every DPR`;
     if (l.failing.has(run)) return `${run} fails ${ev.target} ${lane}`;
+    if (lane === TRACE_LANE && c.cut.length > 0) return `${run} cuts the force steps ${c.cut.join(', ')} of ${c.device} at MAX_TRACE_STEPS`;
   }
   return null;
 }
@@ -123,13 +138,14 @@ export function interactionDeviceBlocker(ev: DeviceEvidence, id: string): string
 /**
  * SELD-R2 PR 5 (step 5a): the native interaction rows in context interaction/forced-only, from the forced cases that pass the host
  * lanes and force :focus or :focus-visible in a case with no focusable element. iOS and Android: exact, only for the cases that pass
- * every INTERACTION_ROW_LANES lane on that target's committed device record. Web keeps its rows from deriveRows; no touch or mouse rows.
+ * every INTERACTION_ROW_LANES lane on that target's committed device record. Web keeps its rows from deriveRows; no touch or mouse
+ * rows. A proof names the host cases (chrome-dual), whose device cases carry a state digest.
  */
-export function deriveInteractionRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[], device: DeviceEvidence | null): ProfileRow[] {
+export function deriveInteractionRows(target: ProfileTarget, passing: readonly ForcedRowCase[], device: DeviceEvidence | null): ProfileRow[] {
   if (target === 'web' || device === null) return [];
   const context = interactionContext('forced-only');
   const allowed = (['focus', 'focus-visible'] as const).map(interactionRowFeature);
-  const proven = passing.filter((c) => interactionDeviceBlocker(device, c.id) === null);
+  const proven = passing.filter((c) => interactionDeviceBlocker(device, c) === null);
   const features = [...new Set(proven.flatMap((c) => c.features))].filter((f) => allowed.includes(f)).sort();
   return features.map((feature) => {
     const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);

@@ -48,8 +48,8 @@ export function forcedFor(p: InteractionPartition, k: number): readonly ForcedPs
   return v.force;
 }
 
-/** Whether a case id is a forced case's ("<case>~ix<k>", then the direction suffix): one counted beside the reachable cases. */
-export const isForcedCaseId = (id: string): boolean => /~ix\d+(-rtl)?$/.test(id);
+/** Whether a case id is a forced case's ("<case>~ix<k>", or a forced device case's "<case>~fx<digest>", then the direction suffix). */
+export const isForcedCaseId = (id: string): boolean => /(~ix\d+|~fx[0-9a-f]{12})(-rtl)?$/.test(id);
 
 /** The device-traces script of a forced case's group: the fixture and direction of "<case>~ix<k>" (trace-lane.ts traceScriptId). */
 export function traceScriptOfForced(id: string): string {

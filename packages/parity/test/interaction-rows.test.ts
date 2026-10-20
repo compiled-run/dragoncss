@@ -3,22 +3,26 @@
 // :focus and :focus-visible, and never reach web. The forced device cases themselves (forced-device.ts) are checked below too.
 import { describe, expect, it } from 'vitest';
 import type { DeviceEvidence } from '../src/profile-rows.ts';
-import { deriveInteractionRows, INTERACTION_ROW_LANES, interactionDeviceBlocker } from '../src/profile-rows.ts';
-import { traceScriptOfForced } from '../src/cases.ts';
-import { forcedDeviceCases } from '../src/forced-device.ts';
+import { cutForceSteps, deriveInteractionRows, forceStepKey, INTERACTION_ROW_LANES, interactionDeviceBlocker } from '../src/profile-rows.ts';
+import { isForcedCaseId, traceScriptOfForced } from '../src/cases.ts';
+import { forcedDeviceCases, stateDigest } from '../src/forced-device.ts';
+import { keptForceSteps, MAX_TRACE_STEPS } from '../src/trace-lane.ts';
 import { deviceCheckCases, forcedNativeCases, nativeCases } from '../src/native-host.ts';
 import { deviceCheckCaseIds, nativeTargets, vectorCaseIds } from '../src/targets.ts';
 
 const FOCUS = 'selector:pseudo-class(:focus)';
 const VISIBLE = 'selector:pseudo-class(:focus-visible)';
 const ids = ['interaction-focus~ix0', 'interaction-focus~ix1-rtl'];
-const passing = [{ id: ids[0] as string, features: [FOCUS] }, { id: ids[1] as string, features: [FOCUS, VISIBLE, 'selector:pseudo-class(:hover)'] }];
+/** The device ids of ids: a state digest each, never the state index. */
+const devs = ['interaction-focus~fx0123456789ab', 'interaction-focus~fxba9876543210-rtl'];
+const at = (k: 0 | 1, cut: readonly string[] = []) => ({ id: ids[k] as string, device: devs[k] as string, cut });
+const passing = [{ ...at(0), features: [FOCUS] }, { ...at(1), features: [FOCUS, VISIBLE, 'selector:pseudo-class(:hover)'] }];
 const TRACES = ['interaction-focus~trace', 'interaction-focus-rtl~trace'];
 /** Every row lane runs cases (device-traces their scripts); skip leaves one lane out, failing fails ids on lane. */
 const ev = (cases: readonly string[], o: { failing?: readonly string[]; lane?: string; skip?: string; unavailable?: string } = {}): DeviceEvidence => ({
   target: 'ios',
   unavailable: o.unavailable ?? null,
-  lanes: INTERACTION_ROW_LANES.filter((l) => l !== o.skip).map((lane) => ({ lane, perCase: true, passed: true, cases: new Set(lane === 'device-traces' ? cases.map(traceScriptOfForced) : cases), failing: new Set(lane === (o.lane ?? lane) ? (o.failing ?? []) : []) })),
+  lanes: INTERACTION_ROW_LANES.filter((l) => l !== o.skip).map((lane) => ({ lane, perCase: true, passed: true, cases: new Set(lane === 'device-traces' ? cases.map((c) => traceScriptOfForced(ids[devs.indexOf(c)] as string)) : cases), failing: new Set(lane === (o.lane ?? lane) ? (o.failing ?? []) : []) })),
 });
 const proof = (feature: string, cases: readonly string[]) => ({ aspect: 'computed-value', lane: 'chrome-dual', valueSubset: feature.slice(feature.indexOf(':') + 1), context: 'interaction/forced-only', cases });
 
@@ -28,8 +32,8 @@ describe('the forced-only interaction rows', () => {
     expect(ids.map(traceScriptOfForced)).toEqual(TRACES);
     expect(traceScriptOfForced('t#2~ix3-rtl')).toBe('t-rtl~trace');
     expect(() => traceScriptOfForced('interaction-focus')).toThrow('is not a forced case id');
-    for (const id of ids) expect(interactionDeviceBlocker(ev(ids), id)).toBeNull();
-    expect(deriveInteractionRows('ios', passing, ev(ids))).toEqual([
+    for (const k of [0, 1] as const) expect(interactionDeviceBlocker(ev(devs), at(k))).toBeNull();
+    expect(deriveInteractionRows('ios', passing, ev(devs))).toEqual([
       { feature: FOCUS, context: 'interaction/forced-only', status: 'exact', proofs: [proof(FOCUS, ids)] },
       { feature: VISIBLE, context: 'interaction/forced-only', status: 'exact', proofs: [proof(VISIBLE, [ids[1] as string])] },
     ]);
@@ -37,16 +41,28 @@ describe('the forced-only interaction rows', () => {
 
   it('drop a case that fails, was not run, or lacks a lane, and give nothing without evidence or on web', () => {
     for (const lane of INTERACTION_ROW_LANES) {
-      const run = lane === 'device-traces' ? TRACES[1] : ids[1];
-      expect(interactionDeviceBlocker(ev(ids, { failing: [run as string], lane }), ids[1] as string), lane).toBe(`${run} fails ios ${lane}`);
-      expect(interactionDeviceBlocker(ev(ids, { skip: lane }), ids[0] as string), lane).toBe(`ios has no ${lane} lane`);
+      const run = lane === 'device-traces' ? TRACES[1] : devs[1];
+      expect(interactionDeviceBlocker(ev(devs, { failing: [run as string], lane }), at(1)), lane).toBe(`${run} fails ios ${lane}`);
+      expect(interactionDeviceBlocker(ev(devs, { skip: lane }), at(0)), lane).toBe(`ios has no ${lane} lane`);
     }
-    expect(interactionDeviceBlocker(ev([ids[1] as string]), ids[0] as string)).toBe(`${ids[0]} is not run by ios device-frames at every DPR`);
-    expect(interactionDeviceBlocker(ev(ids, { unavailable: 'lanes.json is stale' }), ids[0] as string)).toBe('lanes.json is stale');
-    expect(deriveInteractionRows('ios', passing, ev([ids[0] as string]))).toEqual([{ feature: FOCUS, context: 'interaction/forced-only', status: 'exact', proofs: [proof(FOCUS, [ids[0] as string])] }]);
-    expect(deriveInteractionRows('ios', passing, ev(ids, { failing: ids, lane: 'device-pixels' }))).toEqual([]);
+    expect(interactionDeviceBlocker(ev([devs[1] as string]), at(0))).toBe(`${devs[0]} is not run by ios device-frames at every DPR`);
+    // Evidence is keyed by the state digest: a run of the host id (the state index) proves nothing.
+    expect(interactionDeviceBlocker(ev(devs), { ...at(0), device: ids[0] as string })).toBe(`${ids[0]} is not run by ios device-frames at every DPR`);
+    expect(interactionDeviceBlocker(ev(devs, { unavailable: 'lanes.json is stale' }), at(0))).toBe('lanes.json is stale');
+    expect(deriveInteractionRows('ios', passing, ev([devs[0] as string]))).toEqual([{ feature: FOCUS, context: 'interaction/forced-only', status: 'exact', proofs: [proof(FOCUS, [ids[0] as string])] }]);
+    expect(deriveInteractionRows('ios', passing, ev(devs, { failing: devs, lane: 'device-pixels' }))).toEqual([]);
     expect(deriveInteractionRows('ios', passing, null)).toEqual([]);
-    expect(deriveInteractionRows('web', passing, ev(ids))).toEqual([]);
+    expect(deriveInteractionRows('web', passing, ev(devs))).toEqual([]);
+  });
+
+  it('drop a case whose group script cuts a step it forces at MAX_TRACE_STEPS, though its traces pass', () => {
+    const force = [{ pseudo: 'focus', address: 'a' }, { pseudo: 'focus-visible', address: 'a' }];
+    expect(forceStepKey(force[0] as { pseudo: string; address: string })).toBe('focus@a');
+    expect(cutForceSteps(force, new Set(['focus@a', 'focus-visible@a', 'hover@b']))).toEqual([]);
+    expect(cutForceSteps(force, new Set(['focus@a']))).toEqual(['focus-visible@a']);
+    expect(interactionDeviceBlocker(ev(devs), at(1, ['focus-visible@a']))).toBe(`${TRACES[1]} cuts the force steps focus-visible@a of ${devs[1]} at MAX_TRACE_STEPS`);
+    expect(deriveInteractionRows('ios', [{ ...at(0, ['focus@a']), features: [FOCUS] }], ev(devs))).toEqual([]);
+    expect(keptForceSteps('no-such-group~trace').size).toBe(0);
   });
 });
 
@@ -57,7 +73,13 @@ describe('the forced device cases (forced-device.ts)', () => {
     expect([...new Set(forced.map((f) => f.spec.id))].sort()).toEqual(['interaction-combo', 'interaction-focus']);
     expect(forced.some((f) => f.case.environment.direction === 'rtl')).toBe(true);
     for (const f of forced) {
-      expect(f.case.id, f.case.id).toMatch(/~ix\d+(-rtl)?$/);
+      // The device id carries a digest of the state key; the host id (chrome-dual, device-traces) its state index.
+      expect(f.case.id, f.case.id).toBe(f.hostId.replace(/~ix\d+/, `~fx${stateDigest(f.case.interaction as string)}`));
+      expect(f.hostId, f.case.id).toMatch(/~ix\d+(-rtl)?$/);
+      expect(isForcedCaseId(f.case.id) && isForcedCaseId(f.hostId), f.case.id).toBe(true);
+      expect(f.force.length, f.case.id).toBeGreaterThan(0);
+      // Every step it forces survives its group script's MAX_TRACE_STEPS cut, so device-traces covers it.
+      expect(cutForceSteps(f.force, keptForceSteps(traceScriptOfForced(f.hostId))), `${f.case.id} (cut at ${MAX_TRACE_STEPS})`).toEqual([]);
       expect(f.features.length, f.case.id).toBeGreaterThan(0);
       for (const x of f.features) expect([FOCUS, VISIBLE], f.case.id).toContain(x);
       // The forcing runs in the case's prepare script, so every capture that runs it takes the state forced.

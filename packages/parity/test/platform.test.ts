@@ -26,7 +26,7 @@ describe('platform keys', () => {
     for (const [id, c] of captures) expect([c.platform, c.browser], id).toEqual(['darwin-arm64', BROWSER_FLAVOUR]);
     const dir = repoPath('packages/layout/vectors');
     const vectors = readdirSync(dir).filter((f) => f.endsWith('.json'));
-    // A SELD-R2a forced case ("~ix<k>") is captured but adds no engine vector: its layout is compared through the lanes. TXT1a-2: a
+    // A SELD-R2a forced case ("~ix<k>", or a forced device case's "~fx<digest>") is captured but adds no engine vector: its layout is compared through the lanes. TXT1a-2: a
     // shaped case's vector (with its transcript) lives in vectors/text-latin/dpr-1; its keys are checked by text-latin.test.ts.
     const shaped = readdirSync(`${dir}/text-latin/dpr-1`).filter((f) => f.endsWith('.json'));
     expect(vectors.length + shaped.length).toBe([...captures.keys()].filter((id) => !isForcedCaseId(id)).length);

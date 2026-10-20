@@ -112,6 +112,11 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
+/** SELD-R2 PR 5: whether an input can focus some element of the document; false means :focus and :focus-visible are forced-only. */
+export function focusReachableIn(compiled: object): boolean {
+  return internalRecord(compiled)?.focusReachable !== false;
+}
+
 /** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;

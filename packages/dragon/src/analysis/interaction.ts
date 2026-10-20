@@ -89,16 +89,44 @@ export function interactionStateOf(v: Pick<InteractionValue, 'hover' | 'active' 
 export const validTabindex = (v: string): boolean => /^[\t\n\f\r ]*[-+]?[0-9]/.test(v);
 
 /**
- * HTML §6.6.3 focusable areas among elements: a with href, form controls, and any element with a valid tabindex; never input
- * type=hidden. R9's general display: none clause waits for FORM-a (SELD-R2 PR 2).
+ * Tags Chrome 145 never focuses on their own: without a valid tabindex, contenteditable, or (for a) an href. Every other tag counts as
+ * focusable, so a tag added to the supported set fails closed until it is listed here.
+ */
+const NEVER_FOCUSABLE: ReadonlySet<string> = new Set([
+  'html', 'body', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
+  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'span', 'a', 'label', 'br', 'img',
+  'svg', 'path', 'rect', 'circle', 'b', 'strong', 'em', 'i',
+]);
+
+/**
+ * HTML §6.6.3 focusable areas among elements, as Chrome 145 focuses them: a with href, an iframe (a click into it focuses it), any
+ * element with a valid tabindex or a contenteditable other than false, and every tag not in NEVER_FOCUSABLE (form controls, and any
+ * other tag, fail closed); never input type=hidden. A keyboard-focusable scroller depends on computed overflow (rulesMayScroll).
+ * R9's general display: none clause waits for FORM-a (SELD-R2 PR 2).
  */
 export function isFocusable(el: LinkedElement): boolean {
   // input type=hidden is display: none in the UA sheet, so a tabindex does not make it focusable either.
   if (el.tag === 'input' && el.attributes.get('type')?.toLowerCase() === 'hidden') return false;
   const tabindex = el.attributes.get('tabindex');
   if (tabindex !== undefined && validTabindex(tabindex)) return true;
+  const editable = el.attributes.get('contenteditable');
+  if (editable !== undefined && editable.trim().toLowerCase() !== 'false') return true;
   if (el.tag === 'a') return el.attributes.has('href');
-  return el.tag === 'button' || el.tag === 'input' || el.tag === 'select' || el.tag === 'textarea';
+  return !NEVER_FOCUSABLE.has(el.tag);
+}
+
+/** The overflow values that never make a box a scroll container, whatever the other axis computes to (css-overflow-3 §3.1). */
+const NEVER_SCROLLS: ReadonlySet<string> = new Set(['visible', 'clip', 'initial', 'unset', 'revert', 'revert-layer']);
+
+/**
+ * Whether a rule may make some element a scroll container with overflow auto or scroll, which Chrome 130 and later make keyboard
+ * focusable when it has no focusable descendant: any overflow-x or overflow-y value but NEVER_SCROLLS (hidden on one axis computes
+ * visible on the other to auto), or one set through var(). Whether the box overflows is not known statically, so this fails closed.
+ */
+export function rulesMayScroll(rules: readonly Rule[]): boolean {
+  const scrolls = (lh: { readonly property: string; readonly value: CssValue }): boolean =>
+    (lh.property === 'overflow-x' || lh.property === 'overflow-y') && !(lh.value.kind === 'keyword' && NEVER_SCROLLS.has(lh.value.value));
+  return rules.some((r) => r.declarations.some((d) => d.longhands.some(scrolls) || (d.pending?.longhands ?? []).some((p) => p === 'overflow-x' || p === 'overflow-y')));
 }
 
 function preorder(root: LinkedElement): { el: LinkedElement; parent: string | null }[] {
@@ -414,22 +442,31 @@ export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
 }
 
 /** SELD-R2 PR 5: the inputs an interaction row is proven for, each its own profile context interaction/<input>. */
-export const INTERACTION_INPUTS = ['forced-only', 'mouse', 'touch'] as const;
+export const INTERACTION_INPUTS = ['forced-only', 'keyboard', 'mouse', 'touch'] as const;
 export type InteractionInput = (typeof INTERACTION_INPUTS)[number];
 export const interactionContext = (input: InteractionInput): string => `interaction/${input}`;
 export const interactionRowFeature = (pseudo: InteractionPseudo): string => `selector:pseudo-class(:${pseudo})`;
 
 /**
  * The inputs that can put an element of a document into a pseudo-class. Any element can be hovered or pressed; :focus and
- * :focus-visible need a focusable element (isFocusable), so with none they are reached only by forcing (forced-only).
+ * :focus-visible need a focusable element, so with none they are reached only by forcing (forced-only), and with one a key, a click
+ * or a tap reaches them (keyboard, mouse, touch).
  */
 export function interactionInputs(pseudo: InteractionPseudo, focusable: boolean): readonly InteractionInput[] {
-  return (pseudo === 'focus' || pseudo === 'focus-visible') && !focusable ? ['forced-only'] : ['mouse', 'touch'];
+  if (pseudo === 'focus' || pseudo === 'focus-visible') return focusable ? ['keyboard', 'mouse', 'touch'] : ['forced-only'];
+  return ['mouse', 'touch'];
 }
+
+/** Whether a profile proves any interaction row for a pointer (mouse or touch), so a pointer reaches a compiled state (R13). */
+export const provesPointerRow = (profile: SupportProfile): boolean =>
+  profile.rows.some((r) => r.status !== 'unsupported' && r.feature.startsWith('selector:pseudo-class(') && (r.context === interactionContext('mouse') || r.context === interactionContext('touch')));
 
 /** Whether any case of a document has a focusable element; unknown cases (null) count as having one. */
 export const anyFocusable = (cases: readonly { readonly root: LinkedElement }[] | null): boolean =>
   cases === null || cases.some((c) => preorder(c.root).some((n) => isFocusable(n.el)));
+
+/** Whether an input can focus some element of a document: a focusable element in some case, or a rule that may make a scroller. */
+export const focusReachable = (rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null): boolean => anyFocusable(cases) || rulesMayScroll(rules);
 
 /**
  * SELD-R2 PR 5 (seld-r2-pr5-design.md section 3): on each native target an interaction rule compiles only where the profile proves
@@ -438,7 +475,7 @@ export const anyFocusable = (cases: readonly { readonly root: LinkedElement }[] 
  */
 export function gateInteractionFeatures(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, targets: readonly ('ios' | 'android')[], profileOf: ((t: 'ios' | 'android') => SupportProfile) | null, faults: Pick<CompilerFaults, 'interactionRowIgnored'>): Diagnostic[] {
   const out: Diagnostic[] = [];
-  const focusable = anyFocusable(cases);
+  const focusable = focusReachable(rules, cases);
   for (const t of targets) {
     const profile = profileOf === null ? null : profileOf(t);
     for (const r of rules) {
