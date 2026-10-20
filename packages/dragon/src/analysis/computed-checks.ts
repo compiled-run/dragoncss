@@ -688,6 +688,30 @@ function checkFixedContainingBlocks(root: ResolvedElement, propagated: ResolvedE
 
 const RATIO_BLOCK_SIZES: readonly Longhand[] = ['height', 'min-height', 'max-height'];
 
+/** css-sizing-3 §3.2 and css-sizing-4 §3.1: the inline-size keywords the engine resolves only on a block-level box without a ratio. */
+const SIZE_KEYWORDS: ReadonlySet<string> = new Set(['min-content', 'max-content', 'fit-content', 'stretch']);
+const INLINE_SIZES: readonly Longhand[] = ['width', 'min-width', 'max-width'];
+
+/**
+ * The width, min-width or max-width of el whose computed value is a sizing keyword, refused on every target as where says: the
+ * engine resolves them only for a block-level box with no aspect-ratio (block.ts blockLevelInlineSize, intrinsic.ts
+ * inlineContribution) and never on a replaced box (replaced.ts replacedSize through box.ts lengthWidth).
+ */
+function refuseSizeKeywords(el: ResolvedElement, where: string, manual: string, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  for (const p of INLINE_SIZES) {
+    const v = el.props.get(p) as ResolvedValue;
+    const k = keywordOf(v);
+    if (!SIZE_KEYWORDS.has(k)) continue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|size-keyword-${p}|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${p}: ${k} on ${el.element.address} ${where} is not supported yet (css-sizing-3 §3.2, css-sizing-4 §5.1)`, manual, basis: 'computed-value' }));
+    }
+  }
+}
+
 // css-sizing-4 §5.1: the engine takes aspect-ratio as Blink's raw layout ratio. A ratio whose parts are not whole 64ths needs
 // Blink's float continued fraction, which the compiler does not run, and a percentage block size beside a ratio has no
 // percentage basis in the engine (packages/layout/src/validate.ts); both are refused on every target at the declaration.
@@ -704,6 +728,7 @@ function checkAspectRatio(el: ResolvedElement, targets: readonly string[], diagn
     }
   };
   const shown = valueToString(ratio.value);
+  if (!isReplacedTag(el.element.tag)) refuseSizeKeywords(el, `beside aspect-ratio: ${shown}`, `Use a length or auto beside aspect-ratio on ${el.element.address}.`, targets, diagnostics, reported);
   const raw = exactLayoutRatio(ratio.value.width, ratio.value.height);
   if (raw === null) {
     refuse(ratio, 'inexact', `aspect-ratio: ${shown} on ${el.element.address} is unsupported: Chrome converts a ratio whose parts are not whole multiples of 1/64 with a float continued fraction that Dragon does not compute at build time`, 'Write the ratio with whole numbers, for example 16 / 9, or parts that are multiples of 1/64.');
@@ -970,6 +995,7 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
   if (pos !== 'static' && pos !== 'relative') {
     refuse(position, 'position', `position: ${pos} on <${tag}> ${el.element.address} is not supported on a replaced element yet (CSS 2.2 §10.3.8, §10.6.5)`, `Position a wrapper element and keep <${tag}> ${el.element.address} in its flow.`);
   }
+  refuseSizeKeywords(el, `on the replaced <${tag}>`, `Use a length, a percentage or auto on <${tag}> ${el.element.address}, or size a wrapper element with the keyword.`, targets, diagnostics, reported);
 }
 
 /**

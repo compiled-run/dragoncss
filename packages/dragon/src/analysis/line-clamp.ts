@@ -11,10 +11,13 @@ import { usedColors } from '../lower/paint/colors.ts';
 import type { Diagnostic } from '../types.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
+import { isReplacedTag } from './elements/replaced.ts';
 
 const keywordOf = (v: ResolvedValue | undefined): string => (v !== undefined && v.value.kind === 'keyword' ? v.value.value : '');
 const prop = (el: ResolvedElement, p: Longhand): ResolvedValue => el.props.get(p) as ResolvedValue;
 const display = (el: ResolvedElement): string => keywordOf(prop(el, 'display'));
+/** CSS2 §9.2.2: an inline box; an inline replaced element is an atomic inline (css-display-3 §2.4, RF-INL). */
+const isInlineBox = (el: ResolvedElement): boolean => display(el) === 'inline' && !isReplacedTag(el.element.tag);
 
 /** Whether the element's -webkit-box-orient and -webkit-line-clamp make a -webkit-box clamp lines (ComputedStyle::HasLineClamp). */
 const clamps = (props: ReadonlyMap<Longhand, ResolvedValue>): boolean =>
@@ -69,7 +72,7 @@ function inlineDescendants(el: ResolvedElement): ResolvedElement[] {
   for (const c of el.children) {
     if (c.kind !== 'element' || display(c) === 'none') continue;
     out.push(c);
-    if (display(c) === 'inline') out.push(...inlineDescendants(c));
+    if (isInlineBox(c)) out.push(...inlineDescendants(c));
   }
   return out;
 }
@@ -128,7 +131,7 @@ export function checkLineClamp(el: ResolvedElement, hidden: boolean, targets: re
     const plain = display(c) === 'block' && ['overflow-x', 'overflow-y'].every((p) => keywordOf(prop(c, p as Longhand)) === 'visible') && keywordOf(prop(c, 'position')) === 'static' && keywordOf(prop(c, 'float')) === 'none';
     // The engine truncates left to right only (inline.ts checkClampContext), so a nested rtl block is refused as the container is.
     if (keywordOf(prop(c, 'direction')) === 'rtl') refuse(targets, 'rtl', `${at} holds the rtl block <${c.element.tag}> ${c.element.address}, whose lines Dragon truncates left to right only`, `Make <${c.element.tag}> ${c.element.address} ltr, or remove -webkit-line-clamp from ${el.element.address}.`);
-    if (!plain || inlineDescendants(c).some((g) => display(g) !== 'inline')) {
+    if (!plain || inlineDescendants(c).some((g) => !isInlineBox(g))) {
       refuse(targets, 'nested', `${at} holds <${c.element.tag}> ${c.element.address}, which is not a block of inline content in its formatting context; Chrome counts lines through nested blocks, which Dragon does not yet`, `Make <${c.element.tag}> ${c.element.address} a plain block holding only text and inline boxes, or clamp its text on its own.`);
     } else blocks.push(c);
   }
@@ -139,7 +142,7 @@ export function checkLineClamp(el: ResolvedElement, hidden: boolean, targets: re
       if (g.element.tag === 'br') {
         // Chrome's rect of a <br> after which line N ends in the ellipsis spans the ellipsis (measured, line-clamp-lines at DPR 2).
         refuse(targets, 'br', `${at} holds the forced line break <br> ${g.element.address}, beside which Dragon does not place the ellipsis yet`, `Remove <br> ${g.element.address}, or split the text into blocks.`);
-      } else if (display(g) !== 'inline') refuse(targets, 'atomic', `${at} holds the inline-level box <${g.element.tag}> ${g.element.address}, which Dragon does not clamp beside`, `Make <${g.element.tag}> ${g.element.address} display: inline, or move it out of ${el.element.address}.`);
+      } else if (!isInlineBox(g)) refuse(targets, 'atomic', `${at} holds the inline-level box <${g.element.tag}> ${g.element.address}, which Dragon does not clamp beside`, `Make <${g.element.tag}> ${g.element.address} display: inline, or move it out of ${el.element.address}.`);
       else if (paintOf(g) !== paintOf(b)) {
         refuse(targets.filter((t) => t === 'ios' || t === 'android'), 'paint', `${at}: the inline box <${g.element.tag}> ${g.element.address} has a colour, visibility or font face other than its block's, and the native runtime draws the ellipsis with the text it follows, not in the block's style`, `Give <${g.element.tag}> ${g.element.address} the colour, visibility and font face of its block.`);
       }
