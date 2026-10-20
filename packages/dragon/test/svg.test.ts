@@ -279,18 +279,18 @@ describe('the svg model in a compile', () => {
     expect(fillOf('@layer base { rect { fill: rgb(1, 2, 3); } }')).toEqual([1, 2, 3]);
     expect(fillOf('@layer base, top; @layer top { rect { fill: rgb(4, 5, 6); } } @layer base { rect { fill: rgb(1, 2, 3); } }')).toEqual([4, 5, 6]);
   });
-  it("in one document, the svg checks and GEN-b's list-marker check both fire (checkSvg beside checkComputed's GEN-b checks)", () => {
+  it("in one document, the svg checks and GEN-c's list-marker check both fire (checkSvg beside checkComputed's GEN-c checks)", () => {
     const input = inputFor('body { margin: 0 } svg { display: block } circle { stroke-width: 10%; }', (r) => {
       const o: Origin = { kind: 'authored', span: { source: r, start: 0, end: 0 } };
       const attrs = (list: [string, string][]) => list.map(([name, value]) => ({ name, value: [{ when: { kind: 'true' as const }, value }], origin: o }));
       const svg: ElementNode = { kind: 'element', id: 's', tag: 'svg', classes: [], attributes: attrs([['width', '24'], ['height', '24']]), children: [shape(o, 'c', 'circle', [['r', '4']])], origin: o };
       const li: ElementNode = { kind: 'element', id: 'li', tag: 'li', classes: [], attributes: [], children: [], origin: o };
-      const ul: ElementNode = { kind: 'element', id: 'ul', tag: 'ul', classes: [], attributes: [], children: [li], origin: o };
+      const ul: ElementNode = { kind: 'element', id: 'ul', tag: 'ol', classes: [], attributes: [], children: [li], origin: o };
       return [div(r, 'w', ['w'], [svg, ul])];
     });
     const e = errors(compile(input, true));
     expect(e.filter((m) => m.includes('stroke-width: 10% on <circle> c is unsupported')).length).toBeGreaterThan(0);
-    expect(e.filter((m) => m.includes('display: list-item on <li> li generates a disc marker')).length).toBeGreaterThan(0);
+    expect(e.filter((m) => m.includes('display: list-item on <li> li generates a decimal marker')).length).toBeGreaterThan(0);
   });
   it('SVG-opacity: fill-opacity and stroke-opacity compute to a clamped number, inherit, and scale the fill and stroke alpha byte on native', () => {
     const input = svgTree('svg { fill-opacity: 40%; stroke-opacity: 2; } .h { fill-opacity: 0.5; stroke-opacity: -1; }', (_r, o) => [
@@ -492,7 +492,7 @@ describe('the svg model in a compile', () => {
     // A negative r is invalid CSS (Blink ValueRange::kNonNegative), and auto is not a geometry value (Rx and Ry alone take it).
     expect(refused('circle { r: -2px; cx: auto; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "-2px" is not a valid value for r (@webref/css grammar)', 'DRAGON_CSS_INVALID_VALUE * "auto" is not a valid value for cx (@webref/css grammar)']);
   });
-  it('refuses on every target a filter, a mask, backface-visibility or transform-box on a shape other than the initial value, as on a box: no target draws them on a shape, and Chrome does', () => {
+  it('refuses on every target a filter, a mask, backface-visibility, transform-box or an individual transform on a shape other than the initial value, as on a box: no target draws them on a shape, and Chrome does', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '10'], ['height', '10']]), shape(o, 'p', 'path', [['d', 'M2 2 H20 V20 Z']]), shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']])];
     const at = (css: string, address: string) => errors(compile(svgTree(css, shapes), false)).filter((m) => m.includes(`> ${address} `)).map((m) => m.split(' ').slice(0, 2).join(' ')).sort();
     const everywhere = ['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web'];
@@ -511,7 +511,7 @@ describe('the svg model in a compile', () => {
       const refused = compile(svgTree(css, shapes), false).diagnostics.filter((d) => d.severity === 'error');
       return refused.some((d) => d.target === null || d.target === undefined) ? ['android', 'ios', 'web'] : [...new Set(refused.map((d) => String(d.target)))].sort();
     };
-    for (const decl of ['backface-visibility: hidden', 'transform-box: fill-box', 'transform-box: stroke-box']) {
+    for (const decl of ['backface-visibility: hidden', 'transform-box: fill-box', 'transform-box: stroke-box', 'translate: 2px', 'rotate: 10deg', 'scale: 2']) {
       for (const tag of ['rect', 'path', 'circle']) expect(refusedOn(`${tag} { ${decl}; }`), `${tag} { ${decl} }`).toEqual(['android', 'ios', 'web']);
     }
   });

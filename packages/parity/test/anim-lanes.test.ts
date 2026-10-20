@@ -12,7 +12,9 @@ import type { AnimSample } from '../src/anim-samples.ts';
 import { allAnimCases, animEmits, animSampleId, animSampleIds, animSamples, animSamplesOf, scriptStepsOf } from '../src/anim-samples.ts';
 import { frameScript, frameStateProgram, pixelSamples } from '../src/anim-cases.ts';
 import type { DeviceSet, LaneFailure } from '../src/device-lanes.ts';
-import { ANIM_LANE, evaluateAnim } from '../src/device-lanes.ts';
+import { ANIM_LANE, animPixelSubsets, animReference, evaluateAnim } from '../src/device-lanes.ts';
+import { appliedTransforms, checkAgainstChrome, transformedFrames } from '../src/native-compare.ts';
+import type { NativeDump } from '../src/native-dump.ts';
 import type { DeviceRecord } from '../src/device-run.ts';
 import type { DeviceRun } from '../src/lanes.ts';
 import { lanesFile } from '../src/lanes.ts';
@@ -160,6 +162,110 @@ describe('device-anim on fake dumps', () => {
     const ghost: AnimSample = { ...xs[0]!, id: animSampleId(c.id, 9999), index: 9999 };
     const set = evaluateAnim('ios', DPR, join(dir, 'none'), device, [[ghost]]);
     expect(set.failures.map((f) => [f.lane, f.kind])).toEqual([[ANIM_LANE, 'frame-reference']]);
+  });
+});
+
+describe('device-anim frames of a transformed node', () => {
+  // ANIM-b2: a frame capture's rects are Chrome's transformed bounding boxes, and a dump's frames ignore transforms (PNT2), so (a)
+  // maps the dump through each node's transform write. Without that, anim-slide failed every sample by -translateX and anim-spin
+  // by the rotated box's ±10 px on the iOS and Android runs of batch 3.
+  const transformed = ['anim-slide', 'anim-spin'].map((f) => {
+    const xs = animSamples('ios').filter((s) => s[0]?.case.fixture.id === f);
+    if (xs.length === 0) throw new Error(`no frame case of ${f}`);
+    return xs;
+  }).flat();
+
+  it('maps each frame and line through every transformed ancestor-or-self, outermost first, about its own frame', () => {
+    const len = (px: number, percent = 0) => ({ kind: percent === 0 ? 'px' : 'percent', px, percent }) as const;
+    const op = (fn: 'translateX' | 'rotate', x: number, angle: number) => ({ fn, x: len(x), y: len(0), angle, sx: 1, sy: 1 });
+    const center = { x: len(0, 50), y: len(0, 50) };
+    const frame = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
+    const node = (id: string, parent: string | null, f: ReturnType<typeof frame>, lines: ReturnType<typeof frame>[] = []) => ({ id, parent, kind: 'element', native: 'V', frame: f, deviceEdges: { left: 0, top: 0, right: 0, bottom: 0 }, applied: {}, lines: lines.map((l) => ({ frame: l, deviceEdges: { left: 0, top: 0, right: 0, bottom: 0 }, baseline: null, start: null, end: null })) });
+    const dump = { nodes: [node('root', null, frame(0, 0, 400, 300)), node('outer', 'root', frame(0, 0, 200, 100)), node('rec', 'outer', frame(40, 40, 40, 20), [frame(40, 40, 40, 10)]), node('still', 'root', frame(0, 200, 10, 10))] } as unknown as NativeDump;
+    const out = transformedFrames(dump, new Map([['outer', { ops: [op('translateX', 10, 0)], origin: center }], ['rec', { ops: [op('rotate', 0, 90)], origin: center }]]));
+    const at = (id: string) => out.nodes.find((n) => n.id === id)!;
+    const near = (f: ReturnType<typeof frame>, want: number[]) => expect([f.x, f.y, f.width, f.height].map((v, i) => Math.abs(v - (want[i] as number)) < 1e-9)).toEqual([true, true, true, true]);
+    near(at('outer').frame, [10, 0, 200, 100]);
+    // rotate(90deg) about (60, 50), then translateX(10px): the 40x20 box stands 20x40 about (70, 50).
+    near(at('rec').frame, [60, 30, 20, 40]);
+    near(at('rec').lines[0]!.frame, [70, 30, 10, 40]);
+    expect(at('still')).toBe(dump.nodes[3]);
+    expect(at('root')).toBe(dump.nodes[0]);
+    expect(transformedFrames(dump, new Map())).toBe(dump);
+  });
+
+  for (const dpr of [2, 2.625, 3]) {
+    it(`a dump of each sample's live program passes frame-chrome at DPR ${dpr}, and does not when its frames are compared unmapped`, () => {
+      const at = join(dir, `transformed-${dpr}`);
+      mkdirSync(at);
+      const unmapped: string[] = [];
+      for (const s of transformed.flat()) {
+        const d = relabelledReferenceDump('ios', { id: s.id, fixture: s.case.fixture.id, direction: s.case.direction, compilerDigest: s.case.compiled.digest, viewport: s.case.viewport, program: s.program }, dpr) as NativeDump;
+        writeFileSync(join(at, `${s.id}@${dpr}.json`), JSON.stringify(d));
+        const ref = animReference('ios', s, dpr, animPixelSubsets(transformed).get(s.case.id) ?? new Set());
+        if (typeof ref === 'string') throw new Error(ref);
+        if (!checkAgainstChrome(d, ref.chrome).pass) unmapped.push(s.id);
+      }
+      const set = evaluateAnim('ios', dpr, at, { ...device, profileScale: dpr, appScale: dpr } as unknown as DeviceRecord, transformed);
+      expect(set.dumps).toBe(transformed.flat().length);
+      expect(set.failures.filter((f) => f.kind === 'frame-chrome' || f.kind === 'line-chrome')).toEqual([]);
+      // Every planted frame fault is still caught through the mapping.
+      const frameFaults = set.faults.filter((f) => f.check === 'a');
+      expect(frameFaults.length).toBeGreaterThan(0);
+      for (const f of frameFaults) {
+        expect(f.applicable, f.fault).toBeGreaterThan(0);
+        expect(f.uncaught, f.fault).toEqual([]);
+      }
+      // The unmapped comparison is the batch 3 failure: slide's moving samples and spin's samples off a half turn.
+      expect(unmapped.some((id) => id.startsWith('anim-slide@'))).toBe(true);
+      expect(unmapped.some((id) => id.startsWith('anim-slide-rtl@'))).toBe(true);
+      expect(unmapped.some((id) => id.startsWith('anim-spin@'))).toBe(true);
+    });
+  }
+
+  /** A sample's fake dump at DPR 2 with the panel's applied readback replaced (undefined removes it). */
+  const withApplied = (s: AnimSample, transform: unknown): NativeDump => {
+    const d = relabelledReferenceDump('ios', { id: s.id, fixture: s.case.fixture.id, direction: s.case.direction, compilerDigest: s.case.compiled.digest, viewport: s.case.viewport, program: s.program }, DPR) as NativeDump;
+    return { ...d, nodes: d.nodes.map((n) => {
+      if (n.id !== 'panel') return n;
+      const { dragonTransform: _, ...rest } = n.applied as Record<string, unknown>;
+      return { ...n, applied: (transform === undefined ? rest : { ...rest, dragonTransform: transform }) as typeof n.applied };
+    }) };
+  };
+
+  it('judges the transform native reads back, not the compiler\'s: a panel that never moved fails frame-chrome mid-slide', () => {
+    const slide = transformed.find((xs) => xs[0]?.case.id === 'anim-slide@400x300');
+    const mid = slide?.[5];
+    if (slide === undefined || mid === undefined) throw new Error('no anim-slide sample 5');
+    const identity = { functions: [['translateX', ['px', 0, 0], ['px', 0, 0], 0, 1, 1]], origin: [['percent', 0, 50], ['percent', 0, 50]] };
+    for (const [name, transform] of [['no readback', undefined], ['identity', identity]] as const) {
+      const at = join(dir, `unmoved-${name.replace(' ', '-')}`);
+      mkdirSync(at);
+      writeFileSync(join(at, `${mid.id}@${DPR}.json`), JSON.stringify(withApplied(mid, transform)));
+      const set = evaluateAnim('ios', DPR, at, device, [[mid]]);
+      const frames = set.failures.filter((f) => f.case === mid.id && f.kind === 'frame-chrome');
+      expect(frames.map((f) => f.node), name).toEqual(['panel']);
+      expect(frames[0]!.detail, name).toMatch(/^panel: edge delta \[-39\.5\d*,0,-39\.5\d*,0\]/);
+    }
+  });
+
+  it('reads the applied readback of both hosts, and reports a malformed one instead of mapping it', () => {
+    const mid = transformed.find((xs) => xs[0]?.case.id === 'anim-slide@400x300')![5]!;
+    const read = appliedTransforms(withApplied(mid, { functions: [['translateX', ['percent', 0, 19.7596], ['px', 0, 0], 0, 1, 1]], origin: [['percent', 0, 50], ['percent', 0, 50]] }));
+    expect(read.problems).toEqual([]);
+    expect(read.transforms.get('panel')).toEqual({ ops: [{ fn: 'translateX', x: { kind: 'percent', px: 0, percent: 19.7596 }, y: { kind: 'px', px: 0, percent: 0 }, angle: 0, sx: 1, sy: 1 }], origin: { x: { kind: 'percent', px: 0, percent: 50 }, y: { kind: 'percent', px: 0, percent: 50 } } });
+    expect(appliedTransforms(withApplied(mid, undefined)).transforms.size).toBe(0);
+    for (const bad of [null, 'rotate(90deg)', { functions: [['skew', ['px', 0, 0], ['px', 0, 0], 0, 1, 1]], origin: [['px', 0, 0], ['px', 0, 0]] }, { functions: [], origin: [['px', 0, 0]] }, { functions: [['rotate', ['px', 0, 0], ['px', 0, 0], 'x', 1, 1]], origin: [['px', 0, 0], ['px', 0, 0]] }]) {
+      const r = appliedTransforms(withApplied(mid, bad));
+      expect(r.transforms.size, JSON.stringify(bad)).toBe(0);
+      expect(r.problems.length, JSON.stringify(bad)).toBe(1);
+    }
+    // Through the lane: the malformed readback fails frame-chrome on its own line, besides the unmapped frame.
+    const at = join(dir, 'malformed');
+    mkdirSync(at);
+    writeFileSync(join(at, `${mid.id}@${DPR}.json`), JSON.stringify(withApplied(mid, 'rotate(90deg)')));
+    const set = evaluateAnim('ios', DPR, at, device, [[mid]]);
+    expect(set.failures.some((f) => f.kind === 'frame-chrome' && f.detail.includes('is not {functions'))).toBe(true);
   });
 });
 

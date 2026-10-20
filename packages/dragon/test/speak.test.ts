@@ -1,4 +1,4 @@
-// speak (NA-NATIVE-2): a longhand appended after the counters family, inherited, initial normal, discrete, with no layout or paint
+// speak (NA-NATIVE-2): a longhand appended after the color-scheme family, inherited, initial normal, discrete, with no layout or paint
 // aspect. Dragon accepts Chrome 145's six keywords in any case and drops every other value, as Chrome does; it draws nothing on any
 // target, and web output writes it only on cases that set it away from normal.
 import { describe, expect, it } from 'vitest';

@@ -7,7 +7,7 @@ import { generate } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
-import { legacyAliasRefusal, resolveAlias } from '../aliases.ts';
+import { aliasValueParser, legacyAliasRefusal, resolveAlias } from '../aliases.ts';
 import { list, spanOf } from '../ast.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import type { Longhand } from '../properties.ts';
@@ -190,7 +190,9 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       refuse('DRAGON_UNSUPPORTED_VALUE', `${property}: ${text} in @keyframes ${name} is unsupported: CSS-wide keywords in keyframes are not built yet (package ANIM-k)`, valueSpan);
       continue;
     }
-    const parsed = parseValue(property as Parameters<typeof parseValue>[0], valueNode, tokens, src.base, src.text);
+    // An alias Chrome parses unlike its property parses its own way here too (aliases.ts aliasValueParser).
+    const own = property === lowered ? undefined : aliasValueParser(lowered);
+    const parsed = own?.(tokens) ?? parseValue(property as Parameters<typeof parseValue>[0], valueNode, tokens, src.base, src.text);
     if (parsed.kind === 'ok') {
       // ENV-SAFE: no frame fixture proves a keyframe that reads a safe-area inset, and keyframe rows are keyed by property alone.
       if (parsed.longhands.some((lh) => lh.value.kind === 'other' && lh.value.type === ENV_VALUE_TYPE)) {

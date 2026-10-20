@@ -1,5 +1,5 @@
 // Runtime validator for LayoutInput. The schema's inferred type must equal the declared input types exactly.
-import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, TextLeaf } from './input.ts';
+import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ListMarker, ReplacedLeaf, TextLeaf } from './input.ts';
 
 type NumberRule = { readonly t: 'number'; readonly min: number; readonly exclusiveMin: boolean; readonly integer: boolean };
 type StringRule = { readonly t: 'string' };
@@ -96,8 +96,8 @@ const alignItemsValues = [
 ] as const;
 
 // css-grid-2 §7: track sizes, repeaters, placements and the grid self-alignment keywords.
-const breadth = tagged({ ...px(0), ...percent(0), fr: { value: num(0) }, ...auto, 'min-content': {}, 'max-content': {} });
-const trackSize = tagged({ breadth: { breadth }, minmax: { min: breadth, max: breadth }, 'fit-content': { limit: tagged({ ...px(0), ...percent(0) }) } });
+const breadth = tagged({ ...px(0), ...percent(0), fr: { value: num(0) }, ...auto, 'min-content': {}, 'max-content': {}, ...calc });
+const trackSize = tagged({ breadth: { breadth }, minmax: { min: breadth, max: breadth }, 'fit-content': { limit: tagged({ ...px(0), ...percent(0), ...calc }) } });
 const repeater = obj({ count, sizes: arr(trackSize, 1) });
 const gridLine = tagged({ auto: {}, line: { n: int }, 'named-line': { n: int, name: count0 }, span: { n: count }, 'named-span': { n: count, name: count0 }, area: { implicitName: count0, name: count0 } });
 const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count }, lines: { start: gridLine, end: gridLine }, 'start-line': { line: int }, 'end-line': { line: int } });
@@ -219,6 +219,9 @@ export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSch
 /** The strut of a block container with inline content (input.ts LineStrut). */
 export const strutSchema = obj({ font: fontSpecSchema, lineHeight: lineHeightSchema });
 
+/** The outside marker of a list item (input.ts ListMarker). */
+export const markerSchema = obj({ id: str, kind: lit('symbol', 'text'), symbol: nullable(lit('disc', 'circle', 'square')), text: nullable(str), font: fontSpecSchema, lineHeight: lineHeightSchema });
+
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Assert<T extends true> = T;
 export type SchemaMatchesStyle = Assert<Equal<Infer<typeof styleSchema>, LayoutStyle>>;
@@ -226,6 +229,7 @@ export type SchemaMatchesText = Assert<Equal<Infer<typeof textLeafSchema>, TextL
 export type SchemaMatchesReplaced = Assert<Equal<Infer<typeof replacedLeafSchema>, ReplacedLeaf>>;
 export type SchemaMatchesBreak = Assert<Equal<Infer<typeof lineBreakSchema>, LineBreak>>;
 export type SchemaMatchesStrut = Assert<Equal<Infer<typeof strutSchema>, LineStrut>>;
+export type SchemaMatchesMarker = Assert<Equal<Infer<typeof markerSchema>, ListMarker>>;
 
 export type ValidationErrorCode =
   | 'missing-key'
@@ -534,8 +538,9 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | replaced | inline | br | text' });
     return;
   }
-  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
+  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema, marker: nullable(markerSchema) }, path, errors, ['kind', 'children', 'strut']);
   const style = value['style'];
+  checkMarker(value, path, errors);
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
   if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
@@ -622,9 +627,9 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
   });
 }
 
-const isFixedBreadth = (b: unknown): boolean => isRecord(b) && (b['kind'] === 'px' || b['kind'] === 'percent');
+const isFixedBreadth = (b: unknown): boolean => isRecord(b) && (b['kind'] === 'px' || b['kind'] === 'percent' || b['kind'] === 'calc');
 
-/** css-grid-2 §7.2: <fixed-size>, a track size with a length or percentage minimum or maximum (never fit-content()). */
+/** css-grid-2 §7.2: <fixed-size>, a track size with a length, percentage or calculated minimum or maximum (never fit-content()). */
 function isFixedSize(t: unknown): boolean {
   if (!isRecord(t)) return false;
   if (t['kind'] === 'breadth') return isFixedBreadth(t['breadth']);
@@ -743,6 +748,19 @@ function checkStrut(box: Record<string, unknown>, children: readonly unknown[], 
   checkRule(strut, strutSchema, `${path}.strut`, errors);
   if (!inline) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box without inline content has a null strut' });
   else if (isRecord(strut)) checkLeafFonts(children, strut['font'], strut['lineHeight'], path, errors);
+}
+
+// T151 R14: an outside marker belongs to a block container element (Blink LayoutListItem is a LayoutBlockFlow), is named after it,
+// and holds a symbol or a non-empty text as its kind says.
+function checkMarker(box: Record<string, unknown>, path: string, errors: ValidationError[]): void {
+  const m = box['marker'];
+  if (!isRecord(m)) return;
+  const style = box['style'];
+  if (box['boxType'] !== 'element') errors.push({ path: `${path}.marker`, code: 'bad-value', message: 'only an element box is a list item' });
+  if (isRecord(style) && style['display'] !== 'block') errors.push({ path: `${path}.marker`, code: 'bad-value', message: 'a list item with a marker is a block container (display block)' });
+  if (m['id'] !== `${String(box['id'])}::marker`) errors.push({ path: `${path}.marker.id`, code: 'bad-value', message: 'a marker is named "<list item>::marker"' });
+  if (m['kind'] === 'symbol' && (m['symbol'] === null || m['text'] !== null)) errors.push({ path: `${path}.marker`, code: 'bad-value', message: 'a symbol marker has a symbol and no text' });
+  if (m['kind'] === 'text' && (m['symbol'] !== null || typeof m['text'] !== 'string' || m['text'] === '')) errors.push({ path: `${path}.marker`, code: 'bad-value', message: 'a text marker has a non-empty text and no symbol' });
 }
 
 /** The text leaves and atomic inlines of an inline formatting context in tree order, with null marking each line break. */

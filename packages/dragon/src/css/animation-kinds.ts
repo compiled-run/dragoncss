@@ -7,12 +7,15 @@ import type { Longhand } from './properties.ts';
 import type { AnimationKind } from './animation-kinds/kinds.ts';
 import { APPEARANCE_ANIMATION } from './animation-kinds/appearance.ts';
 import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
+import { BACKGROUND_BLEND_ANIMATION } from './animation-kinds/background-blend.ts';
 import { BACKGROUND_LAYERS_ANIMATION } from './animation-kinds/background-layers.ts';
 import { BORDER_ANIMATION } from './animation-kinds/border.ts';
 import { BORDER_IMAGE_ANIMATION } from './animation-kinds/border-image.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
+import { BOX_DECORATION_ANIMATION } from './animation-kinds/box-decoration.ts';
 import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
+import { COLOR_SCHEME_ANIMATION } from './animation-kinds/color-scheme.ts';
 import { CONTAINER_QUERY_ANIMATION } from './animation-kinds/container-query.ts';
 import { CONTAINMENT_ANIMATION } from './animation-kinds/containment.ts';
 import { COUNTERS_ANIMATION } from './animation-kinds/counters.ts';
@@ -24,8 +27,12 @@ import { FONT_FEATURES_ANIMATION } from './animation-kinds/font-features.ts';
 import { FONT_STRETCH_ANIMATION } from './animation-kinds/font-stretch.ts';
 import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
+import { FRAGMENTATION_ANIMATION } from './animation-kinds/fragmentation.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
+import { HYPHENS_ANIMATION } from './animation-kinds/hyphens.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
+import { ISOLATION_ANIMATION } from './animation-kinds/isolation.ts';
+import { LINE_BREAK_ANIMATION } from './animation-kinds/line-break.ts';
 import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
@@ -43,8 +50,10 @@ import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SPEAK_ANIMATION } from './animation-kinds/speak.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
+import { TAB_SIZE_ANIMATION } from './animation-kinds/tab-size.ts';
 import { TABLE_ANIMATION } from './animation-kinds/table.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
+import { TEXT_ALIGN_LAST_ANIMATION } from './animation-kinds/text-align-last.ts';
 import { TEXT_BREAK_ANIMATION } from './animation-kinds/text-break.ts';
 import { TEXT_DECORATION_ANIMATION } from './animation-kinds/text-decoration.ts';
 import { TEXT_FILL_STROKE_ANIMATION } from './animation-kinds/text-fill-stroke.ts';
@@ -53,6 +62,7 @@ import { TEXT_OVERFLOW_ANIMATION } from './animation-kinds/text-overflow.ts';
 import { TEXT_SHADOW_ANIMATION } from './animation-kinds/text-shadow.ts';
 import { TEXT_SPACING_ANIMATION } from './animation-kinds/text-spacing.ts';
 import { TEXT_TRANSFORM_ANIMATION } from './animation-kinds/text-transform.ts';
+import { TEXT_WRAP_ANIMATION } from './animation-kinds/text-wrap.ts';
 import { TOUCH_ACTION_ANIMATION } from './animation-kinds/touch-action.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
@@ -67,12 +77,15 @@ export type { AnimationKind, LengthRange } from './animation-kinds/kinds.ts';
 export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...APPEARANCE_ANIMATION,
   ...BACKGROUND_ANIMATION,
+  ...BACKGROUND_BLEND_ANIMATION,
   ...BACKGROUND_LAYERS_ANIMATION,
   ...BORDER_ANIMATION,
   ...BORDER_IMAGE_ANIMATION,
   ...BOX_ANIMATION,
+  ...BOX_DECORATION_ANIMATION,
   ...CLIP_PATH_ANIMATION,
   ...CLIP_RECT_ANIMATION,
+  ...COLOR_SCHEME_ANIMATION,
   ...CONTAINER_QUERY_ANIMATION,
   ...CONTAINMENT_ANIMATION,
   ...COUNTERS_ANIMATION,
@@ -84,8 +97,12 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_STRETCH_ANIMATION,
   ...FONT_TUNING_ANIMATION,
   ...FONT_VARIANT_ANIMATION,
+  ...FRAGMENTATION_ANIMATION,
   ...GRID_ANIMATION,
+  ...HYPHENS_ANIMATION,
   ...INLINE_ANIMATION,
+  ...ISOLATION_ANIMATION,
+  ...LINE_BREAK_ANIMATION,
   ...LINE_CLAMP_ANIMATION,
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,
@@ -103,8 +120,10 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SHADOW_ANIMATION,
   ...SPEAK_ANIMATION,
   ...SVG_ANIMATION,
+  ...TAB_SIZE_ANIMATION,
   ...TABLE_ANIMATION,
   ...TEXT_ANIMATION,
+  ...TEXT_ALIGN_LAST_ANIMATION,
   ...TEXT_BREAK_ANIMATION,
   ...TEXT_DECORATION_ANIMATION,
   ...TEXT_FILL_STROKE_ANIMATION,
@@ -113,6 +132,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TEXT_SHADOW_ANIMATION,
   ...TEXT_SPACING_ANIMATION,
   ...TEXT_TRANSFORM_ANIMATION,
+  ...TEXT_WRAP_ANIMATION,
   ...TOUCH_ACTION_ANIMATION,
   ...TRANSFORM_ANIMATION,
   ...TRANSFORM_EXTRA_ANIMATION,
@@ -123,9 +143,12 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...ZOOM_ANIMATION,
 };
 
-/** ANIM-b1 admits colour and length (R1, R13): kinds with an rt interpolator and a runtime writer on every target. */
+/**
+ * ANIM-b1 admits colour and length, ANIM-b2 transform (R1, R13): kinds with an rt interpolator and a runtime writer on every
+ * target. Opacity stays unadmitted: a fractional opacity is refused natively (PNT1-opacity-b).
+ */
 export function admitted(kind: AnimationKind): boolean {
-  return kind.kind === 'color' || kind.kind === 'length';
+  return kind.kind === 'color' || kind.kind === 'length' || kind.kind === 'transform';
 }
 
 export function animationKind(p: Longhand): AnimationKind {

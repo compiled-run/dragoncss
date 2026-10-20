@@ -57,13 +57,17 @@ export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-
 export const PLANT_CASE = 'tree-projected-text#1';
 /** The glyph plants (T093), judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
 export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
+/** MQ-R2's reading plants: run by parity:device-mqr --plant on device-env, not by native:devices. */
+export type MediaPlant = 'reduced-motion-transition-scale' | 'color-scheme-app-override';
+export const MEDIA_PLANTS: readonly MediaPlant[] = ['reduced-motion-transition-scale', 'color-scheme-app-override'];
+export const isMediaPlant = (p: SupportPlant): p is MediaPlant => (MEDIA_PLANTS as readonly string[]).includes(p);
 /** The INL1a line plant, judged against the clean run on LINE_PLANT_CASE (judgeLinePlant). */
 export type LinePlant = 'single-run-baseline';
-/** The paint plants: every support plant that is neither a glyph plant nor the line plant. */
-export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant>;
+/** The paint plants: every support plant that is neither a glyph plant, the line plant nor a media plant. */
+export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant | MediaPlant>;
 export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
 export const isLinePlant = (p: SupportPlant): p is LinePlant => p === 'single-run-baseline';
-export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p);
+export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p) && !isMediaPlant(p);
 /**
  * The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the
  * replaced fixtures whose images are drawn, the radius plant (PNT1) on a rounded case of its own group, the outline plant (PNT1) on a solid outline case.
@@ -73,8 +77,9 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
   // PNT1b: radius-double's border points sit in the gap between the two rings, which the plant fills with the border colour.
   'double-solid': ['radius-double'],
-  // MASK-CLIP: clip-rect-basic's clipped boxes (ids cut-*) paint their backgrounds when the writer is ignored.
-  'clip-rect-ignored': ['clip-rect-basic'],
+  // MASK-CLIP: the clipped boxes (ids cut-*) of clip-rect-basic and, through the clip label writer, of clip-rect-sr-only paint
+  // their backgrounds when the writer is ignored.
+  'clip-rect-ignored': ['clip-rect-basic', 'clip-rect-sr-only'],
   // MASK-CLIP: clip-path-basic's clip edges (rule clip:<id>:path-*) show the box's paint outside the inset rect when the writer is ignored.
   'clip-path-ignored': ['clip-path-basic'],
   // MASK-CLIP: mask-gradient's masked boxes (rule gradient:<id>:mask) paint at full alpha when the mask writer is ignored.
@@ -99,6 +104,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
   'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // BG2-u: bg-image-web's tile edges (rule edge:<id>:tile-*) move with the tiles, shifted 2 device px (past GATE_DEVICE_PX; the name is the registry's).
+  'bg-image-offset-1': ['bg-image-web'],
   // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
   // are filled and stroked in distinct colours with strokes wide enough to sample.
   'svg-stroke-first': ['svg-paint', 'svg-basic'],
@@ -150,6 +157,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'gradient-offset-1': /^gradient:/,
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  'bg-image-offset-1': /^(image-flat|edge):[^:]+:tile-/,
   'svg-stroke-first': /^svg:/,
   'svg-even-odd': /^svg:/,
   'svg-stroke-unscaled': /^svg:/,
@@ -1423,6 +1431,50 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
   const recFile = join(opts.outDir, `device-${h.spec.target}.json`);
   if (!existsSync(recFile)) throw new Error(`${h.spec.name}: the app wrote no device record${error === null ? '' : ` (${error})`}`);
   return { outDir: opts.outDir, record: parseAppRecord(readFileSync(recFile, 'utf8'), h.spec.target), error };
+}
+
+/**
+ * MQ-R2 (T067 R9): the OS's animator duration scale of an Android device (Settings.Global ANIMATOR_DURATION_SCALE): 0 turns reduced
+ * motion on (Chromium's AccessibilityState.prefersReducedMotion), 1 is the default. A matrix AVD boots at 0 (prepareAvd); device-env
+ * runs at 1 and its motion phases set it while the app holds (device-lanes.ts runEnv). A no-op on iOS, whose Reduce Motion is
+ * setReducedMotion's accessibility default.
+ */
+export function setAnimatorDurationScale(h: DeviceHandle, value: 0 | 1): void {
+  // A failed adb call throws (device-exec.ts), so a scale the device did not take is never mistaken for one it did.
+  if ('serial' in h) adb(h, ['shell', 'settings', 'put', 'global', 'animator_duration_scale', String(value)]);
+}
+
+/** The iOS simulator's Reduce Motion: the accessibility default UIAccessibility reads, then the notification that tells apps it changed. */
+export const IOS_REDUCE_MOTION = { domain: 'com.apple.Accessibility', key: 'ReduceMotionEnabled', notification: 'com.apple.accessibility.reduce.motion.status' } as const;
+
+/** Turns the OS's reduced-motion setting on or off: Android's animator duration scale (0 is on), iOS's Reduce Motion. A failed call throws. */
+export function setReducedMotion(h: DeviceHandle, on: boolean): void {
+  if ('serial' in h) {
+    setAnimatorDurationScale(h, on ? 0 : 1);
+    return;
+  }
+  const m = IOS_REDUCE_MOTION;
+  exec('xcrun', ['simctl', 'spawn', h.udid, 'defaults', 'write', m.domain, m.key, '-bool', on ? 'YES' : 'NO']);
+  exec('xcrun', ['simctl', 'spawn', h.udid, 'notifyutil', '-p', m.notification]);
+}
+
+/** Puts the OS's motion setting back as the matrix boots the device: an AVD's animator duration scale 0 (prepareAvd), iOS's Reduce Motion off. */
+export function restoreMatrixMotion(h: DeviceHandle): void {
+  if ('serial' in h) setAnimatorDurationScale(h, 0);
+  else setReducedMotion(h, false);
+}
+
+/**
+ * MQ-R2 (T067 R9): turns the OS's dark appearance on or off: Android's night mode (cmd uimode night, which changes uiMode in the
+ * activity's configuration in place, configChanges holding uiMode), iOS's appearance (simctl ui appearance, which changes every
+ * window's trait collection). A failed call throws, so a setting the device did not take is never mistaken for one it did.
+ */
+export function setColorScheme(h: DeviceHandle, dark: boolean): void {
+  if ('serial' in h) {
+    adb(h, ['shell', 'cmd', 'uimode', 'night', dark ? 'yes' : 'no']);
+    return;
+  }
+  exec('xcrun', ['simctl', 'ui', h.udid, 'appearance', dark ? 'dark' : 'light']);
 }
 
 /**

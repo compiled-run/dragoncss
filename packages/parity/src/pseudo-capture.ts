@@ -3,6 +3,8 @@
 // values from getComputedStyle(host, '::before'), and their text from DOMSnapshot.captureSnapshot text boxes divided by the DPR.
 // Every capture cross-checks the snapshot against the Range rects of the page's real text, and fails loud on anything it cannot
 // name. A page without a generated box opens no CDP session (pageHasGeneratedContent), so every other capture is unchanged.
+// GEN-c R14: a list item's ::marker box is captured the same way; a text marker's text too ("1. ", as Dragon's "<li>::marker:text0"),
+// but not a symbol marker's ("• "), which Dragon draws without a text node.
 import type { CDPSession, Page } from 'playwright';
 import type { CapturedNode } from './capture.ts';
 
@@ -19,13 +21,13 @@ export const NO_PSEUDO_CAPTURE_FAULTS: PseudoCaptureFaults = { snapshotTextNotSc
 /** R9: a snapshot text box divided by the DPR must equal its Range client rect within this many CSS px (probe: worst 1.0e-5). */
 export const CROSS_CHECK_CSS_PX = 1 / 1024;
 
-/** The pseudo-elements GEN-a generates; any other pseudo-element node in a captured page is an error. */
-export const GENERATED_PSEUDO_TYPES: readonly string[] = ['before', 'after'];
+/** The pseudo-elements GEN-a and GEN-c generate; any other pseudo-element node in a captured page is an error. */
+export const GENERATED_PSEUDO_TYPES: readonly string[] = ['before', 'after', 'marker'];
 
 /** A captured generated box's id: "<host>::before" (the address Dragon gives it, analysis/generated.ts). */
 export const pseudoId = (host: string, type: string): string => `${host}::${type}`;
 
-const GENERATED_ID = /::(?:before|after)$/;
+const GENERATED_ID = /::(?:before|after|marker)$/;
 
 /** Rect as [x, y, width, height]. */
 export type Rect4 = readonly [number, number, number, number];
@@ -89,8 +91,9 @@ function attrOf(strings: readonly string[], attrs: readonly number[] | undefined
  * The generated texts of a snapshot, and the R9 cross-check: every light-DOM text node's snapshot boxes, divided by the DPR, must
  * equal its Range client rects (pageTextRects, one list per text node of the document in tree order) within CROSS_CHECK_CSS_PX.
  * Throws on a failed cross-check, on a generated box whose host has no data-dragon-id, and on text of any other pseudo-element.
+ * The text of a symbol ::marker ("• ") is not returned, its host being in symbolMarkers: Dragon's symbol marker has no text node.
  */
-export function snapshotGeneratedText(snap: Snapshot, dpr: number, pageTextRects: readonly (readonly Rect4[])[], faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): { readonly texts: GeneratedText[]; readonly lines: number; readonly worst: number } {
+export function snapshotGeneratedText(snap: Snapshot, dpr: number, pageTextRects: readonly (readonly Rect4[])[], symbolMarkers: ReadonlySet<string>, faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): { readonly texts: GeneratedText[]; readonly lines: number; readonly worst: number } {
   const d = snap.documents[0];
   if (d === undefined) throw new Error('DOMSnapshot has no document');
   const S = snap.strings;
@@ -141,14 +144,26 @@ export function snapshotGeneratedText(snap: Snapshot, dpr: number, pageTextRects
     const host = attrOf(S, n.attributes[n.parentIndex[i] as number], 'data-dragon-id');
     if (host === undefined) throw new Error(`a ::${type} box's host has no data-dragon-id`);
     if (boxes.length === 0) continue;
+    if (type === 'marker' && symbolMarkers.has(host)) continue;
     texts.push({ host, type, text: layoutText.get(i) ?? '', boxes: boxes.map((b) => ({ rect: [fr(b.rect[0]), fr(b.rect[1]), fr(b.rect[2]), fr(b.rect[3])] as const, start: b.start, length: b.length })) });
   }
   return { texts, lines, worst };
 }
 
-/** Runs in the page: whether any element has a ::before or ::after whose content computes to something other than none. */
+/**
+ * Runs in the page: whether any element has a ::before or ::after whose content computes to something other than none, or is a list
+ * item that may have a ::marker (Chrome 141 computes ::marker content normal even for list-style none, so the type and image decide).
+ */
+export const hasGeneratedBox = (): boolean =>
+  Array.from(document.querySelectorAll('*')).some((el) => {
+    const cs = getComputedStyle(el);
+    const marker = getComputedStyle(el, '::marker').content;
+    const listItem = cs.display.includes('list-item') && (cs.listStyleType !== 'none' || cs.listStyleImage !== 'none' || (marker !== 'normal' && marker !== 'none'));
+    return listItem || ['::before', '::after'].some((p) => getComputedStyle(el, p).content !== 'none');
+  });
+
 export function pageHasGeneratedContent(page: Page): Promise<boolean> {
-  return page.evaluate(() => Array.from(document.querySelectorAll('*')).some((el) => ['::before', '::after'].some((p) => getComputedStyle(el, p).content !== 'none')));
+  return page.evaluate(hasGeneratedBox);
 }
 
 /** Runs in the page: the Range client rects of every text node of the document, in tree order. */
@@ -163,12 +178,20 @@ const pageTextRects = (): [number, number, number, number][][] => {
   return out;
 };
 
+/** css-lists-3 §3.3: the list-style-type values Chrome draws as a symbol (list_marker.cc kSymbol), not as marker text. */
+const SYMBOL_TYPES: readonly string[] = ['disc', 'circle', 'square', 'disclosure-open', 'disclosure-closed'];
+
+/** Runs in the page: the data-dragon-id of every element whose list-style-type Chrome draws as a symbol marker. */
+const pageSymbolMarkerHosts = (types: readonly string[]): string[] =>
+  Array.from(document.querySelectorAll('[data-dragon-id]')).filter((el) => types.includes(getComputedStyle(el).listStyleType)).map((el) => el.getAttribute('data-dragon-id') as string);
+
 /** The snapshot's generated texts and the cross-check, on an open CDP session of the page. */
 async function generatedTexts(page: Page, cdp: CDPSession, faults: PseudoCaptureFaults): Promise<GeneratedText[]> {
   const rects = await page.evaluate(pageTextRects);
+  const symbols = new Set(await page.evaluate(pageSymbolMarkerHosts, SYMBOL_TYPES));
   const dpr = await page.evaluate(() => window.devicePixelRatio);
   const snap = (await cdp.send('DOMSnapshot.captureSnapshot', { computedStyles: [], includeDOMRects: true })) as unknown as Snapshot;
-  return snapshotGeneratedText(snap, dpr, rects, faults).texts;
+  return snapshotGeneratedText(snap, dpr, rects, symbols, faults).texts;
 }
 
 /** Every generated text of the page; empty, with no CDP session, when the page has no generated box (line-breaks.ts). */
@@ -193,7 +216,7 @@ const domAttr = (attrs: readonly string[] | undefined, name: string): string | u
 /** A generated box Chrome made: its host's data-dragon-id, its type and its CDP node. */
 type PseudoNode = { readonly host: string; readonly type: string; readonly nodeId: number };
 
-/** The ::before and ::after nodes of a DOM.getDocument tree, in tree order (::before, children, ::after per host's listing). */
+/** The ::marker, ::before and ::after nodes of a DOM.getDocument tree, in tree order (each host's pseudoElements, then children). */
 export function pseudoNodesOf(root: DomNode): PseudoNode[] {
   const out: PseudoNode[] = [];
   const walk = (n: DomNode): void => {
@@ -237,7 +260,7 @@ const quadRect = (q: readonly number[]): Rect4 => {
 };
 
 /**
- * R9: every ::before and ::after box of the page, with its computed values (props, in order) and its text. The caller checks
+ * R9: every ::before, ::after and ::marker box of the page, with its computed values (props, in order) and its text. The caller checks
  * pageHasGeneratedContent first, so a page without one opens no CDP session.
  */
 export async function capturePseudoElements(page: Page, props: readonly string[], faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): Promise<CapturedNode[]> {
@@ -280,8 +303,8 @@ export async function capturePseudoElements(page: Page, props: readonly string[]
 }
 
 /**
- * R9 set check: the generated boxes Chrome made (captured ids ending in ::before or ::after) must be the ones Dragon generated
- * (dragon: every resolved element address of the case). A box only one side has is a problem, never a skipped node.
+ * R9 set check: the generated boxes Chrome made (captured ids ending in ::before, ::after or ::marker) must be the ones Dragon
+ * generated (dragon: every resolved element address of the case and every ::marker rect of its layout). A box only one side has is a problem, never a skipped node.
  */
 export function pseudoSetProblems(capture: { readonly nodes: readonly CapturedNode[] }, dragon: Iterable<string>, faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): string[] {
   if (faults.pseudoSetUnchecked) return [];

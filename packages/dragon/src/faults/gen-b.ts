@@ -3,7 +3,7 @@
 export type GenBFaults = {
   /** A list item whose list-style-type and list-style-image are none is refused as if it had a marker. */
   readonly listItemNoneMarkerRefused: boolean;
-  /** A list item with a marker (list-style-type disc, the UA default) is accepted and laid out as a block. */
+  /** A list item with any marker (an inside one, a type GEN-c does not draw) is accepted. */
   readonly listItemDiscAccepted: boolean;
   /** content: none on an element keeps none, where it computes to normal (css-content-3 §2). */
   readonly contentNoneOnElementKept: boolean;

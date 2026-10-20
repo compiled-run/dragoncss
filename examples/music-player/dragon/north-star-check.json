@@ -133,42 +133,41 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 5,
+   "blankedDeclarations": 2,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 148,
-  "errors": 141,
+  "diagnostics": 192,
+  "errors": 185,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 3,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 3,
    "DRAGON_SELECTOR_DROPPED": 1,
-   "DRAGON_UNPROVEN_CONTEXT [android]": 4,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 4,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 2,
+   "DRAGON_UNPROVEN_CONTEXT [android]": 11,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 11,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 9,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 22,
    "DRAGON_UNSUPPORTED_FONT [ios]": 22,
-   "DRAGON_UNSUPPORTED_PROPERTY": 2,
    "DRAGON_UNSUPPORTED_PROPERTY [web]": 3,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 5,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 5,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 20,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 20,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 4
+   "DRAGON_UNSUPPORTED_VALUE [android]": 30,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 30,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 9
   },
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 2,
+     "DRAGON_UNPROVEN_CONTEXT": 9,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 5,
+     "DRAGON_UNSUPPORTED_PROPERTY": 3,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
-     "DRAGON_UNSUPPORTED_VALUE": 4
+     "DRAGON_UNSUPPORTED_VALUE": 9
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -177,13 +176,12 @@
    },
    "ios": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 4,
+     "DRAGON_UNPROVEN_CONTEXT": 11,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 2,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 20
+     "DRAGON_UNSUPPORTED_VALUE": 30
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -194,13 +192,12 @@
    },
    "android": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 4,
+     "DRAGON_UNPROVEN_CONTEXT": 11,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 2,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 20
+     "DRAGON_UNSUPPORTED_VALUE": 30
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -215,11 +212,11 @@
   "notApplicableIos": 3,
   "notApplicableAndroid": 3,
   "applicableDeclarations": 288,
-  "supportedBothTargets": 256,
+  "supportedBothTargets": 249,
   "supportedWeb": 275,
-  "supportedIos": 256,
-  "supportedAndroid": 256,
-  "supportPercent": 88.9,
+  "supportedIos": 249,
+  "supportedAndroid": 249,
+  "supportPercent": 86.5,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -302,9 +299,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 58,
-   "B-unwrapped": 58,
-   "C-context": 110
+   "A-authored": 56,
+   "B-unwrapped": 56,
+   "C-context": 156
   }
  },
  "features": {
@@ -674,7 +671,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -835,9 +832,11 @@
    "property": "transition",
    "value": "margin-right 0.5s ease",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 33,
@@ -1027,9 +1026,11 @@
    "property": "transition",
    "value": "all 0.3s ease",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 49,
@@ -1371,9 +1372,11 @@
    "property": "animation-play-state",
    "value": "paused",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 77,
@@ -1496,9 +1499,11 @@
    "property": "animation-play-state",
    "value": "running",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 87,
@@ -2771,9 +2776,11 @@
    "property": "transition",
    "value": "color 0.2s ease,\n\t\ttransform 0.2s ease",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 191,
@@ -3614,7 +3621,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNPROVEN_CONTEXT"
    ]
   },
   {
@@ -3695,9 +3702,11 @@
    "property": "transform",
    "value": "rotate(0deg)",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 266,
@@ -3707,9 +3716,11 @@
    "property": "transform",
    "value": "rotate(360deg)",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 267,
@@ -4001,26 +4012,6 @@
   }
  ],
  "diagnostics": [
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@560-578|color-scheme is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 560,
-    "end": 578,
-    "line": 31,
-    "column": 2,
-    "text": "color-scheme: dark"
-   },
-   "message": "color-scheme is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
   {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
@@ -4622,26 +4613,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8090-8111|scrollbar-width is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8090,
-    "end": 8111,
-    "line": 471,
-    "column": 2,
-    "text": "scrollbar-width: thin"
-   },
-   "message": "scrollbar-width is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8117-8136|pseudo-element ::-webkit-scrollbar is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
@@ -5110,6 +5081,177 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@560-578|color-scheme: dark on <a> page/privacy-link is unsupported: its used scheme can be dark, and page/privacy-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 560,
+    "end": 578,
+    "line": 31,
+    "column": 2,
+    "text": "color-scheme: dark"
+   },
+   "message": "color-scheme: dark on <a> page/privacy-link is unsupported: its used scheme can be dark, and page/privacy-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@560-578|color-scheme: dark on <a> page/terms-link is unsupported: its used scheme can be dark, and page/terms-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 560,
+    "end": 578,
+    "line": 31,
+    "column": 2,
+    "text": "color-scheme: dark"
+   },
+   "message": "color-scheme: dark on <a> page/terms-link is unsupported: its used scheme can be dark, and page/terms-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@560-578|color-scheme: dark on <a> page/privacy-link is unsupported: its used scheme can be dark, and page/privacy-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 560,
+    "end": 578,
+    "line": 31,
+    "column": 2,
+    "text": "color-scheme: dark"
+   },
+   "message": "color-scheme: dark on <a> page/privacy-link is unsupported: its used scheme can be dark, and page/privacy-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@560-578|color-scheme: dark on <a> page/terms-link is unsupported: its used scheme can be dark, and page/terms-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 560,
+    "end": 578,
+    "line": 31,
+    "column": 2,
+    "text": "color-scheme: dark"
+   },
+   "message": "color-scheme: dark on <a> page/terms-link is unsupported: its used scheme can be dark, and page/terms-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@560-578|color-scheme: dark on <a> page/privacy-link is unsupported: its used scheme can be dark, and page/privacy-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 560,
+    "end": 578,
+    "line": 31,
+    "column": 2,
+    "text": "color-scheme: dark"
+   },
+   "message": "color-scheme: dark on <a> page/privacy-link is unsupported: its used scheme can be dark, and page/privacy-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@560-578|color-scheme: dark on <a> page/terms-link is unsupported: its used scheme can be dark, and page/terms-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 560,
+    "end": 578,
+    "line": 31,
+    "column": 2,
+    "text": "color-scheme: dark"
+   },
+   "message": "color-scheme: dark on <a> page/terms-link is unsupported: its used scheme can be dark, and page/terms-link is a link, whose UA colour it lightens, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@560-578|color-scheme: dark on <div> page/app is unsupported: its used scheme can be dark, and page/app is a scroll container, whose scrollbar Chrome draws dark, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 560,
+    "end": 578,
+    "line": 31,
+    "column": 2,
+    "text": "color-scheme: dark"
+   },
+   "message": "color-scheme: dark on <div> page/app is unsupported: its used scheme can be dark, and page/app is a scroll container, whose scrollbar Chrome draws dark, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@560-578|color-scheme: dark on <div> page/library-call/library is unsupported: its used scheme can be dark, and page/library-call/library is a scroll container, whose scrollbar Chrome draws dark, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 560,
+    "end": 578,
+    "line": 31,
+    "column": 2,
+    "text": "color-scheme: dark"
+   },
+   "message": "color-scheme: dark on <div> page/library-call/library is unsupported: its used scheme can be dark, and page/library-call/library is a scroll container, whose scrollbar Chrome draws dark, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@574-578|color-scheme: dark on <body> body is unsupported: its used scheme can be dark, and body is a scroll container, whose scrollbar Chrome draws dark, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 574,
+    "end": 578,
+    "line": 31,
+    "column": 16,
+    "text": "dark"
+   },
+   "message": "color-scheme: dark on <body> body is unsupported: its used scheme can be dark, and body is a scroll container, whose scrollbar Chrome draws dark, which Dragon does not draw yet; a scheme that names no dark (normal, light, light only) is accepted, and dark is accepted on boxes it does not recolour",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-as-anonymous-flex-item/row/ltr use Ahem; in text-in-block/ltr use Ahem or inherit; in text-in-flex-item/column/ltr use Ahem; in text-in-flex-item/row/ltr use Ahem",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -5262,6 +5404,82 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@961-983|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 961,
+    "end": 983,
+    "line": 67,
+    "column": 14,
+    "text": "margin-right 0.5s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@961-983|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 961,
+    "end": 983,
+    "line": 67,
+    "column": 14,
+    "text": "margin-right 0.5s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1589-1602|transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1589,
+    "end": 1602,
+    "line": 97,
+    "column": 14,
+    "text": "all 0.3s ease"
+   },
+   "message": "transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1589-1602|transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1589,
+    "end": 1602,
+    "line": 97,
+    "column": 14,
+    "text": "all 0.3s ease"
+   },
+   "message": "transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1614-1616|page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -5395,6 +5613,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2473-2479|animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2473,
+    "end": 2479,
+    "line": 146,
+    "column": 24,
+    "text": "paused"
+   },
+   "message": "animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2473-2479|animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2473,
+    "end": 2479,
+    "line": 146,
+    "column": 24,
+    "text": "paused"
+   },
+   "message": "animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNPROVEN_CONTEXT|android|css@2514-2678|background-image on page/song-call/record: Chrome paints the background of this rounded box into a bleed-avoidance layer (kBackgroundBleedClipLayer: a border radius with a border not every side of which is opaque and solid, or with a background colour or more than one layer), whose origin in each cc tile is the anti-aliased clip's coverage bounds; that origin starts the dither and the shader matrix, and the native targets do not model it (BG2c)",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
@@ -5509,6 +5765,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3006-3013|animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3006,
+    "end": 3013,
+    "line": 164,
+    "column": 24,
+    "text": "running"
+   },
+   "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3006-3013|animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3006,
+    "end": 3013,
+    "line": 164,
+    "column": 24,
+    "text": "running"
+   },
+   "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3141-3221|page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -5547,7 +5841,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3419-3422|page/song-call/record-cover has opacity 0.9; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3419-3422|page/song-call/record-cover has opacity 0.9; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -5559,14 +5853,14 @@
     "column": 11,
     "text": "0.9"
    },
-   "message": "page/song-call/record-cover has opacity 0.9; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "message": "page/song-call/record-cover has opacity 0.9; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3419-3422|page/song-call/record-cover has opacity 0.9; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3419-3422|page/song-call/record-cover has opacity 0.9; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5578,7 +5872,7 @@
     "column": 11,
     "text": "0.9"
    },
-   "message": "page/song-call/record-cover has opacity 0.9; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "message": "page/song-call/record-cover has opacity 0.9; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -5699,7 +5993,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3626-3630|page/song-call/record-shine has opacity 0.46; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3626-3630|page/song-call/record-shine has opacity 0.46; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -5711,14 +6005,14 @@
     "column": 11,
     "text": "0.46"
    },
-   "message": "page/song-call/record-shine has opacity 0.46; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "message": "page/song-call/record-shine has opacity 0.46; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3626-3630|page/song-call/record-shine has opacity 0.46; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3626-3630|page/song-call/record-shine has opacity 0.46; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5730,14 +6024,14 @@
     "column": 11,
     "text": "0.46"
    },
-   "message": "page/song-call/record-shine has opacity 0.46; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "message": "page/song-call/record-shine has opacity 0.46; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3913-3916|page/song-call/record-marker-one has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3913-3916|page/song-call/record-marker-one has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -5749,14 +6043,14 @@
     "column": 11,
     "text": "0.5"
    },
-   "message": "page/song-call/record-marker-one has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "message": "page/song-call/record-marker-one has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3913-3916|page/song-call/record-marker-one has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3913-3916|page/song-call/record-marker-one has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5768,14 +6062,14 @@
     "column": 11,
     "text": "0.5"
    },
-   "message": "page/song-call/record-marker-one has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "message": "page/song-call/record-marker-one has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3995-3999|page/song-call/record-marker-two has opacity 0.28; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3995-3999|page/song-call/record-marker-two has opacity 0.28; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -5787,14 +6081,14 @@
     "column": 11,
     "text": "0.28"
    },
-   "message": "page/song-call/record-marker-two has opacity 0.28; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "message": "page/song-call/record-marker-two has opacity 0.28; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3995-3999|page/song-call/record-marker-two has opacity 0.28; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3995-3999|page/song-call/record-marker-two has opacity 0.28; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5806,7 +6100,7 @@
     "column": 11,
     "text": "0.28"
    },
-   "message": "page/song-call/record-marker-two has opacity 0.28; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "message": "page/song-call/record-marker-two has opacity 0.28; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -5883,6 +6177,44 @@
     "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
    },
    "message": "background-image on page/player-call/track: the box rasters in the composited layer of body (will-change, or a scroll container), which Dragon does not model (BG2c)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5976,
+    "end": 6014,
+    "line": 339,
+    "column": 3,
+    "text": "color 0.2s ease,\n\t\ttransform 0.2s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5976,
+    "end": 6014,
+    "line": 339,
+    "column": 3,
+    "text": "color 0.2s ease,\n\t\ttransform 0.2s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -5978,6 +6310,519 @@
     "text": "fixed"
    },
    "message": "position: fixed is unsupported (support profile m1-s5); in block/ltr use static",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8107-8111|scrollbar-width:thin on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in root/ltr: none",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in root/ltr: none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8107-8111|scrollbar-width:thin on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8107-8111|scrollbar-width:thin on page/player-call/play-icon is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in atomic-inline/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/player-call/play-icon is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in atomic-inline/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8107-8111|scrollbar-width:thin on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in flex-column/ltr: auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in flex-column/ltr: auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8107-8111|scrollbar-width:thin on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8107-8111|scrollbar-width:thin on page/song-call/record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8107-8111|scrollbar-width:thin on page/youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8107-8111|scrollbar-width:thin on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in root/ltr: none",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in root/ltr: none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8107-8111|scrollbar-width:thin on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8107-8111|scrollbar-width:thin on page/player-call/play-icon is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in atomic-inline/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/player-call/play-icon is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in atomic-inline/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8107-8111|scrollbar-width:thin on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in flex-column/ltr: auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in flex-column/ltr: auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8107-8111|scrollbar-width:thin on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8107-8111|scrollbar-width:thin on page/song-call/record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8107-8111|scrollbar-width:thin on page/youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8107-8111|scrollbar-width:thin on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in root/ltr: none",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in root/ltr: none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8107-8111|scrollbar-width:thin on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8107-8111|scrollbar-width:thin on page/player-call/play-icon is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in atomic-inline/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/player-call/play-icon is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in atomic-inline/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8107-8111|scrollbar-width:thin on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in flex-column/ltr: auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); scrollbar-width values proven in flex-column/ltr: auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8107-8111|scrollbar-width:thin on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8107-8111|scrollbar-width:thin on page/song-call/record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/song-call/record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8107-8111|scrollbar-width:thin on page/youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8107,
+    "end": 8111,
+    "line": 471,
+    "column": 19,
+    "text": "thin"
+   },
+   "message": "scrollbar-width:thin on page/youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no scrollbar-width value is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8334-8355|at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8334,
+    "end": 8355,
+    "line": 488,
+    "column": 1,
+    "text": "@keyframes album-spin"
+   },
+   "message": "at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8334-8355|at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8334,
+    "end": 8355,
+    "line": 488,
+    "column": 1,
+    "text": "@keyframes album-spin"
+   },
+   "message": "at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8368-8391|animatable:transform has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8368,
+    "end": 8391,
+    "line": 490,
+    "column": 3,
+    "text": "transform: rotate(0deg)"
+   },
+   "message": "animatable:transform has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8368-8391|animatable:transform has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8368,
+    "end": 8391,
+    "line": 490,
+    "column": 3,
+    "text": "transform: rotate(0deg)"
+   },
+   "message": "animatable:transform has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8405-8430|animatable:transform has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8405,
+    "end": 8430,
+    "line": 494,
+    "column": 3,
+    "text": "transform: rotate(360deg)"
+   },
+   "message": "animatable:transform has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8405-8430|animatable:transform has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8405,
+    "end": 8430,
+    "line": 494,
+    "column": 3,
+    "text": "transform: rotate(360deg)"
+   },
+   "message": "animatable:transform has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"

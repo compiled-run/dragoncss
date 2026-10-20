@@ -1,11 +1,14 @@
 // CSS2 Appendix E paint order on the fixed tree (T046 §1): stacking contexts, their layers, and native hosting. A stacking context
 // is the root, a positioned box or flex or grid item with an integer z-index, a box with opacity below 1, or a transformed box (a
-// transform, or will-change: transform or opacity; css-transforms-1 §3, css-will-change-1 §3) or a box with a clip-path
-// (css-masking-1 §6.1) or a mask image (§7.1), which paints in the z-index 0 layer.
+// transform, or will-change: transform or opacity; css-transforms-1 §3, css-will-change-1 §3), a box with a clip-path
+// (css-masking-1 §6.1) or a mask image (§7.1), or a box with isolation: isolate (compositing-1 §3.2), which paints in the z-index 0 layer.
 // Its layer items are the positioned boxes and stacking contexts it holds, not counting those inside a nested stacking context:
 // z < 0 in (z, tree) order, then z-index auto or 0 in tree order, then z > 0 in (z, tree) order, where tree order puts a flex or
 // grid container's in-flow items in order-modified document order (Blink paint_layer_stacking_node.cc ForAllChildrenSortedByOrder;
-// unorderedItems lists the items that sort cannot place). Every box of normal flow paints as one unit with its flow descendants,
+// unorderedItems lists the items that sort cannot place). A layered box (backface-visibility: hidden) that is neither positioned nor a
+// stacking context is a normal-flow layer: a layer item that makes no context, painted after its layer host's flow and before the
+// host context's z-index 0 layer (Blink kNormalFlowAndPositiveZOrderChildren), its host the nearest ancestor with a paint layer.
+// Every box of normal flow paints as one unit with its flow descendants,
 // the model the native nesting draws. A layer item is re-hosted under the view where its layer paints: its stacking context for z < 0 and z > 0, else the nearest positioned z-index auto ancestor inside that context (whose
 // positioned descendants follow it in tree order), and it is sorted there after the flow children. A re-hosting that would take a
 // box out of an overflow clip in its containing-block chain stays under the clip instead (EMS has no clip-chain hook), which is
@@ -13,12 +16,15 @@
 // then differs from Appendix E's against some node, is refused (analysis/paint-values/stacking.ts), and so is a box a native
 // ancestor's clip view would clip although the clip is not in its containing-block chain. Every layer item
 // gets a write; flow boxes get none.
-import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak } from '@dragon/layout';
+import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, ListMarker } from '@dragon/layout';
+import { markerTextId } from './list-marker.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
 import { elementMaskGradient } from '../../analysis/mask.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
+import { isolates } from '../../css/properties/isolation.ts';
+import { backfaceHidden } from '../../css/properties/transform-extra.ts';
 import { clipsChildren } from './clip.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -33,15 +39,21 @@ export type StackNode = {
   /** An in-flow flex or grid item's order, which sorts it among its siblings (unorderedItems: whole); absent (0) for other nodes. */
   readonly order?: number;
   readonly opacity: number;
-  /** A transform, will-change: transform or opacity, a clip-path or a mask image: a stacking context in the z-index 0 layer. */
+  /** A transform, will-change: transform or opacity, a clip-path, a mask image or isolation: isolate: a stacking context in the z-index 0 layer. */
   readonly transformed: boolean;
   readonly clips: boolean;
+  /**
+   * A paint layer of its own (backface-visibility: hidden; Blink LayerTypeRequired): when the box is neither positioned nor a stacking
+   * context it is a normal-flow layer, which paints with its flow descendants after its layer host's flow and before the host
+   * context's z-index 0 layer, and makes no stacking context. Absent means false.
+   */
+  readonly layered?: boolean;
   /** Text leaves and boxes, in tree order; a text leaf is a StackNode with no children that is never positioned. */
   readonly children: readonly StackNode[];
   readonly text: boolean;
 };
 
-export type StackLayer = 'flow' | 'negative' | 'positioned' | 'positive';
+export type StackLayer = 'flow' | 'negative' | 'normal-flow' | 'positioned' | 'positive';
 
 /** The paint facts of a node (rt-hit.ts reads them). */
 export type StackingFacts = {
@@ -90,11 +102,14 @@ type Info = {
   readonly item: boolean;
 };
 
-const isItem = (n: StackNode, root: boolean): boolean => !root && !n.text && (n.position !== 'static' || n.z !== null || n.opacity < 1 || n.transformed);
 const createsContext = (n: StackNode, root: boolean): boolean => root || (!n.text && (n.z !== null || n.opacity < 1 || n.transformed || n.position === 'fixed' || n.position === 'sticky'));
+/** A normal-flow layer: a layered box that is neither positioned nor a stacking context. */
+const normalFlowLayer = (n: StackNode, root: boolean): boolean => !root && !n.text && n.layered === true && n.position === 'static' && !createsContext(n, root);
+const isItem = (n: StackNode, root: boolean): boolean => !root && !n.text && (n.position !== 'static' || n.z !== null || n.opacity < 1 || n.transformed || normalFlowLayer(n, root));
 
 function layerOf(i: Info): StackLayer {
   if (!i.item) return 'flow';
+  if (normalFlowLayer(i.node, i.parent === null)) return 'normal-flow';
   const z = i.node.z ?? 0;
   return z < 0 ? 'negative' : z > 0 ? 'positive' : 'positioned';
 }
@@ -151,17 +166,25 @@ export function stackingOf(root: StackNode): Stacking {
       if (!i.sc) for (const c of kids(i)) visit(c);
     };
     for (const c of kids(s)) visit(c);
+    // The normal-flow layers rank before the z-index 0 layer: under any host they paint first (Blink
+    // kNormalFlowAndPositiveZOrderChildren), in tree order, since Blink sorts only the z-order lists by order
+    // (PaintLayerPaintOrderIterator walks the normal-flow children by FirstChild and NextSibling).
     const key = (i: Info): [number, number] => {
       const l = layerOf(i);
-      return [l === 'negative' ? 0 : l === 'positioned' ? 1 : 2, l === 'positioned' ? 0 : (i.node.z as number)];
+      return [l === 'negative' ? 0 : l === 'normal-flow' || l === 'positioned' ? 1 : 2, l === 'normal-flow' ? -1 : l === 'positioned' ? 0 : (i.node.z as number)];
     };
     return out.sort((a, b) => {
       const [la, za] = key(a);
       const [lb, zb] = key(b);
-      return la - lb || za - zb || a.seq - b.seq;
+      return la - lb || za - zb || (layerOf(a) === 'normal-flow' ? a.index - b.index : a.seq - b.seq);
     });
   };
 
+  // A normal-flow layer's host is its nearest ancestor with a paint layer: a stacking context, a positioned box or another one.
+  const layerHostOf = (i: Info): Info => {
+    for (let p = i.parent; p !== null; p = p.parent) if (p.sc || p.item) return p;
+    throw new ProgramError(`${i.node.id}: a normal-flow layer with no layer above it`);
+  };
   const order: string[] = [];
   const flow = (b: Info): void => {
     for (const c of kids(b)) {
@@ -170,16 +193,23 @@ export function stackingOf(root: StackNode): Stacking {
       flow(c);
     }
   };
+  // The normal-flow layers a box hosts, in tree order (all is preorder, unmoved by order), each after the host's flow (Blink paints
+  // them from its paint layer).
+  const normalFlow = (h: Info): void => {
+    for (const it of all) if (layerOf(it) === 'normal-flow' && layerHostOf(it) === h) paint(it);
+  };
   const paint = (i: Info): void => {
     order.push(i.node.id);
     if (!i.sc) {
       flow(i);
+      normalFlow(i);
       return;
     }
     const items = itemsOf(i);
     for (const it of items) if (layerOf(it) === 'negative') paint(it);
     flow(i);
-    for (const it of items) if (layerOf(it) !== 'negative') paint(it);
+    normalFlow(i);
+    for (const it of items) if (layerOf(it) !== 'negative' && layerOf(it) !== 'normal-flow') paint(it);
   };
   paint(top);
 
@@ -194,14 +224,15 @@ export function stackingOf(root: StackNode): Stacking {
     const s = contextOf(i) as Info;
     const l = layerOf(i);
     let host: Info = s;
-    if (l === 'positioned') for (let a = i.parent; a !== null && a !== s; a = a.parent) if (a.item && !a.sc) { host = a; break; }
+    if (l === 'positioned') for (let a = i.parent; a !== null && a !== s; a = a.parent) if (a.item && !a.sc && layerOf(a) !== 'normal-flow') { host = a; break; }
+    if (l === 'normal-flow') host = layerHostOf(i);
     let crossing: Info | null = null;
     for (let a = i.parent; a !== null && a !== host; a = a.parent) if (a.node.clips && inBlockChain(a, i) && crossing === null) crossing = a;
     if (crossing !== null) {
       host = crossing;
       underClip.add(i.node.id);
     }
-    placement.set(i.node.id, { host: host.node.id, bucket: l === 'negative' ? -1 : l === 'positioned' ? 1 : 2, rank: rankOf.get(i.node.id) as number });
+    placement.set(i.node.id, { host: host.node.id, bucket: l === 'negative' ? -1 : l === 'positioned' || l === 'normal-flow' ? 1 : 2, rank: rankOf.get(i.node.id) as number });
   }
 
   const nativeOrder = (p: ReadonlyMap<string, Placement>, indices: Map<string, number> = new Map()): string[] => {
@@ -333,10 +364,10 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: 
 export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', 'inline-grid'];
 
 /**
- * Whether an element's transform, will-change, clip-path or mask image makes it a stacking context (css-transforms-1 §3,
- * css-will-change-1 §3, css-masking-1 §6.1 and §7.1). A mask other than a gradient is refused (analysis/mask.ts).
+ * Whether an element's transform, will-change, clip-path, mask image or isolation makes it a stacking context (css-transforms-1 §3,
+ * css-will-change-1 §3, css-masking-1 §6.1 and §7.1, compositing-1 §3.2). A mask other than a gradient is refused (analysis/mask.ts).
  */
-export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || elementMaskGradient(el) !== null;
+export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || elementMaskGradient(el) !== null || isolates(el);
 
 /** The stacking tree of a layout tree, with each element's z-index, opacity and transform from its resolved style. */
 export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, ResolvedElement>): StackNode {
@@ -365,6 +396,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       ...(item && b.style.position !== 'absolute' ? { order: b.style.order } : {}),
       opacity,
       transformed: el !== null && transformedForStacking(el),
+      ...(el !== null && backfaceHidden(el) ? { layered: true } : {}),
       // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), and overflow never applies to an inline box.
       clips: b.kind !== 'inline' && clipsChildren(b),
       text: false,
@@ -372,11 +404,14 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
     };
   };
   const content = (c: InlineChild): StackNode[] => (c.kind === 'inline' ? [own(c, elementOf(c), false, []), ...c.children.flatMap(content)] : [leaf(c.id)]);
+  // GEN-c: a list item's marker is a static box view after the item's content (native-program.ts), never a layer item; a text
+  // marker's text view is its one child.
+  const marker = (m: ListMarker): StackNode => ({ id: m.id, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: false, children: m.kind === 'text' ? [leaf(markerTextId(m.id))] : [] });
   const node = (b: LayoutNode, item: boolean): StackNode => {
     const el = elementOf(b);
     const container = FLEX_OR_GRID.includes(b.style.display);
     const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
-    return own(b, el, item, children);
+    return own(b, el, item, b.kind === 'box' && b.marker !== null ? [...children, marker(b.marker)] : children);
   };
   return node(root, false);
 }
@@ -384,12 +419,13 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
 export type StackingWrite = { readonly kind: 'paint-order'; readonly host: string; readonly bucket: number; readonly rank: number; readonly index: number };
 
 /** The stacking of the case being lowered: computed at its root box, which the lowering visits first, with that tree's nodes. */
-let current: { readonly nodes: WeakSet<LayoutNode | InlineBox | LineBreak>; readonly stacking: Stacking } | null = null;
+let current: { readonly nodes: WeakSet<LayoutNode | InlineBox | LineBreak | ListMarker>; readonly stacking: Stacking } | null = null;
 
-const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak> => {
-  const out = new WeakSet<LayoutNode | InlineBox | LineBreak>();
+const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak | ListMarker> => {
+  const out = new WeakSet<LayoutNode | InlineBox | LineBreak | ListMarker>();
   const walk = (b: LayoutNode | InlineBox | LineBreak): void => {
     out.add(b);
+    if (b.kind === 'box' && b.marker !== null) out.add(b.marker);
     if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
   };
   walk(root);
@@ -402,6 +438,13 @@ export function inlineStackingFacts(c: InlineBox | LineBreak): StackingFacts {
   if (current === null || facts === undefined) throw new ProgramError(`${c.id}: the stacking lowering did not see this inline box's root first`);
   // A layer item's write has nowhere to go on an inline view; checkInline refuses an inline stacking context on native.
   if (current.stacking.writes.has(c.id)) throw new ProgramError(`${c.id}: an inline box is a stacking layer item, which the native targets do not place`);
+  return facts;
+}
+
+/** The stacking facts of a list item's marker of the case being lowered (native-program.ts places it after the item's content). */
+export function markerStackingFacts(m: ListMarker): StackingFacts {
+  const facts = current !== null && current.nodes.has(m) ? current.stacking.facts.get(m.id) : undefined;
+  if (current === null || facts === undefined) throw new ProgramError(`${m.id}: the stacking lowering did not see this marker's root first`);
   return facts;
 }
 
@@ -429,7 +472,7 @@ export const STACKING_LOWERING: PaintLowering<StackingWrite> = {
     uikit: { 'paint-order': { key: 'dragonStacking.order', technique: 'dragon-owned-paint', detail: `DragonBoxView [host id, index among the host view's box views]. ${STACKING_PAINT}` } },
     'android-views': { 'paint-order': { key: 'dragonStacking.order', technique: 'dragon-owned-paint', detail: `DragonBoxView [host id, index among the host view's box views]. ${STACKING_PAINT}` } },
   },
-  css: { 'paint-order': ['z-index'] },
+  css: { 'paint-order': ['z-index', 'isolation'] },
   lower: ({ box, el, facts }) => {
     const stacking = caseStacking(box, el);
     facts['stacking'] = stacking.facts.get(box.id) as StackingFacts;

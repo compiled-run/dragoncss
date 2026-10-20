@@ -5,12 +5,13 @@
 // hides the box view, and with it every view inside it (lower/paint/clip.ts). Refused on the native targets: any other rect on
 // such a box, and an empty one whose subtree paints a view outside the box view: an outline (in the root view), the box's own
 // box-shadow (a companion beside it) and a layer item with a z-index other than 0 (which may be hosted under a stacking context
-// outside it); a box that is not visible as well, whose visibility readback reads the same hidden flag; and text anywhere in the
-// subtree, which Chrome keeps in the accessibility tree (the visually-hidden pattern) while the native views that hide it leave it:
-// UIKit leaves a hidden view out, and Android's View.isVisibleToUser is false under an ancestor that is not VISIBLE or at alpha 0, and
-// under an ancestor's clip bounds that leave nothing (ViewGroup.getChildVisibleRect), so TalkBack skips it. Only text views are
+// outside it); a box that is not visible as well, whose visibility readback reads the same hidden flag. A hidden view leaves the
+// accessibility tree natively (UIKit leaves a hidden view out; Android's View.isVisibleToUser is false under an INVISIBLE ancestor),
+// while Chrome keeps clipped text there (the visually-hidden pattern), so a box with text takes the clip label write instead: it
+// draws nothing and carries the text as its accessibility label, and text one label cannot carry is refused (clip-label.ts). Only text views are
 // accessibility elements natively (native-support.ts), so a subtree without text loses nothing there. An em or rem edge whose font
 // size has no build-time value is refused for that.
+// overflow and background-clip: text: the text a native padding-box clip view could hide is refused in clip-view-text.ts.
 // clip-path (css-masking-1 §6.1): a shape length computes to px (em and rem as above), a percentage stays a percentage of the
 // border box's width, height or (a circle radius) normalized diagonal. Chrome clips the box's own paint and every descendant,
 // positioned ones included, to the shape. Natively Dragon clips the box view and the views inside it to that shape after layout.
@@ -30,7 +31,10 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { valueToString } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { checkClipViewText } from './clip-view-text.ts';
 import { paintedOutlineStyle } from './outline.ts';
+import { clipLabelRefusal } from './clip-label.ts';
+import { exposedTextInside } from './clip-hidden-text.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
 const keywordOf = (el: Pick<ResolvedElement, 'props'>, p: Longhand): string => {
@@ -58,10 +62,10 @@ export function textInside(el: ResolvedElement): string | null {
   return null;
 }
 
-/** Why each native target loses a hidden view from the accessibility tree. */
-const A11Y_DROP: { readonly [t: string]: string } = {
-  ios: 'ios hides the box view, and UIKit leaves a hidden view out of the accessibility tree, so VoiceOver would not read it',
-  android: 'android makes the box view invisible, and a view under an invisible, transparent or empty-clip-bounds ancestor is not visible to the user (View.isVisibleToUser), so TalkBack would skip it',
+/** How each native target keeps the text of a box its clip hides: the one accessibility element it reads. */
+const A11Y_LABEL: { readonly [t: string]: string } = {
+  ios: 'ios carries the text only as the accessibilityLabel of the box view, which VoiceOver reads as one element',
+  android: 'android carries the text only as the contentDescription of the box view, which TalkBack reads as one node',
 };
 
 /** Why the subtree of a box its clip hides paints a view outside the box view, or null: the first such element in preorder. */
@@ -95,8 +99,9 @@ const checkClip: PaintCheck = (el, targets, diagnostics, reported) => {
   const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
   const hides = clipHidesBox(el);
   const why = hides === true ? viewOutsideClip(el) : null;
-  const text = hides === true && why === null ? textInside(el) : null;
-  if (hides === true && why === null && text === null) return;
+  const text = hides === true && why === null ? exposedTextInside(el) : null;
+  const unlabelled = text === null ? null : clipLabelRefusal(el);
+  if (hides === true && why === null && unlabelled === null) return;
   const at = `${el.element.address}`;
   const rect = valueToString(v.value);
   // An edge left in em or rem: compute had no build-time font size for it.
@@ -111,14 +116,14 @@ const checkClip: PaintCheck = (el, targets, diagnostics, reported) => {
       : hides !== true
         ? `${at} has clip: ${rect}, which clips it to a rect that is not empty at every size; ${t} draws only a clip that hides the whole box (an empty rect, such as rect(0, 0, 0, 0))`
         : text !== null
-          ? `${at} has clip: ${rect}, which hides it whole, but its text ${text} stays in Chrome's accessibility tree and screen readers read it; ${A11Y_DROP[t] ?? `${t} would drop it from the accessibility tree`}`
+          ? `${at} has clip: ${rect}, which hides it whole, and its text ${text} stays in Chrome's accessibility tree, but ${unlabelled}; ${A11Y_LABEL[t] ?? `${t} carries the text as one accessibility label only`}`
           : `${at} has clip: ${rect}, which hides it whole, but ${why}; ${t} hides the box view and the views inside it only`;
     const manual = unresolved !== undefined && unresolved !== null
       ? `Write the clip edges of ${at} in px, or give the font size they depend on a build-time value.`
       : hides !== true
         ? 'Use an overflow clip on a wrapper sized to the rect, or an empty rect to hide the box.'
         : text !== null
-          ? `Keep the text of ${at} visible on native targets, or move it out of ${at}; the native targets hide only boxes without text, so nothing leaves the accessibility tree.`
+          ? `Keep only plain text in ${at} (div, span, p and inline emphasis, nothing focusable and no accessibility attributes), or move the rest out of it.`
           : `Move what ${at} must not hide out of it, or remove it from ${at}.`;
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
   }
@@ -199,6 +204,8 @@ export const CLIP_VALUES: PaintValues = {
   },
   check: (el, targets, diagnostics, reported, propagated) => {
     checkClip(el, targets, diagnostics, reported, propagated);
+    // Judged at the parent, which decides a clip box's flex-basis and stretch.
+    checkClipViewText(el, targets, diagnostics, reported, propagated);
     checkClipPath(el, targets, diagnostics, reported, propagated);
   },
 };

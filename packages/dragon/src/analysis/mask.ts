@@ -18,8 +18,9 @@
 // when the canvas colour is such a colour: no ancestor paints a background under the masked box (the one whose background is the
 // canvas's aside), neither the box nor an ancestor is positioned, no positioned box has a negative z-index, and no layer item of
 // the z-index 0 layer that leaves its place in the flow (an absolute, fixed, offset or sticky box, or a transform) comes before it
-// outside it, so it is laid over its ancestors alone (the mask makes the box a stacking context, lower/paint/stacking.ts). Content a float or a negative margin brings under it is not known before layout, and is the author's to
-// avoid. Chrome rounds the content and the mask separately in 8 bits, which agrees with the native composite only for opaque
+// outside it, so it is laid over its ancestors alone (the mask makes the box a stacking context, lower/paint/stacking.ts). Content
+// that a float or a negative margin brings under it, or that overflows an earlier in-flow box into it, is not known before layout,
+// and is the author's to avoid. Chrome rounds the content and the mask separately in 8 bits, which agrees with the native composite only for opaque
 // content, so a translucent colour inside the masked box is refused too, a decoration propagated from outside it included.
 import { opacityOf, zIndexOf } from '../css/properties/effects.ts';
 import type { MaskLonghand } from '../css/properties/mask.ts';
@@ -147,7 +148,7 @@ export function maskBackdropRefusals(root: ResolvedElement): { readonly el: Reso
   // their place in the flow: an absolute or fixed box with z-index auto or 0, a relative box with a non-zero offset, a sticky box
   // with any offset (it moves when the page scrolls), and a transformed box. A layer item in its flow place (a relative or sticky
   // box with no offset, an opacity, clip-path or mask stacking context, a flex or grid item with z-index 0) overlaps the masked box
-  // only through a float or a negative margin, which is the author's to avoid, as above. A box whose subtree paints nothing (an
+  // only through a float, a negative margin or overflow, which is the author's to avoid, as above. A box whose subtree paints nothing (an
   // opacity of 0, or visibility hidden all the way down) is skipped.
   const offsetOf = (n: ResolvedElement): 'none' | 'zero' | 'moved' => {
     let out: 'none' | 'zero' | 'moved' = 'none';

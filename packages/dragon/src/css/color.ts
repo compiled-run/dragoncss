@@ -206,6 +206,12 @@ export function parseColorNode(node: CssNode): ColorParse {
 
 export const TRANSPARENT: Rgba8 = { r: 0, g: 0, b: 0, alpha: 0 };
 
+/** Chrome's paint alpha byte of an opacity: @dragon/layout paint.ts opacityAlpha8 (Skia's getAlpha, in float), pinned equal by test. */
+export function opacityAlpha8(opacity: number): number {
+  const o = Math.fround(opacity < 0 ? 0 : opacity > 1 ? 1 : opacity);
+  return Math.floor(Math.fround(Math.fround(o * 255) + 0.5));
+}
+
 /**
  * CSSOM §6.7.2 serialization of an 8-bit alpha, as Blink does it: two decimals when they round-trip to the same byte, else three.
  */

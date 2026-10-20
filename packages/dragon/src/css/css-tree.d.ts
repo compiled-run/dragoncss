@@ -26,9 +26,12 @@ declare module 'css-tree' {
   export interface Lexer {
     matchProperty(property: string, value: CssNode | string): MatchResult;
   }
-  export type Syntax = { readonly lexer: Lexer };
+  export type Syntax = { readonly lexer: Lexer; parse(text: string, options?: ParseOptions): CssNode };
+  /** The parser an at-rule's parse functions run on (css-tree lib/parser/create.js), as far as Dragon's overrides call it. */
+  export type AtruleParser = { createSingleNodeList(node: CssNode): unknown; LayerList(): CssNode; Block(nested: boolean): CssNode };
   export function fork(extension: {
     properties?: { readonly [name: string]: string };
     types?: { readonly [name: string]: string };
+    atrule?: { readonly [name: string]: { readonly parse: { prelude(this: AtruleParser): unknown; block(this: AtruleParser, nested?: boolean): CssNode } } };
   }): Syntax;
 }

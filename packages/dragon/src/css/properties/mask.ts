@@ -4,8 +4,9 @@
 // an image, so no mask applies (ComputedStyle::HasMask). mask-image (and the mask shorthand) also takes one gradient (MASK-CLIP
 // gradient masks): a linear or radial gradient Dragon draws as a background layer (analysis/paint-values/gradient.ts), with every
 // length in px or an absolute unit, so the computed value needs no font size. With the other longhands initial, Chrome paints it
-// as one border-box layer whose alpha masks the box (mask-mode match-source on a gradient is alpha). Every other value is kept and
-// refused where it applies on every target (computed-checks.ts checkMask), since a mask image can hide text.
+// as one border-box layer whose alpha masks the box (mask-mode match-source on a gradient is alpha). mask-composite also takes
+// source-over, which only -webkit-mask-composite parses (aliases/mask.ts) and which composites one layer as add does. Every other
+// value is kept and refused where it applies on every target (computed-checks.ts checkMask), since a mask image can hide text.
 // The grammar takes any value (scripts/gen-css-grammar.ts), so Dragon never drops a declaration Chrome keeps.
 import type { CssNode } from 'css-tree';
 import { generate } from 'css-tree';
@@ -53,6 +54,9 @@ export const MASK_INITIAL: { readonly [P in MaskLonghand]: CssValue } = {
 /** The value type of a mask value other than the initial one (featureOf key <longhand>:<mask-layer-value>); checkMask refuses it. */
 export const MASK_LAYER_VALUE_TYPE = 'mask-layer-value';
 
+/** -webkit-mask-composite's legacy default operator (aliases/mask.ts): it composites as add does, and with mask-image none no mask applies. */
+export const MASK_COMPOSITE_SOURCE_OVER = { kind: 'keyword', value: 'source-over' } as const satisfies CssValue;
+
 /** Whether a computed mask longhand holds its initial value. */
 export function isInitialMask(property: MaskLonghand, v: CssValue): boolean {
   const initial = MASK_INITIAL[property];
@@ -92,12 +96,24 @@ export function maskGradientOf(v: CssValue): GradientSpec | null {
   return item.ok && item.value.kind === 'gradient' ? item.value.gradient : null;
 }
 
-/** Whether a computed mask longhand holds a value Dragon draws: its initial value, or a gradient mask-image. */
+/** Whether a computed mask longhand holds a value Dragon draws: an accepted value (isAcceptedMask), or a gradient mask-image. */
 export function isDrawnMask(property: MaskLonghand, v: CssValue): boolean {
-  return isInitialMask(property, v) || (property === 'mask-image' && maskGradientOf(v) !== null);
+  return isAcceptedMask(property, v) || (property === 'mask-image' && maskGradientOf(v) !== null);
 }
 
-const other = (tokens: readonly CssNode[]): CssValue => ({ kind: 'other', type: MASK_LAYER_VALUE_TYPE, text: tokens.map((t) => generate(t)).join(' ') });
+/** Whether a computed mask longhand holds a value Dragon accepts: its initial value, or mask-composite source-over. */
+export function isAcceptedMask(property: MaskLonghand, v: CssValue): boolean {
+  return isInitialMask(property, v) || (property === 'mask-composite' && v.kind === 'keyword' && v.value === MASK_COMPOSITE_SOURCE_OVER.value);
+}
+
+/** The property name a mask longhand's value is written under: source-over parses only through -webkit-mask-composite. */
+export function maskDeclarationName(property: MaskLonghand, v: CssValue): string {
+  return property === 'mask-composite' && v.kind === 'keyword' && v.value === MASK_COMPOSITE_SOURCE_OVER.value ? '-webkit-mask-composite' : property;
+}
+
+/** A mask value kept as written, which checkMask refuses. */
+export const maskLayerOther = (tokens: readonly CssNode[]): CssValue => ({ kind: 'other', type: MASK_LAYER_VALUE_TYPE, text: tokens.map((t) => generate(t)).join(' ') });
+const other = maskLayerOther;
 
 /** The initial spelling a longhand accepts: its one keyword in any ASCII case, or 0% (unsigned) for the position axes. */
 function isInitialSpelling(property: MaskLonghand, t: CssNode | undefined): boolean {

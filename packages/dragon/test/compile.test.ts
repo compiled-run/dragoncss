@@ -73,6 +73,8 @@ describe('createProject().compile() and check()', () => {
     // written only where one is not auto (FORM-b), -webkit-user-modify, never written (TOUCH), and speak, written only where one is
     // not normal (NA-NATIVE-2).
     const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', 'speak'];
+    // The fragmentation longhands, written only where one is not initial (css-break-3).
+    unwritten.push('break-before', 'break-after', 'break-inside', 'orphans', 'widows');
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');

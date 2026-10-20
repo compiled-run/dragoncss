@@ -7,7 +7,9 @@
 // the contents of the view layer's mask, one image pixel per device pixel, and on Android the view's draw runs in a saveLayer
 // clipped to the raster, which the strips then mask with PorterDuff DST_IN. Both keep Chrome's DstIn: the masked pixel is the
 // box's pixel times the raster's alpha byte / 255, composited over the backdrop (packages/parity/test/mask-gradient.test.ts).
+// A url() layer (BG2-u) is drawn in the background-layers stage from its own write (bg-image.ts).
 import type { LoweredGradient, LoweredLayer } from '../../lower/paint/gradient.ts';
+import { BG_IMAGE_KOTLIN, BG_IMAGE_KOTLIN_IMPORTS, BG_IMAGE_KOTLIN_MEMBERS, BG_IMAGE_PLANT, BG_IMAGE_SWIFT, BG_IMAGE_SWIFT_MEMBERS, backgroundImageApplied, backgroundImageLine } from './bg-image.ts';
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT } from './types.ts';
 
@@ -121,6 +123,7 @@ public func dragonSetMaskLayer(_ v: DragonBoxView, _ p: DragonMaskLayer) {
 /// After every layout: the background layers' raster and the mask's.
 public func dragonAfterLayoutGradient(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
   dragonAfterLayoutBackgroundLayers(v, shape, scale)
+  dragonAfterLayoutBackgroundImage(v, shape, scale)
   dragonAfterLayoutMask(v, shape, scale)
 }
 
@@ -220,6 +223,7 @@ func dragonRasterBackground(_ v: DragonBoxView, _ paint: BackgroundPaint) throws
 /// The background-layers stage: the raster at its device-px offset in the view, one image pixel per device pixel, clipped to the
 /// rounded border box when the radius module rounds it.
 public func dragonPaintGradientStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
+  dragonPaintBackgroundImage(v, ctx, shape)
   guard let r = v.dragonGradientRaster, !r.strips.isEmpty else { return }
   let s = CGFloat(v.dragonScale)
   ctx.saveGState()
@@ -265,9 +269,9 @@ public func dragonAppliedGradient(_ v: DragonBoxView) -> DumpJsonObject {
       ("masked", .bool(v.layer.mask != nil)),
     ])))
   }
-  return out
+  return out + dragonAppliedBackgroundImage(v)
 }
-`;
+${BG_IMAGE_SWIFT}`;
 
 const KOTLIN_MEMBERS = String.raw`  /** The gradient layers the case code wrote (BG2) and the raster of the last layout. */
   var dragonGradientLayers: DragonGradientLayers? = null
@@ -282,8 +286,7 @@ const KOTLIN_MEMBERS = String.raw`  /** The gradient layers the case code wrote 
 const KOTLIN = String.raw`package dev.dragon.views
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
+${BG_IMAGE_KOTLIN_IMPORTS}import android.graphics.Canvas
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import dev.dragon.dump.DumpJson
@@ -342,6 +345,7 @@ fun dragonSetMaskLayer(v: DragonBoxView, p: DragonMaskLayer) {
 fun dragonAfterLayoutGradient(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
   v.dragonGradientScale = scale
   dragonAfterLayoutBackgroundLayers(v, shape, scale)
+  dragonAfterLayoutBackgroundImage(v, shape, scale)
   dragonAfterLayoutMask(v, shape, scale)
 }
 
@@ -439,6 +443,7 @@ fun dragonRasterBackground(v: DragonBoxView, paint: BackgroundPaint): DragonGrad
 
 /** The background-layers stage: the raster at its device-px offset, one bitmap pixel per device pixel with a null Paint, clipped to the rounded box. */
 fun dragonPaintGradientStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
+  dragonPaintBackgroundImage(v, canvas, shape)
   val r = v.dragonGradientRaster ?: return
   if (r.strips.isEmpty()) return
   val save = canvas.save()
@@ -477,29 +482,29 @@ fun dragonAppliedGradient(v: DragonBoxView): List<Pair<String, DumpJson>> {
       Pair("masked", DumpJson.Bool(v.dragonMaskRaster != null)),
     ))))
   }
-  return out
+  return out + dragonAppliedBackgroundImage(v)
 }
-`;
+${BG_IMAGE_KOTLIN}`;
 
 /** The Kotlin member that keeps the device scale for runtime writes (the Android box view stores no scale of its own). */
 const KOTLIN_SCALE = '  var dragonGradientScale = 1.0\n';
 
-export const GRADIENT_EMITTER: PaintEmitter<'background-layers' | 'mask-layer', 'gradient-offset-1' | 'gradient-unpremultiplied-upload' | 'mask-ignored'> = {
+export const GRADIENT_EMITTER: PaintEmitter<'background-layers' | 'mask-layer' | 'background-image', 'gradient-offset-1' | 'gradient-unpremultiplied-upload' | 'mask-ignored' | 'bg-image-offset-1'> = {
   name: 'gradient',
-  kinds: ['background-layers', 'mask-layer'],
+  kinds: ['background-layers', 'mask-layer', 'background-image'],
   lines: {
-    uikit: (v, _n, w) => w.kind === 'mask-layer' ? [`  dragonSetMaskLayer(${v}, DragonMaskLayer(layer: ${layer('swift', w.layer)}, layerX: ${num(w.layerOrigin[0])}, layerY: ${num(w.layerOrigin[1])}))`] : [
+    uikit: (v, _n, w) => w.kind === 'background-image' ? [backgroundImageLine('swift', v, w)] : w.kind === 'mask-layer' ? [`  dragonSetMaskLayer(${v}, DragonMaskLayer(layer: ${layer('swift', w.layer)}, layerX: ${num(w.layerOrigin[0])}, layerY: ${num(w.layerOrigin[1])}))`] : [
       `  dragonSetBackgroundLayers(${v}, DragonGradientLayers(color: ${color(w.color)}, colorClip: ${keywordLit(w.colorClip)}, obscures: [${w.obscures.map(keywordLit).join(', ')}], layers: [`,
       ...w.layers.map((l) => `    ${layer('swift', l)},`),
       `  ], lastIsBottom: ${w.lastIsBottom}, layerX: ${num(w.layerOrigin[0])}, layerY: ${num(w.layerOrigin[1])}))`,
     ],
-    'android-views': (v, _n, w) => w.kind === 'mask-layer' ? [`  dragonSetMaskLayer(${v}, DragonMaskLayer(${layer('kotlin', w.layer)}, ${num(w.layerOrigin[0])}, ${num(w.layerOrigin[1])}))`] : [
+    'android-views': (v, _n, w) => w.kind === 'background-image' ? [backgroundImageLine('kotlin', v, w)] : w.kind === 'mask-layer' ? [`  dragonSetMaskLayer(${v}, DragonMaskLayer(${layer('kotlin', w.layer)}, ${num(w.layerOrigin[0])}, ${num(w.layerOrigin[1])}))`] : [
       `  dragonSetBackgroundLayers(${v}, DragonGradientLayers(${color(w.color)}, ${keywordLit(w.colorClip)}, arrayOf(${w.obscures.map(keywordLit).join(', ')}), listOf(`,
       ...w.layers.map((l) => `    ${layer('kotlin', l)},`),
       `  ), ${w.lastIsBottom}, ${num(w.layerOrigin[0])}, ${num(w.layerOrigin[1])}))`,
     ],
   },
-  applied: (_e, _b, w) => w.kind === 'mask-layer' ? {
+  applied: (_e, _b, w) => w.kind === 'background-image' ? backgroundImageApplied(w) : w.kind === 'mask-layer' ? {
     kind: `${w.layer.gradient.repeating ? 'repeating-' : ''}${w.layer.gradient.radial ? 'radial' : 'linear'}`,
     slope: slopeBits(w.layer.gradient.slope),
     origin: [w.layerOrigin[0], w.layerOrigin[1]],
@@ -513,8 +518,8 @@ export const GRADIENT_EMITTER: PaintEmitter<'background-layers' | 'mask-layer', 
     modelled: true,
   }),
   native: {
-    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, stages: { 'background-layers': 'dragonPaintGradientStage' }, afterLayout: 'dragonAfterLayoutGradient', applied: 'dragonAppliedGradient' },
-    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS + KOTLIN_SCALE, file: KOTLIN, stages: { 'background-layers': 'dragonPaintGradientStage' }, afterLayout: 'dragonAfterLayoutGradient', applied: 'dragonAppliedGradient' },
+    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS + BG_IMAGE_SWIFT_MEMBERS, file: SWIFT, stages: { 'background-layers': 'dragonPaintGradientStage' }, afterLayout: 'dragonAfterLayoutGradient', applied: 'dragonAppliedGradient' },
+    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS + KOTLIN_SCALE + BG_IMAGE_KOTLIN_MEMBERS, file: KOTLIN, stages: { 'background-layers': 'dragonPaintGradientStage' }, afterLayout: 'dragonAfterLayoutGradient', applied: 'dragonAppliedGradient' },
   },
   plants: [
     {
@@ -538,5 +543,6 @@ export const GRADIENT_EMITTER: PaintEmitter<'background-layers' | 'mask-layer', 
         'android-views': ['const val DRAGON_MASK_PLANT_IGNORED = false\n', 'const val DRAGON_MASK_PLANT_IGNORED = true\n'],
       },
     },
+    BG_IMAGE_PLANT,
   ],
 };

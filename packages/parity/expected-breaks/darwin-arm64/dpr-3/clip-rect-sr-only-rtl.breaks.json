@@ -1,0 +1,16 @@
+{
+  "case": "clip-rect-sr-only-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"cut-probe-c1:text0","data":"Hi","lines":1,"units":[0,0],"blank":[]},
+    {"id":"cut-probe-c2:text0","data":"Hi","lines":1,"units":[0,0],"blank":[]},
+    {"id":"cut-inline:text0","data":"Hello ","lines":1,"units":[0,0,0,0,0,0],"blank":[5]},
+    {"id":"cut-inline-s:text0","data":"world","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"cut-lines:text0","data":"AB","lines":1,"units":[0,0],"blank":[]},
+    {"id":"cut-lines:text1","data":"CD","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t1:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"cut-sr:text0","data":"Skip to content","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

@@ -10,9 +10,11 @@ import { PROGRAM_VERSIONS } from '../../lower/native-program.ts';
 import type { StateDelta, StateFaults, StateProgram } from '../../lower/state-program.ts';
 import { NO_STATE_FAULTS } from '../../lower/state-program.ts';
 import type { GeneratedFile, Scalar } from '../../types.ts';
-import type { AnimTables } from '@dragon/layout';
-import { doubleLit, environmentArgs, inputFunctions, stringLit } from '../native-support.ts';
+import type { AnimTables, rtBand } from '@dragon/layout';
+import { BAND_KEY } from '../../lower/band-program.ts';
+import { doubleLit, inputFunctions, liveEnvironmentArgs, stringLit } from '../native-support.ts';
 import { animTablesLit } from './anim.ts';
+import { bandTableLit } from './media.ts';
 
 export const STATE_RUNTIME_VERSION = 'dragon.runtime-state/1';
 
@@ -21,10 +23,49 @@ export type ScriptStep =
   | { readonly kind: 'set'; readonly state: string; readonly value: Scalar }
   | { readonly kind: 'advance'; readonly ms: number }
   | { readonly kind: 'tap'; readonly x: number; readonly y: number }
+  /** MQ-R1 (T067 R7 (a)): the media root's new size in CSS px; the mount's root observes it and the machine moves the band. */
+  | { readonly kind: 'resize'; readonly width: number; readonly height: number }
+  /**
+   * MQ-R2 (T067 R9): new device readings, injected exactly: a touch screen's or a desktop mouse's pointer and hover readings, the
+   * reduced-motion setting, or the colour scheme. Injected readings stay until the script ends; the platform's own changes no
+   * longer reach the machine.
+   */
+  | { readonly kind: 'env'; readonly reading: 'pointer'; readonly value: 'touch' | 'desktop' }
+  | { readonly kind: 'env'; readonly reading: 'motion'; readonly value: 'reduce' | 'no-preference' }
+  | { readonly kind: 'env'; readonly reading: 'scheme'; readonly value: 'light' | 'dark' }
+  /** Every pointer and hover reading at once (a touch screen with a mouse, no pointer at all...), as Chrome's --blink-settings set them. */
+  | { readonly kind: 'env'; readonly reading: 'pointers'; readonly value: PointerReadings }
   | { readonly kind: 'dump' };
 
-/** One case script as a device case: its id, steps and the expected-dump digests of the assignment it ends in. */
-export type ScriptCase = { readonly id: string; readonly steps: readonly ScriptStep[]; readonly expectedDigests: readonly { readonly dpr: number; readonly sha256: string }[] };
+/** The pointer and hover readings of a device (media/evaluate.ts MediaDevice without the scale and motion setting). */
+export type PointerReadings = {
+  readonly pointer: 'none' | 'coarse' | 'fine';
+  readonly anyPointer: readonly ('coarse' | 'fine')[];
+  readonly hover: 'none' | 'hover';
+  readonly anyHover: 'none' | 'hover';
+};
+
+/** env(2, bits)'s bits: the primary pointer (0 none, 1 coarse, 2 fine), then hover, any coarse, any fine and any hover, one bit each. */
+export function pointerBits(p: PointerReadings): number {
+  const anyCoarse = p.anyPointer.includes('coarse');
+  const anyFine = p.anyPointer.includes('fine');
+  if (p.anyPointer.some((k) => k !== 'coarse' && k !== 'fine')) throw new StateEmitError(`pointer readings ${JSON.stringify(p)}: any-pointer is coarse and fine only`);
+  if (p.pointer === 'none' ? anyCoarse || anyFine : !p.anyPointer.includes(p.pointer)) throw new StateEmitError(`pointer readings ${JSON.stringify(p)}: the primary pointer is not one of the pointers present`);
+  if (p.hover === 'hover' && p.anyHover !== 'hover') throw new StateEmitError(`pointer readings ${JSON.stringify(p)}: the primary pointer hovers but no pointer does`);
+  return ({ none: 0, coarse: 1, fine: 2 } as const)[p.pointer] | (p.hover === 'hover' ? 4 : 0) | (anyCoarse ? 8 : 0) | (anyFine ? 16 : 0) | (p.anyHover === 'hover' ? 32 : 0);
+}
+
+/**
+ * One case script as a device case: its id, steps and the expected-dump digests of the assignment it ends in. MQ-R1: start is the
+ * media root's size when the script starts and viewport the size it ends at (the program's viewport for both when absent).
+ */
+export type ScriptCase = {
+  readonly id: string;
+  readonly steps: readonly ScriptStep[];
+  readonly expectedDigests: readonly { readonly dpr: number; readonly sha256: string }[];
+  readonly start?: { readonly width: number; readonly height: number };
+  readonly viewport?: { readonly width: number; readonly height: number };
+};
 
 /** One state program as the emitter sees it. */
 export type StateEmit = {
@@ -35,6 +76,8 @@ export type StateEmit = {
   readonly viewport: { readonly width: number; readonly height: number };
   readonly program: StateProgram;
   readonly scripts: readonly ScriptCase[];
+  /** MQ-R1: the band table of a band program (one with env#band); absent for a program of one band. */
+  readonly band?: rtBand.BandTable;
   /** ANIM-b1: the program's animation tables (lower/anim-program.ts animTablesOf), one entry per assignment; absent without animations. */
   readonly anim?: AnimTables;
 };
@@ -78,10 +121,14 @@ public struct DragonStateDelta {
   public init(_ removed: [String], _ changed: [DragonStateNode], _ order: [String]?, _ variant: Int) { self.removed = removed; self.changed = changed; self.order = order; self.variant = variant }
 }
 
-/// One case-script step: set state s to its v-th domain value, advance the virtual clock, or mark the dump.
+/// One case-script step: set state s to its v-th domain value, advance the virtual clock, resize the media root (CSS px), inject
+/// device readings (MQ-R2: env(0, v) the pointer, v 0 a desktop mouse and 1 a touch screen; env(1, v) reduced motion, v 1 reduce;
+/// env(2, bits) every pointer and hover reading, DragonReadings.pointers; env(3, v) the colour scheme, v 1 dark), or mark the dump.
 public enum DragonScriptStep {
   case set(Int, Int)
   case advance(Double)
+  case resize(Double, Double)
+  case env(Int, Int)
   case dump
 }
 
@@ -93,10 +140,21 @@ public final class DragonStateMachine {
   private var baseById: [String: DragonStateNode] = [:]
   private let deltas: [DragonStateDelta]
   private let next: [[[Int]]]
-  private let variants: [(Double) -> LayoutInput]
+  private let variants: [(Double, Double, Double) -> LayoutInput]
   private let skipRelayout: Bool
+  /// MQ-R1: the band table and env#band state of a band program; nil for a program of one band.
+  public let band: DragonBandBinding?
+  /// The band of the current assignment, and the viewport (CSS px) the engine lays out at: the media root's size.
+  public private(set) var bandIndex: Int
+  public private(set) var viewport: (Double, Double)
+  /// MQ-R2: the device readings the band lookup answers the device atoms from, and the media root's size in whole device px and
+  /// its scale, which a readings change looks the band up at.
+  public var readings = DragonReadings.desktop
+  private var sizePx: (Double, Double) = (0, 0)
+  private var scale: Double = 0
   private let anim: AnimTables?
   private let initialAssignment: Int
+  private var animatorMeasurer: TextMeasurer?
   public let clock = DragonVirtualClock()
   /// ANIM-b1: the animator over the program's animation tables, started by the mount (nil without tables).
   public private(set) var animator: DragonAnimator?
@@ -109,9 +167,11 @@ public final class DragonStateMachine {
   private var nodes: [String: DragonStateNode] = [:]
   private var order: [String] = []
 
-  public init(states: [String], domains: [[String]], base: [DragonStateNode], deltas: [DragonStateDelta], next: [[[Int]]], initial: Int, variants: [(Double) -> LayoutInput], skipRelayout: Bool, anim: AnimTables? = nil) {
+  public init(states: [String], domains: [[String]], base: [DragonStateNode], deltas: [DragonStateDelta], next: [[[Int]]], initial: Int, variants: [(Double, Double, Double) -> LayoutInput], skipRelayout: Bool, viewport: (Double, Double), band: DragonBandBinding?, initialBand: Int, anim: AnimTables? = nil) {
     self.states = states; self.domains = domains; self.base = base; self.deltas = deltas; self.next = next; self.variants = variants; self.skipRelayout = skipRelayout
+    self.viewport = viewport; self.band = band; self.bandIndex = initialBand
     self.anim = anim; initialAssignment = initial
+    if let b = band, b.table.bands.items.count != domains[b.state].count { fatalError("dragon: the band table has \(b.table.bands.items.count) bands, env#band \(domains[b.state].count) values") }
     current = initial
     laidOut = deltas[initial].variant
     for n in base { baseById[n.id] = n }
@@ -146,13 +206,18 @@ public final class DragonStateMachine {
     onChange?()
   }
 
-  /// ANIM-b1: starts the animator at the current assignment, with every assignment's input resolved at scale 1 by measurer (R14).
+  /// ANIM-b1: starts the animator at the current assignment, with every assignment's input resolved at scale 1 and the current viewport by measurer (R14).
   public func startAnimator(_ measurer: TextMeasurer) {
     guard let t = anim, animator == nil else { return }
-    let inputs = deltas.map { d -> LayoutInput in
-      do { return try environment_resolveEnvironment(variants[d.variant](1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
+    animatorMeasurer = measurer
+    animator = DragonAnimator(tables: t, inputs: animatorInputs(measurer), initial: initialAssignment, current: current)
+  }
+
+  /// Every assignment's engine input resolved at scale 1 and the current viewport: where the animator reads length endpoints.
+  private func animatorInputs(_ measurer: TextMeasurer) -> [LayoutInput] {
+    return deltas.map { d -> LayoutInput in
+      do { return try environment_resolveEnvironment(variants[d.variant](1, viewport.0, viewport.1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
     }
-    animator = DragonAnimator(tables: t, inputs: inputs, initial: initialAssignment, current: current)
   }
 
   /// The clock step (R2): the virtual clock and every running transition and animation move by ms.
@@ -194,13 +259,49 @@ public final class DragonStateMachine {
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
+      // ANIM-b2: a node whose transform animates takes the frame's through the view's transform writer.
+      if let w = animator?.transform(n.id) { v.dragonSetTransform(w.ops.items, w.origin) }
     }
   }
 
-  /// The engine input last laid out, with the animator's frame lengths patched in (R16).
+  /// The engine input last laid out, at the current viewport, with the animator's frame lengths patched in (R16).
   public func input(_ dpr: Double) -> LayoutInput {
-    let i = variants[laidOut](dpr)
+    let i = variants[laidOut](dpr, viewport.0, viewport.1)
     return animator?.patch(i) ?? i
+  }
+
+  /// MQ-R1 (T067 R5): one size change of the media root: its whole device px pick the band, its CSS px are the viewport. The new
+  /// band first, through env#band's delta when it changes (whose setter lays out once), else one layout at the new size.
+  /// A running animator re-resolves its length endpoints at the new size, in that same style change event (Chrome's restyle).
+  public func resize(_ widthPx: Double, _ heightPx: Double, css: (Double, Double), scale: Double) {
+    sizePx = (widthPx, heightPx)
+    self.scale = scale
+    let moved = css != viewport
+    viewport = css
+    if moved, let a = animator, let m = animatorMeasurer { a.stage(animatorInputs(m)) }
+    if let b = band {
+      let to = dragonBandAt(b, widthPx, heightPx, scale, readings)
+      if to != bandIndex {
+        bandIndex = to
+        set(b.state, to)
+        return
+      }
+    }
+    // R4: a size change is a style change event of its own, in the same assignment.
+    if moved { animator?.event(current) }
+    onChange?()
+  }
+
+  /// MQ-R2 (T067 R9): new device readings: the band of the root on them, through env#band's delta when it moves (whose setter lays
+  /// out once); the same band needs no layout, as the viewport has not changed.
+  public func setReadings(_ r: DragonReadings) {
+    readings = r
+    guard let b = band, scale > 0 else { return }
+    let to = dragonBandAt(b, sizePx.0, sizePx.1, scale, readings)
+    if to != bandIndex {
+      bandIndex = to
+      set(b.state, to)
+    }
   }
 }
 
@@ -218,6 +319,8 @@ public final class DragonStateMount {
   public let machine: DragonStateMachine
   private var shown = DragonTree()
   public private(set) var renders = 0
+  /// MQ-R1: the Dragon root view the tree is laid out in; its own size is the environment (T067 R6).
+  public let media: DragonMediaRoot
   private let stage: UIView
   private let measurer: TextMeasurer
   private let scale: Double
@@ -225,15 +328,39 @@ public final class DragonStateMount {
   private var stale = false
   private var driver: DragonDisplayDriver?
 
-  /// display: drive the animator from the display (CADisplayLink) while it is busy; off for the lanes, whose clock is the script's.
-  public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge, display: Bool = false) {
+  /// MQ-R2: the platform readings' observer, and whether a script injected its own (the platform then no longer reaches the machine).
+  private var observer: DragonReadingsObserver?
+  public private(set) var injected = false
+
+  /// size: the media root's size in CSS px; the machine takes the platform's readings and the band of the size before the first
+  /// render. display: drive the animator from the display (CADisplayLink) while it is busy; off for the lanes, whose clock is the script's.
+  public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge, size: (Double, Double), display: Bool = false) {
     self.machine = machine; self.stage = stage; self.measurer = measurer; self.scale = scale; self.bridge = bridge
+    media = DragonMediaRoot(scale: scale)
+    stage.addSubview(media)
+    // The colour scheme is the root's own trait collection, which it takes from the stage once it is in the hierarchy.
+    machine.readings = DragonReadings.platform(media)
+    media.frame = CGRect(x: 0, y: 0, width: CGFloat(size.0), height: CGFloat(size.1))
+    media.layoutIfNeeded()
+    machine.resize(media.sizePx.0, media.sizePx.1, css: size, scale: scale)
     // ANIM-b1 R7: CSS animations start at first style, so the first render shows their t = 0 values.
     machine.startAnimator(measurer)
     render()
     machine.onChange = { [weak self] in
       self?.render()
       self?.drive()
+    }
+    media.onSize = { [weak self] w, h, cw, ch in
+      guard let self = self else { return }
+      self.machine.resize(w, h, css: (cw, ch), scale: self.scale)
+    }
+    observer = DragonReadingsObserver { [weak self] in
+      guard let self = self, !self.injected else { return }
+      self.machine.setReadings(DragonReadings.platform(self.media))
+    }
+    media.onStyle = { [weak self] in
+      guard let self = self, !self.injected else { return }
+      self.machine.setReadings(DragonReadings.platform(self.media))
     }
     // A clock step renders when the tree is next read (a script's dump) or at once on the display driver's tick.
     machine.onFrame = { [weak self] in self?.stale = true }
@@ -248,6 +375,12 @@ public final class DragonStateMount {
     }
   }
 
+  /// MQ-R2: a script's env step: the readings it names, exactly, from now on.
+  public func inject(_ r: DragonReadings) {
+    injected = true
+    machine.setReadings(r)
+  }
+
   /// The views on screen, rendered for the current frame.
   public var tree: DragonTree {
     if stale { render() }
@@ -259,12 +392,18 @@ public final class DragonStateMount {
     d.start()
   }
 
+  /// A script's resize step: the media root takes the new size, and its own layoutSubviews hands it to the machine.
+  public func resize(_ width: Double, _ height: Double) {
+    media.frame = CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))
+    media.layoutIfNeeded()
+  }
+
   private func render() {
     stale = false
     // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     let t = DragonTree()
     machine.build(t)
-    stage.addSubview(t.root)
+    media.addSubview(t.root)
     do {
       try t.apply(machine.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
@@ -276,18 +415,22 @@ public final class DragonStateMount {
   }
 }
 
-/// A case script: its case (identity and expected digests) and its steps, which run on a DragonStateMount through the setters.
+/// A case script: its case (identity and expected digests, the viewport it ends at), its start size and its steps, which run on a
+/// DragonStateMount through the setters and the media root.
 public struct DragonStateScript {
   public let dragonCase: DragonCase
   public let make: () -> DragonStateMachine
+  public let start: (Double, Double)
   public let steps: [DragonScriptStep]
 
-  /// Runs the steps on a mounted machine; each set goes through the setter, so the mount re-renders after it.
-  public func run(_ m: DragonStateMachine) {
+  /// Runs the steps on a mount; each set goes through the setter and each resize through the media root, so the mount re-renders.
+  public func run(_ m: DragonStateMount) {
     for s in steps {
       switch s {
-      case .set(let a, let b): m.set(a, b)
-      case .advance(let ms): m.advance(ms)
+      case .set(let a, let b): m.machine.set(a, b)
+      case .advance(let ms): m.machine.advance(ms)
+      case .resize(let w, let h): m.resize(w, h)
+      case .env(let reading, let v): m.inject(reading == 0 ? m.machine.readings.pointing(touch: v == 1) : reading == 1 ? m.machine.readings.motion(reduce: v == 1) : reading == 3 ? m.machine.readings.scheme(dark: v == 1) : m.machine.readings.pointers(v))
       case .dump: break
       }
     }
@@ -295,13 +438,13 @@ public struct DragonStateScript {
 }
 
 /// A case script as a device case. Its views come only from a DragonStateMount, so its case builds nothing by itself.
-public func dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, viewport: (width: Double, height: Double), expectedDigests: [Double: String], make: @escaping () -> DragonStateMachine, steps: [DragonScriptStep]) -> DragonStateScript {
+public func dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, viewport: (width: Double, height: Double), start: (Double, Double), expectedDigests: [Double: String], make: @escaping () -> DragonStateMachine, steps: [DragonScriptStep]) -> DragonStateScript {
   let c = DragonCase(id: id, fixture: fixture, direction: direction, compilerDigest: compilerDigest, viewport: viewport, expectedDigests: expectedDigests, input: { _ in
     fatalError("dragon: script \(id) runs on a state mount, not as a layout case")
   }, build: { _ in
     fatalError("dragon: script \(id) runs on a state mount, not as a layout case")
   })
-  return DragonStateScript(dragonCase: c, make: make, steps: steps)
+  return DragonStateScript(dragonCase: c, make: make, start: start, steps: steps)
 }
 `;
 }
@@ -337,6 +480,13 @@ class DragonStateDelta(val removed: List<String>, val changed: List<DragonStateN
 sealed class DragonScriptStep {
   class Set(val s: Int, val v: Int) : DragonScriptStep()
   class Advance(val ms: Double) : DragonScriptStep()
+  /** MQ-R1: the media root's new size in CSS px. */
+  class Resize(val width: Double, val height: Double) : DragonScriptStep()
+  /**
+   * MQ-R2: inject device readings: reading 0 the pointer (v 0 a desktop mouse, 1 a touch screen), reading 1 reduced motion (v 1
+   * reduce), reading 2 every pointer and hover reading (v the bits of DragonReadings.pointers), reading 3 the colour scheme (v 1 dark).
+   */
+  class Env(val reading: Int, val v: Int) : DragonScriptStep()
   object Dump : DragonScriptStep()
 }
 
@@ -348,13 +498,30 @@ class DragonStateMachine(
   private val deltas: List<DragonStateDelta>,
   private val next: List<List<List<Int>>>,
   initial: Int,
-  private val variants: List<(Double) -> LayoutInput>,
+  private val variants: List<(Double, Double, Double) -> LayoutInput>,
   private val skipRelayout: Boolean,
+  viewport: Pair<Double, Double>,
+  /** MQ-R1: the band table and env#band state of a band program; null for a program of one band. */
+  val band: DragonBandBinding?,
+  initialBand: Int,
   private val anim: AnimTables? = null,
 ) {
   private val baseById = HashMap<String, DragonStateNode>()
   private val initialAssignment = initial
+  private var animatorMeasurer: TextMeasurer? = null
   val clock = DragonVirtualClock()
+  /** The band of the current assignment, and the viewport (CSS px) the engine lays out at: the media root's size. */
+  var bandIndex: Int = initialBand
+    private set
+  var viewport: Pair<Double, Double> = viewport
+    private set
+  /**
+   * MQ-R2: the device readings the band lookup answers the device atoms from, and the media root's size in whole device px and its
+   * scale, which a readings change looks the band up at.
+   */
+  var readings: DragonReadings = DragonReadings.DESKTOP
+  private var sizePx: Pair<Double, Double> = Pair(0.0, 0.0)
+  private var scale: Double = 0.0
   /** ANIM-b1: the animator over the program's animation tables, started by the mount (null without tables). */
   var animator: DragonAnimator? = null
     private set
@@ -370,6 +537,7 @@ class DragonStateMachine(
   private var order: List<String> = emptyList()
 
   init {
+    if (band != null && band.table.bands.size != domains[band.state].size) throw IllegalStateException("dragon: the band table has " + band.table.bands.size + " bands, env#band " + domains[band.state].size + " values")
     for (n in base) baseById[n.id] = n
     val d = deltas[initial]
     val removed = d.removed.toHashSet()
@@ -406,13 +574,17 @@ class DragonStateMachine(
     onChange?.invoke()
   }
 
-  /** ANIM-b1: starts the animator at the current assignment, with every assignment's input resolved at scale 1 by measurer (R14). */
+  /** ANIM-b1: starts the animator at the current assignment, with every assignment's input resolved at scale 1 and the current viewport by measurer (R14). */
   fun startAnimator(measurer: TextMeasurer) {
     val t = anim ?: return
     if (animator != null) return
-    val inputs = deltas.map { environment_resolveEnvironment(variants[it.variant](1.0), block_NO_ENGINE_FAULTS, measurer) }
-    animator = DragonAnimator(t, inputs, initialAssignment, current)
+    animatorMeasurer = measurer
+    animator = DragonAnimator(t, animatorInputs(measurer), initialAssignment, current)
   }
+
+  /** Every assignment's engine input resolved at scale 1 and the current viewport: where the animator reads length endpoints. */
+  private fun animatorInputs(measurer: TextMeasurer): List<LayoutInput> =
+    deltas.map { environment_resolveEnvironment(variants[it.variant](1.0, viewport.first, viewport.second), block_NO_ENGINE_FAULTS, measurer) }
 
   /** The clock step (R2): the virtual clock and every running transition and animation move by ms. */
   fun advance(ms: Double) {
@@ -455,13 +627,57 @@ class DragonStateMachine(
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
+      // ANIM-b2: a node whose transform animates takes the frame's through the view's transform writer.
+      animator?.transform(n.id)?.let { v.dragonSetTransform(it.ops, it.origin) }
     }
   }
 
-  /** The engine input last laid out, with the animator's frame lengths patched in (R16). */
+  /** The engine input last laid out, at the current viewport, with the animator's frame lengths patched in (R16). */
   fun input(dpr: Double): LayoutInput {
-    val i = variants[laidOut](dpr)
+    val i = variants[laidOut](dpr, viewport.first, viewport.second)
     return animator?.patch(i) ?: i
+  }
+
+  /**
+   * MQ-R1 (T067 R5): one size change of the media root: its whole device px pick the band, its CSS px are the viewport. The new band
+   * first, through env#band's delta when it changes (whose setter lays out once), else one layout at the new size.
+   */
+  fun resize(widthPx: Double, heightPx: Double, css: Pair<Double, Double>, scale: Double) {
+    sizePx = Pair(widthPx, heightPx)
+    this.scale = scale
+    val moved = css != viewport
+    viewport = css
+    // A running animator re-resolves its length endpoints at the new size, in that same style change event (Chrome's restyle).
+    val a = animator
+    val m = animatorMeasurer
+    if (moved && a != null && m != null) a.stage(animatorInputs(m))
+    val b = band
+    if (b != null) {
+      val to = dragonBandAt(b, widthPx, heightPx, scale, readings)
+      if (to != bandIndex) {
+        bandIndex = to
+        set(b.state, to)
+        return
+      }
+    }
+    // R4: a size change is a style change event of its own, in the same assignment.
+    if (moved) animator?.event(current)
+    onChange?.invoke()
+  }
+
+  /**
+   * MQ-R2 (T067 R9): new device readings: the band of the root on them, through env#band's delta when it moves (whose setter lays
+   * out once); the same band needs no layout, as the viewport has not changed.
+   */
+  fun setReadings(r: DragonReadings) {
+    readings = r
+    val b = band ?: return
+    if (scale <= 0.0) return
+    val to = dragonBandAt(b, sizePx.first, sizePx.second, scale, readings)
+    if (to != bandIndex) {
+      bandIndex = to
+      set(b.state, to)
+    }
   }
 }
 
@@ -477,9 +693,17 @@ fun dragonAnimatedSides(a: DragonAnimator?, id: String, c: Array<DragonRGBA8>): 
  * Every committed setter rebuilds the views from the records, lays them out and swaps them in for the previous ones, so a typed
  * setter call changes what is on screen.
  */
-class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewGroup, private val measurer: TextMeasurer, private val scale: Double, private val bridge: DragonBridge, display: Boolean = false) {
+class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewGroup, private val measurer: TextMeasurer, private val scale: Double, private val bridge: DragonBridge, size: Pair<Double, Double>, display: Boolean = false) {
   private var shown: DragonTree = DragonTree(stage.context)
   var renders = 0
+    private set
+  /** MQ-R1: the Dragon root view the tree is laid out in; its own size is the environment (T067 R6). */
+  val media = DragonMediaRoot(stage.context)
+  /** The CSS size a script's resize step asked for, read by the next size change; null for a size the system set. */
+  private var requested: Pair<Double, Double>? = size
+  /** MQ-R2: the platform readings' observer, and whether a script injected its own (the platform then no longer reaches the machine). */
+  private var observer: DragonReadingsObserver? = null
+  var injected = false
     private set
   private var stale = false
   private var driver: DragonDisplayDriver? = null
@@ -492,6 +716,15 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     }
 
   init {
+    machine.readings = DragonReadings.platform(stage.context)
+    stage.addView(media, ViewGroup.LayoutParams(pxOf(size.first), pxOf(size.second)))
+    media.onSize = { w, h ->
+      val css = requested ?: Pair(w / scale, h / scale)
+      requested = null
+      machine.resize(w, h, css, scale)
+    }
+    // The first size: laid out here, so the machine takes its band before the first render; the setter then renders nothing.
+    media.layout(0, 0, pxOf(size.first), pxOf(size.second))
     // ANIM-b1 R7: CSS animations start at first style, so the first render shows their t = 0 values.
     machine.startAnimator(measurer)
     render()
@@ -513,6 +746,28 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
       }
       drive()
     }
+    observer = DragonReadingsObserver(stage.context) {
+      if (!injected) machine.setReadings(DragonReadings.platform(stage.context))
+    }
+    // The colour scheme: the configuration the system hands the root when the night mode changes in place.
+    media.onConfiguration = { c ->
+      if (!injected) machine.setReadings(DragonReadings.platform(stage.context, c))
+    }
+  }
+
+  /** MQ-R2: a script's env step: the readings it names, exactly, from now on. */
+  fun inject(r: DragonReadings) {
+    injected = true
+    machine.setReadings(r)
+  }
+
+  /**
+   * Stops observing the platform readings (the animator duration scale's ContentObserver and the InputDeviceListener). The app owns
+   * the mount's lifetime: it calls close() when it removes the mount from its view tree, or the observers stay registered.
+   */
+  fun close() {
+    observer?.close()
+    observer = null
   }
 
   private fun drive() {
@@ -521,27 +776,44 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     if (a.busy) d.start()
   }
 
+  /** CSS px to the whole device px the view takes: ceil, as DragonTree.apply sizes the root. */
+  private fun pxOf(css: Double): Int = kotlin.math.ceil(css * scale).toInt()
+
+  /** A script's resize step: the media root takes the new size, and its own onSizeChanged hands it to the machine. */
+  fun resize(width: Double, height: Double) {
+    requested = Pair(width, height)
+    // The stage's own LayoutParams type is kept (a FrameLayout measures its children with MarginLayoutParams; a plain
+    // ViewGroup.LayoutParams set here would fail its next measure pass with a ClassCastException).
+    val lp = media.layoutParams
+    lp.width = pxOf(width)
+    lp.height = pxOf(height)
+    media.layoutParams = lp
+    media.layout(media.left, media.top, media.left + pxOf(width), media.top + pxOf(height))
+  }
+
   private fun render() {
     stale = false
     // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     val t = DragonTree(stage.context)
     machine.build(t)
     t.apply(machine.input(scale), bridge.measurer, scale, bridge)
-    stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
-    stage.removeView(shown.root)
+    media.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
+    media.removeView(shown.root)
     shown = t
     renders++
   }
 }
 
 /** A case script: its case (identity and expected digests) and its steps, which run on a DragonStateMount through the setters. */
-class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateMachine, val steps: List<DragonScriptStep>) {
-  /** Runs the steps on a mounted machine; each set goes through the setter, so the mount re-renders after it. */
-  fun run(m: DragonStateMachine) {
+class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateMachine, val start: Pair<Double, Double>, val steps: List<DragonScriptStep>) {
+  /** Runs the steps on a mount; each set goes through the setter and each resize through the media root, so the mount re-renders. */
+  fun run(m: DragonStateMount) {
     for (s in steps) {
       when (s) {
-        is DragonScriptStep.Set -> m.set(s.s, s.v)
-        is DragonScriptStep.Advance -> m.advance(s.ms)
+        is DragonScriptStep.Set -> m.machine.set(s.s, s.v)
+        is DragonScriptStep.Advance -> m.machine.advance(s.ms)
+        is DragonScriptStep.Resize -> m.resize(s.width, s.height)
+        is DragonScriptStep.Env -> m.inject(if (s.reading == 0) m.machine.readings.pointing(s.v == 1) else if (s.reading == 1) m.machine.readings.motion(s.v == 1) else if (s.reading == 3) m.machine.readings.scheme(s.v == 1) else m.machine.readings.pointers(s.v))
         is DragonScriptStep.Dump -> {}
       }
     }
@@ -549,13 +821,13 @@ class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateM
 }
 
 /** A case script as a device case. Its views come only from a DragonStateMount, so its case builds nothing by itself. */
-fun dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, width: Double, height: Double, expectedDigests: Map<Double, String>, make: () -> DragonStateMachine, steps: List<DragonScriptStep>): DragonStateScript {
+fun dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, width: Double, height: Double, start: Pair<Double, Double>, expectedDigests: Map<Double, String>, make: () -> DragonStateMachine, steps: List<DragonScriptStep>): DragonStateScript {
   val c = DragonCase(id, fixture, direction, compilerDigest, width, height, expectedDigests, { _ ->
     throw IllegalStateException("dragon: script " + id + " runs on a state mount, not as a layout case")
   }, { _ ->
     throw IllegalStateException("dragon: script " + id + " runs on a state mount, not as a layout case")
   })
-  return DragonStateScript(c, make, steps)
+  return DragonStateScript(c, make, start, steps)
 }
 `;
 }
@@ -573,9 +845,14 @@ type Lang = 'swift' | 'kotlin';
 
 const rgba = (c: Rgba8): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alpha})`;
 
-/** A node record as a DragonStateNode literal (the interaction runtime emits its deltas with it too). */
-export function nodeLit(lang: Lang, n: ProgramNode): string {
+/**
+ * A node record as a DragonStateNode literal (the interaction runtime emits its deltas with it too). moving holds the nodes whose
+ * transform animates (ANIM-b2): the animator writes their transform every frame, static value included.
+ */
+export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> = new Set()): string {
   const q = (s: string): string => stringLit(lang, s);
+  // GEN-c: a text marker's text node (native-program.ts), like a symbol's marker write, is drawn on the static program only.
+  if (n.kind === 'text' && n.parent !== null && n.parent.endsWith('::marker')) throw new StateEmitError(`${n.id}: a list marker in a state program has no state-node write (GEN-c draws markers on the static program only)`);
   const writes: string[] = [];
   for (const w of n.writes) {
     switch (w.kind) {
@@ -611,13 +888,18 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'synthetic-bold':
         // TXT-W: the state runtime's text record carries no fake-bold stroke; an emboldened run is drawn from the static program only.
         throw new StateEmitError(`${n.id}: a synthetic bold in a state program has no state-node write (TXT-W emboldens glyphs on the static program only)`);
+      case 'text-stroke':
+        // TXT-FX: the state runtime's text record carries no stroke; a stroked run is drawn from the static program only.
+        throw new StateEmitError(`${n.id}: a text stroke in a state program has no state-node write (TXT-FX strokes glyphs on the static program only)`);
       case 'transform':
+        if (moving.has(n.id)) break;
         // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
       case 'opacity':
         // PNT1 writes opacity on the static program only; the state runtime has no opacity writer yet.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       case 'scroll-container':
+      case 'scroll-indicators-hidden':
         // OVFL-B: the state runtime rebuilds clip views only; a scroll view under component states is refused here, by name.
         throw new StateEmitError(`${n.id}: a scroll container in a state program is not supported yet (OVFL-B scroll views under SELD-R states)`);
       case 'replaced-image':
@@ -633,6 +915,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'background-layers':
         // BG2-a: a state record holds no gradient write; the layers are painted from the static program only.
         throw new StateEmitError(`${n.id}: background layers in a state program have no state-node write (BG2 writes them on the static program only)`);
+      case 'background-image':
+        // BG2-u: a state record holds no url() layer write; the image is drawn from the static program only.
+        throw new StateEmitError(`${n.id}: a url() background image in a state program has no state-node write (BG2-u writes it on the static program only)`);
       case 'text-decoration':
         // TDEC-b draws decorations from the static program only; the state runtime has no decoration writer yet.
         throw new StateEmitError(`${n.id}: text decorations in a state program have no state-node write (TDEC-b draws them on the static program only)`);
@@ -643,6 +928,7 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
         // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
         throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
       case 'clip-rect-empty':
+      case 'clip-rect-label':
         // MASK-CLIP: a state record holds no clip write; the empty clip rect hides the box on the static program only.
         throw new StateEmitError(`${n.id}: a clip rect in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       case 'clip-path-inset':
@@ -653,6 +939,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'mask-layer':
         // MASK-CLIP: a state record holds no mask write; the gradient mask is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a gradient mask in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
+      case 'list-marker':
+        // GEN-c: a state record holds no marker write; the marker is drawn on the static program only.
+        throw new StateEmitError(`${n.id}: a list marker in a state program has no state-node write (GEN-c draws markers on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;
@@ -668,11 +957,11 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
 const list = (lang: Lang, items: readonly string[]): string => (lang === 'swift' ? `[${items.join(', ')}]` : `listOf(${items.join(', ')})`);
 
 /** A delta as a DragonStateDelta literal. */
-export function deltaLit(lang: Lang, d: StateDelta): string {
+export function deltaLit(lang: Lang, d: StateDelta, moving: ReadonlySet<string> = new Set()): string {
   const q = (s: string): string => stringLit(lang, s);
   const order = d.order === null ? (lang === 'swift' ? 'nil' : 'null') : list(lang, d.order.map(q));
   const removed = d.removed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.removed.map(q));
-  const changed = d.changed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.changed.map((n) => nodeLit(lang, n)));
+  const changed = d.changed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.changed.map((n) => nodeLit(lang, n, moving)));
   return `DragonStateDelta(${removed}, ${changed}, ${order}, ${d.variant})`;
 }
 
@@ -715,6 +1004,15 @@ function stepLit(lang: Lang, sp: StateProgram, id: string, step: ScriptStep): st
     case 'advance':
       if (!Number.isFinite(step.ms) || step.ms < 0) throw new StateEmitError(`${id}: advance(${step.ms}) is not a finite, non-negative step`);
       return lang === 'swift' ? `.advance(${doubleLit(step.ms)})` : `DragonScriptStep.Advance(${doubleLit(step.ms)})`;
+    case 'resize':
+      if (![step.width, step.height].every((v) => Number.isFinite(v) && v > 0)) throw new StateEmitError(`${id}: resize(${step.width}, ${step.height}) is not a positive size`);
+      return lang === 'swift' ? `.resize(${doubleLit(step.width)}, ${doubleLit(step.height)})` : `DragonScriptStep.Resize(${doubleLit(step.width)}, ${doubleLit(step.height)})`;
+    case 'env': {
+      if (step.reading === 'pointers') return lang === 'swift' ? `.env(2, ${pointerBits(step.value)})` : `DragonScriptStep.Env(2, ${pointerBits(step.value)})`;
+      const reading = step.reading === 'pointer' ? 0 : step.reading === 'motion' ? 1 : 3;
+      const v = step.value === 'touch' || step.value === 'reduce' || step.value === 'dark' ? 1 : 0;
+      return lang === 'swift' ? `.env(${reading}, ${v})` : `DragonScriptStep.Env(${reading}, ${v})`;
+    }
     case 'dump':
       return lang === 'swift' ? '.dump' : 'DragonScriptStep.Dump';
     case 'tap':
@@ -733,21 +1031,29 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
     out.push(...input.decls);
     const fn = `${p}Input${j}`;
     variantFns.push(lang === 'swift' ? fn : `::${fn}`);
+    // MQ-R1: the viewport is the machine's (the media root's CSS size), not a literal.
     out.push(lang === 'swift'
-      ? `private func ${fn}(_ dpr: Double) -> LayoutInput {\n  return LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${environmentArgs(e.viewport, variant.rootFontSize)}, ${input.root})\n}`
-      : `private fun ${fn}(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${environmentArgs(e.viewport, variant.rootFontSize)}, ${input.root})`);
+      ? `private func ${fn}(_ dpr: Double, _ vw: Double, _ vh: Double) -> LayoutInput {\n  return LayoutInput(Viewport(vw, vh), dpr, ${liveEnvironmentArgs('vw', 'vh', variant.rootFontSize)}, ${input.root})\n}`
+      : `private fun ${fn}(dpr: Double, vw: Double, vh: Double): LayoutInput = LayoutInput(Viewport(vw, vh), dpr, ${liveEnvironmentArgs('vw', 'vh', variant.rootFontSize)}, ${input.root})`);
   });
   // Every table is its own typed constant, so no single literal grows past what the type checkers handle quickly.
   const decl = (name: string, type: string, value: string): string => (lang === 'swift' ? `private let ${name}: ${type} = ${value}` : `private val ${name}: ${type} = ${value}`);
   const kt = lang === 'kotlin';
   out.push(decl(`${p}States`, kt ? 'List<String>' : '[String]', list(lang, sp.states.map((s) => q(s.key)))));
   out.push(decl(`${p}Domains`, kt ? 'List<List<String>>' : '[[String]]', list(lang, sp.states.map((s) => list(lang, s.domain.map((v) => q(valueKey(v))))))));
-  sp.base.nodes.forEach((n, i) => out.push(decl(`${p}Node${i}`, 'DragonStateNode', nodeLit(lang, n))));
+  const moving = new Set((e.anim?.origins ?? []).map((o) => o.node));
+  sp.base.nodes.forEach((n, i) => out.push(decl(`${p}Node${i}`, 'DragonStateNode', nodeLit(lang, n, moving))));
   out.push(decl(`${p}Base`, kt ? 'List<DragonStateNode>' : '[DragonStateNode]', list(lang, sp.base.nodes.map((_, i) => `${p}Node${i}`))));
-  sp.deltas.forEach((d, i) => out.push(decl(`${p}Delta${i}`, 'DragonStateDelta', deltaLit(lang, d))));
+  sp.deltas.forEach((d, i) => out.push(decl(`${p}Delta${i}`, 'DragonStateDelta', deltaLit(lang, d, moving))));
   out.push(decl(`${p}Deltas`, kt ? 'List<DragonStateDelta>' : '[DragonStateDelta]', list(lang, sp.deltas.map((_, i) => `${p}Delta${i}`))));
   out.push(decl(`${p}Next`, kt ? 'List<List<List<Int>>>' : '[[[Int]]]', list(lang, sp.next.map((a) => list(lang, a.map((st) => list(lang, st.map(String))))))));
   const skip = faults.setterSkipsRelayout ? 'true' : 'false';
+  // MQ-R1: a band program carries its band table and env#band's index; its initial band is the initial assignment's.
+  const bandState = sp.states.findIndex((s) => s.key === BAND_KEY);
+  if ((bandState >= 0) !== (e.band !== undefined)) throw new StateEmitError(`${e.id}: a band program needs its band table, and only a band program has one`);
+  const band = e.band === undefined ? (lang === 'swift' ? 'nil' : 'null') : `DragonBandBinding(${p}Bands, ${bandState})`;
+  const initialBand = bandState < 0 ? 0 : (((sp.assignments[sp.initial] as StateProgram['assignments'][number]).assignment.find((a) => a.state.instance === '@env')?.value as number | undefined) ?? 0);
+  if (e.band !== undefined) out.push(decl(`${p}Bands`, 'BandTable', bandTableLit(lang, e.band)));
   // ANIM-b1: the animation tables, one typed constant per table record.
   let anim = '';
   if (e.anim !== undefined) {
@@ -759,10 +1065,10 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   }
   if (lang === 'swift') {
     out.push(`/// A fresh runtime of state program ${commentText(e.id)} at its initial assignment.`);
-    out.push(`public func ${p}Machine() -> DragonStateMachine {\n  return DragonStateMachine(states: ${p}States, domains: ${p}Domains, base: ${p}Base, deltas: ${p}Deltas, next: ${p}Next, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, skipRelayout: ${skip}${anim})\n}`);
+    out.push(`public func ${p}Machine() -> DragonStateMachine {\n  return DragonStateMachine(states: ${p}States, domains: ${p}Domains, base: ${p}Base, deltas: ${p}Deltas, next: ${p}Next, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, skipRelayout: ${skip}, viewport: (${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), band: ${band}, initialBand: ${initialBand}${anim})\n}`);
   } else {
     out.push(`/** A fresh runtime of state program ${commentText(e.id)} at its initial assignment. */`);
-    out.push(`fun ${p}Machine(): DragonStateMachine =\n  DragonStateMachine(${p}States, ${p}Domains, ${p}Base, ${p}Deltas, ${p}Next, ${sp.initial}, ${list(lang, variantFns)}, ${skip}${anim})`);
+    out.push(`fun ${p}Machine(): DragonStateMachine =\n  DragonStateMachine(${p}States, ${p}Domains, ${p}Base, ${p}Deltas, ${p}Next, ${sp.initial}, ${list(lang, variantFns)}, ${skip}, Pair(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), ${band}, ${initialBand}${anim})`);
   }
   // The typed setters (decision 17): booleans for boolean domains, an enum per other domain.
   const setters = typedSetters(sp);
@@ -770,6 +1076,8 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   const body: string[] = [];
   setters.forEach((s, i) => {
     const state = sp.states[i] as StateProgram['states'][number];
+    // MQ-R1 (T067 R5): env#band is set by the media root's size, never by the app, so it has no typed setter.
+    if (state.key === BAND_KEY) return;
     if (s.boolean) {
       const t = state.domain.findIndex((v) => v === true);
       const f = state.domain.findIndex((v) => v === false);
@@ -797,12 +1105,16 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   e.scripts.forEach((sc, j) => {
     const n = (lits[j] as string[]).length;
     const steps = !shared ? list(lang, lits[j] as string[]) : kt ? `${p}Steps.take(${n})` : `Array(${p}Steps.prefix(${n}))`;
+    // MQ-R1: a resize script starts at its own size and ends at another; the case's viewport is the one it ends at.
+    const start = sc.start ?? e.viewport;
+    const end = sc.viewport ?? e.viewport;
     if (lang === 'swift') {
+      // An empty Swift dictionary literal is [:] (device-env's script has no expected digests).
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)}: ${q(d.sha256)}`).join(', ');
-      out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(e.viewport.width)}, height: ${doubleLit(e.viewport.height)}), expectedDigests: [${digests}], make: ${p}Machine, steps: ${steps})`);
+      out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(end.width)}, height: ${doubleLit(end.height)}), start: (${doubleLit(start.width)}, ${doubleLit(start.height)}), expectedDigests: [${digests === '' ? ':' : digests}], make: ${p}Machine, steps: ${steps})`);
     } else {
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)} to ${q(d.sha256)}`).join(', ');
-      out.push(`val ${p}Script${j} = dragonStateScriptCase(${q(sc.id)}, ${q(e.fixture)}, ${q(e.direction)}, ${q(e.compilerDigest)}, ${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}, mapOf(${digests}), ::${p}Machine, ${steps})`);
+      out.push(`val ${p}Script${j} = dragonStateScriptCase(${q(sc.id)}, ${q(e.fixture)}, ${q(e.direction)}, ${q(e.compilerDigest)}, ${doubleLit(end.width)}, ${doubleLit(end.height)}, Pair(${doubleLit(start.width)}, ${doubleLit(start.height)}), mapOf(${digests}), ::${p}Machine, ${steps})`);
     }
   });
   return out.join('\n');
