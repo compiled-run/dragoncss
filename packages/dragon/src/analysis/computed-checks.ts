@@ -15,6 +15,17 @@ import type { FxFaults } from '../faults/fx.ts';
 import { FX_FAULTS } from '../faults/fx.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import { GEN_B_FAULTS } from '../faults/gen-b.ts';
+import type { Txt2dFaults } from '../faults/txt2-d.ts';
+import { TXT2_D_FAULTS } from '../faults/txt2-d.ts';
+import { checkWordBreak } from './break-all.ts';
+import type { Txt2lbFaults } from '../faults/txt2-lb.ts';
+import { TXT2_LB_FAULTS } from '../faults/txt2-lb.ts';
+import { checkLineBreak } from './line-break.ts';
+import type { Txt2IFaults } from '../faults/txt2-i.ts';
+import { TXT2_I_FAULTS } from '../faults/txt2-i.ts';
+import type { Txt2talFaults } from '../faults/txt2-tal.ts';
+import { TXT2_TAL_FAULTS } from '../faults/txt2-tal.ts';
+import { checkTextAlignLast } from './text-align-last.ts';
 import type { TxtFvFaults } from '../faults/txt-fv.ts';
 import { TXT_FV_FAULTS } from '../faults/txt-fv.ts';
 import { checkFontVariant } from './font-variant.ts';
@@ -245,6 +256,12 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
   return runs.filter((r) => r.length > 0);
 }
 
+/** Whether el is a block container whose inline formatting context lays out a line: an atomic inline, or text other than collapsible white space. */
+function holdsInlineContent(el: ResolvedElement): boolean {
+  if (isInlineBox(el)) return false;
+  return inlineContexts(el, () => {}).some((run) => run.some((it) => it.kind === 'atomic' || (it.kind === 'text' && (!/^[ \t\n\r\f]*$/.test(it.text.text) || keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))));
+}
+
 // UAX #9 and css-writing-modes-4 §2.4: the text of an rtl inline formatting context may hold only strong-L letters, spaces and
 // U+200B, and U+200B may not be in the white space that ends a paragraph (at a <br>, bidi class B, or at the end, L1); anything else
 // would be reordered, and it is refused for every target. The text of an inline box belongs to its block container's context.
@@ -449,6 +466,29 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
   for (const t of targets) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${at} ${beside} is not proven against Chrome yet`, manual: `Remove the text-indent from ${el.element.address}, or put its text in a block of its own with text-indent.`, basis: 'computed-value' }));
+  }
+}
+
+// TXT2-i (css-text-3 §6.1): the engine always breaks as hyphens: manual, after a soft hyphen with a hyphen shown. auto is the same
+// in Chrome without a content language (notes/T149-txt2-spec.md R14), and none is the same on text without a soft hyphen; none on
+// text that holds one is refused for every target until the engine honours it. Planted fault noneSoftHyphenAccepted accepts it.
+function checkHyphens(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: Txt2IFaults): void {
+  const value = el.props.get('hyphens') as ResolvedValue;
+  if (faults.noneSoftHyphenAccepted || keywordOf(value) !== 'none') return;
+  for (const c of el.children) {
+    if (c.kind !== 'text' || !c.text.includes('\u00ad')) continue;
+    const id = `hyphens|${c.node.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: value.declaration !== null ? authored(value.declaration.valueSpan) : c.node.node.origin,
+        target: t,
+        message: `hyphens: none on text ${c.node.address}, which holds a soft hyphen (U+00AD): the engine breaks after it and shows a hyphen, which none forbids (TXT2-i)`,
+        manual: `Remove the soft hyphen from ${c.node.address}, or use hyphens: manual.`,
+        basis: 'computed-value',
+      }));
+    }
   }
 }
 
@@ -1016,7 +1056,7 @@ function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics:
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
@@ -1061,6 +1101,13 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
+      // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
+      checkWordBreak(el, targets, diagnostics, reported, shapedAt, faults);
+      // TXT2-lb: line-break strictness over text no Chrome case proves (analysis/line-break.ts).
+      checkLineBreak(el, targets, diagnostics, reported, shapedAt, faults);
+      checkHyphens(el, targets, diagnostics, reported, faults);
+      // TXT2-tal: text-align-last values the engine does not lay out (analysis/text-align-last.ts).
+      checkTextAlignLast(el, holdsInlineContent(el), targets, diagnostics, reported, faults);
       // TXT-FONTFEAT: font-variant features over real faces (analysis/font-variant.ts).
       checkFontVariant(el, targets, diagnostics, reported, shapedAt, faults);
       // TXT-FONTFEAT: kerning, optical sizing and language override over real faces (analysis/font-tuning.ts).
