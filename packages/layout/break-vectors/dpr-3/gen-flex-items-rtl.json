@@ -1,0 +1,12 @@
+{
+  "case": "gen-flex-items-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"row::before:text0","lines":[[0,2]]},
+    {"id":"r1:text0","lines":[[0,2]]},
+    {"id":"r2:text0","lines":[[0,2]]},
+    {"id":"row::after:text0","lines":[[0,1]]},
+    {"id":"col::before:text0","lines":[[0,3],[3,5]]},
+    {"id":"c1:text0","lines":[[0,2]]}
+  ]
+}
