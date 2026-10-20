@@ -3,8 +3,6 @@ import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeR
 import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { APPEARANCE } from './fixture-groups/appearance.ts';
-import { UI_COLORS } from './fixture-groups/ui-colors.ts';
-import { USER_MODIFY } from './fixture-groups/user-modify.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
@@ -80,8 +78,10 @@ import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TOUCH_ACTION } from './fixture-groups/touch-action.ts';
 import { TRANSFORM_EXTRA } from './fixture-groups/transform-extra.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
+import { UI_COLORS } from './fixture-groups/ui-colors.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
+import { USER_MODIFY } from './fixture-groups/user-modify.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { VISIBILITY } from './fixture-groups/visibility.ts';
 import { WHITE_SPACE } from './fixture-groups/white-space.ts';
@@ -143,8 +143,6 @@ export const GROUPS = {
   aliases: ALIASES,
   animations: ANIMATIONS,
   appearance: APPEARANCE,
-  'ui-colors': UI_COLORS,
-  'user-modify': USER_MODIFY,
   'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
@@ -220,8 +218,10 @@ export const GROUPS = {
   'touch-action': TOUCH_ACTION,
   'transform-extra': TRANSFORM_EXTRA,
   transforms: TRANSFORMS,
+  'ui-colors': UI_COLORS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
+  'user-modify': USER_MODIFY,
   values: VALUES,
   visibility: VISIBILITY,
   'white-space': WHITE_SPACE,
