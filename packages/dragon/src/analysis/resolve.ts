@@ -385,8 +385,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         else kids.push(box);
       }
     }
-    // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it.
-    if (parent !== null && isInlineBox(self)) {
+    // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it, and so
+    // does a display: contents element's, whose children take its place in its parent's box (css-display-3 §2.5).
+    if (parent !== null && (isInlineBox(self) || displayOf(self) === 'contents')) {
       pendingInline.set(self, kids);
       return self;
     }
@@ -420,6 +421,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
           modes.push(collapseModeOf(owner));
           transforms.push({ kind: 'text', node: kid, transform: textTransformOf(owner) });
         } else if (displayOf(kid) === 'none') continue;
+        else if (displayOf(kid) === 'contents' && pendingInline.has(kid)) gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') {
             run.push(null);

@@ -477,6 +477,22 @@ const displayOf = (el: ResolvedElement): string => {
 };
 
 /**
+ * css-display-3 §2.5: the children that generate boxes in el's box. display: none ones generate none, and a display: contents
+ * element is replaced by its own children (it still passes on its inherited values, which resolve.ts has applied).
+ */
+function boxChildren(el: ResolvedElement): (ResolvedElement | ResolvedText)[] {
+  return el.children.flatMap((c): (ResolvedElement | ResolvedText)[] => {
+    if (c.kind === 'text') return [c];
+    const d = displayOf(c);
+    if (d === 'none') return [];
+    if (d !== 'contents') return [c];
+    // css-display-3 §2.7 (Appendix B): a replaced element with display: contents computes to none in Chrome; Dragon refuses it.
+    if (isReplacedTag(c.element.tag)) throw new LoweringError(c.element.address, 'display', `display: contents on the replaced element ${c.element.address} is not supported`);
+    return boxChildren(c);
+  });
+}
+
+/**
  * C5: a text leaf carries its inherited text-align and direction (goal.md principle 3), while the engine reads both from the block
  * container that holds the text (css-text-3 §7.1, css-writing-modes-4 §2.1). Without inline elements they must be equal.
  */
@@ -512,7 +528,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
     if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
-  const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');
+  const kids = boxChildren(c);
   const block = kids.find((k) => !isInlineLevel(k) || isAtomic(k));
   if (block !== undefined && block.kind === 'element') {
     if (isAtomic(block)) throw new LoweringError(block.element.address, 'display', `atomic inline <${block.element.tag}> ${block.element.address} inside inline box ${id} is not laid out (INL2c)`);
@@ -549,6 +565,7 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
  */
 export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset, images: ImageNaturals, mode: LowerMode): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
+  if (displayOf(root) === 'contents') throw new LoweringError(root.element.address, 'display', `display: contents on the root element ${root.element.address} is not supported`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
   const markers = new Map(listItemMarkers(root, faults).map((m) => [m.address, m] as const));
@@ -606,7 +623,7 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
  */
 function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox {
   const id = el.element.address;
-  const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
+  const kids = boxChildren(el);
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const display = displayOf(el);
   const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null });
