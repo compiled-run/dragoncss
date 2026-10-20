@@ -28,7 +28,7 @@ import { checkAgainstChrome, checkAgainstEngine, checkApplied, DUMP_FAULTS, FAUL
 import type { NativeDump } from './native-dump.ts';
 import { validateNativeDump } from './native-dump.ts';
 import type { NativeCase } from './native-host.ts';
-import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
+import { BACKEND_OF, buildAndroid, buildIos, deviceCheckCases, engineBoxes, expectedEngine, nativeOut } from './native-host.ts';
 import { expectedHitRuns, hitCases } from './hit-capture.ts';
 import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-cases.ts';
 import type { AnimSample } from './anim-samples.ts';
@@ -480,12 +480,12 @@ export const isBlockReason = (x: unknown): x is BlockReason => typeof x === 'str
 export async function runTargetOnDevices(t: TargetConfig, host: HostSource, log: RunLog, opts: { readonly vectors?: boolean; readonly jobs?: number; readonly early?: EarlyBoots | null } = {}): Promise<DeviceRun> {
   // Stamped before any device work: the code, reference data and app sources this run is made and judged with.
   const evidence = deviceEvidence(t.target);
-  const cases = nativeCases();
+  const cases = deviceCheckCases();
   const b0 = Date.now();
   const build = t.target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
   for (const l of build.log) log(`${t.target} build: ${l}`);
   log(`${t.target} build: ${((Date.now() - b0) / 1000).toFixed(0)} s`);
-  if (build.cases !== cases.length) throw new Error(`${t.target}: the app holds ${build.cases} cases, layoutCases() ${cases.length}`);
+  if (build.cases !== cases.length) throw new Error(`${t.target}: the app holds ${build.cases} cases, deviceCheckCases() ${cases.length}`);
   const specs = DEVICE_MATRIX.filter((d) => d.target === t.target);
   const vectors = opts.vectors !== false;
   const jobs = Math.min(opts.jobs ?? 1, specs.length);

@@ -10,13 +10,14 @@ import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
 import { chromeBreaksText, captureBreakTexts, compareVectorWithChrome, expectedBreaksDir, expectedBreaksPath, leafTexts, readBreakVector } from '../line-breaks.ts';
 import type { ChromeBreaks, ChromeBreakText } from '../line-breaks.ts';
 import type { EngineCase } from '../native-host.ts';
-import { engineCases } from '../native-host.ts';
+import { deviceEngineCases } from '../native-host.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
 const platform = hostPlatform();
 if (platform !== REFERENCE_PLATFORM) throw new Error(`break captures are taken on the reference platform ${REFERENCE_PLATFORM}, not ${platform}`);
 // TXT1a-2: every layout case, a shaped one (native refuses it until phase R) through its engine projection.
-const cases = engineCases();
+// SELD-R2 PR 5: the forced device cases too (native-host.ts deviceEngineCases), whose lines the device lines check reads.
+const cases = deviceEngineCases();
 console.log(`parity:break-capture: ${cases.length} cases per DPR; DPRs ${DPRS.join(', ')}`);
 const captured = new Map<string, ChromeBreaks>();
 

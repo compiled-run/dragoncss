@@ -51,6 +51,13 @@ export function forcedFor(p: InteractionPartition, k: number): readonly ForcedPs
 /** Whether a case id is a forced case's ("<case>~ix<k>", then the direction suffix): one counted beside the reachable cases. */
 export const isForcedCaseId = (id: string): boolean => /~ix\d+(-rtl)?$/.test(id);
 
+/** The device-traces script of a forced case's group: the fixture and direction of "<case>~ix<k>" (trace-lane.ts traceScriptId). */
+export function traceScriptOfForced(id: string): string {
+  const m = /^(.*?)(#\d+)?~ix\d+(-rtl)?$/.exec(id);
+  if (m === null) throw new Error(`${id} is not a forced case id`);
+  return `${m[1]}${m[3] ?? ''}~trace`;
+}
+
 /** The forced cases of one case: one per partition state but none, "<case>~ix<k>" with the direction suffix last. */
 export function forcedCasesOf(spec: FixtureSpec, c: ParityCase, p: InteractionPartition | null): ParityCase[] {
   if (p === null) return [];

@@ -23,7 +23,8 @@ import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, deviceCheckCaseIds, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { forcedDeviceCaseIds } from '../src/forced-device.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 import { animSampleIds } from '../src/anim-samples.ts';
 
@@ -83,8 +84,9 @@ describe('native targets', () => {
     for (const l of ['device-frames', 'device-applied', 'device-lines', 'device-pixels']) {
       const a = lane(ios, l);
       const b = lane(android, l);
-      // TXT1a-2: the device cases are every layout case but the shaped ones, which the device runtime draws only from phase R on.
-      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, vectorCaseIds().length]));
+      // TXT1a-2: the device cases are every layout case but the shaped ones, which the device runtime draws only from phase R on;
+      // SELD-R2 PR 5: then the forced device cases (targets.ts deviceCheckCaseIds).
+      expect(a?.sets.map((s) => [s.dpr, s.ids])).toEqual(SHARED_DPRS.map((d) => [d, [...vectorCaseIds(), ...forcedDeviceCaseIds()]]));
       expect(b?.sets.filter((s) => s.role === 'shared')).toEqual(a?.sets);
       expect(b?.sets.filter((s) => s.role === 'extra').map((s) => [s.dpr, s.extra])).toEqual(EXTRA_DPRS.map((e) => [e.dpr, e.name]));
     }
@@ -303,7 +305,7 @@ describe('committed out/lanes.json', () => {
         // those the hit lane refuses by name, hit-capture.ts hitCases) and compares only hit points (b), the other counts exactly 0.
         // SELD-R2: device-traces runs every interaction script and compares only trace lines (b).
         // device-anim runs every frame sample (anim-samples.ts); the other device lanes run every device case (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
-        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : vectorCaseIds().length;
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : deviceCheckCaseIds().length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           // A record carried over a changed case list (async device lanes) ran the cases its RanCases names, not today's.

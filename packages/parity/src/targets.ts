@@ -6,6 +6,7 @@ import { nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { animSampleIds } from './anim-samples.ts';
+import { forcedDeviceCaseIds } from './forced-device.ts';
 import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
@@ -76,6 +77,13 @@ export function vectorCaseIds(): readonly string[] {
     vectorIds = layoutCaseIds().filter((id) => !shaped.has(id));
   }
   return vectorIds;
+}
+
+let checkIds: readonly string[] | null = null;
+/** The cases the device check lanes run: every device case, then the forced device cases (forced-device.ts, SELD-R2 PR 5). */
+export function deviceCheckCaseIds(): readonly string[] {
+  checkIds ??= [...vectorCaseIds(), ...forcedDeviceCaseIds()];
+  return checkIds;
 }
 
 const extraName = (dpr: number): string | null => EXTRA_DPRS.find((e) => e.dpr === dpr)?.name ?? null;
@@ -160,7 +168,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   // TXT1a-2: a shaped case is not a device case until phase R gives the device runtime its shaper (the device measures only Ahem).
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   if (lane === 'device-traces') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, traceScriptIds())), corpora: [] };
-  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, vectorCaseIds())), corpora: [] };
+  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, deviceCheckCaseIds())), corpora: [] };
 }
 
 function targetConfig(target: NativeTarget): TargetConfig {

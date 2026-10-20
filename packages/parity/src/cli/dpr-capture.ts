@@ -7,12 +7,14 @@ import { captureFixture, captureJson } from '../capture.ts';
 import { launchChrome } from '../chrome.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { atDpr, DPRS, EXTRA_DPRS, expectedDprDir, expectedDprPath, layoutCases, zoomGuard } from '../dpr.ts';
+import { forcedDeviceCases } from '../forced-device.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
 const platform = hostPlatform();
 if (platform !== REFERENCE_PLATFORM) throw new Error(`DPR captures are taken on the reference platform ${REFERENCE_PLATFORM}, not ${platform}`);
-const all = layoutCases();
-const ids = all.flatMap((f) => f.cases.map((c) => c.id));
+// SELD-R2 PR 5: the forced device cases too, with their states forced (forced-device.ts), as the device check lanes read them.
+const all = [...layoutCases().flatMap((f) => f.cases), ...forcedDeviceCases().map((f) => f.case)];
+const ids = all.map((c) => c.id);
 console.log(`parity:dpr-capture: ${ids.length} cases per DPR; DPRs ${DPRS.join(', ')} (${EXTRA_DPRS.map((e) => `${e.dpr} is the ${e.platform} extra ${e.name}`).join('; ')})`);
 
 // The planted launch: flag 1 with a context deviceScaleFactor of N reports devicePixelRatio N but lays out at zoom 1.
@@ -40,7 +42,7 @@ for (const dpr of DPRS) {
     const t = Date.now();
     // Each case in its own context (captureFixture), CHROME_PAGES at a time.
     const n = (
-      await inOrder(all.flatMap((f) => f.cases), CHROME_PAGES, async (c) => {
+      await inOrder(all, CHROME_PAGES, async (c) => {
         const capture = await captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], c.authoredPrepare ?? undefined);
         if (capture.devicePixelRatio !== dpr) throw new Error(`${c.id}: captured at DPR ${capture.devicePixelRatio}, not ${dpr}`);
         writeFileSync(expectedDprPath(c.id, dpr, platform), captureJson(capture));

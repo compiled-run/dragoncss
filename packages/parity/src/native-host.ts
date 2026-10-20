@@ -24,6 +24,7 @@ import type { EncoderLanguage } from './native-encoders.ts';
 import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
 import { referenceDump } from './native-compare.ts';
 import type { NativeDump } from './native-dump.ts';
+import { forcedDeviceCases } from './forced-device.ts';
 import { NATIVE_CONFIG, nativeCompileOnce } from './native-compile.ts';
 export { NATIVE_CONFIG, nativeCompile, nativeCompileOnce } from './native-compile.ts';
 import { BUILD_CACHE, hit, publish, pruneCache, replace } from '../../translate/src/build-cache.ts';
@@ -72,6 +73,32 @@ export function nativeCases(): readonly NativeCase[] {
   }
   records = out;
   return out;
+}
+
+let forcedRecords: readonly NativeCase[] | null = null;
+
+/** SELD-R2 PR 5: every forced device case (forced-device.ts) as a device case, with its interaction state's native programs. */
+export function forcedNativeCases(): readonly NativeCase[] {
+  if (forcedRecords !== null) return forcedRecords;
+  forcedRecords = forcedDeviceCases().map((f) => {
+    const compiled = nativeCompileOnce(f.spec, f.case.environment.direction);
+    if (f.case.interaction === undefined) throw new Error(`${f.case.id}: a forced device case without an interaction state`);
+    const p = nativePrograms(compiled, f.case.assignment, f.case.interaction);
+    if (p.kind !== 'ready') throw new Error(`${f.case.id}: no native programs in its interaction state: ${p.reason}`);
+    return { spec: f.spec, case: f.case, compiled, programs: p.programs };
+  });
+  return forcedRecords;
+}
+
+/** The cases the device check lanes run (targets.ts deviceCheckCaseIds): every device case, then every forced device case. */
+export const deviceCheckCases = (): readonly NativeCase[] => [...nativeCases(), ...forcedNativeCases()];
+
+/** engineCases with every forced device case after them: the cases the device lines check reads break vectors and breaks of. */
+export function deviceEngineCases(): readonly EngineCase[] {
+  return [...engineCases(), ...forcedNativeCases().map((n): EngineCase => {
+    if (JSON.stringify(n.programs.uikit.root) !== JSON.stringify(n.programs['android-views'].root)) throw new Error(`${n.case.id}: the uikit and android-views programs hold different engine inputs`);
+    return { case: n.case, root: n.programs.uikit.root, inputAt: (dpr) => programInput(n.programs.uikit, n.case.environment.viewport, dpr) };
+  })];
 }
 
 /** A layout case with the engine input tree the engine lane lays it out from (the break vectors and break captures read these). */
@@ -145,7 +172,7 @@ export function emitCases(target: NativeTarget): EmitCase[] {
 function computeEmitCases(target: NativeTarget): EmitCase[] {
   const backend = BACKEND_OF[target];
   const m = expectedEngine();
-  return nativeCases().map((n) => {
+  return deviceCheckCases().map((n) => {
     const program = n.programs[backend];
     const viewport = n.case.environment.viewport;
     return {

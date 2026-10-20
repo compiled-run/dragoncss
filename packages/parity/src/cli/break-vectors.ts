@@ -4,11 +4,12 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { DPRS } from '../dpr.ts';
 import { breakVector, breakVectorDir, breakVectorPath, breakVectorText, engineTextLines } from '../line-breaks.ts';
-import { engineCases } from '../native-host.ts';
+import { deviceEngineCases } from '../native-host.ts';
 import { referenceShapedMeasurer } from '../text-shaper-host.ts';
 
 // TXT1a-2: every layout case, a shaped one (native refuses it until phase R) through its engine projection.
-const cases = engineCases();
+// SELD-R2 PR 5: the forced device cases too (native-host.ts deviceEngineCases), whose lines the device lines check reads.
+const cases = deviceEngineCases();
 // The shaped cases lay out in their real faces, which the device measurer (native-host.ts referenceMeasurer, Ahem) does not bundle.
 const m = referenceShapedMeasurer();
 let lines = 0;

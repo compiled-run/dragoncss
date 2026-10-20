@@ -11,10 +11,13 @@ import { exactInZoomedLu, GATE_DEVICE_PX } from '../src/compare.ts';
 import type { DprCaseOutcome } from '../src/dpr.ts';
 import { declaredLayoutCaseCount } from '../src/case-count.ts';
 import { DPR_GATE_DEVICE_PX, DPRS, dprRegistryRows, EXTRA_DPRS, expectedDprDir, layoutCases, registryRowPasses, runDprCase, runDprLane, SHARED_DPRS, ZOOM_GUARD } from '../src/dpr.ts';
+import { forcedDeviceCaseIds } from '../src/forced-device.ts';
 import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
 const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
+// SELD-R2 PR 5: the forced device cases are captured beside the layout cases at every DPR (forced-device.ts), for the device checks.
+const captured = [...ids, ...forcedDeviceCaseIds()];
 
 describe('DPR lane constants', () => {
   it('shared ratios 2 and 3, the Android extra 2.625 named with its platform, never a substitute', () => {
@@ -45,12 +48,12 @@ describe('DPR lane constants', () => {
 });
 
 describe('DPR captures (packages/parity/expected-dpr/darwin-arm64/dpr-<N>)', () => {
-  it(`every DPR set holds the same ${ids.length} case ids as DPR 1, outside expected/darwin-arm64`, () => {
+  it(`every DPR set holds the same ${ids.length} case ids as DPR 1 and the forced device cases, outside expected/darwin-arm64`, () => {
     expect(ids.length).toBe(declaredLayoutCaseCount());
     for (const dpr of DPRS) {
       const dir = expectedDprDir(dpr);
       expect(dir.startsWith(expectedDir())).toBe(false);
-      expect(readdirSync(dir).filter((f) => f.endsWith('.web.json')).map((f) => f.replace(/\.web\.json$/, '')).sort()).toEqual([...ids].sort());
+      expect(readdirSync(dir).filter((f) => f.endsWith('.web.json')).map((f) => f.replace(/\.web\.json$/, '')).sort()).toEqual([...captured].sort());
     }
     // platform.test.ts reads every entry of expected/darwin-arm64 as a file: no DPR folder there.
     expect(readdirSync(expectedDir(), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)).toEqual([]);
@@ -58,7 +61,7 @@ describe('DPR captures (packages/parity/expected-dpr/darwin-arm64/dpr-<N>)', () 
 
   it('every capture records its DPR, the reference platform and the case direction', () => {
     for (const dpr of DPRS) {
-      for (const id of ids) {
+      for (const id of captured) {
         const c = JSON.parse(readFileSync(`${expectedDprDir(dpr)}/${id}.web.json`, 'utf8')) as WebCapture;
         expect([c.devicePixelRatio, c.platform, c.direction], `${id} @${dpr}`).toEqual([dpr, 'darwin-arm64', id.endsWith('-rtl') ? 'rtl' : 'ltr']);
       }

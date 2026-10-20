@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
 import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitRefusal, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
 import type { NativeCase } from '../src/native-host.ts';
-import { nativeCases } from '../src/native-host.ts';
+import { deviceCheckCases, nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { hitCaseIds, nativeTargets } from '../src/targets.ts';
 import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
@@ -32,7 +32,8 @@ describe('the host hit lane', () => {
     // The device-hit lane declares exactly the hit cases at every device DPR (targets.ts hitCaseIds), so P5 counts them, not all.
     expect(hitCaseIds()).toEqual(cases.map((n) => n.case.id));
     for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-hit')?.sets ?? []) expect(s.ids, `${t.target} ${s.dpr}`).toEqual(hitCaseIds());
-    for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-frames')?.sets ?? []) expect(s.ids.length, `${t.target} ${s.dpr}`).toBe(nativeCases().length);
+    // SELD-R2 PR 5: the device check lanes run the forced device cases too, which have no hit facts of their own.
+    for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-frames')?.sets ?? []) expect(s.ids.length, `${t.target} ${s.dpr}`).toBe(deviceCheckCases().length);
   });
 
   it('has a capture of every layout case, on the grid its hit table derives', () => {

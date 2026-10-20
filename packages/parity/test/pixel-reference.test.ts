@@ -9,7 +9,7 @@ import type { NativeProgram } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from '../src/chrome.ts';
 import { readBreakVector } from '../src/line-breaks.ts';
 import { readSamples } from '../src/native-compare.ts';
-import { nativeCases, nativeCompile } from '../src/native-host.ts';
+import { deviceCheckCases, nativeCases, nativeCompile } from '../src/native-host.ts';
 import { nativePrograms } from 'dragon';
 import { DPRS, layoutCases } from '../src/dpr.ts';
 import { repoPath } from '../src/paths.ts';
@@ -39,12 +39,14 @@ describe('committed Chrome pixels', () => {
     expect(manifest.sets.map((s) => s.dpr)).toEqual([...DPRS]);
     for (const s of manifest.sets) {
       expect(s.flags).toEqual(chromeArgsAt(s.dpr));
-      expect(s.cases.map((c) => c.case)).toEqual(cases.map((n) => n.case.id));
-      expect(readdirSync(expectedPixelsDir(s.dpr)).filter((f) => f.endsWith('.png')).length).toBe(cases.length);
+      // SELD-R2 PR 5: the device pixels lane's cases, the forced device cases after the layout device cases (deviceCheckCases).
+      const shot = deviceCheckCases();
+      expect(s.cases.map((c) => c.case)).toEqual(shot.map((n) => n.case.id));
+      expect(readdirSync(expectedPixelsDir(s.dpr)).filter((f) => f.endsWith('.png')).length).toBe(shot.length);
       for (const c of s.cases) {
         const png = readFileSync(expectedPixelsPath(c.case, s.dpr));
         expect(createHash('sha256').update(png).digest('hex'), `${c.case}@${s.dpr}`).toBe(c.sha256);
-        const n = cases.find((x) => x.case.id === c.case);
+        const n = shot.find((x) => x.case.id === c.case);
         expect([c.width, c.height]).toEqual(Object.values(rasterSize(n?.case.environment.viewport ?? { width: 0, height: 0 }, s.dpr)));
       }
     }

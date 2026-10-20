@@ -8,6 +8,7 @@ import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from 
 import type { LanesFile } from './lanes.ts';
 import { ranIds, readLanesFile, staleLanes } from './lanes.ts';
 import { repoPath } from './paths.ts';
+import { traceScriptOfForced } from './cases.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import type { NativeTarget, TargetConfig } from './targets.ts';
 import { nativeTargets } from './targets.ts';
@@ -99,17 +100,22 @@ export function deriveAnimationRows(target: ProfileTarget, passing: readonly Pas
   });
 }
 
-/** SELD-R2 PR 5: the device lanes a forced interaction case must pass at every DPR before it proves an interaction row. */
-export const INTERACTION_ROW_LANES = [STATE_LANE, 'device-frames', 'device-applied', 'device-pixels'] as const;
+/**
+ * SELD-R2 PR 5: the device lanes a forced device case (forced-device.ts) must pass at every DPR before it proves an interaction row:
+ * the four device checks on the case itself (its state's programs drawn as a layout case), and device-traces on its group's script,
+ * whose forced steps put the device's interaction machine into that state.
+ */
+export const INTERACTION_ROW_LANES = [...DEVICE_CHECK_LANES, TRACE_LANE] as const;
 
-/** Why a forced interaction case is not device-proven on a target, or null when it passes every INTERACTION_ROW_LANES lane at every DPR (pure). */
+/** Why a forced device case is not device-proven on a target, or null when it passes every INTERACTION_ROW_LANES lane at every DPR (pure). */
 export function interactionDeviceBlocker(ev: DeviceEvidence, id: string): string | null {
   if (ev.unavailable !== null) return ev.unavailable;
   for (const lane of INTERACTION_ROW_LANES) {
     const l = ev.lanes.find((x) => x.lane === lane);
     if (l === undefined) return `${ev.target} has no ${lane} lane`;
-    if (!l.cases.has(id)) return `${id} is not run by ${ev.target} ${lane} at every DPR`;
-    if (l.failing.has(id)) return `${id} fails ${ev.target} ${lane}`;
+    const run = lane === TRACE_LANE ? traceScriptOfForced(id) : id;
+    if (!l.cases.has(run)) return `${run} is not run by ${ev.target} ${lane} at every DPR`;
+    if (l.failing.has(run)) return `${run} fails ${ev.target} ${lane}`;
   }
   return null;
 }
