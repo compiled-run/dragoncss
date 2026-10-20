@@ -1,21 +1,25 @@
 // The band partition (notes/T067 R4): the width and height atoms of a sheet split each axis into groups, and the orientation and
 // aspect-ratio atoms add a ratio factor. A band is one reachable assignment of truth values to all atoms; its condition text is
 // written only with the authored atoms and their negations.
-import { compareMedia, comparisonsOf, evaluateFeature, evaluateWithOracle, MEDIA_EPSILON } from './evaluate.ts';
-import type { MediaResult } from './evaluate.ts';
+import { compareMedia, comparisonsOf, DESKTOP_DEVICE, evaluateFeature, evaluateWithOracle, MEDIA_EPSILON } from './evaluate.ts';
+import type { MediaDevice, MediaResult } from './evaluate.ts';
+import { DEVICE_FEATURES } from './features.ts';
 import type { MediaFaults } from './faults.ts';
 import { NO_MEDIA_FAULTS } from './faults.ts';
 import { INITIAL_FONT_SIZE, resolveLength } from './length.ts';
 import { featuresOfList, serialiseFeature } from './parse.ts';
 import type { Comparison, MediaFeature, MediaQueryList, MediaValue } from './parse.ts';
-import { wholeAtOrAbove, wholeAtOrBelow } from './viewport.ts';
+import { clampToFloat, twoDecimals, wholeAtOrAbove, wholeAtOrBelow } from './viewport.ts';
 
 export const MAX_BANDS = 16;
 /** The band count stops being counted past this many (the sheet is refused either way). */
 const COUNT_LIMIT = 1024;
 
-/** A width or height atom splits its axis; a ratio atom (orientation, aspect-ratio) reads both, as whole CSS px. */
-export type MediaAtom = { readonly text: string; readonly axis: 'width' | 'height' | 'ratio'; readonly feature: MediaFeature };
+/**
+ * A width or height atom splits its axis; a ratio atom (orientation, aspect-ratio) reads both, as whole CSS px; a device atom
+ * (MQ-R2: resolution, pointer, hover, prefers-reduced-motion) reads the device, not the root.
+ */
+export type MediaAtom = { readonly text: string; readonly axis: 'width' | 'height' | 'ratio' | 'device'; readonly feature: MediaFeature };
 
 export type Interval = {
   readonly lo: number;
@@ -280,6 +284,79 @@ function ratioVectors(atoms: readonly MediaAtom[], width: readonly Interval[], h
   return out;
 }
 
+// The device factor (MQ-R2). Each device atom is a step function of the device scale or a predicate on the discrete readings, so
+// its reachable truth vectors are found by evaluating every atom at every scale where some atom can change (each query value and
+// its neighbouring floats, the dpcm rounding edges, and a scale between each two of them) and at every consistent reading.
+
+/** The adjacent float above (up) or below x (x a float). */
+function stepFloat(x: number, up: boolean): number {
+  const f = new Float32Array([x]);
+  const i = new Int32Array(f.buffer);
+  if (x === 0) return up ? 1.401298464324817e-45 : -1.401298464324817e-45;
+  i[0] = (i[0] as number) + ((x > 0) === up ? 1 : -1);
+  return f[0] as number;
+}
+
+/** The device scales at which a resolution atom can change, with their neighbouring floats. */
+function scaleCandidates(atoms: readonly MediaAtom[]): number[] {
+  const around = (q: number): number[] => {
+    const out = [q];
+    let [lo, hi] = [q, q];
+    for (let k = 0; k < 4; k++) {
+      lo = stepFloat(lo, false);
+      hi = stepFloat(hi, true);
+      out.push(lo, hi);
+    }
+    return out;
+  };
+  const points: number[] = [0, 1];
+  for (const a of atoms) {
+    if (a.feature.base !== 'resolution' && a.feature.base !== '-webkit-device-pixel-ratio') continue;
+    for (const { value } of comparisonsOf(a.feature)) {
+      if (value.kind === 'number') points.push(...around(clampToFloat(value.value)));
+      if (value.kind !== 'resolution') continue;
+      const dppx = clampToFloat(value.value * ({ dppx: 1, x: 1, dpi: 1 / 96, dpcm: 1 / (96 / 2.54) } as const)[value.unit]);
+      points.push(...around(dppx));
+      // A dpcm comparison rounds both sides to two decimals, so it changes half a hundredth from the rounded value.
+      if (value.unit === 'dpcm') {
+        const t = twoDecimals(dppx);
+        for (const e of [t - 0.005, t + 0.005, t - 0.015, t + 0.015]) points.push(...around(clampToFloat(e)));
+      }
+    }
+  }
+  const sorted = [...new Set(points.filter((p) => p >= 0 && Number.isFinite(p)))].sort((a, b) => a - b);
+  const mids = sorted.slice(1).map((p, k) => ((sorted[k] as number) + p) / 2);
+  return [...sorted, ...mids, (sorted[sorted.length - 1] as number) * 2 + 1];
+}
+
+/** Every pointer and hover reading a device can report: the primary pointer one of the pointers present, hover only with one. */
+function readings(): Omit<MediaDevice, 'dpr'>[] {
+  const out: Omit<MediaDevice, 'dpr'>[] = [];
+  for (const anyPointer of [[], ['coarse'], ['fine'], ['coarse', 'fine']] as ('coarse' | 'fine')[][]) {
+    for (const pointer of anyPointer.length === 0 ? ['none' as const] : anyPointer) {
+      for (const anyHover of ['none', 'hover'] as const) {
+        for (const hover of anyHover === 'hover' ? (['none', 'hover'] as const) : (['none'] as const)) {
+          for (const reducedMotion of ['no-preference', 'reduce'] as const) out.push({ pointer, anyPointer, hover, anyHover, reducedMotion });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** The reachable truth vectors of the device atoms, in first-reached order (the desktop reading at DPR 1 first). */
+function deviceVectors(atoms: readonly MediaAtom[], faults: MediaFaults): boolean[][] {
+  if (atoms.length === 0) return [[]];
+  const at = (d: MediaDevice): boolean[] => atoms.map((a) => evaluateFeature(a.feature, { width: 0, height: 0, device: d }, faults));
+  const out = new Map<string, boolean[]>();
+  for (const device of [DESKTOP_DEVICE, ...scaleCandidates(atoms).flatMap((dpr) => readings().map((r) => ({ ...r, dpr })))]) {
+    const v = at(device);
+    if (!out.has(v.join())) out.set(v.join(), v);
+    if (out.size >= COUNT_LIMIT) break;
+  }
+  return [...out.values()];
+}
+
 /** Collects the width, height and ratio atoms of every list, deduplicated by their serialisation. */
 export function mediaAtoms(lists: readonly MediaQueryList[]): MediaAtom[] | Extract<BandPartition, { kind: 'refused' }> {
   const atoms: MediaAtom[] = [];
@@ -287,7 +364,7 @@ export function mediaAtoms(lists: readonly MediaQueryList[]): MediaAtom[] | Extr
     if (f.refused === 'environment') continue;
     const text = serialiseFeature(f);
     if (f.refused !== null) return { kind: 'refused', reason: 'refused-value', detail: text };
-    const axis = f.base === 'width' || f.base === 'height' ? f.base : 'ratio';
+    const axis = f.base === 'width' || f.base === 'height' ? f.base : DEVICE_FEATURES.has(f.base) ? 'device' : 'ratio';
     if (!atoms.some((a) => a.text === text)) atoms.push({ text, axis, feature: f });
   }
   return atoms;
@@ -298,18 +375,22 @@ export function band(lists: readonly MediaQueryList[], faults: MediaFaults = NO_
   const atoms = mediaAtoms(lists);
   if (!Array.isArray(atoms)) return atoms;
   const on = (axis: MediaAtom['axis']): MediaAtom[] => atoms.filter((a) => a.axis === axis);
-  const [widthAtoms, heightAtoms, ratioAtoms] = [on('width'), on('height'), on('ratio')];
+  const [widthAtoms, heightAtoms, ratioAtoms, deviceAtoms] = [on('width'), on('height'), on('ratio'), on('device')];
   const widthGroups = axisGroups(widthAtoms, faults);
   const heightGroups = axisGroups(heightAtoms, faults);
+  const devices = deviceVectors(deviceAtoms, faults);
   const bands: Band[] = [];
   let count = 0;
   for (const wg of widthGroups) {
     for (const hg of heightGroups) {
       for (const ratio of ratioVectors(ratioAtoms, wg.intervals, hg.intervals, faults)) {
-        if (++count > MAX_BANDS) continue;
-        const truth = atoms.map((a) => (a.axis === 'width' ? wg.truth[widthAtoms.indexOf(a)] : a.axis === 'height' ? hg.truth[heightAtoms.indexOf(a)] : ratio[ratioAtoms.indexOf(a)]) as boolean);
-        const condition = atoms.map((a, k) => (truth[k] ? a.text : `(not ${a.text})`)).join(' and ') || 'all';
-        bands.push({ index: bands.length, truth, width: wg.intervals, height: hg.intervals, condition });
+        for (const device of devices) {
+          if (++count > MAX_BANDS) continue;
+          const truth = atoms.map((a) => (a.axis === 'width' ? wg.truth[widthAtoms.indexOf(a)] : a.axis === 'height' ? hg.truth[heightAtoms.indexOf(a)] : a.axis === 'ratio' ? ratio[ratioAtoms.indexOf(a)] : device[deviceAtoms.indexOf(a)]) as boolean);
+          const condition = atoms.map((a, k) => (truth[k] ? a.text : `(not ${a.text})`)).join(' and ') || 'all';
+          bands.push({ index: bands.length, truth, width: wg.intervals, height: hg.intervals, condition });
+        }
+        if (count >= COUNT_LIMIT) break;
       }
       if (count >= COUNT_LIMIT) break;
     }
@@ -323,15 +404,16 @@ export function band(lists: readonly MediaQueryList[], faults: MediaFaults = NO_
 }
 
 /**
- * The band that holds a viewport (CSS px, Chrome's media size): its width and height intervals hold the viewport and its ratio
- * truths equal the ratio atoms there. Null when none does (only a faulted partition leaves a gap).
+ * The band that holds a viewport (CSS px, Chrome's media size) on a device: its width and height intervals hold the viewport and
+ * its ratio and device truths equal those atoms there. Null when none does (only a faulted partition leaves a gap).
  */
 export function bandAt(
   partition: Extract<BandPartition, { kind: 'bands' }>,
   viewport: { readonly width: number; readonly height: number },
   faults: MediaFaults = NO_MEDIA_FAULTS,
+  device: MediaDevice = DESKTOP_DEVICE,
 ): Band | null {
-  const ratio = partition.atoms.map((a) => (a.axis === 'ratio' ? evaluateFeature(a.feature, viewport, faults) : null));
+  const ratio = partition.atoms.map((a) => (a.axis === 'ratio' || a.axis === 'device' ? evaluateFeature(a.feature, { ...viewport, device }, faults) : null));
   return (
     partition.bands.find(
       (b) => b.width.some((i) => contains(i, viewport.width)) && b.height.some((i) => contains(i, viewport.height)) && ratio.every((r, k) => r === null || b.truth[k] === r),

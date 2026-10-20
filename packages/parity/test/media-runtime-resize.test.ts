@@ -6,9 +6,9 @@
 import { describe, expect, it } from 'vitest';
 import { androidProfile, iosProfile, MEDIA_CONTEXT, mediaFeatures, NO_BAND_RUNTIME_FAULTS, nativeBandOfViewport, nativeBands, webProfile } from 'dragon';
 import type { ResizeCapture } from '../src/resize-capture.ts';
-import { committedResize, RESIZE_BACKENDS, RESIZE_DPRS, resizeCaptureProblem, resizeCaseReport, resizeCases, resizeReport, scriptPoints, scriptProblem } from '../src/resize-capture.ts';
-import { RESIZE_SCRIPTS, resizeSizeProblem } from '../src/fixture-groups/media-runtime.ts';
-import { deriveMediaRows } from '../src/profile-rows.ts';
+import { ALL_RESIZE_SCRIPTS, blinkPointerArgs, committedResize, deviceAt, RESIZE_BACKENDS, RESIZE_DPRS, resizeCaptureProblem, resizeCaseReport, readingQueries, resizeCases, resizeReport, scriptPoints, scriptProblem } from '../src/resize-capture.ts';
+import { resizeSizeProblem } from '../src/fixture-groups/media-runtime.ts';
+import { deriveMediaRows, MEDIA_CAVEATS } from '../src/profile-rows.ts';
 
 const cases = resizeCases();
 const byId = (id: string) => {
@@ -19,16 +19,33 @@ const byId = (id: string) => {
 
 describe('the resize scripts', () => {
   it('stay on the 8 css px grid within the 400x400 every portrait stage holds, and name real fixtures and states', () => {
-    for (const s of RESIZE_SCRIPTS) expect(scriptProblem(s), s.fixture).toBeNull();
+    // MQ-R2: the media-runtime scripts, then the media-environment ones (ENV_SCRIPTS).
+    for (const s of ALL_RESIZE_SCRIPTS) expect(scriptProblem(s), s.fixture).toBeNull();
     expect([[401, 304], [404, 304], [300, 304], [0, 304], [400, 7.5]].map(([width, height]) => resizeSizeProblem({ width: width as number, height: height as number }) !== null)).toEqual([true, true, true, true, true]);
     expect(resizeSizeProblem({ width: 400, height: 400 })).toBeNull();
-    expect(cases.map((c) => c.id)).toEqual(RESIZE_SCRIPTS.flatMap((s) => [`${s.fixture}~resize`, `${s.fixture}-rtl~resize`]));
+    expect(cases.map((c) => c.id)).toEqual(ALL_RESIZE_SCRIPTS.flatMap((s) => [`${s.fixture}~resize`, `${s.fixture}-rtl~resize`]));
+  });
+  it('MQ-R2: a pointers step launches Chrome with Blink\'s pointer and hover types, and carries no app state or touch emulation over', () => {
+    expect(blinkPointerArgs({ pointer: 'coarse', anyPointer: ['coarse', 'fine'], hover: 'none', anyHover: 'hover' })).toEqual(['--blink-settings=primaryPointerType=2,availablePointerTypes=6,primaryHoverType=1,availableHoverTypes=2']);
+    expect(blinkPointerArgs({ pointer: 'none', anyPointer: [], hover: 'none', anyHover: 'none' })).toEqual(['--blink-settings=primaryPointerType=1,availablePointerTypes=1,primaryHoverType=1,availableHoverTypes=1']);
+    expect(() => blinkPointerArgs({ pointer: 'fine', anyPointer: [], hover: 'none', anyHover: 'none' })).toThrow(/primary pointer/);
+    const p = { kind: 'env', reading: 'pointers', value: { pointer: 'none', anyPointer: [], hover: 'none', anyHover: 'none' } } as const;
+    const base = { fixture: 'mqr2-pointer-hover', start: { width: 400, height: 304 } };
+    expect(scriptProblem({ ...base, steps: [p, { kind: 'resize', width: 352, height: 304 }] })).toBeNull();
+    expect(scriptProblem({ ...base, steps: [p, { kind: 'set', state: 'doc#open', value: true }] })).toMatch(/no set steps/);
+    expect(scriptProblem({ ...base, steps: [p, { kind: 'env', reading: 'pointer', value: 'desktop' }] })).toMatch(/follows a pointers step/);
+    expect(scriptProblem({ ...base, steps: [{ ...p, value: { ...p.value, hover: 'hover' } }] })).toMatch(/no pointer does/);
+    // The capture's check of Chrome's readings asks every keyword of every device feature, and exactly the device's answer holds.
+    const q = readingQueries({ pointer: 'coarse', anyPointer: ['coarse', 'fine'], hover: 'none', anyHover: 'hover', reducedMotion: 'reduce' });
+    expect(q.filter(([, v]) => v).map(([k]) => k)).toEqual(['(pointer: coarse)', '(any-pointer: coarse)', '(any-pointer: fine)', '(hover: none)', '(any-hover: hover)', '(prefers-reduced-motion: reduce)']);
+    expect(q.length).toBe(12);
   });
   it('visit every band of their fixture, so every band the native output ships is proven', () => {
     for (const c of cases) {
       const bands = nativeBands(c.compiled);
-      const reached = new Set(scriptPoints(c).map((p) => nativeBandOfViewport(c.compiled, p.size)));
-      expect([...reached].sort(), c.id).toEqual(Array.from({ length: bands === null ? 1 : bands.table.bands.length }, (_, k) => k));
+      // MQ-R2: a point's band is of its readings too, and a resolution band of the DPR, so the points are taken at every DPR.
+      const reached = new Set(scriptPoints(c).flatMap((p) => RESIZE_DPRS.map((dpr) => nativeBandOfViewport(c.compiled, p.size, deviceAt(p, dpr)))));
+      expect([...reached].sort((a, b) => (a ?? -1) - (b ?? -1)), c.id).toEqual(Array.from({ length: bands === null ? 1 : bands.table.bands.length }, (_, k) => k));
     }
   });
 });
@@ -94,9 +111,12 @@ describe('media rows (profile:rows from the resize lanes, T067 R13)', () => {
     expect(rowsOf(webProfile.rows)).toEqual(deriveMediaRows('web', passing));
     expect(rowsOf(iosProfile.rows)).toEqual(deriveMediaRows('ios', passing));
     expect(rowsOf(androidProfile.rows)).toEqual(deriveMediaRows('android', passing));
-    for (const profile of [iosProfile, androidProfile]) {
-      expect(rowsOf(profile.rows).map((r) => [r.feature, r.status, r.proofs.map((p) => [p.aspect, p.lane])])).toEqual(['at-rule:@media', 'media-feature:aspect-ratio', 'media-feature:height', 'media-feature:orientation', 'media-feature:width'].map((f) => [f, 'exact', [['layout', 'linux-dragon-layout']]]));
+    // MQ-R2: the device features join the viewport ones, exact except where R9 labels a target's reading caveat (MEDIA_CAVEATS).
+    const features = ['at-rule:@media', 'media-feature:-webkit-device-pixel-ratio', 'media-feature:any-hover', 'media-feature:any-pointer', 'media-feature:aspect-ratio', 'media-feature:height', 'media-feature:hover', 'media-feature:orientation', 'media-feature:pointer', 'media-feature:prefers-reduced-motion', 'media-feature:resolution', 'media-feature:width'];
+    for (const [target, profile] of [['ios', iosProfile], ['android', androidProfile]] as const) {
+      expect(rowsOf(profile.rows).map((r) => [r.feature, r.status, r.proofs.map((p) => [p.aspect, p.lane])])).toEqual(features.map((f) => [f, MEDIA_CAVEATS[target].includes(f) ? 'caveat' : 'exact', [['layout', 'linux-dragon-layout']]]));
     }
+    expect(MEDIA_CAVEATS.ios.length).toBeGreaterThan(0);
   }, 600_000);
   it('name exactly the passing cases that use their key; a case without @media proves none', () => {
     for (const row of rowsOf(iosProfile.rows)) for (const p of row.proofs) expect(p.cases, row.feature).toEqual(passing.filter((c) => c.features.includes(row.feature)).map((c) => c.id));

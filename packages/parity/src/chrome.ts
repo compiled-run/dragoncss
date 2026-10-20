@@ -45,10 +45,11 @@ export const PLAYWRIGHT_POINTER_SETTINGS = '--blink-settings=primaryHoverType=2,
 
 /**
  * Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture.
- * withoutPointerSettings drops PLAYWRIGHT_POINTER_SETTINGS, so the page's pointer and hover come from Chrome alone.
+ * withoutPointerSettings drops PLAYWRIGHT_POINTER_SETTINGS, so the page's pointer and hover come from Chrome alone (or from extra).
+ * extra: more flags after CHROME_ARGS (MQ-R2: a resize capture's --blink-settings pointer readings).
  */
-export async function launchChrome(forceDeviceScaleFactor: number = 1, opts: { readonly withoutPointerSettings?: boolean } = {}): Promise<Browser> {
-  const args = chromeArgsAt(forceDeviceScaleFactor);
+export async function launchChrome(forceDeviceScaleFactor: number = 1, opts: { readonly withoutPointerSettings?: boolean; readonly extra?: readonly string[] } = {}): Promise<Browser> {
+  const args = [...chromeArgsAt(forceDeviceScaleFactor), ...(opts.extra ?? [])];
   const without = opts.withoutPointerSettings === true;
   const browser = await chromium.launch({ args: [...args], ...(without ? { ignoreDefaultArgs: [PLAYWRIGHT_POINTER_SETTINGS] } : {}) });
   launchArgs.set(browser, without ? [...args, `!${PLAYWRIGHT_POINTER_SETTINGS}`] : args);
