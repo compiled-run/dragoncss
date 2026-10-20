@@ -28,14 +28,15 @@ export type Size = { readonly width: number; readonly height: number };
 
 /**
  * One step of a resize script: a root size change in CSS px, an app setter (a free state's key "<instance>#<state>"), or (MQ-R2)
- * new device readings: the pointer reading of a touch screen or a desktop's mouse, every pointer and hover reading, or the
- * reduced-motion setting.
+ * new device readings: the pointer reading of a touch screen or a desktop's mouse, every pointer and hover reading, the
+ * reduced-motion setting, or the colour scheme.
  */
 export type ResizeStep =
   | { readonly kind: 'resize'; readonly width: number; readonly height: number }
   | { readonly kind: 'set'; readonly state: string; readonly value: Scalar }
   | { readonly kind: 'env'; readonly reading: 'pointer'; readonly value: 'touch' | 'desktop' }
   | { readonly kind: 'env'; readonly reading: 'motion'; readonly value: 'reduce' | 'no-preference' }
+  | { readonly kind: 'env'; readonly reading: 'scheme'; readonly value: 'light' | 'dark' }
   /** Every pointer and hover reading at once; Chrome takes them at launch (--blink-settings), so its capture opens a new page there. */
   | { readonly kind: 'env'; readonly reading: 'pointers'; readonly value: PointerReadings };
 

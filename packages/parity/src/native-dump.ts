@@ -107,6 +107,7 @@ export const NATIVE_DUMP_SCHEMA = obj([
       field('anyPointer', arr({ kind: 'enum', values: ['coarse', 'fine'] }), 'the kinds of every pointing device, coarse before fine'),
       field('anyHover', { kind: 'enum', values: ['none', 'hover'] }, 'whether any pointing device hovers'),
       field('reducedMotion', { kind: 'enum', values: ['no-preference', 'reduce'] }, 'the user\'s motion setting'),
+      field('colorScheme', { kind: 'enum', values: ['light', 'dark'] }, 'the user\'s colour scheme (the root view\'s interface style or night mode)'),
       field('source', { kind: 'enum', values: ['platform', 'injected'] }, 'read from the platform, or injected by a case script\'s env steps'),
       field('inputs', arr(num), 'the platform inputs the readings came from: Android, every input device\'s getSources(); iOS, [1 on an iPad else 0, the GCMouse count]'),
     ]), 'MQ-R2 (T067 R9): the readings the device features answer from (the scale is dpr)'),

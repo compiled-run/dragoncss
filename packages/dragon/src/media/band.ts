@@ -17,7 +17,7 @@ const COUNT_LIMIT = 1024;
 
 /**
  * A width or height atom splits its axis; a ratio atom (orientation, aspect-ratio) reads both, as whole CSS px; a device atom
- * (MQ-R2: resolution, pointer, hover, prefers-reduced-motion) reads the device, not the root.
+ * (MQ-R2: resolution, pointer, hover, prefers-reduced-motion, prefers-color-scheme) reads the device, not the root.
  */
 export type MediaAtom = { readonly text: string; readonly axis: 'width' | 'height' | 'ratio' | 'device'; readonly feature: MediaFeature };
 
@@ -329,14 +329,19 @@ function scaleCandidates(atoms: readonly MediaAtom[]): number[] {
   return [...sorted, ...mids, (sorted[sorted.length - 1] as number) * 2 + 1];
 }
 
-/** Every pointer and hover reading a device can report: the primary pointer one of the pointers present, hover only with one. */
+/**
+ * Every pointer and hover reading a device can report (the primary pointer one of the pointers present, hover only with one), with
+ * each motion and colour-scheme setting.
+ */
 function readings(): Omit<MediaDevice, 'dpr'>[] {
   const out: Omit<MediaDevice, 'dpr'>[] = [];
   for (const anyPointer of [[], ['coarse'], ['fine'], ['coarse', 'fine']] as ('coarse' | 'fine')[][]) {
     for (const pointer of anyPointer.length === 0 ? ['none' as const] : anyPointer) {
       for (const anyHover of ['none', 'hover'] as const) {
         for (const hover of anyHover === 'hover' ? (['none', 'hover'] as const) : (['none'] as const)) {
-          for (const reducedMotion of ['no-preference', 'reduce'] as const) out.push({ pointer, anyPointer, hover, anyHover, reducedMotion });
+          for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+            for (const colorScheme of ['light', 'dark'] as const) out.push({ pointer, anyPointer, hover, anyHover, reducedMotion, colorScheme });
+          }
         }
       }
     }

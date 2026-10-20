@@ -36,9 +36,18 @@ describe('the resize scripts', () => {
     expect(scriptProblem({ ...base, steps: [p, { kind: 'env', reading: 'pointer', value: 'desktop' }] })).toMatch(/follows a pointers step/);
     expect(scriptProblem({ ...base, steps: [{ ...p, value: { ...p.value, hover: 'hover' } }] })).toMatch(/no pointer does/);
     // The capture's check of Chrome's readings asks every keyword of every device feature, and exactly the device's answer holds.
-    const q = readingQueries({ pointer: 'coarse', anyPointer: ['coarse', 'fine'], hover: 'none', anyHover: 'hover', reducedMotion: 'reduce' });
-    expect(q.filter(([, v]) => v).map(([k]) => k)).toEqual(['(pointer: coarse)', '(any-pointer: coarse)', '(any-pointer: fine)', '(hover: none)', '(any-hover: hover)', '(prefers-reduced-motion: reduce)']);
-    expect(q.length).toBe(12);
+    const q = readingQueries({ pointer: 'coarse', anyPointer: ['coarse', 'fine'], hover: 'none', anyHover: 'hover', reducedMotion: 'reduce', colorScheme: 'dark' });
+    expect(q.filter(([, v]) => v).map(([k]) => k)).toEqual(['(pointer: coarse)', '(any-pointer: coarse)', '(any-pointer: fine)', '(hover: none)', '(any-hover: hover)', '(prefers-reduced-motion: reduce)', '(prefers-color-scheme: dark)', '(prefers-color-scheme)']);
+    expect(q.length).toBe(15);
+    // The boolean (prefers-color-scheme) holds in the light scheme too (PrefersColorSchemeMediaFeatureEval, measured).
+    const light = readingQueries({ pointer: 'fine', anyPointer: ['fine'], hover: 'hover', anyHover: 'hover', reducedMotion: 'no-preference', colorScheme: 'light' });
+    expect(light.filter(([k]) => k.startsWith('(prefers-color-scheme')).filter(([, v]) => v).map(([k]) => k)).toEqual(['(prefers-color-scheme: light)', '(prefers-color-scheme)']);
+  });
+  it('MQ-R2: a scheme step moves the colour scheme alone, and the colour-scheme script visits both schemes at both widths', () => {
+    const c = byId('mqr2-color-scheme~resize');
+    expect(scriptPoints(c).map((p) => [p.size.width, p.device.colorScheme, p.device.reducedMotion])).toEqual([[400, 'light', 'no-preference'], [400, 'dark', 'no-preference'], [352, 'dark', 'no-preference'], [352, 'light', 'no-preference'], [352, 'dark', 'no-preference'], [400, 'dark', 'no-preference']]);
+    expect(nativeBands(c.compiled)?.table.atoms.map((a) => [a.feature, a.keyword])).toEqual([['prefers-color-scheme', 'dark'], ['prefers-color-scheme', 'light'], ['width', 'none'], ['prefers-color-scheme', 'any']]);
+    expect(cases.map((x) => x.id)).toContain('mqr2-color-scheme-rtl~resize');
   });
   it('visit every band of their fixture, so every band the native output ships is proven', () => {
     for (const c of cases) {
@@ -112,11 +121,14 @@ describe('media rows (profile:rows from the resize lanes, T067 R13)', () => {
     expect(rowsOf(iosProfile.rows)).toEqual(deriveMediaRows('ios', passing));
     expect(rowsOf(androidProfile.rows)).toEqual(deriveMediaRows('android', passing));
     // MQ-R2: the device features join the viewport ones, exact except where R9 labels a target's reading caveat (MEDIA_CAVEATS).
-    const features = ['at-rule:@media', 'media-feature:-webkit-device-pixel-ratio', 'media-feature:any-hover', 'media-feature:any-pointer', 'media-feature:aspect-ratio', 'media-feature:height', 'media-feature:hover', 'media-feature:orientation', 'media-feature:pointer', 'media-feature:prefers-reduced-motion', 'media-feature:resolution', 'media-feature:width'];
+    const features = ['at-rule:@media', 'media-feature:-webkit-device-pixel-ratio', 'media-feature:any-hover', 'media-feature:any-pointer', 'media-feature:aspect-ratio', 'media-feature:height', 'media-feature:hover', 'media-feature:orientation', 'media-feature:pointer', 'media-feature:prefers-color-scheme', 'media-feature:prefers-reduced-motion', 'media-feature:resolution', 'media-feature:width'];
     for (const [target, profile] of [['ios', iosProfile], ['android', androidProfile]] as const) {
       expect(rowsOf(profile.rows).map((r) => [r.feature, r.status, r.proofs.map((p) => [p.aspect, p.lane])])).toEqual(features.map((f) => [f, MEDIA_CAVEATS[target].includes(f) ? 'caveat' : 'exact', [['layout', 'linux-dragon-layout']]]));
     }
     expect(MEDIA_CAVEATS.ios.length).toBeGreaterThan(0);
+    // R9: the colour scheme is exact on both platforms (lane injection and device-env's OS toggle), unlike iOS's reduced motion.
+    expect(MEDIA_CAVEATS.ios).toContain('media-feature:prefers-reduced-motion');
+    expect([...MEDIA_CAVEATS.ios, ...MEDIA_CAVEATS.android, ...MEDIA_CAVEATS.web]).not.toContain('media-feature:prefers-color-scheme');
   }, 600_000);
   it('name exactly the passing cases that use their key; a case without @media proves none', () => {
     for (const row of rowsOf(iosProfile.rows)) for (const p of row.proofs) expect(p.cases, row.feature).toEqual(passing.filter((c) => c.features.includes(row.feature)).map((c) => c.id));

@@ -16,7 +16,7 @@ import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { AppRun, DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
 import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
-import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, MatrixMismatch, recordProblems, release, restoreMatrixMotion, runApp, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, MatrixMismatch, recordProblems, release, restoreMatrixMotion, runApp, setColorScheme, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
@@ -37,7 +37,7 @@ import { frameScript, pixelSamples } from './anim-cases.ts';
 import { committedFrameBreaks, committedFramePixels, committedFrames, framePixelSamples } from './frame-capture.ts';
 import { evaluateTraces, traceScriptIds } from './trace-lane.ts';
 import { resizeScriptCases } from './resize-scripts.ts';
-import { envIds, envOracleBrowser, evaluateEnv, motionScaleOf } from './device-env.ts';
+import { envIds, envOracleBrowser, evaluateEnv, motionScaleOf, schemeOf } from './device-env.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, devicePoints, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
@@ -194,8 +194,8 @@ export function evaluateCase(target: NativeTarget, n: CheckedCase, dpr: number, 
     else if (want.readings !== undefined && want.readings !== null) {
       const r = e.readings;
       const w = want.readings;
-      const got = [r.source, r.pointer, r.hover, r.anyPointer.join('+'), r.anyHover, r.reducedMotion].join(' ');
-      const expected = ['injected', w.pointer, w.hover, w.anyPointer.join('+'), w.anyHover, w.reducedMotion].join(' ');
+      const got = [r.source, r.pointer, r.hover, r.anyPointer.join('+'), r.anyHover, r.reducedMotion, r.colorScheme].join(' ');
+      const expected = ['injected', w.pointer, w.hover, w.anyPointer.join('+'), w.anyHover, w.reducedMotion, w.colorScheme].join(' ');
       if (got !== expected) fail('device-applied', 'environment', `readings ${got}; the script injected ${expected}`);
     }
   }
@@ -798,13 +798,15 @@ export const ALL_PARTS: ReadonlySet<DevicePart> = new Set(DEVICE_PARTS);
 
 /**
  * The device-env launch: the env phases; MQ-R2's motion phases hold for the host to turn the OS's reduced-motion setting on, then
- * off (setReducedMotion). The launch starts with the setting off, which the phases before the motion ones expect: a matrix AVD boots
- * with animator_duration_scale 0 (device-run.ts prepareAvd), which is Chromium's reduced-motion signal. Whatever the run does, the
- * device is put back as the matrix boots it (restoreMatrixMotion), so the parts after this one see the device they always saw.
+ * off (setReducedMotion), and its scheme phases to turn the dark appearance on, then off (setColorScheme). The launch starts with
+ * reduced motion off and the light appearance, which the phases before them expect: a matrix AVD boots with animator_duration_scale
+ * 0 (device-run.ts prepareAvd), which is Chromium's reduced-motion signal. Whatever the run does, the appearance is put back to light
+ * and the motion setting as the matrix boots the device (restoreMatrixMotion), so the parts after this one see the device they always saw.
  */
 export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTarget, outDir: string): Promise<AppRun> {
   const ids = envIds(target);
   setReducedMotion(h, false);
+  setColorScheme(h, false);
   try {
     return await runApp(h, artifact, {
       runFile: runFileText(ids.map((id) => ({ id, points: [] })), false),
@@ -812,12 +814,18 @@ export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTa
       outDir,
       onHold: (id) => {
         const scale = motionScaleOf(id);
-        if (scale === null) throw new Error(`the host held device-env case ${id}, which has no OS setting to change`);
-        setReducedMotion(h, scale === 0);
+        const scheme = schemeOf(id);
+        if (scale !== null) setReducedMotion(h, scale === 0);
+        else if (scheme !== null) setColorScheme(h, scheme === 'dark');
+        else throw new Error(`the host held device-env case ${id}, which has no OS setting to change`);
       },
     });
   } finally {
-    restoreMatrixMotion(h);
+    try {
+      restoreMatrixMotion(h);
+    } finally {
+      setColorScheme(h, false);
+    }
   }
 }
 

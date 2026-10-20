@@ -207,15 +207,17 @@
   "(resolution: 1dppx)",
   "(min-resolution: 2dppx)",
   "(-webkit-device-pixel-ratio: 1)",
-  "(-webkit-min-device-pixel-ratio: 2)"
+  "(-webkit-min-device-pixel-ratio: 2)",
+  "(prefers-color-scheme: dark)",
+  "screen and (max-width: 600px) and (prefers-color-scheme: dark)"
  ],
  "refusedQueries": [
   "(orientation > portrait)",
   "(orientation <= landscape)",
-  "(prefers-color-scheme: dark)",
+  "(prefers-contrast: more)",
   "(color)",
   "(display-mode: browser)",
-  "screen and (max-width: 600px) and (prefers-color-scheme: dark)",
+  "screen and (max-width: 600px) and (prefers-contrast: more)",
   "(min-width: 10cm)",
   "(min-width: 10vw)",
   "(max-width: 30ex)",
@@ -284,7 +286,7 @@
     "(max-width: 700px) and ((min-width: 500px) or (max-height: 200px))",
     "not (max-width: 300px)",
     "(foo: bar) or (max-width: 900px)",
-    "(prefers-color-scheme: dark) and (min-width: 1000px)"
+    "(prefers-contrast: more) and (min-width: 1000px)"
    ]
   },
   {
@@ -828,132 +830,182 @@
    [
     1,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     1.25,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     1.5,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     1.75,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     2,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     2.25,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     2.5,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     2.625,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     2.75,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     3,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     3.5,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     4,
     "desktop",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     1,
     "touch",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     1,
     "touch",
-    "reduce"
+    "reduce",
+    "light"
    ],
    [
     1,
     "mobile",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     1,
     "mobile",
-    "reduce"
+    "reduce",
+    "light"
    ],
    [
     2.625,
     "touch",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     2.625,
     "touch",
-    "reduce"
+    "reduce",
+    "light"
    ],
    [
     2.625,
     "mobile",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     2.625,
     "mobile",
-    "reduce"
+    "reduce",
+    "light"
    ],
    [
     3,
     "touch",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     3,
     "touch",
-    "reduce"
+    "reduce",
+    "light"
    ],
    [
     3,
     "mobile",
-    "no-preference"
+    "no-preference",
+    "light"
    ],
    [
     3,
     "mobile",
-    "reduce"
+    "reduce",
+    "light"
    ],
    [
     1,
     "desktop",
-    "reduce"
+    "reduce",
+    "light"
    ],
    [
     3,
     "desktop",
-    "reduce"
+    "reduce",
+    "light"
+   ],
+   [
+    1,
+    "desktop",
+    "no-preference",
+    "dark"
+   ],
+   [
+    2.625,
+    "touch",
+    "reduce",
+    "dark"
+   ],
+   [
+    3,
+    "mobile",
+    "no-preference",
+    "dark"
+   ],
+   [
+    3,
+    "desktop",
+    "reduce",
+    "dark"
    ]
   ],
   "queries": [
@@ -1090,7 +1142,19 @@
    "(prefers-reduced-motion: reduce) and (max-width: 500px)",
    "(prefers-reduced-motion: no-preference) and (min-resolution: 2dppx)",
    "screen and (pointer: coarse) and (hover: none)",
-   "(any-pointer: fine) and (any-hover: none)"
+   "(any-pointer: fine) and (any-hover: none)",
+   "(prefers-color-scheme)",
+   "(not (prefers-color-scheme))",
+   "(prefers-color-scheme: light)",
+   "(prefers-color-scheme: dark)",
+   "(prefers-color-scheme: DARK)",
+   "(prefers-color-scheme: no-preference)",
+   "(not (prefers-color-scheme: no-preference))",
+   "(prefers-color-scheme: none)",
+   "(min-prefers-color-scheme: dark)",
+   "(not (prefers-color-scheme: light))",
+   "(prefers-color-scheme: dark) and (prefers-reduced-motion: reduce)",
+   "(prefers-color-scheme: light) or (hover: none)"
   ],
   "bandSheets": [
    {
@@ -1137,6 +1201,20 @@
     "queries": [
      "(hover: hover) and (-webkit-min-device-pixel-ratio: 2)",
      "(prefers-reduced-motion)"
+    ]
+   },
+   {
+    "name": "scheme",
+    "queries": [
+     "(prefers-color-scheme: dark)",
+     "(prefers-color-scheme)"
+    ]
+   },
+   {
+    "name": "scheme-motion",
+    "queries": [
+     "(prefers-color-scheme: light)",
+     "(prefers-reduced-motion: reduce)"
     ]
    }
   ]

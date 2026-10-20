@@ -6,7 +6,7 @@
 // and orientation and aspect-ratio read the truncated size. The media size is the float Chrome derives from the root's whole
 // device px (measured, M1, M4, M5). MQ-R2 (R9) adds the device atoms: resolution and -webkit-device-pixel-ratio compare the float
 // device scale exactly with the float dppx value (dpcm rounded to two decimals on both sides, measured), and pointer, any-pointer,
-// hover, any-hover and prefers-reduced-motion compare the platform's readings with their keywords.
+// hover, any-hover, prefers-reduced-motion and prefers-color-scheme compare the platform's readings with their keywords.
 import { floorOf, froundOf, truncOf } from './rt-easing.ts';
 
 /** LayoutUnit::Epsilon(): the slack of >=, <= and = in CompareDoubleValue. */
@@ -20,21 +20,22 @@ export type BandOp = 'lt' | 'le' | 'gt' | 'ge' | 'eq';
  */
 export type BandComparison = { readonly op: BandOp; readonly value: number; readonly num: number; readonly den: number };
 
-export type BandFeature = 'width' | 'height' | 'orientation' | 'aspect-ratio' | 'resolution' | 'pointer' | 'any-pointer' | 'hover' | 'any-hover' | 'prefers-reduced-motion';
+export type BandFeature = 'width' | 'height' | 'orientation' | 'aspect-ratio' | 'resolution' | 'pointer' | 'any-pointer' | 'hover' | 'any-hover' | 'prefers-reduced-motion' | 'prefers-color-scheme';
 
-export type BandKeyword = 'portrait' | 'landscape' | 'none' | 'any' | 'coarse' | 'fine' | 'hover' | 'no-preference' | 'reduce';
+export type BandKeyword = 'portrait' | 'landscape' | 'none' | 'any' | 'coarse' | 'fine' | 'hover' | 'no-preference' | 'reduce' | 'light' | 'dark';
 
 /**
  * One media feature as the compiler wrote it. comparisons: every comparison must hold (a two-sided range has two); none is the
  * boolean form. keyword: orientation's value ('none' for its boolean form), a discrete device feature's value ('any' for its
- * boolean form, which holds unless the reading is none or no-preference), and 'none' for width, height, aspect-ratio and
- * resolution (-webkit-device-pixel-ratio is written as resolution).
+ * boolean form, which holds unless the reading is none or no-preference, and always for prefers-color-scheme), and 'none' for
+ * width, height, aspect-ratio and resolution (-webkit-device-pixel-ratio is written as resolution).
  */
 export type BandAtom = { readonly feature: BandFeature; readonly comparisons: readonly BandComparison[]; readonly keyword: BandKeyword };
 
 /**
  * The device's readings (T067 R9): its scale, the primary pointer ('none', 'coarse' or 'fine') and whether it hovers, which pointers
- * any of its pointing devices is (anyCoarse, anyFine) and whether any hovers, and the user's reduced-motion setting.
+ * any of its pointing devices is (anyCoarse, anyFine) and whether any hovers, the user's reduced-motion setting, and whether the
+ * user's colour scheme is dark (else light).
  */
 export type BandEnvironment = {
   readonly dpr: number;
@@ -44,6 +45,7 @@ export type BandEnvironment = {
   readonly anyFine: boolean;
   readonly anyHover: boolean;
   readonly reducedMotion: boolean;
+  readonly darkScheme: boolean;
 };
 
 /** The band table of a stylesheet: its atoms and, per band in band order, the truth value of every atom. */
@@ -106,6 +108,8 @@ function compareScale(actual: number, query: number, op: BandOp): boolean {
 function readingHolds(atom: BandAtom, env: BandEnvironment): boolean {
   const k = atom.keyword;
   if (atom.feature === 'prefers-reduced-motion') return k === 'reduce' || k === 'any' ? env.reducedMotion : !env.reducedMotion;
+  // PrefersColorSchemeMediaFeatureEval: the boolean form holds in either scheme (the feature has no no-preference value).
+  if (atom.feature === 'prefers-color-scheme') return k === 'any' || (k === 'dark' ? env.darkScheme : !env.darkScheme);
   if (atom.feature === 'pointer') return k === 'any' ? env.pointer !== 'none' : env.pointer === k;
   if (atom.feature === 'hover') return k === 'any' || k === 'hover' ? env.hover : !env.hover;
   if (atom.feature === 'any-hover') return k === 'any' || k === 'hover' ? env.anyHover : !env.anyHover;

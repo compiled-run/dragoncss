@@ -2,7 +2,7 @@
 // at each viewport derived from the corpus thresholds, on pages whose root font size is 16px and 20px. The fractional part
 // (MQ-R0, notes/T067 §4) evaluates its rows inside iframes of exact device px and emulated main frames at DPR 1, 2, 2.625 and 3.
 // The environment part (MQ-R2, R9) evaluates its rows on every listed device: a page at a DPR, desktop (a mouse), touch (hasTouch)
-// or mobile (isMobile and hasTouch), with prefers-reduced-motion emulated (M7).
+// or mobile (isMobile and hasTouch), with prefers-reduced-motion and prefers-color-scheme emulated (M7).
 // Writes packages/dragon/test/media/captures/chrome-145.json; --check requires a byte-identical recapture.
 // Run with: node --conditions=dragon-internal scripts/capture-media-data.ts [--check]
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -27,7 +27,7 @@ type Corpus = {
   };
   readonly environment: {
     readonly viewport: Viewport;
-    readonly devices: readonly (readonly [number, 'desktop' | 'touch' | 'mobile', 'no-preference' | 'reduce'])[];
+    readonly devices: readonly (readonly [number, 'desktop' | 'touch' | 'mobile', 'no-preference' | 'reduce', 'light' | 'dark'])[];
     readonly queries: readonly string[];
     readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[] }[];
   };
@@ -316,11 +316,11 @@ const envSheets = environment.bandSheets.map((s) => {
 const envTexts = [...environment.queries, ...envSheets.flatMap((s) => s.texts)];
 const envBits: string[] = envTexts.map(() => '');
 let envMediaText: string[] = [];
-for (const [dpr, kind, reducedMotion] of environment.devices) {
+for (const [dpr, kind, reducedMotion, colorScheme] of environment.devices) {
   const b = await launchChrome(dpr);
   try {
     if (b.version() !== CHROME_VERSION) throw new Error(`Chrome must be ${CHROME_VERSION}, got ${b.version()}`);
-    const context = await b.newContext({ viewport: environment.viewport, deviceScaleFactor: dpr, hasTouch: kind !== 'desktop', isMobile: kind === 'mobile', reducedMotion });
+    const context = await b.newContext({ viewport: environment.viewport, deviceScaleFactor: dpr, hasTouch: kind !== 'desktop', isMobile: kind === 'mobile', reducedMotion, colorScheme });
     try {
       const page = await context.newPage();
       // width=device-width, so a mobile page's layout viewport is the 400 CSS px its width rows assume.

@@ -679,7 +679,7 @@ export const BAND_VECTORS = join(RT_VECTORS_DIR, 'band/cases.json');
  */
 export function bandCases(): string[] {
   const v = JSON.parse(readFileSync(BAND_VECTORS, 'utf8')) as { schema: string; cases: { table: unknown; sizes: unknown }[] };
-  if (v.schema !== 'dragon-band-vectors/2') throw new Error(`${BAND_VECTORS}: schema ${v.schema}; run pnpm run parity:band-vectors`);
+  if (v.schema !== 'dragon-band-vectors/3') throw new Error(`${BAND_VECTORS}: schema ${v.schema}; run pnpm run parity:band-vectors`);
   const out = v.cases.map((c) => JSON.stringify(['rt-band', c.table, c.sizes]));
   if (out.length === 0) throw new Error('the band suite has no cases');
   return out;

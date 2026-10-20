@@ -5,3 +5,4 @@
 @media (orientation: landscape) { .frame { height: 60px; } .sib { background-color: #c00; } }
 @media (max-width: 500px) { .panel { width: 160px; } }
 @media (prefers-reduced-motion: reduce) { .sib { height: 28px; } }
+@media (prefers-color-scheme: dark) { .frame { column-gap: 12px; } .sib { background-color: #36c; } }

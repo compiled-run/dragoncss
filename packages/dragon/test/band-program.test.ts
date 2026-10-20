@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { rtBand } from '@dragon/layout';
-import type { Assignment, BandCase, NativeProgram, ProgramNode } from 'dragon';
+import type { Assignment, BandCase, MediaDevice, NativeProgram, ProgramNode } from 'dragon';
 import { BAND_KEY, bandAtom, bandEnvironmentOf, bandOf, BandProgramError, bandStateProgram, bandTableOf, DESKTOP_DEVICE, MAX_STATE_TABLE_ASSIGNMENTS, programAt, StateProgramError } from 'dragon';
 import { band, evaluateFeature, evaluateWithOracle, featuresOfList, parseMediaQueryList } from '../src/media/index.ts';
 import { CAPTURE as capture, CORPUS } from './media/corpus.ts';
@@ -107,6 +107,8 @@ describe('bandAtom', () => {
     expect(atom('(pointer: coarse)')).toEqual([{ feature: 'pointer', comparisons: [], keyword: 'coarse' }]);
     expect(atom('(any-hover)')).toEqual([{ feature: 'any-hover', comparisons: [], keyword: 'any' }]);
     expect(atom('(prefers-reduced-motion: no-preference)')).toEqual([{ feature: 'prefers-reduced-motion', comparisons: [], keyword: 'no-preference' }]);
+    expect(atom('(prefers-color-scheme: dark)')).toEqual([{ feature: 'prefers-color-scheme', comparisons: [], keyword: 'dark' }]);
+    expect(atom('(prefers-color-scheme)')).toEqual([{ feature: 'prefers-color-scheme', comparisons: [], keyword: 'any' }]);
   });
 });
 
@@ -181,5 +183,26 @@ describe('one comparison rule: rt-band\'s atoms against MQ-R0\'s media evaluator
     }
     expect(mismatches.slice(0, 10)).toEqual([]);
     expect(compared).toBeGreaterThan(50_000);
+  });
+  it('MQ-R2: agree on every environment corpus feature Dragon evaluates, on every pointer, hover, motion and colour-scheme reading', () => {
+    const features = CORPUS.environment.queries.flatMap((q) => featuresOfList(atomsOf(q))).filter((f) => f.refused === null && !['resolution', '-webkit-device-pixel-ratio'].includes(f.base));
+    expect(features.some((f) => f.base === 'prefers-color-scheme')).toBe(true);
+    const devices: MediaDevice[] = [];
+    for (const anyPointer of [[], ['coarse'], ['fine'], ['coarse', 'fine']] as ('coarse' | 'fine')[][]) {
+      for (const pointer of anyPointer.length === 0 ? (['none'] as const) : anyPointer) {
+        for (const [hover, anyHover] of [['none', 'none'], ['none', 'hover'], ['hover', 'hover']] as const) {
+          for (const reducedMotion of ['no-preference', 'reduce'] as const) for (const colorScheme of ['light', 'dark'] as const) devices.push({ dpr: 1, pointer, anyPointer, hover, anyHover, reducedMotion, colorScheme });
+        }
+      }
+    }
+    const mismatches: string[] = [];
+    for (const f of features) {
+      for (const d of devices) {
+        const a = rtBand.atomHolds(bandAtom(f), 400, 300, bandEnvironmentOf(d), rtBand.NO_BAND_FAULTS);
+        const b = evaluateFeature(f, { width: 400, height: 300, device: d });
+        if (a !== b) mismatches.push(`${f.name} on ${JSON.stringify(d)}: rt-band ${a}, media ${b}`);
+      }
+    }
+    expect(mismatches.slice(0, 10)).toEqual([]);
   });
 });
