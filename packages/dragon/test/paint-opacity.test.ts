@@ -3,14 +3,14 @@
 // the emitted writer lines and the expected applied alpha (Chrome's paint alpha byte / 255 as a float32).
 import { describe, expect, it } from 'vitest';
 import { opacityAlpha8 } from '@dragon/layout';
-import type { Diagnostic } from '../src/index.ts';
+import type { Diagnostic, DraftTree } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { EFFECTS_EMITTER } from '../src/emit/paint/effects.ts';
 import { opacityAlpha8 as foldAlpha8 } from '../src/css/color.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
+import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/opacity.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -120,6 +120,24 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     }
     // A box with a child or text is a group of more than one draw.
     expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
+  });
+  it('refuses on native a folded fill whose background-color animates or transitions (the animator writes the colour alpha)', () => {
+    const fold = 'animates the fill a fractional opacity is folded into, and the animated colour would drop the opacity: not built yet (package PNT1-opacity-b)';
+    const all = (r: { diagnostics: readonly Diagnostic[] }): string[] => r.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);
+    expect(all(compile(`.b { ${leaf} opacity: 0.5; animation: k 1s infinite; } @keyframes k { from { background-color: rgb(255, 0, 0) } to { background-color: rgb(0, 0, 255) } }`, native))).toEqual([`background-color on b ${fold}`]);
+    // A transition between two states, the fold in either.
+    const stated = (css: string) => {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => {
+        const d = div(r, 'b', ['b']);
+        const on = { value: [{ when: eq('open', true), value: { owner: DOC, sheet: 's', name: 'on' } }, { when: not(eq('open', true)), value: null }], origin: d.origin };
+        return [{ ...d, classes: [...d.classes, on] }];
+      });
+      const tree = input.tree as DraftTree;
+      const root = tree.components[0] as DraftTree['components'][number];
+      return createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile({ ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 'open', domain: [false, true], initial: false, origin: root.origin }] }] } });
+    };
+    expect(all(stated(`.b { ${leaf} transition: background-color 1s; } .b.on { background-color: rgb(200, 0, 0); opacity: 0.5; }`))).toEqual([`background-color on b ${fold}`]);
+    expect(all(stated(`.b { ${leaf} opacity: 0.5; } .b.on { background-color: rgb(200, 0, 0); }`))).toEqual([]);
   });
   it('writes the fill with the opacity alpha byte and no opacity write; a transparent fill stays transparent', () => {
     const c = compile(`.b { ${leaf} opacity: 0.3; } .a { height: 20px; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 } });

@@ -37,13 +37,13 @@ const FOLD_DISPLAYS: readonly string[] = ['block', 'inline-block', 'flow-root', 
 // propagates to the canvas (html, body).
 const FOLD_TAGS_OUT: ReadonlySet<string> = new Set(['html', 'body', 'input', 'button', 'select', 'option', 'optgroup', 'textarea', 'progress', 'meter', 'fieldset', 'legend', 'details', 'summary', 'dialog', 'video', 'audio', 'canvas', 'object', 'embed']);
 // The longhands that must hold these values, as anything else paints, composites (a layer Chrome does not fold into) or moves the
-// box; a longhand the build does not resolve is not set.
+// box; a longhand the build does not resolve is not set. An animated or transitioned fill is refused by analysis/animations.ts.
 const FOLD_KEYWORDS: readonly (readonly [string, readonly string[]])[] = [
   ['box-shadow', ['none']], ['background-image', ['none']], ['border-image-source', ['none']], ['mask-image', ['none']], ['filter', ['none']],
   ['backdrop-filter', ['none']], ['mix-blend-mode', ['normal']], ['clip-path', ['none']], ['clip', ['auto']], ['transform', ['none']],
   ['rotate', ['none']], ['scale', ['none']], ['translate', ['none']], ['perspective', ['none']], ['transform-style', ['flat']],
   ['backface-visibility', ['visible']], ['will-change', ['auto']], ['position', ['static', 'relative', 'absolute']],
-  ['overflow-x', ['visible', 'hidden', 'clip']], ['overflow-y', ['visible', 'hidden', 'clip']], ['animation-name', ['none']],
+  ['overflow-x', ['visible', 'hidden', 'clip']], ['overflow-y', ['visible', 'hidden', 'clip']],
 ];
 
 /**

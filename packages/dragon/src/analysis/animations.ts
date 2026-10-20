@@ -23,6 +23,7 @@ import { beats } from './cascade.ts';
 import type { ResolvedValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import { selectorMatches, specificityFor } from './match.ts';
+import { foldedOpacity } from '../lower/paint/background.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { resolvedCustoms } from './resolve.ts';
 import type { CustomProperties } from './variables.ts';
@@ -373,6 +374,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             const kind = animationKind(v.property);
             animated.add(`${ea.address}|${v.property}`);
             if (!admitted(kind)) continue;
+            if (v.property === 'background-color' && foldedOpacity(el) !== null) once(`kffold|${ea.address}|${a.name}`, refuse(v.valueSpan, FOLD_ANIMATED(ea.address)));
             const value = keyframeValueOf(v.value, fontPx(valueAt(el, 'font-size').value), fontPx(valueAt(rootEl, 'font-size').value));
             if (kind.kind === 'color' && value.kind === 'keyword' && value.value === 'currentcolor') once(`kfcc|${v.span.start}`, refuse(v.valueSpan, `${v.property}: currentcolor in @keyframes ${a.name} is unsupported: a keyframe pair between currentcolor and a colour is not built yet (package ANIM-cc)`));
             const id = `${a.name}|${v.span.start}|${v.property}`;
@@ -416,6 +418,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`));
             continue;
           }
+          if (p === 'background-color' && (foldedOpacity(ea) !== null || foldedOpacity(eb) !== null)) once(`tfold|${address}|${span.start}`, refuse(span, FOLD_ANIMATED(address)));
           const cc = (v: AnimValue): boolean => v.kind === 'keyword' && v.value === 'currentcolor';
           if (cc(from) !== cc(to)) once(`tcc|${p}|${span.start}`, refuse(span, `${p} on ${address}: a transition between currentcolor and a colour is unsupported (package ANIM-cc)`));
           if (animated.has(`${address}|${p}`)) once(`to|${p}|${span.start}`, refuse(span, `${p} on ${address} is both transitioned and animated: Chrome blocks transitions on animated properties (package ANIM-o)`));
@@ -460,6 +463,10 @@ export function refuseBandedAnimations(allRules: readonly Rule[], inEveryBand: (
     }
   }
 }
+
+// PNT1-opacity-b: a fractional opacity folded into its box's fill (lower/paint/background.ts) puts the alpha on the fill, which the
+// animator's background-color writes replace with the animated colour's own alpha; refused until the animator carries the fold.
+const FOLD_ANIMATED = (address: string): string => `background-color on ${address} animates the fill a fractional opacity is folded into, and the animated colour would drop the opacity: not built yet (package PNT1-opacity-b)`;
 
 function refuse(span: Span, message: string): Diagnostic {
   return diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message, manual: 'Remove the declaration, or animate a colour or length property between values of one kind.' });
