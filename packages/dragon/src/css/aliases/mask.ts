@@ -3,7 +3,9 @@
 // component (css_parsing_utils.cc ParseBackgroundOrMask), so those parse alike. MaskClip and MaskOrigin parse the prefixed boxes
 // under the alias (ConsumePrefixedBackgroundBox), and MaskComposite the prefixed compositing operators (ConsumePrefixedMaskComposite);
 // both take the initial value as the unprefixed parsers do (border-box, and add, measured in packages/parity/test/mask-parse.test.ts),
-// and Dragon keeps every other value and refuses it.
+// and Dragon keeps every other value and refuses it, but for the prefixed border, which ConsumePrefixedBackgroundBox reads as
+// border-box, the initial value (prefixedMaskBox).
+import type { CssValue } from '../values.ts';
 import type { MASK_LONGHANDS, MASK_SHORTHANDS } from '../properties/mask.ts';
 
 export const MASK_ALIASES = {
@@ -16,3 +18,9 @@ export const MASK_ALIASES = {
   '-webkit-mask-repeat': 'mask-repeat',
   '-webkit-mask-size': 'mask-size',
 } as const satisfies { readonly [alias: string]: (typeof MASK_LONGHANDS)[number] | (typeof MASK_SHORTHANDS)[number] };
+
+/** The value -webkit-mask-clip or -webkit-mask-origin computes from a value kept as written: border is border-box; else null. */
+export function prefixedMaskBox(alias: string, value: CssValue): CssValue | null {
+  if (alias !== '-webkit-mask-clip' && alias !== '-webkit-mask-origin') return null;
+  return value.kind === 'other' && /^border$/i.test(value.text.trim()) ? { kind: 'keyword', value: 'border-box' } : null;
+}

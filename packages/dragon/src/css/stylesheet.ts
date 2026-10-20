@@ -7,6 +7,7 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { legacyAliasRefusal, resolveAlias } from './aliases.ts';
+import { prefixedMaskBox } from './aliases/mask.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
@@ -304,7 +305,12 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     const x = diagnostics[i] as Diagnostic;
     diagnostics[i] = { ...x, message: `${x.message} (${name} is an alias of ${property})` };
   }
-  return declaration === null ? null : { ...declaration, alias: name };
+  if (declaration === null) return null;
+  const longhands = declaration.longhands.map((l) => {
+    const box = prefixedMaskBox(name, l.value);
+    return box === null ? l : { ...l, value: box };
+  });
+  return { ...declaration, longhands, alias: name };
 }
 
 function parseResolved(d: CssNode, property: string, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[]): Declaration | null {
