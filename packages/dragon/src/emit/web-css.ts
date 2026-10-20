@@ -6,8 +6,8 @@
 // Chrome's UA :focus-visible rule (outline: auto 1px -webkit-focus-ring-color) draws the focus ring an explicit none would hide.
 // The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
 // clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
-// So are the mask longhands, written only where one is not initial (MASK-CLIP accepts none that is not), and so are the border image
-// longhands (MISC-PAINT likewise).
+// So are the mask longhands, written only where one is not initial (of those MASK-CLIP accepts, only -webkit-mask-composite: source-over),
+// and so are the border image longhands (MISC-PAINT likewise).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
 // colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
@@ -18,7 +18,7 @@ import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';
 import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';
-import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import { isInitialMask, MASK_LONGHANDS, maskDeclarationName } from '../css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';
 import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';
 import type { CssValue } from '../css/stylesheet.ts';
@@ -215,6 +215,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const v = r.value;
     // A folded order calculation that is not a whole number stays a calculation, which Chrome rounds as the engine does.
     if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
+    // MASK-CLIP: mask-composite's source-over is written under -webkit-mask-composite, the one name that parses it.
+    if (p === 'mask-composite') return `  ${maskDeclarationName(p, v)}: ${valueText(v)};`;
     return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
   };
   const classOf = new Map<string, Map<string, string>>();
