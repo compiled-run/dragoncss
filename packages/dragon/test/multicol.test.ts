@@ -115,7 +115,7 @@ describe('the initial-only multicol family', () => {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
     expect(errorsAt('column-count: 2; column-rule: 1px solid red; column-span: all')).toEqual(REFUSED);
-    expect(errorsAt('column-count: 2; contain: paint')).toEqual([...REFUSED, ...REFUSED].sort());
+    expect(errorsAt('column-count: 2; content-visibility: hidden')).toEqual([...REFUSED, ...REFUSED].sort());
     expect(errorsAt('--n: 2; column-count: var(--n)')).toEqual(REFUSED);
     const css = 'body { font-family: Ahem; font-size: 10px; } .s { -webkit-columns: 2 100px; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
@@ -134,6 +134,6 @@ describe('the initial-only multicol family', () => {
   it('plants its fault: a non-initial multicol value compiles, and only the multicol family\'s', () => {
     expect(errorsAt('column-count: 2; column-rule: 1px solid red', { ...NO_FAULTS, multicolAccepted: true })).toEqual([]);
     expect(errorsAt('column-count: 2', { ...NO_FAULTS, containmentAccepted: true })).toEqual(REFUSED);
-    expect(errorsAt('contain: paint', { ...NO_FAULTS, multicolAccepted: true })).toEqual(REFUSED);
+    expect(errorsAt('content-visibility: hidden', { ...NO_FAULTS, multicolAccepted: true })).toEqual(REFUSED);
   });
 });

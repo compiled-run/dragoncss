@@ -198,7 +198,7 @@ describe('off the list, a declaration or rule is still refused on every target',
 
 describe('a nested at-rule in a scrollbar rule', () => {
   it('keeps the rule refused everywhere, and its at-rule refusal keeps its related entries in a mixed project', () => {
-    const css = `${BASE}\n.a::-webkit-scrollbar { @media (min-width: 1px) { zoom: 2; } }`;
+    const css = `${BASE}\n.a::-webkit-scrollbar { @container (min-width: 1px) { zoom: 2; } }`;
     const atRule = (targets: object) => compile(css, targets).diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_NESTED_RULE' || d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     const webOnly = atRule({ web: {} });
     const mixed = atRule({ web: {}, ...NATIVE });

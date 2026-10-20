@@ -47,7 +47,7 @@ describe('createProject().compile() and check()', () => {
   });
 
   it('check() reports the same diagnostics without outputs', () => {
-    const input = inputFor('.g { mix-blend-mode: multiply; }', (r) => [div(r, 'g', ['g'])]);
+    const input = inputFor('.g { shape-outside: circle(); }', (r) => [div(r, 'g', ['g'])]);
     const r = ios().check(input);
     expect(r.ok).toBe(false);
     expect(r.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
@@ -87,7 +87,7 @@ describe('createProject().compile() and check()', () => {
     const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]));
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('analysis-only');
-    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { mix-blend-mode: multiply; }', (r) => [div(r, 'a', ['a'])]));
+    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { shape-outside: circle(); }', (r) => [div(r, 'a', ['a'])]));
     expect(g.outputs.web.kind).toBe('blocked');
   });
 
