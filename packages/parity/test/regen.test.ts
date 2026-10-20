@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
-import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree, worktreeLock } from '../../../scripts/regen.ts';
+import { checkTrace, commandOf, type Context, type Entry, explainMachine, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree, worktreeLock } from '../../../scripts/regen.ts';
 import { exportTargetsUnder, importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -302,6 +302,20 @@ describe('pnpm regen chain', () => {
     await regen(CHAIN, { ...opts, jobs: 1 }, v.io());
     expect(v.maxLive).toBe(1);
     expect(v.ran).toEqual(['gen', 'rows', 'other']);
+  });
+
+  it('starts the free step whose last recorded run was longest first, never one an earlier pending step conflicts with', async () => {
+    const v = new World(SOURCES, IMPL);
+    const seed = (step: string, ms: number): void => v.store.put(step, 'an older key', { outputs: {}, inputs: {}, restorable: false, ms });
+    seed('rows', 900);
+    seed('other', 500);
+    await regen(CHAIN, { ...opts, jobs: 1 }, v.io());
+    // rows was the longest, but it reads gen's output, so it waits for gen; other, the longest free step, starts first.
+    expect(v.ran).toEqual(['other', 'gen', 'rows']);
+    const w = new World(SOURCES, IMPL);
+    await regen(CHAIN, { ...opts, jobs: 1 }, w.io());
+    expect(w.ran).toEqual(['gen', 'rows', 'other']);
+    expect([...w.store.entries.values()].every((e) => e.ms === 0)).toBe(true);
   });
 
   it('fails a step that writes outside its declared outputs, and one that exits non-zero, recording no entry for it', async () => {
@@ -617,6 +631,8 @@ describe('regen cache entries', () => {
     expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: 'nope' }, inputs: {}, restorable: true }))).toBeNull();
     expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: blob }, inputs: {}, restorable: 'yes' }))).toBeNull();
     expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: blob }, inputs: { b: blob }, restorable: true }))).toEqual({ outputs: { a: blob }, inputs: { b: blob }, restorable: true });
+    expect(parseEntry(JSON.stringify({ version: 2, outputs: {}, inputs: {}, restorable: true, ms: 1500 }))).toEqual({ outputs: {}, inputs: {}, restorable: true, ms: 1500 });
+    expect(parseEntry(JSON.stringify({ version: 2, outputs: {}, inputs: {}, restorable: true, ms: 'slow' }))).toEqual({ outputs: {}, inputs: {}, restorable: true });
   });
 
   it('stores entries as files any worktree can read, and prunes old ones', () => {
@@ -688,7 +704,7 @@ describe('merge policy (.gitattributes)', () => {
   const policy = new Set(execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-generated)'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== ''));
   // The dragon-generated lines; the dragon-floor lines (floor and pin files, scripts/floor-merge.ts) are checked in
   // floor-merge.test.ts and the dragon-sorted lines (sorted registries, scripts/sorted-merge.ts) in sorted-merge.test.ts.
-  const lines = readFileSync(repoPath('.gitattributes'), 'utf8').split('\n').filter((l) => l.trim() !== '' && !l.startsWith('#') && !/ merge=dragon-(floor|sorted)$/.test(l));
+  const lines = readFileSync(repoPath('.gitattributes'), 'utf8').split('\n').filter((l) => l.trim() !== '' && !l.startsWith('#') && !/ merge=dragon-(floor|sorted|lanes)$/.test(l));
   const written = (p: string): boolean => STEPS.some((s) => s.outputs.some((g) => matches(g, p)));
   const byHand = (p: string): boolean => MERGE_BY_HAND.some((h) => matches(h.path, p));
 
@@ -791,6 +807,20 @@ describe('one regen per worktree', () => {
       expect(() => worktreeLock(a, 200, alive)).not.toThrow();
     } finally {
       rmSync(base, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('DRAGON_REGEN_MACHINE (--explain on another machine)', () => {
+  it('keys with the given platform, arch and node, in the order a run keys with them', () => {
+    expect(explainMachine(undefined)).toBeNull();
+    expect(explainMachine('')).toBeNull();
+    expect(explainMachine('{"node":"v24.15.0","arch":"arm64","platform":"darwin"}')).toBe(JSON.stringify({ platform: 'darwin', arch: 'arm64', node: 'v24.15.0' }));
+    expect(explainMachine(JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version }))).toBe(JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version }));
+  });
+  it('refuses anything but exactly three non-empty strings', () => {
+    for (const bad of ['junk', '[]', 'null', '{"platform":"darwin","arch":"arm64"}', '{"platform":"darwin","arch":"arm64","node":""}', '{"platform":"darwin","arch":"arm64","node":24}', '{"platform":"darwin","arch":"arm64","node":"v24","extra":"x"}']) {
+      expect(() => explainMachine(bad), bad).toThrow('DRAGON_REGEN_MACHINE');
     }
   });
 });

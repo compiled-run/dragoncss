@@ -21,5 +21,14 @@
    "clientWidth": 400,
    "clientHeight": 25
   }
+ ],
+ "extents": [
+  {
+   "id": "h1",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  }
  ]
 }

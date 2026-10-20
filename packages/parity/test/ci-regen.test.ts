@@ -6,7 +6,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, type Run, runTitle } from '../../../scripts/ci-regen.ts';
+import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, DEVICE_YIELD_S, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, REGEN_BRANCH_SLOTS, type Run, runTitle, SLOT_POLL_S } from '../../../scripts/ci-regen.ts';
 import { regenTitle } from '../../../scripts/land-devices-ci.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -21,7 +21,7 @@ const regenCommit = (o: { sha?: string; parent?: string; url?: string; base?: st
 const pushJob = (pushed: boolean) => ({ id: 9, name: 'push', status: 'completed', conclusion: 'success', steps: [{ name: PUSH_STEP, status: 'completed', conclusion: 'success' }, { name: FIXED_STEP, status: 'completed', conclusion: pushed ? 'skipped' : 'success' }] });
 
 /** A fake gh: the run moves through the given states, one per view. */
-function fake(o: { states?: object[]; jobs?: object[]; commits?: object[]; head?: string; listed?: object[]; dispatchAnswer?: string; annotations?: object[] | 'fail' } = {}) {
+function fake(o: { states?: object[]; jobs?: object[]; commits?: object[]; head?: string; listed?: object[]; devices?: object[]; dispatchAnswer?: string; annotations?: object[] | 'fail' } = {}) {
   const calls: string[] = [];
   const logs: string[] = [];
   let views = 0;
@@ -33,7 +33,13 @@ function fake(o: { states?: object[]; jobs?: object[]; commits?: object[]; head?
       const path = args[1] === '-X' ? args[3] : args[1];
       if (args[2] === 'POST') return o.dispatchAnswer ?? JSON.stringify({ workflow_run_id: 77 });
       if (path === `repos/${REPO}/branches/${BR}`) return JSON.stringify({ name: BR, commit: { sha: o.head ?? HEAD } });
-      if (path?.startsWith(`repos/${REPO}/actions/workflows/regen-on-ci.yml/runs?`)) return JSON.stringify({ workflow_runs: o.listed ?? [] });
+      // Like GitHub, a status= filter lists only the runs in that status.
+      const only = (runs: object[]) => {
+        const st = /[?&]status=([a-z_]+)/.exec(path ?? '')?.[1];
+        return st === undefined ? runs : runs.filter((r) => (r as { status?: string }).status === st);
+      };
+      if (path?.startsWith(`repos/${REPO}/actions/workflows/regen-on-ci.yml/runs?`)) return JSON.stringify({ workflow_runs: only(o.listed ?? []) });
+      if (path?.startsWith(`repos/${REPO}/actions/workflows/device-lanes.yml/runs?`)) return JSON.stringify({ workflow_runs: only(o.devices ?? []) });
       if (path === `repos/${REPO}/actions/runs/77`) return JSON.stringify(rawRun(states[Math.min(views++, states.length - 1)] as object));
       if (path === `repos/${REPO}/actions/runs/77/jobs?filter=latest&per_page=100`) return JSON.stringify({ jobs: o.jobs ?? [pushJob(false)] });
       if (path === `repos/${REPO}/commits?sha=${BR}&per_page=100`) return JSON.stringify(o.commits ?? []);
@@ -94,10 +100,10 @@ describe('pnpm ci:regen finding the run', () => {
     let lists = 0;
     const f = fake({ dispatchAnswer: '', states: [{ status: 'in_progress', conclusion: null }] });
     const gh = f.deps.gh;
-    const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('/runs?') ? JSON.stringify({ workflow_runs: ++lists > 2 ? [rawRun({ status: 'queued', conclusion: null }), ...others] : others }) : gh(a)) };
+    const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('/runs?status=') ? JSON.stringify({ workflow_runs: [] }) : a[1]?.includes('regen-on-ci.yml/runs?') ? JSON.stringify({ workflow_runs: ++lists > 2 ? [rawRun({ status: 'queued', conclusion: null }), ...others] : others }) : gh(a)) };
     expect(main([BR, '--once'], deps, () => REPO)).toBe(EXIT.pending);
     expect(f.logs).toContain(`dispatched regen-on-ci.yml from master for ${BR} at ${HEAD} (${NONCE}): run 77`);
-    // The first list is the reuse check; the dispatch's own lookup waits until its run-name appears.
+    // The first list is the reuse check (the slot check's lists, by status, find nothing running); the dispatch's own lookup waits until its run-name appears.
     expect(lists).toBe(3);
   });
   it('reuses the newest run of this branch and head while it runs or after it succeeded, and dispatches again after a failure', () => {
@@ -136,6 +142,103 @@ describe('pnpm ci:regen finding the run', () => {
     const other = fake();
     expect(other.run([BR, '--run', '77', '--head', NEW])).toBe(EXIT.error);
     expect(other.logs.at(-1)).toContain(`not ${BR} at ${NEW}`);
+  });
+});
+
+describe('pnpm ci:regen waiting for a slot before it dispatches', () => {
+  const other = (id: number, o: object = {}) => rawRun({ id, display_title: runTitle(`lane/o${id}`, NEW, NONCE), status: 'in_progress', conclusion: null, ...o });
+  const posted = (calls: string[]) => calls.some((c) => c.includes('/dispatches'));
+  const deviceRun = rawRun({ id: 3, path: '.github/workflows/device-lanes.yml', display_title: 'device lanes', status: 'in_progress', conclusion: null });
+  it('dispatches at once when no device lanes run and a branch slot is free', () => {
+    const f = fake({ listed: [other(1), other(2), other(3, { status: 'completed', conclusion: 'success' })], states: [{ status: 'queued', conclusion: null }] });
+    expect(f.run([BR, '--once'])).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(true);
+    expect(f.logs.some((l) => l.startsWith('waiting to dispatch'))).toBe(false);
+  });
+  it('with --once does not dispatch while every slot is taken, and says to poll again', () => {
+    const f = fake({ listed: [other(1), other(2), other(3, { status: 'queued' })] });
+    expect(f.run([BR, '--once'])).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(false);
+    expect(f.logs.at(-1)).toBe(`PENDING (not dispatched): 3 branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once); run the same command again (it dispatches anyway ${DEVICE_YIELD_S / 60} minutes after the first wait)`);
+  });
+  it('waits while a device lanes run is queued or running, then dispatches', () => {
+    const f = fake({ devices: [deviceRun], states: [{ status: 'queued', conclusion: null }] });
+    let polls = 0;
+    const gh = f.deps.gh;
+    const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('/runs?') && ++polls > 18 ? JSON.stringify({ workflow_runs: [] }) : gh(a)) };
+    expect(main([BR, '--once'], { ...deps }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(false);
+    expect(main([BR], deps, () => REPO)).not.toBe(EXIT.error);
+    expect(f.logs).toContain('waiting to dispatch: 1 device lanes run(s) are queued or running');
+    expect(posted(f.calls)).toBe(true);
+    expect(f.deps.now()).toBeGreaterThanOrEqual(SLOT_POLL_S * 1000);
+  });
+  it('dispatches at once beside the landing\'s regens (a label run, a patch-mode regen) while a slot is free', () => {
+    for (const run of [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null }), rawRun({ id: 3, display_title: `regen of ${NEW}`, status: 'queued', conclusion: null })]) {
+      const f = fake({ listed: [run, other(4), other(5)], states: [{ status: 'queued', conclusion: null }] });
+      expect(f.run([BR, '--once'])).toBe(EXIT.pending);
+      expect(posted(f.calls)).toBe(true);
+      expect(f.logs.some((l) => l.startsWith('waiting to dispatch') || l.startsWith('PENDING (not dispatched)'))).toBe(false);
+    }
+  });
+  it('stops waiting for device lanes after DEVICE_YIELD_S and dispatches; the run waits for its slot itself', () => {
+    const f = fake({ devices: [deviceRun], states: [{ status: 'completed', conclusion: 'success' }] });
+    f.run([BR]);
+    expect(posted(f.calls)).toBe(true);
+    expect(f.deps.now()).toBeGreaterThanOrEqual(DEVICE_YIELD_S * 1000);
+  });
+  it('with --once dispatches anyway once DEVICE_YIELD_S has passed since the first wait for this head', () => {
+    const f = fake({ devices: [deviceRun], states: [{ status: 'queued', conclusion: null }] });
+    const first = new Map<string, number>();
+    const since = (k: string) => first.get(k) ?? (first.set(k, f.deps.now()), f.deps.now());
+    const forget = (k: string) => void first.delete(k);
+    expect(main([BR, '--once'], { ...f.deps, since, forget }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(false);
+    expect([...first.keys()]).toEqual([`${BR}@${HEAD}`]);
+    f.deps.sleep(DEVICE_YIELD_S * 1000);
+    expect(main([BR, '--once'], { ...f.deps, since, forget }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(true);
+    expect([...first.keys()]).toEqual([]);
+  });
+  it('starts the shared wait only at a busy poll, and forgets it once the dispatch goes', () => {
+    const recorded: string[] = [];
+    const free = fake({ states: [{ status: 'queued', conclusion: null }] });
+    expect(main([BR, '--once'], { ...free.deps, since: (k) => (recorded.push(k), 0), forget: (k) => void recorded.push(`forget ${k}`) }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(free.calls)).toBe(true);
+    expect(recorded).toEqual([]);
+  });
+  it('after waiting, reads the branch head again and reuses a run another invocation dispatched meanwhile', () => {
+    const f = fake({ head: NEW, states: [{ status: 'queued', conclusion: null }] });
+    let polls = 0;
+    let heads = 0;
+    const gh = f.deps.gh;
+    const busy = [other(1), other(2), other(3)];
+    const deps: Deps = {
+      ...f.deps,
+      gh: (a) => {
+        if (a[1] === `repos/${REPO}/branches/${BR}`) return JSON.stringify({ name: BR, commit: { sha: ++heads > 1 ? NEW : HEAD } });
+        if (a[1]?.includes('regen-on-ci.yml/runs?')) return JSON.stringify({ workflow_runs: ++polls === 1 ? [] : polls <= 5 ? busy : [rawRun({ id: 78, display_title: runTitle(BR, NEW, 'ffffffffffff'), status: 'in_progress', conclusion: null })] });
+        return gh(a);
+      },
+    };
+    main([BR], deps, () => REPO);
+    expect(heads).toBe(2);
+    expect(posted(f.calls)).toBe(false);
+    expect(f.logs).toContain(`run 78 already regenerates ${BR} at ${NEW}: ${URL}`);
+  });
+  it('dispatches when listing the runs fails', () => {
+    const f = fake({ states: [{ status: 'queued', conclusion: null }] });
+    const gh = f.deps.gh;
+    const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('device-lanes.yml') ? (() => { throw new Error('HTTP 502'); })() : gh(a)) };
+    expect(main([BR, '--once'], deps, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(true);
+    expect(f.logs[0]).toMatch(/^listing the queued and running regens failed \(HTTP 502\); dispatching/);
+  });
+  it('uses regen-on-ci.yml\'s own slot count and device lanes yield', () => {
+    const yml = readFileSync(repoPath('.github/workflows/regen-on-ci.yml'), 'utf8');
+    expect(REGEN_BRANCH_SLOTS).toBe(3);
+    expect(yml).toContain(`REGEN_BRANCH_SLOTS: '${REGEN_BRANCH_SLOTS}'`);
+    expect(yml).toContain(`DEVICE_YIELD_SECONDS: '${DEVICE_YIELD_S}'`);
   });
 });
 
@@ -279,6 +382,124 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(runStep(resolve, label, resolveGh([])).out).toEqual({ branch: BR, sha: HEAD, mode: 'push' });
     expect(runStep(resolve, label, resolveGh([], NEW)).stdout).toContain(`moved from the labelled head ${HEAD} to ${NEW}`);
   });
+  it('a worker\'s branch regen waits, oldest first, while two older branch regens are queued or running', () => {
+    const gate = stepScript('Wait for a branch regen slot');
+    const d = tmpDir();
+    const run = (id: number, created_at: string, event = 'workflow_dispatch', display_title = runTitle(BR, HEAD, NONCE)) => ({ id, created_at, event, display_title });
+    const older = [run(1, '2026-10-14T02:00:00Z'), run(2, '2026-10-14T02:05:00Z'), run(3, '2026-10-14T02:10:00Z', 'pull_request', 'Landing batch'), run(4, '2026-10-14T02:10:00Z', 'workflow_dispatch', regenTitle(HEAD))];
+    const newer = [run(9, '2026-10-14T02:30:00Z'), run(7, '2026-10-14T02:20:00Z')];
+    // Calls 1-4 (one per status) see both older branch regens running; from call 5 on, run 1 has finished.
+    const stub = (runs: object[], later: object[]) => `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
+  *status=in_progress*) if [ $n -le 9 ]; then body='${JSON.stringify({ workflow_runs: runs })}'; else body='${JSON.stringify({ workflow_runs: later })}'; fi ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    // The landing's own regens (runs 3 and 4: a label run, patch mode) never hold it back, only the slots do.
+    const env = { GITHUB_RUN_ID: '7', REGEN_BRANCH_SLOTS: '2', DEVICE_YIELD_SECONDS: '5400', POLL_SECONDS: '0' };
+    const waits = runStep(gate, env, stub([...older, ...newer], [older[1]!, older[2]!, older[3]!, ...newer]));
+    expect(waits.status, waits.stderr).toBe(0);
+    expect(waits.stdout).toContain('2 older branch regens are queued or running; waiting for one of 2 slots');
+    expect(waits.stdout).not.toContain('device lanes run');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('17');
+    rmSync(join(d, 'calls'));
+    // Newer branch regens never hold it back.
+    const free = runStep(gate, env, stub([older[1]!, older[2]!, older[3]!, ...newer], []));
+    expect(free.status, free.stderr).toBe(0);
+    expect(free.stdout).not.toContain('waiting for one');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('9');
+    rmSync(join(d, 'calls'));
+    // While a device lanes run is queued or running, a free slot waits too, until it ends; a label run or a patch-mode regen does not hold it.
+    const landingStub = (regen: object[], devices: object[]) => `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*status=queued*) if [ $n -le 9 ]; then body='${JSON.stringify({ workflow_runs: devices })}'; else body='{"workflow_runs":[]}'; fi ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
+  *status=in_progress*) if [ $n -le 9 ]; then body='${JSON.stringify({ workflow_runs: regen })}'; else body='{"workflow_runs":[]}'; fi ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const held = runStep(gate, env, landingStub(newer, [{ id: 50, event: 'workflow_dispatch', display_title: `device lanes of ${HEAD}` }]));
+    expect(held.status, held.stderr).toBe(0);
+    expect(held.stdout).toContain('1 device lanes run(s) are queued or running; waiting until they end (at most 5400 s)');
+    expect(held.stdout).not.toContain('waiting for one');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('17');
+    rmSync(join(d, 'calls'));
+    for (const regen of [older[2]!, older[3]!]) {
+      const beside = runStep(gate, env, landingStub([regen, ...newer], []));
+      expect(beside.status, beside.stderr).toBe(0);
+      expect(beside.stdout).not.toContain('waiting until they end');
+      expect(beside.stdout).toContain('started after waiting 0 s');
+      expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('9');
+      rmSync(join(d, 'calls'));
+    }
+    // Past DEVICE_YIELD_SECONDS it stops yielding to device lanes and takes the free slot.
+    const always = `
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*status=in_progress*) body='${JSON.stringify({ workflow_runs: [{ id: 50 }, { id: 51 }] })}' ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
+  *status=in_progress*) body='${JSON.stringify({ workflow_runs: [older[2]!, older[3]!] })}' ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const capped = runStep(gate, { ...env, DEVICE_YIELD_SECONDS: '1', POLL_SECONDS: '1' }, always);
+    expect(capped.status, capped.stderr).toBe(0);
+    expect(capped.stdout).toContain('2 device lanes run(s) are queued or running; waiting until they end (at most 1 s)');
+    expect(capped.stdout).toContain('started after waiting 1 s');
+    // A failed list (a rate limit) waits a poll instead of failing the run.
+    const limited = runStep(gate, env, `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*) if [ $n -le 3 ]; then echo '{"message":"API rate limit exceeded"}'; exit 1; fi; body='{"workflow_runs":[]}' ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`);
+    expect(limited.status, limited.stderr).toBe(0);
+    expect(limited.stdout).toContain('listing the queued and running runs failed; trying again in 0 s');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('11');
+    rmSync(join(d, 'calls'));
+    // A branch that moved off its dispatched head stops at once instead of waiting for a slot it would only be refused in.
+    const branchAt = (sha: string) => `
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  repos/${REPO}/branches/${BR}) body='{"commit":{"sha":"${sha}"}}' ;;
+  *status=*) body='${JSON.stringify({ workflow_runs: [...older, ...newer] })}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    const moved = runStep(gate, { ...env, DISPATCH_BRANCH: BR, DISPATCH_HEAD: HEAD }, branchAt(NEW));
+    expect(moved.status).toBe(1);
+    expect(moved.stdout).toContain(`${BR} moved from the dispatched head ${HEAD} to ${NEW} while waiting for a slot; dispatch again`);
+    // Still at its head, or a failed lookup (gh prints the error body and exits 1): it keeps waiting, then takes the freed slot.
+    const lookup = (branch: string) => `
+n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
+case "$2" in
+  repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  repos/${REPO}/branches/${BR}) ${branch} ;;
+  *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
+  *status=in_progress*) if [ $n -le 6 ]; then body='${JSON.stringify({ workflow_runs: [...older, ...newer] })}'; else body='${JSON.stringify({ workflow_runs: newer })}'; fi ;;
+  *status=*) body='{"workflow_runs":[]}' ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
+    for (const branch of [`body='{"commit":{"sha":"${HEAD}"}}'`, `echo '{"message":"Server Error","status":"502"}'; exit 1`]) {
+      const stays = runStep(gate, { ...env, DISPATCH_BRANCH: BR, DISPATCH_HEAD: HEAD }, lookup(branch));
+      expect(stays.status, stays.stderr).toBe(0);
+      expect(stays.stdout).toContain('waiting for one of 2 slots');
+      expect(stays.stdout).not.toContain('moved');
+      rmSync(join(d, 'calls'));
+    }
+  });
   it('master\'s warm run yields to branch regens (dispatched or labelled) but never to the driver\'s patch-mode runs (#220)', () => {
     const warm = (runs: object[]) => runStep(resolve, { GITHUB_EVENT_NAME: 'push', GITHUB_SHA: HEAD, DISPATCH_BRANCH: '', DISPATCH_SHA: '', DISPATCH_HEAD: '', DISPATCH_NONCE: '', PR_BRANCH: '', PR_REPO: '', PR_SHA: '' }, resolveGh(runs)).out['mode'];
     const run = (event: string, display_title: string | null) => ({ event, display_title });
@@ -291,6 +512,26 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(warm([run('workflow_dispatch', 'regen-on-ci')])).toBe('skip');
     expect(warm([run('workflow_dispatch', null)])).toBe('skip');
     expect(warm([run('workflow_dispatch', `regen of ${HEAD.slice(0, 12)}`)])).toBe('skip');
+  });
+  it('converge picks the last round that ran, and a round the other side had nothing to do after ends the chain', () => {
+    const pick = stepScript('Pick the last round');
+    const last = (e: Record<string, string>) => runStep(pick, { C1: '', N1: '', H1: '', C2: '', H2: '', C3: '', ...e }, 'exit 9');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true', H2: 'false' }).out['name']).toBe('host-2');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true' }).out['name']).toBe('chrome-2');
+    expect(last({ C1: 'true', N1: 'true', H1: 'false' }).out['name']).toBe('host-1');
+    // chrome-1 left lanes-host nothing to do: host-1 is skipped and chrome-1's tree is final.
+    expect(last({ C1: 'false', N1: 'false' }).out['name']).toBe('chrome-1');
+    const missing = last({ C1: 'true', N1: 'true' });
+    expect(missing.status).toBe(1);
+    expect(missing.stdout).toContain('host-1 reported nothing');
+    expect(last({}).stdout).toContain('chrome-1 reported nothing');
+    expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true', H2: 'true', C3: 'true' }).stdout).toContain('no fixed point after 5 rounds');
+    // Each later round runs only when the round before it changed files and left the other side something to do.
+    expect(yml).toContain("if: needs.chrome-1.outputs.next != 'false'");
+    for (const [prev, cur] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) {
+      const job = yml.slice(yml.indexOf(`\n  ${cur}:\n`), yml.indexOf('uses:', yml.indexOf(`\n  ${cur}:\n`)));
+      expect(job).toContain(`if: needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false'`);
+    }
   });
   it('the run-name gives branch mode its branch, head and nonce; patch mode keeps "regen of <sha>"', () => {
     const line = /\nrun-name: ([^\n]+)\n/.exec(yml)?.[1];
@@ -327,7 +568,7 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     return { w, origin, base, head, later, patch, at: (sha: string) => git(w, 'push', '-q', '-f', 'origin', `${sha}:refs/heads/${BR}`), remote: () => git(w, 'ls-remote', 'origin', `refs/heads/${BR}`).split('\t')[0] ?? '' };
   }
   const runPush = (r: ReturnType<typeof repo>, patch: string) => {
-    const env = { BRANCH: BR, SHA: r.head, RUN_URL: URL };
+    const env = { BRANCH: BR, SHA: r.head, NOW: '', RUN_URL: URL };
     const d = tmpDir();
     mkdirSync(join(d, 'last'));
     writeFileSync(join(d, 'last', 'outputs.patch'), patch);
@@ -340,7 +581,7 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(ok.status, ok.stderr).toBe(0);
     const pushed = r.remote();
     expect(ok.out).toEqual({ pushed });
-    expect(git(r.w, 'log', '-1', '--format=%P%n%B', pushed)).toBe(`${r.head}\n${COMMIT_SUBJECT}\n\nCommands: pnpm regen --skip lanes-host --skip tw-sweep (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated\nto a fixed point, then pnpm regen --only tw-sweep (macos-26).\nBase: ${r.head}\nRun: ${URL}`);
+    expect(git(r.w, 'log', '-1', '--format=%P%n%B', pushed)).toBe(`${r.head}\n${COMMIT_SUBJECT}\n\nCommands: pnpm regen --skip lanes-host (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated to a fixed\npoint.\nBase: ${r.head}\nRun: ${URL}`);
     expect(pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.head }], commit: { message: git(r.w, 'log', '-1', '--format=%B', pushed) } }])), URL, r.head, BR)).toBe(pushed);
     expect(ok.stderr).toContain(`gh workflow run ci.yml --ref ${BR}`);
     const f = repo();
@@ -349,18 +590,86 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(fixed.out).toEqual({ pushed: 'none' });
     expect(f.remote()).toBe(f.head);
   });
-  it('refuses to push when the branch moved during the run: forward, back to an ancestor, or deleted', () => {
-    for (const where of ['later', 'base', 'gone'] as const) {
+  const where = stepScript('Where the branch is now');
+  /** The step's gh stub answers the compare query with the given status. */
+  const runWhere = (r: ReturnType<typeof repo>, patch: string, status: string) => {
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), patch);
+    return runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo '${status}'`, r.w);
+  };
+  it('judges a branch still at the head as not moved', () => {
+    const r = repo();
+    r.at(r.head);
+    const res = runWhere(r, r.patch, 'identical');
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.out).toEqual({ moved: 'false' });
+  });
+  it('judges nothing when the run has nothing to commit, wherever the branch went', () => {
+    const r = repo();
+    r.at(r.later);
+    const res = runWhere(r, '', 'ahead');
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.out).toEqual({ moved: 'false' });
+  });
+  it('pushes nothing when the branch is reset back after it was judged', () => {
+    const r = repo();
+    r.at(r.later);
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), r.patch);
+    expect(runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo ahead`, r.w).status).toBe(0);
+    r.at(r.head);
+    const res = runStep(push, { BRANCH: BR, SHA: r.head, NOW: r.later, RUN_URL: URL, RUNNER_TEMP: d }, 'echo "gh $*" >&2', r.w);
+    expect(res.status).not.toBe(0);
+    expect(r.remote()).toBe(r.head);
+    expect(res.out).toEqual({});
+  });
+  it('refuses a branch moved back, sideways or deleted during the run, and one whose new head the outputs do not apply to', () => {
+    for (const [at, status, msg] of [
+      ['base', 'behind', `moved from HEAD to BASE (behind, not ahead) during the run; nothing pushed, regen again`],
+      ['later', 'diverged', `moved from HEAD to LATER (diverged, not ahead) during the run; nothing pushed, regen again`],
+      ['gone', 'ahead', 'no longer exists; nothing pushed'],
+      ['clash', 'ahead', `moved from HEAD to CLASH during the run and the outputs do not apply there; nothing pushed, regen again`],
+    ] as const) {
       const r = repo();
-      if (where === 'gone') r.at(r.base);
-      else r.at(r[where]);
-      if (where === 'gone') git(r.w, 'push', '-q', 'origin', `:refs/heads/${BR}`);
-      const before = where === 'gone' ? '' : r.remote();
-      const res = runPush(r, r.patch);
-      expect(res.status, where).not.toBe(0);
-      expect(res.stdout, where).toContain(`::error::${BR} moved from ${r.head} to ${where === 'gone' ? 'nothing' : r[where]} during the run; nothing pushed, regen again`);
-      expect(where === 'gone' ? git(r.w, 'ls-remote', 'origin', `refs/heads/${BR}`) : r.remote(), where).toBe(before);
-      expect(res.out, where).toEqual({});
+      let target = r.later;
+      if (at === 'clash') {
+        git(r.w, 'checkout', '-q', '--detach', r.head);
+        writeFileSync(join(r.w, 'out.json'), '3\n');
+        git(r.w, 'commit', '-q', '-am', 'clash');
+        target = git(r.w, 'rev-parse', 'HEAD');
+        git(r.w, 'checkout', '-q', '--detach', r.head);
+      }
+      if (at === 'base') target = r.base;
+      r.at(target);
+      if (at === 'gone') git(r.w, 'push', '-q', 'origin', `:refs/heads/${BR}`);
+      const res = runWhere(r, r.patch, status);
+      expect(res.status, at).not.toBe(0);
+      expect(res.stdout, at).toContain(`::error::${BR} ${msg.replace('HEAD', r.head).replace('BASE', r.base).replace('LATER', r.later).replace('CLASH', target)}`);
+      expect(res.out, at).toEqual({});
     }
+  });
+  it('carries the outputs onto a head that moved forward, and the push names it after Onto:', () => {
+    const r = repo();
+    r.at(r.later);
+    const d = tmpDir();
+    mkdirSync(join(d, 'last'));
+    writeFileSync(join(d, 'last', 'outputs.patch'), r.patch);
+    const moved = runStep(where, { BRANCH: BR, SHA: r.head, RUNNER_TEMP: d }, `echo ahead`, r.w);
+    expect(moved.status, moved.stderr).toBe(0);
+    expect(moved.out).toEqual({ moved: 'true', now: r.later });
+    expect(git(r.w, 'rev-parse', 'HEAD')).toBe(r.later);
+    const ok = runStep(push, { BRANCH: BR, SHA: r.head, NOW: r.later, RUN_URL: URL, RUNNER_TEMP: d }, 'echo "gh $*" >&2', r.w);
+    expect(ok.status, ok.stderr).toBe(0);
+    const pushed = r.remote();
+    expect(ok.out).toEqual({ pushed });
+    expect(git(r.w, 'show', `${pushed}:out.json`)).toBe('2');
+    expect(git(r.w, 'show', `${pushed}:later.ts`)).toBe('y');
+    const message = git(r.w, 'log', '-1', '--format=%B', pushed);
+    expect(message).toContain(`Base: ${r.head}\nOnto: ${r.later} (pushed during the run;`);
+    expect(pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.later }], commit: { message } }])), URL, r.head, BR)).toBe(pushed);
+    // The Onto: line must name the commit's own parent.
+    expect(() => pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.base }], commit: { message } }])), URL, r.head, BR)).toThrow('is not a regen commit on top of');
   });
 });

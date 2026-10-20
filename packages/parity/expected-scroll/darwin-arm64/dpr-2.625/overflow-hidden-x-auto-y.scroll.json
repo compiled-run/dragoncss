@@ -21,5 +21,14 @@
    "clientWidth": 86,
    "clientHeight": 66
   }
+ ],
+ "extents": [
+  {
+   "id": "app",
+   "minLeft": 0,
+   "maxLeft": 40,
+   "minTop": 0,
+   "maxTop": 36.9523811340332
+  }
  ]
 }

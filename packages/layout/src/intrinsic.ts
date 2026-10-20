@@ -2,8 +2,9 @@
 import type { LayoutBox, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
-import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
+import { borderBoxFromSpecified, hasPercent, lengthMaxWidth, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
+import { gridIntrinsicContentInlineSize } from './grid.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
 import { hasAspectRatio, ratioInlineContribution } from './ratio.ts';
@@ -17,6 +18,7 @@ export type IntrinsicKind = 'min' | 'max';
 export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const kids = box.children;
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
+  if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);
   if (box.strut !== null) return inlineIntrinsicSize(ctx, box, kind);
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   let widest = ZERO;
@@ -36,14 +38,39 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   // A calculation evaluates against a basis of 0 (Blink MinimumValueForLength with no percentage resolution size): calc(10px + 5%) is 10px.
   const pad = (v: typeof s.paddingLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
   const bp = sumEdges(bor.left, bor.right, pad(s.paddingLeft), pad(s.paddingRight));
+  // css-sizing-3 §5.2: min-content and max-content contribute that size of the content box, fit-content the size being asked for
+  // (Blink ComputeMinMaxInlineSizes resolves a keyword width, min-width or max-width through the box's own min and max content).
+  const keyword = (k: string): LU | null => {
+    if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
+    if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
+    return add(intrinsicContentInlineSize(ctx, box, k === 'min-content' ? 'min' : k === 'max-content' ? 'max' : kind), bp);
+  };
+  const width = keyword(s.width.kind);
+  const maxWidth = keyword(s.maxWidth.kind);
+  const minWidth = keyword(s.minWidth.kind);
   // Blink ResolveInlineLengthInternal with an indefinite percentage basis: a width or max-width with a percentage is auto or none,
   // a min-width with one resolves against 0, so min-width: calc(60px - 10%) contributes 60px (probed in Chrome 145).
   let size: LU;
-  if (s.width.kind !== 'auto' && !hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
-  else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
-  else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
-  if (s.maxWidth.kind !== 'none' && !hasPercent(s.maxWidth)) size = min(size, borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), bp, s.boxSizing));
-  if (s.minWidth.kind !== 'auto') size = max(size, borderBoxFromSpecified(resolveMinLength(s.minWidth, null, ctx.faults), bp, s.boxSizing));
+  if (width !== null) {
+    size = width;
+  } else {
+    const w = lengthWidth(box.id, s.width);
+    if (w.kind !== 'auto' && !hasPercent(w)) size = borderBoxFromSpecified(resolveLength(w, ZERO, ctx.faults), bp, s.boxSizing);
+    else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
+    else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
+  }
+  if (maxWidth !== null) {
+    size = min(size, maxWidth);
+  } else {
+    const hi = lengthMaxWidth(box.id, s.maxWidth);
+    if (hi.kind !== 'none' && !hasPercent(hi)) size = min(size, borderBoxFromSpecified(resolveLength(hi, ZERO, ctx.faults), bp, s.boxSizing));
+  }
+  if (minWidth !== null) {
+    size = max(size, minWidth);
+  } else {
+    const lo = lengthMinWidth(box.id, s.minWidth);
+    if (lo.kind !== 'auto') size = max(size, borderBoxFromSpecified(resolveMinLength(lo, null, ctx.faults), bp, s.boxSizing));
+  }
   size = max(size, bp);
   return add(size, add(margin(s.marginLeft), margin(s.marginRight)));
 }

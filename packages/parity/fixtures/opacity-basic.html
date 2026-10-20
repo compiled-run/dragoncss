@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
+.stage { display: flex; flex-direction: column; row-gap: 12px; padding: 8px 16px; background-color: rgb(40, 60, 80); }
+.row { display: flex; }
+.c { width: 32px; height: 32px; }
+.s16 { width: 16px; }
+.s8 { width: 8px; }
+.fold { background-color: rgb(230, 80, 40); opacity: 0; }
+.pct { background-color: rgb(40, 200, 120); opacity: 100%; }
+.zero { background-color: rgb(255, 0, 0); opacity: 0; }
+.group { background-color: rgb(250, 220, 60); opacity: 0%; }
+.kid { width: 16px; height: 32px; background-color: rgb(60, 90, 230); }
+.text { background-color: rgb(240, 240, 240); color: rgb(200, 30, 90); opacity: 1; }
+.border { box-sizing: border-box; background-color: rgb(90, 200, 230); border: 4px solid rgb(30, 30, 30); opacity: 0; }
+.nest { background-color: rgb(255, 160, 0); opacity: 1; }
+.nest-kid { width: 16px; height: 16px; background-color: rgb(20, 120, 60); opacity: 0; }
+.textonly { color: rgb(250, 250, 250); opacity: -2; }
+.clamp { background-color: rgb(120, 0, 200); opacity: 1.5; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row"><div data-dragon-id="op-fold" class="c fold"></div><div data-dragon-id="sp1a" class="s16"></div><div data-dragon-id="op-pct" class="c pct"></div><div data-dragon-id="sp1b" class="s8"></div><div data-dragon-id="op-zero" class="c zero"></div></div>
+<div data-dragon-id="row2" class="row"><div data-dragon-id="op-group" class="c group"><div data-dragon-id="op-group-kid" class="kid"></div></div><div data-dragon-id="sp2a" class="s16"></div><div data-dragon-id="op-text" class="c text">X</div><div data-dragon-id="sp2b" class="s8"></div><div data-dragon-id="op-border" class="c border"></div></div>
+<div data-dragon-id="row3" class="row"><div data-dragon-id="op-nest" class="c nest"><div data-dragon-id="op-nest-kid" class="nest-kid"></div></div><div data-dragon-id="sp3a" class="s16"></div><div data-dragon-id="op-textonly" class="c textonly">X</div><div data-dragon-id="sp3b" class="s8"></div><div data-dragon-id="op-clamp" class="c clamp"></div></div>
+</div>
+</body>
+</html>

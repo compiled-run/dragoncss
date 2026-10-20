@@ -19,11 +19,16 @@ describe('android support profile', () => {
     expect(androidProfile.rows.map(key)).toEqual(iosProfile.rows.map(key));
     expect(new Set(androidProfile.rows.map(key)).size).toBe(androidProfile.rows.length);
   });
-  it('has exactly the iOS rows, statuses and proofs: no row, status or proof iOS does not have', () => {
+  it('has exactly the iOS rows, statuses and proofs (animation rows: the same claims): no row, status or proof iOS does not have', () => {
     expect(androidProfile.rows.length).toBeGreaterThan(0);
-    expect(androidProfile.rows).toEqual(iosProfile.rows);
-    const ios = new Set(iosProfile.rows.map((r) => JSON.stringify(r)));
-    expect(androidProfile.rows.filter((r) => !ios.has(JSON.stringify(r)))).toEqual([]);
+    // Animation rows follow each target's own device-anim record, so their proving cases may differ by target; the features
+    // and statuses they claim may not.
+    const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== 'animation');
+    const claims = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context === 'animation').map((r) => `${r.feature} ${r.status}`);
+    expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows));
+    expect(claims(androidProfile.rows)).toEqual(claims(iosProfile.rows));
+    const ios = new Set(layout(iosProfile.rows).map((r) => JSON.stringify(r)));
+    expect(layout(androidProfile.rows).filter((r) => !ios.has(JSON.stringify(r)))).toEqual([]);
   });
   it('is a configured target with androidProfile: COMMITTED_PROFILES holds web, ios and android, and android.ts is generated', () => {
     expect(Object.keys(COMMITTED_PROFILES).sort()).toEqual(['android', 'ios', 'web']);

@@ -1,0 +1,17 @@
+{
+  "case": "text-justify-ahem-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"even:text0","data":"XX XX XXX X","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1],"blank":[5]},
+    {"id":"rem:text0","data":"X X X X X X X","lines":2,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[7]},
+    {"id":"spans:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"spans:text1","data":"XXXX XX X","lines":2,"units":[0,0,0,0,0,0,0,0,1],"blank":[7]},
+    {"id":"s:text0","data":"X X ","lines":1,"units":[0,0,0,0],"blank":[3]},
+    {"id":"forced:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"forced:text1","data":"XX XX XXX X","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1],"blank":[5]},
+    {"id":"over:text0","data":"XXXXXX XX X","lines":3,"units":[0,0,0,0,0,0,0,1,1,1,2],"blank":[6,9]},
+    {"id":"pad:text0","data":"XXX XX X XXXX X","lines":3,"units":[0,0,0,0,0,0,0,1,1,1,1,1,1,1,2],"blank":[6,13]},
+    {"id":"child:text0","data":"XX XXXX XXX X XX XXXXX X","lines":3,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2],"blank":[7,16]}
+  ]
+}

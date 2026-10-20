@@ -7,7 +7,7 @@ import { generate } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
-import { resolveAlias } from '../aliases.ts';
+import { legacyAliasRefusal, resolveAlias } from '../aliases.ts';
 import { list, spanOf } from '../ast.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import type { Longhand } from '../properties.ts';
@@ -150,6 +150,11 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       const edits = code === 'DRAGON_UNSUPPORTED_PROPERTY' || code === 'DRAGON_UNSUPPORTED_IMPORTANT' ? { edits: [{ span, replacement: '' }] } : {};
       diagnostics.push(diagnostic(code, { origin: authored(at), message: aliasNote(message), ...edits }));
     };
+    const legacy = property === lowered ? null : legacyAliasRefusal(lowered, source);
+    if (legacy !== null) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${lowered}: ${text} in @keyframes ${name} is unsupported: ${legacy}`, manual: `Write ${property} instead of ${lowered}.` }));
+      continue;
+    }
     if (d['important'] !== false) {
       refuse('DRAGON_UNSUPPORTED_IMPORTANT', `!important on ${property} in @keyframes ${name}: Chrome ignores it inside @keyframes, so the declaration has no effect`);
       continue;

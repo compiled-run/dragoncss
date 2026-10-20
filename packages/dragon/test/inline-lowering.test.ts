@@ -143,10 +143,17 @@ describe('refusals', () => {
     const wrap = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', ['nw'], [text(r, 't1', 'b c')])])]).diagnostics.filter((d) => d.message.startsWith('text-wrap-mode'));
     expect(wrap.map((d) => String(d.target)).sort()).toEqual(['ios', 'web']);
   });
-  it('the phrasing tags INL1a does not reproduce stay refused: b, strong, em, i (synthetic bold and italic), small, code, sub and sup', () => {
-    for (const tag of ['b', 'strong', 'em', 'i', 'small', 'code', 'sub', 'sup']) {
+  it('the phrasing tags INL1a does not reproduce stay refused: small, code, sub and sup', () => {
+    for (const tag of ['small', 'code', 'sub', 'sup']) {
       const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', tag, [], [text(r, 't1', 'b')])])]).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT');
       expect(got.length, tag).toBeGreaterThan(0);
+    }
+  });
+  it('b, strong, em and i are elements since T133; in Ahem every target accepts them since TXT-W (synthetic bold and italic drawn natively)', () => {
+    // b and strong were refused for the UA bold and em and i for the UA italic until TXT-W drew both natively (text-weight-bold-ahem, text-style-ahem).
+    for (const [tag, want] of [['b', []], ['strong', []], ['em', []], ['i', []]] as const) {
+      const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', tag, [], [text(r, 't1', 'b')])])]).diagnostics;
+      expect(got.map((d) => `${d.code} ${String(d.target)}`), tag).toEqual(want);
     }
   });
 });

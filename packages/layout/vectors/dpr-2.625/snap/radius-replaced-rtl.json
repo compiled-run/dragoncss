@@ -1,0 +1,229 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 44576
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 44576
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 44576
+  },
+  {
+   "id": "avatar",
+   "parent": "row",
+   "x": 54768,
+   "y": 1680,
+   "width": 10752,
+   "height": 10752
+  },
+  {
+   "id": "ring",
+   "parent": "row",
+   "x": 40720,
+   "y": 1680,
+   "width": 12032,
+   "height": 12032
+  },
+  {
+   "id": "thick",
+   "parent": "row",
+   "x": 25296,
+   "y": 1680,
+   "width": 13408,
+   "height": 13408
+  },
+  {
+   "id": "ellipse",
+   "parent": "row",
+   "x": 7152,
+   "y": 1680,
+   "width": 16128,
+   "height": 9408
+  },
+  {
+   "id": "ellipse-ring",
+   "parent": "row",
+   "x": 46704,
+   "y": 17104,
+   "width": 18816,
+   "height": 10304
+  },
+  {
+   "id": "corners",
+   "parent": "row",
+   "x": 31248,
+   "y": 17104,
+   "width": 13440,
+   "height": 10080
+  },
+  {
+   "id": "corners-ring",
+   "parent": "row",
+   "x": 14512,
+   "y": 17104,
+   "width": 14720,
+   "height": 11360
+  },
+  {
+   "id": "fill",
+   "parent": "row",
+   "x": 53760,
+   "y": 30480,
+   "width": 11760,
+   "height": 8400
+  },
+  {
+   "id": "hidden",
+   "parent": "row",
+   "x": 39328,
+   "y": 30480,
+   "width": 12416,
+   "height": 12416
+  },
+  {
+   "id": "tall",
+   "parent": "row",
+   "x": 23232,
+   "y": 30480,
+   "width": 14080,
+   "height": 8032
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 697,
+   "width": 1050,
+   "height": 697
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 697,
+   "width": 1050,
+   "height": 697
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 697,
+   "width": 1050,
+   "height": 697
+  },
+  {
+   "id": "avatar",
+   "left": 856,
+   "top": 26,
+   "right": 1024,
+   "bottom": 194,
+   "width": 168,
+   "height": 168
+  },
+  {
+   "id": "ring",
+   "left": 636,
+   "top": 26,
+   "right": 824,
+   "bottom": 214,
+   "width": 188,
+   "height": 188
+  },
+  {
+   "id": "thick",
+   "left": 395,
+   "top": 26,
+   "right": 605,
+   "bottom": 236,
+   "width": 210,
+   "height": 210
+  },
+  {
+   "id": "ellipse",
+   "left": 112,
+   "top": 26,
+   "right": 364,
+   "bottom": 173,
+   "width": 252,
+   "height": 147
+  },
+  {
+   "id": "ellipse-ring",
+   "left": 730,
+   "top": 267,
+   "right": 1024,
+   "bottom": 428,
+   "width": 294,
+   "height": 161
+  },
+  {
+   "id": "corners",
+   "left": 488,
+   "top": 267,
+   "right": 698,
+   "bottom": 425,
+   "width": 210,
+   "height": 158
+  },
+  {
+   "id": "corners-ring",
+   "left": 227,
+   "top": 267,
+   "right": 457,
+   "bottom": 445,
+   "width": 230,
+   "height": 178
+  },
+  {
+   "id": "fill",
+   "left": 840,
+   "top": 476,
+   "right": 1024,
+   "bottom": 608,
+   "width": 184,
+   "height": 132
+  },
+  {
+   "id": "hidden",
+   "left": 615,
+   "top": 476,
+   "right": 809,
+   "bottom": 670,
+   "width": 194,
+   "height": 194
+  },
+  {
+   "id": "tall",
+   "left": 363,
+   "top": 476,
+   "right": 583,
+   "bottom": 602,
+   "width": 220,
+   "height": 126
+  }
+ ]
+}

@@ -6,10 +6,11 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
-import { hitFacts, programInput } from 'dragon';
+import { hitFacts, programInput, svgScenes } from 'dragon';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
-import { CHROME_VERSION, openPage } from './chrome.ts';
+import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
+import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
@@ -48,25 +49,43 @@ export const gridSha256 = (grid: readonly (readonly [number, number])[]): string
 /** Chrome's elementFromPoint at every grid point of a case, on its authored rendering; each id is the element's data-dragon-id. */
 export async function captureHits(browser: Browser, n: NativeCase): Promise<HitCapture> {
   const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
+  const hits = await elementsAtMemo(browser, n, grid);
+  const ids = [...new Set(hits)].sort();
+  const runs: [number, number][] = [];
+  for (const h of hits) {
+    const k = ids.indexOf(h);
+    const last = runs[runs.length - 1];
+    if (last !== undefined && last[0] === k) last[1]++;
+    else runs.push([k, 1]);
+  }
+  return { case: n.case.id, chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, viewport: n.case.environment.viewport, direction: n.case.environment.direction, points: grid.length, gridSha256: gridSha256(grid), ids, runs };
+}
+
+/** The data-dragon-id Chrome hits at each grid point (1/64 px) of a case's authored page, '#none' where none. */
+async function elementsAt(browser: Browser, n: NativeCase, grid: readonly (readonly [number, number])[]): Promise<string[]> {
   const page = await openPage(browser, n.case.authoredHtml, n.case.environment);
   try {
-    const hits = await page.evaluate((pts) => pts.map(([x, y]) => {
+    return await page.evaluate((pts) => pts.map(([x, y]) => {
       const e = document.elementFromPoint(x / 64, y / 64);
       const el = e === null ? null : e.closest('[data-dragon-id]');
       return el === null ? '#none' : (el.getAttribute('data-dragon-id') as string);
     }), grid);
-    const ids = [...new Set(hits)].sort();
-    const runs: [number, number][] = [];
-    for (const h of hits) {
-      const k = ids.indexOf(h);
-      const last = runs[runs.length - 1];
-      if (last !== undefined && last[0] === k) last[1]++;
-      else runs.push([k, 1]);
-    }
-    return { case: n.case.id, chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, viewport: n.case.environment.viewport, direction: n.case.environment.direction, points: grid.length, gridSha256: gridSha256(grid), ids, runs };
   } finally {
     await page.context().close();
   }
+}
+
+// The code that decides the hits beside the page and the grid: this module (elementsAt) and the page setup.
+const HIT_CODE = ['packages/parity/src/hit-capture.ts', 'packages/parity/src/chrome.ts'];
+/** Remembered and fresh hit captures of this process (chrome-memo.ts). */
+export const HIT_MEMO: MemoStats = { hits: 0, misses: 0 };
+
+/** elementsAt, remembered by its page and grid (chrome-memo.ts); a browser launchChrome did not start has flags the key cannot see. */
+function elementsAtMemo(browser: Browser, n: NativeCase, grid: readonly (readonly [number, number])[]): Promise<string[]> {
+  const args = launchArgsOf(browser);
+  if (args === null) return elementsAt(browser, n, grid);
+  const env = n.case.environment;
+  return memoizedJson('hit', { html: injectHarness(n.case.authoredHtml, env), env, args, grid: gridSha256(grid) }, HIT_CODE, HIT_MEMO, () => elementsAt(browser, n, grid));
 }
 
 export const hitCaptureJson = (c: HitCapture): string => `${JSON.stringify({ ...c, runs: undefined }, null, 2).replace(/\n}$/, ',')}\n  "runs": ${JSON.stringify(c.runs)}\n}\n`;
@@ -121,13 +140,34 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 /**
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
  * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
- * hit testing through transforms, and one whose program rounds a corner until the hit test models rounded borders (Blink clips a
- * hit to the rounded border box), so it is never silently mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts
- * hitRefusal names it, since the hit table does not model them yet.
+ * hit testing through transforms; so is a case with a stacking context below the root (an integer z-index or an opacity below 1,
+ * PNT1), whose layers rt-hit.ts orders as z-index auto, a case with an <svg> until SVG-a2 models its shapes, and one whose program
+ * rounds a corner until the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is ever silently
+ * mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not
+ * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP).
  */
 export function hitRefusal(n: NativeCase): string | null {
-  const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
+  const nodes = n.programs.uikit.nodes;
+  const moved = nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  // MASK-CLIP: Chrome's elementFromPoint passes over a box its empty clip rect hides, and over its descendants, which the hit test
+  // does not model yet.
+  const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty')).map((x) => x.id);
+  if (cut.length > 0) return `clip on ${cut.join(', ')}: hit testing past a box its clip rect hides is not modelled yet (MASK-CLIP)`;
+  // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
+  // hit test does not model yet.
+  const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset')).map((x) => x.id);
+  if (clipped.length > 0) return `clip-path on ${clipped.join(', ')}: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)`;
+  // PNT1: a stacking context below the root paints its layer in z-order, which rt-hit.ts does not order yet.
+  const contexts = nodes.filter((x) => x.parent !== null && (x.facts['stacking'] as { readonly createsContext?: boolean } | undefined)?.createsContext === true).map((x) => x.id);
+  if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)`;
+  // T150a: Chrome's elementFromPoint passes over a box that is not visible (its visible descendants still hit), which the hit test
+  // does not model yet.
+  const hidden = nodes.filter((x) => x.writes.some((w) => w.kind === 'visibility')).map((x) => x.id);
+  if (hidden.length > 0) return `visibility on ${hidden.join(', ')}: hit testing past a box that is not visible is not modelled yet (T150b)`;
+  // SVG-a1: Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit test models with SVG-a2.
+  const svgs = (svgScenes(n.compiled, n.case.assignment) ?? []).map((s) => s.address);
+  if (svgs.length > 0) return `<svg> ${svgs.join(', ')}: hit testing an svg's shapes comes with SVG-a2`;
   // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
   const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
   if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
@@ -193,23 +233,62 @@ export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'p
 export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
 /**
  * Files that are new since the identity base: SELD-R1b's fixtures (hit-*, reject-pointer-events-*), SELD-R2a's (interaction-*,
- * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*), CTX-PROOF's (ctx-proof-*) and
- * PNT1's radius group (radius-*, reject-radius-*), which landed after it.
+ * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*), CTX-PROOF's (ctx-proof-*),
+ * PNT1's radius group (radius-*, reject-radius-*), PNT1's effects group (opacity-*, stacking-*, their rejects included), PNT1's
+ * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
+ * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
   'packages/parity/emitted/media-range-rtl.css': { sha256: '281d321b2c05e0d1a2b7d810eafdb11b3f5e3c76baba447b983f23716ae4bd1f', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
+  'packages/parity/emitted/background-shorthand-colors.css': { sha256: 'e90b930ed6d4e52dd6ce50dc627d86c0a6f59ff34020814daf20ee2e11bc0fc9', ruling: 'BG2 (#235): the background shorthand emits its layer longhands as written' },
+  'packages/parity/emitted/block-elements-defaults.css': { sha256: '696839213b1a2705dff1aaf7f65d509b59ef72e08e485b506eeb41b1009612ad', ruling: 'TDEC-a (#281): a colour from the UA origin is emitted as color: revert' },
+  'packages/parity/emitted/block-elements-defaults-rtl.css': { sha256: '390d7e3e153523d64636f997abaf84a730daf2b712d90a28797d00cd749ba425', ruling: 'TDEC-a (#281): a colour from the UA origin is emitted as color: revert' },
+  'packages/parity/emitted/block-elements-font-size.css': { sha256: '39ae170da38fbb239e73f3e65a8c86b125447385c9eafe1fcd8172100c5bb011', ruling: 'TDEC-a (#281): a colour from the UA origin is emitted as color: revert' },
 };
 
 /**
- * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii, which every capture and emitted rule
- * gained after the base was written, so the base files must differ from it by exactly these keys and pointer-events.
+ * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii, box-shadow and the four outline
+ * longhands, which every capture and emitted rule gained after the base was written, so the base files must differ from it by
+ * exactly these keys and pointer-events.
  */
-const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'];
+const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', 'font-weight', 'font-style'];
 const JSON_KEYS = new RegExp(`,\\n[ ]*"(${KEYS_SINCE_BASE.join('|')})": "[^"]*"`, 'g');
 const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`, 'gm');
+/**
+ * PNT1's opacity and z-index, also added after the base, only at their neutral values (opacity 1, z-index auto), as GEN-b's below:
+ * any other value stays in the text, so a base file that gained one no longer hashes to the base.
+ */
+const JSON_EFFECTS = /,\n[ ]*"(?:opacity": "1|z-index": "auto)"/g;
+const CSS_EFFECTS = /^[ ]*(?:opacity: 1|z-index: auto);\n/gm;
+/** T150a's visibility, also added after the base, at its initial value only: a base file whose element is not visible would still differ. */
+const JSON_VISIBILITY = /,\n[ ]*"visibility": "visible"/g;
+const CSS_VISIBILITY = /^[ ]*visibility: visible;\n/gm;
+/** T154's user-select, also added after the base, at its initial auto or the none Chrome's UA sheet gives buttons: it changes no pixel or box. */
+const JSON_USER_SELECT = /,\n[ ]*"user-select": "(?:auto|none)"/g;
+const CSS_USER_SELECT = /^[ ]*user-select: (?:auto|none);\n/gm;
+/** resize, also added after the base, at its initial none only: any other value stays in the text. */
+const JSON_RESIZE = /,\n[ ]*"resize": "none"/g;
+const CSS_RESIZE = /^[ ]*resize: none;\n/gm;
+/**
+ * The text longhands added after the base (TXT-W1's font-synthesis, TDEC-a's text-decoration, vertical-align, float, clear, the TXT2
+ * spacing, wrap, indent and line-clamp longhands), each at its initial value only; text-decoration-color at any value, as it computes to color.
+ */
+const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
+  ['font-synthesis-weight', 'auto'], ['font-synthesis-style', 'auto'], ['font-synthesis-small-caps', 'auto'],
+  ['text-decoration-line', 'none'], ['text-decoration-style', 'solid'], ['text-decoration-color', '[^"\\n;]*'], ['text-decoration-thickness', 'auto'],
+  ['text-underline-offset', 'auto'], ['text-underline-position', 'auto'], ['text-decoration-skip-ink', 'auto'],
+  ['vertical-align', 'baseline'], ['float', 'none'], ['clear', 'none'], ['letter-spacing', 'normal'], ['word-spacing', '0px'],
+  ['text-overflow', 'clip'], ['text-transform', 'none'], ['text-indent', '0px'], ['overflow-wrap', 'normal'], ['word-break', 'normal'],
+  ['-webkit-box-orient', 'horizontal'], ['-webkit-line-clamp', 'none'],
+];
+const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
+const CSS_TEXT = new RegExp(`^[ ]*(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
+/** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
+const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
+const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
 
 /**
  * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
@@ -217,10 +296,38 @@ const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`,
  * ol rule sets it, in GEN_B_DECIMAL_FIXTURES; any other value stays in the text, so the file no longer hashes to the base.
  */
 const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
+/**
+ * SVG-a1's svg family (fill, stroke, stroke-width, SVG-opacity's fill-opacity and stroke-opacity, and SVG-stroke's stroke-linecap,
+ * stroke-linejoin, stroke-miterlimit and fill-rule, SVG-dash's stroke-dasharray and stroke-dashoffset, SVG-geometry's cx, cy, r, x
+ * and y, SVG-paint-order's paint-order, SVG-rrect's rx and ry, and SVG-vector-effect's vector-effect), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
+ * family's own values).
+ */
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1"(?:,\n[ ]*"stroke-linecap": "butt",\n[ ]*"stroke-linejoin": "miter",\n[ ]*"stroke-miterlimit": "4",\n[ ]*"fill-rule": "nonzero"(?:,\n[ ]*"stroke-dasharray": "none",\n[ ]*"stroke-dashoffset": "0px"(?:,\n[ ]*"cx": "0px",\n[ ]*"cy": "0px",\n[ ]*"r": "0px",\n[ ]*"x": "0px",\n[ ]*"y": "0px"(?:,\n[ ]*"paint-order": "normal"(?:,\n[ ]*"rx": "auto",\n[ ]*"ry": "auto"(?:,\n[ ]*"vector-effect": "none")?)?)?)?)?)?)?/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n(?:[ ]*stroke-linecap: butt;\n[ ]*stroke-linejoin: miter;\n[ ]*stroke-miterlimit: 4;\n[ ]*fill-rule: nonzero;\n(?:[ ]*stroke-dasharray: none;\n[ ]*stroke-dashoffset: 0px;\n(?:[ ]*cx: 0px;\n[ ]*cy: 0px;\n[ ]*r: 0px;\n[ ]*x: 0px;\n[ ]*y: 0px;\n(?:[ ]*paint-order: normal;\n(?:[ ]*rx: auto;\n[ ]*ry: auto;\n(?:[ ]*vector-effect: none;\n)?)?)?)?)?)?)?/gm;
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**
- * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and GEN-b's neutral longhands) removed: the computed
+ * BG2's eight background layer longhands, also added after the identity base, at their initial values in LONGHANDS order. Any other
+ * value stays in the text, so a file whose background moved no longer hashes to the base. The three captures in BG2_BASE_CAPTURES
+ * already held these keys at the base, so they keep them.
+ */
+const BG2_BASE_CAPTURES: readonly string[] = ['background-important', 'background-shorthand-cascade', 'background-shorthand-colors'].map((f) => `packages/parity/expected/darwin-arm64/${f}.web.json`);
+const BG2_LONGHANDS: readonly (readonly [string, string])[] = [
+  ['background-image', 'none'],
+  ['background-position-x', '0%'],
+  ['background-position-y', '0%'],
+  ['background-size', 'auto'],
+  ['background-repeat', 'repeat'],
+  ['background-attachment', 'scroll'],
+  ['background-origin', 'padding-box'],
+  ['background-clip', 'border-box'],
+];
+const JSON_BG2 = new RegExp(BG2_LONGHANDS.map(([k, v]) => `,\\n[ ]*"${k}": "${v}"`).join(''), 'g');
+const CSS_BG2 = new RegExp(BG2_LONGHANDS.map(([k, v]) => `^[ ]*${k}: ${v};\\n`).join(''), 'gm');
+
+/**
+ * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and PNT1's, GEN-b's, BG2's and SVG-a1's neutral longhands) removed: the computed
  * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
  * is masked, since every compilation digest moves with the compiler input.
  */
@@ -228,11 +335,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    return text.replace(JSON_KEYS, '').replace(genB, '');
+    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(genB, '').replace(SVG_JSON, '');
+    return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(genB, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TOUCH_ACTION, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

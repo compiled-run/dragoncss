@@ -5,13 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DeviceSet, LaneFailure } from '../src/device-lanes.ts';
-import { evaluateHits, HIT_LANE, hitFile } from '../src/device-lanes.ts';
+import { ANIM_LANE, evaluateHits, HIT_LANE, hitFile } from '../src/device-lanes.ts';
 import type { DeviceRecord } from '../src/device-run.ts';
 import { parseOutcome } from '../src/device-jobs.ts';
 import { deviceHitSource, expectedHitRuns, hitCases } from '../src/hit-capture.ts';
 import type { DeviceRun } from '../src/lanes.ts';
 import { lanesFile } from '../src/lanes.ts';
-import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
+import { nativeTargets, vectorCaseIds } from '../src/targets.ts';
 
 // Made in beforeAll: `vitest list` runs module scope but no hooks, so a module-scope folder would leak.
 let dir = '';
@@ -76,7 +76,7 @@ describe('the device-hit lane record', () => {
   });
   it('passes on a full run of the hit cases while the hit lane refuses some layout cases (PNT2 transforms), and fails a record short of a hit case', () => {
     const n = hitCases().length;
-    expect(n).toBeLessThan(layoutCaseIds().length);
+    expect(n).toBeLessThan(vectorCaseIds().length);
     expect(record([set(2), set(3), set(2.625)])?.reason ?? null).toBeNull();
     expect(record([set(2), set(3), set(2.625, [], n - 1)])?.reason).toContain(`DPR 2.625: ${n - 1}/${n} dumps`);
   });
@@ -85,12 +85,16 @@ describe('the device-hit lane record', () => {
 describe('a device process\'s outcome', () => {
   const s = (failures: readonly LaneFailure[]): DeviceSet => ({ dpr: 2, device: { name: 'fake' } as DeviceRecord, cases: 1, dumps: 1, compared: { a: 0, b: 1, c: 0, d: 0, breaks: 0 }, dumpsSha256: '0', failures, faults: [] });
   const f = (lane: string): LaneFailure => ({ lane, case: 'x', dpr: 2, node: null, kind: 'hit-mismatch', detail: 'd' }) as LaneFailure;
-  const o = (set: DeviceSet, states: DeviceSet, hits: DeviceSet): string => JSON.stringify({ device: 'fake', set, states, hits, env: { ...s([]), cases: 3, dumps: 3 }, trust: { device: 'fake', dpr: 2, rows: [] }, vectors: null, blocked: null });
+  const o = (set: DeviceSet, states: DeviceSet, hits: DeviceSet, anim: DeviceSet = s([])): string => JSON.stringify({ device: 'fake', set, states, hits, anim, traces: s([]), env: { ...s([]), cases: 3, dumps: 3 }, trust: { device: 'fake', dpr: 2, rows: [] }, vectors: null, blocked: null });
   it('refuses a failure filed under another set\'s lane, which that lane\'s record would never count', () => {
     expect(parseOutcome(o(s([f('device-frames')]), s([f('device-states')]), s([f(HIT_LANE)])), 'fake').hits?.failures.length).toBe(1);
     expect(() => parseOutcome(o(s([]), s([]), s([f('device-frames')])), 'fake')).toThrow(/hits.failures holds a failure of lane device-frames, not device-hit/);
     expect(() => parseOutcome(o(s([]), s([f(HIT_LANE)]), s([])), 'fake')).toThrow(/states.failures holds a failure of lane device-hit, not device-states/);
     expect(() => parseOutcome(o(s([f('device-states')]), s([]), s([])), 'fake')).toThrow(/set.failures holds a failure of lane device-states, not device-frames, device-applied, device-lines or device-pixels/);
+    // ANIM-b1 3b: the frame samples' set holds device-anim failures only, and a set without it is malformed.
+    expect(parseOutcome(o(s([]), s([]), s([]), s([f(ANIM_LANE)])), 'fake').anim?.failures.length).toBe(1);
+    expect(() => parseOutcome(o(s([]), s([]), s([]), s([f('device-frames')])), 'fake')).toThrow(/anim.failures holds a failure of lane device-frames, not device-anim/);
+    expect(() => parseOutcome(JSON.stringify({ ...(JSON.parse(o(s([]), s([]), s([]))) as object), anim: undefined }), 'fake')).toThrow(/a set without its anim set/);
     // MQ-R1: the device-env set holds only device-env failures, and a set without it is malformed.
     const env = (v: unknown): string => JSON.stringify({ ...JSON.parse(o(s([]), s([]), s([]))), env: v });
     expect(() => parseOutcome(env(s([f('device-states')])), 'fake')).toThrow(/env.failures holds a failure of lane device-states, not device-env/);

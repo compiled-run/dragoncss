@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 25504
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 25504
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 55776,
+   "height": 25504
+  },
+  {
+   "id": "c1",
+   "parent": "row",
+   "x": 2688,
+   "y": 2688,
+   "width": 10400,
+   "height": 8720
+  },
+  {
+   "id": "c2",
+   "parent": "row",
+   "x": 15776,
+   "y": 2688,
+   "width": 10400,
+   "height": 8720
+  },
+  {
+   "id": "c3",
+   "parent": "row",
+   "x": 28864,
+   "y": 2688,
+   "width": 10400,
+   "height": 8720
+  },
+  {
+   "id": "c4",
+   "parent": "row",
+   "x": 41952,
+   "y": 2688,
+   "width": 10400,
+   "height": 8720
+  },
+  {
+   "id": "c5",
+   "parent": "row",
+   "x": 2688,
+   "y": 14096,
+   "width": 10400,
+   "height": 8720
+  },
+  {
+   "id": "c6",
+   "parent": "row",
+   "x": 15776,
+   "y": 14096,
+   "width": 10400,
+   "height": 8720
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 399,
+   "width": 1050,
+   "height": 399
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 399,
+   "width": 1050,
+   "height": 399
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 872,
+   "bottom": 399,
+   "width": 872,
+   "height": 399
+  },
+  {
+   "id": "c1",
+   "left": 42,
+   "top": 42,
+   "right": 205,
+   "bottom": 178,
+   "width": 163,
+   "height": 136
+  },
+  {
+   "id": "c2",
+   "left": 247,
+   "top": 42,
+   "right": 409,
+   "bottom": 178,
+   "width": 162,
+   "height": 136
+  },
+  {
+   "id": "c3",
+   "left": 451,
+   "top": 42,
+   "right": 614,
+   "bottom": 178,
+   "width": 163,
+   "height": 136
+  },
+  {
+   "id": "c4",
+   "left": 656,
+   "top": 42,
+   "right": 818,
+   "bottom": 178,
+   "width": 162,
+   "height": 136
+  },
+  {
+   "id": "c5",
+   "left": 42,
+   "top": 220,
+   "right": 205,
+   "bottom": 357,
+   "width": 163,
+   "height": 137
+  },
+  {
+   "id": "c6",
+   "left": 247,
+   "top": 220,
+   "right": 409,
+   "bottom": 357,
+   "width": 162,
+   "height": 137
+  }
+ ]
+}

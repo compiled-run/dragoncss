@@ -84,9 +84,13 @@ describe('ANIM-b1: the state machine runs the animator', () => {
   const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
 
   it('ships the animation support on both backends, after the state runtime', () => {
-    const paths = (b: 'uikit' | 'android-views') => emitNativeSupport(b).map((f) => f.path);
-    expect(paths('uikit').slice(-3)).toEqual(['Support/DragonClock.swift', 'Support/DragonState.swift', 'Support/DragonAnim.swift']);
-    expect(paths('android-views').slice(-3)).toEqual(['kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt', 'kotlin/dev/dragon/views/DragonAnim.kt']);
+    // The runtime modules registered after anim (SELD-R2's interaction runtime) follow it.
+    const paths = (b: 'uikit' | 'android-views', first: string) => {
+      const all = emitNativeSupport(b).map((f) => f.path);
+      return all.slice(all.indexOf(first), all.indexOf(first) + 3);
+    };
+    expect(paths('uikit', 'Support/DragonClock.swift')).toEqual(['Support/DragonClock.swift', 'Support/DragonState.swift', 'Support/DragonAnim.swift']);
+    expect(paths('android-views', 'kotlin/dev/dragon/views/DragonClock.kt')).toEqual(['kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt', 'kotlin/dev/dragon/views/DragonAnim.kt']);
     expect(animSupport('uikit', () => '').text).toContain('public final class DragonAnimator');
     expect(animSupport('android-views', () => '').text).toContain('class DragonAnimator(');
   });

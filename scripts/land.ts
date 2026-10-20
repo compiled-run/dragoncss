@@ -1,6 +1,6 @@
 // Continuous landing driver (owner decision 2026-10-03, process review): lands a queue of reviewed PRs in batches (runBatches in
-// land-lib.ts). Each PR gets a position on the one before it, with its own regen and device evidence (the device run is skipped
-// only when the position's evidence stamp equals the previous position's), typecheck, regen-only and floors checks; the batch's
+// land-lib.ts). Each PR gets a position on the one before it, with its own regen and (LAND_DEVICE_STEP=sync only; async, the
+// default, keeps master's device records for device-refresh.yml to replace) device evidence, typecheck, regen-only and floors checks; the batch's
 // top position is proved once by the full test, and its prefixes are bisected when that fails. Then each PR in order is pushed,
 // passes CI, pr:review and a Claude correctness review while Macroscope is at its limit, and merges pinned with
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
@@ -65,6 +65,8 @@ import {
   hostAbi,
   parseLandModes,
   parseMaxInflight,
+  parseDeviceStep,
+  type DeviceStep,
   serializeFatal,
   preparedDifference,
   preparedFits,
@@ -108,9 +110,11 @@ import {
   type PrState,
   predictPosition,
   staleLines,
+  behindLines,
   treeMatches,
 } from './merge-train-lib.ts';
 import { SETUP_GIT_CONFIG } from './floor-merge.ts';
+import { checkCredentials, type Minted, parseMinted, reusable } from './land-app-token.ts';
 import { reviewerIds } from './land-review-lookup.ts';
 import { recordOutage, OUTAGE_CONTEXT, type OutageLedger, outageLedger, parseOutageEject, readOutageStreak, writeOutage, checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
@@ -133,10 +137,34 @@ const TRUSTED = env['LAND_TRUSTED'] === '1';
 // process's own gh calls get it, per call; without it, git and gh use the host's own login (a Mac).
 const TOKEN = env['LAND_TOKEN'] || null;
 delete env['LAND_TOKEN'];
-const withToken = (e: NodeJS.ProcessEnv): NodeJS.ProcessEnv => (TOKEN === null ? e : { ...e, LAND_TOKEN: TOKEN });
-const ghEnv = (): NodeJS.ProcessEnv => (TOKEN === null ? env : { ...env, GH_TOKEN: TOKEN });
-const pushEnv = (): NodeJS.ProcessEnv =>
-  TOKEN === null ? env : { ...env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader', GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${TOKEN}`).toString('base64')}` };
+// Or a GitHub App (LAND_APP_ID and LAND_APP_PRIVATE_KEY, land.yml): its installation token lives an hour, so landToken mints a
+// fresh one (scripts/land-app-token.ts, the trusted checkout's) whenever the one held is near expiry. The credentials, like
+// LAND_TOKEN, leave the environment and reach only the supervised driver and the mint command, on stdin.
+const APP = TOKEN === null && (env['LAND_APP_ID'] ?? '') !== '' ? checkCredentials({ appId: env['LAND_APP_ID'], privateKey: env['LAND_APP_PRIVATE_KEY'] }) : null;
+delete env['LAND_APP_ID'];
+delete env['LAND_APP_PRIVATE_KEY'];
+let APP_TOKEN: Minted | null = null;
+const landToken = (): string | null => {
+  if (APP === null) return TOKEN;
+  APP_TOKEN = reusable(APP_TOKEN, Date.now());
+  if (APP_TOKEN === null) {
+    const repo = env['GITHUB_REPOSITORY'] ?? '';
+    const r = spawnSync(process.execPath, [join(dirname(import.meta.filename), 'land-app-token.ts'), 'mint', repo], { input: JSON.stringify(APP), encoding: 'utf8', env: { PATH: env['PATH'] ?? '' } });
+    if (r.status !== 0) throw new Error(`land: minting the App's installation token for ${JSON.stringify(repo)} failed: ${(r.stderr || String(r.error ?? '')).trim()}`);
+    APP_TOKEN = parseMinted(r.stdout);
+  }
+  return APP_TOKEN.token;
+};
+const withToken = (e: NodeJS.ProcessEnv): NodeJS.ProcessEnv =>
+  APP !== null ? { ...e, LAND_APP_ID: APP.appId, LAND_APP_PRIVATE_KEY: APP.privateKey } : TOKEN === null ? e : { ...e, LAND_TOKEN: TOKEN };
+const ghEnv = (): NodeJS.ProcessEnv => {
+  const t = landToken();
+  return t === null ? env : { ...env, GH_TOKEN: t };
+};
+const pushEnv = (): NodeJS.ProcessEnv => {
+  const t = landToken();
+  return t === null ? env : { ...env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader', GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${t}`).toString('base64')}` };
+};
 // The driver's worktree. A position built in parallel is built in its own (posDir); WT and wtGit then name it while it builds.
 const WT_HOME = env['LAND_WORKTREE'] ?? '/tmp/dragon-land';
 let WT = WT_HOME;
@@ -204,6 +232,8 @@ let CI_APPEAR_S = 0;
 let QUIET_MAX_S = 0;
 // LAND_DEVICES=ci runs a position's device lanes on GitHub runners (device-lanes.yml) instead of under the local device lease.
 let DEVICES_ON: CiMode = 'local';
+// LAND_DEVICE_STEP (parseDeviceStep): async, the default, never runs the device lanes in a landing.
+let DEVICE_STEP: DeviceStep = 'async';
 let DEVICES_WAIT_S = 0;
 // LAND_TEST=ci proves each tree with full-test.yml on GitHub runners instead of pnpm test on this Mac.
 let TEST_ON: CiMode = 'local';
@@ -446,6 +476,7 @@ const evidenceAt = (commit: string): ReturnType<typeof parseDeviceEvidence> => {
 // whose note is returned for the landing's record.
 // `ran`: the tree's parity:lanes as land-checks.yml ran it (LAND_TRUSTED); null runs it here.
 type LanesRun = { status: number | null; signal: string | null; stdout: string; stderr: string; error?: string };
+// Sync device step only: records behind this tree after a device run (a target the run missed) count as stale.
 const judgeDevices = (master: string, startedMs: number | null, onCi = false, ran: LanesRun | null = null): { problems: string[]; rebaseline: string | null } => {
   const local = (path: string): unknown => JSON.parse(readInTree(WT, path));
   const before = evidenceAt(master);
@@ -470,7 +501,7 @@ const judgeDevices = (master: string, startedMs: number | null, onCi = false, ra
   if (arch.problem !== null) return { problems: [arch.problem], rebaseline: null };
   if (arch.rebaseline) log(`  LAND_ARCH_REBASELINE: #${pr} may change device lane architectures, with master's states and exact failure sets`);
   const auto = !arch.rebaseline && onCi ? ciArchRebaseline(before, after) : { rebaseline: false, changes: [] };
-  const problems = deviceRunProblems(before, after, staleLines(lanes.stdout), { rebaseline: arch.rebaseline || auto.rebaseline });
+  const problems = deviceRunProblems(before, after, [...staleLines(lanes.stdout), ...behindLines(lanes.stdout)], { rebaseline: arch.rebaseline || auto.rebaseline });
   if (!auto.rebaseline) return { problems, rebaseline: arch.rebaseline ? `LAND_ARCH_REBASELINE=${pr}` : null };
   const note = `Android ABI rebaseline on CI (${[...androidAbis(before)].join(', ')} -> ${[...androidAbis(after)].join(', ')}) for ${auto.changes.length} device set(s)`;
   log(`  !!! ARCHITECTURE REBASELINE (LAND_DEVICES=${DEVICES_ON}): the CI device run's Android records are of another image ABI than the previous position's; ${problems.length === 0 ? 'every lane keeps its state and exact failures, so they replace them' : 'refused, a verdict differs'}:\n    ${auto.changes.join('\n    ')}`);
@@ -935,6 +966,18 @@ const treeChecks = (prev: string, checks: TreeCheck[], devicesRun: number | null
   }
 };
 
+// Writes the previous position's device records into WT where they differ, and regenerates the tree on them.
+const carryDeviceRecords = (prev: string, e: Entry, commands: string[]): void => {
+  const outs = [LANES_JSON, failuresJson('ios'), failuresJson('android')];
+  refuseRecordSymlinks([prev], outs);
+  const differ = outs.filter((p) => git(['show', `${prev}:${p}`]).toString('utf8') !== readInTree(WT, p));
+  if (differ.length === 0) return;
+  for (const p of outs) writeInTree(WT, p, git(['show', `${prev}:${p}`]));
+  log(`  carried the previous position's device records (${differ.join(', ')}); regenerating on them`);
+  regenTree('regen-carried', 'regen', attribute('regen', { trees: TREES, prev, pr: e.pr }));
+  commands.push(regenRan);
+};
+
 /**
  * A position from its regenerated tree in WT on: typecheck, the device step against the previous position, the regen commit and
  * its checks. `prepared`: the tree was regenerated in parallel from the same sources, so the previous position's device records
@@ -959,22 +1002,21 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     if (r.error !== undefined || (r.status !== 0 && r.status !== 1)) failed('stamp', r, 'pnpm evidence:stamp');
     stamp = r.status;
   }
-  let runDevices = stamp === 1;
-  if (!runDevices && prepared) {
+  if (DEVICE_STEP === 'async') {
+    // Async device lanes: the position keeps the previous position's device records (carried, as the one-by-one merge carries
+    // them, when it was prepared in parallel) and lands on the fast checks; device-refresh.yml runs the lanes on master.
+    if (prepared) carryDeviceRecords(prev, e, commands);
+    device = stamp === 0 ? 'skipped: the evidence stamp equals the previous position\'s' : 'not run (async device lanes): the records are behind this tree until device-refresh.yml runs the lanes on master';
+  }
+  let runDevices = DEVICE_STEP === 'sync' && stamp === 1;
+  if (DEVICE_STEP === 'sync' && !runDevices && prepared) {
     // Equal stamps: the one-by-one build's merge would have carried the previous position's device records into this tree, so
     // they are carried here, and the tree regenerated to its fixed point on them.
-    const outs = [LANES_JSON, failuresJson('ios'), failuresJson('android')];
-    refuseRecordSymlinks([prev], outs);
-    const differ = outs.filter((p) => git(['show', `${prev}:${p}`]).toString('utf8') !== readInTree(WT, p));
-    if (differ.length > 0) {
-      for (const p of outs) writeInTree(WT, p, git(['show', `${prev}:${p}`]));
-      log(`  carried the previous position's device records (${differ.join(', ')}); regenerating on them`);
-      regenTree('regen-carried', 'regen', attribute('regen', { trees: TREES, prev, pr: e.pr }));
-      commands.push(regenRan);
-      if (TRUSTED) lanesRan = asLanes(treeChecks(prev, ['lanes'], null, attribute('tree-checks', { trees: TREES, prev, pr: e.pr })).result.lanes!);
-    }
+    const before = commands.length;
+    carryDeviceRecords(prev, e, commands);
+    if (TRUSTED && commands.length > before) lanesRan = asLanes(treeChecks(prev, ['lanes'], null, attribute('tree-checks', { trees: TREES, prev, pr: e.pr })).result.lanes!);
   }
-  if (!runDevices) {
+  if (DEVICE_STEP === 'sync' && !runDevices) {
     // Equal stamps: the regen carried the previous position's device records; they must judge exactly as its.
     const { problems } = judgeDevices(prev, null, false, lanesRan);
     if (problems.length > 0) {
@@ -1604,6 +1646,7 @@ const setUp = (): void => {
   CHECKS_WAIT_S = seconds('LAND_CHECKS_WAIT', 150 * 60 + 900);
   OUTAGE_EJECT = parseOutageEject(env['LAND_OUTAGE_EJECT']);
   DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', DEFAULT_DEVICES_WAIT_S);
+  DEVICE_STEP = parseDeviceStep(env['LAND_DEVICE_STEP']);
   TEST_WAIT_S = seconds('LAND_TEST_WAIT', DEFAULT_TEST_WAIT_S);
   REGEN_WAIT_S = seconds('LAND_REGEN_WAIT', DEFAULT_REGEN_WAIT_S);
   CI_START_S = seconds('LAND_CI_START', 900);
@@ -1620,10 +1663,16 @@ const setUp = (): void => {
   // The identity this token acts as: the only writer whose land/proof statuses are trusted (with LAND_PROOF_WRITERS), and one
   // that may never be a reviewer, so the identity that merges can never also approve.
   let user: string | null = null;
-  try {
-    user = gh(['api', 'user']);
-  } catch (error) {
-    log(`GET user failed (${errorText(error).split('\n')[0]}); taking the token's identity from LAND_TOKEN_USER_ID`);
+  if (APP !== null) {
+    // An App's installation token cannot GET user; the mint names its bot user.
+    landToken();
+    user = JSON.stringify({ id: APP_TOKEN!.botId, login: APP_TOKEN!.botLogin });
+  } else {
+    try {
+      user = gh(['api', 'user']);
+    } catch (error) {
+      log(`GET user failed (${errorText(error).split('\n')[0]}); taking the token's identity from LAND_TOKEN_USER_ID`);
+    }
   }
   // In GitHub Actions with no LAND_TOKEN (an empty queue's start-up), gh acts as GITHUB_TOKEN: github-actions[bot], user 41898282.
   SELF = parseSelf(user, env['LAND_TOKEN_USER_ID'] || (TOKEN === null && env['GITHUB_ACTIONS'] === 'true' ? '41898282' : undefined));

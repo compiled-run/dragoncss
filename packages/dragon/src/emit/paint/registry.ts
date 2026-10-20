@@ -20,7 +20,10 @@ import { SCROLL_EMITTER } from './scroll.ts';
 import { SCROLLBAR_EMITTER } from './scrollbar.ts';
 import { SHADOW_EMITTER } from './shadow.ts';
 import { STACKING_EMITTER } from './stacking.ts';
+import { TEXT_DECORATION_EMITTER } from './text-decoration.ts';
+import { TEXT_SHADOW_EMITTER } from './text-shadow.ts';
 import { TRANSFORM_EMITTER } from './transform.ts';
+import { VISIBILITY_EMITTER } from './visibility.ts';
 import type { NativePaint, PaintEmitter, PaintPlant, PaintStage } from './types.ts';
 import { PAINT_STAGES } from './types.ts';
 
@@ -42,6 +45,9 @@ const EMITTERS = [
   IMAGE_EMITTER,
   FOREIGN_VIEW_EMITTER,
   CONTROL_EMITTER,
+  VISIBILITY_EMITTER,
+  TEXT_DECORATION_EMITTER,
+  TEXT_SHADOW_EMITTER,
 ] as const;
 
 export const PAINT_EMITTERS: readonly PaintEmitter<string>[] = EMITTERS as readonly PaintEmitter<string>[];

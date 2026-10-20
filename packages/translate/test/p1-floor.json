@@ -8,6 +8,7 @@
       "rt",
       "hit",
       "animator",
+      "interaction",
       "band"
     ],
     "counts": {
@@ -18,6 +19,7 @@
       "rt": 55362,
       "hit": 2272,
       "animator": 18,
+      "interaction": 21,
       "band": 20
     }
   },

@@ -12,7 +12,8 @@ import type { AnimCase } from '../src/anim-cases.ts';
 import { animCasesOf, animFixtures, frameScript, parseFrames, runFrameScript, simulator } from '../src/anim-cases.ts';
 import { animCaseReport, animReport, committedFrames } from '../src/frame-capture.ts';
 import { canonicalJsonText } from '../src/state-cases.ts';
-import { ANIMATION_CONTEXT, deriveAnimationRows } from '../src/profile-rows.ts';
+import { ANIMATION_CONTEXT, committedLanes, deriveAnimationRows } from '../src/profile-rows.ts';
+import { animSamples } from '../src/anim-samples.ts';
 
 const cases = animFixtures().flatMap(animCasesOf);
 const byFixture = (id: string): AnimCase => {
@@ -148,15 +149,18 @@ describe('host frame lanes (R18)', () => {
 // checks the layout rows only (its layoutRows), so each check it applies to a layout row is applied here to an animation row.
 describe('animation rows (profile:rows from the frame lanes)', () => {
   const report = animReport();
-  const passing = cases.filter((c) => report.passingCases.includes(c.id)).map((c) => ({ id: c.id, features: animationFeatures(c.compiled) }));
+  const sampleIds = (target: 'ios' | 'android', id: string): string[] => (animSamples(target).find((xs) => xs[0]?.case.id === id) ?? []).map((s) => s.id);
+  const passing = cases.filter((c) => report.passingCases.includes(c.id)).map((c) => ({ id: c.id, features: animationFeatures(c.compiled), samples: { ios: sampleIds('ios', c.id), android: sampleIds('android', c.id) } }));
   const rowsOf = (rows: readonly { readonly context: string }[]) => rows.filter((r) => r.context === ANIMATION_CONTEXT);
 
-  it('are exactly what profile:rows derives from the passing frame cases, per target (iOS and Android none until device-anim, 3b)', () => {
+  it('are exactly what profile:rows derives from the passing frame cases, per target (iOS and Android through the committed device-anim lane, R18)', () => {
+    const committed = committedLanes();
     expect(rowsOf(webProfile.rows)).toEqual(deriveAnimationRows('web', passing));
-    expect(rowsOf(iosProfile.rows)).toEqual(deriveAnimationRows('ios', passing));
-    expect(rowsOf(androidProfile.rows)).toEqual(deriveAnimationRows('android', passing));
-    expect(rowsOf(iosProfile.rows)).toEqual([]);
-    expect(rowsOf(androidProfile.rows)).toEqual([]);
+    expect(rowsOf(iosProfile.rows)).toEqual(deriveAnimationRows('ios', passing, committed.evidence('ios')));
+    expect(rowsOf(androidProfile.rows)).toEqual(deriveAnimationRows('android', passing, committed.evidence('android')));
+    // No native row without device evidence: a native target derives none from the host lanes alone.
+    expect(deriveAnimationRows('ios', passing)).toEqual([]);
+    expect(deriveAnimationRows('android', passing)).toEqual([]);
   }, 600_000);
 
   it('name exactly the passing frame cases that use their key, and every key a passing frame case uses has a row (M1)', () => {

@@ -9,6 +9,7 @@ import type { LayoutBox, LayoutInput, LayoutStyle, LineStrut, TextLeaf } from '.
 import { validateLayoutInput } from '../../layout/src/validate.ts';
 import { runEngineCase, runLibraryCase, runSnapCase, runUnitsCase } from '../harness/harness.ts';
 import { bitsHex } from '../harness/host.ts';
+import { interactionCases, interactionExpected } from './corpus-interaction.ts';
 import { ROOT } from './generate.ts';
 
 export const CORPUS_SPEC = {
@@ -155,6 +156,7 @@ const INITIAL: LayoutStyle = {
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
+  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0,
   grid: null, gridItem: null,
 };
 
@@ -169,7 +171,7 @@ function pct(r: Rng): number {
   return r.pick([0, 10, 25, 33.333333, 50, 66.666667, 100, 12.5, 150, Math.round(r.next() * 10000) / 100]);
 }
 
-type Size = LayoutStyle['width'];
+type Size = LayoutStyle['height'];
 function sizeV(r: Rng, autoP: number): Size {
   if (r.chance(autoP)) return { kind: 'auto' };
   return r.chance(0.25) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, 0) };
@@ -272,7 +274,7 @@ function randomText(r: Rng, rtl: boolean): string {
 }
 
 function textLeaf(r: Rng, id: string, font: { size: number; lh: TextLeaf['lineHeight']; wrap: TextLeaf['textWrapMode'] }, rtl: boolean): TextLeaf {
-  return { kind: 'text', id, text: randomText(r, rtl), font: { family: 'Ahem', size: font.size, specifiedSize: { kind: 'px', value: font.size }, absoluteSize: true }, lineHeight: font.lh, whiteSpaceCollapse: 'collapse', textWrapMode: font.wrap };
+  return { kind: 'text', id, text: randomText(r, rtl), font: { family: 'Ahem', size: font.size, specifiedSize: { kind: 'px', value: font.size }, absoluteSize: true }, lineHeight: font.lh, whiteSpaceCollapse: 'collapse', textWrapMode: font.wrap, letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
 }
 
 /** A text container's strut: its leaves' font and line-height (INL1a; drawn from nothing, so the P1 inputs keep their shape). */
@@ -701,6 +703,7 @@ export function buildCorpus(): Corpus {
   const rt = rtCases();
   const hit = hitCases();
   const animator = animatorCases();
+  const interaction = interactionCases();
   const band = bandCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
@@ -713,7 +716,9 @@ export function buildCorpus(): Corpus {
     { name: 'hit', mode: 'library', lines: hit, expected: hitExpected(hit) },
     // ANIM-b1 3b: the runtime animator over every frame case's tables and script, after hit.
     { name: 'animator', mode: 'library', lines: animator, expected: animatorExpected(animator) },
-    // MQ-R1: the @media band lookup over every media fixture's band table, after animator.
+    // SELD-R2: the interaction runtime over synthetic tables and event scripts, after animator.
+    { name: 'interaction', mode: 'library', lines: interaction, expected: interactionExpected(interaction) },
+    // MQ-R1: the @media band lookup over every media fixture's band table, after interaction.
     { name: 'band', mode: 'library', lines: band, expected: bandExpected(band) },
   ];
   const d = digestsOf(suites);

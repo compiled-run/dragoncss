@@ -1,0 +1,9 @@
+{
+  "case": "text-calibration-mono",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"p1:text0","data":"print the total count of matching rows per region","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[33]},
+    {"id":"p2:text0","data":"values above the limit are clipped to it","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[26]}
+  ]
+}

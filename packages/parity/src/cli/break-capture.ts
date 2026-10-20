@@ -3,19 +3,48 @@
 // packages/parity/expected-breaks/<platform>/dpr-<d>/<case>.breaks.json; one launch per DPR with chrome.ts flags (imported, unchanged)
 // and the zoom guard. Then the committed break vectors against these: equal on N/N, or every break-mismatch listed (exit 1).
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { CHROME_VERSION, launchChrome, openPage } from '../chrome.ts';
+import { CHROME_VERSION, injectHarness, launchArgsOf, launchChrome, openPage } from '../chrome.ts';
+import { type MemoStats, memoizedJson } from '../chrome-memo.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
 import { chromeBreaksText, captureBreakTexts, compareVectorWithChrome, expectedBreaksDir, expectedBreaksPath, leafTexts, readBreakVector } from '../line-breaks.ts';
-import type { ChromeBreaks } from '../line-breaks.ts';
-import { nativeCases } from '../native-host.ts';
+import type { ChromeBreaks, ChromeBreakText } from '../line-breaks.ts';
+import type { EngineCase } from '../native-host.ts';
+import { engineCases } from '../native-host.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
 const platform = hostPlatform();
 if (platform !== REFERENCE_PLATFORM) throw new Error(`break captures are taken on the reference platform ${REFERENCE_PLATFORM}, not ${platform}`);
-const cases = nativeCases();
+// TXT1a-2: every layout case, a shaped one (native refuses it until phase R) through its engine projection.
+const cases = engineCases();
 console.log(`parity:break-capture: ${cases.length} cases per DPR; DPRs ${DPRS.join(', ')}`);
 const captured = new Map<string, ChromeBreaks>();
+
+/** One case's break texts at a DPR, read from its own page. */
+async function breakTexts(browser: Awaited<ReturnType<typeof launchChrome>>, n: EngineCase, dpr: number): Promise<ChromeBreakText[]> {
+  const page = await openPage(browser, n.case.authoredHtml, atDpr(n.case.environment, dpr));
+  try {
+    if (n.case.authoredPrepare !== null) await n.case.authoredPrepare(page);
+    return await captureBreakTexts(page);
+  } finally {
+    await page.context().close();
+  }
+}
+
+// The code that decides a case's break texts beside the page itself: this capture, the page setup, the DPR environment and the
+// in-page reader with its transform twin.
+const BREAK_CODE = ['packages/parity/src/cli/break-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/dpr.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/transform-capture.ts'];
+const memo: MemoStats = { hits: 0, misses: 0 };
+
+/** breakTexts, remembered by its page and the browser's flags (chrome-memo.ts); a case with a prepare script runs code the key cannot
+ * see, so it always reads. */
+function breakTextsMemo(browser: Awaited<ReturnType<typeof launchChrome>>, n: EngineCase, dpr: number): Promise<ChromeBreakText[]> {
+  const args = launchArgsOf(browser);
+  if (n.case.authoredPrepare !== null || args === null) return breakTexts(browser, n, dpr);
+  const env = atDpr(n.case.environment, dpr);
+  return memoizedJson('breaks', { html: injectHarness(n.case.authoredHtml, env), env, args }, BREAK_CODE, memo, () => breakTexts(browser, n, dpr));
+}
+
 for (const dpr of DPRS) {
   const dir = expectedBreaksDir(dpr, platform);
   mkdirSync(dir, { recursive: true });
@@ -26,19 +55,16 @@ for (const dpr of DPRS) {
     const t = Date.now();
     // Each case in its own context, CHROME_PAGES at a time; captured is keyed, so finishing order changes nothing.
     await inOrder(cases, CHROME_PAGES, async (n) => {
-      const page = await openPage(browser, n.case.authoredHtml, atDpr(n.case.environment, dpr));
-      try {
-        const b: ChromeBreaks = { case: n.case.id, chrome: CHROME_VERSION, dpr, texts: await captureBreakTexts(page) };
-        captured.set(`${n.case.id}@${dpr}`, b);
-        writeFileSync(expectedBreaksPath(n.case.id, dpr, platform), chromeBreaksText(b));
-      } finally {
-        await page.context().close();
-      }
+      const b: ChromeBreaks = { case: n.case.id, chrome: CHROME_VERSION, dpr, texts: await breakTextsMemo(browser, n, dpr) };
+      captured.set(`${n.case.id}@${dpr}`, b);
+      writeFileSync(expectedBreaksPath(n.case.id, dpr, platform), chromeBreaksText(b));
     });
     await zoomGuard(browser, dpr);
     const written = readdirSync(dir).filter((f) => f.endsWith('.breaks.json')).length;
     if (written !== cases.length) throw new Error(`DPR ${dpr}: ${written} break captures written, ${cases.length} cases`);
-    console.log(`parity:break-capture: DPR ${dpr}: ${written} cases in ${((Date.now() - t) / 1000).toFixed(1)} s -> packages/parity/expected-breaks/${platform}/dpr-${dpr}`);
+    console.log(`parity:break-capture: DPR ${dpr}: ${written} cases in ${((Date.now() - t) / 1000).toFixed(1)} s (${memo.hits} remembered, ${memo.misses} read; chrome-memo.ts) -> packages/parity/expected-breaks/${platform}/dpr-${dpr}`);
+    memo.hits = 0;
+    memo.misses = 0;
   } finally {
     await browser.close();
   }
@@ -55,7 +81,7 @@ for (const dpr of DPRS) {
       mismatches.push(`${n.case.id}@${dpr}: break-mismatch: ${v === null ? 'no break vector (pnpm run layout:break-vectors)' : 'no Chrome capture'}`);
       continue;
     }
-    const r = compareVectorWithChrome(v, c, leafTexts(n.programs.uikit.root));
+    const r = compareVectorWithChrome(v, c, leafTexts(n.root));
     texts += r.compared;
     if (r.problems.length === 0) equal++;
     for (const p of r.problems) mismatches.push(`${n.case.id}@${dpr}: ${p.kind}: ${p.detail}`);

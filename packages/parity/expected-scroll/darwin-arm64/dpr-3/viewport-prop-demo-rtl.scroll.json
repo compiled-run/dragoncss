@@ -28,5 +28,21 @@
    "clientWidth": 300,
    "clientHeight": 200
   }
+ ],
+ "extents": [
+  {
+   "id": "body",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "app",
+   "minLeft": -200,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 200
+  }
  ]
 }

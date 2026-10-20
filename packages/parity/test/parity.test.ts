@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, nativeOutlinePending, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -14,9 +14,9 @@ import { GATE_DEVICE_PX } from '../src/compare.ts';
 import { ENVIRONMENT, environmentsOf, FIXTURES, RTL_ENVIRONMENT } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import type { CaseOutcome, FixtureOutcome } from '../src/pipeline.ts';
-import { caseCountProblems, forcedCases, runFixture, topologyProblems } from '../src/pipeline.ts';
+import { authoredPrepareOf, caseCountProblems, forcedCases, runFixture, topologyProblems } from '../src/pipeline.ts';
 import { fixtureInput, isForcedCaseId } from '../src/cases.ts';
-import { compileFixture } from '../src/pipeline.ts';
+import { compileFixture, inlineFontAssets } from '../src/pipeline.ts';
 import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
 import { prepareOf } from '../src/forced-pseudo.ts';
@@ -32,6 +32,7 @@ const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]):
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
+import { TEXT_LATIN_PROBES } from '../src/fixture-groups/text-latin.ts';
 import { fontEmittedPath, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
 import { ENV_FIXTURES } from '../src/fixture-groups/env.ts';
 import { envEmittedPath, envExpectedPath, liveEnvAuthored, runEnvFixture } from '../src/env-run.ts';
@@ -66,7 +67,8 @@ const fontCasesRun = (): CaseOutcome[] => FONT_FIXTURES.flatMap((f) => fontOutco
 /** ENV-SAFE: the web-only env() cases (env-run.ts), which prove web rows through chrome-dual alone under their safe-area insets. */
 const envOutcomes = new Map<string, CaseOutcome[]>();
 const envCasesRun = (): CaseOutcome[] => ENV_FIXTURES.flatMap((f) => envOutcomes.get(f.spec.id) ?? []);
-const allCases = (): CaseOutcome[] => [...corpusCases(), ...fontCasesRun(), ...envCasesRun()];
+const webOnlyCasesRun = (): CaseOutcome[] => [...fontCasesRun(), ...envCasesRun()];
+const allCases = (): CaseOutcome[] => [...corpusCases(), ...webOnlyCasesRun()];
 const recorded = async (c: ParityCase): Promise<WebCapture> => {
   const hit = captures.get(c.id);
   if (hit === undefined) throw new Error(`no live capture for ${c.id}`);
@@ -87,9 +89,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     const frames = animFixtures().map((f) => f.id);
     for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
     const webOnly = [...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec);
-    const registered = new Set([...[...FIXTURES, ...webOnly].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...frames]);
-    for (const f of webOnly) expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
-    expect(new Set([...FIXTURES.map((f) => f.id), ...webOnly.map((f) => f.id)]).size).toBe(FIXTURES.length + webOnly.length);
+    const registered = new Set([...[...FIXTURES, ...webOnly].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`), ...frames]);
+    for (const id of [...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]) expect(statSync(`${dir}/${id}.html`).isFile(), id).toBe(true);
+    expect(new Set([...FIXTURES.map((f) => f.id), ...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + webOnly.length + TEXT_LATIN_PROBES.length);
     for (const e of entries) expect(registered.has(e), `${e} is not in FIXTURES`).toBe(true);
     for (const f of FIXTURES) {
       if (f.format === 'html') expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
@@ -122,7 +124,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   for (const spec of FIXTURES) {
     it(`${spec.id} (${spec.format} ${spec.kind})`, async () => {
       const live = async (c: ParityCase): Promise<WebCapture> => {
-        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, prepareOf(c));
+        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c));
         captures.set(c.id, capture);
         expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected file`).toBe(readFileSync(expectedPath(c.id), 'utf8'));
         return capture;
@@ -147,8 +149,14 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
           expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
           expect(c.unsupported, c.id).toBeNull();
         }
-        expect(outcome.webCss.ltr, 'emitted web CSS must equal the committed file').toBe(readFileSync(emittedPath(spec.id, 'ltr'), 'utf8'));
-        if (spec.environments.includes('rtl')) expect(outcome.webCss.rtl, 'emitted rtl web CSS must equal the committed file').toBe(readFileSync(emittedPath(spec.id, 'rtl'), 'utf8'));
+        // A fixture with font assets renders its CSS with each asset inlined (pipeline.ts webCssOf); the committed file is as emitted.
+        const committedCss = (d: 'ltr' | 'rtl'): string => {
+          const text = readFileSync(emittedPath(spec.id, d), 'utf8');
+          const web = compileFixture(spec, NO_FAULTS, 'enforce', d).compiled.outputs.web;
+          return web.kind === 'ready' && web.assets.length > 0 ? inlineFontAssets(text, web.assets) : text;
+        };
+        expect(outcome.webCss.ltr, 'emitted web CSS must equal the committed file').toBe(committedCss('ltr'));
+        if (spec.environments.includes('rtl')) expect(outcome.webCss.rtl, 'emitted rtl web CSS must equal the committed file').toBe(committedCss('rtl'));
         else expect(existsSync(emittedPath(spec.id, 'rtl'))).toBe(false);
         // Each environment has its own cases and captures, and the capture's root direction is the environment's.
         for (const d of spec.environments) {
@@ -300,7 +308,10 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     if (dual === null) throw new Error('no dual comparison');
     expect(dual.boxesEqual).toBe(dual.boxesCompared);
     expect(dual.channelsEqual).toBeLessThan(dual.channelsCompared);
-    expect(dual.problems.every((p) => /color/.test(p))).toBe(true);
+    // Every problem names a longhand whose value is a colour: a *-color longhand (master's test), and SVG-a1's fill and stroke, whose
+    // initial value is black, so the plant moves them too.
+    const colourCarrying = (p: string): boolean => /color/.test(p) || ['fill', 'stroke'].includes((/^[^:]+: ([a-z-]+) /.exec(p) ?? [])[1] ?? '');
+    expect(dual.problems.filter((p) => !colourCarrying(p))).toEqual([]);
   });
 
   it('planted fault: stateCollapse on a/trigger fails exactly the non-initial cases of instance a in both directions, and the initial cases pass', async () => {
@@ -424,14 +435,21 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       for (const row of layoutRows(profile.rows)) {
         const key = `${row.feature}@${row.context}`;
         for (const proof of row.proofs) {
-          const expected = cases.filter((c) => c.lanes[proof.lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
+          const lane = proof.lane;
+          // device-anim proves animation rows only (anim-frames.test.ts), never a layout case's row.
+          if (lane === 'device-anim') throw new Error(`${target} ${key}: a layout row with a device-anim proof`);
+          const expected = cases.filter((c) => c.lanes[lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
           expect(proof.cases, `${target} ${key} ${proof.lane}`).toEqual(expected);
           expect(proof.cases.length, `${target} ${key}`).toBeGreaterThan(0);
           expect([proof.valueSubset, proof.context], key).toEqual([row.feature.slice(row.feature.indexOf(':') + 1), row.context]);
         }
       }
       const keys = new Set(profile.rows.map((r) => `${r.feature}@${r.context}`));
-      for (const c of cases) for (const k of c.features[target]) expect(keys.has(k), `${target} ${k} used by ${c.id} has no row`).toBe(true);
+      // A zero-width outline in a style native refuses wherever it paints proves no native paint, so it has no native row
+      // (profile-rows.ts deriveRows); every other used key has one.
+      const rowless = (k: string): boolean => target !== 'web' && nativeOutlinePending(k.slice(0, k.lastIndexOf('@')));
+      for (const c of cases) for (const k of c.features[target]) expect(keys.has(k) || rowless(k), `${target} ${k} used by ${c.id} has no row`).toBe(true);
+      for (const k of keys) expect(rowless(k), `${target} ${k} has a row`).toBe(false);
       expect(layoutRows(profile.rows), `${target} rows must be exactly what pnpm run profile:rows derives from this run`).toEqual(deriveRows(target, cases));
     }
   });
@@ -467,9 +485,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
 
   it('row keys carry the formatting context (M2, M3, C7, S4b): <length-px>; every context has a direction facet, flex text contexts a main-axis facet, positioned item contexts the scheme, paint rows only @paint/<dir>', () => {
     const directions = ['ltr', 'rtl'];
-    const textContexts = directions.flatMap((d) => ['text-in-block/' + d, 'text-in-anonymous-block/' + d, 'text-in-flex-item/row/' + d, 'text-in-flex-item/column/' + d, 'text-as-anonymous-flex-item/row/' + d, 'text-as-anonymous-flex-item/column/' + d, 'text-in-inline/' + d, 'text-beside-inline/' + d]);
-    const boxContexts = /^(root|block|flex-row|flex-column|display-none|flex-row-single-line|flex-row-multi-line|flex-column-single-line|flex-column-multi-line|not-flex-container)\/(ltr|rtl)$/;
-    const itemBases = '(root|block|flex-row|flex-column|display-none)';
+    const textContexts = directions.flatMap((d) => ['text-in-block/' + d, 'text-in-anonymous-block/' + d, 'text-in-flex-item/row/' + d, 'text-in-flex-item/column/' + d, 'text-as-anonymous-flex-item/row/' + d, 'text-as-anonymous-flex-item/column/' + d, 'text-in-grid-item/' + d, 'text-as-anonymous-grid-item/' + d, 'text-in-inline/' + d, 'text-beside-inline/' + d, 'text-beside-atomic/' + d]);
+    const boxContexts = /^(root|block|flex-row|flex-column|display-none|flex-row-single-line|flex-row-multi-line|flex-column-single-line|flex-column-multi-line|not-flex-container|grid-container|grid|inline|atomic-inline)\/(ltr|rtl)$/;
+    const itemBases = '(root|block|flex-row|flex-column|display-none|grid)';
     const positioned = new RegExp('^(relative-in-' + itemBases + '/(ltr|rtl)|absolute-in-' + itemBases + '/(ltr|rtl)/cb-(ltr|rtl))$');
     const role = (feature: string) => PROPERTY_ROLE[feature.slice(0, feature.indexOf(':')) as Longhand];
     for (const profile of [iosProfile, webProfile]) {
@@ -791,9 +809,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('writes the report and summary.md: at least 114 layout fixtures, at least 110 hand-written; failed 0; unsupportedCodes []; every case in both environments passes both lanes; platform darwin-arm64; the Linux lane unavailable (not run); every exact row linked to passing cases', () => {
     const ordered = FIXTURES.map((f) => outcomes.get(f.id)).filter((o): o is FixtureOutcome => o !== undefined);
     expect(ordered.length).toBe(FIXTURES.length);
-    const webOnly = [...fontCasesRun(), ...envCasesRun()];
-    const report = buildReport(ordered, webOnly);
-    expect(report.summary.webOnly).toEqual({ cases: webOnly.length, passed: webOnly.length, failed: [] });
+    const report = buildReport(ordered, webOnlyCasesRun());
+    expect(report.summary.webOnly).toEqual({ cases: webOnlyCasesRun().length, passed: webOnlyCasesRun().length, failed: [] });
     expect(report.summary.webOnly.cases).toBeGreaterThan(0);
     writeReport(report);
     expect(report.summary.fixtures).toBeGreaterThanOrEqual(137);
@@ -886,8 +903,11 @@ describe('renderer isolation', () => {
     const src = readdirSync(repoPath('packages/parity/src')).filter((f) => f.endsWith('.ts')).map((f) => [f, readFileSync(repoPath(`packages/parity/src/${f}`), 'utf8')] as const);
     expect(src.filter(([, t]) => t.includes('data-dragon-harness')).map(([f]) => f)).toEqual(['chrome.ts']);
     const pipeline = readFileSync(repoPath('packages/parity/src/pipeline.ts'), 'utf8');
-    // A SELD-R2a forced case passes the same prepare hook (CSS.forcePseudoState) to both renderings.
+    // A SELD-R2a forced case passes the same prepare hook (CSS.forcePseudoState) to both renderings. TXT1a-2: the authored rendering of
+    // a fixture with a font map also takes its stated font reference (cases.ts authoredPrepare, composed in authoredPrepareOf), which
+    // injects the pinned faces and rewrites pinned generics only; direction and the root font still come from the environment.
     expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.compiledHtml\(webCss, classOf\), c\.environment, c\.computedExtra, prepareOf\(c\)\)/);
-    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra, prepareOf\(c\)\)/);
+    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra, authoredPrepareOf\(c\)\)/);
+    expect(pipeline).toMatch(/const fonts = c\.authoredPrepare \?\? undefined;\n  const forced = prepareOf\(c\);/);
   });
 });

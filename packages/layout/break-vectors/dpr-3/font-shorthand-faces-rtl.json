@@ -1,0 +1,16 @@
+{
+  "case": "font-shorthand-faces-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","lines":[[0,20]]},
+    {"id":"b:text0","lines":[[0,28]]},
+    {"id":"c:text0","lines":[[0,21]]},
+    {"id":"d:text0","lines":[[0,31]]},
+    {"id":"e:text0","lines":[[0,16]]},
+    {"id":"f:text0","lines":[[0,9]]},
+    {"id":"g:text0","lines":[[0,17]]},
+    {"id":"h:text0","lines":[[0,14]]},
+    {"id":"i:text0","lines":[[0,16]]},
+    {"id":"j:text0","lines":[[0,13]]}
+  ]
+}

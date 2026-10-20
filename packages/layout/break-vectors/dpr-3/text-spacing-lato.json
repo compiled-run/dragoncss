@@ -1,0 +1,15 @@
+{
+  "case": "text-spacing-lato",
+  "dpr": 3,
+  "texts": [
+    {"id":"liga:text0","lines":[[0,33]]},
+    {"id":"liga-on:text0","lines":[[0,33]]},
+    {"id":"kern:text0","lines":[[0,20]]},
+    {"id":"neg:text0","lines":[[0,26],[26,43]]},
+    {"id":"wrap:text0","lines":[[0,17],[17,36],[36,53]]},
+    {"id":"sans:text0","lines":[[0,20],[20,41],[41,46]]},
+    {"id":"mixed:text0","lines":[[0,12]]},
+    {"id":"spaced:text0","lines":[[0,13]]},
+    {"id":"mixed:text1","lines":[[1,11]]}
+  ]
+}

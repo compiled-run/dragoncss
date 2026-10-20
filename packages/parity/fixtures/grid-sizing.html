@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; margin-bottom: 3px; }
+.a { width: 150px; grid-template-columns: 33.3% 25% 10px; grid-template-rows: 20% 10px; column-gap: 5%; row-gap: 10%; height: 60px; }
+.b { width: 100px; grid-template-rows: 25% 20px; row-gap: 10%; grid-template-columns: 50px; }
+.c { width: 100px; min-height: 40px; max-height: 70px; grid-template-rows: auto auto; }
+.d { width: 100px; max-height: 15px; grid-template-rows: minmax(10px, 100px) minmax(10px, 100px); }
+.e { width: 120px; grid-template-columns: 60px 60px; padding: 3px 5px 7px 2px; border-width: 1px 2px 3px 4px; border-style: solid; box-sizing: border-box; }
+.f { width: 140px; grid-template-columns: 70px 70px; grid-auto-rows: 20px; }
+.h { width: 100px; height: 30px; grid-template-rows: 10px; grid-auto-rows: 4px; }
+.x { height: 3px; }
+.pw { width: 50%; height: 50%; }
+.pm { margin: 10% 5%; padding: 5%; height: 4px; }
+.mm { min-width: 30px; max-width: 45px; min-height: 12px; }
+.rel { position: relative; top: 2px; left: 10%; height: 5px; }
+.rel2 { position: relative; right: 3px; bottom: 25%; height: 5px; }
+.bb { box-sizing: border-box; width: 40px; padding: 3px; border: 2px solid; height: 12px; }
+.ovf { overflow: hidden; height: 6px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="g a"><div data-dragon-id="a1" class="x"></div><div data-dragon-id="a2" class="x"></div><div data-dragon-id="a3" class="x"></div><div data-dragon-id="a4" class="x"></div></div>
+<div data-dragon-id="b" class="g b"><div data-dragon-id="b1" class="x"></div><div data-dragon-id="b2" class="x"></div></div>
+<div data-dragon-id="c" class="g c"><div data-dragon-id="c1">XX</div><div data-dragon-id="c2" class="x"></div></div>
+<div data-dragon-id="d" class="g d"><div data-dragon-id="d1" class="x"></div><div data-dragon-id="d2" class="x"></div></div>
+<div data-dragon-id="e" class="g e"><div data-dragon-id="e1" class="x"></div><div data-dragon-id="e2" class="bb"></div></div>
+<div data-dragon-id="f" class="g f"><div data-dragon-id="f1" class="pw"></div><div data-dragon-id="f2" class="pm"></div><div data-dragon-id="f3" class="mm"></div><div data-dragon-id="f4" class="ovf">XXXXXXXXXX</div></div>
+<div data-dragon-id="h" class="g h"><div data-dragon-id="h1" class="rel"></div><div data-dragon-id="h2" class="rel2"></div></div>
+</body>
+</html>

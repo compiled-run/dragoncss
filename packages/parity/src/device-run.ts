@@ -66,28 +66,116 @@ export const isLinePlant = (p: SupportPlant): p is LinePlant => p === 'single-ru
 export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p);
 /**
  * The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the
- * replaced fixtures whose images are drawn, the radius plant (PNT1) on a rounded case of its own group.
+ * replaced fixtures whose images are drawn, the radius plant (PNT1) on a rounded case of its own group, the outline plant (PNT1) on a solid outline case.
  */
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  // PNT1b: radius-double's border points sit in the gap between the two rings, which the plant fills with the border colour.
+  'double-solid': ['radius-double'],
+  // MASK-CLIP: clip-rect-basic's clipped boxes (ids cut-*) paint their backgrounds when the writer is ignored.
+  'clip-rect-ignored': ['clip-rect-basic'],
+  // MASK-CLIP: clip-path-basic's clip edges (rule clip:<id>:path-*) show the box's paint outside the inset rect when the writer is ignored.
+  'clip-path-ignored': ['clip-path-basic'],
   'radius-square': ['radius-basic'],
+  // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
+  'shadow-offset-1': ['calib-shadow-blur'],
+  // PNT1: opacity-basic's translucent boxes paint opaque when the writer ignores the alpha; stacking-basic samples the interiors of
+  // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
+  'alpha-ignored': ['opacity-basic'],
+  'order-swap': ['stacking-basic'],
+  // PNT1: outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
+  'outline-offset-1': ['outline-solid'],
+  // outline-dashed's dashes and round dots move along each side when the gap is not fitted; outline-3d's ring points swap colours.
+  'outline-dash-unfitted': ['outline-dashed'],
+  'outline-tones-swapped': ['outline-3d'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
+  // gradient-linear's gradient points (rule gradient:<id>) see a 1 device px shift of every raster.
+  'gradient-offset-1': ['gradient-linear'],
+  // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
+  'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
+  // are filled and stroked in distinct colours with strokes wide enough to sample.
+  'svg-stroke-first': ['svg-paint', 'svg-basic'],
+  // SVG-stroke: svg-stroke's evenodd paths fill nonzero under the plant; its caps, joins and miter limits are each drawn with
+  // probes where the plant's butt cap, miter join or limit of 4 paints another colour.
+  'svg-even-odd': ['svg-basic', 'svg-stroke'],
+  'svg-stroke-unscaled': ['svg-paint', 'svg-basic'],
+  'svg-paint-swapped': ['svg-paint', 'svg-basic'],
+  'svg-cap-butt': ['svg-stroke'],
+  'svg-join-miter': ['svg-stroke'],
+  'svg-miter-limit-4': ['svg-stroke'],
+  'svg-dash-solid': ['svg-dash'],
+  'svg-dash-phase-0': ['svg-dash'],
+  'svg-paint-order-normal': ['svg-paint-order'],
+  'svg-vector-effect-none': ['svg-vector-effect'],
+  // T150a: visibility-basic's hidden boxes (ids hid-*) paint their backgrounds when the writer is ignored; its visible children
+  // (kid-*) vanish when the writer hides the box view itself.
+  'visibility-ignored': ['visibility-basic'],
+  'visibility-subtree': ['visibility-basic'],
+  // TDEC-b: text-decoration-native's decoration points (rule decoration:<text>:...) see each decoration plant.
+  'decoration-above-text': ['text-decoration-native'],
+  'decoration-snap-css-px': ['text-decoration-native'],
+  'decoration-alpha-ignored': ['text-decoration-native'],
+  'text-shadow-offset-1': ['text-shadow-blur'],
 };
-/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, or radius points. */
+/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  // One band from the border box to the padding edge paints the gap: the border points and the stripe pairs catch it.
+  'double-solid': /^(border:|radius:[^:]+:[a-z-]+-stripe)/,
+  'clip-rect-ignored': /^interior:cut-/,
+  'clip-path-ignored': /^clip:cut-[^:]+:path-/,
   // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
   'radius-square': /^radius:/,
+  // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.
+  'shadow-offset-1': /^shadow:/,
+  'alpha-ignored': /^interior:/,
+  'order-swap': /^interior:/,
+  // A shifted ring moves its band and its outer edge: the outline points catch it.
+  'outline-offset-1': /^(border|edge):[^:]+:outline-/,
+  // An unfitted gap moves the dashes and dots the outline points sit on; swapped tones change a 3D ring point's colour.
+  'outline-dash-unfitted': /^(border|edge):[^:]+:outline-/,
+  'outline-tones-swapped': /^border:[^:]+:outline-/,
   // A transform moves every pixel of the box, so any colour rule may catch it.
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
+  'gradient-offset-1': /^gradient:/,
+  'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  'svg-stroke-first': /^svg:/,
+  'svg-even-odd': /^svg:/,
+  'svg-stroke-unscaled': /^svg:/,
+  'svg-paint-swapped': /^svg:/,
+  'svg-cap-butt': /^svg:/,
+  'svg-join-miter': /^svg:/,
+  'svg-miter-limit-4': /^svg:/,
+  'svg-dash-solid': /^svg:/,
+  'svg-dash-phase-0': /^svg:/,
+  'svg-paint-order-normal': /^svg:/,
+  'svg-vector-effect-none': /^svg:/,
+  'visibility-ignored': /^interior:hid-/,
+  'visibility-subtree': /^interior:kid-/,
+  // An under or overline above the text shows over the glyphs it crosses (the over-glyph points); a rect top at a whole css px moves
+  // its rows (the row points and the clear rows beside them); an opaque transparent line shows on the background (its row points).
+  'decoration-above-text': /^decoration:/,
+  'decoration-snap-css-px': /^decoration:/,
+  'decoration-alpha-ignored': /^decoration:/,
+  'text-shadow-offset-1': /^text-shadow:/,
 };
+/**
+ * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason
+ * (the plant's output equals the unplanted output on every case) and fails once the refusals that make it true are lifted while
+ * the plant is still listed here, so a dormant plant cannot stay dormant silently.
+ */
+export const DORMANT_PLANTS: { readonly [P in PaintPlant]?: string } = {
+  'gradient-unpremultiplied-upload': 'unobservable while R6(b) and R6(c) are refused: every supported raster pixel has alpha 0 or 255',
+};
+
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 /** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
@@ -1222,12 +1310,38 @@ export async function installApk(h: { readonly serial: string; readonly tools: A
   return installWithRetries('android', 'adb install after the uninstall', install);
 }
 
+/** How long one launch of the app may take before it is judged unfinished: 180 s plus 3 s per case of its run file. */
+export const launchLimitMs = (caseCount: number): number => 180_000 + caseCount * 3000;
+
+/** Lines of the crash summary: the exception, its message and the top of its stack. */
+export const CRASH_SUMMARY_LINES = 13;
+
+/**
+ * The last crash of process app in a logcat crash buffer, the same on every run of the same crash: each line's logcat prefix
+ * (time, pid, tid, level, tag) dropped, from its FATAL EXCEPTION line (the last one whose Process: line names app, else the
+ * last one), without the Process: line (a pid) or blank lines, the thread number, R8's lambda hashes, object identity hashes
+ * (Foo@1a2b3c) and 0x addresses replaced, CRASH_SUMMARY_LINES lines at most.
+ */
+export function crashSummary(log: string, app: string = HOST_BUNDLE): string {
+  const lines = log.split('\n')
+    .map((l) => l.replace(/^\d\d-\d\d \d\d:\d\d:\d\d\.\d+\s+\d+\s+\d+\s+[VDIWEF]\s+[^:]*?\s*:\s?/, '').trim())
+    .filter((l) => l !== '' && !l.startsWith('--------- beginning of'));
+  const isFatal = (l: string): boolean => l.startsWith('FATAL EXCEPTION');
+  const ours = lines.findLastIndex((l, i) => isFatal(l) && (lines[i + 1] ?? '').startsWith(`Process: ${app},`));
+  const fatal = ours >= 0 ? ours : lines.findLastIndex(isFatal);
+  const kept = (fatal < 0 ? lines : lines.slice(fatal)).filter((l) => !l.startsWith('Process:'));
+  const top = fatal < 0 ? kept.slice(-CRASH_SUMMARY_LINES) : kept.slice(0, CRASH_SUMMARY_LINES);
+  return top
+    .map((l) => (isFatal(l) ? l.replace(/\d+/g, '*') : l))
+    .map((l) => l.replace(/\$r8\$lambda\$[\w-]+/g, '$r8$lambda$*').replace(/@[0-9a-f]{5,}\b/g, '@*').replace(/0x[0-9a-fA-F]+/g, '0x*'))
+    .join('\n');
+}
+
 /** Installs the app, hands it the run file, launches it once for every case in the file, waits and pulls the dumps. */
 export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions): Promise<AppRun> {
   rmSync(opts.outDir, { recursive: true, force: true });
   mkdirSync(opts.outDir, { recursive: true });
-  const perCase = 3000;
-  const timeout = 180_000 + opts.caseCount * perCase;
+  const timeout = launchLimitMs(opts.caseCount);
   let error: string | null = null;
   if ('udid' in h) {
     await installWithRetries('ios', 'simctl install', () => exec('xcrun', ['simctl', 'install', h.udid, artifact], { timeoutMs: 300_000, allowFailure: 'a transient failure is retried; any other failure is thrown' }));
@@ -1276,13 +1390,13 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
     try {
       await poll('the Android host to finish', timeout, async () => {
         if (adb(h, ['logcat', '-d', '-b', 'crash'], 20_000).out.includes(HOST_BUNDLE)) {
-          const why = 'diagnostics added to the crash error being thrown';
+          // Window and power state go to the log only: their hashes and ids differ every run, and the error lands in the records.
+          const why = 'diagnostics logged beside the crash error being thrown';
           const focus = adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', '-E', "'mCurrentFocus|mFocusedApp'"], 20_000, why).out.trim();
           const power = adb(h, ['shell', 'dumpsys', 'power', '|', 'grep', '-E', "'mWakefulness=|mHoldingDisplaySuspendBlocker'"], 20_000, why).out.trim();
-          // The exception and its first frames, not the end of a deep stack (a crash in a measure pass is mostly framework frames).
-          const crash = adb(h, ['logcat', '-d', '-b', 'crash'], 20_000).out;
-          const at = crash.lastIndexOf('FATAL EXCEPTION');
-          throw new Error(`the Android host crashed (${focus.replace(/\s+/g, ' ')}; ${power.replace(/\s+/g, ' ')}): ${at < 0 ? crash.slice(-3000) : crash.slice(at, at + 3000)}`);
+          const log = adb(h, ['logcat', '-d', '-b', 'crash'], 20_000).out;
+          console.error(`${h.spec.name}: the Android host crashed (${focus.replace(/\s+/g, ' ')}; ${power.replace(/\s+/g, ' ')}):\n${log.slice(-6000)}`);
+          throw new Error(`the Android host crashed: ${crashSummary(log)}`);
         }
         if (opts.onHold !== undefined) {
           const listed = adb(h, ['shell', 'ls', remote], 20_000).out.split(/\s+/).filter((f) => f.startsWith('hold-')).map((f) => f.slice('hold-'.length));

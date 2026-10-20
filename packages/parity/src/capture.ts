@@ -6,7 +6,8 @@
 import type { Browser, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
-import { CHROME_VERSION, injectHarness, openPage } from './chrome.ts';
+import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
+import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
 import { applyTransformTwin } from './transform-capture.ts';
 
@@ -21,6 +22,8 @@ export type CapturedNode = {
   readonly height: number;
   /** getComputedStyle values for every longhand in LONGHANDS order, then the case's extra properties; null for text nodes. */
   readonly computed: { readonly [property: string]: string } | null;
+  /** SVG-a1: an SVG shape's getBBox [x, y, width, height] and getScreenCTM [a, b, c, d, e, f]; absent on every other node. */
+  readonly svg?: { readonly bbox: readonly number[]; readonly ctm: readonly number[] };
 };
 
 export type WebCapture = {
@@ -46,11 +49,17 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     const cs = getComputedStyle(el);
     const computed: Record<string, string> = {};
     for (const p of props) computed[p] = cs.getPropertyValue(p);
-    out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed });
+    const shape = el.namespaceURI === 'http://www.w3.org/2000/svg' && el.localName !== 'svg' ? (el as unknown as SVGGraphicsElement) : null;
+    const box = shape === null ? null : shape.getBBox();
+    const m = shape === null ? null : shape.getScreenCTM();
+    const svg = box === null || m === null ? {} : { svg: { bbox: [box.x, box.y, box.width, box.height], ctm: [m.a, m.b, m.c, m.d, m.e, m.f] } };
+    out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed, ...svg });
     // INL1a: an inline box's fragments, one "<id>:line<j>" per client rect (one per line it is on); a <br> has none. A culled
     // box (no box fragment of its own) also lists the zero-width piece of a <br> inside it beside that line's rect, and only in
     // the first layout (INL-P open question 1), so a zero-width <br> piece with another rect on its line is left out.
-    if (cs.display === 'inline' && el.tagName !== 'BR') {
+    // An SVG element is never a CSS inline box: an <svg> is a replaced element (an atomic inline at most) and a shape inside it
+    // is laid out by SVG, not by inline formatting, though its computed display is 'inline' (Chrome's LayoutSVGShape).
+    if (cs.display === 'inline' && el.tagName !== 'BR' && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
       const rects = Array.from(el.getClientRects());
       const brPieces = Array.from(el.querySelectorAll('br')).flatMap((b) => Array.from(b.getClientRects()));
       const extraBrPiece = (f: DOMRect): boolean =>
@@ -80,6 +89,31 @@ const collectNodes = (props: string[]): CapturedNode[] => {
  * fixture's stated-reference transform (font-reference.ts), run on the loaded page before the capture; none for every other fixture.
  */
 export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
+  // A prepare script is code the memo key cannot see, and a browser launchChrome did not start has flags it cannot see.
+  const args = launchArgsOf(browser);
+  if (prepare !== undefined || args === null) return captureFixtureLive(browser, fixture, html, env, extra, prepare);
+  const parts = { html: injectHarness(html, env), env, args, properties: [...LONGHANDS, ...extra], flavour: BROWSER_FLAVOUR };
+  const nodes = await memoizedJson('capture', parts, CAPTURE_CODE, CAPTURE_MEMO, async () => (await captureFixtureLive(browser, fixture, html, env, extra)).nodes);
+  return captureOf(fixture, env, nodes);
+}
+
+/** The code that decides a capture's nodes beside the page itself: the page setup, the in-page collector and the transform twin. */
+const CAPTURE_CODE = ['packages/parity/src/capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/transform-capture.ts'];
+/** Remembered and fresh captures of this process (chrome-memo.ts). */
+export const CAPTURE_MEMO: MemoStats = { hits: 0, misses: 0 };
+
+const captureOf = (fixture: string, env: Environment, nodes: readonly CapturedNode[]): WebCapture => ({
+  fixture,
+  chrome: CHROME_VERSION,
+  browser: BROWSER_FLAVOUR,
+  platform: hostPlatform(),
+  viewport: { width: env.viewport.width, height: env.viewport.height },
+  devicePixelRatio: env.devicePixelRatio,
+  direction: env.direction,
+  nodes,
+});
+
+async function captureFixtureLive(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
   const page = await openPage(browser, html, env);
   try {
     if (prepare !== undefined) await prepare(page);
@@ -94,16 +128,7 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
         nodes[i] = { ...n, computed };
       }
     }
-    return {
-      fixture,
-      chrome: CHROME_VERSION,
-      browser: BROWSER_FLAVOUR,
-      platform: hostPlatform(),
-      viewport: { width: env.viewport.width, height: env.viewport.height },
-      devicePixelRatio: env.devicePixelRatio,
-      direction: env.direction,
-      nodes,
-    };
+    return captureOf(fixture, env, nodes);
   } finally {
     await page.context().close();
   }

@@ -1,12 +1,12 @@
 // Profile rows derived from a parity run (M1): the single definition used by scripts/gen-profile-rows.ts and by the
 // committed profile-proof test in parity.test.ts.
 import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
-import { MEDIA_CONTEXT, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
+import { MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
 import type { LanesFile } from './lanes.ts';
-import { readLanesFile, staleEvidence, staleLanes } from './lanes.ts';
+import { ranIds, readLanesFile, staleLanes } from './lanes.ts';
 import { repoPath } from './paths.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import type { NativeTarget, TargetConfig } from './targets.ts';
@@ -39,6 +39,8 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
     const proof = (aspect: Proof['aspect'], lane: Lane, ids: readonly string[]): Proof => ({ aspect, lane, valueSubset, context, cases: ids });
     const proofs: Proof[] = [];
     if (target !== 'web') {
+      // A zero-width outline in a style native refuses wherever it paints compiles but proves no paint (nativeOutlinePending).
+      if (nativeOutlinePending(feature)) continue;
       const layout = passing('linux-dragon-layout');
       const dual = passing('chrome-dual');
       if (aspects.layout && layout.length === 0) continue;
@@ -62,21 +64,38 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
   return rows;
 }
 
-/**
- * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report), web only:
- * exact through chrome-dual at every sample. iOS and Android rows wait for the native animator and its device-anim lane, so
- * no native output claims motion it does not run.
- */
 /** T065: the context of every animation row; its proofs are frame cases (anim-frames.test.ts), not layout cases (parity.test.ts). */
 export const ANIMATION_CONTEXT = 'animation';
 
-export function deriveAnimationRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[]): ProfileRow[] {
-  if (target !== 'web') return [];
-  const features = [...new Set(passing.flatMap((c) => c.features))].sort();
+/** A frame case that passes the host frame lanes (anim-report): its features and, per native target, its device-anim sample ids. */
+export type PassingFrameCase = { readonly id: string; readonly features: readonly string[]; readonly samples?: { readonly [T in NativeTarget]?: readonly string[] } };
+
+/** Why a frame case is not device-proven on a target, or null when every one of its samples passes device-anim at every DPR (pure). */
+export function animDeviceBlocker(ev: DeviceEvidence, samples: readonly string[]): string | null {
+  if (ev.unavailable !== null) return ev.unavailable;
+  if (samples.length === 0) return 'no frame samples';
+  const l = ev.lanes.find((x) => x.lane === ANIM_LANE);
+  if (l === undefined) return `${ev.target} has no ${ANIM_LANE} lane`;
+  for (const id of samples) {
+    if (!l.cases.has(id)) return `${id} is not run by ${ev.target} ${ANIM_LANE} at every DPR`;
+    if (l.failing.has(id)) return `${id} fails ${ev.target} ${ANIM_LANE}`;
+  }
+  return null;
+}
+
+/**
+ * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report). Web: exact
+ * through chrome-dual at every sample. iOS and Android (R18): exact through device-anim, only for the frame cases every one of
+ * whose samples passes that target's committed device-anim lane at every DPR, so no native output claims motion it does not run.
+ */
+export function deriveAnimationRows(target: ProfileTarget, passing: readonly PassingFrameCase[], device: DeviceEvidence | null = null): ProfileRow[] {
+  const proven = target === 'web' ? passing : device === null ? [] : passing.filter((c) => animDeviceBlocker(device, c.samples?.[target] ?? []) === null);
+  const lane = target === 'web' ? 'chrome-dual' : 'device-anim';
+  const features = [...new Set(proven.flatMap((c) => c.features))].sort();
   return features.map((feature) => {
-    const ids = passing.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);
     const valueSubset = feature.slice(feature.indexOf(':') + 1);
-    return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
+    return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane, valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
   });
 }
 
@@ -106,6 +125,8 @@ function noteKey(r: ProfileRow): ProfileNote | null {
 }
 
 const TYPES_SPECIFIER = "'./types.ts'";
+/** Rows per typed chunk of a generated profile (profileSource). */
+const PROFILE_CHUNK = 1000;
 
 export function profileSource(target: ProfileTarget, rows: readonly ProfileRow[]): string {
   const name = `${target}Profile`;
@@ -113,21 +134,24 @@ export function profileSource(target: ProfileTarget, rows: readonly ProfileRow[]
   const lines = rows.map((r) => {
     const proofs = r.proofs.map((p) => `{ aspect: ${q(p.aspect)}, lane: ${q(p.lane)}, valueSubset: ${q(p.valueSubset)}, context: ${q(p.context)}, cases: [${p.cases.map(q).join(', ')}] }`);
     const note = noteKey(r);
-    return `    { feature: ${q(r.feature)}, context: ${q(r.context)}, status: ${q(r.status)}, proofs: [${proofs.join(', ')}]${note === null ? '' : `, note: PROFILE_NOTES.${note}`} },`;
+    return `  { feature: ${q(r.feature)}, context: ${q(r.context)}, status: ${q(r.status)}, proofs: [${proofs.join(', ')}]${note === null ? '' : `, note: PROFILE_NOTES.${note}`} },`;
   });
+  // One array literal of every row makes tsc build a union over all of them, which it gives up on (TS2590) once the native
+  // profiles carry device-anim rows beside their layout rows; typed chunks keep each literal checked against ProfileRow alone.
+  const chunks: string[][] = [];
+  for (let i = 0; i < lines.length; i += PROFILE_CHUNK) chunks.push(lines.slice(i, i + PROFILE_CHUNK));
   return [
     '// Generated by scripts/gen-profile-rows.ts (pnpm run profile:rows) from the parity cases that passed each proof\'s lane',
     '// against the committed captures. Do not edit. Missing rows mean unsupported.',
     // The specifier is spliced in so regen's import scanner does not take this generated line for an import of profile-rows.ts.
     ...(rows.some((r) => noteKey(r) !== null) ? [`import { PROFILE_NOTES } from ${TYPES_SPECIFIER};`] : []),
-    "import type { SupportProfile } from './types.ts';",
+    "import type { ProfileRow, SupportProfile } from './types.ts';",
     '',
+    ...chunks.flatMap((c, i) => [`const ROWS_${i}: readonly ProfileRow[] = [`, ...c, '];', '']),
     `export const ${name}: SupportProfile = {`,
     `  target: ${q(target)},`,
     `  revision: ${q(PROFILE_REVISION)},`,
-    '  rows: [',
-    ...lines,
-    '  ],',
+    `  rows: [${chunks.map((_, i) => `...ROWS_${i}`).join(', ')}],`,
     '};',
     '',
   ].join('\n');
@@ -165,9 +189,11 @@ export function deviceEvidence(target: NativeTarget, lanes: LanesFile | null, fa
     if (listed.length !== recorded) return none(`device-failures-${target}.json lists ${listed.length} ${lc.lane} failures, lanes.json records ${recorded}`);
     const perCase = rec.device !== null;
     if (!perCase && rec.state !== 'pass') return none(`${target} ${lc.lane}: ${rec.state}`);
-    // A case proves nothing on a lane unless the lane runs it at every DPR of the target.
+    // A case proves nothing on a lane unless the lane runs it at every DPR of the target, and (a record carried over a changed case
+    // list) the recorded run ran it at every one of them.
     const sets = lc.sets.filter((x) => c.dprs.includes(x.dpr));
-    const cases = new Set(c.dprs.every((d) => sets.some((x) => x.dpr === d)) ? (sets[0]?.ids ?? []).filter((id) => sets.every((x) => x.ids.includes(id))) : []);
+    const ran = (id: string, dpr: number): boolean => rec.ran === undefined || ranIds(lanes, rec, dpr)?.has(id) === true;
+    const cases = new Set(c.dprs.every((d) => sets.some((x) => x.dpr === d)) ? (sets[0]?.ids ?? []).filter((id) => sets.every((x) => x.ids.includes(id) && ran(id, x.dpr))) : []);
     out.push({ lane: lc.lane, perCase, passed: rec.state === 'pass', cases, failing: new Set(listed.map((f) => f.case)) });
   }
   return { target, unavailable: null, lanes: out };
@@ -215,7 +241,11 @@ export function deviceCoverageProblems(lanes: LanesFile, c: TargetConfig): strin
     for (const s of lc.sets) {
       const got = sets.filter((x) => x.dpr === s.dpr);
       if (got.length !== 1) out.push(`${c.target} ${lc.lane} records ${got.length} sets at DPR ${s.dpr}, not 1`);
-      else if (got[0]?.dumps !== s.ids.length || got[0]?.cases !== s.ids.length) out.push(`${c.target} ${lc.lane} at DPR ${s.dpr} records ${got[0]?.dumps} dumps of ${got[0]?.cases} cases, not ${s.ids.length}`);
+      else {
+        // A record carried over a changed case list covers the cases it ran (RanCases), not the configured ones.
+        const want = rec.ran === undefined ? s.ids.length : (ranIds(lanes, rec, s.dpr)?.size ?? -1);
+        if (got[0]?.dumps !== want || got[0]?.cases !== want) out.push(`${c.target} ${lc.lane} at DPR ${s.dpr} records ${got[0]?.dumps} dumps of ${got[0]?.cases} cases, not ${want}`);
+      }
     }
     for (const x of sets) if (!lc.sets.some((s) => s.dpr === x.dpr)) out.push(`${c.target} ${lc.lane} records DPR ${x.dpr}, which it does not declare`);
   }
@@ -223,14 +253,15 @@ export function deviceCoverageProblems(lanes: LanesFile, c: TargetConfig): strin
 }
 
 /**
- * One native target's verdict from the committed record (pure): stale is staleLanes and staleEvidence over that target alone;
+ * One native target's verdict from the committed record (pure): stale is staleLanes over that target alone (device records behind
+ * the tree's sources stay its evidence until the scheduled device run on master replaces them);
  * notPassing names a failed lane parity, every lane not passing, a device lane whose recorded sets do not cover the configured
  * DPRs and cases, and, when all of that passes, why the target's device evidence (its failure list against the record) is unavailable.
  */
 export function nativeVerdict(target: NativeTarget, lanes: LanesFile | null, failures: readonly LaneFailure[] | null, configured: readonly TargetConfig[]): NativeVerdict {
   if (lanes === null) return { recorded: false, stale: [], notPassing: [] };
   const mine = configured.filter((x) => x.target === target);
-  const stale = [...staleLanes(lanes, mine), ...staleEvidence({ ...lanes, targets: lanes.targets.filter((x) => x.target === target) })];
+  const stale = staleLanes(lanes, mine);
   const c = mine[0];
   const notPassing = [
     ...(lanes.parity.pass ? [] : [`lane parity (${lanes.parity.problems.join('; ')})`]),
@@ -277,8 +308,8 @@ export function checkedFailures(v: unknown, what: string): LaneFailure[] {
     };
     if (!isObject(f)) bad('not an object');
     const o = f as Record<string, unknown>;
-    // Every device lane writes its failures to the list (allRunFailures): the check lanes, device-states, device-hit and device-env.
-    if (!([...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ENV_LANE] as readonly unknown[]).includes(o['lane'])) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
+    // allRunFailures writes every device lane's failures, the script, hit, frame sample, trace and rotation lanes' too.
+    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE, TRACE_LANE, ENV_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
     if (typeof o['case'] !== 'string' || o['case'] === '') bad('case is not a non-empty string');
     if (typeof o['dpr'] !== 'number' || !(o['dpr'] > 0)) bad('dpr is not a positive number');
     if (o['node'] !== null && typeof o['node'] !== 'string') bad('node is neither null nor a string');
@@ -298,6 +329,8 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
   if (!isObject(parity) || typeof parity['pass'] !== 'boolean' || !Array.isArray(parity['problems']) || !parity['problems'].every((x) => typeof x === 'string')) bad('parity is not { pass, problems }');
   const targets = v['targets'];
   if (!Array.isArray(targets)) return bad('targets is not a list');
+  const lists = v['caseLists'];
+  if (lists !== undefined && (!isObject(lists) || !Object.values(lists).every((x) => Array.isArray(x) && x.every((id) => typeof id === 'string')))) bad('caseLists is not { <sha256>: [case ids] }');
   targets.forEach((t, i) => {
     if (!isObject(t) || typeof t['target'] !== 'string' || !Array.isArray(t['lanes'])) bad(`targets[${i}] is not { target, lanes }`);
     ((t as Record<string, unknown>)['lanes'] as unknown[]).forEach((l, j) => {
@@ -306,6 +339,8 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
       const o = l as Record<string, unknown>;
       if (o['reason'] !== null && typeof o['reason'] !== 'string') bad(`${at}.reason is neither null nor a string`);
       const d = o['device'];
+      const r = o['ran'];
+      if (r !== undefined && (!isObject(r) || typeof r['corpora'] !== 'string' || !Array.isArray(r['sets']) || !r['sets'].every((x) => isObject(x) && typeof x['dpr'] === 'number' && typeof x['list'] === 'string'))) bad(`${at}.ran is not { sets: [{ dpr, list }], corpora }`);
       if (d === null) return;
       if (!isObject(d) || !Array.isArray(d['sets']) || !d['sets'].every((x) => isObject(x) && typeof x['failures'] === 'number' && Number.isInteger(x['failures']) && x['failures'] >= 0)) bad(`${at}.device is not { sets: [{ failures }] }`);
     });
@@ -313,12 +348,12 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
   return v as LanesFile;
 }
 
-/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes plus staleEvidence), each target's failure list and verdict. */
+/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes; records behind the tree are not stale), each target's failure list and verdict. */
 export function committedLanes(): { readonly lanes: LanesFile | null; readonly stale: readonly string[]; readonly evidence: (target: NativeTarget) => DeviceEvidence; readonly verdict: (target: NativeTarget) => NativeVerdict } {
   const raw = readLanesFile();
   const lanes = raw === null ? null : checkedLanes(raw, 'packages/parity/out/lanes.json');
   const configured = nativeTargets();
-  const stale = lanes === null ? [] : [...staleLanes(lanes, configured), ...staleEvidence(lanes)];
+  const stale = lanes === null ? [] : staleLanes(lanes, configured);
   const failuresOf = (target: NativeTarget): readonly LaneFailure[] | null => {
     const path = repoPath(`packages/parity/out/device-failures-${target}.json`);
     return existsSync(path) ? checkedFailures(JSON.parse(readFileSync(path, 'utf8')) as unknown, `packages/parity/out/device-failures-${target}.json`) : null;

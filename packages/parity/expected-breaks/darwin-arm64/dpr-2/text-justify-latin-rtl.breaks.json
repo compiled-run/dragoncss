@@ -1,0 +1,12 @@
+{
+  "case": "text-justify-latin-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","data":"Justified text spreads the space left on each line between its words so that both edges line up","lines":4,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],"blank":[26,50,76]},
+    {"id":"b:text0","data":"Every line but the last one reaches the far edge while the last line keeps its natural spacing","lines":5,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],"blank":[18,39,58,78]},
+    {"id":"c:text0","data":"Words in ","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"c:text1","data":" take their share of the space as well and the box around them grows with it","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],"blank":[17,57]},
+    {"id":"s:text0","data":"an inline span","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

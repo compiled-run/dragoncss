@@ -1,11 +1,26 @@
 // Stage 3 of docs/api.md §4.1 for web: CSS emitted from the resolved result (stage 1), never from a backend lowering.
 // One rule per element with every milestone longhand written, so the output does not depend on the UA stylesheet. The inset
 // longhands are the one exception: they are written when any of them is not auto. Auto is their initial value and no Chrome UA
-// rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values.
+// rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values. The outline longhands are the
+// other: they are written only when an author declaration sets one (in any band or interaction state of the element), since
+// Chrome's UA :focus-visible rule (outline: auto 1px -webkit-focus-ring-color) draws the focus ring an explicit none would hide.
+// The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
+// clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
+// So are the mask longhands, written only where one is not initial (MASK-CLIP accepts none that is not), and so are the border image
+// longhands (MISC-PAINT likewise).
+// A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
+// colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
+// a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
+// the resolved one.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
+import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';
+import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';
+import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';
+import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
 import { parseFamilyList } from '../fonts/family-list.ts';
@@ -28,6 +43,30 @@ function writesInsets(el: ResolvedElement): boolean {
   return INSET_LONGHANDS.some((p) => {
     const v = (el.props.get(p) as ResolvedValue).value;
     return !(v.kind === 'keyword' && v.value === 'auto');
+  });
+}
+
+/** Whether an element's clip is not auto, its initial value. */
+function writesClip(el: ResolvedElement): boolean {
+  const v = (el.props.get('clip') as ResolvedValue).value;
+  return !(v.kind === 'keyword' && v.value === 'auto');
+}
+
+/** Whether an element's clip-path is not none, its initial value. */
+function writesClipPath(el: ResolvedElement): boolean {
+  const v = (el.props.get('clip-path') as ResolvedValue).value;
+  return !(v.kind === 'keyword' && v.value === 'none');
+}
+
+/**
+ * Whether an author declaration sets an outline longhand of the element. revert and revert-layer roll back to the UA origin, whose
+ * :focus-visible rule the output must keep, so they do not count.
+ */
+export function authorsOutline(el: ResolvedElement): boolean {
+  return OUTLINE_LONGHANDS.some((p) => {
+    const r = el.props.get(p as never) as ResolvedValue | undefined;
+    if (r === undefined) throw new Error(`${el.element.address}: ${p} is not resolved`);
+    return r.declaration !== null && !(r.declared?.kind === 'keyword' && (r.declared.value === 'revert' || r.declared.value === 'revert-layer'));
   });
 }
 
@@ -154,7 +193,7 @@ export type WebAnimations = {
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
-export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true): WebEmit {
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true, webkitBoxEmittedAsFlowRoot = false): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
     const text = familyListText(v);
@@ -169,6 +208,10 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     // T065 R9: under an element that may animate its colour, an inherited colour stays inherited, so it follows each frame (the
     // static value is the same: the parent's resolved colour).
     if (p === 'color' && underSource && r.origin === 'inherited') return '  color: inherit;';
+    if (p === 'color' && r.origin === 'user-agent') return '  color: revert;';
+    // TXT2-g: a line-clamp container writes its authored -webkit-box (analysis/line-clamp.ts).
+    const legacy = p === 'display' ? webDisplayOf(el, { webkitBoxEmittedAsFlowRoot }) : null;
+    if (legacy !== null) return `  display: ${legacy};`;
     const v = r.value;
     // A folded order calculation that is not a whole number stays a calculation, which Chrome rounds as the engine does.
     if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
@@ -197,7 +240,21 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const bandBase = bandCase.map((bc) => byAddress(bc.root));
     const visit = (el: ResolvedElement, under: boolean): void => {
       const insets = writesInsets(el);
-      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p, under));
+      // The outline longhands are written for every resolution of the element or none (an unwritten one is Chrome's UA value).
+      const at = (m: ReadonlyMap<string, ResolvedElement>): ResolvedElement[] => {
+        const x = m.get(el.element.address);
+        return x === undefined ? [] : [x];
+      };
+      const resolutions = [el, ...inBands.flatMap(at), ...states.flatMap((list) => list.flatMap((st) => at(st.at)))];
+      const outline = resolutions.some(authorsOutline);
+      // TXT2-g: the line-clamp longhands are written for every resolution of the element or none (both are inert at their initial values).
+      const clamp = resolutions.some(writesLineClamp);
+      // MASK-CLIP: clip is written for every resolution of the element or none.
+      const clip = resolutions.some(writesClip);
+      const clipPath = resolutions.some(writesClipPath);
+      const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
+      const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).
@@ -229,7 +286,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
-      const below = under || sources.has(el.element.address);
+      // Below a UA colour, an inherited colour stays inherited, so it follows a link's :active and visited colours.
+      const uaColor = (el.props.get('color') as ResolvedValue).origin === 'user-agent';
+      const below = under || sources.has(el.element.address) || uaColor;
       for (const ch of el.children) if (ch.kind === 'element') visit(ch, below);
     };
     visit(c.root, false);

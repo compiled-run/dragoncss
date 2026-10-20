@@ -9,8 +9,9 @@
 // they differ and the recorded run wrote every output without reading any of them. Steps that neither read nor write each
 // other's files run in parallel (--jobs, default 4). --check exits 1 naming every file the run changed (and leaves them
 // regenerated); --force ignores entries recorded before this run; --from starts the first pass at that step; --explain prints
-// what each step would do and why, and changes nothing. --skip <step> leaves a step out of every pass and --only <step> leaves out
-// all the others (both repeatable): .github/workflows/regen-on-ci.yml runs the Chrome steps and lanes-host on different machines.
+// what each step would do and why, and changes nothing (DRAGON_REGEN_MACHINE keys it as another machine). --skip <step> leaves
+// a step out of every pass and --only <step> leaves out all the others (both repeatable): .github/workflows/regen-on-ci.yml runs
+// the Chrome steps and lanes-host on different machines.
 // A skipped step's outputs are not judged, so only the whole split reaches a fixed point.
 // Device lanes are never run: lanes-host rewrites only the host rows of lanes.json and keeps device records that are still current.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -26,13 +27,28 @@ import { MQ_R1 } from './regen-steps/mq-r1.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
 import { PNT2 } from './regen-steps/pnt2.ts';
+import { SELD_R2 } from './regen-steps/seld-r2.ts';
 import { ENGINE_SOURCES, FIXTURES, FONTS, type ManualOutput, placeSteps, pnpm, type RegenFeature, type Step } from './regen-steps/step.ts';
 
 // The device evidence stamp (device-evidence.ts EVIDENCE_CODE) digests these as files without importing them: the CI device code.
-const EVIDENCE_READS = ['packages/parity/src/device-ci.ts', 'packages/parity/src/cli/device-ci.ts'];
+// It also digests the HarfBuzz shim the apps link (its build, C ABI, module map and the vendored HarfBuzz sources), and
+// hostSources copies the shim's Swift and Kotlin wrappers into the apps.
+const EVIDENCE_READS = [
+  'packages/parity/src/device-ci.ts',
+  'packages/parity/src/cli/device-ci.ts',
+  'packages/text-shaper/build.zig',
+  'packages/text-shaper/include/**',
+  'packages/text-shaper/kotlin/src/dev/dragon/text/DragonHB.kt',
+  'packages/text-shaper/src/dragon_hb.zig',
+  'packages/text-shaper/src/dragon_hb_jni.zig',
+  'packages/text-shaper/swift/Sources/CDragonHB/module.modulemap',
+  'packages/text-shaper/swift/Sources/DragonHBShaper/DragonHBShaper.swift',
+  'vendor/harfbuzz/src/**',
+];
 import { TDEC } from './regen-steps/tdec.ts';
 import { TXT1A } from './regen-steps/txt1a.ts';
 import { TXT2 } from './regen-steps/txt2.ts';
+import { TXT2E } from './regen-steps/txt2e.ts';
 
 export type { Tree } from './regen-inputs.ts';
 export type { ManualOutput, RegenFeature, Step } from './regen-steps/step.ts';
@@ -113,9 +129,11 @@ export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   ovfl: OVFL,
   pnt1: PNT1,
   pnt2: PNT2,
+  'seld-r2': SELD_R2,
   tdec: TDEC,
   txt1a: TXT1A,
   txt2: TXT2,
+  txt2e: TXT2E,
 };
 
 /** Every regen step, in run order: the legacy steps with the features' steps and extra outputs placed (placeSteps). */
@@ -124,6 +142,7 @@ export const STEPS: readonly Step[] = placeSteps(LEGACY_STEPS, REGEN_FEATURES);
 /** Regen outputs a merge must not keep from one side: wpt fail entries carry a hand-written reason, deviation and issue. */
 export const MERGE_BY_HAND: readonly { readonly path: string; readonly why: string }[] = [
   { path: 'packages/wpt/expectations/web.json', why: 'fail entries keep a hand-written reason, deviation and issue across runs' },
+  { path: 'packages/parity/out/lanes.json', why: 'its device records come only from device runs, so merge=dragon-lanes (scripts/lanes-merge.ts) keeps the side that changed them' },
 ];
 
 /** Tracked outputs under the generated shapes of .macroscope/ignore.md that regen does not rebuild, and what produces them. */
@@ -139,6 +158,8 @@ const LEGACY_MANUAL: readonly ManualOutput[] = [
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },
   { command: 'packages/layout/test/fixtures/linebreak/capture/*.mjs', outputs: ['packages/layout/test/fixtures/linebreak/*.json'] },
+  // The UAX #29 grapheme data from the pinned Unicode 16.0.0 files, and Chrome's Intl.Segmenter capture beside its script.
+  { command: 'pnpm run linebreak:gen; node --conditions=dragon-internal packages/layout/test/fixtures/grapheme/capture.mjs', outputs: ['packages/layout/src/grapheme-data.ts', 'packages/layout/test/fixtures/grapheme/*.json'] },
   { command: 'node scripts/gen-baseline-source-matrix.ts, node scripts/gen-granularity-fixtures.ts', outputs: ['packages/parity/generated/**'] },
   { command: 'node packages/parity/test/css-token-fuzz/generate.ts', outputs: ['packages/parity/test/css-token-fuzz/generated/**'] },
   { command: 'scripts/capture-grid-probe.ts, packages/parity/test/grid-fuzz/generate.ts', outputs: ['packages/dragon/test/data/grid-*.json'] },
@@ -433,8 +454,11 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
 
 // ---------------------------------------------------------------------------------------------------------------- the cache
 
-/** A recorded run: the outputs it left, and whether they may be restored without running (it wrote all of them, read none). */
-export type Entry = { readonly outputs: Readonly<Record<string, string>>; readonly restorable: boolean; readonly inputs: Readonly<Record<string, string>> };
+/**
+ * A recorded run: the outputs it left, and whether they may be restored without running (it wrote all of them, read none). ms is
+ * how long the run took, which orders the next run's steps (longest first); entries recorded before it have none.
+ */
+export type Entry = { readonly outputs: Readonly<Record<string, string>>; readonly restorable: boolean; readonly inputs: Readonly<Record<string, string>>; readonly ms?: number };
 
 export type Store = {
   readonly get: (step: string, key: string) => Entry | null;
@@ -452,10 +476,11 @@ export function parseEntry(text: string): Entry | null {
     return null;
   }
   if (typeof v !== 'object' || v === null) return null;
-  const e = v as { version?: unknown; outputs?: unknown; restorable?: unknown; inputs?: unknown };
+  const e = v as { version?: unknown; outputs?: unknown; restorable?: unknown; inputs?: unknown; ms?: unknown };
   const isMap = (m: unknown): m is Record<string, string> => typeof m === 'object' && m !== null && !Array.isArray(m) && Object.values(m).every((b) => typeof b === 'string' && /^[0-9a-f]{40,64}$/.test(b));
   if (e.version !== 2 || !isMap(e.outputs) || !isMap(e.inputs) || typeof e.restorable !== 'boolean') return null;
-  return { outputs: e.outputs, restorable: e.restorable, inputs: e.inputs };
+  const entry = { outputs: e.outputs, restorable: e.restorable, inputs: e.inputs };
+  return typeof e.ms === 'number' && Number.isFinite(e.ms) && e.ms >= 0 ? { ...entry, ms: e.ms } : entry;
 }
 
 /** Entries as files <dir>/<step>/<key>.json, written atomically, so worktrees and parallel runs share them safely. */
@@ -568,6 +593,9 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
   if (skip.size === steps.length) return fail('every step is skipped');
   if (skip.size > 0) io.log(`not run (--skip or --only): ${steps.filter((s) => skip.has(s.name)).map((s) => s.name).join(', ')}`);
   const jobs = Math.max(1, opts.jobs ?? DEFAULT_JOBS);
+  // Each step's last recorded run time: of the steps free to start, the longest starts first, so a long step near the end of the
+  // list (tw-sweep) does not start last and run on alone after the rest have finished. No record counts as 0 (list order).
+  const cost = new Map(steps.map((s) => [s.name, io.store.latest(s.name)?.ms ?? 0]));
   const start = io.snapshot();
   const t0 = io.now();
   // Entries recorded by this run: --force trusts only these.
@@ -627,7 +655,7 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
         const afterInputs = inputsOf(s, tree);
         if (afterInputs.key !== before.key) io.log(`${s.name}: its inputs changed while it ran; not recorded, it runs again next pass`);
         else {
-          const entry: Entry = { outputs, restorable: !check.readOwn && untouched.length === 0, inputs: before.blobs };
+          const entry: Entry = { outputs, restorable: !check.readOwn && untouched.length === 0, inputs: before.blobs, ms: io.now() - ts };
           io.store.put(s.name, before.key, entry);
           session.set(`${s.name}\0${before.key}`, entry);
         }
@@ -638,11 +666,12 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
       return null;
     };
     while ((pending.length > 0 && error === null) || running.size > 0) {
-      // Start, in order, every pending step that no earlier pending or running step conflicts with.
+      // Start every pending step that no earlier pending or running step conflicts with, the longest recorded first.
       let started = true;
       while (started && error === null && running.size < jobs) {
         started = false;
-        for (let i = 0; i < pending.length; i++) {
+        const order = pending.map((_, i) => i).sort((a, b) => (cost.get(pending[b]!.name) ?? 0) - (cost.get(pending[a]!.name) ?? 0) || a - b);
+        for (const i of order) {
           const s = pending[i]!;
           let ins: Inputs;
           let blocked: boolean;
@@ -820,11 +849,30 @@ export function restoreBlobs(root: string, files: Readonly<Record<string, string
   return true;
 }
 
+const MACHINE = JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version });
+
+/**
+ * DRAGON_REGEN_MACHINE: the machine facts --explain keys with instead of this machine's, as {platform, arch, node}, so a Linux job
+ * can judge whether another machine's cache entries still cover a tree (regen-on-ci.yml's push job).
+ */
+export function explainMachine(value: string | undefined): string | null {
+  if (value === undefined || value === '') return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(value);
+  } catch {
+    throw new Error(`DRAGON_REGEN_MACHINE is not JSON: ${value}`);
+  }
+  const m = v as { platform?: unknown; arch?: unknown; node?: unknown };
+  const ok = typeof v === 'object' && v !== null && !Array.isArray(v) && Object.keys(v).length === 3 && [m.platform, m.arch, m.node].every((x) => typeof x === 'string' && x !== '');
+  if (!ok) throw new Error(`DRAGON_REGEN_MACHINE must be {"platform","arch","node"} strings: ${value}`);
+  return JSON.stringify({ platform: m.platform, arch: m.arch, node: m.node });
+}
+
 /** The Io of a working tree: steps run as processes under the tracer, the cache in storeDir, step output in logDir. */
-export function localIo(root: string, storeDir: string, logDir: string): Io {
+export function localIo(root: string, storeDir: string, logDir: string, machine: string = MACHINE): Io {
   const roots = [...new Set([root, realpathSync(root)])];
   const tracer = join(root, TRACER);
-  const machine = JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version });
   const texts = new Map<string, string>();
   return {
     snapshot: (exclude) => snapshotTree(root, exclude),
@@ -865,7 +913,8 @@ export function localIo(root: string, storeDir: string, logDir: string): Io {
             done({ code, log: readFileSync(logFile, 'utf8'), trace, touched });
           });
         };
-        const env = { ...process.env, DRAGON_REGEN_TRACE: traceDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import ${JSON.stringify(tracer)}`.trim() };
+        // Steps reuse Chrome's output for pages they rendered before (packages/parity/src/chrome-memo.ts) unless told not to.
+        const env = { ...process.env, DRAGON_CHROME_MEMO: process.env.DRAGON_CHROME_MEMO ?? '1', DRAGON_REGEN_TRACE: traceDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import ${JSON.stringify(tracer)}`.trim() };
         const child = spawn(step.argv[0]!, step.argv.slice(1), { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env });
         child.stdout.pipe(out, { end: false });
         child.stderr.pipe(out, { end: false });
@@ -947,6 +996,17 @@ async function main(): Promise<void> {
     console.error(`regen: DRAGON_REGEN_JOBS must be a positive integer, not ${JSON.stringify(process.env.DRAGON_REGEN_JOBS)}`);
     process.exit(2);
   }
+  let machine: string | null;
+  try {
+    machine = explainMachine(process.env.DRAGON_REGEN_MACHINE);
+  } catch (e) {
+    console.error(`regen: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(2);
+  }
+  if (machine !== null && !opts.explain) {
+    console.error('regen: DRAGON_REGEN_MACHINE is honoured only with --explain; a run keys with the machine it runs on');
+    process.exit(2);
+  }
   const root = git(['rev-parse', '--show-toplevel']).trim();
   let lock: { release: () => void };
   try {
@@ -968,8 +1028,14 @@ async function main(): Promise<void> {
   } catch {
     // Unset: git config exits 1.
   }
-  if (driver !== 'true') console.log('regen: run pnpm setup:git once so merges keep generated files instead of stopping on them');
-  const io = localIo(root, storeDir, logDir);
+  let lanesDriver = '';
+  try {
+    lanesDriver = git(['-C', root, 'config', '--get', 'merge.dragon-lanes.driver']).trim();
+  } catch {
+    // Unset.
+  }
+  if (driver !== 'true' || lanesDriver === '') console.log('regen: run pnpm setup:git once so merges keep generated files (and lanes.json\'s newer device records) instead of stopping on them');
+  const io = localIo(root, storeDir, logDir, machine ?? MACHINE);
   const r = await regen(STEPS, opts, io);
   writeFileSync(join(logDir, 'last-run.json'), `${JSON.stringify(r.records, null, 1)}\n`);
   if (r.error !== null) console.error(`regen: FAILED: ${r.error}`);

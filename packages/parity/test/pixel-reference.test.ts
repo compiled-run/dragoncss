@@ -7,17 +7,19 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from '../src/chrome.ts';
-import { DPRS } from '../src/dpr.ts';
 import { readBreakVector } from '../src/line-breaks.ts';
 import { readSamples } from '../src/native-compare.ts';
-import { nativeCases } from '../src/native-host.ts';
+import { nativeCases, nativeCompile } from '../src/native-host.ts';
+import { nativePrograms } from 'dragon';
+import { DPRS, layoutCases } from '../src/dpr.ts';
 import { repoPath } from '../src/paths.ts';
 import type { PixelManifest } from '../src/pixel-reference.ts';
 import type { BottomScanlines } from '../src/pixel-reference.ts';
 import { PLANT_CASE } from '../src/device-run.ts';
-import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
+import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, pngSize, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
 import { BACKEND_OF } from '../src/native-host.ts';
 import { deviceDprs } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 import { withoutTransforms } from '../src/paint-samples/transform.ts';
 import type { SamplePoint } from '../src/samples.ts';
 import { generateGlyphSamples, GLYPH_EDGE_RULE, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
@@ -96,11 +98,32 @@ describe('the glyph rule', () => {
     expect(pts.filter((p) => p.rule.endsWith(':glyph-left')).length).toBeGreaterThan(0);
     for (const dpr of DPRS) for (const c of cases) expect(() => casePoints(c.programs.uikit, c.case.environment.viewport, dpr), `${c.case.id}@${dpr}`).not.toThrow();
   });
-  it('refuses a family other than Ahem', () => {
+  // TXT1a-2 retarget: a real bundled face has glyph boxes now (its shaped HarfBuzz extents); a face the host was never given is refused.
+  it('refuses a face that is not bundled', () => {
     const n = cases.find((c) => c.case.id === 'text-wrap-spaces');
     if (n === undefined) throw new Error('no text-wrap-spaces');
     const other = JSON.parse(JSON.stringify(n.programs.uikit).replaceAll('"family":"Ahem"', '"family":"Inter"')) as NativeProgram;
-    expect(() => glyphLines(other, n.case.environment.viewport, 3)).toThrow(/refuses the font family Inter/);
+    expect(() => glyphLines(other, n.case.environment.viewport, 3)).toThrow(/the engine refused the input/);
+  });
+
+  it('gives a real face its shaped glyph boxes on every inked line of every real-face shaped case (native lowering on, as phase R will run it)', () => {
+    // The real-face cases are no device cases until TXT1a-2 phase R, so the glyph rule's real-face extents are proven on their
+    // native lowering with phase C turned on (native-host.ts nativeCompile nativeRealFaces).
+    const shaped = shapedCaseIds();
+    let lines = 0;
+    for (const { spec, cases: own } of layoutCases()) {
+      if (spec.id === 'text-ahem-fractional' || !own.some((c) => shaped.has(c.id))) continue;
+      for (const c of own) {
+        const p = nativePrograms(nativeCompile(spec, c.environment.direction, true), c.assignment);
+        if (p.kind !== 'ready') throw new Error(`${c.id}: ${p.reason}`);
+        for (const l of glyphLines(p.programs.uikit, c.environment.viewport, 3)) {
+          lines++;
+          expect(l.glyphs.length, l.id).toBeGreaterThan(0);
+          for (const g of l.glyphs) expect(g.right > g.left && g.bottom > g.top, l.id).toBe(true);
+        }
+      }
+    }
+    expect(lines).toBeGreaterThan(50);
   });
 });
 
@@ -211,5 +234,19 @@ describe('the points protocol and check (c)', () => {
     const want = rasterSize(n.case.environment.viewport, 2.625);
     expect(checkCasePixels(readSamples(img, pts), pts, img, want, want).problems).toEqual([]);
     expect(checkCasePixels(readSamples(img, pts), pts, img, want, { width: 1050, height: 787 }).problems).toEqual(['the native capture is 1050x787, the raster rule 1050x788']);
+  });
+});
+
+describe('pngSize', () => {
+  it('reads the IHDR size of every committed pixel PNG the same as a full decode', () => {
+    const dir = repoPath('packages/parity/expected-pixels/darwin-arm64/dpr-2');
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.png')).slice(0, 25)) {
+      const png = readFileSync(join(dir, f));
+      const img = decodePng(png);
+      expect(pngSize(png)).toEqual({ width: img.width, height: img.height });
+    }
+  });
+  it('refuses bytes that are not a PNG', () => {
+    expect(() => pngSize(new Uint8Array(30))).toThrow('not a PNG');
   });
 });

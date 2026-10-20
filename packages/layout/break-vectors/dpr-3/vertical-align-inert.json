@@ -1,0 +1,20 @@
+{
+  "case": "vertical-align-inert",
+  "dpr": 3,
+  "texts": [
+    {"id":"b1:text0","lines":[[0,5]]},
+    {"id":"b2:text0","lines":[[0,2]]},
+    {"id":"b3t:text0","lines":[[0,1]]},
+    {"id":"r1:text0","lines":[[0,1]]},
+    {"id":"r3:text0","lines":[[0,2]]},
+    {"id":"r4:text0","lines":[[0,1]]},
+    {"id":"k2:text0","lines":[[0,1]]},
+    {"id":"g1:text0","lines":[[0,1]]},
+    {"id":"g3:text0","lines":[[0,2]]},
+    {"id":"rel:text0","lines":[[0,2]]},
+    {"id":"inl:text0","lines":[[0,3]]},
+    {"id":"s:text0","lines":[[0,2]]},
+    {"id":"inl:text1","lines":[[0,3]]},
+    {"id":"a1:text0","lines":[[0,1]]}
+  ]
+}

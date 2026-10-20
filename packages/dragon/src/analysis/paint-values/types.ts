@@ -11,9 +11,10 @@ export type PaintValueContext = { readonly em: number | null; readonly rem: numb
 
 /**
  * A refusal on an element's computed paint values that no profile row can express (a combination of longhands, such as a rounded
- * dashed border); run by checkComputed on every laid-out element. reported deduplicates across cases.
+ * dashed border); run by checkComputed on every laid-out element. reported deduplicates across cases. propagated is the element
+ * whose overflow the viewport takes (css-overflow-3 §3.3, computed-checks propagatedFrom), or null.
  */
-export type PaintCheck = (el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>) => void;
+export type PaintCheck = (el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, propagated: ResolvedElement | null) => void;
 
 export type PaintValues = {
   readonly name: PaintModuleName;

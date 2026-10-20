@@ -1,7 +1,7 @@
 // The element table: the HTML tags the compiler resolves, each with captured Chrome UA defaults (ua/chrome-145.*.generated.ts).
 // Every other tag is refused by the projection. pre is refused: white-space: pre is not supported.
 import type { CapturedTag, UaKey } from '../ua/datasets.ts';
-import { REPLACED_TAGS, REPLACED_UA_KEYS } from './elements/replaced.ts';
+import { REPLACED_TAGS, REPLACED_UA_KEYS, SVG_SHAPE_TAGS } from './elements/replaced.ts';
 
 export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'html', 'body', 'div',
@@ -10,14 +10,16 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'span', 'a', 'label',
   'br',
   ...REPLACED_TAGS,
+  ...SVG_SHAPE_TAGS,
+  'b', 'strong', 'em', 'i',
 ]);
 
 /**
  * Tags whose Chrome 145 UA rules set no longhand Dragon models (the elementKey and phrasingKey tables: span, a without href,
- * label, whose only rule is cursor: default, and br, which has none). They take dragon-unstyled's captured defaults;
- * test/blockify.test.ts pins the tables.
+ * label, whose only rule is cursor: default, br, which has none, and b, strong, em and i, whose rules set only a text font). They
+ * take dragon-unstyled's captured defaults, and their text font row (datasets.ts); test/blockify.test.ts pins the tables.
  */
-export const UNSTYLED_TAGS: ReadonlySet<string> = new Set(['span', 'a', 'label', 'br']);
+export const UNSTYLED_TAGS: ReadonlySet<string> = new Set(['span', 'a', 'label', 'br', 'b', 'strong', 'em', 'i']);
 
 /** The UA dataset row an element's tag reads. */
 export function uaTagOf(tag: string): UaKey {

@@ -11,16 +11,24 @@ import type { CompilerFaults } from '../faults.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
+import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, synthesizesSmallCaps, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
-import { presentationalHints } from './elements/replaced.ts';
+import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
+import { svgHintDeclaration } from './elements/svg.ts';
+import { applyAnyLink } from './text-decoration.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
+import type { TransformItem } from './text-transform.ts';
+import { textTransformOf, transformRun } from './text-transform.ts';
 import type { InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
+import { computeResize } from '../css/properties/resize.ts';
+import { computeFontStretch } from '../css/properties/font-stretch.ts';
+import { computeTouchAction } from '../css/properties/touch-action.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -46,6 +54,10 @@ export type ResolvedText = {
   readonly node: LinkedText;
   readonly text: string;
   readonly props: ReadonlyMap<TextLonghand, ResolvedValue>;
+  /** TXT2-e: why native targets refuse this text's transform in this resolved tree (text-transform.ts transformRun). */
+  readonly transformRefusal?: string;
+  /** Whether its owner synthesizes small caps over a face without smcp (computed.ts synthesizesSmallCaps). */
+  readonly smallCaps: boolean;
 };
 
 const WHITE_SPACE = /[ \t\n\r\f]/;
@@ -135,13 +147,84 @@ export function collapseInlineContext(runs: readonly (string | null)[]): (string
   return runs.map((t, run) => (t === null ? null : out.filter((c) => c.run === run).map((c) => c.ch).join('')));
 }
 
+/** The computed white-space-collapse keyword of an element's props. */
+function collapseModeOf(props: ReadonlyMap<Longhand, ResolvedValue>): string {
+  const v = (props.get('white-space-collapse') as ResolvedValue).value;
+  return v.kind === 'keyword' ? v.value : '';
+}
+
+/**
+ * Phase I of one text whose white-space-collapse is not collapse (css-text-4 §4.1.1; Blink InlineItemsBuilder::AppendText): preserve
+ * and break-spaces keep the text as authored (AppendPreserveWhitespace; each U+000A is a forced break the engine reads); preserve-breaks
+ * (AppendPreserveNewline) keeps each U+000A, collapses every other white space sequence to one space, and removes the spaces on
+ * either side of each U+000A and at the text's start and end (AppendForcedBreakCollapseWhitespace). The compiler refuses tabs and
+ * other control characters in preserved text (computed-checks.ts).
+ */
+export function phaseOne(text: string, mode: string, faults: CompilerFaults): string {
+  return phaseOneContext([text], [mode], faults)[0] as string;
+}
+
+/**
+ * Phase I over one inline formatting context's texts (null for a <br>), each with its white-space-collapse. preserve-breaks runs
+ * over the whole context, as Blink's InlineItemsBuilder carries its collapsing state from one text item to the next: a space at the
+ * end of one text and the start of the next is one space, wherever the text nodes split (a framework expression, a display: none
+ * element). A context that mixes modes, or holds <br>s beside preserved text, is refused (computed-checks.ts, the engine), so each
+ * of its texts takes its own phase I.
+ */
+export function phaseOneContext(runs: readonly (string | null)[], modes: readonly string[], faults: CompilerFaults): (string | null)[] {
+  const together = runs.every((t, i) => t !== null && modes[i] === 'preserve-breaks');
+  // preserve and break-spaces keep their text as authored.
+  if (!together) return runs.map((t, i) => (t === null || modes[i] !== 'preserve-breaks' ? t : (phaseOneContext([t], ['preserve-breaks'], faults)[0] as string)));
+  type C = { ch: string; run: number };
+  const chars: C[] = [];
+  runs.forEach((t, run) => {
+    for (const ch of t as string) chars.push({ ch, run });
+  });
+  const out: C[] = [];
+  let k = 0;
+  while (k < chars.length) {
+    const c = chars[k] as C;
+    if (c.ch !== ' ' && c.ch !== '\t') {
+      out.push(c);
+      k++;
+      continue;
+    }
+    let e = k;
+    while (e < chars.length && ((chars[e] as C).ch === ' ' || (chars[e] as C).ch === '\t')) e++;
+    const before = out[out.length - 1];
+    const after = chars[e];
+    const atStart = before === undefined || before.ch === '\n';
+    const atNewline = after !== undefined && after.ch === '\n';
+    // Planted fault preLineKeepsSpaceBeforeNewline: the space before a preserved U+000A stays.
+    if (!atStart && after !== undefined && (!atNewline || faults.preLineKeepsSpaceBeforeNewline)) out.push({ ch: ' ', run: c.run });
+    k = e;
+  }
+  return runs.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
+}
+
 /** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
 const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
+
+/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box that stayed inline-level after blockification. */
+const isAtomicInline = (el: ResolvedElement): boolean => displayOf(el) === 'inline-block' || displayOf(el) === 'inline-flex' || displayOf(el) === 'inline-grid';
+
+/** An atomic inline's run in collapseInlineContext: U+FFFC, which is not white space (Blink inline_items_builder.cc:1245-1251). */
+const ATOMIC_RUN = '\ufffc';
 
 const displayOf = (el: ResolvedElement): string => {
   const v = (el.props.get('display') as ResolvedValue).value;
   return v.kind === 'keyword' ? v.value : '';
 };
+
+/** css-variables-1 §2: every resolved element's computed custom properties (ANIM-v substitutes transition and animation values with them). */
+const RESOLVED_CUSTOMS = new WeakMap<ResolvedElement, CustomProperties>();
+
+/** The computed custom properties of an element resolveTree returned; a compiler error for any other element. */
+export function resolvedCustoms(el: ResolvedElement): CustomProperties {
+  const c = RESOLVED_CUSTOMS.get(el);
+  if (c === undefined) throw new Error(`${el.element.address} was not resolved by resolveTree`);
+  return c;
+}
 
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand. interaction:
 // the hovered and focused elements the selectors match against (SELD-R2a); none by default.
@@ -149,7 +232,7 @@ const displayOf = (el: ResolvedElement): string => {
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
-  const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
+  const customsOf = RESOLVED_CUSTOMS;
   // The children of each inline box, waiting for its block container's inline formatting context to collapse their text.
   const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
@@ -159,7 +242,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
-      if (parent === null) return { value: parseValueText(p, environment.ua.computed.html[p] as string), origin: 'initial', span: null, ...none };
+      // The UA capture has no font-weight or font-style (datasets.ts TEXT_FONT_LONGHANDS); the root takes their initial value.
+      const rootValue = environment.ua.computed.html[p];
+      if (parent === null) return { value: rootValue === undefined ? initialValue(p, environment.ua) : parseValueText(p, rootValue), origin: 'initial', span: null, ...none };
       const pv = parent.props.get(p) as ResolvedValue;
       return { value: pv.value, origin: 'inherited', span: pv.span, ...none };
     };
@@ -196,6 +281,12 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const useInherit = kw === 'inherit' || currentColorOnColor || ((kw === 'unset' || kw === 'revert' || kw === 'revert-layer') && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
+      } else if (w === undefined && hints.has(p)) {
+        // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
+        // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
+        const value = hints.get(p) as CssValue;
+        const stand = svgHintDeclaration(el, p, value);
+        props.set(p, stand === null ? { value, origin: 'presentational-hint', span: null, ...none } : { value, origin: 'presentational-hint', span: stand.span, declaration: stand, declared: value, losing: [] });
       } else if (inherited && parent === null && p === 'direction') {
         // docs/api.md §7: the environment direction is the root's base direction; the harness gives both renderings the same one.
         props.set(p, { value: { kind: 'keyword', value: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction }, origin: 'environment', span: null, ...none });
@@ -205,8 +296,6 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       } else if (inherited) {
         props.set(p, parent === null ? (userAgentValue(tag, p, environment.ua) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
         defaulted.add(p);
-      } else if (w === undefined && hints.has(p as 'width')) {
-        props.set(p, { value: hints.get(p as 'width') as CssValue, origin: 'presentational-hint', span: null, ...none });
       } else {
         props.set(p, defaultFor(p));
         defaulted.add(p);
@@ -220,11 +309,13 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const rootFontSize = resolvedRoot === null ? null : pxOf((resolvedRoot.props.get('font-size') as ResolvedValue).value);
     // The UA em defaults below read the element's computed font-size, so an author em or rem font-size is made px first.
     const fontSize = new Map<Longhand, ResolvedValue>([['font-size', props.get('font-size') as ResolvedValue]]);
-    computeLengths(fontSize, parentFontSize, rootFontSize);
+    computeLengths(fontSize, parentFontSize, rootFontSize, faults);
     props.set('font-size', fontSize.get('font-size') as ResolvedValue);
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent, revertedProps);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
+    computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
+    applyAnyLink(el, props, defaulted, environment.ua);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
@@ -234,12 +325,19 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, { ...set, value: { ...set.value, text: envAsZero(set.value.text) } });
       }
     }
-    computeLengths(props, parentFontSize, rootFontSize);
+    computeLengths(props, parentFontSize, rootFontSize, faults);
+    computeLetterSpacing(props, faults.zeroNotNormal);
+    computeWordSpacing(props, faults.wordNormalNotZero);
+    computeFontStretch(props);
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     blockify(props, parent === null ? null : parent.props, faults);
+    adjustLineClampDisplay(props);
     computeOverflowPair(props);
+    computeResize(props);
+    computeTouchAction(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
+    computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeJustifyItems(props, parent === null ? null : parent.props);
     computeLists(props, faults);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
@@ -259,25 +357,56 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // An inline formatting context is a maximal sequence of text, inline boxes and <br>s; display: none elements generate no box
     // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
-    let run: (LinkedText | null)[] = [];
+    const refusals = new Map<LinkedText, string>();
+    // null is a <br>, and 'atomic' an atomic inline, which stays in the context as U+FFFC (INL-P f5-break-space-atomic).
+    let run: (LinkedText | null | 'atomic')[] = [];
+    // The white-space-collapse each text of the run takes from the element that holds it (textProps).
+    let modes: string[] = [];
+    // TXT2-e: each text's transform, and the boxes that end its previous character, in tree order (text-transform.ts).
+    let transforms: TransformItem[] = [];
     const flush = (): void => {
-      const texts = collapseInlineContext(run.map((t) => (t === null ? null : t.text)));
+      // R7: Chrome transforms the DOM text before white-space processing, so the transform comes before the collapse. A context
+      // holding preserved text with inline boxes or <br>s is refused (computed-checks.ts); each text takes its own phase I.
+      const transformed = transformRun(transforms, faults, refusals);
+      const strings = run.map((t) => (t === null ? null : t === 'atomic' ? ATOMIC_RUN : (transformed.get(t) as string)));
+      const texts = modes.every((m) => m === 'collapse') ? collapseInlineContext(strings) : phaseOneContext(strings, modes, faults);
       run.forEach((t, i) => {
-        if (t !== null) collapsed.set(t, texts[i] as string);
+        if (t !== null && t !== 'atomic') collapsed.set(t, texts[i] as string);
       });
       run = [];
+      modes = [];
+      transforms = [];
     };
-    const gather = (items: readonly (ResolvedElement | LinkedText)[]): void => {
+    const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>): void => {
       for (const kid of items) {
-        if (kid.kind === 'text') run.push(kid);
-        else if (displayOf(kid) === 'none') continue;
+        if (kid.kind === 'text') {
+          run.push(kid);
+          modes.push(collapseModeOf(owner));
+          transforms.push({ kind: 'text', node: kid, transform: textTransformOf(owner) });
+        } else if (displayOf(kid) === 'none') continue;
         else if (isInlineBox(kid)) {
-          if (kid.element.tag === 'br') run.push(null);
-          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[]);
-        } else flush();
+          if (kid.element.tag === 'br') {
+            run.push(null);
+            modes.push('collapse');
+          }
+          if (kid.element.tag === 'br' || isReplacedTag(kid.element.tag)) transforms.push({ kind: 'break' });
+          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
+        } else if (isAtomicInline(kid)) {
+          // Planted fault atomicCollapsesAsLineEnd: the atomic inline ends the context, so the white space around it goes.
+          if (faults.atomicCollapsesAsLineEnd) flush();
+          else {
+            // Its U+FFFC holds no white space, so it collapses alike in every mode.
+            run.push('atomic');
+            modes.push('collapse');
+          }
+          transforms.push({ kind: 'atomic' });
+        } else {
+          flush();
+          if (displayOf(kid).startsWith('inline-')) transforms.push({ kind: 'atomic' });
+        }
       }
     };
-    gather(kids);
+    gather(kids, props);
     flush();
     const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
       for (const kid of items) {
@@ -289,7 +418,10 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         }
         const text = collapsed.get(kid);
         if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
-        if (text.length > 0) owner.children.push({ kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua) });
+        if (text.length === 0) continue;
+        const refusal = refusals.get(kid);
+        const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps) };
+        owner.children.push(refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal });
       }
     };
     place(self, props, kids);

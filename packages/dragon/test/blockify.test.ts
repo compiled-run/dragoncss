@@ -18,7 +18,7 @@ import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree } from '../src/analysis/resolve.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
-import { referenceDataset } from '../src/ua/datasets.ts';
+import { darkDatasetFor, referenceDataset, textFontsOf, uaDatasetFor } from '../src/ua/datasets.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const SRC: SourceRef = { uri: 's.css', revision: 'r', hash: 'h' };
@@ -33,8 +33,8 @@ function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], chi
   return { kind: 'element', id, tag, classes: classes.map((name) => staticClass({ owner: DOC, sheet: 's', name }, origin)), attributes: [], children, origin };
 }
 
-const FONT = 'body { font-family: Ahem; } .f { display: flex; } .g { display: grid; } .ct { display: contents; } .ab { position: absolute; } .fx { position: fixed; } .rel { position: relative; } .ib { display: inline-block; } .if { display: inline-flex; } .it { display: inline-table; }';
-const displayOf = (tree: (r: SourceRef) => TreeNode[], id: string, faults: CompilerFaults = NO_FAULTS): string => {
+const FONT = 'body { font-family: Ahem; } .f { display: flex; } .g { display: grid; } .ct { display: contents; } .ab { position: absolute; } .fx { position: fixed; } .rel { position: relative; } .ib { display: inline-block; } .if { display: inline-flex; } .it { display: inline-table; } .fl { float: left; } .fs { float: inline-start; } .fn { float: none; } .hid { display: none; }';
+const displayOf = (tree: (r: SourceRef) => TreeNode[], id: string, faults: CompilerFaults = NO_FAULTS, property: Longhand = 'display'): string => {
   const diagnostics: Diagnostic[] = [];
   const rules = parseStylesheet(FONT, { source: SRC, start: 0, end: FONT.length }, { id: 'sheet', owner: DOC, scope: 'document' }, 0, diagnostics);
   expect(diagnostics).toEqual([]);
@@ -53,7 +53,7 @@ const displayOf = (tree: (r: SourceRef) => TreeNode[], id: string, faults: Compi
     }
     return null;
   };
-  return valueToString(((find(root) as ResolvedElement).props.get('display') as ResolvedValue).value);
+  return valueToString(((find(root) as ResolvedElement).props.get(property) as ResolvedValue).value);
 };
 const codes = (tree: (r: SourceRef) => TreeNode[], faults: CompilerFaults = NO_FAULTS) => project(faults).compile(inputFor(FONT, tree)).diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message.split(' makes ')[0]}`);
 
@@ -64,7 +64,7 @@ describe('span, a and label in the element table', () => {
       expect(uaTagOf(t)).toBe('dragon-unstyled');
     }
     expect(uaTagOf('div')).toBe('div');
-    expect([...UNSTYLED_TAGS].sort()).toEqual(['a', 'br', 'label', 'span']);
+    expect([...UNSTYLED_TAGS].sort()).toEqual(['a', 'b', 'br', 'em', 'i', 'label', 'span', 'strong']);
   });
   // The captured Chrome tables are what makes dragon-unstyled right for them: no modelled UA declaration, context or text font,
   // and every computed longhand equal to dragon-unstyled's, in light and dark.
@@ -110,6 +110,36 @@ describe('br in the element table (INL1a)', () => {
       expect(ds.phrasingKeyUnmodelled.br).toEqual({ ltr: {}, rtl: {} });
       expect(ds.phrasingKeyForced.br).toEqual({ ltr: {}, rtl: {} });
       for (const p of LONGHANDS) expect(ds.phrasingKeyComputed.br[p], `br ${p}`).toBe(ds.computed['dragon-unstyled'][p]);
+    });
+  }
+});
+
+describe('b, strong, em and i in the element table (T133, R7)', () => {
+  it('are supported, appended last (after br and the replaced tags), and read dragon-unstyled\'s UA row', () => {
+    expect([...SUPPORTED_TAGS].slice(-4)).toEqual(['b', 'strong', 'em', 'i']);
+    for (const t of ['b', 'strong', 'em', 'i']) expect(uaTagOf(t), t).toBe('dragon-unstyled');
+  });
+  for (const [scheme, ds, choice] of [['light', light, uaDatasetFor('darwin-arm64')], ['dark', dark, darkDatasetFor('darwin-arm64')]] as const) {
+    it(`${scheme}: their only UA rule is a text font, every computed longhand equals dragon-unstyled's, and the dataset carries the row`, () => {
+      if (choice.kind !== 'ok') throw new Error(choice.reason);
+      for (const k of ['b', 'strong', 'em', 'i'] as const) {
+        expect(ds.phrasingKeySpecs[k].attributes, k).toEqual({});
+        expect(ds.phrasingKeyLonghands[k], k).toEqual([]);
+        expect(ds.phrasingKeyDeclared[k], k).toEqual({ ltr: {}, rtl: {} });
+        expect(ds.phrasingKeyContexts[k], k).toEqual([]);
+        expect(ds.phrasingKeyUnmodelled[k], k).toEqual({ ltr: {}, rtl: {} });
+        expect(ds.phrasingKeyForced[k], k).toEqual({ ltr: {}, rtl: {} });
+        for (const p of LONGHANDS) expect(ds.phrasingKeyComputed[k][p], `${k} ${p}`).toBe(ds.computed['dragon-unstyled'][p]);
+        // TXT-W1: the dataset holds the html.css specified value, whose properties are the captured row's (font-weight.test.ts).
+        expect(Object.keys(textFontsOf(choice.dataset, k)), k).toEqual(Object.keys(ds.phrasingKeyTextFonts[k]));
+      }
+      expect(textFontsOf(choice.dataset, 'b')).toEqual({ 'font-weight': 'bolder' });
+      expect(textFontsOf(choice.dataset, 'em')).toEqual({ 'font-style': 'italic' });
+      // Only the supported phrasing tags gain a row; the captured tags keep theirs, and every other tag has none.
+      for (const k of ['br', 'label', 'code', 'small', 'sub', 'sup']) expect(k in choice.dataset.userAgentTextFonts, k).toBe(k === 'br' || k === 'label');
+      expect(textFontsOf(choice.dataset, 'h1')).toEqual({ 'font-weight': 'bold' });
+      expect(textFontsOf(choice.dataset, 'span')).toEqual({});
+      expect(choice.dataset.computed).toBe(ds.computed);
     });
   }
 });
@@ -162,9 +192,9 @@ describe('blockification in the resolver', () => {
   });
   it('an inline box (display: inline, INL1a) is not refused, an atomic inline is refused on every target, and display: none subtrees are not laid out', () => {
     expect(codes((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [], [text(r, 't', 'X')])])])).toEqual([]);
-    // An author's inline-block or inline-flex in a block container: an atomic inline (INL2), refused on ios and web by the
-    // committed support profiles, with both outputs blocked.
-    for (const cls of ['ib', 'if']) {
+    // An author's inline-table in a block container: an atomic inline no package lays out (INL2a proves inline-block and
+    // inline-flex, G-INL inline-grid), refused on ios and web by the committed support profiles, with both outputs blocked.
+    for (const cls of ['it']) {
       const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(inputFor(FONT, (r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [cls], [text(r, 't', 'X')])])]));
       const onDisplay = c.diagnostics.filter((d) => /display/.test(d.message));
       expect([...new Set(onDisplay.map((d) => String(d.target)))].sort(), cls).toEqual(['ios', 'web']);
@@ -191,8 +221,18 @@ describe('blockification in the resolver', () => {
     expect(flexChildren(NO_FAULTS)).toEqual([{ box: 's', display: 'block', children: [{ text: 's:text0' }] }]);
     expect(flexChildren({ ...NO_FAULTS, blockifySkipped: true })).toEqual([{ box: 'c:anon0', display: 'block', children: [{ inline: 's', children: [{ text: 's:text0' }] }] }]);
   });
+  it('a float is blockified anywhere, even under display: none, and an absolutely positioned box\'s float computes to none (CSS2 §9.7)', () => {
+    expect(displayOf((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', ['fl'])])], 's')).toBe('block');
+    expect(displayOf((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', ['fs', 'if'])])], 's')).toBe('flex');
+    expect(displayOf((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', ['fn'])])], 's')).toBe('inline');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['hid'], [el(r, 's', 'span', ['fl'])])], 's')).toBe('block');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['f'], [el(r, 's', 'span', ['fl'])])], 's', NO_FAULTS, 'float')).toBe('left');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['rel'], [el(r, 's', 'span', ['ab', 'fl'])])], 's', NO_FAULTS, 'float')).toBe('none');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['rel'], [el(r, 's', 'span', ['fx', 'fs'])])], 's', NO_FAULTS, 'float')).toBe('none');
+    expect(displayOf((r) => [el(r, 'c', 'div', ['rel'], [el(r, 's', 'span', ['rel', 'fl'])])], 's', NO_FAULTS, 'float')).toBe('left');
+  });
   it('a parent that was not blockified first is an error, not a silent in-flow child', () => {
-    const props = (display: string) => new Map<Longhand, ResolvedValue>([['display', { value: parseValueText('display', display), origin: 'author', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue], ['position', { value: parseValueText('position', 'static'), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue]]);
+    const props = (display: string) => new Map<Longhand, ResolvedValue>([['display', { value: parseValueText('display', display), origin: 'author', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue], ['position', { value: parseValueText('position', 'static'), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue], ['float', { value: parseValueText('float', 'none'), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue]]);
     expect(() => blockify(props('inline'), props('flex'), NO_FAULTS)).toThrow('blockify: the parent was not blockified first');
     const parent = props('inline flex');
     blockify(parent, null, NO_FAULTS);

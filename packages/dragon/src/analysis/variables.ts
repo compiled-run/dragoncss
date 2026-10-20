@@ -67,8 +67,8 @@ function* substituteSteps(parts: readonly VarPart[], lookup: (name: string) => G
   return ok ? out : null;
 }
 
-/** substituteSteps with values that are already known. */
-function substitute(parts: readonly VarPart[], values: CustomProperties): string | null {
+/** substituteSteps with values that are already known: the substituted text, or null when it is invalid at computed-value time. */
+export function substituteVars(parts: readonly VarPart[], values: CustomProperties): string | null {
   const r = substituteSteps(parts, function* (name) { return values.get(name) ?? null; }).next();
   if (r.done !== true) throw new Error('substitution with known values asked to resolve a name');
   return r.value;
@@ -156,7 +156,7 @@ const readable = (text: string): string => text.split(SEPARATOR).join('').trim()
  */
 export function substituteDeclaration(d: Declaration, customs: CustomProperties): SubstitutedDeclaration {
   const pending = d.pending as NonNullable<Declaration['pending']>;
-  const text = substitute(pending.parts, customs);
+  const text = substituteVars(pending.parts, customs);
   const make = (longhands: readonly LonghandValue[], refusal: string | null, isInvalid = false): SubstitutedDeclaration => ({
     declaration: { property: d.property, text: d.text, span: d.span, valueSpan: d.valueSpan, longhands, order: d.order, ...(d.important === true ? { important: true as const } : {}), ...(d.layer === undefined ? {} : { layer: d.layer }) },
     substitution: { source: d, text, invalid: isInvalid, refusal },

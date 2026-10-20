@@ -2,7 +2,7 @@
 // clear of every edge by SAMPLE_INSET_DEVICE_PX, and edge scanlines that cross exactly one edge.
 import { describe, expect, it } from 'vitest';
 import type { GlyphBox, SampleBox, SamplePoint } from '../src/samples.ts';
-import { ALONG_POSITIONS, CLEAR_SUFFIX, clearOfGlyphs, isScanlineRule, generateGlyphSamples, generateSamples, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX, SAMPLE_RULES, sampleBoxes, sampleGlyphs } from '../src/samples.ts';
+import { ALONG_POSITIONS, CLEAR_SUFFIX, clearOfGlyphs, isScanlineRule, generateGlyphSamples, generateSamples, glyphClearance, glyphSpanAt, ruleKind, SAMPLE_INSET_DEVICE_PX, SAMPLE_RULES, sampleBoxes, sampleGlyphs } from '../src/samples.ts';
 
 const SIZE = { width: 1200, height: 900 };
 const card: SampleBox = { id: 'n3', left: 60, top: 60, right: 420, bottom: 180, border: { top: 6, right: 6, bottom: 6, left: 6 }, radius: 24, clips: true, size: [360, 120] };
@@ -12,14 +12,16 @@ const I = SAMPLE_INSET_DEVICE_PX;
 const clearOf = (v: number, e: number): boolean => v >= e + I || v + 1 <= e - I;
 
 describe('sample generator', () => {
-  it('the six rules, in order, shared by both targets', () => {
-    // REPL-a appends image-flat (R8): points on flat image content, added by the image paint module.
-    expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient', 'image-flat']);
+  it('the sample rules, in order, shared by both targets', () => {
+    // REPL-a appends image-flat (R8): points on flat image content, added by the image paint module; SVG-a2 appends svg (points
+    // clear of every shape edge, added by the same module); TDEC-b appends decoration: points on and beside the rows of text
+    // decorations, added by the text-decoration paint module.
+    expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient', 'image-flat', 'svg', 'decoration', 'text-shadow']);
   });
   it('is deterministic and emits every rule for a bordered, rounded, clipping box', () => {
     const a = generateSamples([card, plain], SIZE);
     expect(generateSamples([card, plain], SIZE)).toEqual(a);
-    expect([...new Set(a.filter((p) => p.rule.includes(':n3')).map((p) => ruleKind(p.rule)))]).toEqual(SAMPLE_RULES.filter((r) => r !== 'glyph' && r !== 'shadow' && r !== 'gradient' && r !== 'image-flat'));
+    expect([...new Set(a.filter((p) => p.rule.includes(':n3')).map((p) => ruleKind(p.rule)))]).toEqual(SAMPLE_RULES.filter((r) => r !== 'glyph' && r !== 'shadow' && r !== 'gradient' && r !== 'image-flat' && r !== 'svg' && r !== 'decoration' && r !== 'text-shadow'));
     expect(a.filter((p) => ruleKind(p.rule) === 'radius' && p.rule.startsWith('radius:n3')).length).toBe(8);
     expect(a.filter((p) => p.rule === 'interior:n3')).toEqual([{ x: 240, y: 120, rule: 'interior:n3' }]);
     expect(a.filter((p) => p.rule === 'border:n3:top')).toEqual([{ x: 240, y: 62, rule: 'border:n3:top' }]);
@@ -85,6 +87,37 @@ describe('glyph clearance (T093 ruling A)', () => {
     expect(clearOfGlyphs(43, 30, [g, next])).toBe(true);
     // Deep inside a glyph is clear: the ink there is the glyph's colour on every renderer.
     expect(clearOfGlyphs(55, 35, [g, next])).toBe(true);
+  });
+  it('a sheared glyph (TXT-W synthetic oblique) is an obstacle by its slanted sides, not by its bounding box', () => {
+    // Upright 10..40 x 70..110 sheared by 0.25 about the baseline at 102: the ink runs 18..48 on row 70 and 8..38 on row 110.
+    const s: GlyphBox = { left: 8, top: 70, right: 48, bottom: 110, slant: { k: 0.25, baseline: 102, left: 10, right: 40 } };
+    const box: GlyphBox = { left: 8, top: 70, right: 48, bottom: 110 };
+    expect(glyphSpanAt(s, 70)).toEqual([18, 48]);
+    expect(glyphSpanAt(s, 110)).toEqual([8, 38]);
+    // Inside the bounding box by 4, but the slanted side passes 1.8 device px away (grown by d, the pixel's lowest row reaches it).
+    expect(glyphClearance(12, 80, box)).toBe(4);
+    expect(glyphClearance(12, 80, s)).toBeCloseTo(1.8, 12);
+    expect(glyphClearance(15, 80, s)).toBe(0);
+    expect(glyphClearance(25, 90, s)).toBe(12);
+    expect(glyphClearance(44, 75, s)).toBe(1.5);
+    expect(glyphClearance(50, 75, s)).toBeCloseTo(2.6, 12);
+    expect(glyphClearance(5, 108, s)).toBe(2);
+    expect(glyphClearance(20, 66, s)).toBe(3);
+    // The glyph rule crosses each slanted side on its scanline's row, and the top and bottom where the ink is on those rows.
+    const r = sampleGlyphs([{ id: 't:line0', glyphs: [s] }], SIZE);
+    expect(r.dropped).toEqual([]);
+    const at = (rule: string) => r.points.filter((p) => p.rule === rule).map((p) => [p.x, p.y]);
+    expect(at('glyph:t:line0:0')).toEqual([[27, 90]]);
+    expect(at('edge:t:line0:glyph-left')).toEqual([9, 10, 11, 12, 13, 14, 15].map((x) => [x, 90]));
+    expect(at('edge:t:line0:glyph-right')).toEqual([46, 45, 44, 43, 42, 41, 40, 39].map((x) => [x, 90]));
+    expect(at('edge:t:line0:glyph-top')).toEqual([67, 68, 69, 70, 71, 72].map((y) => [32, y]));
+    expect(at('edge:t:line0:glyph-bottom')).toEqual([112, 111, 110, 109, 108, 107].map((y) => [23, y]));
+    // Each scanline runs from a clear outside pixel (clear on the rows the inset grows it to, where the right side lies further right)
+    // to a clear inside pixel.
+    for (const rule of ['left', 'right', 'top', 'bottom'].map((side) => `edge:t:line0:glyph-${side}`)) {
+      const line = at(rule);
+      for (const [x, y] of [line[0], line[line.length - 1]] as [number, number][]) expect(glyphClearance(x, y, s), `${rule} ${x},${y}`).toBeGreaterThanOrEqual(I);
+    }
   });
   it('box rules try the along-positions 1/2, 1/4, 3/4, 1/8, 7/8 in order and take the first clear one', () => {
     expect(ALONG_POSITIONS).toEqual([1 / 2, 1 / 4, 3 / 4, 1 / 8, 7 / 8]);

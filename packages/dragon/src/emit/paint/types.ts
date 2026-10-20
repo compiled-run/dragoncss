@@ -26,6 +26,11 @@ export type NativePaint = {
   readonly applied: string | null;
   readonly roundedPath: string | null;
   readonly container: string | null;
+  /**
+   * TDEC-b: the after-text hook, run by the tree's text pass once a text view is configured; it takes (the container box view, the
+   * text view, its DragonTextGeometry). Absent for a module with none.
+   */
+  readonly afterText?: string;
 };
 
 /**
@@ -34,6 +39,10 @@ export type NativePaint = {
  */
 export type PaintEngine = {
   /** paint-radius.ts roundedShape: the outer then the padding-edge radii of a snapped border box and its layout size, in device px. */
+  /** paint-radius.ts outlineRings, outlineWidthPx and outlineOffsetPx: an outline's rings in device px. */
+  readonly outlineRings: (left: number, top: number, right: number, bottom: number, radii: readonly number[], width: number, offset: number, double: boolean) => number[];
+  readonly outlineWidthPx: (width: number, dpr: number) => number;
+  readonly outlineOffsetPx: (offset: number, dpr: number) => number;
   readonly roundedShape: (left: number, top: number, right: number, bottom: number, layoutWidth: number, layoutHeight: number, borders: readonly number[], lengths: readonly { readonly percent: boolean; readonly value: number }[], dpr: number, faults: { readonly radiusUnclamped: boolean; readonly innerRadiusNotReduced: boolean }) => number[];
 };
 

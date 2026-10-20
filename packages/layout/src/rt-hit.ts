@@ -9,6 +9,7 @@
 // hit_test_location.cc or paint_layer.cc. Every length is in LU (1/64 px), absolute to the root.
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
+import { NO_GRID_FAULTS } from './grid.ts';
 import { isScrollContainer, resolveBorder } from './box.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
@@ -455,6 +456,26 @@ function fragmentOrders(s: TableState, container: LayoutBox): Map<string, number
   return out;
 }
 
+/**
+ * The grid items' places in a container's fragment order, by id: Blink paints grid items atomically in order-modified document
+ * order (css-grid-2 §9; GridLayoutAlgorithm::PlaceGridItems adds them in that order), which is the order the engine lists them in.
+ */
+function gridOrders(s: TableState, container: LayoutBox): Map<string, number> {
+  const inFlow = new Map<string, boolean>();
+  for (const c of container.children) {
+    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
+  }
+  const out = new Map<string, number>();
+  let k = 0;
+  for (const x of s.boxes) {
+    const parent = x.parent;
+    if (parent === null || parent !== container.id || !inFlow.has(x.id)) continue;
+    out.set(x.id, k);
+    k++;
+  }
+  return out;
+}
+
 /** Ahem's ink of a leaf: the em box when a glyph other than p (descender only) shows; p alone inks below the baseline only. */
 function inkAbove(leaf: TextLeaf): boolean {
   let full = false;
@@ -595,11 +616,12 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   for (const c of b.children) {
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
+    else if (c.kind === 'box' && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
     else kids++;
   }
   if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
   if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves);
-  const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
+  const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : b.style.display === 'grid' ? gridOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
@@ -638,10 +660,32 @@ function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
   return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
 }
 
+function isAtomicInline(b: LayoutBox): boolean {
+  const d = b.style.display;
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+}
+
+function atomicRefusal(id: string): string {
+  return `${id} is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)`;
+}
+
+/**
+ * TXT2-g: Chrome hit tests the content past a -webkit-line-clamp clamp point by rules not measured yet. That content stays
+ * hittable in Chrome 145 (Blink hides it, LineClampData::IsHidden, only under the CSSLineClamp runtime feature), and in
+ * line-clamp-nested the hit table matches Chrome on n4c's text and at n4's right edge in the 1 px band above n4's clip edge
+ * (y 85 to 86, n4c laid out past the clamp point from y 86), but between them (x 20 to 27.5) Chrome names n4b under n4c's
+ * background where the hit table names n4c. Until that band is measured the hit lane refuses a line-clamp container by name.
+ */
+function clampRefusal(id: string): string {
+  return `${id} clamps its lines (-webkit-line-clamp), and Chrome hit tests the content past the clamp point by rules the hit table does not model yet (TXT2-g)`;
+}
+
 function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if (c.kind === 'box') {
+      if (c.style.lineClamp > 0) return clampRefusal(c.id);
+      if (isAtomicInline(c)) return atomicRefusal(c.id);
       const r = boxHitRefusal(c);
       if (r !== null) return r;
     }
@@ -649,7 +693,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
   return null;
 }
 
-/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) has no hit model yet. */
+/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a), an atomic inline (INL2a) and a line-clamp container (TXT2-g) have no hit model yet. */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }
@@ -666,13 +710,17 @@ function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
 
 /** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */
 export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
+  // The named refusal comes first, so a case is refused for what hitRefusal names, not for whatever the walk meets before it
+  // (line-clamp-lines' walk meets l7's Ahem p glyphs over several lines first).
+  const refused = hitRefusal(input);
+  if (refused !== null) throw new HitError(refused);
   const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
   const zoomed = hitZoomed(input, measurer);
   const zmap = new Map<string, LayoutBox>();
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);
-  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS }, facts, faults };
+  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, facts, faults };
   boxNodes(s, input.root, -1, null, -1, 'auto');
   return { nodes: s.nodes, ids: s.ids, activation: s.activation };
 }

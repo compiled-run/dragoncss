@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+html { float: none; clear: both; }
+body { margin: 0; font-family: Ahem; font-size: 10px; clear: left; }
+.blk { width: 120px; margin: 6px 0 8px; }
+.row { display: flex; width: 200px; height: 40px; column-gap: 5px; margin-bottom: 4px; }
+.col { display: flex; flex-direction: column; width: 80px; margin-bottom: 4px; }
+.grd { display: grid; grid-template-columns: 30px 40px 50px; width: 150px; margin-bottom: 4px; }
+.box { position: relative; width: 200px; height: 60px; }
+.abs { position: absolute; left: 10px; top: 5px; width: 30px; height: 20px; }
+.a2 { left: 60px; }
+.rel { position: relative; top: 2px; }
+.hid { display: none; }
+.c { width: 20px; height: 10px; }
+.t { width: 15px; height: 25px; }
+.fl { float: left; }
+.fr { float: right; }
+.fs { float: inline-start; }
+.fe { float: inline-end; }
+.fn { float: none; }
+.cb { clear: both; }
+.cl { clear: left; }
+.cr { clear: right; }
+.cs { clear: inline-start; }
+.ce { clear: inline-end; }
+.cn { clear: none; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b1" class="blk fn cb">XX YY</div>
+<div data-dragon-id="b2" class="blk cl"><div data-dragon-id="b2c" class="c cr"></div><div data-dragon-id="b2t" class="t fn cs">X</div></div>
+<div data-dragon-id="b3" class="blk ce">aa <span data-dragon-id="s" class="fn">XX</span> bb</div>
+<div data-dragon-id="b4" class="blk cn rel cb">X</div>
+<div data-dragon-id="row" class="row fn"><div data-dragon-id="r1" class="c fr">X</div><div data-dragon-id="r2" class="t fl cb"></div><span data-dragon-id="r3" class="fs">XX</span><div data-dragon-id="r4" class="c fe cr rel">Y</div></div>
+<div data-dragon-id="col" class="col"><div data-dragon-id="k1" class="c fl"></div><span data-dragon-id="k2" class="t fr cl">X</span><div data-dragon-id="k3" class="c fs ce"></div></div>
+<div data-dragon-id="grd" class="grd"><div data-dragon-id="g1" class="c fe">X</div><span data-dragon-id="g2" class="t fl cb"></span><div data-dragon-id="g3" class="c fr">XX</div></div>
+<div data-dragon-id="box" class="box"><div data-dragon-id="a1" class="abs fr cb">X</div><span data-dragon-id="a2" class="abs a2 fl"></span></div>
+<div data-dragon-id="hid" class="hid"><span data-dragon-id="h1" class="fl">X</span></div>
+</body>
+</html>

@@ -98,7 +98,11 @@ pub fn build(b: *std.Build) void {
 
     // ---- iOS: static libraries for arm64 device and arm64 simulator, bundled as an xcframework ----
     const ios_step = b.step("ios", "Build DragonHB.xcframework");
-    {
+    if (b.graph.host.result.os.tag != .macos) {
+        // The slices need the Xcode SDKs (xcrun), so a Linux host still configures the other steps.
+        const fail = b.addFail("the iOS build needs macOS with Xcode (xcrun)");
+        ios_step.dependOn(&fail.step);
+    } else {
         const header_dir = b.path("include");
         const Slice = struct { sdk: []const u8, abi: std.Target.Abi, dir: []const u8 };
         const slices = [_]Slice{

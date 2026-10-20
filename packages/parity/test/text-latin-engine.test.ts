@@ -4,11 +4,12 @@
 // exactly as the Node host does, with the plants live (it refuses them only without a transcript).
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { EngineFaults, FontSpec, GlyphShaper, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutResult, TextLeaf } from '@dragon/layout';
+import type { EngineFaults, FontSpec, GlyphShaper, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutResult, TextLeaf, TextMeasurer } from '@dragon/layout';
 import { intrinsicContentInlineSize } from '../../layout/src/intrinsic.ts';
-import { scrollMetrics } from '../../layout/src/overflow.ts';
+import { scrollMetrics, scrollRanges } from '../../layout/src/overflow.ts';
 import { HitError, hitTableOf, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
+import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
+import { engineTextLines } from '../src/line-breaks.ts';
 import { repoPath } from '../src/paths.ts';
 import { launchChrome } from '../src/chrome.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
@@ -42,6 +43,14 @@ const faceBytes = [...new Map(latin.map((c) => [c.font, c.bytes])).values()];
 const lato = latin.find((c) => c.font === 'Lato')?.bytes as Uint8Array;
 const latoId = registerFace(lato);
 
+/** A shaped measurer over the bundled Ahem alone: referenceShapedMeasurer() holds every vendored face, Lato included. */
+function ahemShapedMeasurer(): TextMeasurer {
+  const id = ahemFaceId();
+  const m = shapedMeasurerFor(REFERENCE_PLATFORM, new Map([[id, shapedFaceOf(id, REFERENCE_LANGUAGE)]]), hostShaper, REFERENCE_LANGUAGE, NO_ENGINE_FAULTS);
+  if (m.kind !== 'ok') throw new Error(m.detail);
+  return m.measurer;
+}
+
 const style = {
   display: 'block', position: 'static', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' }, overflowX: 'visible', overflowY: 'visible',
   direction: 'ltr', boxSizing: 'content-box', width: { kind: 'auto' }, height: { kind: 'auto' }, minWidth: { kind: 'auto' }, minHeight: { kind: 'auto' }, maxWidth: { kind: 'none' },
@@ -49,12 +58,12 @@ const style = {
   paddingTop: { kind: 'px', value: 0 }, paddingRight: { kind: 'px', value: 0 }, paddingBottom: { kind: 'px', value: 0 }, paddingLeft: { kind: 'px', value: 0 },
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal', alignItems: 'normal', alignSelf: 'auto',
-  alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' },
+  alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0,
   grid: null, gridItem: null,
 } as const;
 
 const fontOf = (family: string, size: number): FontSpec => ({ family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true });
-const leaf = (id: string, text: string, family: string, size: number): TextLeaf => ({ kind: 'text', id, text, font: fontOf(family, size), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
+const leaf = (id: string, text: string, family: string, size: number): TextLeaf => ({ kind: 'text', id, text, font: fontOf(family, size), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false });
 
 const span = (id: string, child: TextLeaf): InlineBox => ({ kind: 'inline', id, style: { ...style, display: 'inline' }, font: child.font, lineHeight: child.lineHeight, children: [child] });
 
@@ -136,7 +145,7 @@ describe('TXT1a-1 phase B: R4 and the run refusal on the real-font path', () => 
   });
 
   it("the shaped measurer's shaped item, which real-font line breaking reads, refuses with text-script too (R4)", () => {
-    const font = { family: latoId, size: 16 };
+    const font = { family: latoId, size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false };
     expect(referenceShapedMeasurer(NO_ENGINE_FAULTS, [lato]).shaped('A\u03a9', font)).toEqual({ ok: false, code: 'text-script', reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
     expect(referenceShapedMeasurer(NO_ENGINE_FAULTS, [lato]).shaped('Ahem text', font).ok).toBe(true);
     expect(referenceShapedMeasurer({ ...NO_ENGINE_FAULTS, latinCheckSkipped: true }, [lato]).shaped('A\u03a9', font).ok).toBe(true);
@@ -154,7 +163,7 @@ function ahemRunsChangedBy(faults: EngineFaults): { readonly text: string; reado
   const m = referenceShapedMeasurer(faults);
   return Object.entries(cap.widthsLayoutUnits).flatMap(([size, widths]) =>
     widths.flatMap((lu, i) => {
-      const got = m.measure('X'.repeat(i + 1), { family: 'Ahem', size: Number(size) });
+      const got = m.measure('X'.repeat(i + 1), { family: 'Ahem', size: Number(size), letterSpacing: 0, wordSpacing: 0, smallCaps: false });
       return got.ok && got.measure.width === lu ? [] : [{ text: 'X'.repeat(i + 1), size: Number(size) }];
     }),
   );
@@ -262,10 +271,14 @@ describe('TXT1a-1 phase B: a face the measurer does not hold is refused with tex
   const ahemOnly = measurerFor(REFERENCE_PLATFORM);
   if (ahemOnly.kind !== 'ok') throw new Error(ahemOnly.detail);
 
+  it('the shaped measurer without the face lacks Lato, which the reference measurer holds as a vendored face', () => {
+    expect([ahemShapedMeasurer().hasFace(latoId), ahemShapedMeasurer().hasFace(ahemFaceId()), referenceShapedMeasurer().hasFace(latoId)]).toEqual([false, true, true]);
+  });
+
   for (const [name, input, node] of entries) {
     it(`${name}: measurerFor's Ahem measurer, a shaped measurer without the face, and the harness with and without a transcript`, () => {
       expect(refusal(layout(input, ahemOnly.measurer)), 'Ahem measurer').toEqual(['text-glyph', node]);
-      expect(refusal(layout(input, referenceShapedMeasurer())), 'shaped measurer').toEqual(['text-glyph', node]);
+      expect(refusal(layout(input, ahemShapedMeasurer())), 'shaped measurer').toEqual(['text-glyph', node]);
       expect(harnessRun(input, NO_ENGINE_FAULTS, undefined), 'harness, no transcript').toEqual(['text-glyph', node]);
       const t = hostRun(input, NO_ENGINE_FAULTS).shaping as { language: string; faces: { id: string }[]; calls: unknown[] };
       expect(harnessRun(input, NO_ENGINE_FAULTS, { ...t, faces: t.faces.filter((f) => f.id !== latoId) }), 'harness, transcript without the face').toEqual(['text-glyph', node]);
@@ -292,7 +305,7 @@ const minCases = [...sized, ...hyphenated];
 function intrinsicOf(c: (typeof latin)[number], kind: 'min' | 'max', faults: EngineFaults = NO_ENGINE_FAULTS): number {
   const input = inputOf(c.width, [leaf('t', c.text, registerFace(c.bytes), c.size)]);
   const p = ((input.root.children[0] as LayoutBox).children[0]) as LayoutBox;
-  return intrinsicContentInlineSize({ measurer: referenceShapedMeasurer(faults, faceBytes), devicePixelRatio: 1, faults }, p, kind) as number;
+  return intrinsicContentInlineSize({ measurer: referenceShapedMeasurer(faults, faceBytes), devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS }, p, kind) as number;
 }
 
 describe('TXT1a-1 phase B: real-font intrinsic sizes', () => {
@@ -370,7 +383,14 @@ describe('TXT1a-1 phase B: post-layout passes resolve a real-font input with the
     const r = scrollMetrics(input, shaped(), 'ltr');
     expect(r.kind).toBe('ok');
     expect(r.kind === 'ok' && r.containers.map((c) => c.id)).toEqual(['p']);
-    const refused = scrollMetrics(input, referenceShapedMeasurer(), 'ltr');
+    const refused = scrollMetrics(input, ahemShapedMeasurer(), 'ltr');
+    expect(refused.kind === 'refused' && [refused.nodeId, refused.detail.slice(0, 11)]).toEqual(['q', 'text-glyph:']);
+  });
+
+  it('scrollRanges lays out and measures it, and refuses a measurer without the face with text-glyph', () => {
+    const r = scrollRanges(input, shaped());
+    expect(r.kind === 'ok' && [r.ranges.map((c) => c.id), r.refused]).toEqual([['p'], []]);
+    const refused = scrollRanges(input, ahemShapedMeasurer());
     expect(refused.kind === 'refused' && [refused.nodeId, refused.detail.slice(0, 11)]).toEqual(['q', 'text-glyph:']);
   });
 
@@ -378,7 +398,21 @@ describe('TXT1a-1 phase B: post-layout passes resolve a real-font input with the
     const facts = new Map(['html', 'body', 'q', 'r', 'p'].map((id) => [id, { pointerEvents: 'auto', inherited: false, activation: false }] as const));
     const t = hitTableOf(input, shaped(), facts, NO_HIT_TABLE_FAULTS);
     expect(t.ids).toEqual(expect.arrayContaining(['q', 'r', 'p']));
-    expect(() => hitTableOf(input, referenceShapedMeasurer(), facts, NO_HIT_TABLE_FAULTS)).toThrow(HitError);
+    expect(() => hitTableOf(input, ahemShapedMeasurer(), facts, NO_HIT_TABLE_FAULTS)).toThrow(HitError);
+  });
+
+  it('engineTextLines (the break check) resolves a real face\'s ex with the caller\'s measurer, as the layout does', () => {
+    // Real-font text in a box 12ex of Lato wide: resolving the environment with Ahem refused the face (text-glyph) before.
+    const narrow = pageOf([{ kind: 'box', id: 'w', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 12, metric: 'ex', font: latoFont }, range: 'non-negative' } }, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, children: [leaf('t', 'Real text wraps in a narrow box', latoId, 16)] }], 2);
+    const r = layout(narrow, shaped());
+    if (r.kind !== 'ok') throw new Error(r.unsupported.detail);
+    const texts = engineTextLines(narrow, shaped());
+    expect(texts.map((t) => [t.id, t.container])).toEqual([['t', 'w']]);
+    const lines = (texts[0] as (typeof texts)[number]).lines;
+    // Every line rect is the layout's own (the break check's lines are the engine's line pieces).
+    const rects = r.boxes.filter((b) => b.parent === 't' || b.id.startsWith('t:line'));
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.length).toBe(rects.length);
   });
 
   it('the harness runs a line with a shape transcript and a viewport direction to its scroll suffix, equal to the host', () => {

@@ -1,0 +1,2540 @@
+// css-grid-2 grid layout, ported from Blink 145.0.7632.6 (third_party/blink/renderer/core/layout/grid): placement
+// (grid_placement.cc), ranges and sets (grid_track_collection.cc), the track sizing algorithm (grid_track_sizing_algorithm.cc) and
+// geometry, contributions and item placement (grid_layout_algorithm.cc), and the grid areas of absolutely positioned children
+// (grid_layout_utils.cc). Chrome sizes runs of identical tracks as one set, so every share and alignment rounds per set
+// (docs/research/grid-spike/blink-notes.md GR1-GR18). Written in logical inline/block terms for horizontal-tb: columns are the
+// inline axis and rows the block axis; rtl mirrors the inline offsets at the end.
+import type {
+  AlignItems,
+  Direction,
+  GridAutoRepeat,
+  GridContainerStyle,
+  GridLine,
+  GridLineName,
+  GridSelfAlign,
+  GridSpan,
+  LayoutBox,
+  LayoutStyle,
+  Percent,
+  Px,
+  TrackBreadth,
+  TrackRepeater,
+  TrackSize,
+} from './input.ts';
+import type { LU } from './units.ts';
+import {
+  add,
+  ceilToInt,
+  clampNegativeToZero,
+  divInt,
+  divLu,
+  doubleLeftover,
+  doubleQuotient,
+  doubleShare,
+  doubleShareToLu,
+  equalShare,
+  flexSumAdd,
+  flexSumSub,
+  clampedFloatMul,
+  floatNearlyEqual,
+  floorToInt,
+  frLeftover,
+  frShareToLu,
+  fromCssPx,
+  fromRaw,
+  intDiv,
+  intMod,
+  mightBeSaturated,
+  mulInt,
+  percentOf,
+  rawOverFloat,
+  rawTimesFloat,
+  setFlexFactor,
+  sub,
+  weightedShare,
+  ZERO,
+} from './units.ts';
+import type { AreaRect, Edges, Frag, HeightBasis, MinMax, OutOfFlow, Placed, StaticAxis, StaticEdge } from './box.ts';
+import {
+  blockMinMax,
+  borderBoxFromSpecified,
+  constrain,
+  contentBox,
+  hasPercent,
+  inlineMinMax,
+  isScrollContainer,
+  lengthWidth,
+  resolveBorder,
+  resolveInlineLength,
+  resolveLength,
+  resolveMargin,
+  resolvePadding,
+  sumEdges,
+} from './box.ts';
+import type { Ctx, EngineFaults } from './block.ts';
+import { directionOf, layoutContents } from './block.ts';
+import { intrinsicContentInlineSize } from './intrinsic.ts';
+import { isOutOfFlow, relativeOffset } from './position.ts';
+import { hasAspectRatio } from './ratio.ts';
+import { unsupported } from './unsupported.ts';
+
+/** Blink kIndefiniteSize: LayoutUnit(-1), an indefinite size or an infinite growth limit. */
+const INDEFINITE: LU = -64 as LU;
+/** Blink kNotFound for set indices. */
+const NOT_FOUND = -1;
+/** Blink kGridMaxTracks (core/style/grid_area.h). */
+const GRID_MAX_TRACKS = 10000000;
+/** A line past every real line (Blink's kNotFound as an unsigned line): auto-placement can place lines beyond kGridMaxTracks. */
+const NO_LINE = 9007199254740991;
+const LU_MAX: LU = 2147483647 as LU;
+/** Blink LayoutUnit::Min(), a set with no baseline. */
+const LU_MIN: LU = -2147483648 as LU;
+
+/**
+ * Seeded grid engine errors, each a planted fault of docs/research/grid-spike/blink-notes.md in G1a's, G2's, G3's or G4's scope
+ * (G3 adds the baseline plants, G3b inlineBaselineAtInlineStart and lastBaselineAsFirst), so the G-P differential test
+ * (packages/parity/test/grid-corpus-*.test.ts) proves it catches them. The product runs with NO_GRID_FAULTS.
+ */
+export type GridFaults = {
+  /** autoPlacementNotDense: dense packing keeps the cursor like sparse packing. */
+  readonly denseAsSparse: boolean;
+  /** sparseCursorRewinds: sparse packing restarts the cursor for every item. */
+  readonly sparseRewinds: boolean;
+  /** implicitBeforeCyclesForward: implicit tracks before the explicit grid take grid-auto-* sizes forwards. */
+  readonly implicitForward: boolean;
+  /** shareRounded: an equal share of extra space rounds to the nearest unit instead of truncating. */
+  readonly shareRounded: boolean;
+  /** gutterNotInSpannedSize: a spanning item's spanned size leaves out the gutters it crosses. */
+  readonly gutterNotInSpan: boolean;
+  /** flexSpanWeightedAsEqual: an item spanning flexible tracks shares its space equally, not by flex factor. */
+  readonly flexSpanEqual: boolean;
+  /** spanGroupingFlat: every non-flexible item forms one group, whatever its span. */
+  readonly spanGroupingFlat: boolean;
+  /** maximizeIgnoresGrowthLimit: maximize shares the free space equally with no growth limits. */
+  readonly maximizeIgnoresLimit: boolean;
+  /** flexSumBelowOneNotClamped: the flex factor sum stays below 1 when finding the fr size. */
+  readonly flexSumBelowOne: boolean;
+  /** frRestartMissing: flexible tracks whose base size exceeds their share stay flexible. */
+  readonly frRestartMissing: boolean;
+  /** frLeftoverFloat64: the fr share is computed in double. */
+  readonly frFloat64: boolean;
+  /** frLeftoverDropped: the fractional part of each fr share is dropped instead of carried. */
+  readonly frLeftoverDropped: boolean;
+  /** autoMinNotClamped: the automatic minimum is not clamped to the spanned fixed maximum. */
+  readonly autoMinNotClamped: boolean;
+  /** fitContentAsAuto: fit-content() tracks size as auto. */
+  readonly fitContentAsAuto: boolean;
+  /** stretchIgnoresContentAlignment: auto tracks stretch whatever the content alignment. */
+  readonly stretchIgnoresAlignment: boolean;
+  /** stretchIndefiniteIgnoresMinSize: an indefinite size stretches auto tracks by nothing, ignoring min-width/height. */
+  readonly stretchIgnoresMinSize: boolean;
+  /** percentGapNotReresolved and percentTrackNotReresolved: no second pass once the block size is resolved. */
+  readonly percentNotReresolved: boolean;
+  /** contentDistributionRounded: content distribution rounds its shares instead of truncating. */
+  readonly distributionRounded: boolean;
+  /** centerNegativeFloors: centering floors half a negative free space instead of truncating toward zero. */
+  readonly centerFloors: boolean;
+  /** Spec reading of Chrome deviation grid-maximize-no-max-redo (css-grid-2 §12.6): redo maximize against max-height. */
+  readonly maximizeRedoSpec: boolean;
+  /** autoFillCountCeil: a definite or maximum size fits as many repetitions as its size rounded up, not down. */
+  readonly autoFillCountCeil: boolean;
+  /** autoFitNotCollapsed: repeat(auto-fit) keeps its empty tracks, as repeat(auto-fill) does. */
+  readonly autoFitNotCollapsed: boolean;
+  /** repeatEndNameMissed: a name after the automatic repeater's last size names its final line only, not each repetition's end. */
+  readonly repeatEndNameMissed: boolean;
+  /** oofMidRangeTruncated: an abspos line inside a multi-track set drops the set's remainder units (GR17). */
+  readonly absposMidSetEven: boolean;
+  /** absposEndGutterKept: an abspos end line keeps the gutter after its last track. */
+  readonly absposEndGutterKept: boolean;
+  /** absposBeyondGridClamped: an abspos line beyond the implicit grid is clamped to its last line instead of being auto. */
+  readonly absposBeyondGridClamped: boolean;
+  /** absposAutoLineContentEdge: an auto abspos line uses the content edge instead of the padding edge. */
+  readonly absposAutoLineContentEdge: boolean;
+  /** absposStaticAlignIgnored: an abspos static position ignores justify-self and align-self in its area. */
+  readonly absposStaticAlignIgnored: boolean;
+  /** baselineShimIgnored: a baseline-aligned item's row contribution leaves out its baseline shim. */
+  readonly baselineShimIgnored: boolean;
+  /** baselineSynthesizedAtTop: an item with no baseline synthesizes it at its border-box top instead of its bottom edge. */
+  readonly baselineSynthesizedAtTop: boolean;
+  /** inlineBaselineAtInlineStart: in rtl an item's synthesized inline-axis baseline is its inline-start (right) edge, not its left. */
+  readonly inlineBaselineAtInlineStart: boolean;
+  /** lastBaselineAsFirst: last baseline alignment aligns by the first baseline, in the start-most set's major group. */
+  readonly lastBaselineAsFirst: boolean;
+};
+
+export const NO_GRID_FAULTS: GridFaults = {
+  denseAsSparse: false,
+  sparseRewinds: false,
+  implicitForward: false,
+  shareRounded: false,
+  gutterNotInSpan: false,
+  flexSpanEqual: false,
+  spanGroupingFlat: false,
+  maximizeIgnoresLimit: false,
+  flexSumBelowOne: false,
+  frRestartMissing: false,
+  frFloat64: false,
+  frLeftoverDropped: false,
+  autoMinNotClamped: false,
+  fitContentAsAuto: false,
+  stretchIgnoresAlignment: false,
+  stretchIgnoresMinSize: false,
+  percentNotReresolved: false,
+  distributionRounded: false,
+  centerFloors: false,
+  maximizeRedoSpec: false,
+  autoFillCountCeil: false,
+  autoFitNotCollapsed: false,
+  repeatEndNameMissed: false,
+  absposMidSetEven: false,
+  absposEndGutterKept: false,
+  absposBeyondGridClamped: false,
+  absposAutoLineContentEdge: false,
+  absposStaticAlignIgnored: false,
+  baselineShimIgnored: false,
+  baselineSynthesizedAtTop: false,
+  inlineBaselineAtInlineStart: false,
+  lastBaselineAsFirst: false,
+};
+
+export type GridArgs = {
+  readonly pad: Edges;
+  readonly bor: Edges;
+  readonly contentWidth: LU;
+  readonly definiteInnerHeight: LU | null;
+  readonly innerHeightMinMax: MinMax;
+};
+
+/**
+ * baseline: the container's first baseline from its border-box top, or null with no items. outOfFlow: the absolutely positioned
+ * children, which gridOutOfFlow places once the container's border-box height is known.
+ */
+/** inflow: the grid's tracks in its border box, a scroll container's inflow bounds (Blink SetInflowBounds, gridInflowBounds). */
+export type GridResult = { readonly contentHeight: LU; readonly placed: readonly Placed[]; readonly baseline: LU | null; readonly outOfFlow: readonly GridOutOfFlow[]; readonly inflow: AreaRect };
+
+/**
+ * An absolutely positioned child of a grid container (Blink GridLayoutAlgorithm::PlaceOutOfFlowItems). The area edges are logical
+ * offsets from the border-box start edges, null for the padding edge (an auto line, or one outside the implicit grid), and all
+ * null unless the container is positioned; the edges are its static-position alignment in each axis.
+ */
+export type GridOutOfFlow = {
+  readonly box: LayoutBox;
+  readonly inlineStart: LU | null;
+  readonly inlineEnd: LU | null;
+  readonly blockStart: LU | null;
+  readonly blockEnd: LU | null;
+  readonly inlineEdge: GridAxisEdge;
+  readonly blockEdge: GridAxisEdge;
+};
+
+type GridAxis = 'columns' | 'rows';
+type GridSizing = 'layout' | 'min-content' | 'max-content';
+type GridContributionType = 'intrinsic-minimums' | 'content-based-minimums' | 'max-content-minimums' | 'intrinsic-maximums' | 'max-content-maximums' | 'free-space';
+export type GridAxisEdge = 'start' | 'center' | 'end';
+/** Baseline alignment specified in one axis: none, Blink AxisEdge::kFirstBaseline or AxisEdge::kLastBaseline. */
+type GridBaselineKind = 'none' | 'first' | 'last';
+/**
+ * An item's alignment in one axis: the edge, whether an auto size stretches, whether overflow is safe (auto margins only), and
+ * the baseline alignment, whose edge here is its fallback (start for first baseline, end for last baseline).
+ */
+type GridAlignment = { readonly edge: GridAxisEdge; readonly stretch: boolean; readonly safe: boolean; readonly baseline: GridBaselineKind };
+type GridDependentItem = { readonly sets: GridSetIndices; readonly cached: LU };
+type GridKeyedSet = { readonly s: GridSet; readonly i: number; readonly p: LU };
+type GridIndexedSet = { readonly s: GridSet; readonly i: number };
+type GridIndexedItem = { readonly item: GridItemData; readonly k: number };
+type GridIndexedBox = { readonly b: LayoutBox; readonly i: number };
+
+/** Blink TrackSpanProperties, for a range and for the tracks an item spans. */
+type GridProps = {
+  autoMin: boolean;
+  fixedMax: boolean;
+  fixedMin: boolean;
+  flexible: boolean;
+  intrinsic: boolean;
+  nonDefinite: boolean;
+  dependent: boolean;
+};
+
+/** Blink GridTrackSize: min and max breadths, or fit-content (min and max auto, with the limit). */
+type GridTrack = { readonly fitContent: boolean; readonly min: TrackBreadth; readonly max: TrackBreadth; readonly limit: Px | Percent | null };
+
+type GridSet = {
+  readonly trackCount: number;
+  readonly track: GridTrack;
+  baseSize: LU;
+  growthLimit: LU;
+  plannedIncrease: LU;
+  fitContentLimit: LU;
+  itemIncurredIncrease: LU;
+  infinitelyGrowable: boolean;
+};
+
+type GridRange = {
+  readonly startLine: number;
+  readonly trackCount: number;
+  readonly beginSetIndex: number;
+  readonly setCount: number;
+  readonly repeaterIndex: number;
+  readonly repeaterOffset: number;
+  readonly implicit: boolean;
+  readonly collapsed: boolean;
+  props: GridProps;
+};
+
+type GridSetGeometry = { readonly offset: LU; readonly trackCount: number };
+
+/** A GridSizingTrackCollection: ranges, the sets they hold, the gutter and the cached set geometry. */
+type GridCollection = {
+  readonly axis: GridAxis;
+  readonly explicit: readonly GridRepeater[];
+  readonly ranges: readonly GridRange[];
+  sets: GridSet[];
+  gutter: LU;
+  geometry: GridSetGeometry[];
+  lastIndefinite: number[];
+  props: GridProps;
+  readonly nonCollapsedTrackCount: number;
+  /** Blink Baselines::major, one per set (LU_MIN for none); null when no item specifies baseline alignment in this axis. */
+  majorBaselines: GridSetBaseline[] | null;
+  /** Blink Baselines::minor (last baseline groups), measured from the end of each set; null exactly when majorBaselines is. */
+  minorBaselines: GridSetBaseline[] | null;
+};
+
+/** One set's major baseline from its start, or minor baseline from its end; LU_MIN while no item has set it. */
+type GridSetBaseline = { value: LU };
+
+type GridLines = { readonly start: number; readonly end: number };
+type GridSetIndices = { readonly begin: number; readonly end: number };
+
+/** Blink GridItemData for one in-flow item, both axes. */
+type GridItemData = {
+  readonly box: LayoutBox;
+  readonly index: number;
+  column: GridLines;
+  row: GridLines;
+  columnSets: GridSetIndices;
+  rowSets: GridSetIndices;
+  columnProps: GridProps;
+  rowProps: GridProps;
+  readonly columnEdge: GridAxisEdge;
+  readonly rowEdge: GridAxisEdge;
+  readonly columnSafe: boolean;
+  readonly rowSafe: boolean;
+  readonly columnStretch: boolean;
+  readonly rowStretch: boolean;
+  /** Blink IsBaselineSpecified and IsLastBaselineSpecified in each axis. */
+  readonly columnBaseline: GridBaselineKind;
+  readonly rowBaseline: GridBaselineKind;
+  /** Blink column_ and row_fallback_alignment (SetAlignmentFallback): no part in baseline alignment; safe alignment to its edge. */
+  columnFallback: boolean;
+  rowFallback: boolean;
+  sizingDependsOnBlockSize: boolean;
+};
+
+/** The grid container's content-box sizes: available (definite or INDEFINITE) and the min and max for an indefinite size. */
+type GridAvailable = { inline: LU; block: LU; minInline: LU; minBlock: LU; maxInline: LU; maxBlock: LU };
+
+type GridState = {
+  readonly box: LayoutBox;
+  /** The absolutely positioned children in document order, and the placement's implicit tracks before the explicit grid. */
+  readonly outOfFlow: readonly LayoutBox[];
+  readonly columnStartOffset: number;
+  readonly rowStartOffset: number;
+  /** Each axis's explicit grid, whose line resolver an absolutely positioned child's engine-resolved lines also use. */
+  readonly columnTracks: GridAxisTracks;
+  readonly rowTracks: GridAxisTracks;
+  readonly style: LayoutStyle;
+  readonly grid: GridContainerStyle;
+  readonly rtl: boolean;
+  readonly bsp: Edges;
+  readonly items: GridItemData[];
+  readonly columns: GridCollection;
+  readonly rows: GridCollection;
+  readonly available: GridAvailable;
+  readonly faults: GridFaults;
+  readonly engineFaults: EngineFaults;
+};
+
+const NO_PROPS = (): GridProps => ({ autoMin: false, fixedMax: false, fixedMin: false, flexible: false, intrinsic: false, nonDefinite: false, dependent: false });
+
+function orProps(a: GridProps, b: GridProps): GridProps {
+  return {
+    autoMin: a.autoMin || b.autoMin,
+    fixedMax: a.fixedMax || b.fixedMax,
+    fixedMin: a.fixedMin || b.fixedMin,
+    flexible: a.flexible || b.flexible,
+    intrinsic: a.intrinsic || b.intrinsic,
+    nonDefinite: a.nonDefinite || b.nonDefinite,
+    dependent: a.dependent || b.dependent,
+  };
+}
+
+function maxN(a: number, b: number): number {
+  return a > b ? a : b;
+}
+
+function minN(a: number, b: number): number {
+  return a < b ? a : b;
+}
+
+function maxLu(a: LU, b: LU): LU {
+  return a > b ? a : b;
+}
+
+function minLu(a: LU, b: LU): LU {
+  return a < b ? a : b;
+}
+
+// ---- Track sizing functions (Blink GridTrackSize) --------------------------------------------------------------------------
+
+function trackOf(t: TrackSize, fitContentAsAuto: boolean): GridTrack {
+  if (t.kind === 'fit-content' && fitContentAsAuto) return { fitContent: false, min: { kind: 'auto' }, max: { kind: 'auto' }, limit: null };
+  if (t.kind === 'breadth') return { fitContent: false, min: t.breadth, max: t.breadth, limit: null };
+  if (t.kind === 'minmax') return { fitContent: false, min: t.min, max: t.max, limit: null };
+  return { fitContent: true, min: { kind: 'auto' }, max: { kind: 'auto' }, limit: t.limit };
+}
+
+const isAuto = (b: TrackBreadth): boolean => b.kind === 'auto';
+/** Length::HasOnlyFixedAndPercent. */
+const isFixed = (b: TrackBreadth): boolean => b.kind === 'px' || b.kind === 'percent';
+const isFlex = (b: TrackBreadth): boolean => b.kind === 'fr';
+const isContent = (b: TrackBreadth): boolean => b.kind === 'min-content' || b.kind === 'max-content';
+const minIntrinsic = (t: GridTrack): boolean => isContent(t.min) || isAuto(t.min) || t.fitContent;
+const maxIntrinsic = (t: GridTrack): boolean => isContent(t.max) || isAuto(t.max) || t.fitContent;
+const maxContentOrAutoMax = (t: GridTrack): boolean => t.max.kind === 'max-content' || isAuto(t.max);
+
+function breadthEqual(a: TrackBreadth, b: TrackBreadth): boolean {
+  if (a.kind === 'px' && b.kind === 'px') return a.value === b.value;
+  if (a.kind === 'percent' && b.kind === 'percent') return a.value === b.value;
+  if (a.kind === 'fr' && b.kind === 'fr') return a.value === b.value;
+  return a.kind === b.kind;
+}
+
+/** GridTrackSize::IsDefinite: fixed and equal minimum and maximum. */
+const trackDefinite = (t: GridTrack): boolean => isFixed(t.min) && isFixed(t.max) && breadthEqual(t.min, t.max);
+
+function trackHasPercentage(t: GridTrack): boolean {
+  if (t.fitContent) return t.limit !== null && t.limit.kind === 'percent';
+  return t.min.kind === 'percent' || t.max.kind === 'percent';
+}
+
+/** Blink GridSet constructor: % breadths behave as auto against an indefinite size, and a flexible minimum is auto. */
+function normalizeTrack(t: GridTrack, indefinite: boolean): GridTrack {
+  if (t.fitContent) {
+    if (indefinite && t.limit !== null && t.limit.kind === 'percent') return { fitContent: false, min: { kind: 'auto' }, max: { kind: 'max-content' }, limit: null };
+    return t;
+  }
+  const min: TrackBreadth = (indefinite && t.min.kind === 'percent') || isFlex(t.min) ? { kind: 'auto' } : t.min;
+  const max: TrackBreadth = indefinite && t.max.kind === 'percent' ? { kind: 'auto' } : t.max;
+  return { fitContent: false, min, max, limit: null };
+}
+
+/** MinimumValueForLength for a fixed or % breadth. */
+function breadthValue(b: Px | Percent, available: LU): LU {
+  return b.kind === 'px' ? fromCssPx(b.value) : percentOf(available, b.value);
+}
+
+function fixedValue(b: TrackBreadth, available: LU): LU {
+  if (b.kind === 'px' || b.kind === 'percent') return breadthValue(b, available);
+  throw new Error(`a ${b.kind} breadth has no fixed value`);
+}
+
+function flexOf(t: GridTrack): number {
+  return t.max.kind === 'fr' ? t.max.value : 0;
+}
+
+function setFlex(s: GridSet): number {
+  return setFlexFactor(flexOf(s.track), s.trackCount);
+}
+
+// ---- Automatic repetitions and the explicit track list (Blink CalculateAutomaticRepetitions, GridTrackList) ---------------
+
+/** A repeater of the explicit track list with its repetitions known (Blink GridTrackRepeater with RepeatCount resolved). */
+type GridRepeater = { readonly count: number; readonly sizes: readonly TrackSize[]; readonly autoFit: boolean };
+
+/** One axis's explicit grid: its repeaters, its explicit track count, and the automatic repeater's lines for line resolution. */
+type GridAxisTracks = {
+  readonly repeaters: readonly GridRepeater[];
+  readonly explicitCount: number;
+  readonly auto: GridAutoRepeat | null;
+  readonly insertion: number;
+  readonly autoTotal: number;
+};
+
+/** GridTrackSize::HasFixedMinTrackBreadth: the minimum breadth when it is a length or percentage. */
+function fixedMinOf(t: TrackSize): Px | Percent | null {
+  if (t.kind === 'breadth') return t.breadth.kind === 'px' || t.breadth.kind === 'percent' ? t.breadth : null;
+  if (t.kind === 'minmax') return t.min.kind === 'px' || t.min.kind === 'percent' ? t.min : null;
+  return null;
+}
+
+/** GridTrackSize::HasFixedMaxTrackBreadth: the maximum breadth when it is a length or percentage. */
+function fixedMaxOf(t: TrackSize): Px | Percent | null {
+  if (t.kind === 'breadth') return t.breadth.kind === 'px' || t.breadth.kind === 'percent' ? t.breadth : null;
+  if (t.kind === 'minmax') return t.max.kind === 'px' || t.max.kind === 'percent' ? t.max : null;
+  return null;
+}
+
+/** GridTrackSize::IsTrackDefinitionIntrinsic: a single auto, min-content or max-content breadth, or fit-content(). */
+function definitionIntrinsic(t: TrackSize): boolean {
+  if (t.kind === 'fit-content') return true;
+  return t.kind === 'breadth' && (isAuto(t.breadth) || isContent(t.breadth));
+}
+
+/** One repetition of a repeater's sizes, each with a gutter; an automatic repeater floors each size at 1px. */
+function repeaterSize(sizes: readonly TrackSize[], isAutoRepeater: boolean, gutter: LU, available: LU): LU {
+  let size = ZERO;
+  for (const t of sizes) {
+    if (definitionIntrinsic(t)) throw new Error('an automatic repetition beside an intrinsic track size; validateLayoutInput rejects this input');
+    const min = fixedMinOf(t);
+    const max = fixedMaxOf(t);
+    let contribution = ZERO;
+    if (max !== null && min !== null) contribution = maxLu(breadthValue(max, available), breadthValue(min, available));
+    else if (max !== null) contribution = breadthValue(max, available);
+    else if (min !== null) contribution = breadthValue(min, available);
+    if (isAutoRepeater) contribution = maxLu(fromCssPx(1), contribution);
+    size = add(size, add(contribution, gutter));
+  }
+  return size;
+}
+
+/**
+ * Blink CalculateAutomaticRepetitions (grid_layout_utils.cc): with a definite size, or else a maximum, the most repetitions that
+ * fit (floor); with only a minimum, the fewest that fill it (ceil); never fewer than one (css-grid-2 §7.2.3.2).
+ */
+function autoRepetitions(template: readonly TrackRepeater[], auto: GridAutoRepeat, gutter: LU, available: LU, minAvailable: LU, maxAvailable: LU, faults: GridFaults): number {
+  let size = available;
+  let max = maxAvailable;
+  if (size === INDEFINITE) size = minAvailable;
+  else max = size;
+  let nonAuto = ZERO;
+  for (const r of template) nonAuto = add(nonAuto, mulInt(repeaterSize(r.sizes, false, gutter, size), r.count));
+  const autoSize = repeaterSize(auto.sizes, true, gutter, size);
+  nonAuto = sub(nonAuto, gutter);
+  if (max !== LU_MAX) {
+    const fit = divLu(sub(max, nonAuto), autoSize);
+    const count = faults.autoFillCountCeil ? ceilToInt(fit) : floorToInt(fit);
+    return count <= 0 ? 1 : count;
+  }
+  const count = ceilToInt(divLu(sub(size, nonAuto), autoSize));
+  return count <= 0 ? 1 : count;
+}
+
+/** Blink GridLineResolver::ExplicitGridTrackCount, and the GridTrackList with the automatic repeater in place. */
+function axisTracks(box: LayoutBox, g: GridContainerStyle, axis: GridAxis, available: GridAvailable, faults: GridFaults, engineFaults: EngineFaults): GridAxisTracks {
+  const template = templateOf(g, axis);
+  const auto = axis === 'columns' ? g.autoRepeatColumns : g.autoRepeatRows;
+  const specified = axis === 'columns' ? g.explicitColumnCount : g.explicitRowCount;
+  const repeaters: GridRepeater[] = [];
+  let nonAuto = 0;
+  let insertion = 0;
+  for (let i = 0; i < template.length; i++) {
+    const r = template[i] as TrackRepeater;
+    if (auto !== null && i === auto.index) insertion = nonAuto;
+    nonAuto += r.count * r.sizes.length;
+  }
+  if (auto === null) {
+    for (const r of template) repeaters.push({ count: r.count, sizes: r.sizes, autoFit: false });
+    return { repeaters, explicitCount: specified, auto: null, insertion: 0, autoTotal: 0 };
+  }
+  if (auto.index === template.length) insertion = nonAuto;
+  const columns = axis === 'columns';
+  const size = columns ? available.inline : available.block;
+  const gutter = gutterSize(box, axis, size, engineFaults);
+  const repetitions = autoRepetitions(template, auto, gutter, size, columns ? available.minInline : available.minBlock, columns ? available.maxInline : available.maxBlock, faults);
+  for (let i = 0; i <= template.length; i++) {
+    if (i === auto.index) repeaters.push({ count: repetitions, sizes: auto.sizes, autoFit: auto.type === 'auto-fit' });
+    if (i < template.length) {
+      const r = template[i] as TrackRepeater;
+      repeaters.push({ count: r.count, sizes: r.sizes, autoFit: false });
+    }
+  }
+  const autoTotal = repetitions * auto.sizes.length;
+  return { repeaters, explicitCount: minN(maxN(nonAuto + autoTotal, specified), GRID_MAX_TRACKS), auto, insertion, autoTotal };
+}
+
+// ---- Line resolution with an automatic repeater (Blink GridLineResolver, GridNamedLineCollection) --------------------------
+
+/** One name's lines (Blink GridNamedLineCollection) in a standalone axis, whose automatic repeater repeats at least once. */
+type GridNamedLines = { readonly name: GridLineName; readonly lastLine: number; readonly insertion: number; readonly total: number; readonly length: number; readonly endNameMissed: boolean };
+
+function namedLinesOf(a: GridAxisTracks, id: number, faults: GridFaults): GridNamedLines {
+  const auto = a.auto;
+  if (auto === null) throw new Error('a grid line to resolve in an axis with no automatic repeater; validateLayoutInput rejects this input');
+  return { name: auto.lineNames[id] as GridLineName, lastLine: a.explicitCount, insertion: a.insertion, total: a.autoTotal, length: auto.sizes.length, endNameMissed: faults.repeatEndNameMissed };
+}
+
+/** Whether an ascending list holds a line. */
+function hasLine(lines: readonly number[], line: number): boolean {
+  let lower = 0;
+  let upper = lines.length;
+  while (lower < upper) {
+    const center = intDiv(lower + upper, 2);
+    const v = lines[center] as number;
+    if (v === line) return true;
+    if (v < line) lower = center + 1;
+    else upper = center;
+  }
+  return false;
+}
+
+function hasNamedLines(c: GridNamedLines): boolean {
+  return c.name.explicit.length > 0 || c.name.repeat.length > 0 || c.name.implicit.length > 0;
+}
+
+/** GridNamedLineCollection::Contains: the template numbers its names after the repeater as if it were one track. */
+function namedContains(c: GridNamedLines, line: number): boolean {
+  if (line > c.lastLine) return false;
+  if (hasLine(c.name.implicit, line)) return true;
+  if (c.length === 0 || line < c.insertion) return hasLine(c.name.explicit, line);
+  if (line > c.insertion + c.total) return hasLine(c.name.explicit, line - (c.total - 1));
+  if (line === c.insertion) return hasLine(c.name.explicit, line) || hasLine(c.name.repeat, 0);
+  if (line === c.insertion + c.total) return hasLine(c.name.repeat, c.length) || hasLine(c.name.explicit, c.insertion + 1);
+  const offset = intMod(line - c.insertion, c.length);
+  if (offset === 0 && !c.endNameMissed && hasLine(c.name.repeat, c.length)) return true;
+  return hasLine(c.name.repeat, offset);
+}
+
+/** GridNamedLineCollection::FirstExplicitPosition. */
+function firstExplicitPosition(c: GridNamedLines): number {
+  const explicit = c.name.explicit;
+  if (explicit.length > 0 && (c.length === 0 || (explicit[0] as number) <= c.insertion)) return explicit[0] as number;
+  if (c.name.repeat.length > 0) return (c.name.repeat[0] as number) + c.insertion;
+  return (explicit[0] as number) + (c.total > 0 ? c.total - 1 : 0);
+}
+
+/** GridNamedLineCollection::FirstPosition. */
+function firstPosition(c: GridNamedLines): number {
+  if (c.name.implicit.length === 0) return firstExplicitPosition(c);
+  const implicit = c.name.implicit[0] as number;
+  if (c.name.explicit.length === 0 && c.name.repeat.length === 0) return implicit;
+  return minN(firstExplicitPosition(c), implicit);
+}
+
+/** GridLineResolver::LookAheadForNamedGridLine. */
+function lookAheadNamed(start: number, count: number, lastLine: number, c: GridNamedLines): number {
+  let end = maxN(start, 0);
+  if (!hasNamedLines(c)) {
+    end = maxN(end, lastLine + 1);
+    return end + count - 1;
+  }
+  let left = count;
+  for (; left > 0; end++) if (end > lastLine || namedContains(c, end)) left--;
+  return end - 1;
+}
+
+/** GridLineResolver::LookBackForNamedGridLine. */
+function lookBackNamed(end: number, count: number, lastLine: number, c: GridNamedLines): number {
+  let start = minN(end, lastLine);
+  if (!hasNamedLines(c)) {
+    start = minN(start, -1);
+    return start - count + 1;
+  }
+  let left = count;
+  for (; left > 0; start--) if (start < 0 || namedContains(c, start)) left--;
+  return start + 1;
+}
+
+/** GridLineResolver::ResolveGridPosition for an explicit or area position. */
+function resolveLinePosition(a: GridAxisTracks, pos: GridLine, faults: GridFaults): number {
+  const last = a.explicitCount;
+  if (pos.kind === 'line') return pos.n > 0 ? pos.n - 1 : last - (-pos.n - 1);
+  if (pos.kind === 'named-line') {
+    const c = namedLinesOf(a, pos.name, faults);
+    return pos.n > 0 ? lookAheadNamed(0, pos.n, last, c) : lookBackNamed(last, -pos.n, last, c);
+  }
+  if (pos.kind === 'area') {
+    const implicit = namedLinesOf(a, pos.implicitName, faults);
+    if (hasNamedLines(implicit)) return firstPosition(implicit);
+    const explicit = namedLinesOf(a, pos.name, faults);
+    if (hasNamedLines(explicit)) return firstPosition(explicit);
+    return last + 1;
+  }
+  throw new Error(`a ${pos.kind} position resolves against the opposite position`);
+}
+
+function isSpanLine(p: GridLine): boolean {
+  return p.kind === 'span' || p.kind === 'named-span';
+}
+
+function againstOppositeLine(p: GridLine): boolean {
+  return p.kind === 'auto' || isSpanLine(p);
+}
+
+/** GridLineResolver::ResolveGridPositionAgainstOppositePosition, as lines before clamping. */
+function resolveAgainstOpposite(a: GridAxisTracks, opposite: number, pos: GridLine, start: boolean, faults: GridFaults): GridSpan {
+  if (pos.kind === 'auto') return start ? { kind: 'definite', start: opposite - 1, end: opposite } : { kind: 'definite', start: opposite, end: opposite + 1 };
+  if (pos.kind === 'named-span') {
+    const c = namedLinesOf(a, pos.name, faults);
+    if (start) return { kind: 'definite', start: lookBackNamed(opposite - 1, pos.n, a.explicitCount, c), end: opposite };
+    return { kind: 'definite', start: opposite, end: lookAheadNamed(opposite + 1, pos.n, a.explicitCount, c) };
+  }
+  if (pos.kind === 'span') return start ? { kind: 'definite', start: opposite - pos.n, end: opposite } : { kind: 'definite', start: opposite, end: opposite + pos.n };
+  throw new Error('only auto and span positions resolve against the opposite position');
+}
+
+/** GridLineResolver::ResolveGridPositionsFromStyle, with InitialAndFinalPositionsFromStyle's placement error handling. */
+function resolveLines(a: GridAxisTracks, startLine: GridLine, endLine: GridLine, faults: GridFaults): GridSpan {
+  let initial = startLine;
+  let final = endLine;
+  if (isSpanLine(initial) && isSpanLine(final)) final = { kind: 'auto' };
+  if (initial.kind === 'auto' && final.kind === 'named-span') final = { kind: 'span', n: 1 };
+  if (final.kind === 'auto' && initial.kind === 'named-span') initial = { kind: 'span', n: 1 };
+  const initialOpposite = againstOppositeLine(initial);
+  const finalOpposite = againstOppositeLine(final);
+  if (initialOpposite && finalOpposite) {
+    if (initial.kind === 'span' || initial.kind === 'named-span') return { kind: 'auto', span: initial.n };
+    if (final.kind === 'span' || final.kind === 'named-span') return { kind: 'auto', span: final.n };
+    return { kind: 'auto', span: 1 };
+  }
+  if (initialOpposite) return resolveAgainstOpposite(a, resolveLinePosition(a, final, faults), initial, true, faults);
+  if (finalOpposite) return resolveAgainstOpposite(a, resolveLinePosition(a, initial, faults), final, false, faults);
+  const start = resolveLinePosition(a, initial, faults);
+  const end = resolveLinePosition(a, final, faults);
+  if (end < start) return { kind: 'definite', start: end, end: start };
+  if (end === start) return { kind: 'definite', start, end: start + 1 };
+  return { kind: 'definite', start, end };
+}
+
+/** An item's span in one axis, its lines resolved when the engine sizes the axis's explicit grid. */
+function itemSpan(a: GridAxisTracks, s: GridSpan, faults: GridFaults): GridSpan {
+  return s.kind === 'lines' ? resolveLines(a, s.start, s.end, faults) : s;
+}
+
+// ---- Placement (Blink GridPlacement, css-grid-2 §8.5) -----------------------------------------------------------------------
+
+type GridAxisPosition = { definite: boolean; start: number; end: number; readonly span: number };
+
+function setPosition(p: GridAxisPosition, start: number, end: number): void {
+  p.definite = true;
+  p.start = start;
+  p.end = end;
+}
+
+type GridPlacedItem = { majorStart: number; minorStart: number; majorEnd: number; minorEnd: number; next: number; prev: number };
+
+type GridPosition = { major: number; minor: number };
+
+const positionLess = (a: GridPosition, b: GridPosition): boolean => (a.major !== b.major ? a.major < b.major : a.minor < b.minor);
+const positionLessEq = (a: GridPosition, b: GridPosition): boolean => (a.major === b.major ? a.minor <= b.minor : a.major < b.major);
+
+type GridPlacedList = { items: GridPlacedItem[]; head: number; tail: number };
+type GridIndexedPlaced = { readonly p: GridPlacedItem; readonly index: number };
+/** Sparse packing's minor cursor for one major line (css-grid-2 §8.5 step 2). */
+type GridMinorCursor = { readonly major: number; minor: number };
+
+/** Blink AutoPlacementCursor. */
+type GridCursor = { current: GridPosition; next: number; overlapping: number[]; shouldMoveToNextItemMajorEndLine: boolean };
+
+function endOnPreviousMajorLine(p: GridPlacedItem): GridPosition {
+  return { major: p.majorEnd - 1, minor: p.minorEnd };
+}
+
+/** The overlapping item whose end comes first (the front of Blink's heap ordered by End). */
+function frontOverlapping(list: GridPlacedList, c: GridCursor): number {
+  let best = -1;
+  for (const i of c.overlapping) {
+    if (best < 0) {
+      best = i;
+      continue;
+    }
+    const a = list.items[i] as GridPlacedItem;
+    const b = list.items[best] as GridPlacedItem;
+    if (positionLess({ major: a.majorEnd, minor: a.minorEnd }, { major: b.majorEnd, minor: b.minorEnd })) best = i;
+  }
+  return best;
+}
+
+function removeOverlapping(c: GridCursor, index: number): void {
+  c.overlapping = c.overlapping.filter((i) => i !== index);
+}
+
+function updateItemsOverlappingMajorLine(list: GridPlacedList, c: GridCursor): void {
+  while (c.overlapping.length > 0) {
+    const front = frontOverlapping(list, c);
+    const last = endOnPreviousMajorLine(list.items[front] as GridPlacedItem);
+    if (positionLess(c.current, last)) break;
+    if (c.current.major === last.major) c.shouldMoveToNextItemMajorEndLine = false;
+    removeOverlapping(c, front);
+  }
+  while (c.next >= 0) {
+    const n = list.items[c.next] as GridPlacedItem;
+    if (!positionLessEq({ major: n.majorStart, minor: n.minorStart }, c.current)) break;
+    const last = endOnPreviousMajorLine(n);
+    if (c.current.major <= last.major) c.shouldMoveToNextItemMajorEndLine = false;
+    if (positionLess(c.current, last)) c.overlapping.push(c.next);
+    c.next = n.next;
+  }
+}
+
+function moveToMinorLine(c: GridCursor, minor: number): void {
+  if (minor < c.current.minor) c.current = { major: c.current.major + 1, minor: c.current.minor };
+  c.current = { major: c.current.major, minor };
+}
+
+function moveToNextMajorLine(list: GridPlacedList, c: GridCursor, allowMinor: boolean): void {
+  let major = c.current.major + 1;
+  if (c.shouldMoveToNextItemMajorEndLine && c.overlapping.length > 0) major = (list.items[frontOverlapping(list, c)] as GridPlacedItem).majorEnd;
+  c.current = { major, minor: allowMinor ? 0 : c.current.minor };
+  c.shouldMoveToNextItemMajorEndLine = true;
+}
+
+type GridCursorMovement = 'auto' | 'force-major' | 'force-minor';
+
+/** Blink AutoPlacementCursor::MoveCursorToFitGridSpan. */
+function moveCursorToFitGridSpan(list: GridPlacedList, c: GridCursor, majorSpan: number, minorSpan: number, minorMaxEnd: number, movement: GridCursorMovement): void {
+  const allowMinor = movement !== 'force-minor';
+  const minorMaxStart = movement === 'force-major' ? minorMaxEnd : minorMaxEnd - minorSpan;
+  let nextMinor = c.current.minor;
+  const needsToMoveToNextMajorLine = (): boolean => nextMinor > minorMaxStart || (!allowMinor && nextMinor !== c.current.minor);
+  const fits = (): boolean => {
+    if (needsToMoveToNextMajorLine()) {
+      moveToNextMajorLine(list, c, allowMinor);
+      return false;
+    }
+    if (c.current.minor === nextMinor) return true;
+    moveToMinorLine(c, nextMinor);
+    return false;
+  };
+  if (c.current.minor > minorMaxStart) moveToNextMajorLine(list, c, allowMinor);
+  for (;;) {
+    updateItemsOverlappingMajorLine(list, c);
+    nextMinor = c.current.minor;
+    for (const i of c.overlapping) {
+      const p = list.items[i] as GridPlacedItem;
+      if (nextMinor < p.minorEnd && p.minorStart < nextMinor + minorSpan) {
+        nextMinor = p.minorEnd;
+        if (needsToMoveToNextMajorLine()) break;
+      }
+    }
+    if (!fits()) continue;
+    let upcoming = c.next;
+    while (upcoming >= 0) {
+      const p = list.items[upcoming] as GridPlacedItem;
+      if (nextMinor < p.minorEnd && c.current.major < p.majorEnd && p.majorStart < c.current.major + majorSpan && p.minorStart < nextMinor + minorSpan) {
+        nextMinor = p.minorEnd;
+        if (needsToMoveToNextMajorLine()) break;
+      }
+      upcoming = p.next;
+    }
+    if (fits()) return;
+  }
+}
+
+/** Inserts an item before the cursor's next item (Blink PlaceGridItemAtCursor) and moves the cursor past it. */
+function placeAtCursor(list: GridPlacedList, c: GridCursor, p: GridPlacedItem): void {
+  const index = list.items.length;
+  const before = c.next;
+  const after = before >= 0 ? (list.items[before] as GridPlacedItem).prev : list.tail;
+  p.prev = after;
+  p.next = before;
+  list.items.push(p);
+  if (after >= 0) {
+    const a = list.items[after] as GridPlacedItem;
+    a.next = index;
+  } else list.head = index;
+  if (before >= 0) {
+    const b = list.items[before] as GridPlacedItem;
+    b.prev = index;
+  } else list.tail = index;
+  c.next = index;
+  moveToMinorLine(c, p.minorEnd);
+  updateItemsOverlappingMajorLine(list, c);
+}
+
+function newCursor(list: GridPlacedList): GridCursor {
+  return { current: { major: 0, minor: 0 }, next: list.head, overlapping: [], shouldMoveToNextItemMajorEndLine: true };
+}
+
+function clampSpan(s: GridSpan): GridAxisPosition {
+  if (s.kind === 'lines') throw new Error('grid lines are resolved before placement');
+  if (s.kind === 'start-line' || s.kind === 'end-line') throw new Error(`a ${s.kind} placement is an absolutely positioned child's; validateLayoutInput rejects it on a grid item`);
+  if (s.kind === 'auto') {
+    const span = s.span < 1 ? 1 : s.span > GRID_MAX_TRACKS ? GRID_MAX_TRACKS : s.span;
+    return { definite: false, start: 0, end: 0, span };
+  }
+  const start = s.start < -GRID_MAX_TRACKS ? -GRID_MAX_TRACKS : s.start > GRID_MAX_TRACKS - 1 ? GRID_MAX_TRACKS - 1 : s.start;
+  const end = s.end < start + 1 ? start + 1 : s.end > GRID_MAX_TRACKS ? GRID_MAX_TRACKS : s.end;
+  return { definite: true, start, end, span: end - start };
+}
+
+type GridPlacementResult = { readonly columns: GridLines[]; readonly rows: GridLines[]; readonly columnStartOffset: number; readonly rowStartOffset: number };
+
+/** Blink GridPlacement::RunAutoPlacementAlgorithm: the translated (non-negative) lines of every item in both axes. */
+function runPlacement(g: GridContainerStyle, boxes: readonly LayoutBox[], ctx: Ctx, columnTracks: GridAxisTracks, rowTracks: GridAxisTracks): GridPlacementResult {
+  const columnMajor = g.autoFlow === 'column';
+  const sparse = !g.dense;
+  const cols: GridAxisPosition[] = [];
+  const rows: GridAxisPosition[] = [];
+  let columnStartOffset = 0;
+  let rowStartOffset = 0;
+  for (const b of boxes) {
+    const gi = b.style.gridItem;
+    if (gi === null) throw new Error(`${b.id} is an in-flow grid item with no gridItem; validateLayoutInput rejects this input`);
+    const cs = itemSpan(columnTracks, gi.column, ctx.gridFaults);
+    const rs = itemSpan(rowTracks, gi.row, ctx.gridFaults);
+    // Only planted fault absposInFlow keeps an absolutely positioned child, with its engine-resolved lines, among the grid items.
+    if (cs.kind === 'start-line' || cs.kind === 'end-line' || rs.kind === 'start-line' || rs.kind === 'end-line') {
+      unsupported('abspos-grid-lines', b.id, 'css-grid-2 §9', `${b.id} holds an absolutely positioned child's grid lines but is laid out in flow (planted fault absposInFlow)`);
+    }
+    const c = clampSpan(cs);
+    const r = clampSpan(rs);
+    if (c.definite) columnStartOffset = maxN(columnStartOffset, -c.start);
+    if (r.definite) rowStartOffset = maxN(rowStartOffset, -r.start);
+    cols.push(c);
+    rows.push(r);
+  }
+  const translate = (p: GridAxisPosition, offset: number): GridAxisPosition => (p.definite ? { definite: true, start: p.start + offset, end: p.end + offset, span: p.span } : { definite: false, start: 0, end: 0, span: p.span });
+  const tcols = cols.map((p) => translate(p, columnStartOffset));
+  const trows = rows.map((p) => translate(p, rowStartOffset));
+  const majors = columnMajor ? tcols : trows;
+  const minors = columnMajor ? trows : tcols;
+  const minorStartOffset = columnMajor ? rowStartOffset : columnStartOffset;
+  const minorExplicit = columnMajor ? rowTracks.explicitCount : columnTracks.explicitCount;
+  let minorMaxEnd = minorStartOffset + minorExplicit;
+
+  const list: GridPlacedList = { items: [], head: -1, tail: -1 };
+  const nonAuto: GridIndexedPlaced[] = [];
+  const locked: number[] = [];
+  const notLocked: number[] = [];
+  for (let i = 0; i < boxes.length; i++) {
+    const major = majors[i] as GridAxisPosition;
+    const minor = minors[i] as GridAxisPosition;
+    minorMaxEnd = maxN(minorMaxEnd, minor.definite ? minor.end : minor.span);
+    if (major.definite && minor.definite) nonAuto.push({ p: { majorStart: major.start, minorStart: minor.start, majorEnd: major.end, minorEnd: minor.end, next: -1, prev: -1 }, index: i });
+    else if (!major.definite) notLocked.push(i);
+    else locked.push(i);
+  }
+  if (locked.length > 0 || notLocked.length > 0) {
+    const ordered = [...nonAuto].sort((a, b) => {
+      if (a.p.majorStart !== b.p.majorStart) return a.p.majorStart - b.p.majorStart;
+      if (a.p.minorStart !== b.p.minorStart) return a.p.minorStart - b.p.minorStart;
+      return a.index - b.index;
+    });
+    for (const o of ordered) {
+      const index = list.items.length;
+      o.p.prev = list.tail;
+      list.items.push(o.p);
+      if (list.tail >= 0) {
+        const t = list.items[list.tail] as GridPlacedItem;
+        t.next = index;
+      }
+      else list.head = index;
+      list.tail = index;
+    }
+    // Items locked to a major line (css-grid-2 §8.5 step 2); sparse packing keeps a minor cursor per major line.
+    const minorCursors: GridMinorCursor[] = [];
+    for (const i of locked) {
+      const major = majors[i] as GridAxisPosition;
+      const minor = minors[i] as GridAxisPosition;
+      const c = newCursor(list);
+      c.current = { major: major.start, minor: c.current.minor };
+      if (sparse) {
+        const at = minorCursors.find((m) => m.major === major.start);
+        if (at !== undefined) moveToMinorLine(c, at.minor);
+      }
+      moveCursorToFitGridSpan(list, c, major.span, minor.span, minorMaxEnd, 'force-major');
+      const minorEnd = c.current.minor + minor.span;
+      if (sparse) {
+        const at = minorCursors.find((m) => m.major === major.start);
+        if (at === undefined) minorCursors.push({ major: major.start, minor: minorEnd });
+        else at.minor = minorEnd;
+      }
+      minorMaxEnd = maxN(minorMaxEnd, minorEnd);
+      setPosition(minor, c.current.minor, minorEnd);
+      placeAtCursor(list, c, { majorStart: major.start, minorStart: c.current.minor, majorEnd: major.end, minorEnd, next: -1, prev: -1 });
+    }
+    // Items with an automatic major position (step 4); dense packing restarts the cursor for each one.
+    let cursor = newCursor(list);
+    for (const i of notLocked) {
+      const major = majors[i] as GridAxisPosition;
+      const minor = minors[i] as GridAxisPosition;
+      if (minor.definite) {
+        moveToMinorLine(cursor, minor.start);
+        moveCursorToFitGridSpan(list, cursor, major.span, minor.span, minorMaxEnd, 'force-minor');
+      } else {
+        moveCursorToFitGridSpan(list, cursor, major.span, minor.span, minorMaxEnd, 'auto');
+        setPosition(minor, cursor.current.minor, cursor.current.minor + minor.span);
+      }
+      setPosition(major, cursor.current.major, cursor.current.major + major.span);
+      placeAtCursor(list, cursor, { majorStart: major.start, minorStart: minor.start, majorEnd: major.end, minorEnd: minor.end, next: -1, prev: -1 });
+      if ((!sparse && !ctx.gridFaults.denseAsSparse) || (sparse && ctx.gridFaults.sparseRewinds)) cursor = newCursor(list);
+    }
+  }
+  return {
+    columns: (columnMajor ? majors : minors).map(toSpan),
+    rows: (columnMajor ? minors : majors).map(toSpan),
+    columnStartOffset,
+    rowStartOffset,
+  };
+}
+
+// ---- Ranges and sets (Blink GridRangeBuilder, GridSizingTrackCollection) ----------------------------------------------------
+
+function toSpan(p: GridAxisPosition): GridLines {
+  return { start: p.start, end: p.end };
+}
+
+function byLine(a: number, b: number): number {
+  return a - b;
+}
+
+function repeaterTrackCount(r: GridRepeater): number {
+  return r.count * r.sizes.length;
+}
+
+/**
+ * Blink GridRangeBuilder::FinalizeRanges: ranges cut at every repeater edge and every item line. A range of a repeat(auto-fit)
+ * that no item spans collapses: it holds no sets, so its tracks and their gutters take no space (css-grid-2 §7.2.3.2).
+ */
+function buildRanges(explicit: readonly GridRepeater[], implicitSize: number, startOffset: number, explicitCount: number, spans: readonly GridLines[], faults: GridFaults): GridRange[] {
+  const starts: number[] = [];
+  const ends: number[] = [];
+  let cur = startOffset;
+  for (const r of explicit) {
+    starts.push(cur);
+    cur += repeaterTrackCount(r);
+    ends.push(cur);
+  }
+  // A grid-template-areas grid larger than the template extends the explicit grid (css-grid-2 §7.3).
+  const namedEnd = startOffset + explicitCount;
+  const repeaterEnd = ends.length === 0 ? startOffset : (ends[ends.length - 1] as number);
+  if (repeaterEnd < namedEnd) {
+    starts.push(repeaterEnd);
+    ends.push(namedEnd);
+  }
+  for (const s of spans) {
+    starts.push(s.start);
+    ends.push(s.end);
+  }
+  starts.sort(byLine);
+  ends.sort(byLine);
+  const count = starts.length;
+  const ranges: GridRange[] = [];
+  let currentExplicitGridLine = startOffset;
+  let repeaterIndex = NOT_FOUND;
+  let rangeStart = 0;
+  let setIndex = 0;
+  let nextRepeaterStart = explicit.length > 0 ? startOffset : NOT_FOUND;
+  let si = 0;
+  let ei = 0;
+  let open = 0;
+  let inAutoFit = false;
+  for (;;) {
+    while (si < count && rangeStart >= (starts[si] as number)) {
+      si++;
+      open++;
+    }
+    while (ei < count && rangeStart >= (ends[ei] as number)) {
+      ei++;
+      open--;
+    }
+    if (ei >= count) break;
+    const nextStart = si < count ? (starts[si] as number) : NO_LINE;
+    const nextEnd = ends[ei] as number;
+    while (rangeStart === nextRepeaterStart) {
+      currentExplicitGridLine = nextRepeaterStart;
+      repeaterIndex++;
+      if (repeaterIndex === explicit.length) {
+        repeaterIndex = NOT_FOUND;
+        inAutoFit = false;
+        break;
+      }
+      const r = explicit[repeaterIndex] as GridRepeater;
+      inAutoFit = r.autoFit;
+      nextRepeaterStart += repeaterTrackCount(r);
+    }
+    const trackCount = minN(nextStart, nextEnd) - rangeStart;
+    let size = 1;
+    let rangeRepeater = 0;
+    let offset = 0;
+    let implicit = false;
+    if (repeaterIndex !== NOT_FOUND) {
+      size = (explicit[repeaterIndex] as GridRepeater).sizes.length;
+      rangeRepeater = repeaterIndex;
+      offset = intMod(rangeStart - currentExplicitGridLine, size);
+    } else {
+      implicit = true;
+      size = implicitSize;
+      offset = faults.implicitForward ? intMod(rangeStart, size) : intMod(rangeStart + size - intMod(currentExplicitGridLine, size), size);
+    }
+    const collapsed = inAutoFit && open === 1 && !faults.autoFitNotCollapsed;
+    const setCount = collapsed ? 0 : minN(size, trackCount);
+    ranges.push({ startLine: rangeStart, trackCount, beginSetIndex: setIndex, setCount, repeaterIndex: rangeRepeater, repeaterOffset: offset, implicit, collapsed, props: NO_PROPS() });
+    rangeStart += trackCount;
+    setIndex += setCount;
+  }
+  return ranges;
+}
+
+/** Blink GridSizingTrackCollection constructor: must_create_baselines when an item specifies baseline alignment in the axis. */
+function newCollection(axis: GridAxis, explicit: readonly GridRepeater[], ranges: GridRange[], mustCreateBaselines: boolean): GridCollection {
+  let tracks = 0;
+  for (const r of ranges) if (!r.collapsed) tracks += r.trackCount;
+  return { axis, explicit, ranges, sets: [], gutter: ZERO, geometry: [], lastIndefinite: [], props: NO_PROPS(), nonCollapsedTrackCount: tracks, majorBaselines: mustCreateBaselines ? [] : null, minorBaselines: mustCreateBaselines ? [] : null };
+}
+
+function rangeIndexFromLine(c: GridCollection, line: number): number {
+  let lower = 0;
+  let upper = c.ranges.length;
+  while (lower < upper) {
+    const center = intDiv(lower + upper, 2);
+    const r = c.ranges[center] as GridRange;
+    if (line < r.startLine) upper = center;
+    else if (line < r.startLine + r.trackCount) return center;
+    else lower = center + 1;
+  }
+  return lower;
+}
+
+/** Blink GridItemData::ComputeSetIndices. */
+function setIndicesOf(c: GridCollection, span: GridLines): GridSetIndices {
+  const begin = c.ranges[rangeIndexFromLine(c, span.start)] as GridRange;
+  const end = c.ranges[rangeIndexFromLine(c, span.end - 1)] as GridRange;
+  return { begin: begin.beginSetIndex, end: end.beginSetIndex + end.setCount };
+}
+
+/** The union of the properties of the ranges an item spans (Blink CacheGridItemsProperties). */
+function spanPropsOf(c: GridCollection, span: GridLines): GridProps {
+  const first = rangeIndexFromLine(c, span.start);
+  const last = rangeIndexFromLine(c, span.end - 1);
+  let p = NO_PROPS();
+  for (let i = first; i <= last; i++) p = orProps(p, (c.ranges[i] as GridRange).props);
+  return p;
+}
+
+function gapValueOf(v: LayoutStyle['rowGap'], available: LU, faults: EngineFaults): LU {
+  if (v.kind === 'normal') return ZERO;
+  return resolveLength(v, available === INDEFINITE ? ZERO : available, faults);
+}
+
+/** Blink GridTrackSizingAlgorithm::CalculateGutterSize: an indefinite available size counts as 0 for a % gap. */
+function gutterSize(box: LayoutBox, axis: GridAxis, available: LU, faults: EngineFaults): LU {
+  return gapValueOf(axis === 'columns' ? box.style.columnGap : box.style.rowGap, available, faults);
+}
+
+function templateOf(g: GridContainerStyle, axis: GridAxis): readonly TrackRepeater[] {
+  return axis === 'columns' ? g.templateColumns : g.templateRows;
+}
+
+function autoTracksOf(g: GridContainerStyle, axis: GridAxis): readonly TrackSize[] {
+  return axis === 'columns' ? g.autoColumns : g.autoRows;
+}
+
+/** Blink GridSizingTrackCollection::BuildSets and InitializeSets (css-grid-2 §11.4). */
+function buildSets(grid: GridState, c: GridCollection, available: LU): void {
+  c.gutter = gutterSize(grid.box, c.axis, available, grid.engineFaults);
+  const indefinite = available === INDEFINITE;
+  const implicitSizes = autoTracksOf(grid.grid, c.axis);
+  c.sets = [];
+  let all = NO_PROPS();
+  for (const range of c.ranges) {
+    let props = NO_PROPS();
+    if (range.collapsed) {
+      range.props = props;
+      continue;
+    }
+    const sizes = range.implicit ? implicitSizes : (c.explicit[range.repeaterIndex] as GridRepeater).sizes;
+    const size = sizes.length;
+    const floorCount = intDiv(range.trackCount, size);
+    const remaining = intMod(range.trackCount, size);
+    for (let i = 0; i < range.setCount; i++) {
+      const trackCount = floorCount + (i < remaining ? 1 : 0);
+      const definition = trackOf(sizes[intMod(range.repeaterOffset + i, size)] as TrackSize, grid.faults.fitContentAsAuto);
+      if (trackHasPercentage(definition)) props.dependent = true;
+      const track = normalizeTrack(definition, indefinite);
+      c.sets.push({ trackCount, track, baseSize: ZERO, growthLimit: ZERO, plannedIncrease: ZERO, fitContentLimit: INDEFINITE, itemIncurredIncrease: ZERO, infinitelyGrowable: false });
+      if (isAuto(track.min)) props.autoMin = true;
+      if (isFixed(track.min)) props.fixedMin = true;
+      if (isFixed(track.max)) props.fixedMax = true;
+      if (isFlex(track.max)) {
+        props.flexible = true;
+        props.dependent = true;
+      }
+      if (minIntrinsic(track) || maxIntrinsic(track)) props.intrinsic = true;
+      if (!trackDefinite(track)) props.nonDefinite = true;
+    }
+    range.props = props;
+    all = orProps(all, props);
+  }
+  c.props = all;
+  for (const s of c.sets) {
+    const t = s.track;
+    if (t.fitContent && t.limit !== null) s.fitContentLimit = mulInt(breadthValue(t.limit, available), s.trackCount);
+    s.growthLimit = isFixed(t.max) ? mulInt(fixedValue(t.max, available), s.trackCount) : INDEFINITE;
+    initBaseSize(s, isFixed(t.min) ? mulInt(fixedValue(t.min, available), s.trackCount) : ZERO);
+  }
+}
+
+function initBaseSize(s: GridSet, v: LU): void {
+  s.baseSize = v;
+  ensureGrowthLimitNotLessThanBase(s);
+}
+
+function ensureGrowthLimitNotLessThanBase(s: GridSet): void {
+  if (s.growthLimit !== INDEFINITE && s.growthLimit < s.baseSize) s.growthLimit = s.baseSize;
+}
+
+function increaseBaseSize(s: GridSet, v: LU): void {
+  s.baseSize = v;
+  ensureGrowthLimitNotLessThanBase(s);
+}
+
+function definiteGrowthLimit(s: GridSet): LU {
+  return s.growthLimit === INDEFINITE ? s.baseSize : s.growthLimit;
+}
+
+/** Blink GridSizingTrackCollection::TotalTrackSize. */
+function totalTrackSize(c: GridCollection): LU {
+  if (c.sets.length === 0) return ZERO;
+  let total = ZERO;
+  for (const s of c.sets) total = add(total, add(s.baseSize, mulInt(c.gutter, s.trackCount)));
+  return sub(total, c.gutter);
+}
+
+function cacheInitializedGeometry(c: GridCollection, first: LU): void {
+  const lastIndefinite: number[] = [NOT_FOUND];
+  const geometry: GridSetGeometry[] = [{ offset: first, trackCount: 0 }];
+  let offset = first;
+  for (const s of c.sets) {
+    if (s.growthLimit === INDEFINITE) lastIndefinite.push(lastIndefinite.length - 1);
+    else {
+      offset = add(offset, add(s.growthLimit, mulInt(c.gutter, s.trackCount)));
+      lastIndefinite.push(lastIndefinite[lastIndefinite.length - 1] as number);
+    }
+    geometry.push({ offset, trackCount: s.trackCount });
+  }
+  c.lastIndefinite = lastIndefinite;
+  c.geometry = geometry;
+}
+
+function finalizeGeometry(c: GridCollection, first: LU, gutter: LU): void {
+  c.gutter = gutter;
+  c.lastIndefinite = [];
+  const geometry: GridSetGeometry[] = [{ offset: first, trackCount: 0 }];
+  let offset = first;
+  for (const s of c.sets) {
+    offset = add(offset, add(s.baseSize, mulInt(gutter, s.trackCount)));
+    geometry.push({ offset, trackCount: s.trackCount });
+  }
+  c.geometry = geometry;
+}
+
+function setOffset(c: GridCollection, index: number): LU {
+  return (c.geometry[index] as GridSetGeometry).offset;
+}
+
+/** Blink GridLayoutTrackCollection::CalculateSetSpanSize; INDEFINITE when the span crosses a set of unknown size. */
+function setSpanSize(c: GridCollection, begin: number, end: number): LU {
+  if (begin === end) return ZERO;
+  if (c.lastIndefinite.length > 0) {
+    const last = c.lastIndefinite[end] as number;
+    if (last !== NOT_FOUND && begin <= last) return INDEFINITE;
+  }
+  return clampNegativeToZero(sub(sub(setOffset(c, end), c.gutter), setOffset(c, begin)));
+}
+
+function fullSpanSize(c: GridCollection): LU {
+  return setSpanSize(c, 0, c.sets.length);
+}
+
+/** Blink GridItemData::CalculateAvailableSize. */
+function areaSize(c: GridCollection, sets: GridSetIndices): LU {
+  const v = setSpanSize(c, sets.begin, sets.end);
+  return mightBeSaturated(v) ? ZERO : v;
+}
+
+// ---- Content alignment (Blink ComputeFirstSetGeometry, css-align-3 §5) -------------------------------------------------------
+
+type GridFirstSet = { readonly gutter: LU; readonly start: LU };
+
+function firstSetGeometry(grid: GridState, c: GridCollection, available: LU): GridFirstSet {
+  const columns = c.axis === 'columns';
+  const start = columns ? grid.bsp.left : grid.bsp.top;
+  const plain: GridFirstSet = { gutter: c.gutter, start };
+  if (available === INDEFINITE) return plain;
+  const value = columns ? grid.style.justifyContent : grid.style.alignContent;
+  const free = (): LU => sub(available, totalTrackSize(c));
+  const count = c.nonCollapsedTrackCount;
+  switch (value) {
+    case 'space-between': {
+      const f = free();
+      if (count < 2 || f < 0) return plain;
+      return { gutter: add(c.gutter, grid.faults.distributionRounded ? divRound(f, count - 1) : divInt(f, count - 1)), start };
+    }
+    case 'space-around': {
+      const f = free();
+      if (f < 0) return plain;
+      if (count < 1) return { gutter: c.gutter, start: add(start, divInt(f, 2)) };
+      const share = divInt(f, count);
+      return { gutter: add(c.gutter, share), start: add(start, divInt(share, 2)) };
+    }
+    case 'space-evenly': {
+      const f = free();
+      if (f < 0) return plain;
+      const share = divInt(f, count + 1);
+      return { gutter: add(c.gutter, share), start: add(start, share) };
+    }
+    case 'left':
+      return grid.rtl ? { gutter: c.gutter, start: add(start, free()) } : plain;
+    case 'right':
+      return grid.rtl ? plain : { gutter: c.gutter, start: add(start, free()) };
+    case 'center':
+      return { gutter: c.gutter, start: add(start, divInt(free(), 2)) };
+    case 'end':
+    case 'flex-end':
+      return { gutter: c.gutter, start: add(start, free()) };
+    default:
+      return plain;
+  }
+}
+
+/** Planted fault distributionRounded: a quotient rounded to the nearest unit. */
+function divRound(v: LU, n: number): LU {
+  return divInt(add(v, intDiv(n, 2) as LU), n);
+}
+
+/** css-align-3 §5.1: StretchAutoTracks runs for stretch, or for the default distribution with position normal. */
+function stretchesAutoTracks(grid: GridState, axis: GridAxis): boolean {
+  const v = axis === 'columns' ? grid.style.justifyContent : grid.style.alignContent;
+  return v === 'normal' || v === 'stretch';
+}
+
+// ---- The track sizing algorithm (Blink GridTrackSizingAlgorithm, css-grid-2 §12) ----------------------------------------
+
+type GridContribution = (type: GridContributionType, item: GridItemData) => LU;
+
+function affectedSize(s: GridSet, type: GridContributionType): LU {
+  if (type === 'intrinsic-minimums' || type === 'content-based-minimums' || type === 'max-content-minimums') return s.baseSize;
+  return definiteGrowthLimit(s);
+}
+
+function growAffectedSize(type: GridContributionType, s: GridSet): void {
+  s.infinitelyGrowable = false;
+  const planned = s.plannedIncrease;
+  if (planned === INDEFINITE) return;
+  if (type === 'intrinsic-minimums' || type === 'content-based-minimums' || type === 'max-content-minimums') {
+    increaseBaseSize(s, add(s.baseSize, planned));
+    return;
+  }
+  if (type === 'intrinsic-maximums') s.infinitelyGrowable = s.growthLimit === INDEFINITE;
+  s.growthLimit = add(definiteGrowthLimit(s), planned);
+}
+
+function contributionApplies(s: GridSet, type: GridContributionType): boolean {
+  const t = s.track;
+  switch (type) {
+    case 'intrinsic-minimums':
+      return minIntrinsic(t);
+    case 'content-based-minimums':
+      return isContent(t.min);
+    case 'max-content-minimums':
+      return t.min.kind === 'max-content';
+    case 'intrinsic-maximums':
+      return maxIntrinsic(t);
+    case 'max-content-maximums':
+      return maxContentOrAutoMax(t);
+    case 'free-space':
+      return true;
+  }
+}
+
+function growsBeyondLimit(s: GridSet, type: GridContributionType): boolean {
+  if (type === 'intrinsic-minimums' || type === 'content-based-minimums') return maxIntrinsic(s.track);
+  if (type === 'max-content-minimums') return maxContentOrAutoMax(s.track);
+  return false;
+}
+
+const forGrowthLimits = (type: GridContributionType): boolean => type === 'intrinsic-maximums' || type === 'max-content-maximums';
+
+/** Blink GrowthPotentialForSet; INDEFINITE is infinite. */
+function growthPotential(s: GridSet, type: GridContributionType, enforceInfinitelyGrowable: boolean): LU {
+  if (type === 'intrinsic-minimums' || type === 'content-based-minimums' || type === 'max-content-minimums') {
+    if (s.growthLimit === INDEFINITE) return INDEFINITE;
+    return sub(s.growthLimit, add(s.baseSize, s.itemIncurredIncrease));
+  }
+  if (type === 'free-space') return sub(s.growthLimit, s.baseSize);
+  if (enforceInfinitelyGrowable && s.growthLimit !== INDEFINITE && !s.infinitelyGrowable) return ZERO;
+  if (s.fitContentLimit !== INDEFINITE) return clampNegativeToZero(sub(sub(s.fitContentLimit, definiteGrowthLimit(s)), s.itemIncurredIncrease));
+  return INDEFINITE;
+}
+
+/**
+ * Blink DistributeExtraSpaceToSets (css-grid-2 §12.5.1): equal shares in unsigned 32-bit arithmetic, or float shares weighted by
+ * flex factor, up to each set's limit, then beyond limits. A set whose ratio is all that remains takes all the space left.
+ */
+function distributeExtraSpace(ctx: Ctx, extraSpace: LU, flexSum: number, equal: boolean, type: GridContributionType, toGrow: GridSet[], beyond: GridSet[] | null, beyondIsToGrow: boolean): GridSet[] {
+  let extra = extraSpace;
+  if (extra === INDEFINITE) {
+    for (const s of toGrow) s.itemIncurredIncrease = growthPotential(s, type, true);
+    return toGrow;
+  }
+  let growable = 0;
+  for (const s of toGrow) {
+    s.itemIncurredIncrease = ZERO;
+    if (growthPotential(s, type, true) !== ZERO) growable += s.trackCount;
+  }
+  let ratioSum = equal ? growable : flexSum;
+  let sets = toGrow;
+  // GR6: std::sort by growth potential (infinite last); ties keep list order, as libc++'s insertion sort does up to 30 sets.
+  if ((growable > 0 || forGrowthLimits(type)) && floatNearlyEqual(flexSum, 0)) {
+    const keyed = sets.map((s, i): GridKeyedSet => ({ s, i, p: growthPotential(s, type, false) }));
+    keyed.sort((a, b) => {
+      const aInf = a.p === INDEFINITE;
+      const bInf = b.p === INDEFINITE;
+      if (aInf !== bInf) return aInf ? 1 : -1;
+      if (!aInf && a.p !== b.p) return a.p - b.p;
+      return a.i - b.i;
+    });
+    sets = keyed.map((k) => k.s);
+  }
+  const share = (s: GridSet, potential: LU): LU => {
+    if (potential === ZERO) return ZERO;
+    let count = s.trackCount;
+    let ratio = equal ? count : setFlex(s);
+    if (ratio > ratioSum) ratio = ratioSum;
+    let result: LU;
+    const same = equal ? ratio === ratioSum : floatNearlyEqual(ratio, ratioSum);
+    if (same) {
+      count = growable;
+      result = extra;
+    } else if (equal) {
+      result = ctx.gridFaults.shareRounded ? roundedShare(extra, ratio, ratioSum) : equalShare(extra, ratio, ratioSum);
+    } else {
+      result = weightedShare(extra, ratio, ratioSum);
+    }
+    if (potential !== INDEFINITE) result = minLu(result, potential);
+    growable -= count;
+    ratioSum = equal ? ratioSum - ratio : flexSumSub(ratioSum, ratio);
+    extra = sub(extra, result);
+    return result;
+  };
+  for (const s of sets) {
+    if (growable === 0) break;
+    s.itemIncurredIncrease = share(s, growthPotential(s, type, true));
+  }
+  if (beyond !== null && extra !== ZERO) {
+    const beyondSets = beyondIsToGrow ? sets : beyond;
+    const beyondPotential = (s: GridSet): LU => (forGrowthLimits(type) ? growthPotential(s, type, false) : INDEFINITE);
+    growable = 0;
+    for (const s of beyondSets) if (beyondPotential(s) !== ZERO) growable += s.trackCount;
+    ratioSum = growable;
+    for (const s of beyondSets) {
+      if (growable === 0) break;
+      s.itemIncurredIncrease = add(s.itemIncurredIncrease, share(s, beyondPotential(s)));
+    }
+  }
+  return sets;
+}
+
+/** Planted fault gridShareRounded: the equal share rounded to the nearest LayoutUnit instead of truncated. */
+function roundedShare(extra: LU, ratio: number, ratioSum: number): LU {
+  const truncated = equalShare(extra, ratio, ratioSum);
+  const twice = equalShare(extra, ratio * 2, ratioSum);
+  return add(truncated, sub(twice, mulInt(truncated, 2)));
+}
+
+function setsOf(c: GridCollection, sets: GridSetIndices): GridSet[] {
+  const out: GridSet[] = [];
+  for (let i = sets.begin; i < sets.end; i++) out.push(c.sets[i] as GridSet);
+  return out;
+}
+
+const itemSets = (item: GridItemData, axis: GridAxis): GridSetIndices => (axis === 'columns' ? item.columnSets : item.rowSets);
+const itemProps = (item: GridItemData, axis: GridAxis): GridProps => (axis === 'columns' ? item.columnProps : item.rowProps);
+const itemSpanSize = (item: GridItemData, axis: GridAxis): number => (axis === 'columns' ? item.column.end - item.column.start : item.row.end - item.row.start);
+
+/** Blink IncreaseTrackSizesToAccommodateGridItems (css-grid-2 §12.5 step 3, §12.5.1). */
+function accommodateItems(ctx: Ctx, c: GridCollection, group: readonly GridItemData[], type: GridContributionType, spansFlex: boolean, contribution: GridContribution): void {
+  for (const s of c.sets) s.plannedIncrease = INDEFINITE;
+  for (const item of group) {
+    const toGrow: GridSet[] = [];
+    const beyond: GridSet[] = [];
+    let flexSum = 0;
+    let spanned = mulInt(c.gutter, itemSpanSize(item, c.axis) - 1);
+    if (ctx.gridFaults.gutterNotInSpan) spanned = ZERO;
+    for (const s of setsOf(c, itemSets(item, c.axis))) {
+      spanned = add(spanned, affectedSize(s, type));
+      if (spansFlex && !isFlex(s.track.max)) continue;
+      if (contributionApplies(s, type)) {
+        if (s.plannedIncrease === INDEFINITE) s.plannedIncrease = ZERO;
+        if (spansFlex) flexSum = flexSumAdd(flexSum, setFlex(s));
+        toGrow.push(s);
+        if (growsBeyondLimit(s, type)) beyond.push(s);
+      }
+    }
+    if (toGrow.length === 0) continue;
+    const extra = clampNegativeToZero(sub(contribution(type, item), spanned));
+    if (extra === ZERO) continue;
+    if (!spansFlex || floatNearlyEqual(flexSum, 0)) distributeExtraSpace(ctx, extra, 0, true, type, toGrow, beyond.length === 0 ? toGrow : beyond, beyond.length === 0);
+    else distributeExtraSpace(ctx, extra, ctx.gridFaults.flexSpanEqual ? 0 : flexSum, ctx.gridFaults.flexSpanEqual, type, toGrow, null, false);
+    for (const s of toGrow) s.plannedIncrease = maxLu(s.itemIncurredIncrease, s.plannedIncrease);
+  }
+  for (const s of c.sets) growAffectedSize(type, s);
+}
+
+/** Blink ResolveIntrinsicTrackSizes (css-grid-2 §12.5): span groups in increasing size, then every item spanning a flexible track. */
+function resolveIntrinsicTrackSizes(ctx: Ctx, c: GridCollection, items: readonly GridItemData[], contribution: GridContribution): void {
+  const considered = items.filter((i) => itemProps(i, c.axis).intrinsic);
+  const flexible = (i: GridItemData): boolean => itemProps(i, c.axis).flexible;
+  const ordered = considered.map((item, k): GridIndexedItem => ({ item, k })).sort((a, b) => {
+    const fa = flexible(a.item);
+    const fb = flexible(b.item);
+    if (fa !== fb) return fa ? 1 : -1;
+    if (!fa && !ctx.gridFaults.spanGroupingFlat) {
+      const d = itemSpanSize(a.item, c.axis) - itemSpanSize(b.item, c.axis);
+      if (d !== 0) return d;
+    }
+    return a.k - b.k;
+  }).map((e) => e.item);
+  let at = 0;
+  while (at < ordered.length && !flexible(ordered[at] as GridItemData)) {
+    const span = itemSpanSize(ordered[at] as GridItemData, c.axis);
+    let end = at + 1;
+    while (end < ordered.length && !flexible(ordered[end] as GridItemData) && (ctx.gridFaults.spanGroupingFlat || itemSpanSize(ordered[end] as GridItemData, c.axis) === span)) end++;
+    const group: GridItemData[] = [];
+    for (let k = at; k < end; k++) group.push(ordered[k] as GridItemData);
+    accommodateItems(ctx, c, group, 'intrinsic-minimums', false, contribution);
+    accommodateItems(ctx, c, group, 'content-based-minimums', false, contribution);
+    accommodateItems(ctx, c, group, 'max-content-minimums', false, contribution);
+    accommodateItems(ctx, c, group, 'intrinsic-maximums', false, contribution);
+    accommodateItems(ctx, c, group, 'max-content-maximums', false, contribution);
+    at = end;
+  }
+  if (at < ordered.length) {
+    const group: GridItemData[] = [];
+    for (let k = at; k < ordered.length; k++) group.push(ordered[k] as GridItemData);
+    accommodateItems(ctx, c, group, 'intrinsic-minimums', true, contribution);
+    accommodateItems(ctx, c, group, 'content-based-minimums', true, contribution);
+    accommodateItems(ctx, c, group, 'max-content-minimums', true, contribution);
+  }
+}
+
+/** Blink DetermineFreeSpace (GR13). */
+function determineFreeSpace(c: GridCollection, available: GridAvailable, constraint: GridSizing): LU {
+  const mode: GridSizing = c.axis === 'columns' ? constraint : 'layout';
+  if (mode === 'max-content') return INDEFINITE;
+  if (mode === 'min-content') return ZERO;
+  const a = c.axis === 'columns' ? available.inline : available.block;
+  if (a === INDEFINITE) return INDEFINITE;
+  return clampNegativeToZero(sub(a, totalTrackSize(c)));
+}
+
+/** Blink MaximizeTracks (css-grid-2 §12.6, GR10): no redo against max-width or max-height (Chrome deviation grid-maximize-no-max-redo). */
+function maximizeTracks(ctx: Ctx, c: GridCollection, available: GridAvailable, constraint: GridSizing): void {
+  const free = determineFreeSpace(c, available, constraint);
+  if (free === ZERO) return;
+  if (ctx.gridFaults.maximizeIgnoresLimit && free !== INDEFINITE) {
+    let tracks = 0;
+    for (const s of c.sets) tracks += s.trackCount;
+    for (const s of c.sets) increaseBaseSize(s, add(s.baseSize, equalShare(free, s.trackCount, tracks)));
+    return;
+  }
+  const before = c.sets.map((s) => s.baseSize);
+  const sets = distributeExtraSpace(ctx, free, 0, true, 'free-space', [...c.sets], null, false);
+  for (const s of sets) increaseBaseSize(s, add(s.baseSize, s.itemIncurredIncrease));
+  // Spec reading of grid-maximize-no-max-redo: an indefinite block size that maximize would take past max-height is redone with
+  // the free space the max-height leaves.
+  if (ctx.gridFaults.maximizeRedoSpec && free === INDEFINITE && c.axis === 'rows' && available.maxBlock !== LU_MAX && totalTrackSize(c) > available.maxBlock) {
+    c.sets.forEach((s, i) => {
+      s.baseSize = before[i] as LU;
+    });
+    const room = clampNegativeToZero(sub(available.maxBlock, totalTrackSize(c)));
+    if (room === ZERO) return;
+    const redone = distributeExtraSpace(ctx, room, 0, true, 'free-space', [...c.sets], null, false);
+    for (const s of redone) increaseBaseSize(s, add(s.baseSize, s.itemIncurredIncrease));
+  }
+}
+
+/** Blink StretchAutoTracks (css-grid-2 §12.8, GR11). */
+function stretchAutoTracks(ctx: Ctx, grid: GridState, c: GridCollection, available: GridAvailable, constraint: GridSizing): void {
+  if (!stretchesAutoTracks(grid, c.axis) && !ctx.gridFaults.stretchIgnoresAlignment) return;
+  const toGrow = c.sets.filter((s) => isAuto(s.track.max) && !s.track.fitContent);
+  if (toGrow.length === 0) return;
+  let free = determineFreeSpace(c, available, constraint);
+  if (free === INDEFINITE) free = ctx.gridFaults.stretchIgnoresMinSize ? ZERO : sub(c.axis === 'columns' ? available.minInline : available.minBlock, totalTrackSize(c));
+  if (free <= 0) return;
+  const sets = distributeExtraSpace(ctx, free, 0, true, 'free-space', toGrow, toGrow, true);
+  for (const s of sets) increaseBaseSize(s, add(s.baseSize, s.itemIncurredIncrease));
+}
+
+/** Blink ExpandFlexibleTracks' FindFrSize (css-grid-2 §12.7.1), in float32 (GR12). */
+function findFrSize(ctx: Ctx, c: GridCollection, sets: readonly GridSet[], space: LU): number {
+  let leftover = space;
+  let flexSum = 0;
+  let tracks = 0;
+  const flexible: GridSet[] = [];
+  for (const s of sets) {
+    if (isFlex(s.track.max) && !floatNearlyEqual(setFlex(s), 0)) {
+      flexSum = flexSumAdd(flexSum, setFlex(s));
+      flexible.push(s);
+    } else {
+      leftover = sub(leftover, s.baseSize);
+    }
+    tracks += s.trackCount;
+  }
+  leftover = sub(leftover, mulInt(c.gutter, tracks - 1));
+  if (leftover < 0 || flexible.length === 0) return 0;
+  const ordered = flexible.map((s, i): GridIndexedSet => ({ s, i })).sort((a, b) => {
+    const l = rawTimesFloat(a.s.baseSize, setFlex(b.s));
+    const r = rawTimesFloat(b.s.baseSize, setFlex(a.s));
+    if (l !== r) return l > r ? -1 : 1;
+    return a.i - b.i;
+  }).map((e) => e.s);
+  let current = 0;
+  while (leftover > 0 && current < ordered.length) {
+    if (!ctx.gridFaults.flexSumBelowOne && flexSum < 1) flexSum = 1;
+    let next = current;
+    while (next < ordered.length && rawTimesFloat(leftover, setFlex(ordered[next] as GridSet)) < rawTimesFloat((ordered[next] as GridSet).baseSize, flexSum)) next++;
+    if (current === next || ctx.gridFaults.frRestartMissing) return ctx.gridFaults.frFloat64 ? doubleQuotient(leftover, flexSum) : rawOverFloat(leftover, flexSum);
+    for (let k = current; k < next; k++) {
+      flexSum = flexSumSub(flexSum, setFlex(ordered[k] as GridSet));
+      leftover = sub(leftover, (ordered[k] as GridSet).baseSize);
+    }
+    current = next;
+  }
+  return 0;
+}
+
+/** Blink ExpandFlexibleTracks (css-grid-2 §12.7); the float leftover carries from set to set (GR12). */
+function expandFlexibleTracks(ctx: Ctx, c: GridCollection, items: readonly GridItemData[], available: GridAvailable, constraint: GridSizing, contribution: GridContribution): void {
+  const free = determineFreeSpace(c, available, constraint);
+  if (free === ZERO) return;
+  let fr = 0;
+  if (free !== INDEFINITE) {
+    fr = findFrSize(ctx, c, c.sets, c.axis === 'columns' ? available.inline : available.block);
+  } else {
+    for (const item of items) {
+      if (!itemProps(item, c.axis).flexible) continue;
+      const size = contribution('max-content-maximums', item);
+      const f = findFrSize(ctx, c, setsOf(c, itemSets(item, c.axis)), size);
+      if (f > fr) fr = f;
+    }
+    for (const s of c.sets) {
+      if (!isFlex(s.track.max)) continue;
+      const ff = setFlex(s);
+      const f = rawOverFloat(s.baseSize, ff > s.trackCount ? ff : s.trackCount);
+      if (f > fr) fr = f;
+    }
+  }
+  let leftover = 0;
+  for (const s of c.sets) {
+    if (!isFlex(s.track.max)) continue;
+    const share = ctx.gridFaults.frFloat64 ? doubleShare(fr, setFlex(s), leftover) : flexSumAdd(clampedFloatMul(fr, setFlex(s)), leftover);
+    const expanded = ctx.gridFaults.frFloat64 ? doubleShareToLu(share) : frShareToLu(share);
+    if (!mightBeSaturated(expanded) && expanded >= s.baseSize) {
+      increaseBaseSize(s, expanded);
+      leftover = ctx.gridFaults.frLeftoverDropped ? 0 : ctx.gridFaults.frFloat64 ? doubleLeftover(share, expanded) : frLeftover(share, expanded);
+    }
+  }
+}
+
+/** Blink GridTrackSizingAlgorithm::ComputeUsedTrackSizes (css-grid-2 §12.3). */
+function computeUsedTrackSizes(ctx: Ctx, grid: GridState, c: GridCollection, available: GridAvailable, constraint: GridSizing, contribution: GridContribution): void {
+  if (c.props.intrinsic) resolveIntrinsicTrackSizes(ctx, c, grid.items, contribution);
+  for (const s of c.sets) if (s.growthLimit === INDEFINITE) s.growthLimit = s.baseSize;
+  maximizeTracks(ctx, c, available, constraint);
+  if (c.props.flexible) expandFlexibleTracks(ctx, c, grid.items, available, constraint, contribution);
+  stretchAutoTracks(ctx, grid, c, available, constraint);
+}
+
+// ---- Items: alignment, sizes and contributions (Blink GridItemData, ContributionSizeForGridItem) ------------------------------
+
+/** A self position or baseline alignment, from justify-self or justify-items (columns) or align-self or align-items (rows). */
+type GridItemAlign = GridSelfAlign | AlignItems;
+
+function selfAlignOf(container: GridContainerStyle, box: LayoutBox, axis: GridAxis, containerStyle: LayoutStyle): GridItemAlign {
+  const gi = box.style.gridItem;
+  if (axis === 'columns') {
+    const own = gi === null ? 'auto' : gi.justifySelf;
+    return own === 'auto' ? container.justifyItems : own;
+  }
+  return box.style.alignSelf === 'auto' ? containerStyle.alignItems : box.style.alignSelf;
+}
+
+/** Blink AxisEdgeFromItemPosition: auto margins win, then the self position; normal and stretch stretch an auto size. */
+function axisEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
+  const s = box.style;
+  const rtl = directionOf(ctx, grid) === 'rtl';
+  const startMargin = axis === 'columns' ? (rtl ? s.marginRight : s.marginLeft) : s.marginTop;
+  const endMargin = axis === 'columns' ? (rtl ? s.marginLeft : s.marginRight) : s.marginBottom;
+  const startAuto = startMargin.kind === 'auto';
+  const endAuto = endMargin.kind === 'auto';
+  // Blink AxisEdgeFromItemPosition: auto margin alignment is always safe.
+  if (startAuto && endAuto) return { edge: 'center', stretch: false, safe: true, baseline: 'none' };
+  if (startAuto) return { edge: 'end', stretch: false, safe: true, baseline: 'none' };
+  if (endAuto) return { edge: 'start', stretch: false, safe: true, baseline: 'none' };
+  // Blink AxisEdgeFromItemPosition: kBaseline and kLastBaseline are AxisEdge::kFirstBaseline and kLastBaseline with a fit-content
+  // auto size; SetAlignmentFallback falls back to start (major group) or end (minor group).
+  if (align === 'baseline' || (align === 'last baseline' && ctx.gridFaults.lastBaselineAsFirst)) return { edge: 'start', stretch: false, safe: false, baseline: 'first' };
+  if (align === 'last baseline') return { edge: 'end', stretch: false, safe: false, baseline: 'last' };
+  return selfEdge(ctx, grid, box, axis, align);
+}
+
+/**
+ * The self-position part of Blink AxisEdgeFromItemPosition, which an absolutely positioned child takes alone; its static position
+ * takes first baseline as start and last baseline as end (AlignmentOffsetForOutOfFlow, grid_layout_utils.cc 407-445).
+ */
+function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
+  const s = box.style;
+  const rtl = directionOf(ctx, grid) === 'rtl';
+  const sameDirection = directionOf(ctx, box) === directionOf(ctx, grid) || axis === 'rows';
+  switch (align) {
+    case 'normal':
+      // css-align-3 §6.1 (Blink GridItemData): normal block-axis alignment of an item with a preferred aspect ratio is start.
+      return axis === 'rows' && hasAspectRatio(s) ? { edge: 'start', stretch: false, safe: false, baseline: 'none' } : { edge: 'start', stretch: true, safe: false, baseline: 'none' };
+    case 'stretch':
+      return { edge: 'start', stretch: true, safe: false, baseline: 'none' };
+    case 'start':
+    case 'flex-start':
+      return { edge: 'start', stretch: false, safe: false, baseline: 'none' };
+    case 'end':
+    case 'flex-end':
+      return { edge: 'end', stretch: false, safe: false, baseline: 'none' };
+    case 'center':
+      return { edge: 'center', stretch: false, safe: false, baseline: 'none' };
+    case 'self-start':
+      return { edge: sameDirection ? 'start' : 'end', stretch: false, safe: false, baseline: 'none' };
+    case 'self-end':
+      return { edge: sameDirection ? 'end' : 'start', stretch: false, safe: false, baseline: 'none' };
+    case 'left':
+      return { edge: rtl ? 'end' : 'start', stretch: false, safe: false, baseline: 'none' };
+    case 'right':
+      return { edge: rtl ? 'start' : 'end', stretch: false, safe: false, baseline: 'none' };
+    case 'baseline':
+      return { edge: 'start', stretch: false, safe: false, baseline: 'none' };
+    case 'last baseline':
+      return { edge: 'end', stretch: false, safe: false, baseline: 'none' };
+  }
+}
+
+/** Margins resolved against a percentage basis, by logical side; auto margins are zero here. */
+type GridMargins = { readonly inlineStart: LU; readonly inlineEnd: LU; readonly blockStart: LU; readonly blockEnd: LU };
+
+/** Blink ComputePhysicalMargins (third_party/blink/renderer/core/layout/length_utils.h 465-481): an indefinite basis is clamped to zero. */
+function marginsOf(box: LayoutBox, indefiniteOrBasis: LU, rtl: boolean): GridMargins {
+  const s = box.style;
+  const basis = indefiniteOrBasis === INDEFINITE ? ZERO : indefiniteOrBasis;
+  const left = resolveMargin(s.marginLeft, basis).value;
+  const right = resolveMargin(s.marginRight, basis).value;
+  return {
+    inlineStart: rtl ? right : left,
+    inlineEnd: rtl ? left : right,
+    blockStart: resolveMargin(s.marginTop, basis).value,
+    blockEnd: resolveMargin(s.marginBottom, basis).value,
+  };
+}
+
+/** The item's border-box inline size in its grid area (Blink ComputeInlineSizeForFragment with the area as available size). */
+function itemInlineSize(ctx: Ctx, item: GridItemData, areaInline: LU, margins: GridMargins): LU {
+  const s = item.box.style;
+  const pad = resolvePadding(s, areaInline);
+  const bor = resolveBorder(s, ctx.devicePixelRatio);
+  const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
+  const specified = resolveInlineLength(lengthWidth(item.box.id, s.width), areaInline);
+  const available = sub(sub(areaInline, margins.inlineStart), margins.inlineEnd);
+  let raw: LU;
+  if (specified !== null) raw = borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  else if (item.columnStretch) raw = maxLu(hbp, available);
+  else {
+    const minC = add(intrinsicContentInlineSize(ctx, item.box, 'min'), hbp);
+    const maxC = add(intrinsicContentInlineSize(ctx, item.box, 'max'), hbp);
+    raw = minLu(maxC, maxLu(minC, clampNegativeToZero(available)));
+  }
+  return constrain(raw, inlineMinMax(item.box.id, s, areaInline, hbp));
+}
+
+/**
+ * A laid-out item: its fragment, margins, and its last baseline from the border-box top with the default baseline algorithm
+ * (ContentsResult), with the flex or grid container with items that would decide it instead ('' when none).
+ */
+type GridItemLayout = { readonly frag: Frag; readonly margins: GridMargins; readonly lastBaseline: LU | null; readonly lastBaselineFlex: string };
+
+/**
+ * Lays out an item in a grid area of the given inline size and block size (INDEFINITE while measuring rows): percentages resolve
+ * against the area, and an auto height stretches to a definite area when the item stretches in the block axis.
+ */
+function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: LU, areaBlock: LU): GridItemLayout {
+  const s = item.box.style;
+  const margins = marginsOf(item.box, areaInline, grid.rtl);
+  const width = itemInlineSize(ctx, item, areaInline, margins);
+  const basis: HeightBasis = areaBlock === INDEFINITE ? { kind: 'indefinite' } : { kind: 'definite', value: areaBlock };
+  let forced: LU | null = null;
+  if (areaBlock !== INDEFINITE && item.rowStretch && s.height.kind === 'auto') {
+    const pad = resolvePadding(s, areaInline);
+    const bor = resolveBorder(s, ctx.devicePixelRatio);
+    const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
+    const stretched = maxLu(vbp, sub(sub(areaBlock, margins.blockStart), margins.blockEnd));
+    forced = constrain(stretched, blockMinMax(item.box, basis, vbp));
+  }
+  const r = layoutContents(ctx, item.box, {
+    cbInline: areaInline,
+    borderBoxWidth: width,
+    forcedBorderBoxHeight: forced,
+    forcedHeightDefinite: true,
+    heightBasis: basis,
+    formattingContextRoot: true,
+    bfcLineOffset: ZERO,
+  });
+  return { frag: r.frag, margins, lastBaseline: r.defaultLastBaseline, lastBaselineFlex: r.defaultLastBaselineFlex };
+}
+
+/**
+ * css-sizing-3 §5.2 for a grid item as its own formatting context: its min- or max-content inline contribution without margins
+ * (Blink ComputeMinAndMaxContentContributionInternal, length_utils.cc 361-460). Its padding resolves against the indefinite size
+ * clamped to zero (ComputePadding, length_utils.cc 1518-1545), so a calculation keeps its length part.
+ */
+function inlineContributionOf(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max'): LU {
+  const s = box.style;
+  const bp = borderPaddingOf(ctx, box, 'columns', INDEFINITE);
+  let size: LU;
+  if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
+  else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
+  if (s.maxWidth.kind === 'px') size = minLu(size, borderBoxFromSpecified(fromCssPx(s.maxWidth.value), bp, s.boxSizing));
+  const minWidth = s.minWidth.kind === 'px' ? borderBoxFromSpecified(fromCssPx(s.minWidth.value), bp, s.boxSizing) : bp;
+  return maxLu(size, minWidth);
+}
+
+/** The border and padding of an item in one axis, with % padding against the given basis (0 when indefinite). */
+function borderPaddingOf(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): LU {
+  const s = box.style;
+  const bor = resolveBorder(s, ctx.devicePixelRatio);
+  const pad = resolvePadding(s, basis === INDEFINITE ? ZERO : basis);
+  return axis === 'columns' ? sumEdges(bor.left, bor.right, pad.left, pad.right) : sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
+}
+
+/**
+ * Blink ResolveMinInlineLength / ResolveInitialMinBlockLength in the measure space, whose % basis in the measured axis is
+ * indefinite: a px minimum in border-box terms, or the border and padding for auto and %. Padding resolves against the given
+ * basis: indefinite (zero) for columns, the item's column area for rows (Blink ComputePadding takes the inline size).
+ */
+function specifiedMinimum(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): LU {
+  const s = box.style;
+  const v = axis === 'columns' ? s.minWidth : s.minHeight;
+  const bp = borderPaddingOf(ctx, box, axis, basis);
+  return v.kind === 'px' ? borderBoxFromSpecified(fromCssPx(v.value), bp, s.boxSizing) : bp;
+}
+
+/** A content contribution without margins, and the baseline shim it includes (Blink ContributionSizeForGridItem's baseline_shim). */
+type GridMeasure = { readonly size: LU; readonly shim: LU };
+
+/**
+ * An item's min- or max-content contribution without margins: in the column axis its inline contribution (flagging an item whose
+ * size depends on the block size, as Blink's is_sizing_dependent_on_block_size) plus the baseline shim of an item baseline-aligned
+ * in the inline axis (MinOrMaxContentSize, grid_layout_algorithm.cc 927-956), in the row axis its block contribution.
+ */
+function contentContribution(ctx: Ctx, grid: GridState, item: GridItemData, columns: boolean, kind: 'min' | 'max'): GridMeasure {
+  if (columns) {
+    const s = item.box.style;
+    if (percentSize(s.height) || percentSize(s.minHeight) || percentSize(s.maxHeight) || (s.height.kind === 'auto' && item.rowStretch)) item.sizingDependsOnBlockSize = true;
+    const size = inlineContributionOf(ctx, item.box, kind);
+    // Columns are measured with an indefinite inline size, so % margins resolve against zero, as in contributionFor.
+    const shim = baselineAligned(item, 'columns') ? baselineShim(ctx, grid, item, 'columns', inlineBaseline(ctx, grid, item, size), INDEFINITE) : ZERO;
+    return { size: add(size, shim), shim };
+  }
+  return blockContribution(ctx, grid, item);
+}
+
+/**
+ * Blink BlockContributionSize (grid_layout_algorithm.cc 965-1005): the item's block size laid out in its column area with an
+ * indefinite block size, plus the baseline shim of a baseline-aligned item (CalculateBaselineShim, 901-917).
+ */
+function blockContribution(ctx: Ctx, grid: GridState, item: GridItemData): GridMeasure {
+  const areaInline = areaSize(grid.columns, item.columnSets);
+  const r = layoutItem(ctx, grid, item, areaInline, INDEFINITE);
+  const shim = baselineAligned(item, 'rows') ? baselineShim(ctx, grid, item, 'rows', blockBaseline(ctx, item, r), areaInline) : ZERO;
+  return { size: add(r.frag.height, shim), shim };
+}
+
+/**
+ * Blink CalculateBaselineShim with GetExtraMarginForBaseline: the track baseline less the item's baseline and its start margin
+ * (end margin for last baseline), or nothing while the set has none.
+ */
+function baselineShim(ctx: Ctx, grid: GridState, item: GridItemData, axis: GridAxis, baseline: LU, marginBasis: LU): LU {
+  const track = trackBaseline(axis === 'columns' ? grid.columns : grid.rows, item);
+  if (track === LU_MIN || ctx.gridFaults.baselineShimIgnored) return ZERO;
+  return sub(sub(track, baseline), baselineMargin(item, axis, marginsOf(item.box, marginBasis, grid.rtl)));
+}
+
+/** Blink GetExtraMarginForBaseline outside a subgrid: the start margin for first baseline, the end margin for last baseline. */
+function baselineMargin(item: GridItemData, axis: GridAxis, m: GridMargins): LU {
+  const last = baselineKind(item, axis) === 'last';
+  if (axis === 'columns') return last ? m.inlineEnd : m.inlineStart;
+  return last ? m.blockEnd : m.blockStart;
+}
+
+function baselineKind(item: GridItemData, axis: GridAxis): GridBaselineKind {
+  return axis === 'columns' ? item.columnBaseline : item.rowBaseline;
+}
+
+/** Blink GridItemData::IsBaselineAligned: baseline alignment is specified and no fallback replaced it. */
+function baselineAligned(item: GridItemData, axis: GridAxis): boolean {
+  return axis === 'columns' ? item.columnBaseline !== 'none' && !item.columnFallback : item.rowBaseline !== 'none' && !item.rowFallback;
+}
+
+/**
+ * Blink Baseline() (grid_layout_algorithm.cc 790-807): the major baseline of the item's first set for first baseline, the minor
+ * baseline of its last set for last baseline (DetermineBaselineGroup, baseline_utils.h 51-87, gives a horizontal item in a
+ * horizontal-tb grid the major group for first baseline and the minor group for last baseline in both axes); LU_MIN for none.
+ */
+function trackBaseline(c: GridCollection, item: GridItemData): LU {
+  const columns = c.axis === 'columns';
+  const sets = columns ? item.columnSets : item.rowSets;
+  if (baselineKind(item, c.axis) === 'last') {
+    const minor = c.minorBaselines;
+    return minor === null ? LU_MIN : (minor[sets.end - 1] as GridSetBaseline).value;
+  }
+  const major = c.majorBaselines;
+  return major === null ? LU_MIN : (major[sets.begin] as GridSetBaseline).value;
+}
+
+/**
+ * Blink LogicalBoxFragment::FirstBaselineOrSynthesize (logical_box_fragment.h 33-59) with the alphabetic baseline: the first
+ * baseline, kept within the border box of a scroll container, or else the border-box block-end edge.
+ */
+function firstBaselineOrSynthesize(box: LayoutBox, frag: Frag): LU {
+  if (frag.baseline === null) return frag.height;
+  return isScrollContainer(box.style) ? maxLu(ZERO, minLu(frag.baseline, frag.height)) : frag.baseline;
+}
+
+/** Blink GetLogicalBaseline for a first-baseline-aligned item in the row axis. */
+function itemBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU {
+  if (frag.baseline === null && ctx.gridFaults.baselineSynthesizedAtTop) return ZERO;
+  return firstBaselineOrSynthesize(box, frag);
+}
+
+/**
+ * Blink LogicalBoxFragment::LastBaseline (logical_box_fragment.h 61-70) of an item laid out by grid layout, whose baseline algorithm
+ * is the default one (block_layout_algorithm.cc 3602-3650): the last line box's or the last in-flow child's own last baseline, kept
+ * within the border box of a scroll container. The last baseline of a flex or grid container with items, or of a line-clamp
+ * container (whose clamp point Blink stops at), is not modelled, so an item whose last baseline it would decide is refused; one with no items has none (flex_layout_algorithm.cc 80-142,
+ * grid_baseline_accumulator.h 24-183).
+ */
+function lastBaselineOf(item: GridItemData, r: GridItemLayout): LU | null {
+  if (r.lastBaselineFlex !== '') unsupported('grid-last-baseline', item.box.id, 'css-align-3 §9.1', `the last baseline of flex, grid or line-clamp container ${r.lastBaselineFlex} would give the last baseline of grid item ${item.box.id} (not yet supported)`);
+  const b = r.lastBaseline;
+  if (b === null) return null;
+  return isScrollContainer(item.box.style) ? maxLu(ZERO, minLu(b, r.frag.height)) : b;
+}
+
+/**
+ * Blink GetLogicalBaseline (grid_layout_algorithm.cc 830-839) in the row axis: the first baseline from the border-box top, or for
+ * last baseline the distance from the last baseline (synthesized at the bottom edge with none) to the border-box bottom.
+ */
+function blockBaseline(ctx: Ctx, item: GridItemData, r: GridItemLayout): LU {
+  if (item.rowBaseline !== 'last') return itemBaseline(ctx, item.box, r.frag);
+  const last = lastBaselineOf(item, r);
+  return last === null ? ZERO : sub(r.frag.height, last);
+}
+
+/**
+ * Blink GetLogicalBaseline and GetSynthesizedLogicalBaseline (grid_layout_algorithm.cc 830-852) in the column axis for an item of
+ * the given border-box inline size. A horizontal item has no baseline in the inline axis (LogicalBoxFragment::FirstBaseline is
+ * empty for a writing mode other than its own), so it is synthesized in the baseline writing mode DetermineBaselineWritingMode
+ * gives (baseline_utils.h 14-44): vertical-lr in ltr, whose flipped lines put the alphabetic baseline at its block start, and
+ * vertical-rl in rtl, at its block end (SynthesizedBaseline, logical_box_fragment.h 33-40): its left edge either way. Measured
+ * from the inline-start edge for first baseline and from the inline-end edge for last baseline.
+ */
+function inlineBaseline(ctx: Ctx, grid: GridState, item: GridItemData, inlineSize: LU): LU {
+  const fromStart = grid.rtl && !ctx.gridFaults.inlineBaselineAtInlineStart ? inlineSize : ZERO;
+  return item.columnBaseline === 'last' ? sub(inlineSize, fromStart) : fromStart;
+}
+
+/** Length::HasPercentOrStretch for a size: a percentage or a calculation with one (stretch never reaches the engine). */
+function percentSize(v: LayoutStyle['height'] | LayoutStyle['maxHeight'] | LayoutStyle['width'] | LayoutStyle['maxWidth']): boolean {
+  return v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'min-content' && v.kind !== 'max-content' && v.kind !== 'fit-content' && hasPercent(v);
+}
+
+/**
+ * Blink ComputeInlineSizeForFragment for an item whose grid area has an indefinite inline size (length_utils.cc 531-603): an auto
+ * width is its min-content size, clamped by its min and max widths; % padding resolves against zero, as in inlineContributionOf.
+ * Only an item with no percentage width, min-width or max-width reaches it (its area spans an intrinsic or flexible column).
+ */
+function indefiniteInlineSize(ctx: Ctx, item: GridItemData): LU {
+  const s = item.box.style;
+  const bp = borderPaddingOf(ctx, item.box, 'columns', INDEFINITE);
+  const specified = resolveInlineLength(lengthWidth(item.box.id, s.width), ZERO);
+  const raw = specified !== null ? borderBoxFromSpecified(specified, bp, s.boxSizing) : add(intrinsicContentInlineSize(ctx, item.box, 'min'), bp);
+  return constrain(raw, inlineMinMax(item.box.id, s, ZERO, bp));
+}
+
+/** Resets one axis's major and minor baselines to LU_MIN for each set (Blink GridSizingTrackCollection::ResetBaselines). */
+function resetBaselines(c: GridCollection): void {
+  const major: GridSetBaseline[] = [];
+  const minor: GridSetBaseline[] = [];
+  for (let i = 0; i < c.sets.length; i++) {
+    major.push({ value: LU_MIN });
+    minor.push({ value: LU_MIN });
+  }
+  c.majorBaselines = major;
+  c.minorBaselines = minor;
+}
+
+/** Blink SetMajorBaseline and SetMinorBaseline: a baseline raises its set's group baseline. */
+function raiseBaseline(c: GridCollection, item: GridItemData, baseline: LU): void {
+  const sets = c.axis === 'columns' ? item.columnSets : item.rowSets;
+  const last = baselineKind(item, c.axis) === 'last';
+  const list = last ? c.minorBaselines : c.majorBaselines;
+  if (list === null) return;
+  const set = list[last ? sets.end - 1 : sets.begin] as GridSetBaseline;
+  if (baseline > set.value) set.value = baseline;
+}
+
+/**
+ * Blink GridLayoutAlgorithm::ComputeGridItemBaselines (grid_layout_algorithm.cc 1180-1280) with GridItemData::SetAlignmentFallback
+ * (grid_item.cc 254-309): each baseline-aligned item is measured in its grid area as the geometry of the axis stands, and its
+ * margin-box baseline raises the major baseline of its first set (first baseline) or the minor baseline of its last set (last
+ * baseline). An item with no baseline in the axis that spans an intrinsic or flexible track and whose size in the axis depends on
+ * the track (a percentage height in the row axis; a percentage width in the column axis, where a horizontal item never has a
+ * baseline) falls back to its start (first baseline) or end (last baseline) edge instead.
+ */
+function computeBaselines(ctx: Ctx, grid: GridState, axis: GridAxis): void {
+  const c = axis === 'columns' ? grid.columns : grid.rows;
+  if (c.majorBaselines === null) return;
+  resetBaselines(c);
+  for (const item of grid.items) {
+    if (baselineKind(item, axis) === 'none') continue;
+    const areaInline = areaSize(grid.columns, item.columnSets);
+    const s = item.box.style;
+    const m = marginsOf(item.box, areaInline, grid.rtl);
+    let baseline: LU;
+    if (axis === 'columns') {
+      const dependsOnTrack = item.columnProps.intrinsic || item.columnProps.flexible;
+      item.columnFallback = dependsOnTrack && (percentSize(s.width) || percentSize(s.minWidth) || percentSize(s.maxWidth));
+      if (item.columnFallback) continue;
+      const width = areaInline === INDEFINITE ? indefiniteInlineSize(ctx, item) : itemInlineSize(ctx, item, areaInline, m);
+      baseline = inlineBaseline(ctx, grid, item, width);
+    } else {
+      const r = layoutItem(ctx, grid, item, areaInline, areaSize(c, item.rowSets));
+      const dependsOnTrack = r.frag.baseline === null && (item.rowProps.intrinsic || item.rowProps.flexible);
+      item.rowFallback = dependsOnTrack && (percentSize(s.height) || percentSize(s.minHeight) || percentSize(s.maxHeight));
+      if (item.rowFallback) continue;
+      baseline = blockBaseline(ctx, item, r);
+    }
+    raiseBaseline(c, item, add(baselineMargin(item, axis, m), baseline));
+  }
+}
+
+/**
+ * Blink PlaceGridItems' BaselineOffset (grid_layout_algorithm.cc 2246-2268): the offset of a baseline-aligned item from the start of
+ * its grid area, its track baseline less its own for the major group, or measured back from the area's end for the minor group.
+ */
+function baselineOffset(ctx: Ctx, grid: GridState, item: GridItemData, axis: GridAxis, r: GridItemLayout, areaSizeInAxis: LU): LU {
+  const columns = axis === 'columns';
+  const size = columns ? r.frag.width : r.frag.height;
+  const own = columns ? inlineBaseline(ctx, grid, item, size) : blockBaseline(ctx, item, r);
+  const delta = sub(trackBaseline(columns ? grid.columns : grid.rows, item), own);
+  if (baselineKind(item, axis) !== 'last') return delta;
+  return sub(sub(areaSizeInAxis, delta), size);
+}
+
+/** Blink GridLayoutAlgorithm::ContributionSizeForGridItem (css-grid-2 §12.5, GR16) in one axis. */
+function contributionFor(ctx: Ctx, grid: GridState, c: GridCollection, type: GridContributionType, item: GridItemData): LU {
+  if (type === 'free-space') throw new Error('free-space is not an item contribution');
+  const s = item.box.style;
+  const columns = c.axis === 'columns';
+  // Columns are measured with an indefinite inline size, so % margins resolve against zero (Blink ComputePhysicalMargins).
+  const basis = columns ? INDEFINITE : areaSize(grid.columns, item.columnSets);
+  const m = marginsOf(item.box, basis, grid.rtl);
+  const marginSum = columns ? add(m.inlineStart, m.inlineEnd) : add(m.blockStart, m.blockEnd);
+  let contribution: LU;
+  if (type === 'content-based-minimums' || type === 'intrinsic-maximums') {
+    contribution = contentContribution(ctx, grid, item, columns, 'min').size;
+  } else if (type === 'max-content-minimums' || type === 'max-content-maximums') {
+    contribution = contentContribution(ctx, grid, item, columns, 'max').size;
+  } else {
+    // css-grid-2 §6.6: the automatic minimum applies to an item spanning an auto minimum and, when it spans several tracks, no
+    // flexible one; it is clamped to the spanned fixed maximum, never below margins, border and padding.
+    const props = itemProps(item, c.axis);
+    const special = !props.autoMin || (props.flexible && itemSpanSize(item, c.axis) > 1);
+    const main = columns ? s.width : s.height;
+    const minLength = columns ? s.minWidth : s.minHeight;
+    const measured = contentContribution(ctx, grid, item, columns, 'min');
+    const minContent = measured.size;
+    if (main.kind === 'px') contribution = minContent;
+    else if (minLength.kind !== 'auto' || isScrollContainer(s) || special) contribution = specifiedMinimum(ctx, item.box, c.axis, basis);
+    else {
+      contribution = minContent;
+      const sets = itemSets(item, c.axis);
+      const spannedMax = setSpanSize(c, sets.begin, sets.end);
+      if (spannedMax !== INDEFINITE && !ctx.gridFaults.autoMinNotClamped) {
+        // Blink ClampIntrinsicMinSize: never below the margins, the baseline shim, and the border and padding. In the column axis
+        // the shim is the max-content one, which Blink computes after the min-content one (grid_layout_algorithm.cc 1041-1046).
+        const bp = borderPaddingOf(ctx, item.box, c.axis, basis);
+        const shim = columns && baselineAligned(item, 'columns') ? contentContribution(ctx, grid, item, columns, 'max').shim : measured.shim;
+        const limit = maxLu(spannedMax, add(add(marginSum, shim), bp));
+        contribution = sub(minLu(add(contribution, marginSum), limit), marginSum);
+      }
+    }
+  }
+  return clampNegativeToZero(add(contribution, marginSum));
+}
+
+// ---- Geometry (Blink ComputeGridGeometry, GR15) --------------------------------------------------------------------------
+
+function initializeTrackSizes(ctx: Ctx, grid: GridState, axis: GridAxis): void {
+  const c = axis === 'columns' ? grid.columns : grid.rows;
+  const available = axis === 'columns' ? grid.available.inline : grid.available.block;
+  buildSets(grid, c, available);
+  for (const item of grid.items) {
+    const span = axis === 'columns' ? item.column : item.row;
+    const sets = setIndicesOf(c, span);
+    const props = spanPropsOf(c, span);
+    if (axis === 'columns') {
+      item.columnSets = sets;
+      item.columnProps = props;
+    } else {
+      item.rowSets = sets;
+      item.rowProps = props;
+    }
+  }
+  if (!c.props.nonDefinite) {
+    const first = firstSetGeometry(grid, c, available);
+    finalizeGeometry(c, first.start, first.gutter);
+  } else {
+    cacheInitializedGeometry(c, axis === 'columns' ? grid.bsp.left : grid.bsp.top);
+  }
+}
+
+/** Blink CompleteTrackSizingAlgorithm; returns whether a row pass changed the block size of an item whose contribution depends on it. */
+function completeTrackSizing(ctx: Ctx, grid: GridState, axis: GridAxis, constraint: GridSizing, checkDependent: boolean): boolean {
+  const c = axis === 'columns' ? grid.columns : grid.rows;
+  // Blink ComputeBaselineAlignment runs first, whether or not the axis has tracks to size.
+  computeBaselines(ctx, grid, axis);
+  if (!c.props.nonDefinite) return false;
+  const available = axis === 'columns' ? grid.available.inline : grid.available.block;
+  buildSets(grid, c, available);
+  computeUsedTrackSizes(ctx, grid, c, grid.available, constraint, (type, item) => contributionFor(ctx, grid, c, type, item));
+  const dependent: GridDependentItem[] = [];
+  if (checkDependent && axis === 'rows') {
+    for (const item of grid.items) if (item.sizingDependsOnBlockSize) dependent.push({ sets: item.rowSets, cached: setSpanSize(c, item.rowSets.begin, item.rowSets.end) });
+  }
+  const first = firstSetGeometry(grid, c, available);
+  finalizeGeometry(c, first.start, first.gutter);
+  for (const d of dependent) if (setSpanSize(c, d.sets.begin, d.sets.end) !== d.cached) return true;
+  return false;
+}
+
+/** The logical border+padding of the container: inline start is the right side in rtl. */
+function logicalBsp(pad: Edges, bor: Edges, rtl: boolean): Edges {
+  const left = add(bor.left, pad.left);
+  const right = add(bor.right, pad.right);
+  return { top: add(bor.top, pad.top), right: rtl ? left : right, bottom: add(bor.bottom, pad.bottom), left: rtl ? right : left };
+}
+
+/** Builds the items, their placement and the two track collections of a grid container. */
+function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: GridAvailable): GridState {
+  const s = box.style;
+  const g = s.grid;
+  if (g === null) throw new Error(`${box.id} is display: grid with no grid style; validateLayoutInput rejects this input`);
+  const inFlow: LayoutBox[] = [];
+  const outOfFlow: LayoutBox[] = [];
+  for (const k of box.children) {
+    if (k.kind !== 'box' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
+    if (k.kind === 'replaced') unsupported('grid-replaced', k.id, 'css-grid-2 §6', 'a replaced grid item (not yet supported)');
+    if (k.kind !== 'box') continue;
+    // css-grid-2 §9: an absolutely positioned child is no grid item and takes no part in placement or track sizing.
+    if (isOutOfFlow(ctx, k)) outOfFlow.push(k);
+    else inFlow.push(k);
+  }
+  // css-grid-2 §8.5 with css-flexbox-1 §5.4: order-modified document order, stable.
+  const ordered = inFlow.map((b, i): GridIndexedBox => ({ b, i })).sort((x, y) => (x.b.style.order !== y.b.style.order && !ctx.faults.ignoreOrder ? x.b.style.order - y.b.style.order : x.i - y.i)).map((e) => e.b);
+  const columnTracks = axisTracks(box, g, 'columns', available, ctx.gridFaults, ctx.faults);
+  const rowTracks = axisTracks(box, g, 'rows', available, ctx.gridFaults, ctx.faults);
+  const placement = runPlacement(g, ordered, ctx, columnTracks, rowTracks);
+  const rtl = directionOf(ctx, box) === 'rtl';
+  const items: GridItemData[] = ordered.map((b, i): GridItemData => {
+    const columnAlign = axisEdge(ctx, box, b, 'columns', selfAlignOf(g, b, 'columns', s));
+    const rowAlign = axisEdge(ctx, box, b, 'rows', selfAlignOf(g, b, 'rows', s));
+    return {
+      box: b,
+      index: i,
+      column: placement.columns[i] as GridLines,
+      row: placement.rows[i] as GridLines,
+      columnSets: { begin: 0, end: 0 },
+      rowSets: { begin: 0, end: 0 },
+      columnProps: NO_PROPS(),
+      rowProps: NO_PROPS(),
+      columnEdge: columnAlign.edge,
+      rowEdge: rowAlign.edge,
+      columnSafe: columnAlign.safe,
+      rowSafe: rowAlign.safe,
+      columnStretch: columnAlign.stretch,
+      rowStretch: rowAlign.stretch,
+      columnBaseline: columnAlign.baseline,
+      rowBaseline: rowAlign.baseline,
+      columnFallback: false,
+      rowFallback: false,
+      sizingDependsOnBlockSize: false,
+    };
+  });
+  const columnsRanges = buildRanges(columnTracks.repeaters, g.autoColumns.length, placement.columnStartOffset, columnTracks.explicitCount, items.map((i) => i.column), ctx.gridFaults);
+  const rowsRanges = buildRanges(rowTracks.repeaters, g.autoRows.length, placement.rowStartOffset, rowTracks.explicitCount, items.map((i) => i.row), ctx.gridFaults);
+  return {
+    box,
+    outOfFlow,
+    columnStartOffset: placement.columnStartOffset,
+    rowStartOffset: placement.rowStartOffset,
+    columnTracks,
+    rowTracks,
+    style: s,
+    grid: g,
+    rtl,
+    bsp: logicalBsp(pad, bor, rtl),
+    items,
+    columns: newCollection('columns', columnTracks.repeaters, columnsRanges, items.some((i) => i.columnBaseline !== 'none')),
+    rows: newCollection('rows', rowTracks.repeaters, rowsRanges, items.some((i) => i.rowBaseline !== 'none')),
+    available,
+    faults: ctx.gridFaults,
+    engineFaults: ctx.faults,
+  };
+}
+
+function availableFrom(inline: LU | null, block: LU | null, blockMinMax: MinMax, inlineMinMax: MinMax): GridAvailable {
+  return {
+    inline: inline === null ? INDEFINITE : inline,
+    block: block === null ? INDEFINITE : block,
+    minInline: inline === null ? inlineMinMax.min : inline,
+    maxInline: inline === null ? (inlineMinMax.max === null ? LU_MAX : inlineMinMax.max) : inline,
+    minBlock: block === null ? blockMinMax.min : block,
+    maxBlock: block === null ? (blockMinMax.max === null ? LU_MAX : blockMinMax.max) : block,
+  };
+}
+
+// css-grid-2 §12: lays out a grid container's items; offsets are relative to its border box.
+export function layoutGridContainer(ctx: Ctx, box: LayoutBox, a: GridArgs): GridResult {
+  const s = box.style;
+  const available = availableFrom(a.contentWidth, a.definiteInnerHeight, a.innerHeightMinMax, { min: ZERO, max: null });
+  const grid = buildGrid(ctx, box, a.pad, a.bor, available);
+  initializeTrackSizes(ctx, grid, 'columns');
+  initializeTrackSizes(ctx, grid, 'rows');
+  completeTrackSizing(ctx, grid, 'columns', 'layout', false);
+  let again = completeTrackSizing(ctx, grid, 'rows', 'layout', true);
+  const rowsSpan = fullSpanSize(grid.rows);
+  const intrinsicContent = rowsSpan === INDEFINITE ? ZERO : rowsSpan;
+  if (available.block === INDEFINITE) {
+    const vbp = add(grid.bsp.top, grid.bsp.bottom);
+    const minMaxBorder: MinMax = { min: add(a.innerHeightMinMax.min, vbp), max: a.innerHeightMinMax.max === null ? null : add(a.innerHeightMinMax.max, vbp) };
+    const blockSize = constrain(add(intrinsicContent, vbp), minMaxBorder);
+    const resolved = clampNegativeToZero(sub(blockSize, vbp));
+    available.block = resolved;
+    available.minBlock = resolved;
+    available.maxBlock = resolved;
+    const rowGapPercent = s.rowGap.kind === 'percent' && !ctx.gridFaults.percentNotReresolved;
+    again = again || rowGapPercent || (grid.rows.props.dependent && !ctx.gridFaults.percentNotReresolved);
+    if (!again && s.alignContent !== 'normal') {
+      const first = firstSetGeometry(grid, grid.rows, available.block);
+      finalizeGeometry(grid.rows, first.start, first.gutter);
+    }
+  }
+  if (again) {
+    initializeTrackSizes(ctx, grid, 'columns');
+    completeTrackSizing(ctx, grid, 'columns', 'layout', false);
+    initializeTrackSizes(ctx, grid, 'rows');
+    completeTrackSizing(ctx, grid, 'rows', 'layout', false);
+  }
+  // Blink CompleteFinalBaselineAlignment: the baselines against the final geometry, columns then rows.
+  computeBaselines(ctx, grid, 'columns');
+  computeBaselines(ctx, grid, 'rows');
+  return placeItems(ctx, grid, a, intrinsicContent);
+}
+
+/**
+ * Blink PlaceGridItems (grid_layout_algorithm.cc 2246-2285: a baseline-aligned item is offset by its baseline offset, baselineOffset)
+ * and GridBaselineAccumulator (grid_baseline_accumulator.h, first baseline only).
+ */
+function placeItems(ctx: Ctx, grid: GridState, a: GridArgs, intrinsicContent: LU): GridResult {
+  const placed: Placed[] = [];
+  const borderBoxWidth = add(a.contentWidth, add(add(a.pad.left, a.pad.right), add(a.bor.left, a.bor.right)));
+  let baseline: LU | null = null;
+  let baselineRow = 0;
+  let baselineColumn = 0;
+  let firstSet = NOT_FOUND;
+  for (const item of grid.items) {
+    const inlineOffset = setOffset(grid.columns, item.columnSets.begin);
+    const blockOffset = setOffset(grid.rows, item.rowSets.begin);
+    const areaInline = areaSize(grid.columns, item.columnSets);
+    const areaBlock = areaSize(grid.rows, item.rowSets);
+    const r = layoutItem(ctx, grid, item, areaInline, areaBlock);
+    const m = r.margins;
+    // Blink AlignmentOffset: a fallback alignment is always safe; a baseline offset already holds the margin.
+    const columnOffset = baselineAligned(item, 'columns')
+      ? baselineOffset(ctx, grid, item, 'columns', r, areaInline)
+      : alignmentOffset(ctx, areaInline, r.frag.width, m.inlineStart, m.inlineEnd, item.columnEdge, item.columnSafe || item.columnFallback);
+    const x = add(inlineOffset, columnOffset);
+    const rowOffset = baselineAligned(item, 'rows')
+      ? baselineOffset(ctx, grid, item, 'rows', r, areaBlock)
+      : alignmentOffset(ctx, areaBlock, r.frag.height, m.blockStart, m.blockEnd, item.rowEdge, item.rowSafe || item.rowFallback);
+    const y = add(blockOffset, rowOffset);
+    const physicalX = grid.rtl ? sub(sub(borderBoxWidth, x), r.frag.width) : x;
+    // css-grid-2 §9: relative offsets resolve against the grid area.
+    const offset = relativeOffset(item.box, areaInline, { kind: 'definite', value: areaBlock }, directionOf(ctx, grid.box));
+    placed.push({ frag: r.frag, x: add(physicalX, offset.dx), y: add(y, offset.dy) });
+    const before = baseline === null || item.row.start < baselineRow || (item.row.start === baselineRow && item.column.start < baselineColumn);
+    if (before) {
+      baseline = add(y, firstBaselineOrSynthesize(item.box, r.frag));
+      baselineRow = item.row.start;
+      baselineColumn = item.column.start;
+    }
+    if (firstSet === NOT_FOUND || item.rowSets.begin < firstSet) firstSet = item.rowSets.begin;
+  }
+  // GridBaselineAccumulator::AccumulateRows and FirstBaseline (grid_baseline_accumulator.h 102-139): the first row set with a major
+  // baseline gives the grid's first baseline when it is also the first set holding an item, then the first set with a minor
+  // baseline (measured back from the set's end) when it is; otherwise the first item in row-major order gives it.
+  const major = grid.rows.majorBaselines;
+  const minor = grid.rows.minorBaselines;
+  if (major !== null && minor !== null) {
+    let majorSet = NOT_FOUND;
+    let majorAt = ZERO;
+    let minorSet = NOT_FOUND;
+    let minorAt = ZERO;
+    for (let i = 0; i < major.length; i++) {
+      const b = (major[i] as GridSetBaseline).value;
+      if (b !== LU_MIN && majorSet === NOT_FOUND) {
+        majorSet = i;
+        majorAt = add(setOffset(grid.rows, i), b);
+      }
+      const n = (minor[i] as GridSetBaseline).value;
+      if (n !== LU_MIN && minorSet === NOT_FOUND) {
+        minorSet = i;
+        minorAt = sub(add(setOffset(grid.rows, i), setSpanSize(grid.rows, i, i + 1)), n);
+      }
+    }
+    if (majorSet !== NOT_FOUND && majorSet === firstSet) baseline = majorAt;
+    else if (minorSet !== NOT_FOUND && minorSet === firstSet) baseline = minorAt;
+  }
+  return { contentHeight: intrinsicContent, placed, baseline, outOfFlow: grid.outOfFlow.map((b) => outOfFlowItem(ctx, grid, b)), inflow: gridInflowBounds(grid, borderBoxWidth) };
+}
+
+/**
+ * Blink GridLayoutAlgorithm::LayoutInternal (grid_layout_algorithm.cc 180-190): a grid scroll container's inflow bounds are the grid's size, from the first set's offset over
+ * the span of every set (CalculateSetSpanSize, without a trailing gutter), and not where its items are placed; physical in rtl.
+ */
+function gridInflowBounds(grid: GridState, borderBoxWidth: LU): AreaRect {
+  const x = setOffset(grid.columns, 0);
+  const width = setSpanSize(grid.columns, 0, grid.columns.geometry.length - 1);
+  return {
+    x: grid.rtl ? sub(sub(borderBoxWidth, x), width) : x,
+    y: setOffset(grid.rows, 0),
+    width,
+    height: setSpanSize(grid.rows, 0, grid.rows.geometry.length - 1),
+  };
+}
+
+// ---- Absolutely positioned children (Blink PlaceOutOfFlowItems, ComputeOutOfFlowItemContainingRect, GR17) --------------------
+
+/** The edge of an absolutely positioned child's static position in its area: its self position alone (selfEdge). */
+function outOfFlowEdge(ctx: Ctx, grid: GridState, box: LayoutBox, axis: GridAxis): GridAxisEdge {
+  if (ctx.gridFaults.absposStaticAlignIgnored) return 'start';
+  const gi = box.style.gridItem;
+  if (gi === null) throw new Error(`${box.id} is a child of grid container ${grid.box.id} with no gridItem; validateLayoutInput rejects this input`);
+  if (axis === 'columns') return selfEdge(ctx, grid.box, box, axis, gi.justifySelf === 'auto' ? grid.grid.justifyItems : gi.justifySelf).edge;
+  return selfEdge(ctx, grid.box, box, axis, box.style.alignSelf === 'auto' ? grid.style.alignItems : box.style.alignSelf).edge;
+}
+
+/**
+ * css-position-3 §4.4: between two insets the box aligns by its own justify-self or align-self, which position.ts does not do; it
+ * places the box as normal alignment does, so any other value is refused.
+ */
+function checkInsetAlignment(box: LayoutBox): void {
+  const s = box.style;
+  const gi = s.gridItem;
+  const inline = gi === null ? 'auto' : gi.justifySelf;
+  if (s.left.kind !== 'auto' && s.right.kind !== 'auto' && inline !== 'auto' && inline !== 'normal') unsupported('abspos-self-alignment', box.id, 'css-position-3 §4.4', `justify-self: ${inline} between two insets (not yet supported)`);
+  if (s.top.kind !== 'auto' && s.bottom.kind !== 'auto' && s.alignSelf !== 'auto' && s.alignSelf !== 'normal') unsupported('abspos-self-alignment', box.id, 'css-position-3 §4.4', `align-self: ${s.alignSelf} between two insets (not yet supported)`);
+}
+
+function outOfFlowItem(ctx: Ctx, grid: GridState, box: LayoutBox): GridOutOfFlow {
+  checkInsetAlignment(box);
+  const inlineEdge = outOfFlowEdge(ctx, grid, box, 'columns');
+  const blockEdge = outOfFlowEdge(ctx, grid, box, 'rows');
+  const gi = box.style.gridItem;
+  // Blink IsAbsoluteContainer: only a positioned grid container is the containing block, whose rectangle is the grid area.
+  if (grid.style.position === 'static' || gi === null) return { box, inlineStart: null, inlineEnd: null, blockStart: null, blockEnd: null, inlineEdge, blockEdge };
+  const columns = outOfFlowLines(ctx, outOfFlowSpan(grid.columnTracks, gi.column, ctx.gridFaults), grid.columnStartOffset, grid.columns);
+  const rows = outOfFlowLines(ctx, outOfFlowSpan(grid.rowTracks, gi.row, ctx.gridFaults), grid.rowStartOffset, grid.rows);
+  return {
+    box,
+    inlineStart: trackStartOffset(ctx, grid.columns, columns.start),
+    inlineEnd: trackEndOffset(ctx, grid.columns, columns.end),
+    blockStart: trackStartOffset(ctx, grid.rows, rows.start),
+    blockEnd: trackEndOffset(ctx, grid.rows, rows.end),
+    inlineEdge,
+    blockEdge,
+  };
+}
+
+/** Blink GridLayoutTrackCollection::EndLineOfImplicitGrid. */
+function endLineOfImplicitGrid(c: GridCollection): number {
+  if (c.ranges.length === 0) return 0;
+  const last = c.ranges[c.ranges.length - 1] as GridRange;
+  return last.startLine + last.trackCount;
+}
+
+/**
+ * The first half of Blink GridPlacement::ResolveOutOfFlowItemGridLines for lines the engine resolves (an axis with an automatic
+ * repeater): the grid's own line resolver with its automatic repetitions, clamped as GridSpan is, then a side written auto is no
+ * line. The compiler does the same for every other axis and writes start-line or end-line.
+ */
+function outOfFlowSpan(a: GridAxisTracks, s: GridSpan, faults: GridFaults): GridSpan {
+  if (s.kind !== 'lines') return s;
+  const r = resolveLines(a, s.start, s.end, faults);
+  if (r.kind !== 'definite') return r;
+  const c = clampSpan(r);
+  if (s.start.kind === 'auto') return { kind: 'end-line', line: c.end };
+  if (s.end.kind === 'auto') return { kind: 'start-line', line: c.start };
+  return { kind: 'definite', start: c.start, end: c.end };
+}
+
+/** Blink GridPlacement::ResolveOutOfFlowItemGridLines: translated lines, NOT_FOUND for an auto line or one outside the implicit grid. */
+function outOfFlowLines(ctx: Ctx, span: GridSpan, startOffset: number, c: GridCollection): GridLines {
+  const last = endLineOfImplicitGrid(c);
+  const within = (line: number): number => {
+    if (line >= 0 && line <= last) return line;
+    if (!ctx.gridFaults.absposBeyondGridClamped) return NOT_FOUND;
+    return line < 0 ? 0 : last;
+  };
+  switch (span.kind) {
+    case 'auto':
+      return { start: NOT_FOUND, end: NOT_FOUND };
+    case 'definite':
+      return { start: within(span.start + startOffset), end: within(span.end + startOffset) };
+    case 'start-line':
+      return { start: within(span.line + startOffset), end: NOT_FOUND };
+    case 'end-line':
+      return { start: NOT_FOUND, end: within(span.line + startOffset) };
+    case 'lines':
+      throw new Error('outOfFlowSpan resolves engine-resolved lines first');
+  }
+}
+
+/** Blink TrackStartOffset: null for NOT_FOUND; the last line of the grid snaps to its last track's end. */
+function trackStartOffset(ctx: Ctx, c: GridCollection, line: number): LU | null {
+  if (line === NOT_FOUND) return null;
+  if (c.ranges.length === 0) return setOffset(c, 0);
+  const last = c.ranges.length - 1;
+  const index = line < endLineOfImplicitGrid(c) ? rangeIndexFromLine(c, line) : last;
+  const r = c.ranges[index] as GridRange;
+  const offset = line - r.startLine;
+  return trackOffset(ctx, c, index, offset, offset === r.trackCount && index === last);
+}
+
+/** Blink TrackEndOffset: an end line snaps to the end of the track before it, except the first line of the grid. */
+function trackEndOffset(ctx: Ctx, c: GridCollection, line: number): LU | null {
+  if (line === NOT_FOUND) return null;
+  if (c.ranges.length === 0) return setOffset(c, 0);
+  const index = line > 0 ? rangeIndexFromLine(c, line - 1) : 0;
+  const offset = line - (c.ranges[index] as GridRange).startLine;
+  return trackOffset(ctx, c, index, offset, offset !== 0 || index !== 0);
+}
+
+/** Blink TrackOffset: snapping to a track's end drops the gutter after it. */
+function trackOffset(ctx: Ctx, c: GridCollection, index: number, offset: number, snapToEnd: boolean): LU {
+  const r = c.ranges[index] as GridRange;
+  const at = offset === r.trackCount ? setOffset(c, r.beginSetIndex + r.setCount) : add(setOffset(c, r.beginSetIndex), trackOffsetInRange(ctx, c, r, offset));
+  return snapToEnd && (r.setCount > 0 || index > 0) && !ctx.gridFaults.absposEndGutterKept ? sub(at, c.gutter) : at;
+}
+
+/**
+ * Blink ComputeTrackOffsetInRange (GR17): a line inside a range lies past whole repetitions of its sets; each set's tracks share
+ * its size by std::div, the first remainder tracks taking one unit more.
+ */
+function trackOffsetInRange(ctx: Ctx, c: GridCollection, r: GridRange, offset: number): LU {
+  if (r.setCount === 0 || offset === 0) return ZERO;
+  const whole = intDiv(offset, r.setCount);
+  const extra = intMod(offset, r.setCount);
+  let at = mulInt(c.gutter, offset);
+  for (let i = 0; i < r.setCount; i++) {
+    const set = r.beginSetIndex + i;
+    const tracks = (c.sets[set] as GridSet).trackCount;
+    const size = clampNegativeToZero(sub(sub(setOffset(c, set + 1), setOffset(c, set)), mulInt(c.gutter, tracks)));
+    const quotient = divInt(size, tracks);
+    const remainder = sub(size, mulInt(quotient, tracks));
+    const n = whole + (extra > i ? 1 : 0);
+    at = add(at, add(mulInt(quotient, n), ctx.gridFaults.absposMidSetEven ? ZERO : minLu(fromRaw(n), remainder)));
+  }
+  return at;
+}
+
+function staticAlong(start: LU, size: LU, edge: GridAxisEdge): LU {
+  if (edge === 'center') return add(start, divInt(size, 2));
+  return edge === 'end' ? add(start, size) : start;
+}
+
+/**
+ * Blink PlaceOutOfFlowItems with the container's border box: a positioned container is the containing block, with the grid area
+ * (an auto line at the padding edge) as its rectangle; otherwise the static position aligns in the content box. The static
+ * position is the rectangle's start, its centre (LayoutUnit / 2) or its end, by the child's self position.
+ */
+export function gridOutOfFlow(ctx: Ctx, box: LayoutBox, pending: readonly GridOutOfFlow[], width: LU, height: LU, pad: Edges, bor: Edges): OutOfFlow[] {
+  const rtl = directionOf(ctx, box) === 'rtl';
+  const bsp = logicalBsp(pad, bor, rtl);
+  const edges = ctx.gridFaults.absposAutoLineContentEdge ? bsp : logicalBsp({ top: ZERO, right: ZERO, bottom: ZERO, left: ZERO }, bor, rtl);
+  const positioned = box.style.position !== 'static';
+  return pending.map((p): OutOfFlow => {
+    const inlineStart = !positioned ? bsp.left : p.inlineStart === null ? edges.left : p.inlineStart;
+    const inlineEnd = !positioned ? sub(width, bsp.right) : p.inlineEnd === null ? sub(width, edges.right) : p.inlineEnd;
+    const blockStart = !positioned ? bsp.top : p.blockStart === null ? edges.top : p.blockStart;
+    const blockEnd = !positioned ? sub(height, bsp.bottom) : p.blockEnd === null ? sub(height, edges.bottom) : p.blockEnd;
+    const inlineSize = clampNegativeToZero(sub(inlineEnd, inlineStart));
+    const blockSize = clampNegativeToZero(sub(blockEnd, blockStart));
+    const u = staticAlong(inlineStart, inlineSize, p.inlineEdge);
+    const edge: StaticEdge = p.inlineEdge === 'center' ? 'center' : (p.inlineEdge === 'start') !== rtl ? 'near' : 'far';
+    const x: StaticAxis = { offset: rtl ? sub(width, u) : u, edge };
+    const y: StaticAxis = { offset: staticAlong(blockStart, blockSize, p.blockEdge), edge: p.blockEdge === 'start' ? 'near' : p.blockEdge === 'end' ? 'far' : 'center' };
+    const area: AreaRect | null = positioned ? { x: rtl ? sub(sub(width, inlineStart), inlineSize) : inlineStart, y: blockStart, width: inlineSize, height: blockSize } : null;
+    return { box: p.box, x, y, area };
+  });
+}
+
+/** Blink AlignmentOffset (layout_utils.cc): unsafe unless auto margins align (Chrome deviation grid-default-self-overflow-unsafe). */
+function alignmentOffset(ctx: Ctx, container: LU, size: LU, marginStart: LU, marginEnd: LU, edge: GridAxisEdge, safe: boolean): LU {
+  const overflow = sub(sub(sub(container, size), marginStart), marginEnd);
+  const free = safe ? clampNegativeToZero(overflow) : overflow;
+  if (edge === 'start') return marginStart;
+  if (edge === 'center') return add(marginStart, ctx.gridFaults.centerFloors ? floorHalf(free) : divInt(free, 2));
+  return add(marginStart, free);
+}
+
+/** Planted fault gridCenterFloors: half the free space rounded toward negative infinity. */
+function floorHalf(v: LU): LU {
+  const t = divInt(v, 2);
+  return mulInt(t, 2) === v || v >= 0 ? t : sub(t, 1 as LU);
+}
+
+// ---- Intrinsic inline sizes (Blink GridLayoutAlgorithm::ComputeMinMaxSizes, GR18) ------------------------------------------
+
+/** css-grid-2 §12.1 with css-sizing-3 §5: the grid container's min- or max-content inline size, content box. */
+export function gridIntrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max'): LU {
+  const s = box.style;
+  const pad = resolvePadding(s, ZERO);
+  const bor = resolveBorder(s, ctx.devicePixelRatio);
+  const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
+  const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
+  const height = s.height.kind === 'px' ? contentBox(borderBoxFromSpecified(fromCssPx(s.height.value), vbp, s.boxSizing), vbp) : null;
+  const blockMm: MinMax = {
+    min: s.minHeight.kind === 'px' ? contentBox(borderBoxFromSpecified(fromCssPx(s.minHeight.value), vbp, s.boxSizing), vbp) : ZERO,
+    max: s.maxHeight.kind === 'px' ? contentBox(borderBoxFromSpecified(fromCssPx(s.maxHeight.value), vbp, s.boxSizing), vbp) : null,
+  };
+  const inlineMm: MinMax = {
+    min: s.minWidth.kind === 'px' ? contentBox(borderBoxFromSpecified(fromCssPx(s.minWidth.value), hbp, s.boxSizing), hbp) : ZERO,
+    max: s.maxWidth.kind === 'px' ? contentBox(borderBoxFromSpecified(fromCssPx(s.maxWidth.value), hbp, s.boxSizing), hbp) : null,
+  };
+  const available = availableFrom(null, height, blockMm, inlineMm);
+  const grid = buildGrid(ctx, box, pad, bor, available);
+  const constraint: GridSizing = kind === 'min' ? 'min-content' : 'max-content';
+  initializeTrackSizes(ctx, grid, 'columns');
+  initializeTrackSizes(ctx, grid, 'rows');
+  const again = completeTrackSizing(ctx, grid, 'columns', constraint, false);
+  if (again || grid.items.some((i) => i.sizingDependsOnBlockSize)) {
+    const more = completeTrackSizing(ctx, grid, 'rows', constraint, !again);
+    if (more || again) {
+      initializeTrackSizes(ctx, grid, 'columns');
+      completeTrackSizing(ctx, grid, 'columns', constraint, false);
+    }
+  }
+  const span = fullSpanSize(grid.columns);
+  return span === INDEFINITE ? ZERO : span;
+}
+
+export type { Direction };
