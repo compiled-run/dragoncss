@@ -8,6 +8,7 @@ import { USER_MODIFY } from './fixture-groups/user-modify.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
+import { BG_CLIP_TEXT } from './fixture-groups/bg-clip-text.ts';
 import { BG_POSITION } from './fixture-groups/bg-position.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_IMAGE } from './fixture-groups/border-image.ts';
@@ -157,6 +158,7 @@ export const GROUPS = {
   'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
+  'bg-clip-text': BG_CLIP_TEXT,
   'bg-position': BG_POSITION,
   'block-elements': BLOCK_ELEMENTS,
   'border-image': BORDER_IMAGE,
