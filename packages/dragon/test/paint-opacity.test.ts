@@ -186,23 +186,23 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
       if (w === undefined || w.kind !== 'background-color') throw new Error(`${css}: no background write`);
       return w.folded === true;
     };
-    // The fixtures' shapes: leaves in a column, and leaves in a row of a column of rows.
-    expect(folded('')).toBe(true);
-    expect(folded('.b { position: relative; top: 0; left: 0px; }')).toBe(true);
-    const rows: Tree = (r) => [div(r, 'a', ['a'], [div(r, 'r1', ['row'], [div(r, 's', ['s'])]), div(r, 'r2', ['row'], [div(r, 'x', ['s']), div(r, 'b', ['b'])])])];
-    expect(folded('.a { display: flex; flex-direction: column; row-gap: 4px; background-color: rgb(40, 60, 80); } .row { display: flex; } .s { width: 8px; }', rows)).toBe(true);
+    const lone: Tree = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])];
+    // Nothing but the box and its ancestors paints: the backdrop is their colours wherever layout puts the box.
+    expect(folded('', lone)).toBe(true);
+    expect(folded('.a { background-color: rgb(40, 60, 80); padding: 4px; } .b { position: relative; top: -5px; }', lone)).toBe(true);
+    expect(folded('.s { background-color: transparent; }')).toBe(true);
     // 1-3: an ancestor's gradient, border or inset shadow can lie under the fill.
-    expect(folded('.a { background-image: linear-gradient(rgb(255, 0, 0), rgb(0, 0, 255)); }')).toBe(false);
-    expect(folded('.a { border: 4px solid rgb(0, 0, 0); } .b { margin-top: -4px; }')).toBe(false);
-    expect(folded('.a { box-shadow: inset 0 0 4px rgb(255, 0, 0); }')).toBe(false);
-    // 4: a negative margin or an offset moves the box over the earlier sibling's fill.
+    expect(folded('.a { background-image: linear-gradient(rgb(255, 0, 0), rgb(0, 0, 255)); }', lone)).toBe(false);
+    expect(folded('.a { border: 4px solid rgb(0, 0, 0); } .b { margin-top: -4px; }', lone)).toBe(false);
+    expect(folded('.a { box-shadow: inset 0 0 4px rgb(255, 0, 0); }', lone)).toBe(false);
+    // 4: any other box that paints may lie under it, however flow, a margin, an offset, a wrap or a shrink places them.
+    expect(folded('')).toBe(false);
     expect(folded('.b { margin-top: -5px; }')).toBe(false);
     expect(folded('.b { position: relative; top: -5px; }')).toBe(false);
     expect(folded('.b { position: absolute; top: 0; }')).toBe(false);
-    // A sibling's text, a sibling container whose fixed height lets its content out, or a row container beside a painted box.
+    expect(folded('.a { display: flex; flex-direction: column; flex-wrap: wrap; height: 10px; width: 100px; } .s { width: 80px; } .b { height: 10px; }')).toBe(false);
+    // A sibling's text paints too.
     expect(folded('.a { font-family: Ahem; font-size: 16px; line-height: 16px; }', (r) => [div(r, 'a', ['a'], [div(r, 't', [], [text(r, 'tx', 'X')]), div(r, 'b', ['b'])])])).toBe(false);
-    expect(folded('.t { height: 1px; }', (r) => [div(r, 'a', ['a'], [div(r, 't', ['t'], [div(r, 's', ['s'])]), div(r, 'b', ['b'])])])).toBe(false);
-    expect(folded('.a { display: flex; } .s { width: 8px; }', (r) => [div(r, 'a', ['a'], [div(r, 's', ['s']), div(r, 'w', [], [div(r, 'b', ['b'])])])])).toBe(false);
   });
   it("the lowering's alpha byte is @dragon/layout's opacityAlpha8", () => {
     const vals: number[] = [];
