@@ -589,7 +589,7 @@ export type PercentRefusal = { readonly reason: string; readonly fix: string };
 export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal } | { readonly type: 'number' };
 
 const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'font-weight', 'stroke-miterlimit']);
-const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height', 'font']);
+const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font']);
 /**
  * Border, outline and column-rule widths are a <line-width>, which has no percentage (css-backgrounds-3 §3.3, css-ui-4 §3.2,
  * css-multicol-1 §4.2), so a calculation with one is invalid and Chrome drops the declaration: Chrome 145.0.7632.6 gives
@@ -1222,6 +1222,37 @@ function lowerPlain(n: MathNode, fonts: MathFonts, faults: MathFaults): CalcExpr
 /** A math function in a length property, for the engine. */
 export function lowerLengthCalc(n: MathNode, fonts: MathFonts, range: LengthCalc['range'], faults: MathFaults = NO_MATH_FAULTS): LengthCalc {
   return { kind: 'calc', expr: lowerMathNode(n, fonts, faults), range };
+}
+
+/** Whether a calculation's type reduces to a percentage alone (calc(50%), max(50%, 40%)): Blink's CSSPrimitiveValue::IsPercentage. */
+export function isPercentMath(n: MathNode): boolean {
+  return (isLit(n) ? unitCategory(n.unit) : n.category) === 'percent';
+}
+
+/** The px each em, rem and % of a calculation folded at build time reads (foldLength). */
+export type FoldBases = { readonly em: number; readonly rem: number; readonly percent: number };
+
+/** The units a calculation that is folded at build time may hold: numbers, %, em, rem and the absolute lengths. */
+export function foldableUnits(n: MathNode): boolean {
+  if (!isLit(n)) return n.args.every(foldableUnits);
+  return n.unit === '' || n.unit === '%' || n.unit === 'em' || n.unit === 'rem' || pxPer(n.unit) !== null;
+}
+
+/**
+ * A length calculation of foldable units (foldableUnits) folded to px in double: an em or rem leaf is value times its font size, a
+ * percentage that share of bases.percent (css-values-4 §10.10, the font-size and line-height cases).
+ */
+export function foldLength(n: MathNode, bases: FoldBases): number {
+  if (isLit(n)) {
+    if (n.unit === '') return n.value;
+    if (n.unit === '%') return (n.value * bases.percent) / 100;
+    if (n.unit === 'em') return n.value * bases.em;
+    if (n.unit === 'rem') return n.value * bases.rem;
+    const k = pxPer(n.unit);
+    if (k === null) throw new Error(`${n.unit} is not a foldable unit`);
+    return n.value * k;
+  }
+  return evaluateOperator(n.args.map((a) => foldLength(a, bases)), n.op);
 }
 
 /** A constant number calculation, folded in double (Blink CSSMathFunctionValue::ComputeNumber). */

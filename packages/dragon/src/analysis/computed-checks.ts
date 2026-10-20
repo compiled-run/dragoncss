@@ -8,6 +8,7 @@ import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf, isMathValue } from '../css/values.ts';
+import { isPercentMath, mathContextFor, parseMath } from '../css/math.ts';
 import type { CssValue, FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
@@ -768,6 +769,15 @@ function textMarkerRefusal(el: ResolvedElement, ancestors: readonly ResolvedElem
   return null;
 }
 
+/** A font-size calculation whose type reduces to a percentage, which Chrome's ConvertFontSize treats as a percentage. */
+function isPercentFontSizeMath(v: CssValue): boolean {
+  if (!isMathValue(v) || v.kind !== 'other') return false;
+  const context = mathContextFor('font-size');
+  if ('refused' in context) return false;
+  const parsed = parseMath(v.text, context);
+  return parsed.ok && isPercentMath(parsed.node);
+}
+
 /** Chrome's font-relative length units but rem (CSSPrimitiveValue::IsFontRelativeLength): a font-size in them keeps the parent's absoluteness. */
 const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 'rex', 'ch', 'rch', 'ic', 'ric', 'lh', 'rlh', 'cap', 'rcap']);
 
@@ -791,11 +801,11 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const tag = el.element.tag;
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     const size = el.props.get('font-size') as ResolvedValue;
-    // A percentage, smaller, larger and a font-relative length other than rem (em, ex, ch, ic, lh, cap and their root forms) keep
-    // the parent's absoluteness; any other length and a math function are absolute (style_builder_converter.cc ConvertFontSize,
+    // A percentage (a calculation whose type is a percentage alone among them), smaller, larger and a font-relative length other
+    // than rem (em, ex, ch, ic, lh, cap and their root forms) keep the parent's absoluteness; any other length and math function are absolute (style_builder_converter.cc ConvertFontSize,
     // 928-974); an <absolute-size> keyword is never absolute.
     const declared = size.origin === 'author' ? size.declared : null;
-    const relative = declared !== null && (declared.kind === 'percentage' || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
+    const relative = declared !== null && (declared.kind === 'percentage' || isPercentFontSizeMath(declared) || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
     const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
     const keyed = uaRows(ua, uaTagOf(tag)).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
