@@ -124,7 +124,8 @@ export function compareHits(n: NativeCase, c: HitCapture, faults: HitFaults = NO
   const chrome = capturedIds(c);
   const prepared = prepareHit(t.nodes, faults);
   grid.forEach(([x, y], i) => {
-    const dragon = t.ids[hitAt(prepared, x, y)] as string;
+    // Chrome's elementFromPoint names a ::before or ::after box's originating element (GEN), which is also the node a tap there targets.
+    const dragon = (t.ids[hitAt(prepared, x, y)] as string).replace(/::(before|after)$/, '');
     if (dragon !== chrome[i]) mismatches.push({ case: n.case.id, x, y, chrome: chrome[i] as string, dragon });
   });
   return { points: c.points, mismatches, stale };
