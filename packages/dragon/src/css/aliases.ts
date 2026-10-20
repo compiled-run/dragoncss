@@ -6,8 +6,8 @@
 // refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing,
 // css_parsing_utils.cc ConsumePerspective), and -webkit-perspective a unitless length (longhands_custom.cc
 // Perspective::ParseSingleValue). The other aliases Chrome parses with UseAliasParsing (-webkit-background-origin,
-// -webkit-background-size, -webkit-appearance) wait for their property's lane, the -webkit-mask-*
-// aliases are the mask family's (aliases/mask.ts),
+// -webkit-background-size) wait for their property's lane, -webkit-appearance is the appearance family's (aliases/appearance.ts), the
+// -webkit-mask-* aliases are the mask family's (aliases/mask.ts),
 // -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
 // family's own shorthand (properties/radius.ts), -webkit-border-image the border image family's (properties/border-image.ts),
 // -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
@@ -18,6 +18,7 @@ import { isLonghand, isShorthand } from './properties.ts';
 import type { AnimLonghand } from './properties/animation.ts';
 import { isAnimationProperty } from './properties/animation.ts';
 import { ANIMATION_ALIASES } from './aliases/animation.ts';
+import { APPEARANCE_ALIASES } from './aliases/appearance.ts';
 import { BACKGROUND_LAYERS_ALIASES } from './aliases/background-layers.ts';
 import { BOX_ALIASES } from './aliases/box.ts';
 import { EFFECTS_ALIASES } from './aliases/effects.ts';
@@ -35,6 +36,7 @@ import { TRANSFORM_EXTRA_ALIASES } from './aliases/transform-extra.ts';
 /** Each family's aliases, one line per family, sorted by family id (test/registry-claims.test.ts). */
 export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: string]: Longhand | Shorthand | AnimLonghand | 'transition' | 'animation' } } = {
   animation: ANIMATION_ALIASES,
+  appearance: APPEARANCE_ALIASES,
   'background-layers': BACKGROUND_LAYERS_ALIASES,
   box: BOX_ALIASES,
   effects: EFFECTS_ALIASES,

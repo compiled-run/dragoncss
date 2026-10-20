@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --s: 3px 5px; }
+.box { width: 80px; height: 10px; background-color: rgb(40, 90, 200); }
+.bc { border-collapse: collapse; }
+.bs { border-collapse: separate; }
+.s0 { border-spacing: 0; }
+.s4 { border-spacing: 4px; }
+.s2 { border-spacing: 1em 2rem; }
+.sc { border-spacing: calc(1px + 0.5em) 2px; }
+.sv { border-spacing: var(--s); }
+.sh { -webkit-border-horizontal-spacing: 6px; }
+.svt { -webkit-border-vertical-spacing: 0.3em; }
+.tl { table-layout: fixed; }
+.ta { table-layout: auto; }
+.cb { caption-side: bottom; }
+.ct { caption-side: top; }
+.eh { empty-cells: hide; }
+.es { empty-cells: show; }
+.up { BORDER-COLLAPSE: Collapse; TABLE-LAYOUT: FIXED; }
+.par { border-collapse: collapse; border-spacing: 2em 7px; caption-side: bottom; empty-cells: hide; table-layout: fixed; width: 120px; padding: 2px; font-size: 20px; background-color: rgb(200, 60, 40); }
+.kid { width: 60px; height: 10px; font-size: 10px; }
+.inh { table-layout: inherit; }
+.ini { border-collapse: initial; border-spacing: initial; caption-side: initial; empty-cells: initial; }
+.uns { border-collapse: unset; border-spacing: unset; table-layout: unset; }
+.f { display: flex; width: 200px; height: 20px; border-spacing: 5px; }
+.fi { width: 60px; height: 20px; border-collapse: collapse; table-layout: fixed; background-color: rgb(20, 160, 80); }
+.rel { position: relative; width: 60px; height: 20px; }
+.abs { position: absolute; left: 4px; top: 2px; width: 20px; height: 10px; border-spacing: 9px; caption-side: bottom; }
+.sp { border-spacing: 8px; empty-cells: hide; table-layout: fixed; }
+.blk { display: block; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="bc" class="box bc">X</div>
+<div data-dragon-id="bs" class="box bs">X</div>
+<div data-dragon-id="s0" class="box s0">X</div>
+<div data-dragon-id="s4" class="box s4">X</div>
+<div data-dragon-id="s2" class="box s2">X</div>
+<div data-dragon-id="sc" class="box sc">X</div>
+<div data-dragon-id="sv" class="box sv">X</div>
+<div data-dragon-id="sh" class="box sh svt">X</div>
+<div data-dragon-id="tl" class="box tl">X</div>
+<div data-dragon-id="ta" class="box ta">X</div>
+<div data-dragon-id="cb" class="box cb">X</div>
+<div data-dragon-id="ct" class="box ct">X</div>
+<div data-dragon-id="eh" class="box eh">X</div>
+<div data-dragon-id="es" class="box es">X</div>
+<div data-dragon-id="up" class="box up">X</div>
+<div data-dragon-id="par" class="par"><div data-dragon-id="kid" class="kid">XX</div><div data-dragon-id="inh" class="kid inh">X</div><div data-dragon-id="ini" class="kid ini">X</div><div data-dragon-id="uns" class="kid uns">X</div></div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXX</div><div data-dragon-id="f2" class="fi">X</div></div>
+<div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs">X</div></div>
+<ul data-dragon-id="ul" class="s4"><li data-dragon-id="li" class="bc blk">XX</li></ul>
+<div data-dragon-id="t">XX <span data-dragon-id="sp" class="sp">XX</span> X</div>
+</body>
+</html>

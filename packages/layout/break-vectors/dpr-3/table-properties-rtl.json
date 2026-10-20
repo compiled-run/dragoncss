@@ -1,0 +1,32 @@
+{
+  "case": "table-properties-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"bc:text0","lines":[[0,1]]},
+    {"id":"bs:text0","lines":[[0,1]]},
+    {"id":"s0:text0","lines":[[0,1]]},
+    {"id":"s4:text0","lines":[[0,1]]},
+    {"id":"s2:text0","lines":[[0,1]]},
+    {"id":"sc:text0","lines":[[0,1]]},
+    {"id":"sv:text0","lines":[[0,1]]},
+    {"id":"sh:text0","lines":[[0,1]]},
+    {"id":"tl:text0","lines":[[0,1]]},
+    {"id":"ta:text0","lines":[[0,1]]},
+    {"id":"cb:text0","lines":[[0,1]]},
+    {"id":"ct:text0","lines":[[0,1]]},
+    {"id":"eh:text0","lines":[[0,1]]},
+    {"id":"es:text0","lines":[[0,1]]},
+    {"id":"up:text0","lines":[[0,1]]},
+    {"id":"kid:text0","lines":[[0,2]]},
+    {"id":"inh:text0","lines":[[0,1]]},
+    {"id":"ini:text0","lines":[[0,1]]},
+    {"id":"uns:text0","lines":[[0,1]]},
+    {"id":"f1:text0","lines":[[0,4]]},
+    {"id":"f2:text0","lines":[[0,1]]},
+    {"id":"li:text0","lines":[[0,2]]},
+    {"id":"t:text0","lines":[[0,3]]},
+    {"id":"sp:text0","lines":[[0,2]]},
+    {"id":"t:text1","lines":[[0,2]]},
+    {"id":"abs:text0","lines":[[0,1]]}
+  ]
+}
