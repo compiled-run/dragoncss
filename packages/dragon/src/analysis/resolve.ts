@@ -19,6 +19,8 @@ import { uaTagOf } from './elements.ts';
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
+import type { BlockInInlineChild } from './block-in-inline.ts';
+import { blockInInlineBlocker, isBlockInInline, markBlockInInline } from './block-in-inline.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { TransformItem } from './text-transform.ts';
 import { textTransformOf, transformRun } from './text-transform.ts';
@@ -226,6 +228,15 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
+/** A child of an inline box as blockInInlineBlocker reads it. */
+export function blockInInlineChild(k: ResolvedElement | { readonly kind: 'text'; readonly text: string }): BlockInInlineChild {
+  if (k.kind === 'text') return { kind: 'text', blank: /^[ \t\n]*$/u.test(k.text) };
+  if (isBlockInInline(k)) return { kind: 'nested', address: k.element.address };
+  const d = displayOf(k);
+  if (d === 'none') return { kind: 'none' };
+  return isInlineBox(k) || isAtomicInline(k) || d === 'contents' || d.startsWith('inline') ? { kind: 'inline-level' } : { kind: 'block' };
+}
+
 /** css-variables-1 §2: every resolved element's computed custom properties (ANIM-v substitutes transition and animation values with them). */
 const RESOLVED_CUSTOMS = new WeakMap<ResolvedElement, CustomProperties>();
 
@@ -359,6 +370,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
     const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
+    // BII: an inline box that holds only block-level boxes, with no box of its own, lays out as their block box (block-in-inline.ts).
+    if (parent !== null && isInlineBox(self) && blockInInlineBlocker(props, kids.map(blockInInlineChild), environment.ua) === null) {
+      props.set('display', { ...(props.get('display') as ResolvedValue), value: { kind: 'keyword', value: 'block' } });
+      markBlockInInline(self);
+    }
     // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it.
     if (parent !== null && isInlineBox(self)) {
       pendingInline.set(self, kids);

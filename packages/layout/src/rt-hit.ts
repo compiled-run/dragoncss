@@ -593,7 +593,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   let pe = inherited;
   let own = target;
   let act = false;
-  if (b.boxType === 'element') {
+  if (b.boxType !== 'anonymous') {
     const f = s.facts.get(b.id);
     if (f === undefined) throw new HitError(`no hit facts for element ${b.id}`);
     pe = s.faults.pointerEventsNotInherited && f.inherited ? 'auto' : f.pointerEvents;

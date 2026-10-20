@@ -350,6 +350,19 @@ function collapsed(s: Strut): LU {
   return add(s.positive, s.negative);
 }
 
+/**
+ * BII (CSS2 §9.2.1.1, Blink LayoutNG block-in-inline, measured against Chrome 145): an inline box holding only block-level boxes,
+ * laid out as their block box, is three fragments of its block container's inline formatting context: an empty line at its line
+ * start edge and top, the line holding the blocks (its border box), and an empty line at its line start edge below the margin
+ * that collapses out of its bottom. The lines are zero-size boxes <id>:line0..2, as an inline box's fragments are.
+ */
+function withBlockInInlineLines(frag: Frag, end: Strut, direction: Direction): Frag {
+  const start = direction === 'rtl' ? frag.width : ZERO;
+  const line = (j: number, x: LU, y: LU, width: LU, height: LU): Placed => ({ frag: { id: `${frag.id}:line${j}`, width, height, baseline: null, children: [], outOfFlow: [], inflow: null }, x, y });
+  const lines = [line(0, start, ZERO, ZERO, ZERO), line(1, ZERO, ZERO, frag.width, frag.height), line(2, start, add(frag.height, collapsed(end)), ZERO, ZERO)];
+  return { id: frag.id, width: frag.width, height: frag.height, baseline: frag.baseline, children: [...frag.children, ...lines], outOfFlow: frag.outOfFlow, inflow: frag.inflow };
+}
+
 // css-align-3 §9.1 with css-overflow-3 §3: a scroll container's baseline is clamped to its border box (measured, notes/T035-slice-4a.md).
 function clampScrollBaseline(box: LayoutBox, baseline: LU | null, height: LU): LU | null {
   if (baseline === null || !isScrollContainer(box.style)) return baseline;
@@ -752,7 +765,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     }
     // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
     const offset = relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults);
-    placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
+    const frag = kid.kind === 'box' && kid.boxType === 'block-in-inline' ? withBlockInInlineLines(at.frag, c.escapeBottom, direction) : at.frag;
+    placed.push({ frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
     if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
   }
   if (clampsLines(box, defaultLastBaseline)) {

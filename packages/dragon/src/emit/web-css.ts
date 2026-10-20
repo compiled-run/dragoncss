@@ -21,6 +21,7 @@ import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';
 import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';
 import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';
+import { isBlockInInline } from '../analysis/block-in-inline.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
 import { parseFamilyList } from '../fonts/family-list.ts';
@@ -210,7 +211,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     if (p === 'color' && underSource && r.origin === 'inherited') return '  color: inherit;';
     if (p === 'color' && r.origin === 'user-agent') return '  color: revert;';
     // TXT2-g: a line-clamp container writes its authored -webkit-box (analysis/line-clamp.ts).
-    const legacy = p === 'display' ? webDisplayOf(el, { webkitBoxEmittedAsFlowRoot }) : null;
+    // BII: an inline box laid out as the block box of its blocks keeps its computed inline (analysis/block-in-inline.ts).
+    const legacy = p === 'display' ? (isBlockInInline(el) ? 'inline' : webDisplayOf(el, { webkitBoxEmittedAsFlowRoot })) : null;
     if (legacy !== null) return `  display: ${legacy};`;
     const v = r.value;
     // A folded order calculation that is not a whole number stays a calculation, which Chrome rounds as the engine does.

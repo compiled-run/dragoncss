@@ -58,7 +58,8 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { environmentOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, valueToString } from './resolve.ts';
+import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
@@ -316,7 +317,7 @@ function checkRtlAtomics(el: ResolvedElement, run: readonly IfcItem[], diagnosti
 // CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
 // element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
 // and runs with different text-wrap-mode in one formatting context.
-function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
+function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, ua: UaDataset): void {
   if (isInlineBox(el)) return;
   const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
   const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string): void => {
@@ -328,6 +329,13 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     }
   };
   const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual);
+  // BII: the engine places an inline box laid out as its blocks' block box with empty lines of its own, which a line of text or
+  // inline content beside it would hold instead (block-in-inline.ts).
+  const besideInline = el.children.some((c) => (c.kind === 'text' && c.text.trim() !== '') || (c.kind === 'element' && displayKeyword(c) !== 'none' && (isInlineBox(c) || isAtomic(c))));
+  for (const c of el.children) {
+    if (c.kind !== 'element' || !isBlockInInline(c) || !besideInline) continue;
+    refuse(c, 'block-in-inline-beside', `the inline box <${c.element.tag}> ${c.element.address} holds block-level boxes beside the text or inline content of ${el.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out yet (package BII)`, `Wrap the text beside ${c.element.address} in its own block, or make ${c.element.address} a block.`);
+  }
   // INL2c: an atomic inline inside an inline box, or beside text in a real face (Blink's LineBreaker for it is not ported).
   const unproven = (at: ResolvedElement, what: string, message: string, manual: string): void => {
     for (const t of targets) {
@@ -342,7 +350,9 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       unproven(child, 'in-inline-box', `${displayKeyword(child)} <${child.element.tag}> ${child.element.address} is an atomic inline inside the inline box <${box.element.tag}> ${box.element.address}; atomic inlines are proven only directly in their block container (INL2c)`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}.`);
       return;
     }
-    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`);
+    // BII: the resolver already made an inline box with no box of its own around only blocks a block (block-in-inline.ts).
+    const why = blockInInlineBlocker(box.props, box.children.map(blockInInlineChild), ua);
+    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon lays out only when the inline box holds nothing but block-level boxes and has no box of its own (here ${why ?? 'it does'}; package BII)`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`);
   });
   for (const run of runs) {
     const realText = run.find((it) => it.kind === 'text' && realFaceAt(it.text.node.address));
@@ -1198,7 +1208,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
-      checkInline(el, targets, diagnostics, reported, shapedAt);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
       // TXT-FONTFEAT: font-variant features over real faces (analysis/font-variant.ts).

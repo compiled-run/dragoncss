@@ -58,6 +58,7 @@ import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replace
 import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
 import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
+import { isBlockInInline } from '../analysis/block-in-inline.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -671,5 +672,5 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   // A line strut only when the box holds inline content: a block-level replaced leaf is a box of its own, not a line (REPL-a with
   // INL1a); an atomic inline is on a line (INL2a, RF-INL).
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
+  return { kind: 'box', id, boxType: isBlockInInline(el) ? 'block-in-inline' : 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
 }

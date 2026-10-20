@@ -425,8 +425,12 @@ export type TextLeaf = {
   readonly smallCaps: boolean;
 };
 
-/** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */
-export type BoxType = 'element' | 'anonymous';
+/**
+ * element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4).
+ * block-in-inline: an inline box the compiler lays out as the block box of the block-level boxes it alone holds (package BII), a
+ * block box that also places its three line fragments (block.ts withBlockInInlineLines).
+ */
+export type BoxType = 'element' | 'anonymous' | 'block-in-inline';
 
 /** css-images-3 §5.5 object-fit. */
 export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';

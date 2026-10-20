@@ -139,7 +139,7 @@ describe('refusals', () => {
     expect(ws.map((d) => `${d.code} ${String(d.target)}`).sort()).toEqual(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
   });
   it('block-in-inline and mixed text-wrap-mode in one formatting context are refused on every target', () => {
-    expect(refused((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', [], [el(r, 'd', 'div', [], [text(r, 't1', 'b')])])])]).sort()).toEqual(expect.arrayContaining(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']));
+    expect(refused((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', [], [text(r, 't2', 'c'), el(r, 'd', 'div', [], [text(r, 't1', 'b')])])])]).sort()).toEqual(expect.arrayContaining(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']));
     const wrap = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', ['nw'], [text(r, 't1', 'b c')])])]).diagnostics.filter((d) => d.message.startsWith('text-wrap-mode'));
     expect(wrap.map((d) => String(d.target)).sort()).toEqual(['ios', 'web']);
   });

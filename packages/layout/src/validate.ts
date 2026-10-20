@@ -536,7 +536,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | replaced | inline | br | text' });
     return;
   }
-  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
+  checkFields(value, { id: str, boxType: lit('element', 'anonymous', 'block-in-inline'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
   const style = value['style'];
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
@@ -552,6 +552,11 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be a computed pair: css-overflow-3 §3.1 computes visible beside hidden, auto or scroll to auto, and clip to hidden' });
   }
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
+  // BII: a block-in-inline box is a static block box of block-level boxes only (block.ts withBlockInInlineLines).
+  if (value['boxType'] === 'block-in-inline') {
+    if (!isRecord(style) || style['display'] !== 'block' || style['position'] !== 'static' || style['float'] !== 'none') errors.push({ path: `${path}.style`, code: 'bad-value', message: 'a block-in-inline box is a static, unfloated block box' });
+    if (children.some((c) => !isRecord(c) || (c['kind'] !== 'box' && c['kind'] !== 'replaced'))) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a block-in-inline box holds only block-level boxes' });
+  }
   if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
   if (isRecord(style)) checkGrid(style, children, path, errors);
 }
