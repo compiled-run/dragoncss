@@ -49,6 +49,9 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   // SVG-opacity: fill-opacity and stroke-opacity take opacity's <opacity-value>.
   ['fill-opacity', (tokens, base) => parseOpacityValue('fill-opacity', tokens, base)],
   ['stroke-opacity', (tokens, base) => parseOpacityValue('stroke-opacity', tokens, base)],
+  // SVG-inert-b: stop-opacity and flood-opacity take it too (css-color-4 §3.2, filter-effects-1 §9.2).
+  ['stop-opacity', (tokens, base) => parseOpacityValue('stop-opacity', tokens, base)],
+  ['flood-opacity', (tokens, base) => parseOpacityValue('flood-opacity', tokens, base)],
   ...Object.entries(SVG_DASH_VALUE_PARSERS),
   ...Object.entries(SVG_PAINT_ORDER_VALUE_PARSERS),
   ['box-shadow', parseBoxShadow],
