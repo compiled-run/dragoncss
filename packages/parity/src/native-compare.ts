@@ -3,7 +3,7 @@
 // edge positions within GATE_DEVICE_PX, each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX), (d) frames against snapRect of
 // the TS engine frames exactly. Tolerances are imported only.
 import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
-import { absoluteRects, LU_PER_PX, snapEdges } from '@dragon/layout';
+import { absoluteRects, LU_PER_PX, markerTextId, snapEdges } from '@dragon/layout';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from './compare.ts';
 import { GRADIENT_CHANNEL_DELTA } from './allowances/gradient.ts';
@@ -361,6 +361,9 @@ function nodeKinds(input: LayoutInput): Map<string, DumpNode['kind']> {
   };
   const walk = (b: LayoutBox): void => {
     out.set(b.id, b.boxType === 'anonymous' ? 'anonymous' : 'element');
+    // GEN-c: a list item's marker is an element node, and a text marker's text a text node (native-program.ts).
+    if (b.marker !== null) out.set(b.marker.id, 'element');
+    if (b.marker !== null && b.marker.kind === 'text') out.set(markerTextId(b.marker.id), 'text');
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
       else inline(c);

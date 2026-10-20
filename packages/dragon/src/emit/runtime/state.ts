@@ -583,6 +583,8 @@ const rgba = (c: Rgba8): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alph
  */
 export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> = new Set()): string {
   const q = (s: string): string => stringLit(lang, s);
+  // GEN-c: a text marker's text node (native-program.ts), like a symbol's marker write, is drawn on the static program only.
+  if (n.kind === 'text' && n.parent !== null && n.parent.endsWith('::marker')) throw new StateEmitError(`${n.id}: a list marker in a state program has no state-node write (GEN-c draws markers on the static program only)`);
   const writes: string[] = [];
   for (const w of n.writes) {
     switch (w.kind) {
@@ -660,6 +662,9 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
       case 'clip-path-inset':
         // MASK-CLIP: a state record holds no clip-path write; the inset clip is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a clip-path in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
+      case 'list-marker':
+        // GEN-c: a state record holds no marker write; the marker is drawn on the static program only.
+        throw new StateEmitError(`${n.id}: a list marker in a state program has no state-node write (GEN-c draws markers on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

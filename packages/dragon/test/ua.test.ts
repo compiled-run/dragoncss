@@ -118,6 +118,8 @@ describe('dependency boundaries', () => {
     const imports = [...text.matchAll(/^import .*$/gm)].map((m) => m[0]);
     expect(imports).toEqual([
       "import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';",
+      // ::marker: a list item's resolved marker color, from the resolved tree alone.
+      "import { markerOf } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",

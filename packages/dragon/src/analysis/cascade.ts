@@ -66,8 +66,8 @@ export type CascadeResult = {
   readonly scope: VarScope;
 };
 
-/** GEN-a (notes/T151-gen-spec.md R6): the cascade of a ::before or ::after box, and its host's direction, which it takes. */
-export type CascadePseudo = { readonly name: GeneratedPseudo; readonly direction: Direction };
+/** GEN-a (notes/T151-gen-spec.md R6): the cascade of a ::before, ::after or ::marker box, and its host's direction, which it takes. */
+export type CascadePseudo = { readonly name: GeneratedPseudo | 'marker'; readonly direction: Direction };
 
 /** css-variables-1 §3.1: a longhand of a declaration holding var() competes with this value until substitution. */
 const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var()', text: d.text });

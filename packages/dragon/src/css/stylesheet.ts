@@ -20,7 +20,7 @@ import { isPlaceShorthand, PLACE_SHORTHANDS, splitPlace } from './place.ts';
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { Selector } from './selectors.ts';
-import { parseSelectorList } from './selectors.ts';
+import { parseSelectorList, testsVisitState } from './selectors.ts';
 import { markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
 import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
@@ -178,7 +178,36 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
     if (parsed !== null) declarations.push(parsed);
   }
   if (selectors === null) return null;
+  checkVisitedColors(node, selectors, declarations, st.base, diagnostics);
   return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) };
+}
+
+/**
+ * The properties a visited link takes from :visited rules (Chrome 145 css_properties.json5, the -internal-visited- longhands): every
+ * other property comes from the link's unvisited style, so for them :link and :visited rules apply as to an unvisited link.
+ */
+const VISITED_COLORS: ReadonlySet<string> = new Set([
+  'color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'border-block-start-color',
+  'border-block-end-color', 'border-inline-start-color', 'border-inline-end-color', 'caret-color', 'column-rule-color', 'fill', 'outline-color',
+  'stroke', 'text-decoration-color', 'text-emphasis-color', '-webkit-text-fill-color', '-webkit-text-stroke-color',
+]);
+
+/**
+ * LINK-RT: Dragon styles every hyperlink as unvisited (selectors.ts LinkState). On the web a visited link would take its colours from
+ * :visited rules instead of :link ones, which Dragon's per-element web output does not express, so a rule that tests :link or
+ * :visited and sets one of those colours is refused on the web. Native apps keep no visit history, so it compiles there.
+ */
+function checkVisitedColors(node: CssNode, selectors: readonly Selector[], declarations: readonly Declaration[], base: Span, diagnostics: Diagnostic[]): void {
+  if (!selectors.some(testsVisitState)) return;
+  const colors = declarations.flatMap((d) => [...d.longhands.map((l) => l.property as string), ...(d.pending?.longhands ?? [])]).filter((p) => VISITED_COLORS.has(p));
+  if (colors.length === 0) return;
+  const prelude = node['prelude'] as CssNode;
+  diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+    origin: authored(spanOf(prelude, base)),
+    target: 'web',
+    message: `"${generate(prelude)}" tests whether a link was visited and sets ${[...new Set(colors)].join(', ')}: a visited link takes those colours from its :visited rules, and Dragon's web output styles every link as unvisited (LINK-RT)`,
+    manual: 'Select links with :any-link, which matches visited and unvisited links alike, or move the colours to a rule without :link or :visited.',
+  }));
 }
 
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */

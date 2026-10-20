@@ -37,6 +37,9 @@ import type {
   LineBreak,
   LineHeightValue,
   LineStrut,
+  ListMarker,
+  MarkerKind,
+  MarkerSymbol,
   MarginValue,
   NaturalSizeValue,
   ObjectFit,
@@ -144,6 +147,7 @@ import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, f
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
+import { symbolCoverage } from '../../layout/src/paint-marker.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
@@ -906,18 +910,20 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
 }
 
 function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'marker', 'children'], path);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
   const strut = field(o, 'strut', path);
+  const marker = field(o, 'marker', path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
     strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
+    marker: marker.kind === 'null' ? null : decodeMarker(marker, `${path}.marker`),
     children,
   };
 }
@@ -925,6 +931,20 @@ function decodeBox(o: JsonObj, path: string): LayoutBox {
 function decodeStrut(v: JsonValue, path: string): LineStrut {
   const o = obj(v, ['font', 'lineHeight'], path);
   return { font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeMarker(v: JsonValue, path: string): ListMarker {
+  const o = obj(v, ['id', 'kind', 'symbol', 'text', 'font', 'lineHeight'], path);
+  const symbol = field(o, 'symbol', path);
+  const text = field(o, 'text', path);
+  return {
+    id: str(field(o, 'id', path), `${path}.id`),
+    kind: lit(field(o, 'kind', path), ['symbol', 'text'], `${path}.kind`) as MarkerKind,
+    symbol: symbol.kind === 'null' ? null : (lit(symbol, ['disc', 'circle', 'square'], `${path}.symbol`) as MarkerSymbol),
+    text: text.kind === 'null' ? null : str(text, `${path}.text`),
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
+    lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
+  };
 }
 
 function decodeInline(o: JsonObj, path: string): InlineBox {
@@ -1575,6 +1595,8 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  // GEN-c: paint-marker.ts, a disc's or square's coverage over its device-px rect.
+  if (name === 'paint:marker:symbolCoverage') return numList(symbolCoverage(str(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)));
   if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
   if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
   if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));

@@ -24,6 +24,7 @@ import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
 import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
+import { DISPLAY_CONTENTS } from './fixture-groups/display-contents.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
@@ -39,7 +40,9 @@ import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LINE_CLAMP } from './fixture-groups/line-clamp.ts';
+import { LINK_PSEUDOS } from './fixture-groups/link-pseudos.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
+import { LIST_MARKERS } from './fixture-groups/list-markers.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MASK } from './fixture-groups/mask.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
@@ -176,6 +179,7 @@ export const GROUPS = {
   'color-scheme': COLOR_SCHEME,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
+  'display-contents': DISPLAY_CONTENTS,
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
@@ -191,7 +195,9 @@ export const GROUPS = {
   'inline-tags': INLINE_TAGS,
   interaction: INTERACTION,
   'line-clamp': LINE_CLAMP,
+  'link-pseudos': LINK_PSEUDOS,
   'list-items': LIST_ITEMS,
+  'list-markers': LIST_MARKERS,
   'logical-props': LOGICAL_PROPS,
   mask: MASK,
   media: MEDIA,

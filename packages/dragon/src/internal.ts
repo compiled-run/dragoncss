@@ -1,9 +1,11 @@
 // Internal entry for the parity harness, selected by the "dragon-internal" export condition. Not a public API.
+import { TRANSPARENT } from './css/color.ts';
 import type { LayoutInput } from '@dragon/layout';
 import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
+import { markerStyleOf } from './analysis/resolve.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -12,7 +14,7 @@ import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
-import { rootFontSizeOf } from './lower/ios-layout.ts';
+import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
 import type { InteractionPartition } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
@@ -177,11 +179,21 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, ElementColors>();
+  const items = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
+    items.set(el.element.address, el);
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
+  // GEN-c: a ::marker box takes its color from its ::marker rules or its item, and has its initial background (transparent) and
+  // border colours (currentcolor).
+  for (const m of listItemMarkers(c.resolved)) {
+    const item = items.get(m.address);
+    if (m.type.kind === 'none' || item === undefined) continue;
+    const color = usedColors(markerStyleOf(item)).color;
+    out.set(`${m.address}::marker`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
+  }
   return out;
 }
 
@@ -261,7 +273,9 @@ export function resolvedTextColors(compiled: object, assignment: Assignment, sta
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, Rgba8>();
+  const elements = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
+    elements.set(el.element.address, el);
     for (const ch of el.children) {
       if (ch.kind === 'element') walk(ch);
       else {
@@ -275,6 +289,12 @@ export function resolvedTextColors(compiled: object, assignment: Assignment, sta
     }
   };
   walk(c.resolved);
+  // GEN-c: a text marker's text ("<item>::marker:text0") is drawn in its ::marker's color, which it inherits.
+  for (const m of listItemMarkers(c.resolved)) {
+    const item = elements.get(m.address);
+    if (m.type.kind !== 'type' || isSymbolMarker(m.type.type) || item === undefined) continue;
+    out.set(markerTextId(`${m.address}::marker`), usedColors(markerStyleOf(item)).color);
+  }
   return out;
 }
 
@@ -371,6 +391,7 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
 // GEN-c (T151 R14): the compile-time ordinal and marker text of every list item in one case (analysis/markers.ts).
 export type { ListItemMarker, MarkerType } from './analysis/markers.ts';
 import { listItemMarkers } from './analysis/markers.ts';
+import { markerTextId } from './lower/paint/list-marker.ts';
 import type { GenCFaults } from './faults/gen-c.ts';
 
 /** The list items of one case in tree order, with their ordinals and marker text; null without a resolved case. */

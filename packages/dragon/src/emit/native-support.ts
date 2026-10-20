@@ -726,6 +726,10 @@ public final class DragonTree {
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
     var zParent: [String: String] = [:]
+    // GEN-c: each list item's zoomed marker, by its rect id.
+    var zMarkers: [String: ListMarker] = [:]
+    // GEN-c: each text marker, by its text fragment's id (marker.ts markerTextId).
+    var zMarkerTexts: [String: ListMarker] = [:]
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
     var inlineIds = Set<String>()
@@ -740,6 +744,10 @@ public final class DragonTree {
     func walk(_ b: LayoutBox) {
       zBoxes[b.id.description] = b
       zStyles[b.id.description] = b.style
+      if let m = b.marker {
+        zMarkers[m.id.description] = m
+        if m.kind.description == "text" { zMarkerTexts[m.id.description + ":text0"] = m }
+      }
       for c in b.children.items {
         if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
@@ -838,10 +846,10 @@ public final class DragonTree {
       v.frame = frame
       if let bv = v as? DragonBoxView {
         // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b) and no
-        // paddings a background reads (the compiler refuses gradients on inline boxes).
+        // paddings a background reads (the compiler refuses gradients on inline boxes); nor has a list marker's box (GEN-c).
         let px: [Double]
         let padding: [Double]
-        if inlineIds.contains(id) { px = [0, 0, 0, 0]; padding = [0, 0, 0, 0] } else {
+        if inlineIds.contains(id) || zMarkers[id] != nil { px = [0, 0, 0, 0]; padding = [0, 0, 0, 0] } else {
           guard let zs = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
           let be = try box_resolveBorder(zs, zoomed.devicePixelRatio)
           px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
@@ -856,6 +864,12 @@ public final class DragonTree {
         bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu], lu: [a.x, a.y, a.width, a.height], padding: padding, rootX: rootX)
         bv.dragonScrollRange = scrollRanges[id]
         bv.dragonScrollRefusal = scrollRefusals[id]
+        // GEN-c: a symbol marker's paint rect and coverage from the translated paint-marker.ts, at its box's absolute LU origin.
+        if let m = zMarkers[id], m.kind.description == "symbol" {
+          let mp = try paintMarker_markerSymbolPaint(Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS), m, a.x, a.y)
+          bv.dragonMarkerRect = [mp.left - e.left, mp.top - e.top, mp.right - mp.left, mp.bottom - mp.top]
+          bv.dragonMarkerCoverage = mp.coverage.items
+        }
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -877,27 +891,7 @@ public final class DragonTree {
     }
     for id in order {
       guard let tv = views[id] as? DragonTextView else { continue }
-      guard let pId = zParent[id], let p = zBoxes[pId], let e = edges[id] else { fatalError("dragon: text \(id) has no container") }
-      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
-      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
       let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
-      let ifc = try inline_buildIfc(ctx, p)
-      let leaves = ifc.leaves.items
-      guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
-      let scalars = Array(leaves[li].text.description.unicodeScalars)
-      func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
-      let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
-      let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
-      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
-      let size = try units_platformFontSize(leaves[li].font.size)
-      var specs: [DragonLineSpec] = []
-      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
-      // points and glyph pens in zoomed px from the root.
-      var geometry: [[Double]] = []
-      var geometryCps: [[Double]] = []
-      var geometryPens: [[Double]] = []
-      var viewMetrics: (topsLU: [Double], ascent: Double, descent: Double)? = nil
-      var firstBaselineOffset: Double? = nil
       // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
       // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
       // advance / unitsPerEm, summed in float as textAdvanceAt does.
@@ -933,6 +927,45 @@ public final class DragonTree {
         }
         return (glyphs, xs)
       }
+      // GEN-c: a text marker's text is one line at the engine's text fragment in the marker box (marker.ts layoutMarker): its whole
+      // text from the fragment's left, on the marker line's baseline, in the marker's font. It has no decorations (computed-checks.ts).
+      if let m = zMarkerTexts[id] {
+        guard let e = edges[id], let mt = m.text, let ma = abs.get(m.id) else { fatalError("dragon: marker text \(id) is not placed") }
+        let lines = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
+        guard lines.count == 1, let line = lines.first, let a = abs.get(line.element.id) else { fatalError("dragon: marker text \(id) has \(lines.count) line rects, not 1") }
+        let i = line.offset
+        let r = line.element
+        let font = try inline_fontMetricsOf(ctx, m.id, m.font)
+        let xLU = a.x - e[0] * lu
+        let count = Double(mt.description.unicodeScalars.count)
+        let run = try glyphRun(mt, try inline_fontOf(m.font), 0, count, xLU / lu, [], "marker")
+        let top = try units_snapEdge(ma.y)
+        let baseline = snapped[i].top + font.ascent / lu
+        let spec = DragonLineSpec(text: mt.description, glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: r.width, top: top - e[1], baseline: baseline - e[1], start: 0, end: mt.description.utf16.count, ellipsisGlyphs: [], ellipsisXs: [], ellipsisSize: 0, sizes: [])
+        textMetrics[id] = ([a.y - e[1] * lu], font.ascent / lu, font.descent / lu)
+        tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(try units_platformFontSize(m.font.size) / s)), lines: [spec], scale: s)
+        continue
+      }
+      guard let pId = zParent[id], let p = zBoxes[pId], let e = edges[id] else { fatalError("dragon: text \(id) has no container") }
+      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
+      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
+      let ifc = try inline_buildIfc(ctx, p)
+      let leaves = ifc.leaves.items
+      guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
+      let scalars = Array(leaves[li].text.description.unicodeScalars)
+      func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
+      let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
+      let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
+      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
+      let size = try units_platformFontSize(leaves[li].font.size)
+      var specs: [DragonLineSpec] = []
+      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
+      // points and glyph pens in zoomed px from the root.
+      var geometry: [[Double]] = []
+      var geometryCps: [[Double]] = []
+      var geometryPens: [[Double]] = []
+      var viewMetrics: (topsLU: [Double], ascent: Double, descent: Double)? = nil
+      var firstBaselineOffset: Double? = nil
       // Small caps: each glyph's instance size in device px, 0 for the view's font (none unless the font has small caps).
       func glyphSizes(_ text: JsString, _ font: TextFont, _ from: Double, _ to: Double, _ what: String) throws -> [Double] {
         if !font.smallCaps || from >= to { return [] }
@@ -1687,11 +1720,13 @@ import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
+import dev.dragon.layout.ListMarker
 import dev.dragon.layout.ObjectRect
 import dev.dragon.layout.PieceGlyphs_okFalse
 import dev.dragon.layout.PieceGlyphs_okTrue
 import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
+import dev.dragon.layout.paintMarker_markerSymbolPaint
 import dev.dragon.layout.paint_replacedPaint
 import dev.dragon.layout.TextFont
 import dev.dragon.layout.TextLeaf
@@ -1704,6 +1739,8 @@ import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
 import dev.dragon.layout.inline_boxLineRects
 import dev.dragon.layout.inline_buildIfc
+import dev.dragon.layout.inline_fontMetricsOf
+import dev.dragon.layout.inline_fontOf
 import dev.dragon.layout.inline_leafFontOf
 import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.grid_NO_GRID_FAULTS
@@ -1808,6 +1845,10 @@ class DragonTree(val context: Context) {
     val zStyles = HashMap<String, LayoutStyle>()
     val zLeaves = ArrayList<ReplacedLeaf>()
     val zParent = HashMap<String, String>()
+    // GEN-c: each list item's zoomed marker, by its rect id.
+    val zMarkers = HashMap<String, ListMarker>()
+    // GEN-c: each text marker, by its text fragment's id (marker.ts markerTextId).
+    val zMarkerTexts = HashMap<String, ListMarker>()
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
     val inlineIds = HashSet<String>()
@@ -1822,6 +1863,11 @@ class DragonTree(val context: Context) {
     fun walk(b: LayoutBox) {
       zBoxes[b.id] = b
       zStyles[b.id] = b.style
+      val m = b.marker
+      if (m != null) {
+        zMarkers[m.id] = m
+        if (m.kind == "text") zMarkerTexts[m.id + ":text0"] = m
+      }
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
         else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
@@ -1929,8 +1975,9 @@ class DragonTree(val context: Context) {
       setFrame(dragonFrameOf(v), e.left - ox, e.top - oy, e.right - ox, e.bottom - oy, id)
       if (v is DragonBoxView) {
         // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b) and no
-        // paddings a background reads (the compiler refuses gradients on inline boxes).
-        val inline = inlineIds.contains(id)
+        // paddings a background reads (the compiler refuses gradients on inline boxes); nor has a list marker's box (GEN-c).
+        val marker = zMarkers[id]
+        val inline = inlineIds.contains(id) || marker != null
         val zs = if (inline) null else zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
         val px = if (zs == null) doubleArrayOf(0.0, 0.0, 0.0, 0.0) else {
           val be = box_resolveBorder(zs, zoomed.devicePixelRatio)
@@ -1943,6 +1990,12 @@ class DragonTree(val context: Context) {
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu), doubleArrayOf(a.x, a.y, a.width, a.height), padding, rootX)
         v.dragonScrollRange = scrollRanges[id]
         v.dragonScrollRefusal = scrollRefusals[id]
+        // GEN-c: a symbol marker's paint rect and coverage from the translated paint-marker.ts, at its box's absolute LU origin.
+        if (marker != null && marker.kind == "symbol") {
+          val mp = paintMarker_markerSymbolPaint(Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS), marker, a.x, a.y)
+          v.dragonMarkerRect = intArrayOf(dragonCheckedInt(mp.left - e.left, id + " marker x"), dragonCheckedInt(mp.top - e.top, id + " marker y"), dragonCheckedInt(mp.right - mp.left, id + " marker width"), dragonCheckedInt(mp.bottom - mp.top, id + " marker height"))
+          v.dragonMarkerCoverage = mp.coverage.toList()
+        }
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
@@ -1968,30 +2021,7 @@ class DragonTree(val context: Context) {
     }
     for (id in order) {
       val tv = views[id] as? DragonTextView ?: continue
-      val pId = zParent[id] ?: throw IllegalStateException("dragon: text " + id + " has no container")
-      val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
-      val e = edges[id] ?: throw IllegalStateException("dragon: text " + id + " is not placed")
-      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
-      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
       val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
-      val ifc = inline_buildIfc(ctx, p)
-      val leaves = ifc.leaves
-      val li = leaves.indexOfFirst { it.id == id }
-      if (li < 0) throw IllegalStateException("dragon: no leaf " + id)
-      val leafText = leaves[li].text
-      fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
-      val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
-      val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
-      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
-      val size = units_platformFontSize(leaves[li].font.size)
-      val specs = ArrayList<DragonLineSpec>()
-      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
-      // points and glyph pens in zoomed px from the root.
-      val geometry = ArrayList<DoubleArray>()
-      val geometryCps = ArrayList<DoubleArray>()
-      val geometryPens = ArrayList<DoubleArray>()
-      var viewMetrics: DoubleArray? = null
-      var firstBaselineOffset: Double? = null
       // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
       // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
       // advance / unitsPerEm, summed in float as textAdvanceAt does.
@@ -2023,6 +2053,51 @@ class DragonTree(val context: Context) {
         }
         return Pair(glyphs, xs)
       }
+      // GEN-c: a text marker's text is one line at the engine's text fragment in the marker box (marker.ts layoutMarker): its whole
+      // text from the fragment's left, on the marker line's baseline, in the marker's font. It has no decorations (computed-checks.ts).
+      val marker = zMarkerTexts[id]
+      if (marker != null) {
+        val e = edges[id] ?: throw IllegalStateException("dragon: marker text " + id + " is not placed")
+        val mt = marker.text ?: throw IllegalStateException("dragon: marker text " + id + " has no text")
+        val ma = abs.get(marker.id) ?: throw IllegalStateException("dragon: no absolute rect for " + marker.id)
+        val lines = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
+        if (lines.size != 1) throw IllegalStateException("dragon: marker text " + id + " has " + lines.size + " line rects, not 1")
+        val i = lines[0]
+        val r = boxes[i]
+        val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + r.id)
+        val font = inline_fontMetricsOf(ctx, marker.id, marker.font)
+        val xLU = a.x - e[0] * lu
+        val run = glyphRun(mt, inline_fontOf(marker.font), 0.0, mt.codePointCount(0, mt.length).toDouble(), xLU / lu, emptyList(), "marker")
+        val top = units_snapEdge(ma.y)
+        val baseline = snapped[i].top + font.ascent / lu
+        val spec = DragonLineSpec(mt, run.first, run.second, xLU, r.width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), 0, mt.length, IntArray(0), DoubleArray(0), 0.0)
+        textMetrics[id] = doubleArrayOf(font.ascent / lu, font.descent / lu, a.y - e[1] * lu)
+        tv.dragonConfigure(bridge, units_platformFontSize(marker.font.size).toFloat(), listOf(spec))
+        continue
+      }
+      val pId = zParent[id] ?: throw IllegalStateException("dragon: text " + id + " has no container")
+      val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
+      val e = edges[id] ?: throw IllegalStateException("dragon: text " + id + " is not placed")
+      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
+      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
+      val ifc = inline_buildIfc(ctx, p)
+      val leaves = ifc.leaves
+      val li = leaves.indexOfFirst { it.id == id }
+      if (li < 0) throw IllegalStateException("dragon: no leaf " + id)
+      val leafText = leaves[li].text
+      fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
+      val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
+      val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
+      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
+      val size = units_platformFontSize(leaves[li].font.size)
+      val specs = ArrayList<DragonLineSpec>()
+      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
+      // points and glyph pens in zoomed px from the root.
+      val geometry = ArrayList<DoubleArray>()
+      val geometryCps = ArrayList<DoubleArray>()
+      val geometryPens = ArrayList<DoubleArray>()
+      var viewMetrics: DoubleArray? = null
+      var firstBaselineOffset: Double? = null
       // Small caps: each glyph's instance size in device px, 0 for the view's font (none unless the font has small caps).
       fun glyphSizes(text: String, font: TextFont, from: Double, to: Double, what: String): DoubleArray {
         if (!font.smallCaps || from >= to) return DoubleArray(0)
@@ -2660,11 +2735,15 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };
+  const none = lang === 'swift' ? 'nil' : 'null';
+  // GEN-c: a list item's marker in the translated ListMarker's field order (input.ts): id, kind, symbol, text, font, lineHeight.
+  const marker = (m: import('@dragon/layout').ListMarker | null): string =>
+    m === null ? none : `ListMarker(${str(m.id)}, ${str(m.kind)}, ${m.symbol === null ? none : str(m.symbol)}, ${m.text === null ? none : str(m.text)}, ${fontSpecValue(lang, m.font)}, ${lineHeightValue(lang, m.lineHeight)})`;
   const visit = (b: import('@dragon/layout').LayoutBox): string => {
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
     const strut = b.strut === null ? (lang === 'swift' ? 'nil' : 'null') : `LineStrut(${fontSpecValue(lang, b.strut.font)}, ${lineHeightValue(lang, b.strut.lineHeight)})`;
-    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${styleOf(b.style)}, ${strut}, ${list('U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf', kids)})`;
+    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${styleOf(b.style)}, ${strut}, ${marker(b.marker)}, ${list('U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf', kids)})`;
     decls.push(lang === 'swift' ? `private func ${name}() -> LayoutBox {\n  return ${body}\n}` : `private fun ${name}(): LayoutBox =\n  ${body}`);
     return name;
   };
