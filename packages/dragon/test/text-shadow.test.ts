@@ -1,6 +1,6 @@
 // TXT-FX: text-shadow parses as Chrome parses it. Every target takes none and a list of px lengths and colours; iOS and Android
 // refuse a list on text they do not draw as Chrome does (analysis/text-shadow.ts). The Chrome cases are text-shadow-none,
-// text-shadow-blur and reject-text-shadow-list (packages/parity/fixtures).
+// text-shadow-blur, text-shadow-wrap and reject-text-shadow-list (packages/parity/fixtures).
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -9,7 +9,17 @@ import { valueToString } from '../src/analysis/computed.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
-import { TEXT_SHADOW_MAX_BLUR_PX, TEXT_SHADOW_MAX_DEVICE_PX, TEXT_SHADOW_MAX_DOCUMENT_DEVICE_PX, TEXT_SHADOW_MAX_SHADOWS, textShadowWork } from '../src/analysis/text-shadow.ts';
+import { boxBlurMargin, NO_BLUR_FAULTS, shadowSigma } from '@dragon/layout';
+import {
+  TEXT_SHADOW_MAX_BLUR_PX,
+  TEXT_SHADOW_MAX_DEVICE_PX,
+  TEXT_SHADOW_MAX_DOCUMENT_DEVICE_PX,
+  TEXT_SHADOW_MAX_SHADOWS,
+  TEXT_SHADOW_MIN_DEVICE_SCALE,
+  TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX,
+  TEXT_SHADOW_WRAP_SLACK_DEVICE_PX,
+  textShadowWork,
+} from '../src/analysis/text-shadow.ts';
 
 const SOURCE = { uri: 'dragon-source://test/text-shadow.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -78,7 +88,7 @@ describe('text-shadow', () => {
   it('refuses on iOS and Android what the native shadow does not draw as Chrome does, and accepts it on web', () => {
     const shadow = '.s { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }';
     const one = (cls: string, t: string) => (r: SourceRef) => [el(r, 'a', 'div', ['s', ...cls.split(' ').filter((c) => c !== '')], [text(r, 't', t)])];
-    // Text that may wrap: a space, or a break-anywhere rule.
+    // Text that may wrap (a space, or a break-anywhere rule) at line-height normal: the next line's shadow reaches this line's ink.
     expect(errorsIn(shadow, one('', 'XX XX'))).toEqual(NATIVE_REFUSED);
     expect(errorsIn(`${shadow} .w { overflow-wrap: anywhere; }`, one('w', 'XX'))).toEqual(NATIVE_REFUSED);
     // nowrap takes one line whatever the text.
@@ -95,6 +105,45 @@ describe('text-shadow', () => {
     const earlier = (r: SourceRef) => [el(r, 'b', 'div', ['g'], []), el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])];
     expect(errorsIn(`${shadow} .g { height: 10px; background-color: red; }`, later)).toEqual(NATIVE_REFUSED);
     expect(errorsIn(`${shadow} .g { height: 10px; background-color: red; }`, earlier)).toEqual([]);
+  });
+
+  it('accepts on iOS and Android a wrapping text whose lines are far enough apart that no line\'s shadow reaches the line above', () => {
+    expect([TEXT_SHADOW_MIN_DEVICE_SCALE, TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX]).toEqual([0.75, 3.5, 1]);
+    const wrap = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX XX')])];
+    const at = (lh: string, list: string): string[] => errorsIn(`.s { line-height: ${lh}; text-shadow: ${list}; }`, wrap);
+    // 10px Ahem: the gap is line-height less 10px; it must hold y less 1.5 blur over 3.5 / 0.75 px, or 4.5 / 0.75 = 6px when blurred.
+    expect(at('30px', '0 1px 2px rgba(0, 0, 0, 0.5)')).toEqual([]);
+    expect(at('12px', '0 1px 2px rgba(0, 0, 0, 0.5)')).toEqual(NATIVE_REFUSED);
+    expect(at('12px', '0 3px 0 red')).toEqual([]);
+    expect(at('12px', '0 2px 0 red')).toEqual(NATIVE_REFUSED);
+    expect(at('1.5', '0 0 0 red')).toEqual([]);
+    expect(at('1.4', '0 0 0 red')).toEqual(NATIVE_REFUSED);
+    expect(at('normal', '0 0 0 red')).toEqual(NATIVE_REFUSED);
+    // A negative y reaches further up; every shadow of the list must keep the bound, a transparent one excepted.
+    expect(at('20px', '0 -5px 0 red')).toEqual([]);
+    expect(at('20px', '0 -6px 0 red')).toEqual(NATIVE_REFUSED);
+    expect(at('12px', '0 3px 0 red, 0 0 4px blue')).toEqual(NATIVE_REFUSED);
+    expect(at('12px', '0 3px 0 red, 0 0 4px transparent')).toEqual([]);
+    // overflow-wrap: anywhere wraps a word too.
+    expect(errorsIn('.s { line-height: 30px; overflow-wrap: anywhere; text-shadow: 0 1px 2px red; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])])).toEqual([]);
+    const msg = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .s { line-height: 12px; text-shadow: 0 2px 0 red; }', wrap)).diagnostics.find((d) => d.target === 'ios');
+    expect(msg?.message).toBe(
+      'text-shadow: rgb(255, 0, 0) 0px 2px 0px on <div> a is unsupported on ios: text a:text0 may wrap onto several lines, and the shadow at 0px 2px blurred 0px of a line may reach the glyphs of the line above, which Chrome paints the shadow over (line-height less font-size, plus the y offset, less 1.5 times the blur, is 4px, under 4.666666666666667px)',
+    );
+  });
+
+  it('the blur slack covers the device blur margin past 3 sigma at every blur the native shadow draws and every device scale', () => {
+    let worst = -Infinity;
+    for (let q = 1; q <= TEXT_SHADOW_MAX_BLUR_PX * 8; q++) {
+      for (let s = TEXT_SHADOW_MIN_DEVICE_SCALE; s <= 4; s += 0.125) worst = Math.max(worst, boxBlurMargin(shadowSigma((q / 8) * s, NO_BLUR_FAULTS)) - 1.5 * (q / 8) * s);
+    }
+    expect(worst).toBeLessThan(TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX);
+  });
+
+  it('bounds the work of a wrapping text by a layer per line', () => {
+    const shadow = [{ x: 1, y: 2, blur: 4 }];
+    expect(textShadowWork(5, 1, 10, 0, 0, shadow, 5)).toBeGreaterThan(textShadowWork(5, 1, 10, 0, 0, shadow));
+    expect(textShadowWork(5, 1, 10, 0, 0, shadow, 1)).toBe(textShadowWork(5, 1, 10, 0, 0, shadow));
   });
 
   it('refuses on iOS and Android an ellipsis on the block container of a shadowed inline (text-overflow is not inherited)', () => {

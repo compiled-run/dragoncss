@@ -1,8 +1,9 @@
 // TXT-FX (css-text-decor-4 §4): text-shadow. Every target takes a shadow list of px lengths and explicit colours; the web target
 // leaves the drawing to Chrome. The native targets draw it with the translated paint-shadow.ts textShadowLayerOver in a view
 // beneath the text view (lower/paint/text-shadow.ts), which is Chrome's drawing only where checkTextShadows finds nothing below:
-// upright regular Ahem text (the glyph masks are Ahem's ink boxes; no synthetic bold or oblique) that cannot wrap (Chrome paints
-// each line fragment's shadows and then its text, so a line's shadow covers the line above), with no decoration (Chrome shadows
+// upright regular Ahem text (the glyph masks are Ahem's ink boxes; no synthetic bold or oblique), on one line or on wrapped lines far
+// enough apart that no line's shadow reaches the line above (wrapRefusal: Chrome paints each line fragment's shadows and then its
+// text, the device each line's layer beneath the whole text view), with no decoration (Chrome shadows
 // decorations too), visible, without ellipsis (on the block container: text-overflow is not inherited) or line clamp, within the work bound
 // (textShadowWork), outside
 // a compositing group, and with no box after it in tree order painting a background, border or box shadow (Chrome paints a
@@ -68,7 +69,8 @@ const MAX_DEVICE_SCALE = 4;
 /**
  * An upper estimate, in device px at MAX_DEVICE_SCALE, of the pixels the device rasters for a line of n Ahem glyphs of a css size
  * (each at most size + letterSpacing wide, and each of its spaces wordSpacing wider): the layer (the line's box grown by the span of the shadows' offsets and the largest blur
- * margin, 3 sigma + 2, unrounded) plus every shadow's glyph masks.
+ * margin, 3 sigma + 2, unrounded) plus every shadow's glyph masks. A text that may wrap is laid on up to lines lines, each its own
+ * layer grown by the margins and offsets.
  */
 export function textShadowWork(
   n: number,
@@ -76,7 +78,8 @@ export function textShadowWork(
   size: number,
   letterSpacing: number,
   wordSpacing: number,
-  shadows: readonly { readonly x: number; readonly y: number; readonly blur: number }[]): number {
+  shadows: readonly { readonly x: number; readonly y: number; readonly blur: number }[],
+  lines = 1): number {
   if (shadows.length === 0) return 0;
   const s = MAX_DEVICE_SCALE;
   const margin = (blur: number): number => (3 * blur * s) / 2 + 2;
@@ -86,7 +89,7 @@ export function textShadowWork(
   const dy = span(shadows.map((x) => x.y));
   const advance = (size + Math.max(0, letterSpacing)) * s;
   const width = n * advance + spaces * Math.max(0, wordSpacing) * s;
-  const layer = (width + 2 * m + dx + 2) * (size * s + 2 * m + dy + 2);
+  const layer = (width + lines * (2 * m + dx + 2)) * (size * s + 2 * m + dy + 2);
   const masks = shadows.reduce((sum, x) => sum + n * (size * s + 2 * margin(x.blur) + 2) ** 2, 0);
   return layer + masks;
 }
@@ -109,7 +112,8 @@ function workOf(shadows: readonly Shadow[], text: ResolvedText): number | string
   if (size === null || spacing === null || wordSpacing === null) return `${at} has a font size, letter spacing or word spacing that is not in px`;
   const cps = [...text.text];
   const spaces = cps.filter((c) => WORD_SEPARATORS.has(c)).length;
-  const work = textShadowWork(cps.length, spaces, size, spacing, wordSpacing, shadows.map((x) => ({ x: x.x.value, y: x.y.value, blur: x.blur.value })));
+  // A text that may wrap takes at most one line per code point.
+  const work = textShadowWork(cps.length, spaces, size, spacing, wordSpacing, shadows.map((x) => ({ x: x.x.value, y: x.y.value, blur: x.blur.value })), singleLine(text) ? 1 : cps.length);
   if (work > TEXT_SHADOW_MAX_DEVICE_PX) return `${at} would raster about ${work} device px of shadow, over the ${TEXT_SHADOW_MAX_DEVICE_PX} the native shadow draws`;
   return work;
 }
@@ -127,6 +131,51 @@ function singleLine(t: ResolvedText): boolean {
   if (keyword(t.props, 'white-space-collapse') !== 'collapse' && /[\n\r]/.test(t.text)) return false;
   if (keyword(t.props, 'text-wrap-mode') === 'nowrap') return true;
   return /^[A-Za-z0-9]*$/.test(t.text) && keyword(t.props, 'overflow-wrap') === 'normal' && ['normal', 'keep-all'].includes(keyword(t.props, 'word-break'));
+}
+
+/**
+ * The smallest device scale a native target runs at (Android's ldpi bucket); a wrapped text's shadow bound holds at every larger one.
+ */
+export const TEXT_SHADOW_MIN_DEVICE_SCALE = 0.75;
+/**
+ * Device px the wrap bound keeps between a line's shadow and the ink of the lines above it: the shadow's baseline rounding (0.5), its
+ * mask's whole first row (1), the two lines' baselines rounded apart (1), the platform's glyph edge fringe (1), and for a blurred
+ * shadow the blur margin over 3 sigma (boxBlurMargin(sigma) - 1.5 * blur, under 1 at every blur up to 16px and scale from 0.75 to 4).
+ */
+export const TEXT_SHADOW_WRAP_SLACK_DEVICE_PX = 3.5;
+export const TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX = 1;
+
+/** The least css px between the glyph ink of two lines of an Ahem text (its line-height less its em box), or null when unknown. */
+export function wrapGap(t: ResolvedText): number | null {
+  const size = pxOf(keyword(t.props, 'font-size'));
+  const lh = t.props.get('line-height');
+  if (size === null || lh === undefined) return null;
+  const v = lh.value;
+  // Chrome rounds Ahem's ascent and descent apart for normal, so its line height may fall short of the em box by up to 1px.
+  if (v.kind === 'keyword' && v.value === 'normal') return -1;
+  if (v.kind === 'number') return v.value * size - size;
+  if (v.kind === 'length' && v.unit === 'px') return v.value - size;
+  return null;
+}
+
+/**
+ * Why the native targets refuse shadows on text that may wrap, or null. The device draws each line's shadow as its own layer, the
+ * lines' layers in line order beneath the text view (emit/paint/text-shadow.ts), and Chrome paints each line's shadows and then its
+ * text, so the two agree unless a later line's shadow reaches the ink of a line above it, which Chrome paints over and the device
+ * under. Dragon lays out horizontal-tb only, so lines stack downward. Any inline box holding the text lies inside its line box, so two of its lines' ink are at least wrapGap apart; a shadow
+ * reaches up by its blur's 3 sigma (1.5 * blur) less its y offset, and the bound keeps the slack above at every device scale.
+ */
+function wrapRefusal(shadows: readonly Shadow[], text: ResolvedText): string | null {
+  const gap = wrapGap(text);
+  if (gap === null) return 'its line height is not normal, a number or a px length';
+  for (const sh of shadows) {
+    if (sh.color !== 'currentcolor' && sh.color.alpha === 0) continue;
+    const blurred = sh.blur.value > 0;
+    const reach = gap + sh.y.value - (blurred ? 1.5 * sh.blur.value : 0);
+    const need = (TEXT_SHADOW_WRAP_SLACK_DEVICE_PX + (blurred ? TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX : 0)) / TEXT_SHADOW_MIN_DEVICE_SCALE;
+    if (reach < need) return `the shadow at ${sh.x.value}px ${sh.y.value}px blurred ${sh.blur.value}px of a line may reach the glyphs of the line above, which Chrome paints the shadow over (line-height less font-size, plus the y offset, less 1.5 times the blur, is ${reach}px, under ${need}px)`;
+  }
+  return null;
 }
 
 /** Whether an element paints a background, a border or a box shadow (the paints Chrome puts beneath every text shadow of its stacking context). */
@@ -184,7 +233,10 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
   for (const { text, parent, container, clamped, order, group } of texts) {
     const at = `text ${text.node.address}`;
     if (realFaceAt(text.node.address)) return `${at} is in a real face; the native shadow is drawn from Ahem's glyph boxes only`;
-    if (!singleLine(text)) return `${at} may wrap onto several lines, and Chrome paints each line's shadow over the line above`;
+    if (!singleLine(text)) {
+      const why = wrapRefusal(shadows, text);
+      if (why !== null) return `${at} may wrap onto several lines, and ${why}`;
+    }
     // Chrome draws Ahem past 600 in synthetic bold and at an italic or oblique slope in synthetic oblique; the native shadow
     // takes the upright regular glyph boxes.
     if (synthesisAllowedOf(parent.props).weight && weightOf(parent.props.get('font-weight') as ResolvedValue) >= 600) return `${at} is drawn in synthetic bold, which the native shadow does not embolden`;
