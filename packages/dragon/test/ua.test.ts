@@ -132,6 +132,7 @@ describe('dependency boundaries', () => {
       "import { isInitialMask, MASK_LONGHANDS, maskDeclarationName } from '../css/properties/mask.ts';",
       // MISC-PAINT: the border image longhand names and their initial values, to leave initial border images unwritten.
       "import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';",
+      "import { blendModeOf, FX_LONGHANDS, hasBackdropFilter } from '../css/properties/fx.ts';",
       "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.

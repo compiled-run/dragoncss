@@ -33,6 +33,7 @@ import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { FRAGMENTATION } from './fixture-groups/fragmentation.ts';
+import { FX } from './fixture-groups/fx.ts';
 import { GENERATED_CONTENT } from './fixture-groups/generated-content.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
@@ -192,6 +193,7 @@ export const GROUPS = {
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
   fragmentation: FRAGMENTATION,
+  fx: FX,
   'generated-content': GENERATED_CONTENT,
   gradients: GRADIENTS,
   grid: GRID,

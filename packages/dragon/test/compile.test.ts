@@ -8,6 +8,7 @@ import type { Diagnostic } from '../src/index.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text as textNode } from './helpers.ts';
 import { MASK_LONGHANDS } from '../src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS } from '../src/css/properties/border-image.ts';
+import { FX_LONGHANDS } from '../src/css/properties/fx.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const ios = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } });
@@ -70,8 +71,8 @@ describe('createProject().compile() and check()', () => {
     // line-clamp longhands, which are written only where one is not initial (TXT2-g), clip, written only where it is not auto, and
     // clip-path, written only where it is not none, and the mask longhands, written only where one is not initial (MASK-CLIP), as are
     // the border image longhands (MISC-PAINT), and appearance, written only where it is not none (FORM-a), caret-color and accent-color,
-    // written only where one is not auto (FORM-b), and -webkit-user-modify, never written (TOUCH).
-    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify'];
+    // written only where one is not auto (FORM-b), and -webkit-user-modify, never written (TOUCH), and backdrop-filter and mix-blend-mode (FX).
+    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...FX_LONGHANDS];
     // The fragmentation longhands, written only where one is not initial (css-break-3).
     unwritten.push('break-before', 'break-after', 'break-inside', 'orphans', 'widows');
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);

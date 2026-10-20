@@ -16,6 +16,8 @@ import { colorMatrixFilters, filterApplies } from '../../css/properties/filter.t
 import { SIDES } from '../../css/properties.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
 import { isReplacedTag, SVG_SHAPE_TAGS } from '../elements/replaced.ts';
+import { FILTER_LIST_TYPE } from '../../css/properties/filter.ts';
+import { computedFilterText } from '../../css/properties/fx.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -411,13 +413,18 @@ export function refuseAnimatedGroups(analysis: AnimationAnalysis, roots: readonl
 export const EFFECTS_VALUES: PaintValues = {
   name: 'effects',
   // SVG-opacity: fill-opacity and stroke-opacity compute as opacity does (css-fill-stroke-3 §3.4, §4.4).
-  compute: (props) => {
+  compute: (props, ctx) => {
     for (const p of ['opacity', 'fill-opacity', 'stroke-opacity'] as const) {
       const v = props.get(p);
       if (v === undefined || (v.value.kind !== 'number' && v.value.kind !== 'percentage')) continue;
       const n = opacityOf(v.value);
       if (n === null) continue;
       props.set(p, { ...v, value: { kind: 'number', value: n } });
+    }
+    // FX: a backdrop-filter list's em and rem lengths compute to px.
+    const bf = props.get('backdrop-filter');
+    if (bf !== undefined && bf.value.kind === 'other' && bf.value.type === FILTER_LIST_TYPE) {
+      props.set('backdrop-filter', { ...bf, value: { ...bf.value, text: computedFilterText(bf.value.text, ctx.em, ctx.rem) } });
     }
   },
   // The fractional-opacity refusal is lane-gated, so project.ts runs checkTranslucent itself, not checkComputed.

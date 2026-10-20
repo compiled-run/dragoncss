@@ -648,7 +648,8 @@
         { "lines": "4837-4840", "symbol": "ConsumePrefixedMaskComposite", "source": "located" },
         { "lines": "4939-4952", "symbol": "ConsumePrefixedBackgroundBox", "source": "located" },
         { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" },
-        { "lines": "776-844", "symbol": "ConsumeFilterFunction", "source": "located" }
+        { "lines": "776-844", "symbol": "ConsumeFilterFunction", "source": "located" },
+        { "lines": "3761-3784", "symbol": "ConsumeFilterFunctionList", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
@@ -1965,7 +1966,8 @@
         { "lines": "1-2743", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/fx.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -4034,6 +4036,7 @@
         { "lines": "10386-10416", "symbol": "TouchAction::ParseSingleValue", "source": "located" },
         { "lines": "10418-10424", "symbol": "TouchAction::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "4362-4366", "symbol": "Filter::ParseSingleValue", "source": "located" },
+        { "lines": "887-892", "symbol": "BackdropFilter::ParseSingleValue", "source": "located" },
         { "lines": "12421-12434", "symbol": "WordSpacing::CSSValueFromComputedStyleInternal", "source": "located" },
         { "lines": "2322-2361", "symbol": "Clip::ParseSingleValue", "source": "located" },
         { "lines": "2363-2381", "symbol": "Clip::CSSValueFromComputedStyleInternal", "source": "located" },
@@ -4091,6 +4094,7 @@
         { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/resize.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/filter.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/fx.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/aliases/filter.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/touch-action.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-rect.ts", "symbol": null, "use": "reference" },
