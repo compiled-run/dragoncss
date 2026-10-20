@@ -27,6 +27,11 @@ export type InkText = {
   readonly reach: Readonly<Record<Side, readonly Reach[]>>;
   readonly order: number;
   readonly moved: string | null;
+  /**
+   * Whether tree order is its paint order against every other text: no box on its path to the root is positioned, floated, a
+   * z-indexed flex or grid item, or a flex or grid item among siblings with an order other than 0.
+   */
+  readonly treeOrdered: boolean;
 };
 
 /** A drawn shadow: css px offsets and blur, and its colour's alpha (null for currentcolor, which every target refuses). */
@@ -231,21 +236,26 @@ export class MeetCheck {
     // pulling back with a negative margin, which would end an auto height above the content.
     const flows = t.moved === null && chain.every((e) => inFlow(e) && this.kids(e).settled) && chain.slice(0, -1).every((e) => margins(e) !== null);
     const out = { top: 0, right: 0, bottom: 0, left: 0, vKnown: false, hKnown: false };
-    if (flows && leading !== null && chain.every((e) => prop(e, 'height') === 'auto' && prop(e, 'max-height') === 'none')) {
+    // A flex item along its main axis may end up smaller than its content: shrunk or based below it, unless its min size is auto
+    // (its content) with overflow visible, or it neither shrinks nor takes a basis.
+    const shrinks = (e: ResolvedElement, axis: 'width' | 'height'): boolean => {
+      const p = this.parents.get(e);
+      if (p === undefined || prop(p, 'display') !== 'flex') return false;
+      const column = prop(p, 'flex-direction').startsWith('column');
+      if (column !== (axis === 'height')) return false;
+      if (prop(e, `min-${axis}`) === 'auto' && prop(e, axis === 'width' ? 'overflow-x' : 'overflow-y') === 'visible') return false;
+      return !(prop(e, 'flex-shrink') === '0' && prop(e, 'flex-basis') === 'auto');
+    };
+    if (flows && leading !== null && chain.every((e) => prop(e, 'height') === 'auto' && prop(e, 'max-height') === 'none' && !shrinks(e, 'height'))) {
       for (const s of ['top', 'bottom'] as const) out[s] = leading / 2 + chain.reduce((sum, e) => sum + padding(e, s) + border(e, s), 0);
       out.vKnown = true;
     }
     const textOnly = t.container.children.every((c) => c.kind === 'text');
     const em = size === null ? null : longestRun(t.text) * size;
     const letterSpacing = prop(t.text, 'letter-spacing');
-    const shrinks = (e: ResolvedElement): boolean => {
-      const p = this.parents.get(e);
-      // A flex item shrinks below its width to its min-width; at min-width auto with overflow visible that is its content.
-      return p !== undefined && prop(p, 'display') === 'flex' && prop(e, 'flex-shrink') !== '0' && !(prop(e, 'min-width') === 'auto' && prop(e, 'overflow-x') === 'visible');
-    };
     const fits = (e: ResolvedElement, k: number): boolean => {
       const w = pxOf(prop(e, 'width'));
-      if (w === null || shrinks(e)) return false;
+      if (w === null || shrinks(e, 'width')) return false;
       const inner = prop(e, 'box-sizing') === 'border-box' ? w - padding(e, 'left') - padding(e, 'right') - border(e, 'left') - border(e, 'right') : w;
       if (k === 0) return textOnly && em !== null && letterSpacing === 'normal' && em <= inner;
       const child = chain[k - 1] as ResolvedElement;
@@ -266,10 +276,13 @@ export class MeetCheck {
     return out;
   }
 
-  /** first paints before second. */
+  /** first comes before second in tree order (and paints first, where both are treeOrdered). */
   private compute(first: InkText, second: InkText): Meeting | null {
     // Only the later text's inexact paint can land on the earlier text's; the earlier never paints over the later.
-    if (!SIDES.some((s) => second.reach[s].some((r) => r.risky))) return null;
+    // Where tree order may not be paint order (positioning, floats, z-index or order on a path), either may paint over the other.
+    const ordered = first.treeOrdered && second.treeOrdered;
+    const risky = (x: InkText): boolean => SIDES.some((s) => x.reach[s].some((r) => r.risky));
+    if (!risky(second) && (ordered || !risky(first))) return null;
     const moved = first.moved ?? second.moved;
     if (moved !== null) return { axis: false, why: moved };
     const ct = this.chainOf(first.container);
@@ -291,7 +304,7 @@ export class MeetCheck {
         if (apart === Infinity) continue;
         for (const e of early) {
           for (const f of late) {
-            if (!f.risky) continue;
+            if (!f.risky && (ordered || !e.risky)) continue;
             const need = (this.slack + (e.blurred ? this.blurSlack : 0) + (f.blurred ? this.blurSlack : 0)) / this.minScale;
             if (apart - e.v - f.v < need) return `their ${name} reaches, ${e.v}px and ${f.v}px, leave ${apart - e.v - f.v}px between them, under ${need}px`;
           }

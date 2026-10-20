@@ -279,6 +279,30 @@ describe('text-shadow', () => {
     expect([...new Set(errorsIn(flex('flex-shrink: 0;'), row))]).toEqual([]);
   });
 
+  it('checks both ways where tree order may not be paint order: order, z-index, positioning or a float on either path (landing\'s cases)', () => {
+    const shadow = 'text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);';
+    const two = (cls: string, plain: string, wrap = 'f') => (r: SourceRef) => [el(r, 'f', 'div', [wrap], [el(r, 'a', 'div', [cls], [text(r, 't', 'XX')]), el(r, 'b', 'div', [plain], [text(r, 'u', 'XX')])])];
+    const refused = (css: string, body: (r: SourceRef) => TreeNode[]): string[] => [...new Set(errorsIn(css, body))];
+    // A shadowed flex item ordered after a plain one, or raised above it, or the plain one lowered beneath it.
+    expect(refused(`.f { display: flex; } .a { order: 1; ${shadow} }`, two('a', 'p'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.f { display: flex; } .a { z-index: 1; ${shadow} }`, two('a', 'p'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.f { display: flex; } .a { ${shadow} } .p { z-index: -1; }`, two('a', 'p'))).toEqual(NATIVE_REFUSED);
+    // A relatively positioned shadowed block over a plain one at line-height 12px, a later plain float, a later positioned block
+    // with a negative z-index.
+    expect(refused(`.a { position: relative; line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'w'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.a { ${shadow} } .p { float: left; }`, two('a', 'p', 'w'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.a { ${shadow} } .p { position: relative; z-index: -1; }`, two('a', 'p', 'w'))).toEqual(NATIVE_REFUSED);
+    // Without any of them the later plain block covers the shadow, as in Chrome.
+    expect(refused(`.a { line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'w'))).toEqual([]);
+  });
+
+  it('refuses a column flex item that may shrink below its text (min-height 0), and keeps one at min-height auto', () => {
+    const items = (r: SourceRef) => [el(r, 'f', 'div', ['f'], [el(r, 'a', 'div', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['i'], [text(r, 'u', 'XX')])])];
+    const css = (min: string) => `.f { display: flex; flex-direction: column; height: 30px; } .i { ${min} line-height: 40px; text-shadow: 0 0 4px rgba(0, 0, 0, 0.5); }`;
+    expect([...new Set(errorsIn(css('min-height: 0;'), items))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(css(''), items))]).toEqual([]);
+  });
+
   it('checks 300 shadowed blocks in well under a second (each pair once)', () => {
     const many = (r: SourceRef) => [...Array(300).keys()].map((k) => el(r, `d${k}`, 'div', ['s'], [text(r, `t${k}`, 'XX')]));
     const started = performance.now();

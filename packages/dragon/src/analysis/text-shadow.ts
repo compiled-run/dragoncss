@@ -239,8 +239,13 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
   const painters: number[] = [];
   const inks = new Map<ResolvedText, InkText>();
   let order = 0;
-  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null): void => {
+  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null, orderedAbove: boolean): void => {
     if (keyword(el.props, 'display') === 'none') return;
+    // Tree order stays paint order below a box that is not positioned or floated (orderedAbove covers z-index and order).
+    const ordered = orderedAbove && keyword(el.props, 'position') === 'static' && keyword(el.props, 'float') === 'none';
+    const itemsOf = /^(inline-)?(flex|grid)$/.test(keyword(el.props, 'display'));
+    const reordered = itemsOf && el.children.some((c) => c.kind === 'element' && keyword(c.props, 'order') !== '0');
+    const childOrdered = (c: ResolvedElement): boolean => ordered && !(itemsOf && (reordered || keyword(c.props, 'z-index') !== 'auto'));
     // A relatively positioned (or sticky) inline box between a text and its block container moves the text off its line box.
     const inline = keyword(el.props, 'display') === 'inline';
     const position = keyword(el.props, 'position');
@@ -256,15 +261,15 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
     if (own !== null && !declared.has(own)) declared.set(own, []);
     const g = group ?? groupOf(el);
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c, own, g, container, clamped, moved);
+      if (c.kind === 'element') walk(c, own, g, container, clamped, moved, childOrdered(c));
       else {
         order++;
         if (own !== null) (declared.get(own) as Shadowed[]).push({ text: c, parent: el, container, clamped, order, group: g });
-        if (c.text.trim() !== '') inks.set(c, { text: c, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved });
+        if (c.text.trim() !== '') inks.set(c, { text: c, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved, treeOrdered: ordered });
       }
     }
   };
-  walk(root, null, null, root, false, null);
+  walk(root, null, null, root, false, null, true);
   return { declared, painters, inks };
 }
 
