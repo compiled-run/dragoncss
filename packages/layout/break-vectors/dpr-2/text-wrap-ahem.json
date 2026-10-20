@@ -1,0 +1,15 @@
+{
+  "case": "text-wrap-ahem",
+  "dpr": 2,
+  "texts": [
+    {"id":"nw:text0","lines":[[0,9]]},
+    {"id":"wr:text0","lines":[[0,3],[3,7],[7,11]]},
+    {"id":"st:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"sa:text0","lines":[[0,5],[5,9],[9,11]]},
+    {"id":"inh:text0","lines":[[0,6],[6,11]]},
+    {"id":"both:text0","lines":[[0,8]]},
+    {"id":"ws:text0","lines":[[0,4],[4,8],[8,10]]},
+    {"id":"ra:text0","lines":[[0,8]]},
+    {"id":"rb:text0","lines":[[0,3]]}
+  ]
+}

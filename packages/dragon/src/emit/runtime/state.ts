@@ -194,6 +194,8 @@ public final class DragonStateMachine {
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
+      // ANIM-b2: a node whose transform animates takes the frame's through the view's transform writer.
+      if let w = animator?.transform(n.id) { v.dragonSetTransform(w.ops.items, w.origin) }
     }
   }
 
@@ -455,6 +457,8 @@ class DragonStateMachine(
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
+      // ANIM-b2: a node whose transform animates takes the frame's through the view's transform writer.
+      animator?.transform(n.id)?.let { v.dragonSetTransform(it.ops, it.origin) }
     }
   }
 
@@ -573,13 +577,18 @@ type Lang = 'swift' | 'kotlin';
 
 const rgba = (c: Rgba8): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alpha})`;
 
-/** A node record as a DragonStateNode literal (the interaction runtime emits its deltas with it too). */
-export function nodeLit(lang: Lang, n: ProgramNode): string {
+/**
+ * A node record as a DragonStateNode literal (the interaction runtime emits its deltas with it too). moving holds the nodes whose
+ * transform animates (ANIM-b2): the animator writes their transform every frame, static value included.
+ */
+export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> = new Set()): string {
   const q = (s: string): string => stringLit(lang, s);
   const writes: string[] = [];
   for (const w of n.writes) {
     switch (w.kind) {
       case 'background-color':
+        // PNT1-opacity-b: a folded fill is drawn over its backdrop from the static program only, as opacity is (below).
+        if (w.folded === true) throw new StateEmitError(`${n.id}: a fractional opacity folded into the fill has no state-node write (PNT1-opacity-b draws it on the static program only)`);
         writes.push(lang === 'swift' ? `.background(${rgba(w.color)})` : `DragonStateWrite.Background(${rgba(w.color)})`);
         break;
       case 'border-styles':
@@ -611,7 +620,11 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'synthetic-bold':
         // TXT-W: the state runtime's text record carries no fake-bold stroke; an emboldened run is drawn from the static program only.
         throw new StateEmitError(`${n.id}: a synthetic bold in a state program has no state-node write (TXT-W emboldens glyphs on the static program only)`);
+      case 'text-stroke':
+        // TXT-FX: the state runtime's text record carries no stroke; a stroked run is drawn from the static program only.
+        throw new StateEmitError(`${n.id}: a text stroke in a state program has no state-node write (TXT-FX strokes glyphs on the static program only)`);
       case 'transform':
+        if (moving.has(n.id)) break;
         // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
       case 'opacity':
@@ -620,6 +633,7 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
         // PNT1 writes opacity on the static program only; the state runtime has no opacity writer yet (nor a group overlay).
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       case 'scroll-container':
+      case 'scroll-indicators-hidden':
         // OVFL-B: the state runtime rebuilds clip views only; a scroll view under component states is refused here, by name.
         throw new StateEmitError(`${n.id}: a scroll container in a state program is not supported yet (OVFL-B scroll views under SELD-R states)`);
       case 'replaced-image':
@@ -665,11 +679,11 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
 const list = (lang: Lang, items: readonly string[]): string => (lang === 'swift' ? `[${items.join(', ')}]` : `listOf(${items.join(', ')})`);
 
 /** A delta as a DragonStateDelta literal. */
-export function deltaLit(lang: Lang, d: StateDelta): string {
+export function deltaLit(lang: Lang, d: StateDelta, moving: ReadonlySet<string> = new Set()): string {
   const q = (s: string): string => stringLit(lang, s);
   const order = d.order === null ? (lang === 'swift' ? 'nil' : 'null') : list(lang, d.order.map(q));
   const removed = d.removed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.removed.map(q));
-  const changed = d.changed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.changed.map((n) => nodeLit(lang, n)));
+  const changed = d.changed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.changed.map((n) => nodeLit(lang, n, moving)));
   return `DragonStateDelta(${removed}, ${changed}, ${order}, ${d.variant})`;
 }
 
@@ -739,9 +753,10 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   const kt = lang === 'kotlin';
   out.push(decl(`${p}States`, kt ? 'List<String>' : '[String]', list(lang, sp.states.map((s) => q(s.key)))));
   out.push(decl(`${p}Domains`, kt ? 'List<List<String>>' : '[[String]]', list(lang, sp.states.map((s) => list(lang, s.domain.map((v) => q(valueKey(v))))))));
-  sp.base.nodes.forEach((n, i) => out.push(decl(`${p}Node${i}`, 'DragonStateNode', nodeLit(lang, n))));
+  const moving = new Set((e.anim?.origins ?? []).map((o) => o.node));
+  sp.base.nodes.forEach((n, i) => out.push(decl(`${p}Node${i}`, 'DragonStateNode', nodeLit(lang, n, moving))));
   out.push(decl(`${p}Base`, kt ? 'List<DragonStateNode>' : '[DragonStateNode]', list(lang, sp.base.nodes.map((_, i) => `${p}Node${i}`))));
-  sp.deltas.forEach((d, i) => out.push(decl(`${p}Delta${i}`, 'DragonStateDelta', deltaLit(lang, d))));
+  sp.deltas.forEach((d, i) => out.push(decl(`${p}Delta${i}`, 'DragonStateDelta', deltaLit(lang, d, moving))));
   out.push(decl(`${p}Deltas`, kt ? 'List<DragonStateDelta>' : '[DragonStateDelta]', list(lang, sp.deltas.map((_, i) => `${p}Delta${i}`))));
   out.push(decl(`${p}Next`, kt ? 'List<List<List<Int>>>' : '[[[Int]]]', list(lang, sp.next.map((a) => list(lang, a.map((st) => list(lang, st.map(String))))))));
   const skip = faults.setterSkipsRelayout ? 'true' : 'false';

@@ -75,9 +75,10 @@ describe('grid differential fuzzer against Chrome 145', () => {
     }
     const r = report(items, seen[0] as ChromeSeen[]);
     expect(r.bugs).toEqual([]);
-    // V1: the 7 gap declarations with vw or vh (grid-row-gap, grid-column-gap, grid-gap) are accepted and agree; grid tracks still refuse them.
-    expect(r.full).toEqual({ 'agree-accept': 890, 'agree-drop': 1898, 'refused-chrome-drops': 27, 'documented-refusal': 184, 'documented-gap': 1 });
-    expect(r.hook).toEqual({ 'agree-accept': 817, 'agree-drop': 1160, 'refused-chrome-drops': 738, 'documented-refusal': 163 });
+    // V1: the 7 gap declarations with vw or vh (grid-row-gap, grid-column-gap, grid-gap) are accepted and agree. Track sizes take
+    // calc(), min(), max(), clamp() and viewport units in Chrome's computed form; repeat() counts and grid lines still refuse math.
+    expect(r.full).toEqual({ 'agree-accept': 971, 'agree-drop': 1910, 'refused-chrome-drops': 15, 'documented-refusal': 103, 'documented-gap': 1 });
+    expect(r.hook).toEqual({ 'agree-accept': 898, 'agree-drop': 1505, 'refused-chrome-drops': 393, 'documented-refusal': 82 });
     expect(r.serialization).toBe(0);
     // Plant unitlessZero (PR #23 round 5): Dragon's computed text keeping a unitless zero is caught by the byte-exact comparison.
     const zeros = items.map((it, i) => [it, (seen[0] as ChromeSeen[])[i] as ChromeSeen] as const).filter(([it]) => it.resolved?.some((t) => /(^|[ (])0px/.test(t)) ?? false);

@@ -7,8 +7,9 @@
 // alpha of a group of one draw into that draw's paint alpha (cc PlaybackFoldingIterator), so such a box paints as
 // its background colour with alpha opacityAlpha8(opacity) and no group: measured in Chrome 145 equal on every pixel for opaque
 // fills over 765 opacities around each byte boundary, at DPR 1 and 3 (rounded fills too, not yet admitted); a fill with a border
-// or text in the group, or a translucent fill, differs. The lowering folds such a box (lower/paint/background.ts, effects.ts) and native draws it as it
-// draws any translucent background.
+// or text in the group, or a translucent fill, differs. The lowering folds such a box (lower/paint/background.ts, effects.ts), and
+// native draws the folded fill as Chrome's opaque bytes over its backdrop (emit/paint/background.ts): drawn as a translucent colour,
+// the platform blend was one off Chrome's blit (device batch 3, of-a 97,66,68 for Chrome's 96,65,67).
 import { opacityOf } from '../../css/properties/effects.ts';
 import type { FilterFunction } from '../../css/properties/filter.ts';
 import { colorMatrixFilters, filterApplies } from '../../css/properties/filter.ts';
@@ -314,6 +315,8 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     // A filter list Dragon does not draw is refused by checkFilter; its box is no group.
     const filter = matrixFilterOf(el);
     if (o <= 0 || filter === null) continue;
+    // A box that folds (it has no filter) is a folded fill (lower/paint/background.ts), never a group: Chrome draws it as one colour
+    // blit in every tile, which the folded fill draws over the box's real backdrop, so no overlay is planned for it (nor taken as a painter).
     if (filter.length === 0 && (o >= 1 || opacityFolds(el))) continue;
     plans.set(id, elementWillChange(el).includes('opacity') ? { kind: 'refused', reason: 'it has will-change: opacity, a compositor layer' } : planOf(el, filter));
   }
