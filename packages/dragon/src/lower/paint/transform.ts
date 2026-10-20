@@ -27,7 +27,7 @@ function length(l: TransformLengthDecl, at: string): TransformLength {
 }
 
 /** The engine functions of one declared function; matrix() is translate · rotate · scale (css/properties/transform.ts). */
-function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
+export function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
   switch (f.kind) {
     case 'translate':
       return [{ fn: f.fn, x: length(f.x, at), y: length(f.y, at), angle: 0, sx: 1, sy: 1 }];
@@ -89,7 +89,7 @@ export const TRANSFORM_LOWERING: PaintLowering<TransformWrite> = {
     uikit: { transform: { key: 'dragonTransform', technique: 'native-property', detail: 'layer.setAffineTransform of the paint-transform.ts matrix at the box size (platform sin and cos), about the bounds centre with the origin compensated; layer.allowsEdgeAntialiasing = true' } },
     'android-views': { transform: { key: 'dragonTransform', technique: 'native-property', detail: 'the paint-transform.ts functions matrix at the box size (platform sin and cos) as View pivotX/Y (the origin), translationX/Y, rotation and scaleX/Y, in device px' } },
   },
-  css: { transform: ['transform', 'transform-origin'] },
+  css: { transform: ['transform', 'translate', 'rotate', 'scale', 'transform-origin'] },
   lower: ({ el, facts }) => {
     // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transform none.
     if (el === null) return [];
