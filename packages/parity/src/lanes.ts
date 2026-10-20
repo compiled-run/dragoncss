@@ -20,6 +20,7 @@ import { committedPixelManifestProblems } from './pixel-reference.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { enforcedCompile } from './pipeline.ts';
+import { profilePendingCaseIds } from './profile-pending.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
@@ -42,6 +43,9 @@ export const LANE_FILES: readonly string[] = [
   'packages/parity/src/targets.ts',
   'packages/parity/src/lanes.ts',
   'packages/parity/src/lanes-file.ts',
+  'packages/parity/src/lane-ids.ts',
+  'packages/parity/src/dump-faults.ts',
+  'packages/parity/src/dump-line-groups.ts',
   'packages/parity/src/native-compare.ts',
   'packages/parity/src/native-dump.ts',
   'packages/parity/src/samples.ts',
@@ -127,10 +131,27 @@ function checkManifests(problems: string[]): void {
   // The software-raster precondition (P6a): the Chrome pixels the pixel lane compares were captured on the CPU raster path.
   for (const p of committedPixelManifestProblems()) problems.push(p);
   if (JSON.stringify(x.dprSets) !== JSON.stringify(DPRS)) problems.push(`corpus-dpr.json dprSets ${JSON.stringify(x.dprSets)} is not DPRS ${JSON.stringify(DPRS)}`);
-  for (const s of declaredSuites(declaredLane('ios', 'layout-vectors-host'))) {
+  for (const s of vectorSuites(declaredLane('ios', 'layout-vectors-host'))) {
     const m = (s.corpus === 'p1' ? p1 : x).cases[s.suite];
-    if (m !== s.cases) problems.push(`${s.corpus === 'p1' ? 'corpus.json' : 'corpus-dpr.json'} declares ${m ?? 'no'} ${s.suite} cases; derived ${s.cases}`);
+    if (m !== s.cases) problems.push(`${s.corpus === 'p1' ? 'corpus.json' : 'corpus-dpr.json'} declares ${m ?? 'no'} ${s.suite} cases; derived ${s.cases}${s.pending === 0 ? '' : ` (${s.pending} more wait on support-profile rows)`}`);
   }
+}
+
+/**
+ * The suites a vectors lane runs this round: declaredSuites less the cases waiting on their iOS support-profile rows, which have no
+ * vector until the host round promotes the rows (profile-pending.ts), so neither the manifests nor the host run count them.
+ */
+function vectorSuites(lane: LaneConfig): (ReturnType<typeof declaredSuites>[number] & { readonly pending: number })[] {
+  const pending = profilePendingCaseIds();
+  const m1 = new Set(m1CaseIds());
+  const top = lane.sets.filter((s) => s.role === 'top-level').flatMap((s) => s.ids).filter((id) => pending.has(id));
+  const out: Readonly<Record<string, number>> = {
+    vectors: top.filter((id) => m1.has(id)).length,
+    'vectors-m2': top.filter((id) => !m1.has(id)).length,
+    'vectors-dpr': lane.sets.filter((s) => s.role !== 'top-level').flatMap((s) => s.ids).filter((id) => pending.has(id)).length,
+    'engine-dpr': vectorCaseIds().filter((id) => pending.has(id)).length * extendedManifest().dprSets.length,
+  };
+  return declaredSuites(lane).map((s) => ({ ...s, cases: s.cases - (out[s.suite] ?? 0), pending: out[s.suite] ?? 0 }));
 }
 
 /** Lane, case-list, tolerance, sample-rule, dump-fault and projection parity, and the literal scan. Empty when every target agrees. */
@@ -261,11 +282,11 @@ const hostLane = (t: TargetConfig): LaneConfig => {
   if (l === undefined) throw new Error(`${t.target} has no layout-vectors-host lane`);
   return l;
 };
-const unrun = (t: TargetConfig): SuiteCount[] => declaredSuites(hostLane(t)).map((d) => ({ corpus: d.corpus, suite: d.suite, declared: d.cases, total: null, pass: null }));
+const unrun = (t: TargetConfig): SuiteCount[] => vectorSuites(hostLane(t)).map((d) => ({ corpus: d.corpus, suite: d.suite, declared: d.cases, total: null, pass: null }));
 
 /** The host lane's verdict from a parsed run: pass only if every count equals the declared case list and both digests match. */
 export function judgeHost(t: TargetConfig, parsed: ReturnType<typeof parseNativeOutput>, ended: HostEnd | null = null): HostRun {
-  const declared = declaredSuites(hostLane(t));
+  const declared = vectorSuites(hostLane(t));
   const end = ended === null ? '' : `; ${hostEnd(ended)}`;
   if (parsed === null) return { state: 'fail', reason: `${t.hostCli} output could not be parsed${end}`, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } };
   const want = { p1: p1Manifest().digest, extended: extendedManifest().digest };
