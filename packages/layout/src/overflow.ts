@@ -407,13 +407,16 @@ function gridInflowOf(ix: Index, id: string): OverflowRect {
 
 /**
  * ScrollableOverflowForPropagation: a child's border box, united with its own overflow unless it clips both axes (a scroll
- * container, or clip on both axes with its 0px clip margin at the padding box); a clip axis keeps the border box on that axis.
+ * container, or clip on both axes with its 0px clip margin at the padding box) or is layout contained; a clip axis keeps the border
+ * box on that axis.
  */
 function propagated(ix: Index, n: Node): OverflowRect {
   const own: OverflowRect = { x: ZERO, y: ZERO, width: n.rect.width, height: n.rect.height };
   const s = n.box.style;
-  // ScrollableOverflowForPropagation: a replaced box adds its border box (its content is never scrollable overflow).
-  if (n.box.kind === 'replaced' || isScrollContainer(s) || (s.overflowX === 'clip' && s.overflowY === 'clip')) return own;
+  // ScrollableOverflowForPropagation: a replaced box adds its border box (its content is never scrollable overflow), and so does a
+  // layout-contained box, whose contents' overflow is ink overflow only (css-contain-2 §3.2; Chrome 145: a 300x200 grandchild of a
+  // contain: layout child leaves a 100x50 scroll container's scroll size at 100x50).
+  if (n.box.kind === 'replaced' || isScrollContainer(s) || (s.overflowX === 'clip' && s.overflowY === 'clip') || s.containLayout) return own;
   let child = overflowOf(ix, n);
   if (s.overflowX === 'clip') child = { x: ZERO, y: child.y, width: n.rect.width, height: child.height };
   if (s.overflowY === 'clip') child = { x: child.x, y: ZERO, width: child.width, height: n.rect.height };

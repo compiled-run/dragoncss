@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox, LayoutRect, LayoutResult, LayoutStyle } from '../src/index.ts';
 import { absoluteRects, ahemMeasurer, layoutWithFaults, NO_ENGINE_FAULTS } from '../src/index.ts';
+import { scrollMetrics } from '../src/overflow.ts';
 import { box, neutralEnvironment, px, text } from './helpers.ts';
 
 const L = 64;
@@ -52,6 +53,25 @@ describe('layout and paint containment', () => {
   });
 });
 
+describe('scrollable overflow', () => {
+  // Chrome 145 (landing review probe): a 100x50 scroll container holding a contain: layout; height: 20px child with a 300x200
+  // grandchild keeps a 100x50 scroll size, as the grandchild's overflow is ink overflow only.
+  it('stops at a layout-contained box, which adds its border box alone', () => {
+    const tree = (c: Partial<LayoutStyle>) => ({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [box('body', {}, [box('s', { overflowX: 'auto', overflowY: 'auto', width: px(100), height: px(50) }, [box('c', { ...c, height: px(20) }, [box('g', { width: px(300), height: px(200) })])])])]) });
+    const size = (c: Partial<LayoutStyle>): number[] => {
+      const r = scrollMetrics(tree(c), ahemMeasurer, 'ltr');
+      if (r.kind !== 'ok') throw new Error(r.detail);
+      const m = r.containers.find((k) => k.id === 's');
+      if (m === undefined) throw new Error('s is not a scroll container');
+      return [m.scrollRect.width, m.scrollRect.height].map((v) => v / L);
+    };
+    expect(size({})).toEqual([300, 200]);
+    expect(size(layoutC)).toEqual([100, 50]);
+    // Paint containment reaches the engine with overflow: clip on both axes (lower/ios-layout.ts).
+    expect(size({ ...paintC, overflowX: 'clip', overflowY: 'clip' })).toEqual([100, 50]);
+  });
+});
+
 describe('size containment', () => {
   it('sizes a block as if it were empty', () => {
     expect(at(rects([box('a', { ...layoutC, containSize: 'size', paddingTop: px(2) }, [text('t', 'XX XX')])]), 'a').slice(2)).toEqual([400, 2]);
@@ -63,7 +83,7 @@ describe('size containment', () => {
     expect(at(m, 'ib')[2]).toBe(0);
   });
 
-  it('is unsupported without layout containment, or on anything but a block', () => {
+  it('in both axes is unsupported without layout containment, or on anything but a block', () => {
     const code = (s: Partial<LayoutStyle>): string[] => {
       const r = run([box('a', s, [text('t', 'XX')])]);
       return r.kind === 'ok' ? [] : [r.unsupported.code];

@@ -11,10 +11,16 @@ import { usedColors } from '../lower/paint/colors.ts';
 import type { Diagnostic } from '../types.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
+import { appliedContainment } from './containment.ts';
 
 const keywordOf = (v: ResolvedValue | undefined): string => (v !== undefined && v.value.kind === 'keyword' ? v.value.value : '');
 const prop = (el: ResolvedElement, p: Longhand): ResolvedValue => el.props.get(p) as ResolvedValue;
 const display = (el: ResolvedElement): string => keywordOf(prop(el, 'display'));
+/** css-contain-2 §3.1, §3.2, §3.4: a layout-, paint- or size-contained block is an independent formatting context whose lines Chrome does not count. */
+const contained = (el: ResolvedElement): boolean => {
+  const c = appliedContainment(el);
+  return c.layout || c.paint || c.size !== 'none';
+};
 
 /** Whether the element's -webkit-box-orient and -webkit-line-clamp make a -webkit-box clamp lines (ComputedStyle::HasLineClamp). */
 const clamps = (props: ReadonlyMap<Longhand, ResolvedValue>): boolean =>
@@ -125,7 +131,7 @@ export function checkLineClamp(el: ResolvedElement, hidden: boolean, targets: re
   const blocks: ResolvedElement[] = [el];
   for (const c of el.children) {
     if (c.kind !== 'element' || display(c) === 'none' || display(c) === 'inline') continue;
-    const plain = display(c) === 'block' && ['overflow-x', 'overflow-y'].every((p) => keywordOf(prop(c, p as Longhand)) === 'visible') && keywordOf(prop(c, 'position')) === 'static' && keywordOf(prop(c, 'float')) === 'none' && keywordOf(prop(c, 'container-type')) === 'normal';
+    const plain = display(c) === 'block' && ['overflow-x', 'overflow-y'].every((p) => keywordOf(prop(c, p as Longhand)) === 'visible') && keywordOf(prop(c, 'position')) === 'static' && keywordOf(prop(c, 'float')) === 'none' && keywordOf(prop(c, 'container-type')) === 'normal' && !contained(c);
     // The engine truncates left to right only (inline.ts checkClampContext), so a nested rtl block is refused as the container is.
     if (keywordOf(prop(c, 'direction')) === 'rtl') refuse(targets, 'rtl', `${at} holds the rtl block <${c.element.tag}> ${c.element.address}, whose lines Dragon truncates left to right only`, `Make <${c.element.tag}> ${c.element.address} ltr, or remove -webkit-line-clamp from ${el.element.address}.`);
     if (!plain || inlineDescendants(c).some((g) => display(g) !== 'inline')) {

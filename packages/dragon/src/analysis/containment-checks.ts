@@ -16,7 +16,7 @@ function containOrigin(el: ResolvedElement): Origin {
 }
 
 /**
- * The containment Dragon refuses, on every target: contain on html or body (it stops the viewport taking body's overflow, css-overflow-3
+ * The containment Dragon refuses, on every target: layout, paint or size containment on html or body (it stops the viewport taking body's overflow, css-overflow-3
  * §3.3), on a replaced element or inside an <svg>; size containment without layout containment, on a flex or grid container or item,
  * or on a line-clamp container, which the engine does not size yet; and a fixed descendant of a layout- or paint-contained box,
  * whose containing block it would become.
@@ -38,7 +38,8 @@ export function checkContainment(root: ResolvedElement, targets: readonly string
     const tag = el.element.tag;
     const at = `<${tag}> ${el.element.address}`;
     const written = valueText(el);
-    if (any && (tag === 'html' || tag === 'body')) {
+    // Style containment only scopes list item ordinals there, which analysis/markers.ts models.
+    if ((asked.size !== 'none' || asked.layout || asked.paint) && (tag === 'html' || tag === 'body')) {
       refuse(el, 'root', `contain: ${written} on ${at} is unsupported: containment on the root or body stops the viewport taking body's overflow (css-overflow-3 §3.3), which Dragon does not model`, `Put contain on an element inside <body>.`);
     } else if (any && (inSvg || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag))) {
       refuse(el, 'replaced', `contain: ${written} on ${at} is unsupported: Dragon does not contain a replaced element or SVG content`, `Remove contain from ${el.element.address}, or put it on a wrapper element.`);

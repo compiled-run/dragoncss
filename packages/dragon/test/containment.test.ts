@@ -60,4 +60,20 @@ describe('contain', () => {
     expect(errorsAt('contain: layout', 'position: fixed')).toEqual(['DRAGON_UNSUPPORTED_VALUE contain: layout on <div> a']);
     expect(errorsAt('contain: paint', 'position: absolute')).toEqual([]);
   });
+
+  it('refuses a contained block in a line-clamp container, whose lines Chrome does not count, and a shadow on a contained box', () => {
+    const clamp = 'display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden';
+    expect(errorsAt(clamp)).toEqual([]);
+    for (const c of ['contain: layout', 'contain: paint', 'contain: size layout']) expect(errorsAt(clamp, c).length, c).toBeGreaterThan(0);
+    expect([...new Set(errorsAt('contain: layout; box-shadow: 1px 1px red').map((m) => m.split(';')[0]))]).toEqual(['DRAGON_UNSUPPORTED_VALUE a has a box-shadow and contain: layout or paint']);
+  });
+
+  it('keeps style containment on <body>, where it only scopes list item ordinals', () => {
+    const at = (d: string): string[] => {
+      const css = `body { font-family: Ahem; font-size: 10px; ${d}; }`;
+      return project().compile(inputFor(css, (r) => [el(r, 'a', 'div', [], [text(r, 't', 'XX')])])).diagnostics.filter((x) => x.severity === 'error').map((x) => x.message.split(' is unsupported')[0] as string);
+    };
+    expect(at('contain: style')).toEqual([]);
+    expect(at('contain: layout').length).toBeGreaterThan(0);
+  });
 });

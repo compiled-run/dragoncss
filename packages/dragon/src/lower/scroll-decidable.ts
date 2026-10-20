@@ -87,11 +87,13 @@ function overflowOf(b: LayoutNode, unknown: ReadonlySet<string>): void {
 }
 
 function propagated(n: LayoutNode, unknown: ReadonlySet<string>): void {
-  if (n.kind === 'replaced' || scrollContainer(n) || (n.style.overflowX === 'clip' && n.style.overflowY === 'clip')) return;
+  if (n.kind === 'replaced' || scrollContainer(n) || (n.style.overflowX === 'clip' && n.style.overflowY === 'clip') || n.style.containLayout) return;
   overflowOf(n, unknown);
 }
 
-const fcRoot = (b: LayoutNode): boolean => b.kind === 'replaced' || b.style.display !== 'block' || scrollContainer(b);
+/** box.ts establishesFormattingContext, without the planted engine fault. */
+const fcRoot = (b: LayoutNode): boolean =>
+  b.kind === 'replaced' || b.style.display !== 'block' || scrollContainer(b) || b.style.containLayout || b.style.containPaint || b.style.containSize !== 'none';
 
 /** readFlow and readChild from a block flow: a percentage height whose end margins may collapse through it is refused. */
 function flow(b: LayoutBox): void {
