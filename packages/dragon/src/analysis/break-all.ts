@@ -1,7 +1,8 @@
 // css-text-3 §5.2 word-break at build time (TXT2-d, TXT-BREAK-2). The engine lays break-all out over the Latin set (ASCII, U+00A0 to
-// U+00FF and the common punctuation of BREAK_ALL_EXTRA) by Chrome 145's pair table, and keep-all as normal, in Ahem and in a real
-// face alike (inline.ts breakAllOpportunities, test/fixtures/linebreak/chrome145-break-all.json); fixture groups text-word-break and
-// text-break prove both against Chrome. Every target refuses break-all over any other character, and over U+00AD, whose break Chrome
+// U+00FF and the common punctuation of BREAK_ALL_EXTRA) by Chrome 145's pair table, and keep-all as normal (inline.ts
+// breakAllOpportunities, test/fixtures/linebreak/chrome145-break-all.json): in a real face over the whole set, and in Ahem over the
+// ASCII it covers (the engine refuses Ahem text past its coverage under any word-break, so that is no word-break gate); fixture
+// groups text-word-break and text-break prove both against Chrome. Every target refuses break-all over any other character, and over U+00AD, whose break Chrome
 // draws with a hyphen. auto-phrase has no support row. Refused at the word-break declaration that reaches the text.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Txt2dFaults } from '../faults/txt2-d.ts';

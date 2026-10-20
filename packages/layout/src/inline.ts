@@ -73,6 +73,11 @@ export type Ifc = {
   readonly shaped: boolean;
   /** For real-font text: the char items a line may start at (soft wrap opportunities), ascending. */
   readonly opportunityItems: readonly number[];
+  /**
+   * For real-font text: the char items after a hyphen-minus that a line may start at unless the line starts at that hyphen
+   * (hyphenLeads), ascending. opportunityItems holds those that are opportunities when every opportunity starts a line.
+   */
+  readonly leadItems: readonly number[];
   /** The white-space-collapse of every leaf (one per context) and whether its lines wrap (text-wrap-mode). */
   readonly mode: WhiteSpaceCollapse;
   readonly wrap: boolean;
@@ -546,9 +551,10 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   const strut = box.strut;
   if (strut === null) throw new Error(`${box.id} has inline content and no strut; validateLayoutInput rejects this input`);
   const starts: number[] = [];
+  const leads: number[] = [];
   const wrap = first === undefined || first.textWrapMode === 'wrap';
   const breakAll = first !== undefined && first.wordBreak === 'break-all' && !ctx.faults.breakAllIgnored;
-  const boundaries = boundariesOf(ctx, box, items, wrap, shaped, mode, breakAll, starts);
+  const boundaries = boundariesOf(ctx, box, items, wrap, shaped, mode, breakAll, starts, leads);
   const graphemeItems: number[] = [];
   const graphemes = wrap && (anywhere || minAnywhere) ? graphemeBoundariesOf(items, graphemeItems) : [];
   return {
@@ -567,6 +573,7 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     closeAt: flat.boxes.map((_, b) => tagIndex(items, b, 'close')),
     shaped,
     opportunityItems: [...starts].sort((x, y) => x - y),
+    leadItems: [...leads].sort((x, y) => x - y),
     mode,
     wrap,
     fragmentStarts: mode === 'preserve' && wrap ? leadingSpaceEnds(items) : [],
@@ -740,12 +747,17 @@ function afterCloses(items: readonly Item[], i: number): number {
   return at;
 }
 
-/** Adds the soft boundaries of one run of text (the item indices of its characters) to out. */
-function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, breakAll: boolean, out: Boundary[], starts: number[]): void {
-  for (const p of opportunities(ctx, box, run.map((i) => (items[i] as Item).cp), wrap, shaped, mode, breakAll)) {
+/**
+ * Adds the soft boundaries of one run of text (the item indices of its characters) to out, the char items they start at to starts,
+ * and for real-font text the char items after a hyphen whose break depends on the line start (hyphenLeads) to leads.
+ */
+function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, breakAll: boolean, out: Boundary[], starts: number[], leads: number[]): void {
+  const cps = run.map((i) => (items[i] as Item).cp);
+  for (const p of opportunities(ctx, box, cps, wrap, shaped, mode, breakAll)) {
     out.push({ at: afterCloses(items, run[p - 1] as number), forced: false });
     starts.push(run[p] as number);
   }
+  if (shaped && wrap && !ctx.faults.spaceOnlyBreaks) for (const p of hyphenLeads(cps)) leads.push(run[p] as number);
 }
 
 /**
@@ -755,24 +767,24 @@ function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run
  * opportunity between two characters becomes a boundary after the close tags that follow the first (Blink moves a break before a
  * close tag after it) and before any open tag. A <br> forces a boundary after it and the close tags that follow it.
  */
-function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, breakAll: boolean, starts: number[]): Boundary[] {
+function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, breakAll: boolean, starts: number[], leads: number[]): Boundary[] {
   const out: Boundary[] = [];
   let run: number[] = [];
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Item;
     if (it.kind === 'char' || it.kind === 'atomic') run.push(i);
     else if ((it.kind === 'br' && !ctx.faults.brIgnored) || it.kind === 'nl') {
-      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts, leads);
       run = [];
       out.push({ at: afterCloses(items, i), forced: true });
     } else if (ctx.faults.breakAtBoxBoundary && wrap && run.length > 0 && (it.kind === 'open' || it.kind === 'close')) {
       // Planted fault breakAtBoxBoundary: a soft wrap opportunity at every box boundary inside text.
-      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts, leads);
       run = [];
       out.push({ at: it.kind === 'open' ? i : afterCloses(items, i), forced: false });
     }
   }
-  addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts);
+  addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts, leads);
   // One boundary per place, in item order; a forced one wins over a soft one at the same place.
   const ordered = [...out].sort((x, y) => (x.at !== y.at ? x.at - y.at : x.forced === y.forced ? 0 : x.forced ? -1 : 1));
   const sorted: Boundary[] = [];
@@ -1054,12 +1066,27 @@ function latinBreaksAllowed(cps: readonly number[]): boolean[] {
 
 /**
  * A hyphen-minus before a Latin-1 letter (UAX #14 HY then AL): Chrome 145 breaks there unless the hyphen begins the text its line
- * breaker reads, that is unless it is the first code point, follows an opportunity, or follows a no-break space (LB20a: sot, SP,
- * ZW, GL); so "A-ä" breaks after the hyphen and "?-ä" and "--ä" do not (TXT-BREAK-2, test/fixtures/linebreak/chrome145-break-all.json,
- * under keep-all, which breaks as normal here, and break-all). out holds the opportunities before position i.
+ * breaker reads (LB20a: sot, SP, ZW, GL before it). Blink restarts that text at every line start, so the break holds unless the
+ * hyphen is the first code point, follows a space, U+200B or a no-break space, or starts the line (TXT-BREAK-2, test/fixtures/
+ * linebreak/chrome145-break-all.json at width 0 and parity fixture text-break-hyphen-lato at real widths, under keep-all, which
+ * breaks as normal here, and break-all). The line start is the fitter's (hyphenLeads, shaping.ts itemBreakable); this static
+ * answer reads every opportunity as a line start, as min-content does (HandleTextForFastMinContent gives the hyphen and the
+ * letter one segment when the hyphen follows an opportunity). out holds the opportunities before position i.
  */
 function hyphenLetterBreaks(cps: readonly number[], i: number, out: readonly number[]): boolean {
   return i >= 2 && (out.length === 0 || (out[out.length - 1] as number) !== i - 1) && latinBreakClass(cps[i - 2] as number) !== LC_GL;
+}
+
+/** The positions after a hyphen-minus before a Latin-1 letter whose break holds unless the line starts at the hyphen (hyphenLetterBreaks). */
+function hyphenLeads(cps: readonly number[]): number[] {
+  const out: number[] = [];
+  for (let i = 2; i < cps.length; i++) {
+    const cur = cps[i] as number;
+    if ((cps[i - 1] as number) !== HYPHEN_MINUS || cur <= 0x7f || cur > 0xff || latinBreakClass(cur) !== LC_AL) continue;
+    const before = latinBreakClass(cps[i - 2] as number);
+    if (before !== LC_SP && before !== LC_ZW && before !== LC_GL) out.push(i);
+  }
+  return out;
 }
 
 /**
@@ -1465,6 +1492,11 @@ function fragmentStartAt(ifc: Ifc, i: number): boolean {
   return false;
 }
 
+function leadAt(ifc: Ifc, i: number): boolean {
+  for (const o of ifc.leadItems) if (o === i) return true;
+  return false;
+}
+
 function opportunityAt(ifc: Ifc, i: number): boolean {
   for (const o of ifc.opportunityItems) if (o === i) return true;
   return false;
@@ -1502,11 +1534,14 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       if (s.result.end !== i - first) unsupported('text-glyph', t.id, 'css-fonts-4 §5', `${t.id} holds a code point outside the Basic Multilingual Plane`);
       const opps: number[] = [];
       for (let o = 1; o < i - first; o++) if (opportunityAt(ifc, first + o)) opps.push(o);
+      const leads: number[] = [];
+      for (let o = 1; o < i - first; o++) if (leadAt(ifc, first + o)) leads.push(o);
       // CanBreakAfter: an opportunity before the next char; none before a <br> (UAX #14 LB6); the end of the text is one.
       const next = nextCharAfter(ifc, i - 1);
       let atEnd = next >= 0 ? opportunityAt(ifc, next) : true;
       if (next < 0) for (let j = i; j < ifc.items.length && (ifc.items[j] as Item).kind !== 'char'; j++) if ((ifc.items[j] as Item).kind === 'br' || (ifc.items[j] as Item).kind === 'nl') atEnd = false;
-      items.push({ kind: 'text', item: s.item, result: s.result, opportunities: opps, atEnd, offset });
+      if (next >= 0 && leadAt(ifc, next)) leads.push(i - first);
+      items.push({ kind: 'text', item: s.item, result: s.result, opportunities: opps, atEnd, leads, offset });
       firstItem.push(first);
       const gs: number[] = [];
       for (let o = 1; o < i - first; o++) if (graphemeAt(ifc, first + o)) gs.push(o);

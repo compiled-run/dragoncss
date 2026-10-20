@@ -457,8 +457,9 @@ export function lineBreakOpportunitiesWith(text: readonly number[], style: LineB
     else if (isBreakableSpace(last)) breaks = true;
     else if (last === HYPHEN_MINUS && cur > 0x7f && cur <= 0xff && resolveClass(lineBreakClass(cur), true) === LB_AL) {
       // A hyphen-minus before a Latin-1 letter: a break unless the hyphen begins the text the breaker reads (the first code point,
-      // after an opportunity, or after GL), which is LB20a read from the last opportunity (Chrome 145 observation, TXT-BREAK-2
-      // test/fixtures/linebreak/chrome145-break-all.json).
+      // after an opportunity, or after GL), which is LB20a with every opportunity read as a line start, as at width 0 and in
+      // min-content (Chrome 145 observation, TXT-BREAK-2 test/fixtures/linebreak/chrome145-break-all.json). The fitter keeps the
+      // break when its line starts elsewhere (inline.ts hyphenLeads).
       const prev = opportunities[opportunities.length - 1];
       breaks = i >= 2 && (prev === undefined || prev.position !== i - 1) && lineBreakClass(text[i - 2] as number) !== LB_GL;
     } else {

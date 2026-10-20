@@ -1,6 +1,6 @@
-// TXT2-d and TXT-BREAK-2 compiler (analysis/break-all.ts): word-break break-all over the Latin set and keep-all are accepted in Ahem and
-// in a real face; break-all over any other character, or U+00AD, is refused on every target at the word-break declaration; the planted
-// fault accepts it.
+// TXT2-d and TXT-BREAK-2 compiler (analysis/break-all.ts): word-break break-all over the Latin set and keep-all are accepted in any
+// face (the engine lays Latin-1 out in a real face; Ahem covers ASCII); break-all over any other character, or U+00AD, is refused on
+// every target at the word-break declaration; the planted fault accepts it.
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
@@ -31,7 +31,7 @@ function refusals(family: string, wordBreak: string, value: string, faults: Comp
 }
 
 describe('word-break break-all and keep-all (TXT2-d, TXT-BREAK-2)', () => {
-  it('accepts break-all over the Latin set and keep-all over anything, in Ahem and in a real face', () => {
+  it('accepts break-all over the Latin set and keep-all over anything, in any face', () => {
     expect(refusals('Ahem', 'break-all', 'XY12 ZW34 xx')).toEqual([]);
     expect(refusals('Ahem', 'break-all', 'XX-XX X.X X/X X(X) X\u00a0X \u00e9\u00df \u2014\u201cX\u201d')).toEqual([]);
     expect(refusals('Ahem', 'keep-all', 'XX-XX XX/XX X.X')).toEqual([]);
