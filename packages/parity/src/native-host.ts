@@ -118,11 +118,32 @@ export function referenceMeasurer(): TextMeasurer {
   return deviceShapedMeasurer(new Map(shimFaces().map((f) => [f.id, fontDataOf(f.id)] as const)), hostShaper);
 }
 
-/** Every face a case's program draws text in that the apps do not bundle (shimFaces), as "<case>: <face>". */
+/**
+ * Every face a case's program measures or draws text in that the apps do not bundle (shimFaces), as "<case>: <face>": the font writes
+ * and every font spec of the layout tree (text leaves, struts), which the device measures.
+ */
 export function unbundledFaces(cases: readonly EmitCase[], bundled: readonly ShimFace[] = shimFaces()): string[] {
   const ids = new Set(bundled.map((f) => f.id));
   const out = new Set<string>();
-  for (const c of cases) for (const n of c.program.nodes) for (const w of n.writes) if (w.kind === 'font' && !ids.has(w.font.family)) out.add(`${c.id}: ${w.font.family}`);
+  const visit = (id: string, v: unknown): void => {
+    if (Array.isArray(v)) {
+      for (const x of v) visit(id, x);
+      return;
+    }
+    if (v === null || typeof v !== 'object') return;
+    for (const [k, x] of Object.entries(v)) {
+      if (k === 'font' && x !== null && typeof x === 'object' && 'family' in x) {
+        const family = (x as { family: unknown }).family;
+        if (typeof family !== 'string') throw new Error(`${id}: a font spec's family is ${JSON.stringify(family)}, not a face id`);
+        if (!ids.has(family)) out.add(`${id}: ${family}`);
+      }
+      visit(id, x);
+    }
+  };
+  for (const c of cases) {
+    for (const n of c.program.nodes) for (const w of n.writes) if (w.kind === 'font' && !ids.has(w.font.family)) out.add(`${c.id}: ${w.font.family}`);
+    visit(c.id, c.program.root);
+  }
   return [...out];
 }
 
