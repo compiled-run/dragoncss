@@ -3,7 +3,8 @@
 import type { Rgba8 } from '../../css/color.ts';
 import { serializeColor } from '../../css/color.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
-import { isIsolate } from '../../css/properties/isolation.ts';
+import { backfaceHidden } from '../../css/properties/transform-extra.ts';
+import { isolates } from '../../css/properties/isolation.ts';
 import { blendModeOf } from '../../css/properties/fx.ts';
 import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
@@ -59,7 +60,8 @@ const NATIVE_OUTLINES = 'solid and double outlines, and dotted, dashed, groove, 
  * the rounded path: the outline's outset grows its positive component, and the sides beside it (every side, for groove and ridge)
  * take DrawCurvedBoxSide or DrawCurvedDashedDottedBoxSide.
  */
-const rounds = (el: ResolvedElement): boolean =>
+/** Whether any corner of an element has a non-zero radius. */
+export const rounds = (el: ResolvedElement): boolean =>
   RADIUS_LONGHANDS.some((p) => {
     const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
     return c !== null && (c[0].value > 0 || c[1].value > 0);
@@ -89,8 +91,8 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
 
 /**
  * Why a layer item of the stacking tree (lower/paint/stacking.ts: a positioned box, a flex or grid item with a z-index, a box with
- * opacity below 1, a transform, will-change: transform or opacity, a clip-path, isolation: isolate, a backdrop-filter or a
- * mix-blend-mode) paints in a layer of its own rather than in its context's flow.
+ * opacity below 1, a transform, will-change: transform or opacity, a clip-path, isolation: isolate, backface-visibility: hidden, a
+ * backdrop-filter or a mix-blend-mode) paints in a layer of its own rather than in its context's flow.
  */
 function layerReason(el: ResolvedElement): string {
   const position = keywordOf(el, 'position');
@@ -100,7 +102,8 @@ function layerReason(el: ResolvedElement): string {
   if (transformsDescendants(el)) return transformWord(el);
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
   if (hasClipPath(el)) return 'a clip-path';
-  if (isIsolate(el.props.get('isolation')?.value)) return 'isolation: isolate';
+  if (isolates(el)) return 'isolation: isolate';
+  if (backfaceHidden(el)) return 'backface-visibility: hidden';
   const mode = blendModeOf(el.props.get('mix-blend-mode')?.value);
   if (mode !== 'normal') return `mix-blend-mode: ${mode}`;
   // A static box's z-index makes it a layer item only as a flex or grid item (resolvedStackTree), the one reason left.

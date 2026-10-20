@@ -83,6 +83,8 @@ describe('PNT2: transformed geometry against Chrome', () => {
   it('reads a quads file only when every field has its shape and it names its own case and DPR', () => {
     const good = { case: 'c', chrome: '145', dpr: 2, direction: 'ltr', nodes: [{ id: 'a', transform: 'matrix(1, 0, 0, 1, 0, 0)', quad: [0, 0, 1, 0, 1, 1, 0, 1] }] };
     expect(parseQuads(good, 'c', 2)).toEqual(good);
+    const individual = { ...good, nodes: [{ ...good.nodes[0], individual: { translate: '1px', rotate: 'none', scale: 'none' } }] };
+    expect(parseQuads(individual, 'c', 2)).toEqual(individual);
     const bad: [unknown, RegExp][] = [
       [null, /not an object/],
       [[], /not an object/],
@@ -94,11 +96,14 @@ describe('PNT2: transformed geometry against Chrome', () => {
       [{ ...good, nodes: [{ id: 'a', quad: good.nodes[0]?.quad }] }, /node 0 has no id or transform/],
       [{ ...good, nodes: [{ ...good.nodes[0], quad: [0, 0, 1, 0, 1, 1, 0] }] }, /eight finite numbers/],
       [{ ...good, nodes: [{ ...good.nodes[0], quad: [0, 0, 1, 0, 1, 1, 0, null] }] }, /eight finite numbers/],
+      [{ ...good, nodes: [{ ...good.nodes[0], individual: { translate: 'none', rotate: 'none', scale: 'none' } }] }, /individual transforms/],
+      [{ ...good, nodes: [{ ...good.nodes[0], individual: { translate: '1px', rotate: 'none' } }] }, /individual transforms/],
+      [{ ...good, nodes: [{ ...good.nodes[0], individual: { translate: 1, rotate: 'none', scale: 'none' } }] }, /individual transforms/],
     ];
     for (const [json, want] of bad) expect(() => parseQuads(json, 'c', 2)).toThrow(want);
   });
 
-  it('transforms exactly the nodes Chrome transforms, and serialises each functions matrix as Chrome computes it', async () => {
+  it('transforms exactly the nodes Chrome transforms, and serialises each functions matrix after the individual transforms as Chrome computes transform', async () => {
     const ids = new Set((await transformCases()).map((c) => c.id));
     const cases = nativeCases().filter((c) => ids.has(c.case.id));
     expect(cases.length).toBe(ids.size);
@@ -111,7 +116,9 @@ describe('PNT2: transformed geometry against Chrome', () => {
       for (const node of q.nodes) {
         const f = p.nodes.find((x) => x.id === node.id)?.facts['transform'] as Facts;
         const b = boxes.get(node.id) as { w: number; h: number };
-        expect(serializeTransform(f.ops, b.w, b.h, TRIG), `${n.case.id} ${node.id}`).toBe(node.transform);
+        // Chrome's computed transform leaves out translate, rotate and scale, which Dragon writes first, one function each (css-transforms-2 §4).
+        const individual = node.individual === undefined ? 0 : Object.values(node.individual).filter((v) => v !== 'none').length;
+        expect(serializeTransform(f.ops.slice(individual), b.w, b.h, TRIG), `${n.case.id} ${node.id}`).toBe(node.transform);
       }
     }
   }, 600_000);

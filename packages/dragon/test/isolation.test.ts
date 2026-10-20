@@ -8,7 +8,7 @@ import { valueToString } from '../src/analysis/computed.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE } from '../src/css/animation-kinds/kinds.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
-import { BORDER_IMAGE_LONGHANDS } from '../src/css/properties/border-image.ts';
+import { CONTAINER_QUERY_LONGHANDS } from '../src/css/properties/container-query.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { DOC, expectCatalogued, inputFor, staticClass, text } from './helpers.ts';
@@ -38,8 +38,8 @@ const errors = (c: ReturnType<typeof compile>): Diagnostic[] => c.diagnostics.fi
 const tree = (r: SourceRef): TreeNode[] => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])]), el(r, 'z', 'div', ['z'])];
 
 describe('isolation', () => {
-  it('follows the border image longhands in the registry and animates discretely', () => {
-    expect(LONGHANDS[LONGHANDS.indexOf('isolation') - 1]).toBe(BORDER_IMAGE_LONGHANDS[BORDER_IMAGE_LONGHANDS.length - 1]);
+  it('follows the container-query longhands in the registry and animates discretely', () => {
+    expect(LONGHANDS[LONGHANDS.indexOf('isolation') - 1]).toBe(CONTAINER_QUERY_LONGHANDS[CONTAINER_QUERY_LONGHANDS.length - 1]);
     expect(ANIMATION_KINDS.isolation).toBe(DISCRETE);
   });
 

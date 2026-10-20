@@ -127,7 +127,7 @@ describe('dependency boundaries', () => {
       // TXT2-g: the line-clamp longhand names and the clamp container's authored display, from the resolved element alone.
       "import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';",
       // MASK-CLIP: the mask longhand names and their initial values, to leave initial masks unwritten.
-      "import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';",
+      "import { isInitialMask, MASK_LONGHANDS, maskDeclarationName } from '../css/properties/mask.ts';",
       // MISC-PAINT: the border image longhand names and their initial values, to leave initial border images unwritten.
       "import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';",
       "import { blendModeOf, FX_LONGHANDS, hasBackdropFilter } from '../css/properties/fx.ts';",
@@ -181,9 +181,9 @@ describe('dependency boundaries', () => {
 describe('UA longhands of the element keys (ELB-2)', () => {
   it('pins the longhands a Chrome UA rule sets per element key', () => {
     expect(elementKeyLonghands).toEqual({
-      button: ['background-color', 'border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'text-align'],
-      input: ['background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],
-      'input[type=range]': ['background-color', 'color', 'font-family', 'font-size', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
+      button: ['appearance', 'background-color', 'border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'text-align'],
+      input: ['appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],
+      'input[type=range]': ['appearance', 'background-color', 'color', 'font-family', 'font-size', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
       a: [],
       'a[href]': ['color'],
       img: ['overflow-x', 'overflow-y'],

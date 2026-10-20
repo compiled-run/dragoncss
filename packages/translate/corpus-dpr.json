@@ -38,13 +38,13 @@
   "engineInline": 4500,
   "engineOverflow": 3000,
   "snapGenerated": 20000,
-  "snapVectors": 2553,
+  "snapVectors": 2757,
   "cases": {
-    "vectors-m2": 665,
-    "vectors-dpr": 2769,
-    "engine-dpr": 2769,
+    "vectors-m2": 733,
+    "vectors-dpr": 2973,
+    "engine-dpr": 2973,
     "units-m2": 120000,
-    "snap": 22553,
+    "snap": 22757,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
@@ -54,25 +54,25 @@
     "text-latin": 160
   },
   "engineSplit": {
-    "ok": 2761,
-    "unsupported": 8,
+    "ok": 2961,
+    "unsupported": 12,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "629490120dac4d8eca68838d34031f4b34b66ed874a8aa350e6a79220120cd21",
-    "vectors-dpr": "4d9ca31ddb0599d012e906ba7e1eb3842fd1d150fea41a0ea9b0e56ef6129439",
-    "engine-dpr": "4f07381f5a8e3c2598a71274a909c51c52a21f51fd14e43dd61c585804debb76",
+    "vectors-m2": "343bc3bf865c2fa318e676118a067389d37e23a9630cce779cd6d5712f2225ee",
+    "vectors-dpr": "72170c3388b097a48ef0a2b00b4f7402d08c9468ee9004b23840ad8769cfa470",
+    "engine-dpr": "546db8a156722f9e57c129f41ad3e02ffbcdaba721751e4f05ac517e513f6eb7",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "c3c7292d485806b9d9ec1e42ebcc79a749266c4490b49311f3933156389395f4",
+    "snap": "d2bcda3590194cd4a47c36a91a2a07197e6d66a5981a65b69715726cabd3cf1e",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
-    "calc-goldens": "63af01d4291eefcefbd0bc1f4457b8bc0d33d7d36e56a86593f6fe14e204746d",
-    "engine-calc": "5f5b55750eb5f426c68aecc3c35ab198d9bdcb636dab3ec6a265db8a2308280c",
+    "calc-goldens": "43045bf7c4a52c090b909f4df215d2044e5036a471b88951c2e9de5c1cc9cd51",
+    "engine-calc": "f412b7c191a18a8021c8cde207dce0ccffcd2b65c24a6d4e7a1b39914c29c909",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
-    "engine-inline": "be7cda93c5d0501004debf08888da57a7d2ae0c675fa737285f724af44c9a607",
-    "engine-overflow": "a61a3f5a060236e414fab43d67cc0c4e8f799c9e46605685736cd6bdc855cd97",
-    "text-latin": "279a6b1ec07437eb9bcccdfbf4e9887cb23bb34db33cf85f31386073f0a9b0e9"
+    "engine-inline": "de0ef83f5f6ea0999848efb2670c604691f1bdadb257fff5af9eea9b36289b56",
+    "engine-overflow": "462bf90e84a986587adc6881bc286b3e35d59f0f1fd0a1f3a37ec27feace257c",
+    "text-latin": "b1051af857b96b0449ffc85b5f703bd8ab9b090b15821bedfb7023fe5a7fb537"
   },
-  "digest": "1c3c94ebd01ef66da9a1b9d6f94d2dd8f246e59ddab31b71a96d61f7be02b730"
+  "digest": "dcd914c6f1364d235c6820573918d81e7fe6fc8cdf7fa40429c80be85169457d"
 }

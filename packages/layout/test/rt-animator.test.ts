@@ -9,7 +9,7 @@ import { legacyColor, serializeColor, serializeValue } from '../src/rt-interpola
 import { box, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
 
 const LINEAR: EasingCode = { kind: 'linear', x1: 0, y1: 0, x2: 0, y2: 0, steps: 1, position: 'end' };
-const NONE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false };
+const NONE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false, ops: [] };
 const rgb = (r: number, g: number, b: number): ValueCode => ({ ...NONE, kind: 'color', r, g, b, alpha: 1 });
 const listed = (duration: number): ListingCode => ({ present: true, mode: 'listed', delay: 0, duration, easing: LINEAR });
 const viewport = { width: 400, height: 300 };
@@ -32,6 +32,7 @@ const TABLES: AnimTables = {
   rendered: [{ node: 'root', values: [true, true, true] }, { node: 'a', values: [true, true, false] }],
   bases: [],
   closure: [{ source: { node: 'a', property: 'background-color' }, writes: [{ node: 'b', property: 'color' }] }],
+  origins: [],
 };
 const INPUTS = [input(10), input(110), input(0, false)];
 const show = (v: Parameters<typeof serializeValue>[0]): string => serializeValue(v, 0, 0, { sin: Math.sin, cos: Math.cos });

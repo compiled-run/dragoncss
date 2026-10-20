@@ -44,8 +44,8 @@ const textCard = (r: SourceRef): TreeNode[] => [div(r, 'x', ['x'], [text(r, 'tx'
 const CARD = '.x { width: 80px; padding: 4px; background-color: #fff; color: #123; } .k { height: 6px; background-color: rgb(250, 200, 40); border: 2px solid rgb(10, 20, 30); }';
 
 describe('FX-0: backdrop-filter and mix-blend-mode', () => {
-  it('follow isolation in the registry; a backdrop-filter list is not admitted to animate and mix-blend-mode is discrete', () => {
-    expect(LONGHANDS.slice(LONGHANDS.indexOf('isolation') + 1, LONGHANDS.indexOf('isolation') + 3)).toEqual(['backdrop-filter', 'mix-blend-mode']);
+  it('follow color-scheme, last in the registry; a backdrop-filter list is not admitted to animate and mix-blend-mode is discrete', () => {
+    expect(LONGHANDS.slice(LONGHANDS.indexOf('color-scheme') + 1)).toEqual(['backdrop-filter', 'mix-blend-mode']);
     expect(ANIMATION_KINDS['backdrop-filter']).toBe(UNADMITTED);
     expect(ANIMATION_KINDS['mix-blend-mode']).toBe(DISCRETE);
   });

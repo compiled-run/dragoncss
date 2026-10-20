@@ -55,8 +55,9 @@ const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VAL
 const INITIAL_DECLS = ['border-image-source: none', 'border-image-slice: 100%', 'border-image-width: 1', 'border-image-outset: 0', 'border-image-repeat: stretch'];
 
 describe('border-image', () => {
-  it('follows mask, before isolation and the FX longhands, in Chrome\'s border-image shorthand order', () => {
-    expect(LONGHANDS.slice(LONGHANDS.indexOf(MASK_LONGHANDS[MASK_LONGHANDS.length - 1] as (typeof MASK_LONGHANDS)[number]) + 1)).toEqual([...BORDER_IMAGE_LONGHANDS, 'isolation', 'backdrop-filter', 'mix-blend-mode']);
+  it('follows mask in Chrome\'s border-image shorthand order', () => {
+    const start = LONGHANDS.indexOf(MASK_LONGHANDS[MASK_LONGHANDS.length - 1] as (typeof MASK_LONGHANDS)[number]) + 1;
+    expect(LONGHANDS.slice(start, start + BORDER_IMAGE_LONGHANDS.length)).toEqual([...BORDER_IMAGE_LONGHANDS]);
   });
 
   it('holds the initial values the resolver takes from the grammar, and isInitialBorderImage takes no other value', () => {

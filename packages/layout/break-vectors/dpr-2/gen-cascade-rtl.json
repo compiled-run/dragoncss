@@ -1,0 +1,20 @@
+{
+  "case": "gen-cascade-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"c::before:text0","lines":[[0,2]]},
+    {"id":"c:text0","lines":[[0,2]]},
+    {"id":"k::before:text0","lines":[[0,2]]},
+    {"id":"k:text0","lines":[[0,2]]},
+    {"id":"l::before:text0","lines":[[0,2]]},
+    {"id":"l:text0","lines":[[0,2]]},
+    {"id":"l::after:text0","lines":[[0,2]]},
+    {"id":"i::before:text0","lines":[[0,1]]},
+    {"id":"i:text0","lines":[[0,2]]},
+    {"id":"t:text0","lines":[[0,2]]},
+    {"id":"t::after:text0","lines":[[0,1]]},
+    {"id":"h:text0","lines":[[0,2]]},
+    {"id":"h::after:text0","lines":[[0,1]]},
+    {"id":"o:text0","lines":[[0,2]]}
+  ]
+}
