@@ -12,4 +12,6 @@ export const ANIM_LANE = 'device-anim';
 export const TRACE_LANE = 'device-traces';
 /** MQ-R1 (T067 R7 (c)): one real rotation per device (device-env.ts). */
 export const ENV_LANE = 'device-env';
-export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE | typeof TRACE_LANE | typeof ENV_LANE;
+/** T154 slice 2d: the select cases' live selection, driven by long presses and handle drags, against the selection model's. */
+export const SELECT_LANE = 'device-select';
+export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE | typeof TRACE_LANE | typeof ENV_LANE | typeof SELECT_LANE;

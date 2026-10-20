@@ -26,7 +26,7 @@ import { isShapedInput, joinHyphenRects, shapedCaseIds } from './text-latin-run.
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import type { DeviceLaneId } from './device-lanes.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, failuresByKind, HIT_LANE, laneFailures, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, failuresByKind, HIT_LANE, laneFailures, SELECT_LANE, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
@@ -496,6 +496,8 @@ export type DeviceRun = {
   readonly traces?: readonly DeviceSet[];
   /** MQ-R1: the rotation's sets (device-env), one per device; absent before it. */
   readonly env?: readonly DeviceSet[];
+  /** T154 slice 2d: the select cases' record sets (device-select), one per device; absent before them. */
+  readonly selects?: readonly DeviceSet[];
   readonly trust: readonly { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] }[];
   /** A tooling fault that stopped the run (a device that failed to boot twice, a device that cannot hold the root). */
   readonly blocked: string | null;
@@ -625,6 +627,7 @@ function lanesFileTargets(targets: readonly TargetConfig[], problems: readonly s
           if (l.lane === ANIM_LANE) return hosts(deviceLaneRecord(l, d, d.anims ?? []));
           if (l.lane === TRACE_LANE) return hosts(deviceLaneRecord(l, d, d.traces ?? []));
           if (l.lane === ENV_LANE) return hosts(deviceLaneRecord(l, d, d.env ?? []));
+          if (l.lane === SELECT_LANE) return hosts(deviceLaneRecord(l, d, d.selects ?? []));
           if (l.lane !== 'layout-vectors-device') return hosts(deviceLaneRecord(l, d));
           if (d.vectors === null) return hosts(laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null));
           return hosts(laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence));

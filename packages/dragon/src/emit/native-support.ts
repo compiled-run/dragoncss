@@ -2803,9 +2803,10 @@ const header = (comment: string, what: string): string => `${comment} GENERATED 
 /**
  * Raster plants of the support code: glyph-offset-1 draws every glyph 1 device px right of the engine's position (P5), and
  * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs, and MQ-R2 its reduced-motion and colour-scheme
- * reading plants.
+ * reading plants. select-index-off-by-one (T154 slice 2d) is not a raster plant: every caret index a point picks in the selection
+ * runtime moves one caret on.
  */
-export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName | MediaPlantName | 'single-run-baseline';
+export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName | MediaPlantName | 'single-run-baseline' | 'select-index-off-by-one';
 
 type PlantReplacement = { readonly name: SupportPlant; readonly replace: { readonly [B in NativeBackend]: readonly [string, string] } };
 
@@ -2816,7 +2817,8 @@ const glyphPlant = (name: SupportPlant, uikit: string, android: string): PlantRe
 });
 
 /** Registration point (EMS): every support plant, the glyph plants first, then the paint modules' plants in registry order, then
- * the INL1a line plant (appended): every line of a text view after the first takes its first line's baseline offset. */
+ * the INL1a line plant (appended): every line of a text view after the first takes its first line's baseline offset, then the
+ * selection plant (appended). */
 const PLANT_REPLACEMENTS: readonly PlantReplacement[] = [
   glyphPlant('glyph-offset-1', 'public let dragonGlyphPlantDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_DEVICE_PX = '),
   glyphPlant('glyph-offset-y-1', 'public let dragonGlyphPlantYDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = '),
@@ -2824,6 +2826,7 @@ const PLANT_REPLACEMENTS: readonly PlantReplacement[] = [
   glyphPlant('single-run-baseline', 'public let dragonSingleRunBaselinePlant: Double = ', 'const val DRAGON_SINGLE_RUN_BASELINE_PLANT = '),
   // MQ-R2: the media runtime's reading plants.
   ...mediaPlants(),
+  { name: 'select-index-off-by-one', replace: { uikit: ['public let dragonSelectIndexPlant: Int = 0\n', 'public let dragonSelectIndexPlant: Int = 1\n'], 'android-views': ['const val DRAGON_SELECT_INDEX_PLANT = 0\n', 'const val DRAGON_SELECT_INDEX_PLANT = 1\n'] } },
 ];
 
 export const SUPPORT_PLANTS: readonly SupportPlant[] = PLANT_REPLACEMENTS.map((p) => p.name);

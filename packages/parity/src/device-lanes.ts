@@ -38,13 +38,14 @@ import { committedFrameBreaks, committedFramePixels, committedFrames, framePixel
 import { evaluateTraces, traceScriptIds } from './trace-lane.ts';
 import { resizeScriptCases } from './resize-scripts.ts';
 import { envIds, envOracleBrowser, evaluateEnv, motionScaleOf, schemeOf } from './device-env.ts';
+import { evaluateSelect, selectCaseIds, selectFile } from './select-lane.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, devicePoints, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, SELECT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { DeviceCheckLane, DeviceLaneId } from './lane-ids.ts';
-export { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE };
+export { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, SELECT_LANE, STATE_LANE, TRACE_LANE };
 export type { DeviceCheckLane, DeviceLaneId };
 
 export type FailureKind =
@@ -54,7 +55,8 @@ export type FailureKind =
   | 'hit-missing' | 'hit-mismatch'
   | 'frame-reference'
   | 'trace-missing' | 'trace-mismatch' | 'motion-mismatch'
-  | 'environment';
+  | 'environment'
+  | 'select-missing' | 'select-mismatch';
 
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
@@ -488,6 +490,8 @@ export type DeviceOutcome = {
   readonly traces?: DeviceSet | null;
   /** MQ-R1: the rotation's set (device-env); absent before it. */
   readonly env?: DeviceSet | null;
+  /** T154 slice 2d: the select cases' record set (device-select); absent before it. */
+  readonly selects?: DeviceSet | null;
   readonly trust: { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] } | null;
   readonly vectors: (HostRun & { readonly device: string }) | null;
   readonly blocked: string | null;
@@ -548,6 +552,7 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
   const anims: DeviceSet[] = [];
   const traces: DeviceSet[] = [];
   const env: DeviceSet[] = [];
+  const selects: DeviceSet[] = [];
   const trust: { device: string; dpr: number; rows: readonly TrustRow[] }[] = [];
   const blocked: string[] = [];
   let vectors: (HostRun & { device: string }) | null = null;
@@ -559,18 +564,19 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
     if (o.anim !== undefined && o.anim !== null) anims.push(o.anim);
     if (o.traces !== undefined && o.traces !== null) traces.push(o.traces);
     if (o.env !== undefined && o.env !== null) env.push(o.env);
+    if (o.selects !== undefined && o.selects !== null) selects.push(o.selects);
     if (o.trust !== null) trust.push(o.trust);
     if (o.vectors !== null) {
       if (vectors !== null) throw new Error(`two devices ran the vectors lane (${vectors.device}, ${o.vectors.device})`);
       vectors = o.vectors;
     }
   }
-  return { vectors, sets, states, hits, anims, traces, env, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
+  return { vectors, sets, states, hits, anims, traces, env, selects, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
 }
 
-/** Every failure of a target's run, the SELD-R1b lanes', device-anim's and device-traces' too (the list written to out/device-failures-<target>.json). */
+/** Every failure of a target's run, the SELD-R1b lanes', device-anim's, device-traces' and device-select's too (the list written to out/device-failures-<target>.json). */
 export function allRunFailures(d: DeviceRun): LaneFailure[] {
-  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? []), ...(d.anims ?? []), ...(d.traces ?? []), ...(d.env ?? [])].flatMap((s) => s.failures);
+  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? []), ...(d.anims ?? []), ...(d.traces ?? []), ...(d.env ?? []), ...(d.selects ?? [])].flatMap((s) => s.failures);
 }
 
 /** The text of out/device-failures-<target>.json for a target's run. */
@@ -790,6 +796,41 @@ export function evaluateTraceSet(dpr: number, dir: string, device: DeviceRecord,
   return { dpr, device, cases: ids.length, dumps: records, compared: { a: 0, b: compared, c: 0, d: 0, breaks: 0 }, dumpsSha256: h.digest('hex'), failures, faults: [] };
 }
 
+// ---------------------------------------------------------------- device-select (T154 slice 2d)
+
+/** What select-lane.ts evaluateSelect reports for a directory at a DPR. */
+export type SelectVerdict = { readonly passed: number; readonly failed: number; readonly details: readonly string[]; readonly missing: readonly string[] };
+
+/**
+ * device-select at one DPR: every select case's record present and equal, line for line, to the selection model's for the target
+ * (select-lane.ts evaluateSelect). compared.b counts the cases compared.
+ */
+export function evaluateSelectSet(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, extra: readonly LaneFailure[] = [], evaluate: (dir: string, target: NativeTarget, dpr: number) => SelectVerdict = evaluateSelect): DeviceSet {
+  const failures: LaneFailure[] = [...extra];
+  const ids = selectCaseIds();
+  const h = createHash('sha256');
+  let records = 0;
+  for (const id of ids) {
+    const file = selectFile(dir, id, dpr);
+    if (!existsSync(file)) continue;
+    records++;
+    h.update(id).update('\0').update(readFileSync(file, 'utf8')).update('\0');
+  }
+  const v = evaluate(dir, target, dpr);
+  const known = new Set(ids);
+  const caseOf = (d: string): string => {
+    const id = /^([^\s:@]+)/.exec(d)?.[1] ?? '';
+    return known.has(id) ? id : '-';
+  };
+  for (const d of v.details) {
+    const id = caseOf(d);
+    failures.push({ lane: SELECT_LANE, case: id, dpr, node: null, kind: v.missing.includes(id) ? 'select-missing' : 'select-mismatch', detail: d });
+  }
+  if (v.failed > 0 && v.details.length === 0) failures.push({ lane: SELECT_LANE, case: '-', dpr, node: null, kind: 'select-mismatch', detail: `evaluateSelect failed ${v.failed} without a detail` });
+  if (v.passed + v.failed !== ids.length) failures.push({ lane: SELECT_LANE, case: '-', dpr, node: null, kind: 'select-mismatch', detail: `evaluateSelect judged ${v.passed + v.failed} of ${ids.length} select cases` });
+  return { dpr, device, cases: ids.length, dumps: records, compared: { a: 0, b: v.passed + v.failed, c: 0, d: 0, breaks: 0 }, dumpsSha256: h.digest('hex'), failures, faults: [] };
+}
+
 /** Where a device comes from: booted and stopped by this process, or handed by the parent that boots and stops it (release null). */
 export type DeviceSource = { readonly boot: () => Promise<DeviceHandle>; readonly release: ((h: DeviceHandle) => Promise<string | null>) | null };
 
@@ -944,6 +985,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       log(`${spec.name}: device-anim ${animSet.dumps}/${animSet.cases} dumps in ${((Date.now() - a0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(animSet.failures))}`);
     }
     let traces: DeviceSet | null = null;
+    let selects: DeviceSet | null = null;
     let trust: DeviceOutcome['trust'] = null;
     if (set !== null && rec !== null) {
       // SELD-R2: device-traces from a launch of the interaction scripts; the Android host also runs each through MotionEvents.
@@ -954,6 +996,14 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       const traceExtra: LaneFailure[] = xr.error === null ? [] : [{ lane: TRACE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the interaction scripts: ${xr.error}` }];
       traces = evaluateTraceSet(dpr, tracesDir, rec, traceIds, t.target === 'android', evaluateTraces, traceExtra);
       log(`${spec.name}: device-traces ${traces.dumps}/${traces.cases} records, ${traces.compared.b} compared in ${((Date.now() - x0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(traces.failures))}`);
+      // T154 slice 2d: device-select from a launch of the select cases, each driven by long presses and handle drags.
+      const selectIds = selectCaseIds();
+      const selectDir = join(nativeOut(t.target), 'lanes', `${spec.name}-select`);
+      const q0 = Date.now();
+      const qr = await runApp(h, artifact, { runFile: runFileText(selectIds.map((id) => ({ id, points: [] })), false), caseCount: selectIds.length, outDir: selectDir });
+      const selectExtra: LaneFailure[] = qr.error === null ? [] : [{ lane: SELECT_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the select cases: ${qr.error}` }];
+      selects = evaluateSelectSet(t.target, dpr, selectDir, rec, selectExtra);
+      log(`${spec.name}: device-select ${selects.dumps}/${selects.cases} records, ${selects.compared.b} compared in ${((Date.now() - q0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(selects.failures))}`);
       const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
       const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
         const tc = cases.find((c) => c.case.id === id);
@@ -975,7 +1025,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       vectors = await runDeviceVectors(h, t, host);
       log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
     }
-    return { device: spec.name, set, states, hits, anim: animSet, traces, env, trust, vectors, blocked: null };
+    return { device: spec.name, set, states, hits, anim: animSet, traces, env, selects, trust, vectors, blocked: null };
   };
   const stop = source.release;
   if (stop === null) return work();

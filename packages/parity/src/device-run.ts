@@ -63,11 +63,26 @@ export const MEDIA_PLANTS: readonly MediaPlant[] = ['reduced-motion-transition-s
 export const isMediaPlant = (p: SupportPlant): p is MediaPlant => (MEDIA_PLANTS as readonly string[]).includes(p);
 /** The INL1a line plant, judged against the clean run on LINE_PLANT_CASE (judgeLinePlant). */
 export type LinePlant = 'single-run-baseline';
-/** The paint plants: every support plant that is neither a glyph plant, the line plant nor a media plant. */
-export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant | MediaPlant>;
+/** The T154 slice 2d selection plant, judged by device-select on the select cases against the clean run (judgeSelectPlant). */
+export type SelectPlant = 'select-index-off-by-one';
+/** The paint plants: every support plant that is neither a glyph plant, the line plant, a media plant nor the selection plant. */
+export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant | MediaPlant | SelectPlant>;
 export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
 export const isLinePlant = (p: SupportPlant): p is LinePlant => p === 'single-run-baseline';
-export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p) && !isMediaPlant(p);
+export const isSelectPlant = (p: SupportPlant): p is SelectPlant => p === 'select-index-off-by-one';
+export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p) && !isMediaPlant(p) && !isSelectPlant(p);
+
+/**
+ * The selection plant judged against the clean run on the same device: both hosts finished, the clean run's device-select passed
+ * every case, and the planted run wrote every record while device-select failed at least one case.
+ */
+export function judgeSelectPlant(clean: { readonly failed: number; readonly details: readonly string[] }, planted: { readonly failed: number; readonly missing: readonly string[] }, hostErrors: readonly string[]): PlantVerdict {
+  const problems: string[] = [...hostErrors];
+  if (clean.failed > 0) problems.push(`the clean run fails device-select on ${clean.failed} case(s): ${clean.details[0] ?? ''}`);
+  if (planted.missing.length > 0) problems.push(`the planted run wrote no select record for ${planted.missing.join(', ')}`);
+  if (planted.failed === 0) problems.push('device-select passed every case under the plant');
+  return { caught: problems.length === 0, problems, lines: [] };
+}
 /**
  * The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the
  * replaced fixtures whose images are drawn, the radius plant (PNT1) on a rounded case of its own group, the outline plant (PNT1) on a solid outline case.

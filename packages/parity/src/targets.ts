@@ -13,6 +13,7 @@ import { SAMPLE_RULES } from './samples.ts';
 import { directionSuffix, environmentsOf, FIXTURES } from './fixtures.ts';
 import { RESIZE_SCRIPTS } from './fixture-groups/media-runtime.ts';
 import { shapedCaseIds } from './text-latin-run.ts';
+import { selectCaseIds } from './select-lane.ts';
 import { traceScriptIds } from './trace-lane.ts';
 import { ENV_SCRIPTS, MEDIA_ENVIRONMENT_FIXTURES } from './fixture-groups/media-environment.ts';
 
@@ -24,7 +25,9 @@ export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-fr
   // SELD-R2 (T064 R14): the interaction scripts' traces, through the entry points (and on Android through MotionEvents too).
   'device-traces',
   // MQ-R1 (notes/T067 R7 (c)): one real rotation per device.
-  'device-env'] as const;
+  'device-env',
+  // T154 slice 2d: the select cases' live selection under long presses and handle drags.
+  'device-select'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -210,6 +213,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   // TXT1a-2: device-hit runs no shaped case yet (hitCaseIds); the other device lanes run every case (deviceCaseIds).
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   if (lane === 'device-traces') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, traceScriptIds())), corpora: [] };
+  if (lane === 'device-select') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, selectCaseIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, deviceCheckCaseIds())), corpora: [] };
 }
 

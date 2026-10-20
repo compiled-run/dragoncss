@@ -23,10 +23,13 @@ public struct DragonSelectFacts {
   public init(body: String, paragraphs: [String], unselectable: [String], hidden: [String]) { self.body = body; self.paragraphs = paragraphs; self.unselectable = unselectable; self.hidden = hidden }
 }
 
-/// A text position: an index into the selection model's caret list (rt-select.ts caretList), in document order.
+/// A text position: an index into the selection model's caret list (rt-select.ts caretList), in document order. A point in a
+/// block without text picks the block's own position, read as the next text's start: emptyBlock marks it, as no word is around it
+/// that a caret index can hold (Chrome's double click there selects the block's line break).
 public final class DragonTextPosition: UITextPosition {
   public let index: Int
-  public init(_ index: Int) { self.index = index; super.init() }
+  public let emptyBlock: Bool
+  public init(_ index: Int, emptyBlock: Bool = false) { self.index = index; self.emptyBlock = emptyBlock; super.init() }
 }
 
 /// A text range between two caret indices, from <= to.
@@ -62,6 +65,9 @@ public final class DragonWordTokenizer: UITextInputStringTokenizer {
     return super.rangeEnclosingPosition(position, with: granularity, inDirection: direction)
   }
 }
+
+/// The select-index-off-by-one plant (T154 slice 2d): every caret index a point picks moves by this many carets.
+public let dragonSelectIndexPlant: Int = 0
 
 /// A translated selection call; a throw is a broken table or a bad caret, which the generated code never recovers from.
 func dragonSelectCall<T>(_ what: String, _ f: () throws -> T) -> T {
@@ -125,14 +131,21 @@ public final class DragonSelection: UIView, UITextInput, UITextInteractionDelega
 
   /// The caret index a point picks: the drag focus's (rt-select.ts focusAt), an empty block's read as the next text's start.
   private func index(at p: CGPoint) -> Int? {
+    return pick(p)?.index
+  }
+
+  /// The position a point picks, marked when it is an empty block's.
+  private func pick(_ p: CGPoint) -> DragonTextPosition? {
     if carets.isEmpty { return nil }
     guard let c = dragonSelectCall("focusAt", { try rtSelect_focusAt(table, lu(p.x), lu(p.y)) }) else { return nil }
-    return Int(dragonSelectCall("caretIndex") { try rtSelect_caretIndex(JsArray(carets), c) })
+    let i = Int(dragonSelectCall("caretIndex") { try rtSelect_caretIndex(JsArray(carets), c) })
+    let k = carets[i]
+    return DragonTextPosition(i + dragonSelectIndexPlant, emptyBlock: k.node != c.node || k.offset != c.offset)
   }
 
   /// The word around a position (rt-select.ts wordAround), or nil where none is selected.
   public func word(around position: UITextPosition) -> UITextRange? {
-    if carets.isEmpty { return nil }
+    if carets.isEmpty || (position as? DragonTextPosition)?.emptyBlock == true { return nil }
     let w = dragonSelectCall("wordAround") { try rtSelect_wordAround(table, carets[caret(position)]) }.items
     if w.count != 2 { return nil }
     let all = JsArray(carets)
@@ -241,7 +254,7 @@ public final class DragonSelection: UIView, UITextInput, UITextInteractionDelega
   }
 
   public func closestPosition(to point: CGPoint) -> UITextPosition? {
-    return index(at: point).map { DragonTextPosition($0) }
+    return pick(point)
   }
 
   public func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
@@ -329,6 +342,9 @@ import dev.dragon.layout.rtSelect_selectedText
 import dev.dragon.layout.rtSelect_selectionTableOf
 import dev.dragon.layout.rtSelect_wordAt
 
+/** The select-index-off-by-one plant (T154 slice 2d): every caret index a point picks moves by this many carets. */
+const val DRAGON_SELECT_INDEX_PLANT = 0
+
 /** The compiler's selection facts of a case (rt-select.ts SelectFacts). */
 class DragonSelectFacts(val body: String, val paragraphs: List<String>, val unselectable: List<String>, val hidden: List<String>)
 
@@ -351,7 +367,7 @@ class DragonSelection(input: LayoutInput, measurer: TextMeasurer, facts: DragonS
   fun indexAt(x: Double, y: Double): Int {
     if (count == 0) return -1
     val c = rtSelect_focusAt(table, lu(x), lu(y)) ?: return -1
-    return rtSelect_caretIndex(carets, c).toInt()
+    return rtSelect_caretIndex(carets, c).toInt() + DRAGON_SELECT_INDEX_PLANT
   }
 
   /** A caret's rect in px: x, y, height. */
@@ -423,12 +439,19 @@ class DragonSelectionFrame(context: Context, private val selection: DragonSelect
     try { return a.getDrawable(0) ?: throw IllegalStateException("dragon: the theme has no text selection handle") } finally { a.recycle() }
   }
 
+  /** Whether the current touch stream began on a handle, which the long press and the clearing tap do not see. */
+  private var onHandle = false
+
   /** Watches every touch for the long press and the clearing tap; the tree below still receives it. */
   override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+    if (ev.actionMasked == MotionEvent.ACTION_DOWN) onHandle = false
     val handled = super.dispatchTouchEvent(ev)
-    gestures.onTouchEvent(ev)
+    if (!onHandle) gestures.onTouchEvent(ev)
     return handled || ev.actionMasked == MotionEvent.ACTION_DOWN
   }
+
+  /** A selection handle's view: the start handle's, or the end handle's. */
+  fun handle(start: Boolean): View = if (start) left else right
 
   fun select(a: Int, f: Int) {
     if (a < 0 || f < 0 || a == f) return clear()
@@ -505,25 +528,38 @@ class DragonSelectionFrame(context: Context, private val selection: DragonSelect
     }
   }
 
-  /** A selection handle: dragging it moves its end of the selection to the caret under the finger, with the magnifier over it. */
+  /**
+   * A selection handle: dragging it moves its end of the selection to the caret its point picks, with the magnifier over it. Its
+   * point is its caret's x at the middle of the caret's line; a press keeps the finger's offset from it, so pressing a handle moves
+   * nothing and a drag moves the point as far as the finger.
+   */
   private inner class Handle(val drawable: Drawable, val start: Boolean) : View(context) {
+    private var dx = 0.0
+    private var dy = 0.0
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) = setMeasuredDimension(drawable.intrinsicWidth, drawable.intrinsicHeight)
     override fun onDraw(canvas: Canvas) {
       drawable.setBounds(0, 0, width, height)
       drawable.draw(canvas)
     }
     override fun onTouchEvent(ev: MotionEvent): Boolean {
-      val fx = ev.rawX - this@DragonSelectionFrame.locationX()
-      val fy = ev.rawY - this@DragonSelectionFrame.locationY() - height
+      val fx = (ev.rawX - this@DragonSelectionFrame.locationX()).toDouble()
+      val fy = (ev.rawY - this@DragonSelectionFrame.locationY()).toDouble()
       when (ev.actionMasked) {
-        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-          val i = selection.indexAt(fx / scale, fy / scale)
+        MotionEvent.ACTION_DOWN -> {
+          onHandle = true
+          val r = selection.caretRect(if (start) minOf(anchor, focus) else maxOf(anchor, focus))
+          dx = fx - r[0] * scale
+          dy = fy - (r[1] + r[2] / 2.0) * scale
+          magnifier.show((fx - dx).toFloat(), (fy - dy).toFloat())
+        }
+        MotionEvent.ACTION_MOVE -> {
+          val i = selection.indexAt((fx - dx) / scale, (fy - dy) / scale)
           if (i >= 0) {
             val lo = minOf(anchor, focus)
             val hi = maxOf(anchor, focus)
             if (start) select(hi, minOf(i, hi - 1).coerceAtLeast(0)) else select(lo, maxOf(i, lo + 1).coerceAtMost(selection.count - 1))
           }
-          magnifier.show(fx, fy)
+          magnifier.show((fx - dx).toFloat(), (fy - dy).toFloat())
         }
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> magnifier.dismiss()
       }
