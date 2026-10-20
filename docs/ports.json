@@ -3746,6 +3746,7 @@
         { "lines": "394-432", "symbol": "ListMarker::InlineMarginsForOutside", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/parity/src/pseudo-capture.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/marker.ts", "symbol": "symbolWidthPx", "use": "port" },
         { "file": "packages/layout/src/marker.ts", "symbol": "symbolMarginStartPx", "use": "port" },
         { "file": "packages/layout/src/marker.ts", "symbol": "MARKER_PADDING_PX", "use": "port" },
