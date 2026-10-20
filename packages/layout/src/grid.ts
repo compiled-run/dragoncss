@@ -2130,6 +2130,7 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
   const inFlow: LayoutBox[] = [];
   const outOfFlow: LayoutBox[] = [];
   for (const k of box.children) {
+    if (k.kind === 'control') unsupported('grid-control', k.id, 'css-grid-2 §6', 'a form control as a grid item (not yet supported)');
     if (k.kind !== 'box' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
     if (k.kind === 'replaced') unsupported('grid-replaced', k.id, 'css-grid-2 §6', 'a replaced grid item (not yet supported)');
     if (k.kind !== 'box') continue;

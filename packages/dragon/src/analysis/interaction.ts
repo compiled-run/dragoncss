@@ -3,6 +3,7 @@
 // ever tested against, to a fixed point), builds the four dimensions (hover chains, active chains, focus with or without
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
+import { isControlTag } from './elements/controls.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
 import { isAnimationProperty } from '../css/properties/animation.ts';
@@ -527,6 +528,17 @@ export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedV
   for (const c of root.children) {
     if (c.kind !== 'element') continue;
     const found = hitUnmodelledGrid(c, compiles);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+/** FORM-a: the first form control of a resolved tree in preorder, or null; the hit table does not model a control's box (rt-hit.ts). */
+export function hitUnmodelledControl(root: ResolvedElement): string | null {
+  if (isControlTag(root.element.tag)) return root.element.address;
+  for (const c of root.children) {
+    if (c.kind !== 'element') continue;
+    const found = hitUnmodelledControl(c);
     if (found !== null) return found;
   }
   return null;

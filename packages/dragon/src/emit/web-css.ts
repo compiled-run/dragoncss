@@ -7,7 +7,8 @@
 // The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
 // clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
 // So are the mask longhands, written only where one is not initial (MASK-CLIP accepts none that is not), and so are the border image
-// longhands (MISC-PAINT likewise), and appearance, written only where it is not none (no Chrome UA rule sets it on a supported tag),
+// longhands (MISC-PAINT likewise), and appearance, written only where it is not none or on a form control or range part (Chrome's UA
+// sets auto on button, input and the slider thumb, so their none must be written),
 // and caret-color and accent-color, written on every element of a case where any element's is not auto (FORM-b). -webkit-user-modify
 // is never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag changes (TOUCH).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
@@ -304,7 +305,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const clipPath = resolutions.some(writesClipPath);
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
-      const appearance = resolutions.some(writesAppearance);
+      const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || resolutions.some(writesAppearance);
       const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify').map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null && withAnimations) decls.push(...animations.lines(c.key, el.element.address));

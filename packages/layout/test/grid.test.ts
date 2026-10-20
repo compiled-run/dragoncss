@@ -155,6 +155,9 @@ describe('the validator\'s grid rules, each with a planted input', () => {
       (r.children[0] as unknown as { children: unknown[] }).children = [button(style)];
     });
     expect(codes(withControl({ gridItem: autoItem }))).toEqual([]);
+    // The engine places no control in a grid yet: a control grid item is unsupported, never an internal error.
+    const placed = layout(withControl({ gridItem: autoItem }) as LayoutInput, ahemMeasurer);
+    expect(placed.kind === 'unsupported' ? [placed.unsupported.code, placed.unsupported.nodeId] : placed.kind).toEqual(['grid-control', 'btn']);
     expect(codes(withControl({}))).toContain('grid-shape $.root.children[0].children[0].style.gridItem');
     const placedOutside = input(box('root', {}, []));
     (placedOutside.root as unknown as { children: unknown[] }).children = [button({ gridItem: autoItem })];

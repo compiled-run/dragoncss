@@ -154,6 +154,10 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
       expect(r.kind).toBe('refused');
       expect(r.kind === 'refused' ? [r.nodeId, r.detail] : []).toEqual(['button', 'a form control: its scrollable overflow is not decided here']);
     }
+    // scrollRanges, which the native runtime calls on every layout, refuses each scroll container instead of the whole layout.
+    const detail = 'a form control: its scrollable overflow is not decided here';
+    expect(scrollRanges(input([button]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [] });
+    expect(scrollRanges(input([box('s', sc('auto'), [button]), box('a', sc('hidden'), [])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [{ id: 's', nodeId: 'button', detail }, { id: 'a', nodeId: 'button', detail }] });
   });
 });
 

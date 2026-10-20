@@ -44,7 +44,7 @@ export type Compound = {
 export type Specificity = readonly [number, number, number];
 /** The range parts an author selector can style (FORM-a A4): ::-webkit-slider-thumb and ::-webkit-slider-runnable-track. */
 export type RangePart = 'thumb' | 'track';
-const RANGE_PSEUDO_ELEMENTS: Readonly<Record<string, RangePart>> = { '-webkit-slider-thumb': 'thumb', '-webkit-slider-runnable-track': 'track' };
+const RANGE_PSEUDO_ELEMENTS: ReadonlyMap<string, RangePart> = new Map([['-webkit-slider-thumb', 'thumb'], ['-webkit-slider-runnable-track', 'track']]);
 const RANGE_PSEUDO_NAMES: Readonly<Record<RangePart, string>> = { thumb: '-webkit-slider-thumb', track: '-webkit-slider-runnable-track' };
 /** The pseudo-elements that generate a box from string content (GEN-a, notes/T151-gen-spec.md R2, R5). */
 export type GeneratedPseudo = 'before' | 'after';
@@ -343,7 +343,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       else current.pseudos.push(p);
     } else if (part.type === 'PseudoElementSelector') {
       const name = asciiLower(String(part['name']));
-      const rangePart = part['children'] === null ? RANGE_PSEUDO_ELEMENTS[name] : undefined;
+      const rangePart = part['children'] === null ? RANGE_PSEUDO_ELEMENTS.get(name) : undefined;
       const generated = part['children'] === null && (GENERATED_PSEUDOS as readonly string[]).includes(name);
       const empty = part['children'] === null && isStaticEmptyPseudo(name);
       if (rangePart !== undefined && ctx.inArgument) {

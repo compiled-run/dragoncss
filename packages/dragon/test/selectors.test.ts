@@ -292,6 +292,11 @@ describe('TREE: ids, every attribute name, HTML case-insensitive attribute value
     expect(msg(':not(.a::-webkit-slider-thumb) { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*inside a selector argument/)]);
     expect(msg('.a::-webkit-slider-thumb .b { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*after the pseudo-element ::-webkit-slider-thumb of .* is not supported/)]);
     expect(msg('.a::-webkit-slider-container { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR /)]);
+    // Object prototype names are no range part: Chrome drops the whole list, so .a is not styled.
+    for (const n of ['constructor', '__proto__', 'toString']) {
+      expect(parse(`.a, .b::${n} { width: 1px; }`).selectors.some((x) => x.pseudoElement?.kind === 'range'), n).toBe(false);
+      expect(msg(`.a, .b::${n} { width: 1px; }`).length, n).toBeGreaterThan(0);
+    }
     expect(msg('.a::-webkit-scrollbar-thumb { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*OVFL-s/)]);
     expect(msg(':is(.a::-moz-range-thumb) { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*forgiving/)]);
     expect(parse('[ns|x] { width: 1px; }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_SELECTOR']);

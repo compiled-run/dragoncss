@@ -31,16 +31,19 @@ export function isControlTag(tag: string): boolean {
   return CONTROL_TAGS.includes(tag);
 }
 
-/** The background and border longhands whose author value devolves a push button to CSS painting (Blink HasAuthorBackground, HasAuthorBorder). */
-const DEVOLVING: readonly string[] = ['background-color', 'background-image'];
-const DEVOLVING_BORDER = /^border-(top|right|bottom|left)-(width|style|color)$/;
+/**
+ * The longhands whose author declaration devolves a push button to CSS painting (Blink HasAuthorBackground, HasAuthorBorder,
+ * HasAuthorBorderRadius): any background longhand, any border side, border radius or border image longhand, whatever the value.
+ */
+const DEVOLVING_BACKGROUND = /^background-/;
+const DEVOLVING_BORDER = /^border-((top|right|bottom|left)-(width|style|color)|(top|bottom|start|end)-(left|right|start|end)-radius|image-[a-z]+)$/;
 
 const keyword = (v: ResolvedValue): string | null => (v.value.kind === 'keyword' ? v.value.value : null);
 
 /**
  * A button's used appearance: 'css' when Chrome paints it as CSS boxes (appearance: none, or auto with an author background or
  * border), 'theme' when the platform theme paints it, which Dragon does not draw (FORM-b). Any appearance keyword other than none
- * and auto, and an author value that is not plainly author-origin, count as theme, so Dragon never claims a themed button.
+ * and auto count as theme, so Dragon never claims a themed button.
  */
 export function buttonAppearance(props: ReadonlyMap<Longhand, ResolvedValue>): UsedAppearance {
   const appearance = keyword(props.get('appearance') as ResolvedValue);
@@ -48,8 +51,9 @@ export function buttonAppearance(props: ReadonlyMap<Longhand, ResolvedValue>): U
   let background = false;
   let border = false;
   for (const [p, v] of props) {
-    if (v.origin !== 'author') continue;
-    if (DEVOLVING.includes(p)) background = true;
+    // An author declaration of any value counts, initial and inherit included (Blink sets the flag at cascade time).
+    if (v.declaration === null) continue;
+    if (DEVOLVING_BACKGROUND.test(p)) background = true;
     if (DEVOLVING_BORDER.test(p)) border = true;
   }
   return usedAppearance('button', { appearance, background, border, thumbAppearance: 'auto' });

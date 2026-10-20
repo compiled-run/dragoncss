@@ -91,6 +91,8 @@ type Index = {
   readonly flows: Map<string, Flow>;
   /** The inflow bounds of each grid scroll container, by id (layout.ts InflowBounds). */
   readonly gridInflow: Map<string, OverflowRect>;
+  /** The form controls of the tree in preorder (FORM-a): their scrollable overflow is not decided here, so every scroll container is refused. */
+  readonly controls: string[];
 };
 
 /** scrollMetrics with planted engine faults; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
@@ -104,6 +106,7 @@ export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasur
     const input = resolvedInput(given, measurer, faults);
     const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
     const ix = indexOf(ctx, input, absoluteRects(r.boxes), placed.inflow);
+    controlRefusal(ix);
     const containers: ScrollMetrics[] = [];
     for (const b of ix.order) {
       if (!isScrollContainer(b.style)) continue;
@@ -177,6 +180,7 @@ type ContainerRange = { readonly kind: 'ok'; readonly range: ScrollRange } | { r
 
 function rangeOf(ix: Index, b: OverflowNode): ContainerRange {
   try {
+    controlRefusal(ix);
     const n = nodeOf(ix, b.id);
     const mt = metricsOf(b.id, overflowOf(ix, n), clientOf(ix, n));
     const ox = Math.floor((mt.paddingX - mt.scrollRect.x) / LU_PER_PX);
@@ -190,6 +194,11 @@ function rangeOf(ix: Index, b: OverflowNode): ContainerRange {
   }
 }
 
+/** Throws the refusal of a tree with a form control (indexOf), which scrollRanges files per scroll container. */
+function controlRefusal(ix: Index): void {
+  if (ix.controls.length > 0) throw new OverflowRefusal(ix.controls[0] as string, 'a form control: its scrollable overflow is not decided here');
+}
+
 function nodeOf(ix: Index, id: string): Node {
   const n = ix.nodes.get(id);
   if (n === undefined) throw new Error(`no laid-out box ${id}`);
@@ -197,7 +206,7 @@ function nodeOf(ix: Index, id: string): Node {
 }
 
 function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inflow: readonly InflowBounds[]): Index {
-  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map() };
+  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map(), controls: [] };
   for (const f of inflow) ix.gridInflow.set(f.id, { x: f.x, y: f.y, width: f.width, height: f.height });
   const icbWidth = fromCssPx(input.viewport.width);
   const walk = (b: OverflowNode, parent: LayoutBox | null, cbInline: LU, positioned: OverflowNode | null, basisKnown: boolean): void => {
@@ -214,7 +223,10 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
     // A replaced leaf has no children (its fallback content never renders).
     if (b.kind === 'replaced') return;
     for (const k of b.children) {
-      if (k.kind === 'control') throw new OverflowRefusal(k.id, 'a form control: its scrollable overflow is not decided here');
+      if (k.kind === 'control') {
+        ix.controls.push(k.id);
+        continue;
+      }
       if (k.kind !== 'box' && k.kind !== 'replaced') continue;
       if (isOutOfFlow(ctx, k)) {
         // CSS2 §10.1: the containing block is the padding box of the nearest positioned ancestor, or the initial one.

@@ -1021,6 +1021,35 @@ function refuseOn(el: ResolvedElement, v: ResolvedValue | null, what: string, co
   }
 }
 
+/** FORM-a: on a native target a button or range is drawn but not interactive, and its view has no control accessibility role yet. */
+function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const what = el.element.tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
+  for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+    const id = `${t}|control-static|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_CONTROL_STATIC_NATIVE', { origin: el.element.node.origin, target: t, message: `${what} on ${t}: Dragon emits no control behaviour or accessibility role yet` }));
+  }
+}
+
+/** A form control as a grid item: the engine places no control in a grid (grid-control). */
+function refuseGridItem(el: ResolvedElement, parentDisplay: string | null, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') return;
+  const tag = el.element.tag;
+  refuse(null, 'grid-item', `<${tag}> ${el.element.address} is a grid item, and a form control as a grid item is not supported yet`, `Wrap <${tag}> ${el.element.address} in a div, which becomes the grid item.`);
+}
+
+/** The text longhands Chrome's UA button rule resets (html.css), with whether a computed value equals the reset. */
+const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] = [
+  ['color', (v) => v.kind === 'color' && v.value.r === 0 && v.value.g === 0 && v.value.b === 0 && v.value.alpha === 255],
+  ['line-height', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ['font-weight', (v) => (v.kind === 'number' && v.value === 400) || (v.kind === 'keyword' && v.value === 'normal')],
+  ['letter-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
+  ['word-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
+  ['text-indent', (v) => (v.kind === 'length' || v.kind === 'percentage') && v.value === 0],
+  ['text-transform', (v) => v.kind === 'keyword' && v.value === 'none'],
+];
+
 /**
  * FORM-a A3: a button is laid out as a block container that centres its contents, or as the flex container its display says,
  * and painted as CSS boxes. Refused: a button the platform theme paints (R11, FORM-b); an inline-level one (RF-INL); any other
@@ -1054,6 +1083,14 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   if (pos === 'absolute' || pos === 'fixed') {
     refuse(position, 'position', `position: ${pos} on <${tag}> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <${tag}> ${address} in its flow.`);
   }
+  refuseGridItem(el, parentDisplay, refuse);
+  noteStaticOnNative(el, targets, diagnostics, reported);
+  // The UA reset rows are not captured yet (#78's inherited-reset capture), so a button inheriting anything but the reset is refused.
+  for (const [p, isReset] of BUTTON_RESETS) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (v.origin !== 'inherited' || v.declaration !== null || isReset(v.value)) continue;
+    refuse(v, `reset-${p}`, `<${tag}> ${address} inherits ${p}: ${valueToString(v.value)}, which Chrome's user-agent button rule resets; Dragon does not model that reset yet`, `Set ${p} on <${tag}> ${address} (inherit is fine).`);
+  }
   const family = el.props.get('font-family') as ResolvedValue;
   if (family.origin === 'user-agent') {
     refuse(family, 'font', `<${tag}> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <${tag}> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
@@ -1069,7 +1106,7 @@ const RANGE_FLEX_LONGHANDS: readonly Longhand[] = ['flex-direction', 'flex-wrap'
  * inline-level range (RF-INL), any display but block or flex, an absolutely positioned range, and a flex container longhand
  * on the input other than its initial value (the shadow tree's flex layout would read it).
  */
-function checkRange(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkRange(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const address = el.element.address;
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
   const type = el.element.attributes.get('type');
@@ -1100,6 +1137,8 @@ function checkRange(el: ResolvedElement, targets: readonly string[], diagnostics
   if (pos === 'absolute' || pos === 'fixed') {
     refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
   }
+  refuseGridItem(el, parentDisplay, refuse);
+  noteStaticOnNative(el, targets, diagnostics, reported);
   for (const p of RANGE_FLEX_LONGHANDS) {
     const v = el.props.get(p) as ResolvedValue;
     if (v.declaration === null || isInitialByProvenance(v, p)) continue;
@@ -1123,9 +1162,17 @@ function rangePart(el: ResolvedElement, part: 'container' | 'track' | 'thumb'): 
 function checkRangePart(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const info = rangePartOf(el);
   if (info === undefined || info.part === null) return;
+  const host = info.host.address;
+  const refuse = (v: ResolvedValue, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
   const direction = el.props.get('direction') as ResolvedValue;
-  if (direction.declaration === null) return;
-  refuseOn(el, direction, 'part-direction', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `direction on the ${info.part} of <input> ${info.host.address} is not supported: a range part takes its input's direction`, `Set direction on <input> ${info.host.address} instead.`);
+  if (direction.declaration !== null) refuse(direction, 'part-direction', `direction on the ${info.part} of <input> ${host} is not supported: a range part takes its input's direction`, `Set direction on <input> ${host} instead.`);
+  if (info.part === 'container') return;
+  // The engine lays out the track as a block container holding the thumb, and moves the thumb as an in-flow block (controls.ts).
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d !== 'block') refuse(display, 'part-display', `display: ${d} on the ${info.part} of <input> ${host} is not supported: only a block ${info.part} is laid out`, `Remove display from the ::-webkit-slider-${info.part === 'thumb' ? 'thumb' : 'runnable-track'} rule of <input> ${host}.`);
+  const float = el.props.get('float') as ResolvedValue;
+  if (info.part === 'thumb' && keywordOf(float) !== 'none') refuse(float, 'part-float', `float: ${valueToString(float.value)} on the thumb of <input> ${host} is not supported: the value moves only an in-flow thumb`, `Remove float from the ::-webkit-slider-thumb rule of <input> ${host}.`);
 }
 
 /** An absolutely positioned box inside a form control: the engine does not look up its containing block there (control-out-of-flow). */
@@ -1177,7 +1224,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkButton(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt);
     } else if (!here && el.element.tag === 'input') {
-      checkRange(el, targets, diagnostics, reported);
+      checkRange(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt);
     } else if (!here && rangePartOf(el) !== undefined) {
       checkRangePart(el, targets, diagnostics, reported);
