@@ -3857,6 +3857,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/ink_overflow.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "c76973eab5fdbcac53b524551ff9cdfba5200dca447ade46890ae2117cacacd4",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "253-266", "symbol": "InkOverflow::SetSingle", "source": "located" },
+        { "lines": "488-494", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/emit/paint/effects.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",

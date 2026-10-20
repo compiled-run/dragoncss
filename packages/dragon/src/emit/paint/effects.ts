@@ -342,8 +342,15 @@ public final class DragonGroupView: UIView {
     for tv in texts where !tv.isHidden {
       guard let font = tv.dragonFont else { continue }
       let r = dragonLayoutRect(tv, in: root)
+      // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
+      // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
+      let ascent = Double(CTFontGetAscent(font as CTFont)) * s
+      let descent = Double(CTFontGetDescent(font as CTFont)) * s
       for l in tv.specs where !l.glyphs.isEmpty {
-        if let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * s, Double(r.minY) * s, s) { draws += ink + [0] }
+        guard let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * s, Double(r.minY) * s, s) else { continue }
+        let x0 = Double(r.minX) * s + l.xLU / units_LU_PER_PX
+        let base = Double(r.minY) * s + l.baseline
+        draws += [min(ink[0], x0.rounded(.down)), min(ink[1], (base - ascent).rounded(.down)), max(ink[2], (x0 + l.widthLU / units_LU_PER_PX).rounded(.up)), max(ink[3], (base + descent).rounded(.up)), 0]
       }
     }
     let jsDraws = JsArray(draws)
@@ -520,15 +527,17 @@ fun dragonGroupLineInks(tv: DragonTextView, ox: Double, oy: Double): List<Double
   val out = ArrayList<DoubleArray>()
   val r = RectF()
   val sh = tv.dragonGlyphShear
+  // One paint and one set of font metrics per text size.
+  val paints = HashMap<Float, TextPaint>()
+  val metrics = HashMap<Float, android.graphics.Paint.FontMetrics>()
   for (l in tv.specs) {
     if (l.glyphs.isEmpty()) continue
     val e = doubleArrayOf(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY)
     val base = oy + l.baseline + DRAGON_GLYPH_PLANT_Y_DEVICE_PX
     fun add(glyphs: IntArray, xs: DoubleArray, size: (Int) -> Float) {
       for (k in glyphs.indices) {
-        val p = TextPaint(tv.paint)
-        p.textSize = size(k)
-        val fm = p.fontMetrics
+        val p = paints.getOrPut(size(k)) { TextPaint(tv.paint).also { it.textSize = size(k) } }
+        val fm = metrics.getOrPut(p.textSize) { p.fontMetrics }
         val top = fm.top.toDouble()
         val bottom = fm.bottom.toDouble()
         val h = 2.0 * tv.dragonBoldStroke(p.textSize).toDouble()
@@ -733,10 +742,19 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       for (k in 0 until 4) draws.add(b.dragonShape.edges[k])
       draws.add(if (ops == 1) 1.0 else 0.0)
     }
+    // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
+    // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
     for (tv in texts) {
       if (tv.visibility != View.VISIBLE) continue
-      for (e in inks[tv] ?: emptyList()) {
-        for (k in 0 until 4) draws.add(e[k])
+      val o = dragonLayoutOffset(tv, root)
+      val fm = tv.paint.fontMetrics
+      val lines = tv.specs.filter { it.glyphs.isNotEmpty() }
+      for ((i, e) in (inks[tv] ?: emptyList()).withIndex()) {
+        val l = lines[i]
+        val x0 = o[0] + l.xLU / units_LU_PER_PX
+        val base = (o[1] + l.baseline).toDouble()
+        draws.add(minOf(e[0], kotlin.math.floor(x0))); draws.add(minOf(e[1], kotlin.math.floor(base + fm.ascent)))
+        draws.add(maxOf(e[2], kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX))); draws.add(maxOf(e[3], kotlin.math.ceil(base + fm.descent)))
         draws.add(0.0)
       }
     }
