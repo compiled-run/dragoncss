@@ -18,6 +18,7 @@ import { OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS } from '../packages/dragon/
 import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../packages/dragon/src/css/properties/scroll-snap.ts';
 import { CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS } from '../packages/dragon/src/css/properties/containment.ts';
 import { CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS } from '../packages/dragon/src/css/properties/container-query.ts';
+import { MULTICOL_LONGHANDS, MULTICOL_SHORTHANDS } from '../packages/dragon/src/css/properties/multicol.ts';
 
 type WebrefEntry = {
   name: string;
@@ -142,6 +143,9 @@ const SUBSET = [
   'border-collapse', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing', 'caption-side', 'empty-cells', 'table-layout', 'border-spacing',
   // GEN-d1 and GEN-d2: the counter properties (css-lists-3 §4) and quotes (css-content-3 §3.1), after the table family, as LONGHANDS registers them.
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
+  // MULTICOL: the multicol family (css/properties/multicol.ts), initial values only, after the counter properties, as LONGHANDS
+  // registers them.
+  ...MULTICOL_LONGHANDS, ...MULTICOL_SHORTHANDS,
 ] as const;
 
 /**
@@ -192,6 +196,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
   // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
+  // The multicol family likewise: Dragon accepts its initial values alone and refuses every other value where it applies
+  // (analysis/multicol.ts), so the grammar takes any value, and a value webref's grammar lists though Chrome 145 lacks it (the
+  // gap decoration lists, column-span: <integer>, column-fill: balance-all, columns' / column-height) is refused, never dropped
+  // where Chrome would apply it.
+  ...Object.fromEntries([...MULTICOL_LONGHANDS, ...MULTICOL_SHORTHANDS].map((p) => [p, '<any-value>'])),
   // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
   // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
   // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.
@@ -309,6 +318,9 @@ const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string
   // Blink's border-spacing longhands (css_properties.json5): initial 0, inherited.
   '-webkit-border-horizontal-spacing': { initial: '0', inherited: 'yes' },
   '-webkit-border-vertical-spacing': { initial: '0', inherited: 'yes' },
+  // webref's column-width entry is css-sizing-4's extension, without fields; css-multicol-1 §3.1 and Chrome 145: initial auto, not
+  // inherited.
+  'column-width': { initial: 'auto', inherited: 'no' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

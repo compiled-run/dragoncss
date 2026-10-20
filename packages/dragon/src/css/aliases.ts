@@ -28,6 +28,7 @@ import { FLEX_ALIASES } from './aliases/flex.ts';
 import { FONT_FEATURES_ALIASES } from './aliases/font-features.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
 import { MASK_ALIASES } from './aliases/mask.ts';
+import { MULTICOL_ALIASES } from './aliases/multicol.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
 import { SELECTION_ALIASES } from './aliases/selection.ts';
 import { SHADOW_ALIASES } from './aliases/shadow.ts';
@@ -46,6 +47,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   'font-features': FONT_FEATURES_ALIASES,
   logical: LOGICAL_ALIASES,
   mask: MASK_ALIASES,
+  multicol: MULTICOL_ALIASES,
   radius: RADIUS_ALIASES,
   selection: SELECTION_ALIASES,
   shadow: SHADOW_ALIASES,

@@ -14,6 +14,7 @@ import { CONTAINER_QUERY_INITIAL } from '../src/css/properties/container-query.t
 import { CONTAINMENT_INITIAL } from '../src/css/properties/containment.ts';
 import { OVERSCROLL_INITIAL } from '../src/css/properties/overscroll.ts';
 import { SCROLL_SNAP_INITIAL } from '../src/css/properties/scroll-snap.ts';
+import { MULTICOL_INITIAL } from '../src/css/properties/multicol.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 import { floorProblems } from './floor.ts';
 
@@ -98,9 +99,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'border-image-source': ['none', 'NONE'], 'border-image-slice': ['100%', '100.0%'], 'border-image-width': ['1', '1.0'], 'border-image-outset': ['0', '0.0'],
       'border-image-repeat': ['stretch', 'STRETCH'],
       perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
-      // The overscroll, scroll-snap, containment and container-query longhands, which accept their initial values alone, at those
-      // values in two spellings.
-      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])) };
+      // The overscroll, scroll-snap, containment, container-query and multicol longhands, which accept their initial values alone, at
+      // those values in two spellings.
+      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL, ...MULTICOL_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])) };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
