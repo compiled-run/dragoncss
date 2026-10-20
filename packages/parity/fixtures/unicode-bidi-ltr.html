@@ -14,6 +14,7 @@ body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
 .io { unicode-bidi: isolate-override; }
 .pt { unicode-bidi: plaintext; }
 .ltr { direction: ltr; }
+.inl { display: inline; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -26,5 +27,7 @@ body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
 <div data-dragon-id="b7" class="p pt">... XX YY ZZ AA BB</div>
 <div data-dragon-id="row" class="row o"><div data-dragon-id="r1" class="pt">AB CD</div><div data-dragon-id="r2" class="io">EF</div><span data-dragon-id="r3" class="s">GH</span></div>
 <div data-dragon-id="b8" class="p">XX <span data-dragon-id="ib" class="ib io">A B</span> YY <span data-dragon-id="ib2" class="ib pt">C</span></div>
+<div data-dragon-id="b9" class="p">XX <div data-dragon-id="b9a" class="inl">YY </div>ZZ</div>
+<div data-dragon-id="b10" class="p">XX<div data-dragon-id="b10a" class="inl"> YY</div> ZZ</div>
 </body>
 </html>

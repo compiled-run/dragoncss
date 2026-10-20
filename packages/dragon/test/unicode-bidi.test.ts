@@ -92,7 +92,18 @@ describe('unicode-bidi: native compiles it where Chrome reorders nothing', () =>
     expect(errors(compile('.b { display: inline; } .s { unicode-bidi: embed; }', NATIVE)).length).toBe(2);
   });
   it('never refuses the UA isolate of a block, nor a value that loses the cascade', () => {
-    expect(errors(compile('.b { display: inline; }', NATIVE, 'XX ', 'rtl'))).toEqual([]);
+    expect(errors(compile('', NATIVE, 'XX ', 'rtl'))).toEqual([]);
     expect(errors(compile('.s { unicode-bidi: isolate; } .s { unicode-bidi: normal; }', NATIVE, 'XX ', 'rtl'))).toEqual([]);
+  });
+  it('refuses the UA isolate of a div made inline in an rtl context, at its display declaration, and not over ltr Latin text', () => {
+    const c = compile('.b { display: inline; }', NATIVE, 'XX ', 'rtl');
+    const errs = errors(c);
+    expect(errs.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'android']]);
+    expect(errs[0]?.message.startsWith("The UA's unicode-bidi: isolate on <div> b can reorder its text in Chrome")).toBe(true);
+    expect(errs[0]?.origin.kind).toBe('authored');
+    expect(c.outputs.web.kind).toBe('ready');
+    expectCatalogued(errs);
+    expect(errors(compile('.b { display: inline; unicode-bidi: normal; }', NATIVE, 'XX ', 'rtl'))).toEqual([]);
+    expect(errors(compile('.a { display: inline; } .b { display: inline; }', NATIVE))).toEqual([]);
   });
 });

@@ -9,10 +9,12 @@
 //   inline box is the exception: its embedding level splits the outer box into one fragment per level run on a line (Chrome 145
 //   reports each as a client rect), and native lays an inline box out as one fragment per line.
 // Everything else is refused (an rtl context, where an isolate or override changes the order of Latin words and neutrals, a
-// right-to-left character in the paragraph, or an inline box nested in another). The UA's unicode-bidi (isolate on the block-level HTML elements) is not refused: it is
-// what every Chrome case already lays out. The parity lanes compile the refused values on native anyway (project.ts, lane-only):
-// such a case proves web rows only.
-import { authored, diagnostic } from '../diagnostics/catalogue.ts';
+// right-to-left character in the paragraph, or an inline box nested in another). The UA's unicode-bidi (isolate on the block-level
+// HTML elements) is refused under the same rule once the author makes its box display: inline, at that display declaration: in an
+// rtl paragraph Chrome then orders the isolate's edge spaces inside it and splits the box into fragments (Chrome 145 reports
+// <div style="display:inline">YY </div> in rtl as two client rects), which native does not. On a block it is never refused.
+// The parity lanes compile the refused values on native anyway (project.ts, lane-only): such a case proves web rows only.
+import { authored, diagnostic, unlocated } from '../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../types.ts';
 import type { ResolvedValue } from './computed.ts';
 import type { ResolvedElement, ResolvedText } from './resolve.ts';
@@ -43,19 +45,26 @@ export function checkBidi(root: ResolvedElement, targets: readonly string[], dia
     const v = el.props.get('unicode-bidi') as ResolvedValue | undefined;
     if (v === undefined) throw new Error(`${el.element.address}: unicode-bidi did not resolve`);
     const k = keywordOf(el, 'unicode-bidi');
-    const reorders = k !== 'normal' && !(!inline && (k === 'embed' || k === 'isolate'))
-      && (direction !== 'ltr' || parentDirection !== 'ltr' || (inline && parentInline) || holdsRightToLeft(own));
-    if (v.declaration !== null && v.origin === 'author' && reorders) {
+    const rightToLeft = direction !== 'ltr' || parentDirection !== 'ltr' || holdsRightToLeft(own);
+    const reorders = k !== 'normal' && !(!inline && (k === 'embed' || k === 'isolate')) && (rightToLeft || (inline && parentInline));
+    const authorBidi = v.declaration !== null && v.origin === 'author';
+    const displayDeclaration = (el.props.get('display') as ResolvedValue | undefined)?.declaration ?? null;
+    // The UA's value on an inline box: only a right-to-left context reorders it (Chrome 145 lays the UA isolate of a div made
+    // inline inside a span over ltr Latin text out as one fragment).
+    if (authorBidi ? reorders : inline && k !== 'normal' && rightToLeft) {
+      const span = authorBidi ? (v.declaration as NonNullable<typeof v.declaration>).valueSpan : displayDeclaration?.valueSpan;
+      const origin = span === undefined ? unlocated(`the UA's unicode-bidi: ${k} on the inline box <${el.element.tag}> ${el.element.address}`) : authored(span);
+      const what = authorBidi ? `unicode-bidi: ${k}` : `The UA's unicode-bidi: ${k}`;
       for (const t of targets) {
         if (t === 'web') continue;
         const id = `${t}|unicode-bidi|${el.element.address}`;
         if (reported.has(id)) continue;
         reported.add(id);
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-          origin: authored(v.declaration.valueSpan),
+          origin,
           target: t,
-          message: `unicode-bidi: ${k} on <${el.element.tag}> ${el.element.address} can reorder its text in Chrome (it is in a right-to-left context, its paragraph holds right-to-left text, or it is an inline box inside another whose fragments it splits), and ${t} lays text out in logical order, one fragment per inline box and line`,
-          manual: 'Remove unicode-bidi, or use it only on left-to-right Latin text.',
+          message: `${what} on <${el.element.tag}> ${el.element.address} can reorder its text in Chrome (it is in a right-to-left context, its paragraph holds right-to-left text, or it is an inline box inside another whose fragments it splits), and ${t} lays text out in logical order, one fragment per inline box and line`,
+          manual: authorBidi ? 'Remove unicode-bidi, or use it only on left-to-right Latin text.' : 'Set unicode-bidi: normal on the inline box, or keep it block-level.',
           basis: 'computed-value',
         }));
       }
