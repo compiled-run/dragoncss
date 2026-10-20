@@ -447,7 +447,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         }
        ]
       },
@@ -618,7 +619,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         }
        ]
       },
@@ -789,7 +791,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         }
        ]
       },
@@ -960,7 +963,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         },
         {
          "kind": "inline",
@@ -1125,7 +1129,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "break-all"
+           "wordBreak": "break-all",
+           "smallCaps": false
           }
          ]
         },
@@ -1156,7 +1161,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         }
        ]
       },
@@ -1327,7 +1333,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "keep-all"
+         "wordBreak": "keep-all",
+         "smallCaps": false
         }
        ]
       },
@@ -1624,7 +1631,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "break-all"
+           "wordBreak": "break-all",
+           "smallCaps": false
           }
          ]
         },
@@ -1794,7 +1802,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "keep-all"
+           "wordBreak": "keep-all",
+           "smallCaps": false
           }
          ]
         }
@@ -2093,7 +2102,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "break-all"
+           "wordBreak": "break-all",
+           "smallCaps": false
           }
          ]
         },
@@ -2263,7 +2273,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "keep-all"
+           "wordBreak": "keep-all",
+           "smallCaps": false
           }
          ]
         }
