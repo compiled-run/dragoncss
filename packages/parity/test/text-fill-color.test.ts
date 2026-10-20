@@ -112,7 +112,7 @@ describe('TXT-FX: text-fill-stroke-colors\' glyph fills equal Chrome\'s pixels',
   });
   if (SPEC === undefined) return;
   for (const c of casesOf(SPEC, fixtureInput(SPEC))) {
-    it(`${c.id} at ${DPRS.join(', ')}: every glyph pixel is the fill, the underline is color; the textFillIgnored plant fails`, async () => {
+    it(`${c.id} at ${DPRS.join(', ')}: every glyph pixel is the fill, a currentcolor underline is the decorating box's fill; the textFillIgnored plant fails`, async () => {
       const programOf = (faults: CompilerFaults) => {
         const compiled = compile(SPEC, c.environment.direction, faults);
         expect(compiled.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code} ${d.message}`)).toEqual([]);

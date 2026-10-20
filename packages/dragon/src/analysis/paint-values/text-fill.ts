@@ -1,6 +1,7 @@
 // TXT-FX (compat §5): text whose -webkit-text-fill-color is not currentcolor is filled in that colour, and Chrome leaves it there while
 // an animation or transition changes color. The native animator sets each text view's colour from its parent's animated color
-// (emit/runtime/state.ts dragonSetText), so mid-flight it would fill such text in color. Refused on the native targets.
+// (emit/runtime/state.ts dragonSetText), the block container of the text's inline boxes, so mid-flight it would fill such text in
+// that color. Refused on the native targets.
 import type { CssValue } from '../../css/stylesheet.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
@@ -21,7 +22,8 @@ export function fillsOwnText(el: ResolvedElement): boolean {
 
 /**
  * Refuses, on the native targets, an animation with a color keyframe or a transition of color where a reachable state changes it, on
- * an element whose text has its own fill or on an ancestor such an element inherits color from. roots are the resolved roots of the
+ * an element whose text has its own fill, on each inline box holding that text up to its block container (whose animated color the
+ * text view takes, whatever color the inline boxes set), or on an ancestor the container inherits color from. roots are the resolved roots of the
  * analysed cases, in the analysis's order; the caller runs it per @media band, with one reported set.
  */
 export function refuseAnimatedTextFill(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string> = new Set()): void {
@@ -37,7 +39,8 @@ export function refuseAnimatedTextFill(analysis: AnimationAnalysis, roots: reado
     if (root !== undefined) walk(root, null);
     return byAddress;
   });
-  // The addresses whose color reaches text with its own fill: the text's element and each ancestor it inherits color from.
+  // The addresses whose color reaches text with its own fill: the text's element, its inline ancestors up to the block container
+  // the text view's colour is taken from, and each ancestor that container inherits color from.
   const reaches = new Map<string, string>();
   for (const t of trees) {
     for (const [address, { el }] of t) {
@@ -47,7 +50,8 @@ export function refuseAnimatedTextFill(analysis: AnimationAnalysis, roots: reado
         const node = t.get(at);
         if (node === undefined) break;
         if (!reaches.has(at)) reaches.set(at, address);
-        if ((node.el.props.get('color') as ResolvedValue | undefined)?.origin !== 'inherited') break;
+        const inline = isKeyword((node.el.props.get('display') as ResolvedValue | undefined)?.value, 'inline');
+        if (!inline && (node.el.props.get('color') as ResolvedValue | undefined)?.origin !== 'inherited') break;
         at = node.parent;
       }
     }

@@ -148,6 +148,13 @@ describe('the text fill colour and stroke', () => {
     expect(errorsAt(`animation: k 1s; } ${anim} .s div { -webkit-text-fill-color: red;`)).toEqual(NATIVE);
     // A child that sets its own color is not reached.
     expect(errorsAt(`animation: k 1s; } ${anim} .s div { color: green; -webkit-text-fill-color: red;`)).toEqual([]);
+    // An inline box holding the text sets its own color, but the text view takes its block container's animated color.
+    const inline = (css: string): string[] => {
+      const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${anim} ${css}`, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'span', ['f'], [text(r, 't', 'XX')])])]));
+      return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
+    };
+    expect(inline('.s { animation: k 1s; } .f { color: green; -webkit-text-fill-color: red; }')).toEqual(NATIVE);
+    expect(inline('.s { animation: k 1s; } .f { color: green; }')).toEqual([]);
   });
 
   it('judges a translucent synthetic bold by the fill colour', () => {

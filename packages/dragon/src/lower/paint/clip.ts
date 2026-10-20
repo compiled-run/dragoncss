@@ -8,6 +8,8 @@
 import type { InsetEdge } from '../../css/properties/clip-path.ts';
 import { clipPathEdges } from '../../css/properties/clip-path.ts';
 import { clipHidesBox } from '../../css/properties/clip-rect.ts';
+import { textClipFillOf } from '../../analysis/paint-values/gradient.ts';
+import type { ResolvedElement } from '../../analysis/resolve.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
@@ -33,7 +35,7 @@ export const CLIP_LOWERING: PaintLowering<ClipWrite> = {
   },
   css: { 'padding-box-clip': ['overflow-x', 'overflow-y'], 'clip-rect-empty': ['clip'], 'clip-path-inset': ['clip-path'] },
   lower: ({ box, el }) => {
-    const out: ClipWrite[] = clipsChildren(box) ? [{ kind: 'padding-box-clip' }] : [];
+    const out: ClipWrite[] = hostsClipView(box, el) ? [{ kind: 'padding-box-clip' }] : [];
     if (el === null) return out;
     const hides = clipHidesBox(el);
     if (hides === null) throw new ProgramError(`${el.element.address}: clip applies with a rect that is not empty at every size, which has no native technique (MASK-CLIP)`);
@@ -47,7 +49,16 @@ export const CLIP_LOWERING: PaintLowering<ClipWrite> = {
   },
 };
 
-/** Whether a box's children are hosted in a clip view over its padding box; one clipped axis alone has no native technique (OVFL-c). */
+/**
+ * Whether a box's children are hosted in a clip view over its padding box: an overflow clip, or a colour clipped to text, which
+ * Chrome paints inside the border box only (the check refuses a border, so the padding box is the border box) while the native
+ * glyphs carry the colour wherever their ink reaches.
+ */
+export function hostsClipView(box: Parameters<typeof clipsChildren>[0], el: ResolvedElement | null): boolean {
+  return clipsChildren(box) || (el !== null && textClipFillOf(el) !== null);
+}
+
+/** Whether a box's overflow clips its children; one clipped axis alone has no native technique (OVFL-c). */
 export function clipsChildren(box: { readonly id: string; readonly style: { readonly overflowX: string; readonly overflowY: string } }): boolean {
   const x = box.style.overflowX !== 'visible';
   if (x !== (box.style.overflowY !== 'visible')) throw new ProgramError(`${box.id}: overflow clips one axis only, which has no native technique (OVFL-c)`);
