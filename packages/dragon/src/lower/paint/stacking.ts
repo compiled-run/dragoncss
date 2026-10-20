@@ -333,7 +333,13 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: 
 export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', 'inline-grid'];
 
 /** Whether an element's transform, will-change, clip-path or filter makes it a stacking context (css-transforms-1 §3, css-will-change-1 §3, css-masking-1 §6.1, filter-effects-1 §5). */
-export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || filterApplies((el.props.get('filter') as ResolvedValue).value);
+export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || filterOf(el);
+
+/** Whether an element has a filter other than none (a hand-built element may carry no filter value at all). */
+const filterOf = (el: ResolvedElement): boolean => {
+  const f = el.props.get('filter') as ResolvedValue | undefined;
+  return f !== undefined && filterApplies(f.value);
+};
 
 /** The stacking tree of a layout tree, with each element's z-index, opacity and transform from its resolved style. */
 export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, ResolvedElement>): StackNode {
