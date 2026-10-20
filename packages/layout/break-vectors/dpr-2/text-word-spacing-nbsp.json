@@ -1,0 +1,7 @@
+{
+  "case": "text-word-spacing-nbsp",
+  "dpr": 2,
+  "texts": [
+    {"id":"nbsp:text0","lines":[[0,23]]}
+  ]
+}

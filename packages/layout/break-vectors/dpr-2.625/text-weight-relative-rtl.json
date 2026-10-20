@@ -1,0 +1,24 @@
+{
+  "case": "text-weight-relative-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a1u:text0","lines":[[0,10]]},
+    {"id":"a1d:text0","lines":[[0,11]]},
+    {"id":"a99d:text0","lines":[[0,21]]},
+    {"id":"a100d:text0","lines":[[0,15]]},
+    {"id":"a349u:text0","lines":[[0,17]]},
+    {"id":"a349d:text0","lines":[[0,18]]},
+    {"id":"a350u:text0","lines":[[0,14]]},
+    {"id":"a549u:text0","lines":[[0,19]]},
+    {"id":"a549d:text0","lines":[[0,20]]},
+    {"id":"a550u:text0","lines":[[0,16]]},
+    {"id":"a550d:text0","lines":[[0,17]]},
+    {"id":"a749d:text0","lines":[[0,19]]},
+    {"id":"a750d:text0","lines":[[0,16]]},
+    {"id":"a900u:text0","lines":[[0,13]]},
+    {"id":"a900d:text0","lines":[[0,14]]},
+    {"id":"a1000u:text0","lines":[[0,15]]},
+    {"id":"a1000i:text0","lines":[[0,18]]},
+    {"id":"ccc:text0","lines":[[0,14]]}
+  ]
+}

@@ -94,7 +94,7 @@ export class SwiftEmitter {
         return t.inner.k === 'union' || t.inner.k === 'fn' ? `(${inner})?` : `${inner}?`;
       }
       case 'fn':
-        return `(${t.params.map((p) => this.ty(p)).join(', ')}) throws -> ${this.ty(t.ret)}`;
+        return `(${t.params.map((p) => this.paramTy(p)).join(', ')}) throws -> ${this.ty(t.ret)}`;
     }
   }
 

@@ -4,6 +4,9 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
+import type { SvgScene } from './analysis/elements/svg.ts';
+export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
+import { svgSceneOf } from './analysis/elements/svg.ts';
 import type { Rgba8 } from './css/color.ts';
 import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
@@ -26,9 +29,10 @@ export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
-export { nativeScrollPending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
+export { nativeOutlinePending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
+export { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES, syntheticBoldStroke } from './fonts/synthetic-bold.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
 export type { UaDataset, UaDatasetChoice } from './ua/datasets.ts';
 export { REFERENCE_PLATFORM, ReferencePlatformUnavailable, referenceDataset, uaDatasetFor } from './ua/datasets.ts';
@@ -54,7 +58,9 @@ export { DIAGNOSTIC_CODES } from './diagnostics/codes.ts';
 export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
 export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
-export { collapseInlineContext, collapseInlineRun } from './analysis/resolve.ts';
+export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
+export { applyTextTransform } from './analysis/text-transform.ts';
+export type { TextTransform } from './analysis/text-transform.ts';
 export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
@@ -62,6 +68,7 @@ export type { BorderStyleName, NativeBackend, NativeProgram, ProgramNode, Progra
 export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
 export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
+export { clipPathInsets, clipPathRect } from './emit/paint/clip.ts';
 export type { EmitCase } from './emit/native-support.ts';
 export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES, SUPPORT_PLANTS } from './emit/native-support.ts';
 export type { SupportPlant } from './emit/native-support.ts';
@@ -105,7 +112,7 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
-/** SELD-R2 and T078 R14: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }
@@ -173,6 +180,23 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  return out;
+}
+
+/** SVG-a1: the scene of every rendered <svg> of a case, in document order (analysis/elements/svg.ts). */
+export function svgScenes(compiled: object, assignment: Assignment): readonly SvgScene[] | null {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  const out: SvgScene[] = [];
+  const walk = (el: ResolvedElement): void => {
+    // An element with display: none lays out no box, so an <svg> in it (or that is it) draws nothing.
+    const display = el.props.get('display')?.value;
+    if (display !== undefined && display.kind === 'keyword' && display.value === 'none') return;
+    const scene = svgSceneOf(el);
+    if (scene !== null) out.push(scene);
+    else for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
   return out;
@@ -274,7 +298,7 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record)) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -288,6 +312,32 @@ export type { ScriptCase, ScriptStep, StateEmit, WebClassTable, WebStateProgram 
 export { emitStatePrograms, STATE_RUNTIME_VERSION, StateEmitError, typedSetters, valueKey, webStateModule, webStateProgram } from './emit/runtime/state.ts';
 export { CLOCK_RUNTIME_VERSION, ClockError, VirtualClock } from './emit/runtime/clock.ts';
 export { RUNTIME_MODULES } from './emit/runtime/index.ts';
+
+/**
+ * TXT1a-1 (notes/T083-txt1a-1.md): the engine lane's layout projection of one case. It is the native projection when a native
+ * target is checked, and an engine-mode lowering (bundled static faces) when only deferred native font refusals block native.
+ */
+export function engineLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
+  const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
+  if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
+  if (record.rootFont !== environment.rootFont) return { kind: 'blocked', reason: `the result was resolved for root font ${record.rootFont}, not ${environment.rootFont}` };
+  if (c.engineLowered === null) return { kind: 'blocked', reason: `no engine lowering: ${c.engineRefusal ?? 'no native or engine lowering'}` };
+  if (c.resolved === null) return { kind: 'blocked', reason: 'the case did not resolve' };
+  const viewport = { width: environment.viewport.width, height: environment.viewport.height };
+  return {
+    kind: 'ready',
+    input: {
+      viewport,
+      devicePixelRatio: environment.devicePixelRatio,
+      viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
+      safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
+      rootFontSize: rootFontSizeOf(c.resolved),
+      root: c.engineLowered,
+    },
+  };
+}
 
 // SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
 export type { HitFact } from './emit/runtime/hit.ts';
@@ -403,7 +453,7 @@ export function nativeBandPrograms(compiled: object, assignment: Assignment, ban
   if (c === undefined) return { kind: 'blocked', reason: `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}` };
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: `the case has no native lowering in band ${band}` };
   try {
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record)) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -427,8 +477,55 @@ export function nativeBandProgram(compiled: object, backend: NativeBackend, faul
 
 // SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
 export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
-export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
 export type { InteractionState } from './analysis/match.ts';
 export { NO_INTERACTION } from './analysis/match.ts';
 export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';
 export { conditionsExclusive, gatedConditions, HOVER_MEDIA, interactionCondition, NO_HOVER_MEDIA } from './emit/web-css.ts';
+
+// SELD-R2 PR 3 (notes/T064-seld-r2-spec.md R7, R12, R16): the interaction program and the interaction runtime's reference.
+export type { InteractionLevel, InteractionLevelInput, InteractionProgram } from './lower/interaction-program.ts';
+export { deriveInteractionProgram, INTERACTION_PROGRAM_VERSION, interactionDelta, interactionProgramAt, interactionTables } from './lower/interaction-program.ts';
+export type { InteractionEmit, InteractionScript, InteractionScriptStep } from './emit/runtime/interaction.ts';
+export { emitInteractionPrograms, INTERACTION_FAULT_FIELDS, INTERACTION_RUNTIME_VERSION, INTERACTION_TABLE_FIELDS, InteractionEmitError, interactionFaultsLit, interactionTablesLit, TRACE_LINE, traceLineOf } from './emit/runtime/interaction.ts';
+import type { InteractionLevelInput as LevelInput } from './lower/interaction-program.ts';
+
+/** HTML text fields (input types whose element may show a virtual keyboard, R8, P6): pointer focus on them is focus-visible. */
+const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number']);
+
+/**
+ * The interaction level input of one app assignment for one backend: its partition, each partition state's per-case program, and
+ * per element whether its control consumes a touch (input type=range, P7) and whether pointer focus on it is focus-visible (R8).
+ */
+export function interactionLevelInput(compiled: object, assignment: Assignment, backend: NativeBackend): LevelInput | string {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string') return c;
+  if (c.partition === null || c.resolved === null) return 'the case did not resolve';
+  const elements = new Map<string, ResolvedElement>();
+  const walk = (el: ResolvedElement): void => {
+    elements.set(el.element.address, el);
+    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  const programs: NativeProgram[] = [];
+  for (const i of c.interaction) {
+    const p = nativePrograms(compiled, assignment, i.value.key);
+    if (p.kind === 'blocked') return `interaction state ${i.value.key}: ${p.reason}`;
+    programs.push(p.programs[backend]);
+  }
+  const typeOf = (address: string): string | null => {
+    const el = elements.get(address)?.element;
+    if (el === undefined) return null;
+    if (el.tag === 'textarea') return 'textarea';
+    return el.tag === 'input' ? (el.attributes.get('type')?.trim().toLowerCase() || 'text') : null;
+  };
+  return {
+    partition: c.partition,
+    programs,
+    touchConsumesTap: (address) => typeOf(address) === 'range',
+    keyboardInput: (address) => {
+      const type = typeOf(address);
+      return type === 'textarea' || (type !== null && TEXT_FIELD_TYPES.has(type));
+    },
+  };
+}

@@ -1,4 +1,5 @@
 {
+  "subagentPromptCacheTtl": "1h",
   "hooks": {
     "SessionStart": [
       {

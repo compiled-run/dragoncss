@@ -14,10 +14,13 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CHROME_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
+import { CHROME_VERSION, launchArgsOf, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
+import { CHROME_PAGES, inOrder } from '../packages/parity/src/chrome-pool.ts';
+import { type MemoStats, memoizedJson } from '../packages/parity/src/chrome-memo.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import { hostPlatform } from '../packages/parity/src/platform.ts';
 import { LONGHANDS } from '../packages/dragon/src/css/properties.ts';
+import { UNCAPTURED_LONGHANDS } from '../packages/dragon/src/ua/uncaptured.ts';
 
 const TAGS = [
   'html', 'body', 'div',
@@ -46,7 +49,13 @@ const PIXEL_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAA
 const REPLACED_KEY_SPECS = {
   iframe: { tag: 'iframe', attrs: {} },
   'img[src]': { tag: 'img', attrs: { src: PIXEL_PNG } },
-} as const satisfies Record<string, { tag: string; attrs: Record<string, string> }>;
+  // SVG-a1: an inline <svg>, an SVG-namespace element (HTML §13.2.6.5 foreign content). Its shapes ride in these tables too: they
+  // are not replaced, but Chrome's SVG UA sheet gives them values (transform-origin: 0 0) no HTML element has.
+  svg: { tag: 'svg', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+  path: { tag: 'path', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+  rect: { tag: 'rect', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+  circle: { tag: 'circle', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+} as const satisfies Record<string, { tag: string; attrs: Record<string, string>; ns?: string }>;
 type ReplacedKey = keyof typeof REPLACED_KEY_SPECS;
 const REPLACED_KEYS = Object.keys(REPLACED_KEY_SPECS) as ReplacedKey[];
 /** Phrasing-element keys (INL-U), captured like the element keys into tables of their own so the existing tables stay byte-identical. */
@@ -72,10 +81,12 @@ const FONT_SIZE_PARENTS = ['10px', '16px', '17.5px', '23.3px', 'medium', '2em', 
 const ALL_KEYS: readonly string[] = [...ELEMENT_KEYS, ...REPLACED_KEYS, ...PHRASING_KEYS];
 /** Void elements have no children, so they are never an ancestor context. */
 const ANCESTOR_KEYS = [...ELEMENT_KEYS.filter((k) => !['input', 'img'].includes(KEY_SPECS[k].tag)), ...PHRASING_KEYS.filter((k) => k !== 'br')];
-type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, string>> };
+type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, string>>; readonly ns?: string };
 const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS, ...PHRASING_KEY_SPECS };
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
 const TEXT_FONT_PROPERTIES = ['font-weight', 'font-style'] as const;
+/** Every longhand but those only the dataset holds (uncaptured.ts: the text-font rows', font-synthesis's, text-decoration's and the text fill and stroke colours). */
+const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(UNCAPTURED_LONGHANDS as readonly string[]).includes(p));
 const BORDER_KEYWORDS = ['thin', 'medium', 'thick'] as const;
 const SYSTEM_COLORS = [
   'Canvas', 'CanvasText', 'LinkText', 'VisitedText', 'ActiveText', 'ButtonFace', 'ButtonText', 'ButtonBorder', 'Field', 'FieldText',
@@ -143,6 +154,91 @@ type Capture = {
   fontSizes: Record<string, Record<string, Record<string, string>>>;
 };
 
+/** The ancestor-context scan of capture(), run in the page over a slice of the tags. */
+const scanContexts = ({ tags, ancestors, specs, props, minimum, declared }: {
+  tags: string[];
+  ancestors: string[];
+  specs: typeof SPECS;
+  props: string[];
+  minimum: number;
+  declared: Record<string, Dirs>;
+}): Record<string, string[]> => {
+  const hostEl = document.getElementById('host') as HTMLElement;
+  const make = (key: string): HTMLElement => {
+    const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
+    const e = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
+    for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
+    return e;
+  };
+  const out: Record<string, string[]> = {};
+  const standIn = (of: HTMLElement): string => {
+    const cs = getComputedStyle(of);
+    return Array.from(cs).map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';');
+  };
+  const differs = (chain: string[], tag: string): boolean => {
+    hostEl.replaceChildren();
+    let parent: HTMLElement = hostEl;
+    for (const a of chain) {
+      const next = make(a);
+      parent.appendChild(next);
+      parent = next;
+    }
+    const el = make(tag);
+    parent.appendChild(el);
+    const inContext = Object.fromEntries(props.map((p) => [p, getComputedStyle(el).getPropertyValue(p)]));
+    const style = standIn(parent);
+    const holder = document.createElement('div');
+    holder.setAttribute('style', style);
+    const bare = make(tag);
+    holder.appendChild(bare);
+    hostEl.appendChild(holder);
+    const outside = Object.fromEntries(props.map((p) => [p, getComputedStyle(bare).getPropertyValue(p)]));
+    // The stand-in reads the parent's serialized values, so a px value may differ in its last serialized digit.
+    const same = (x: string, y: string): boolean => {
+      if (x === y) return true;
+      const m = /^(-?[0-9.]+)px$/.exec(x);
+      const n = /^(-?[0-9.]+)px$/.exec(y);
+      return m !== null && n !== null && Math.abs(Number(m[1]) - Number(n[1])) <= 1e-4 * Math.max(1, Math.abs(Number(m[1])));
+    };
+    // Chrome's minimum logical font size clamps an em size under a keyword-sized root; the stand-in's px size is not clamped.
+    // Dragon refuses a clamped UA size (minimumLogicalFontSize), so a clamp is not a context.
+    const px = (v: string): number => Number.parseFloat(v);
+    if (inContext['font-size'] === `${minimum}px` && px(outside['font-size'] as string) < minimum) return false;
+    const differing = props.filter((p) => !same(inContext[p] as string, outside[p] as string));
+    if (differing.length === 0) return false;
+    if (differing.some((p) => p !== 'font-size')) return true;
+    // Only font-size differs: the stand-in's px size is not keyword-relative, while Chrome keeps a size relative to the medium
+    // keyword (em, %, smaller, larger) keyword-relative, so a generic family change (code's monospace) rescales it. A chain
+    // of unstyled elements given each ancestor's declared values keeps that; if it reproduces the value, no UA rule keys on
+    // the ancestor and it is not a context (elementKeyFontSizes records the keyword-relative sizes).
+    hostEl.replaceChildren();
+    let replicaParent: HTMLElement = hostEl;
+    for (const a of chain) {
+      const next = document.createElement('dragon-unstyled');
+      for (const [p, v] of Object.entries(((declared[a] as Record<string, Record<string, string>>)['ltr']) as Record<string, string>)) next.style.setProperty(p, v);
+      replicaParent.appendChild(next);
+      replicaParent = next;
+    }
+    const replicated = make(tag);
+    replicaParent.appendChild(replicated);
+    return getComputedStyle(replicated).fontSize !== inContext['font-size'];
+  };
+  for (const tag of tags) {
+    const found = new Set<string>();
+    for (const a of ancestors) {
+      if (a === 'body') continue;
+      if (differs([a], tag)) found.add(a);
+      for (const b of ancestors) {
+        // a alone gives the model's values here, so the outer b (with a between) is the ancestor a UA rule keys on.
+        if (b === 'body' || found.has(a) || found.has(b)) continue;
+        if (differs([b, a], tag)) found.add(b);
+      }
+    }
+    out[tag] = [...found].sort();
+  }
+  return out;
+};
+
 async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
   const hidden = await openPage(browser, hiddenDoc(scheme), ENV);
   const { out: values, initial } = await hidden.evaluate(
@@ -150,8 +246,8 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       const out: Record<string, Record<string, string>> = {};
       const initial: Record<string, Record<string, string>> = {};
       for (const key of keys) {
-        const s = specs[key] as { tag: string; attrs: Record<string, string> };
-        const e = document.createElement(s.tag);
+        const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
+        const e = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
         e.setAttribute('data-key', key);
         for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
         document.body.appendChild(e);
@@ -170,7 +266,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       for (const key of keys) read(document.querySelector(`[data-key="${key}"]`) as HTMLElement, key);
       return { out, initial };
     },
-    { tags: [...TAGS], keys: ALL_KEYS, specs: SPECS, props: [...LONGHANDS] },
+    { tags: [...TAGS], keys: ALL_KEYS, specs: SPECS, props: [...CAPTURED_LONGHANDS] },
   );
   const borderKeywords = await hidden.evaluate(() =>
     Object.fromEntries(
@@ -197,8 +293,8 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     ({ tags, specs, props }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       const make = (key: string): HTMLElement => {
-        const s = specs[key] as { tag: string; attrs: Record<string, string> };
-        const e = document.createElement(s.tag);
+        const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
+        const e = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
         for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
         return e;
       };
@@ -263,7 +359,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return out;
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, props: [...LONGHANDS] },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, props: [...CAPTURED_LONGHANDS] },
   );
   // Chrome's minimum logical font size: an em font size under the keyword-sized root is clamped up to it; an authored px size is not.
   const { minimumLogicalFontSize, authoredPx } = await host.evaluate(() => {
@@ -280,92 +376,27 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
 
   // Contexts: a tag inside ancestor tags (one and two levels) versus inside a div carrying the parent's computed style. Any
   // milestone longhand that differs comes from a UA rule keyed on an ancestor, which the declared values above do not model.
-  const contexts = await host.evaluate(
-    ({ tags, ancestors, specs, props, minimum, declared }) => {
-      const hostEl = document.getElementById('host') as HTMLElement;
-      const make = (key: string): HTMLElement => {
-        const s = specs[key] as { tag: string; attrs: Record<string, string> };
-        const e = document.createElement(s.tag);
-        for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
-        return e;
-      };
-      const out: Record<string, string[]> = {};
-      const standIn = (of: HTMLElement): string => {
-        const cs = getComputedStyle(of);
-        return Array.from(cs).map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';');
-      };
-      const differs = (chain: string[], tag: string): boolean => {
-        hostEl.replaceChildren();
-        let parent: HTMLElement = hostEl;
-        for (const a of chain) {
-          const next = make(a);
-          parent.appendChild(next);
-          parent = next;
-        }
-        const el = make(tag);
-        parent.appendChild(el);
-        const inContext = Object.fromEntries(props.map((p) => [p, getComputedStyle(el).getPropertyValue(p)]));
-        const style = standIn(parent);
-        const holder = document.createElement('div');
-        holder.setAttribute('style', style);
-        const bare = make(tag);
-        holder.appendChild(bare);
-        hostEl.appendChild(holder);
-        const outside = Object.fromEntries(props.map((p) => [p, getComputedStyle(bare).getPropertyValue(p)]));
-        // The stand-in reads the parent's serialized values, so a px value may differ in its last serialized digit.
-        const same = (x: string, y: string): boolean => {
-          if (x === y) return true;
-          const m = /^(-?[0-9.]+)px$/.exec(x);
-          const n = /^(-?[0-9.]+)px$/.exec(y);
-          return m !== null && n !== null && Math.abs(Number(m[1]) - Number(n[1])) <= 1e-4 * Math.max(1, Math.abs(Number(m[1])));
-        };
-        // Chrome's minimum logical font size clamps an em size under a keyword-sized root; the stand-in's px size is not clamped.
-        // Dragon refuses a clamped UA size (minimumLogicalFontSize), so a clamp is not a context.
-        const px = (v: string): number => Number.parseFloat(v);
-        if (inContext['font-size'] === `${minimum}px` && px(outside['font-size'] as string) < minimum) return false;
-        const differing = props.filter((p) => !same(inContext[p] as string, outside[p] as string));
-        if (differing.length === 0) return false;
-        if (differing.some((p) => p !== 'font-size')) return true;
-        // Only font-size differs: the stand-in's px size is not keyword-relative, while Chrome keeps a size relative to the medium
-        // keyword (em, %, smaller, larger) keyword-relative, so a generic family change (code's monospace) rescales it. A chain
-        // of unstyled elements given each ancestor's declared values keeps that; if it reproduces the value, no UA rule keys on
-        // the ancestor and it is not a context (elementKeyFontSizes records the keyword-relative sizes).
-        hostEl.replaceChildren();
-        let replicaParent: HTMLElement = hostEl;
-        for (const a of chain) {
-          const next = document.createElement('dragon-unstyled');
-          for (const [p, v] of Object.entries(((declared[a] as Record<string, Record<string, string>>)['ltr']) as Record<string, string>)) next.style.setProperty(p, v);
-          replicaParent.appendChild(next);
-          replicaParent = next;
-        }
-        const replicated = make(tag);
-        replicaParent.appendChild(replicated);
-        return getComputedStyle(replicated).fontSize !== inContext['font-size'];
-      };
-      for (const tag of tags) {
-        const found = new Set<string>();
-        for (const a of ancestors) {
-          if (a === 'body') continue;
-          if (differs([a], tag)) found.add(a);
-          for (const b of ancestors) {
-            // a alone gives the model's values here, so the outer b (with a between) is the ancestor a UA rule keys on.
-            if (b === 'body' || found.has(a) || found.has(b)) continue;
-            if (differs([b, a], tag)) found.add(b);
-          }
-        }
-        out[tag] = [...found].sort();
-      }
-      return out;
-    },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...LONGHANDS], minimum: minimumLogicalFontSize, declared },
-  );
+  // The scan is most of a capture and each tag's is its own, so the tags run in slices, CHROME_PAGES pages of their own context
+  // at once, and the slices merge back in tag order.
+  const contextTags = [...ELEMENT_TAGS, ...ALL_KEYS];
+  const sliceSize = Math.ceil(contextTags.length / (4 * CHROME_PAGES));
+  const slices = Array.from({ length: Math.ceil(contextTags.length / sliceSize) }, (_, i) => contextTags.slice(i * sliceSize, (i + 1) * sliceSize));
+  const contextSlices = await inOrder(slices, CHROME_PAGES, async (slice) => {
+    const page = await openPage(browser, hostDoc(scheme), ENV);
+    try {
+      return await page.evaluate(scanContexts, { tags: slice, ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...CAPTURED_LONGHANDS], minimum: minimumLogicalFontSize, declared });
+    } finally {
+      await page.context().close();
+    }
+  });
+  const contexts: Record<string, string[]> = Object.assign({}, ...contextSlices);
   const textFonts = await host.evaluate(
     ({ tags, specs, props }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       return Object.fromEntries(tags.map((tag) => {
         hostEl.replaceChildren();
-        const s = specs[tag] as { tag: string; attrs: Record<string, string> };
-        const el = document.createElement(s.tag);
+        const s = specs[tag] as { tag: string; attrs: Record<string, string>; ns?: string };
+        const el = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
         for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
         hostEl.appendChild(el);
         const row: Record<string, string> = {};
@@ -401,12 +432,14 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
           hostEl.replaceChildren();
           const parent = document.createElement('div');
           parent.setAttribute('style', `direction:${dir}`);
-          const s = specs[tag] as { tag: string; attrs: Record<string, string> };
-          const el = document.createElement(s.tag);
+          const s = specs[tag] as { tag: string; attrs: Record<string, string>; ns?: string };
+          const el = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           const bare = document.createElement('dragon-unstyled');
           const given = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
-          for (const [p, v] of Object.entries(given)) bare.style.setProperty(p, v as string);
+          // FORM-a: appearance stays off the reference, so Chrome's form-control display adjustment (a control's appearance: auto
+          // makes it inline-block) shows as a forced display; appearance itself is declared, not forced.
+          for (const [p, v] of Object.entries(given)) if (p !== 'appearance') bare.style.setProperty(p, v as string);
           parent.append(el, bare);
           hostEl.appendChild(parent);
           const cs = getComputedStyle(el);
@@ -417,7 +450,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
             if (p.startsWith('--')) continue;
             const v = cs.getPropertyValue(p);
             if (v === ref.getPropertyValue(p)) continue;
-            if (known.has(p)) force[p] = v;
+            if (known.has(p)) { if (p !== 'appearance') force[p] = v; }
             else if (!known.has(physical(p))) row[p] = v;
           }
           (unmodelled[tag] as Record<string, Record<string, string>>)[dir] = row;
@@ -426,7 +459,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return { unmodelled, forced };
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, longhands: [...LONGHANDS], declared, textFonts },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, longhands: [...CAPTURED_LONGHANDS], declared, textFonts },
   );
   const systemColors = await host.evaluate((names) => {
     const hostEl = document.getElementById('host') as HTMLElement;
@@ -445,12 +478,12 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     ({ keys, specs, families, sizes }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       return Object.fromEntries(keys.map((key) => {
-        const s = specs[key] as { tag: string; attrs: Record<string, string> };
+        const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
         return [key, Object.fromEntries(families.map((family) => [family, Object.fromEntries(sizes.map((size) => {
           hostEl.replaceChildren();
           const parent = document.createElement('div');
           parent.setAttribute('style', `font-family:${family};font-size:${size}`);
-          const el = document.createElement(s.tag);
+          const el = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           parent.appendChild(el);
           hostEl.appendChild(parent);
@@ -465,7 +498,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     const ltr = (declared[tag] as Dirs)['ltr'] as Record<string, string>;
     const own = values[tag] as Record<string, string>;
     const init = initial[tag] as Record<string, string>;
-    const set = [...LONGHANDS].sort().filter((p) => own[p] !== init[p]);
+    const set = [...CAPTURED_LONGHANDS].sort().filter((p) => own[p] !== init[p]);
     if (JSON.stringify(Object.keys(ltr).sort()) !== JSON.stringify(set)) throw new Error(`${scheme} ${tag}: declared longhands ${Object.keys(ltr).join(',')} differ from the captured ${set.join(',')}`);
   }
   await hidden.context().close();
@@ -491,8 +524,8 @@ async function selfConsistency(browser: Browser, scheme: Scheme, c: Capture): Pr
             hostEl.appendChild(parent);
             return child;
           };
-          const s = specs[tag] as { tag: string; attrs: Record<string, string> };
-          const el = document.createElement(s.tag);
+          const s = specs[tag] as { tag: string; attrs: Record<string, string>; ns?: string };
+          const el = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           under(el);
           const replica = under(document.createElement('dragon-unstyled'));
@@ -558,7 +591,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const tag of TAGS) {
     lines.push(`  ${JSON.stringify(tag)}: {`);
     const row = values[tag] as Record<string, string>;
-    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    for (const p of [...CAPTURED_LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
     lines.push('  },');
   }
   lines.push('};');
@@ -566,7 +599,7 @@ function render(c: Capture, scheme: Scheme): string {
   const longhandsOf = (tag: string): string[] => {
     const own = values[tag] as Record<string, string>;
     const init = initial[tag] as Record<string, string>;
-    return [...LONGHANDS].sort().filter((p) => own[p] !== init[p]);
+    return [...CAPTURED_LONGHANDS].sort().filter((p) => own[p] !== init[p]);
   };
   const declaredOf = (tag: string): string => {
     const d = declared[tag];
@@ -617,7 +650,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const k of ELEMENT_KEYS) {
     lines.push(`  ${JSON.stringify(k)}: {`);
     const row = values[k] as Record<string, string>;
-    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    for (const p of [...CAPTURED_LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
     lines.push('  },');
   }
   lines.push('};');
@@ -680,7 +713,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const k of REPLACED_KEYS) {
     lines.push(`  ${JSON.stringify(k)}: {`);
     const row = values[k] as Record<string, string>;
-    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    for (const p of [...CAPTURED_LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
     lines.push('  },');
   }
   lines.push('};');
@@ -728,7 +761,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const k of PHRASING_KEYS) {
     lines.push(`  ${JSON.stringify(k)}: {`);
     const row = values[k] as Record<string, string>;
-    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    for (const p of [...CAPTURED_LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
     lines.push('  },');
   }
   lines.push('};');
@@ -824,15 +857,39 @@ async function compare(otherPath: string, currentPath: string): Promise<number> 
   return differing.length === 0 ? 0 : 1;
 }
 
-const browser = await launchChrome();
-try {
-  const light = await capture(browser, 'light');
-  const dark = await capture(browser, plant === 'dark-as-light' ? 'light' : 'dark');
+/** The two dataset files and the faults that refuse them, read from Chrome. */
+async function captureOutputs(browser: Browser): Promise<{ outputs: [string, string][]; faults: string[] }> {
+  // Light and dark together; both run to their end before a failure is thrown (no page is left mid-capture), light's first.
+  const settled = await Promise.allSettled([capture(browser, 'light'), capture(browser, plant === 'dark-as-light' ? 'light' : 'dark')]);
+  const [light, dark] = settled.map((r) => {
+    if (r.status === 'rejected') throw r.reason;
+    return r.value;
+  }) as [Capture, Capture];
   if (plant !== undefined) applyPlant(plant, light);
   const faults = [...(await selfConsistency(browser, 'light', light)), ...(await selfConsistency(browser, 'dark', dark))];
   if (dark.systemColors['Canvas'] === light.systemColors['Canvas']) faults.push(`dark capture is not dark: Canvas is ${light.systemColors['Canvas']} in both the light and the dark capture`);
   if (dark.values['html']?.['color'] !== dark.systemColors['CanvasText']) faults.push(`dark capture is not dark: the root color ${dark.values['html']?.['color']} is not the dark CanvasText ${dark.systemColors['CanvasText']}`);
-  const outputs: [string, string][] = [[lightFile, render(light, 'light')], [darkFile, render(dark, 'dark')]];
+  return { outputs: [[lightFile, render(light, 'light')], [darkFile, render(dark, 'dark')]], faults };
+}
+
+// Everything the written files depend on beside Chrome itself (chrome-memo.ts keys the Chrome and Playwright versions and the
+// platform): this script, the page setup, the page pool and the captured longhands. Only a fault-free capture is remembered; --check and
+// --plant always read Chrome.
+const UA_CODE = ['scripts/capture-ua-defaults.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/chrome-pool.ts'];
+const memo: MemoStats = { hits: 0, misses: 0 };
+
+const browser = await launchChrome();
+try {
+  const launchArgs = launchArgsOf(browser);
+  const { outputs, faults } =
+    check || launchArgs === null
+      ? await captureOutputs(browser)
+      : await memoizedJson('ua', { platform, args: launchArgs, longhands: CAPTURED_LONGHANDS, files: [lightFile, darkFile] }, UA_CODE, memo, async () => {
+          const r = await captureOutputs(browser);
+          if (r.faults.length > 0) throw new Error(`ua:capture refuses to write:\n${r.faults.join('\n')}`);
+          return r;
+        });
+  if (memo.hits > 0) console.log('ua:capture: remembered (chrome-memo.ts)');
   if (check) {
     for (const [file, text] of outputs) {
       let committed = '';

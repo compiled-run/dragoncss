@@ -63,5 +63,56 @@
    "clientWidth": 68,
    "clientHeight": 52
   }
+ ],
+ "extents": [
+  {
+   "id": "a1",
+   "minLeft": -90,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a2",
+   "minLeft": -139,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a3",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -50,
+   "maxTop": 0
+  },
+  {
+   "id": "a4",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -84,
+   "maxTop": 0
+  },
+  {
+   "id": "a5",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -58,
+   "maxTop": 0
+  },
+  {
+   "id": "a6",
+   "minLeft": -59,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a7",
+   "minLeft": -90,
+   "maxLeft": 0,
+   "minTop": -78,
+   "maxTop": 0
+  }
  ]
 }

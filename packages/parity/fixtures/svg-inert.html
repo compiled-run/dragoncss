@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.wrap { width: 380px; }
+svg { display: block; margin-bottom: 4px; }
+.s1 { clip-rule: evenodd; marker-start: none; fill: rgb(20, 160, 80); stroke: rgb(120, 0, 160); stroke-width: 6; }
+.m { marker-start: none; marker-mid: none; marker-end: none; }
+.cr { clip-rule: EVENODD; }
+.v { --rule: evenodd; clip-rule: var(--rule); marker-end: none; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<svg data-dragon-id="s1" class="s1" width="380" height="80"><path data-dragon-id="p1" d="M10 10 H90 V70 H30 V30 H70 V50 H10 Z"/><path data-dragon-id="p2" class="m cr" d="M120 10 H200 V70 H140 V30 H180 V50 H120 Z"/><path data-dragon-id="p3" clip-rule="evenodd" marker-mid="none" stroke-linejoin="round" d="M230 70 L260 10 L290 70 L320 10 L350 70"/><circle data-dragon-id="p4" class="v" marker-start="none" cx="350" cy="25" r="14"/></svg>
+</div>
+</body>
+</html>

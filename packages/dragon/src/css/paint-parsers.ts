@@ -4,7 +4,36 @@
 // CSS-wide keyword.
 import type { CssNode } from 'css-tree';
 import type { Span } from '../types.ts';
-import { RADIUS_VALUE_PARSERS } from './properties/radius.ts';
+import { BORDER_IMAGE_VALUE_PARSERS } from './properties/border-image.ts';
+import { APPEARANCE_VALUE_PARSERS } from './properties/appearance.ts';
+import { USER_MODIFY_VALUE_PARSERS } from './properties/user-modify.ts';
+import { CLIP_PATH_VALUE_PARSERS } from './properties/clip-path.ts';
+import { CLIP_RECT_VALUE_PARSERS } from './properties/clip-rect.ts';
+import { EFFECTS_VALUE_PARSERS, parseOpacityValue } from './properties/effects.ts';
+import { FILTER_VALUE_PARSERS } from './properties/filter.ts';
+import { FONT_VARIANT_VALUE_PARSERS } from './properties/font-variant.ts';
+import { FONT_TUNING_VALUE_PARSERS } from './properties/font-tuning.ts';
+import { FONT_STRETCH_VALUE_PARSERS } from './properties/font-stretch.ts';
+import { FONT_FEATURES_VALUE_PARSERS } from './properties/font-features.ts';
+import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
+import { MASK_VALUE_PARSERS } from './properties/mask.ts';
+import { CONTAINMENT_VALUE_PARSERS } from './properties/containment.ts';
+import { CONTAINER_QUERY_VALUE_PARSERS } from './properties/container-query.ts';
+import { OVERSCROLL_VALUE_PARSERS } from './properties/overscroll.ts';
+import { SCROLL_SNAP_VALUE_PARSERS } from './properties/scroll-snap.ts';
+import { COUNTERS_VALUE_PARSERS } from './properties/counters.ts';
+import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
+import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
+import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
+import { SELECTION_VALUE_PARSERS } from './properties/selection.ts';
+import { SVG_DASH_VALUE_PARSERS } from './properties/svg-dash.ts';
+import { SVG_PAINT_ORDER_VALUE_PARSERS } from './properties/svg-paint-order.ts';
+import { parseBoxShadow } from './properties/shadow.ts';
+import { TEXT_SHADOW_VALUE_PARSERS } from './properties/text-shadow.ts';
+import { TEXT_TRANSFORM_VALUE_PARSERS } from './properties/text-transform.ts';
+import { TOUCH_ACTION_VALUE_PARSERS } from './properties/touch-action.ts';
+import { VISIBILITY_VALUE_PARSERS } from './properties/visibility.ts';
+import { ZOOM_VALUE_PARSERS } from './properties/zoom.ts';
 import { parseBorderRadius, parseWebkitBorderRadius } from './shorthands/radius.ts';
 import type { ParsedValue } from './stylesheet.ts';
 
@@ -15,4 +44,37 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(RADIUS_VALUE_PARSERS),
   ['border-radius', parseBorderRadius],
   ['-webkit-border-radius', parseWebkitBorderRadius],
+  ...Object.entries(LOGICAL_RADIUS_VALUE_PARSERS),
+  ...Object.entries(EFFECTS_VALUE_PARSERS),
+  // SVG-opacity: fill-opacity and stroke-opacity take opacity's <opacity-value>.
+  ['fill-opacity', (tokens, base) => parseOpacityValue('fill-opacity', tokens, base)],
+  ['stroke-opacity', (tokens, base) => parseOpacityValue('stroke-opacity', tokens, base)],
+  ...Object.entries(SVG_DASH_VALUE_PARSERS),
+  ...Object.entries(SVG_PAINT_ORDER_VALUE_PARSERS),
+  ['box-shadow', parseBoxShadow],
+  ...Object.entries(OUTLINE_VALUE_PARSERS),
+  ...Object.entries(VISIBILITY_VALUE_PARSERS),
+  ...Object.entries(SELECTION_VALUE_PARSERS),
+  ...Object.entries(RESIZE_VALUE_PARSERS),
+  ...Object.entries(TEXT_TRANSFORM_VALUE_PARSERS),
+  ...Object.entries(LINE_CLAMP_VALUE_PARSERS),
+  ...Object.entries(FONT_VARIANT_VALUE_PARSERS),
+  ...Object.entries(FONT_TUNING_VALUE_PARSERS),
+  ...Object.entries(FONT_STRETCH_VALUE_PARSERS),
+  ...Object.entries(FONT_FEATURES_VALUE_PARSERS),
+  ...Object.entries(TEXT_SHADOW_VALUE_PARSERS),
+  ...Object.entries(FILTER_VALUE_PARSERS),
+  ...Object.entries(TOUCH_ACTION_VALUE_PARSERS),
+  ...Object.entries(APPEARANCE_VALUE_PARSERS),
+  ...Object.entries(USER_MODIFY_VALUE_PARSERS),
+  ...Object.entries(CLIP_RECT_VALUE_PARSERS),
+  ...Object.entries(CLIP_PATH_VALUE_PARSERS),
+  ...Object.entries(ZOOM_VALUE_PARSERS),
+  ...Object.entries(MASK_VALUE_PARSERS),
+  ...Object.entries(BORDER_IMAGE_VALUE_PARSERS),
+  ...Object.entries(OVERSCROLL_VALUE_PARSERS),
+  ...Object.entries(SCROLL_SNAP_VALUE_PARSERS),
+  ...Object.entries(CONTAINMENT_VALUE_PARSERS),
+  ...Object.entries(CONTAINER_QUERY_VALUE_PARSERS),
+  ...Object.entries(COUNTERS_VALUE_PARSERS),
 ]);

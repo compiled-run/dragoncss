@@ -1,0 +1,8 @@
+{
+  "case": "text-word-spacing-nbsp",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"nbsp:text0","data":"Keep together and apart","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

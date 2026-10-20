@@ -1,0 +1,13 @@
+{
+  "case": "text-shadow-blur",
+  "dpr": 2,
+  "texts": [
+    {"id":"b1:text0","lines":[[0,2]]},
+    {"id":"t1:text0","lines":[[0,2]]},
+    {"id":"t2:text0","lines":[[0,2]]},
+    {"id":"t3:text0","lines":[[0,2]]},
+    {"id":"t4:text0","lines":[[0,2]]},
+    {"id":"t5c:text0","lines":[[0,2]]},
+    {"id":"t6:text0","lines":[[0,5]]}
+  ]
+}

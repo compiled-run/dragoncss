@@ -14,7 +14,7 @@ const style = (width: number): LayoutBox['style'] => ({
   width: px(width), height: auto, minWidth: auto, minHeight: auto, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' }, marginTop: px(0), marginRight: px(0), marginBottom: px(0), marginLeft: px(0),
   paddingTop: px(0), paddingRight: px(0), paddingBottom: px(0), paddingLeft: px(0), borderTopWidth: px(0), borderRightWidth: px(0), borderBottomWidth: px(0), borderLeftWidth: px(0),
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: auto, order: 0, justifyContent: 'flex-start', alignItems: 'stretch', alignSelf: 'auto', alignContent: 'normal',
-  rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: auto, verticalAlign: { kind: 'keyword', value: 'baseline' }, grid: null, gridItem: null,
+  rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: auto, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, grid: null, gridItem: null,
 }) as unknown as LayoutBox['style'];
 const box = (id: string, width: number, children: LayoutBox['children'] = []): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, children });
 
@@ -254,7 +254,7 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     const t = support('android-views');
     expect(t).toMatch(/current = to\n {4}\/\/ ANIM-b1 R4: one style change event per setter call\.\n {4}animator\?\.event\(to\)\n {4}onChange\?\.invoke\(\)\n {2}\}/);
     expect(t).toMatch(/machine\.onChange = \{\n {6}render\(\)\n/);
-    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), measurer, scale, bridge\)\n {4}stage\.addView\(t\.root/);
+    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), bridge\.measurer, scale, bridge\)\n {4}stage\.addView\(t\.root/);
     expect(t).toMatch(/stage\.removeView\(shown\.root\)\n {4}shown = t\n {4}renders\+\+/);
     expect(t).toContain('is DragonScriptStep.Set -> m.set(s.s, s.v)');
     expect(t).toContain('runs on a state mount, not as a layout case');

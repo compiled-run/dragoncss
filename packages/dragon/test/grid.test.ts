@@ -1,6 +1,5 @@
 // GRID G0: the grid longhands and shorthands and justify-items / justify-self are parsed, expanded and computed like Chrome 145
-// (css/grid-values.ts, properties/grid.ts, shorthands/grid.ts), while grid layout stays refused: display: grid and inline-grid have
-// no profile row. The live Chrome comparison is packages/parity/test/grid-computed.test.ts (this suite runs without a browser).
+// (css/grid-values.ts, properties/grid.ts, shorthands/grid.ts); grid layout and inline-grid (G-INL) are proven by their own suites. The live Chrome comparison is packages/parity/test/grid-computed.test.ts (this suite runs without a browser).
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
@@ -333,18 +332,6 @@ describe('grid family: compile', () => {
     expect(css).toContain('  justify-items: normal;\n');
     expect(c.outputs.ios.kind).toBe('analysis-only');
   });
-  for (const value of ['grid', 'inline-grid']) {
-    it(`display: ${value} stays refused until the grid engine lands`, () => {
-      const input = inputFor(`.a { display: ${value}; width: 100px; }`, tree);
-      const c = project().compile(input);
-      expect(c.ok).toBe(false);
-      expect(c.outputs.web.kind).toBe('blocked');
-      expect(c.outputs.ios.kind).toBe('blocked');
-      const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE') as Diagnostic;
-      expect(spanTextOf(input, d)).toBe(value);
-      expectCatalogued(c.diagnostics);
-    });
-  }
   it('justify-self on a block child is refused: Chrome aligns block boxes by it', () => {
     const input = inputFor('.a { width: 100px; } .b { width: 20px; justify-self: center; font-family: Ahem; font-size: 10px; }', tree);
     const c = project().compile(input);

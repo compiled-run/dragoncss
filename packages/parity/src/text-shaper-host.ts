@@ -3,9 +3,9 @@
 // font manifest names a face.
 // packages/text-shaper is loaded by path at run time, as packages/layout/test/shaping-gate.test.ts loads it (no package.json change).
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import type { EngineFaults, FontData, GlyphShaper, HanKerningFontData, ShapedFace, TextMeasurer } from '@dragon/layout';
-import { AHEM_FACE_ID, AHEM_SHA256, FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_ENGINE_FAULTS, NO_HAN_KERNING, shapedMeasurerFor } from '@dragon/layout';
+import { AHEM_FACE_ID, AHEM_SHA256, FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, letterSpacingAfter, NO_ENGINE_FAULTS, NO_HAN_KERNING, REFERENCE_LANGUAGE, shapedMeasurerFor, textRunLayoutUnit, wordSpacingAfter } from '@dragon/layout';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 
@@ -22,8 +22,8 @@ type HB = {
 };
 const wasm = (await import(new URL('../../text-shaper/src/wasm.ts', import.meta.url).href)) as { DragonHB: { load(): HB }; tagToString(tag: number): string };
 
-/** The language HarfBuzz shapes with when no lang attribute applies: the pinned Chrome's default locale. */
-export const REFERENCE_LANGUAGE = 'en-US';
+/** The language HarfBuzz shapes with when no lang attribute applies (platform.ts), which the device apps shape with too. */
+export { REFERENCE_LANGUAGE };
 
 /** The repo file of the bundled Ahem, whose sha256 is AHEM_SHA256. */
 export const AHEM_FILE = 'vendor/fonts/Ahem.ttf';
@@ -97,7 +97,8 @@ function tables(bytes: Uint8Array): Map<string, { readonly offset: number; reado
 
 /**
  * The FontData a device host reads from the bundled bytes (text.ts FontData): head unitsPerEm, hhea ascender, descender and
- * lineGap, glyph x's glyf yMax, OS/2 sCapHeight and the advance of glyph 0. The shaped measurer reads no per-code-point advances.
+ * lineGap, glyph x's glyf yMax, OS/2 sCapHeight, the advance of glyph 0 and of U+2026's glyph (-1 without one). The shaped
+ * measurer reads no per-code-point advances.
  */
 export function fontDataOf(id: string): FontData {
   const f = hostFace(id);
@@ -118,6 +119,7 @@ export function fontDataOf(id: string): FontData {
   const x = hb().nominalGlyph(unitFont, 0x78);
   const zero = hb().nominalGlyph(unitFont, 0x30);
   if (x === 0 || zero === 0) throw new Error(`face ${id} maps no glyph to x or 0`);
+  const ellipsis = hb().nominalGlyph(unitFont, 0x2026);
   const extents = hb().glyphExtents(unitFont, x);
   if (extents === undefined) throw new Error(`face ${id}: glyph x has no extents`);
   if (extents[1] % 65536 !== 0) throw new Error(`face ${id}: glyph x's top ${extents[1]} is not a whole font unit`);
@@ -130,6 +132,7 @@ export function fontDataOf(id: string): FontData {
     xHeight: extents[1] / 65536,
     capHeight: d.getInt16(os2 + 88),
     zeroAdvance: hb().glyphUnits(unitFont, zero),
+    ellipsisAdvance: ellipsis === 0 ? -1 : hb().glyphUnits(unitFont, ellipsis),
   };
 }
 
@@ -185,21 +188,74 @@ export function shapedFaceOf(id: string, language: string): ShapedFace {
   return f;
 }
 
+let ahemId: string | null = null;
 /** The bundled Ahem, registered once; its bytes must be the ones whose sha256 the engine names. */
 export function ahemFaceId(): string {
+  if (ahemId !== null) return ahemId;
   const bytes = new Uint8Array(readFileSync(repoPath(AHEM_FILE)));
   if (sha256Of(bytes) !== AHEM_SHA256) throw new Error(`${AHEM_FILE} has sha256 ${sha256Of(bytes)}, but the engine's AHEM_SHA256 is ${AHEM_SHA256}`);
-  return registerFace(bytes);
+  ahemId = registerFace(bytes);
+  return ahemId;
 }
 
+/** Every vendored font file (vendor/fonts/<family>/<file>.ttf), the faces a fixture or the north star can bundle. */
+function vendoredFaceFiles(): string[] {
+  const root = repoPath('vendor/fonts');
+  const out: string[] = [];
+  for (const dir of readdirSync(root, { withFileTypes: true })) {
+    if (!dir.isDirectory()) continue;
+    for (const f of readdirSync(`${root}/${dir.name}`)) if (f.endsWith('.ttf')) out.push(`${root}/${dir.name}/${f}`);
+  }
+  return out.sort();
+}
+
+let vendoredIds: string[] | null = null;
+/** Every vendored face, registered with the host shaper once, by face id. */
+export const vendoredFaceIds = (): string[] => {
+  if (vendoredIds === null) vendoredIds = vendoredFaceFiles().map((f) => registerFace(new Uint8Array(readFileSync(f))));
+  return vendoredIds;
+};
+
 /**
- * The reference measurer through HarfBuzz (shapedMeasurerFor): Ahem plus the given face bytes, at the reference platform and
- * language, with the engine's shaping plants. A fresh measurer per call: its shaped items are cached per layout.
+ * The reference measurer through HarfBuzz (shapedMeasurerFor): Ahem, every vendored face and the given face bytes, at the
+ * reference platform and language, with the engine's shaping plants. A fresh measurer per call: its shaped items are cached per
+ * layout. An input naming any other face is refused by the measurer (no bundled face).
  */
 export function referenceShapedMeasurer(faults: EngineFaults = NO_ENGINE_FAULTS, faces: readonly Uint8Array[] = []): TextMeasurer {
-  const ids = [ahemFaceId(), ...faces.map(registerFace)];
+  const ids = [ahemFaceId(), ...vendoredFaceIds(), ...faces.map(registerFace)];
   const map = new Map(ids.map((id) => [id, shapedFaceOf(id, REFERENCE_LANGUAGE)] as const));
   const m = shapedMeasurerFor(REFERENCE_PLATFORM, map, hostShaper, REFERENCE_LANGUAGE, faults);
   if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
   return m.measurer;
+}
+
+/** One shaped glyph's ink as a host reads it: its pen offset from the run start and its HarfBuzz extents, in px. */
+export type ShapedInk = { readonly x: number; readonly y: number; readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly cluster: number } | null;
+
+/**
+ * The ink of a run of text in a registered face at an instance size, left to right: HarfBuzz shapes it as the engine does (Latin,
+ * left to right, chws on), the pen advances by the 16.16 advances summed in float, and each glyph's box is its extents at its
+ * offset; a glyph with no outline gives null. Letter spacing in px turns off liga, clig and calt and follows the last glyph of every
+ * cluster, and word spacing follows the last glyph of every cluster that starts with a space (shaping.ts spacingAfterGlyph).
+ */
+export function shapedInk(face: string, size: number, text: string, letterSpacing: number, wordSpacing: number): ShapedInk[] {
+  const font = fontAt(face, size);
+  const off = (tag: string) => ({ tag, value: 0, start: 0, end: 4294967295 });
+  const spaced = Math.fround(letterSpacing) !== 0;
+  const features = [...(spaced ? [off('liga'), off('clig'), off('calt')] : []), { tag: 'chws', value: 1, start: 0, end: 4294967295 }];
+  const g = hb().shape(font, text, 0, text.length, { script: 'Latn', direction: 'ltr', language: REFERENCE_LANGUAGE, features });
+  const spacing16 = textRunLayoutUnit(letterSpacing);
+  const word16 = textRunLayoutUnit(wordSpacing);
+  const out: ShapedInk[] = [];
+  let pen = 0;
+  for (let i = 0; i < g.length; i += 7) {
+    const x = pen + (g[i + 4] as number) / 65536;
+    const y = (g[i + 5] as number) / 65536;
+    const e = hb().glyphExtents(font, g[i] as number);
+    out.push(e === undefined || e[2] === 0 || e[3] === 0 ? null : { x, y, left: x + e[0] / 65536, right: x + (e[0] + e[2]) / 65536, top: y + e[1] / 65536, bottom: y + (e[1] + e[3]) / 65536, cluster: g[i + 1] as number });
+    const lastOfCluster = i + 7 >= g.length || g[i + 8] !== g[i + 1];
+    const advance = (g[i + 2] as number) + (lastOfCluster ? letterSpacingAfter(text.charCodeAt(g[i + 1] as number), spacing16) + wordSpacingAfter(text.charCodeAt(g[i + 1] as number), word16) : 0);
+    pen = Math.fround(pen + Math.fround(advance / 65536));
+  }
+  return out;
 }

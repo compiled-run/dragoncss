@@ -51,7 +51,8 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   default /tmp/land-reviews/precomputed), LAND_REVIEW_DIR (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900), LAND_QUIET_MAX
   (seconds the test gate waits for a quiet machine before failing the PR, default 5400), LAND_BATCH (PRs proved together by one
   full test, 1 to 8, default 4; 1 lands one PR per proof), LAND_PIPELINE (0 turns off preparing the next batch, in
-  LAND_WORKTREE_NEXT, default /tmp/dragon-land-next, while a batch publishes), LAND_DEVICES (local, the default: the device lanes
+  LAND_WORKTREE_NEXT, default /tmp/dragon-land-next, while a batch publishes), LAND_DEVICE_STEP (async, the default: no device
+  run, the position keeps master's device records and device-refresh.yml runs the lanes on master; sync: the device step below), LAND_DEVICES (local, the default: the device lanes
   under /tmp/device-lease.sh; ci: device-lanes.yml on GitHub runners for each position's tree; the local run until master has
   device-lanes.yml), LAND_DEVICES_WAIT (seconds, 9000), LAND_TEST (local, the default: pnpm test here; ci: full-test.yml on GitHub
   runners for each proved tree; the local test until master has full-test.yml), LAND_TEST_WAIT (seconds, 22500), LAND_REGEN (local,
@@ -738,6 +739,16 @@ export const parseLandModes = (env: Readonly<Record<string, string | undefined>>
   const test = one('LAND_TEST');
   const regen = one('LAND_REGEN');
   return { devices, test, regen, ciOnly: devices === 'ci-only' && test === 'ci-only' && regen === 'ci-only' };
+};
+/**
+ * LAND_DEVICE_STEP: async (the default; Jack, 2026-10-14) lands on the fast checks and never runs the device lanes, which
+ * device-refresh.yml runs on master on a schedule; sync runs them for each position whose evidence stamp differs, as before.
+ */
+export type DeviceStep = 'async' | 'sync';
+export const parseDeviceStep = (v: string | undefined): DeviceStep => {
+  if (v === undefined || v === 'async') return 'async';
+  if (v === 'sync') return 'sync';
+  return fail(`LAND_DEVICE_STEP must be async or sync, not ${JSON.stringify(v)}`);
 };
 /** LAND_CI_MAX_INFLIGHT: how many positions of a batch have a CI regen dispatched at once, 1 to MAX_BATCH (default 2). */
 export const parseMaxInflight = (v: string | undefined): number => {

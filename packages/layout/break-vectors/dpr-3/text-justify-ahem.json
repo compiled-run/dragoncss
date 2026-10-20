@@ -1,0 +1,16 @@
+{
+  "case": "text-justify-ahem",
+  "dpr": 3,
+  "texts": [
+    {"id":"even:text0","lines":[[0,6],[6,11]]},
+    {"id":"rem:text0","lines":[[0,8],[8,13]]},
+    {"id":"spans:text0","lines":[[0,3]]},
+    {"id":"s:text0","lines":[[0,4]]},
+    {"id":"spans:text1","lines":[[0,8],[8,9]]},
+    {"id":"forced:text0","lines":[[0,4]]},
+    {"id":"forced:text1","lines":[[0,6],[6,11]]},
+    {"id":"over:text0","lines":[[0,7],[7,10],[10,11]]},
+    {"id":"pad:text0","lines":[[0,7],[7,14],[14,15]]},
+    {"id":"child:text0","lines":[[0,8],[8,17],[17,24]]}
+  ]
+}

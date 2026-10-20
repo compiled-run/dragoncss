@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.wrap { width: 380px; stroke-width: 4px; }
+svg { display: block; margin-bottom: 4px; }
+.half { fill: rgb(200, 40, 40); fill-opacity: 0.5; }
+.pct { fill: rgb(30, 90, 200); fill-opacity: 25%; stroke: rgb(0, 0, 0); stroke-opacity: 60%; }
+.both { fill: rgb(20, 160, 80); stroke: rgb(120, 0, 160); fill-opacity: .8; stroke-opacity: .3; }
+.clamp { fill: rgb(0, 0, 0); stroke: rgb(255, 128, 0); fill-opacity: 2; stroke-opacity: -1; }
+.zero { fill: rgb(0, 0, 0); stroke: rgb(0, 0, 255); fill-opacity: 0; }
+.rgba { fill: rgba(0, 0, 255, 0.5); fill-opacity: 0.5; stroke: none; }
+.parent { fill: rgb(200, 120, 0); fill-opacity: 0.4; stroke: rgb(0, 0, 0); stroke-opacity: 0.7; }
+.inh { fill-opacity: inherit; }
+.ini { stroke-opacity: initial; }
+.calc { fill: rgb(90, 0, 90); FILL-OPACITY: calc(0.25 + 0.5); }
+.v { --o: 0.35; fill: rgb(0, 100, 100); fill-opacity: var(--o); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<svg data-dragon-id="s1" width="120" height="40" viewBox="0 0 60 20"><rect data-dragon-id="r1" class="half" x="2" y="2" width="16" height="16"/><rect data-dragon-id="r2" class="pct" x="22" y="2" width="16" height="16"/><rect data-dragon-id="r3" class="both" x="42" y="2" width="16" height="16"/></svg>
+<svg data-dragon-id="s2" width="120" height="40"><circle data-dragon-id="c1" class="clamp" cx="20" cy="20" r="14"/><circle data-dragon-id="c2" class="zero" cx="60" cy="20" r="14"/><circle data-dragon-id="c3" class="rgba" cx="100" cy="20" r="14"/></svg>
+<svg data-dragon-id="s3" class="parent" width="120" height="40"><path data-dragon-id="p1" d="M4 36 L20 4 L36 36 Z"/><rect data-dragon-id="r4" class="inh ini" x="44" y="4" width="32" height="32"/><circle data-dragon-id="c4" class="calc" cx="100" cy="20" r="14"/></svg>
+<svg data-dragon-id="s4" width="120" height="40"><rect data-dragon-id="r5" class="v" x="4" y="4" width="32" height="32"/><circle data-dragon-id="c5" fill="rgb(160, 0, 0)" fill-opacity="0.6" stroke="rgb(0, 0, 0)" stroke-opacity="25%" cx="60" cy="20" r="14"/><circle data-dragon-id="c6" fill="rgb(0, 0, 160)" fill-opacity=".9" cx="100" cy="20" r="14"/></svg>
+</div>
+</body>
+</html>

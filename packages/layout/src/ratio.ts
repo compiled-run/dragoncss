@@ -10,8 +10,10 @@ import {
   borderBoxFromSpecified,
   constrain,
   hasPercent,
-  inlineMinMaxWith,
+  inlineMinMaxOf,
   isScrollContainer,
+  lengthMaxWidth,
+  lengthMinWidth,
   resolveBorder,
   resolveLength,
   resolveLengthOrNull,
@@ -134,7 +136,7 @@ export function ratioBlockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU
   const e = edgesOf(ctx, box, cbInline);
   const basis = noPercentBasis(box);
   const block = initialBlockSize(ctx, box, basis, e.vbp);
-  const own = inlineMinMaxWith(s, cbInline, e.hbp, ctx.faults);
+  const own = inlineMinMaxOf(box.id, s, cbInline, e.hbp, ctx.faults);
   const mm = withTransferred(block === null || isScrollContainer(s) ? own : withAutoMinInline(ctx, box, own, e.hbp), transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults), e.hbp, e.vbp));
   const extent = block === null ? stretched : inlineFromRatio(s, e.hbp, e.vbp, block);
   return max(clampTo(extent, mm), e.hbp);
@@ -182,9 +184,11 @@ export function ratioInlineContribution(ctx: Ctx, box: LayoutBox, kind: 'min' | 
   const block = initialBlockSize(ctx, box, basis, e.vbp);
   const size = ratioContentInlineSize(ctx, box, kind, block, ZERO);
   // As inlineContribution: a percentage max-width is none, and min-width resolves against no basis (§5.2.1).
+  const minWidth = lengthMinWidth(box.id, s.minWidth);
+  const maxWidth = lengthMaxWidth(box.id, s.maxWidth);
   const own: MinMax = {
-    min: s.minWidth.kind !== 'auto' ? borderBoxFromSpecified(resolveMinLength(s.minWidth, null, ctx.faults), e.hbp, s.boxSizing) : e.hbp,
-    max: s.maxWidth.kind !== 'none' && !hasPercent(s.maxWidth) ? borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), e.hbp, s.boxSizing) : null,
+    min: minWidth.kind !== 'auto' ? borderBoxFromSpecified(resolveMinLength(minWidth, null, ctx.faults), e.hbp, s.boxSizing) : e.hbp,
+    max: maxWidth.kind !== 'none' && !hasPercent(maxWidth) ? borderBoxFromSpecified(resolveLength(maxWidth, ZERO, ctx.faults), e.hbp, s.boxSizing) : null,
   };
   const autoMin = block !== null && !isScrollContainer(s) ? withAutoMinInline(ctx, box, own, e.hbp) : own;
   const mm = s.width.kind === 'auto' ? withTransferred(autoMin, transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults), e.hbp, e.vbp)) : autoMin;
@@ -207,7 +211,7 @@ export function ratioAbsoluteInlineSize(ctx: Ctx, box: LayoutBox, cbWidth: LU, s
   const block = s.height.kind !== 'auto'
     ? initialBlockSize(ctx, box, basis, e.vbp)
     : stretchBlock === null ? null : max(clampTo(stretchBlock, blockMm), e.vbp);
-  const own = inlineMinMaxWith(s, cbWidth, e.hbp, ctx.faults);
+  const own = inlineMinMaxOf(box.id, s, cbWidth, e.hbp, ctx.faults);
   const ratioWins = block !== null && (stretchInline === null || s.height.kind !== 'auto');
   const autoMin = ratioWins && !isScrollContainer(s) ? withAutoMinInline(ctx, box, own, e.hbp) : own;
   const mm = withTransferred(autoMin, transferredInlineMinMax(s, blockMm, e.hbp, e.vbp));

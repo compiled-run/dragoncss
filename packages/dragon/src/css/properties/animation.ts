@@ -3,13 +3,15 @@
 // longhand, in Blink's parsing order, that accepts it and has no value yet in that item (CSSParsingUtils
 // ConsumeAnimationShorthand). They are not milestone LONGHANDS: analysis/animations.ts runs their cascade, so the computed
 // longhands every fixture captures and the web output every class carries stay as they are.
-import { generate } from 'css-tree';
+import { generate, parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import { list, spanOf } from '../ast.ts';
-import { asciiLower, decodeName } from '../escapes.ts';
+import { asciiLower, canonicalizeEscapes, decodeName } from '../escapes.ts';
 import { CSS_WIDE } from '../values.ts';
+import type { VarPart } from '../variables.ts';
+import { MAX_NESTING, nestingDepth, parseVarParts } from '../variables.ts';
 
 // The transition and animation longhands stay out of LONGHANDS (T065 option B, C5), so these lists are not named *_LONGHANDS: the
 // registry seam (seams.test.ts) spreads every family *_LONGHANDS list into LONGHANDS.
@@ -65,8 +67,14 @@ export type AnimItem =
 /** A longhand's declared value: its comma list, or a CSS-wide keyword. */
 export type AnimList = { readonly kind: 'list'; readonly items: readonly AnimItem[] } | { readonly kind: 'wide'; readonly keyword: string };
 
-/** What an animation declaration sets: one value per longhand. */
-export type AnimationDeclValue = { readonly longhands: ReadonlyMap<AnimLonghand, AnimList> };
+/**
+ * ANIM-v (css-variables-1 §3.1): a value holding var(), valid at parse time and parsed per element after substitution with its
+ * custom properties (analysis/animations.ts). targets: the longhands it sets.
+ */
+export type AnimationVar = { readonly parts: readonly VarPart[]; readonly targets: readonly AnimLonghand[] };
+
+/** What an animation declaration sets: one value per longhand; a var() value sets each target to unset until it is substituted. */
+export type AnimationDeclValue = { readonly longhands: ReadonlyMap<AnimLonghand, AnimList>; readonly pending?: AnimationVar };
 
 const keywordItem = (value: string): AnimItem => ({ kind: 'keyword', value });
 
@@ -386,16 +394,23 @@ export function mathTokens(valueNode: CssNode, base: Span): Span[] {
 
 /**
  * A declaration of an animation property, parsed apart from the milestone longhands: its longhands list is empty and
- * `animation` holds what it sets. A value holding var() or a math function is refused (Chrome accepts both).
+ * `animation` holds what it sets. A value holding a math function is refused (Chrome accepts it); one holding var() is kept for substitution per element (ANIM-v).
  */
 export function parseAnimationDeclaration(property: string, valueNode: CssNode, at: { readonly span: Span; readonly valueSpan: Span; readonly text: string; readonly source: string; readonly base: Span }, diagnostics: Diagnostic[]): AnimationDeclValue | null {
+  // css-variables-1 §3.1: a value holding var() is valid at parse time; each element parses it after substitution (ANIM-v). An
+  // escape may spell var( (css-syntax-3 §4.3.7), so a value with one is split too.
   if (/var\(|\\/i.test(at.source)) {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-      origin: authored(at.valueSpan),
-      message: `${property}: ${at.source.trim()} is unsupported: ANIM-b1 does not substitute var() in transition and animation values (package ANIM-v)`,
-      manual: `Write the ${property} value without var().`,
-    }));
-    return null;
+    const parts = nestingDepth(at.source) > MAX_NESTING ? null : parseVarParts(at.source);
+    if (parts === null) {
+      diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {
+        origin: authored(at.valueSpan),
+        message: `"${at.text}" is not a valid value for ${property}: its var() references do not parse (Chrome 145 drops the declaration)`,
+        manual: `Write each var() as var(--name) or var(--name, fallback).`,
+      }));
+      return null;
+    }
+    const targets = isAnimLonghand(property) ? [property] : (ANIM_SHORTHANDS[property] as readonly AnimLonghand[]);
+    return { longhands: new Map(targets.map((p) => [p, { kind: 'wide', keyword: 'unset' }])), pending: { parts, targets } };
   }
   const math = mathTokens(valueNode, at.base);
   if (math.length > 0) {
@@ -422,4 +437,30 @@ export function parseAnimationDeclaration(property: string, valueNode: CssNode, 
     return null;
   }
   return parsed.value;
+}
+
+/** An animation value after var() substitution: its longhands, invalid at computed-value time, or a value Dragon refuses. */
+export type SubstitutedAnimation = { readonly kind: 'ok'; readonly value: AnimationDeclValue } | { readonly kind: 'invalid' } | { readonly kind: 'refused'; readonly diagnostic: Diagnostic };
+
+/**
+ * ANIM-v: parses the substituted text of an animation declaration against its property's grammar, as Chrome does at computed-value
+ * time (css-variables-1 §3.1). null text (a reference to the guaranteed-invalid value) and text the grammar rejects are invalid; a
+ * valid value is held to the same refusals as one written without var(), with the declaration's value span as the origin.
+ */
+export function substitutedAnimationValue(property: string, text: string | null, valueSpan: Span): SubstitutedAnimation {
+  if (text === null) return { kind: 'invalid' };
+  if (nestingDepth(text) > MAX_NESTING) return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${property}: the substituted value nests deeper than ${MAX_NESTING} brackets, which Dragon does not parse`, manual: `Write the ${property} value with less nesting.` }) };
+  let failed = false;
+  const node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
+  if (failed) return { kind: 'invalid' };
+  if (text.includes('\\')) canonicalizeEscapes(node);
+  if (list(node, 'children').every((n) => n.type === 'WhiteSpace')) return { kind: 'invalid' };
+  const shown = `${property}: substitutes to "${text.split('/**/').join('').trim()}"`;
+  if (mathTokens(node, valueSpan).length > 0) {
+    return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${shown}, and ANIM-b1 does not resolve math functions in transition and animation values (package ANIM-k)`, manual: 'Write the time or number as a plain value.' }) };
+  }
+  const parsed = parseAnimationValue(property, node);
+  if (parsed.kind === 'invalid') return { kind: 'invalid' };
+  const refusal = animationRefusal(property, parsed.value, valueSpan);
+  return refusal === null ? { kind: 'ok', value: parsed.value } : { kind: 'refused', diagnostic: { ...refusal, message: `${shown}: ${refusal.message}` } };
 }

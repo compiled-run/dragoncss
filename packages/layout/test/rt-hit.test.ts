@@ -334,3 +334,39 @@ describe('hitTableOf clips every clipping overflow', () => {
     expect(v.ids[hitTest(v.nodes, 40 * PX, 5 * PX, NO_HIT_FAULTS)]).toBe('k');
   });
 });
+
+// GRID G-HIT: Blink paints grid items atomically in order-modified document order (css-grid-2 §9), so of two items in one cell
+// the one later in that order is hit, whatever their document order (G1a review #212 refused grids until this was modelled).
+describe('grid containers', () => {
+  const gridInput = async (inGrid: boolean) => {
+    const { box, neutralEnvironment, px } = await import('./helpers.ts');
+    const AUTO = { kind: 'breadth' as const, breadth: { kind: 'auto' as const } };
+    const grid = { templateColumns: [], templateRows: [], autoColumns: [AUTO], autoRows: [AUTO], explicitColumnCount: 0, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
+    const cell = { column: { kind: 'definite' as const, start: 1, end: 2 }, row: { kind: 'definite' as const, start: 1, end: 2 }, justifySelf: 'auto' as const };
+    const items = ['a', 'b'].map((id, k) => box(id, { height: px(20), order: 1 - k, ...(inGrid ? { gridItem: cell } : {}) }));
+    const container = inGrid ? box('g', { display: 'grid', width: px(100), grid }, items) : box('g', { width: px(100) }, items);
+    const root = box('html', {}, [box('body', {}, [container])]);
+    const facts = new Map(['html', 'body', 'g', 'a', 'b'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
+  };
+
+  it('hit-tests grid items atomically in order-modified document order: a (order 1) paints over b (order 0) in their shared cell', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, layout } = await import('../src/index.ts');
+    const { input, facts } = await gridInput(true);
+    expect(layout(input, ahemMeasurer).kind).toBe('ok');
+    expect(hitRefusal(input)).toBeNull();
+    const v = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    expect(v.nodes.filter((n) => n.atomic).map((n) => [v.ids[n.target], n.order])).toEqual([['a', 1], ['b', 0]]);
+    const a = v.nodes.find((n) => v.ids[n.target] === 'a');
+    expect(v.ids[hitTest(v.nodes, (a?.x ?? 0) + 5 * PX, (a?.y ?? 0) + 5 * PX, NO_HIT_FAULTS)]).toBe('a');
+  });
+
+  it('leaves the same tree as block flow unaffected', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { input, facts } = await gridInput(false);
+    expect(hitRefusal(input)).toBeNull();
+    expect(hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS).ids).toEqual(['html', 'body', 'g', 'a', 'b']);
+  });
+});

@@ -75,9 +75,12 @@ describe('EMS: the paint registries', () => {
         for (const b of ['uikit', 'android-views'] as const) expect(VOCABULARY[b][k as keyof (typeof VOCABULARY)['uikit']]).toEqual((m.vocabulary[b] as Record<string, unknown>)[k]);
       }
     }
-    for (const b of ['uikit', 'android-views'] as const) expect(Object.keys(VOCABULARY[b]), b).toEqual([...PAINT_EMITTERS.flatMap((m) => m.kinds), 'font', 'text-color']);
+    // TXT-W adds the text run's synthetic-oblique shear and synthetic-bold stroke after its font and colour.
+    for (const b of ['uikit', 'android-views'] as const) expect(Object.keys(VOCABULARY[b]), b).toEqual([...PAINT_EMITTERS.flatMap((m) => m.kinds), 'font', 'text-color', 'synthetic-oblique', 'synthetic-bold']);
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
+    expect(isPaintKind('synthetic-oblique')).toBe(false);
+    expect(isPaintKind('synthetic-bold')).toBe(false);
   });
   it('the lowering registry refuses a write kind lowered by two modules, a vocabulary that disagrees with the longhands, or a reordered list', () => {
     expect(() => checkPaintLowerings(PAINT_LOWERINGS)).not.toThrow();
@@ -119,12 +122,12 @@ describe('P6a: border styles the side painter cannot draw', () => {
 });
 
 describe('EMS: programs', () => {
-  it('host every node under its DOM parent and carry an empty facts record, with writes in registry order', () => {
+  it('host every node under its DOM parent and carry only the stacking facts (every box; PNT1, rt-hit.ts reads them), with writes in registry order', () => {
     const p = programs();
     for (const prog of [p.uikit, p['android-views']]) {
       for (const n of prog.nodes) {
         expect(n.host, n.id).toBe(n.parent);
-        expect(n.facts, n.id).toEqual({});
+        expect(Object.keys(n.facts), n.id).toEqual(n.kind === 'text' ? [] : ['stacking']);
       }
       expect(prog.nodes.find((n) => n.id === 'a')?.writes.map((w) => w.kind)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip']);
     }

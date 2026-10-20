@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { absoluteRects, ahemMeasurer, coveredCodePoints, fromCssPx, layout, layoutWithFaults, NO_ENGINE_FAULTS, placeLines, validateLayoutInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, coveredCodePoints, fromCssPx, layout, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput } from '../src/index.ts';
 import { ahemOpportunities } from '../src/inline.ts';
 import { lineBreakOpportunitiesWith } from '../src/linebreak.ts';
 import type { EngineFaults } from '../src/index.ts';
@@ -150,9 +150,9 @@ describe('the validator rejects text the compiler did not prepare', () => {
       [text('t0', 'XX '), text('t1', ' YY')],
     ]) expect(codes(block(30, leaves)), JSON.stringify(leaves.map((l) => l.text))).toEqual(['uncollapsed-text']);
   });
-  it('rejects white-space-collapse values other than collapse', () => {
+  it('rejects white-space-collapse values the engine does not lay out', () => {
     const bad = JSON.parse(JSON.stringify(block(30, [text('t', 'XX')]))) as { children: { children: Record<string, unknown>[] }[] };
-    (bad.children[0]?.children[0] as Record<string, unknown>)['whiteSpaceCollapse'] = 'preserve';
+    (bad.children[0]?.children[0] as Record<string, unknown>)['whiteSpaceCollapse'] = 'preserve-spaces';
     expect(codes(bad as unknown as LayoutBox)).toEqual(['bad-value']);
   });
 });
@@ -162,8 +162,8 @@ describe('engine refusals for text', () => {
     const r = run(block(30, [text('t0', 'XX'), text('t1', 'YY', { textWrapMode: 'nowrap' })]));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('mixed-text-wrap-mode');
   });
-  it('text-align: justify returns text-align until a fixture proves it', () => {
-    const r = run(block(30, [text('t', 'XX XX')], { textAlign: 'justify' }));
+  it('text-align: justify returns text-align where an Ahem advance is not exact in 16.16, so the expanded width is not proven', () => {
+    const r = run(block(60, [text('t', 'XX XX XX', { font: ahemFont(10.33) })], { textAlign: 'justify' }));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('text-align');
   });
   it('a code point Ahem does not cover returns text-glyph', () => {
@@ -180,14 +180,14 @@ describe('engine refusals for text', () => {
 });
 
 describe('placeLines: the one source of lines (INL1a, notes/T044-inl-spec.md R3)', () => {
-  const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS };
+  const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
   it('gives each line its top, height and baseline, and each leaf piece its code point range, x, width and content top', () => {
     const b = box('a', { width: px(30) }, [text('t0', 'XX X'), text('t1', 'Y YY')]);
     const got = placeLines(ctx, b, fromCssPx(30));
     expect(got).toEqual([
-      { top: 0, height: G, baseline: 512, pieces: [{ leaf: 0, start: 0, visibleEnd: 2, end: 3, x: 0, width: 2 * G, top: 0, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
-      { top: G, height: G, baseline: G + 512, pieces: [{ leaf: 0, start: 3, visibleEnd: 4, end: 4, x: 0, width: G, top: G, ascent: 512, descent: 128 }, { leaf: 1, start: 0, visibleEnd: 1, end: 2, x: G, width: G, top: G, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
-      { top: 2 * G, height: G, baseline: 2 * G + 512, pieces: [{ leaf: 1, start: 2, visibleEnd: 4, end: 4, x: 0, width: 2 * G, top: 2 * G, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
+      { top: 0, height: G, baseline: 512, pieces: [{ leaf: 0, start: 0, visibleEnd: 2, end: 3, x: 0, width: 2 * G, top: 0, ascent: 512, descent: 128, shifts: [], paintEnd: 2, truncated: false, truncatedWidth: 0 }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
+      { top: G, height: G, baseline: G + 512, pieces: [{ leaf: 0, start: 3, visibleEnd: 4, end: 4, x: 0, width: G, top: G, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: false, truncatedWidth: 0 }, { leaf: 1, start: 0, visibleEnd: 1, end: 2, x: G, width: G, top: G, ascent: 512, descent: 128, shifts: [], paintEnd: 1, truncated: false, truncatedWidth: 0 }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
+      { top: 2 * G, height: G, baseline: 2 * G + 512, pieces: [{ leaf: 1, start: 2, visibleEnd: 4, end: 4, x: 0, width: 2 * G, top: 2 * G, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: false, truncatedWidth: 0 }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
     ]);
   });
   it('the leaf pieces sit at the baseline minus the ascent: a 13px line-height floors the 1.5px half-leading to 1px', () => {
@@ -221,7 +221,7 @@ describe('soft wrap opportunities equal Chrome\'s on INL-P family 3 (UAX #14 as 
   };
   const linesOf = (value: string, width: number, dpr: number, faults: EngineFaults, direction: 'ltr' | 'rtl' = 'ltr'): string[] => {
     const leaf = text('t', value, { font: ahemFont(10 * dpr) });
-    const got = placeLines({ measurer: ahemMeasurer, devicePixelRatio: dpr, faults }, box('c', { width: px(width), direction }, [leaf]), fromCssPx(width * dpr));
+    const got = placeLines({ measurer: ahemMeasurer, devicePixelRatio: dpr, faults, gridFaults: NO_GRID_FAULTS }, box('c', { width: px(width), direction }, [leaf]), fromCssPx(width * dpr));
     return got.map((l) => {
       if (l.pieces.length !== 1) throw new Error(`${value}: a line of one leaf has ${l.pieces.length} pieces`);
       const p = l.pieces[0] as (typeof l.pieces)[number];

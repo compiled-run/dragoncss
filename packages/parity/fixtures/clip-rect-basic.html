@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* No text inside a clipped box: native targets refuse it, since a hidden native view leaves the accessibility tree. */
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
+.stage { position: relative; height: 230px; padding: 8px 16px; background-color: rgb(236, 240, 244); }
+.row { position: relative; height: 40px; margin-bottom: 6px; background-color: rgb(250, 200, 60); }
+.box { position: absolute; top: 5px; width: 60px; height: 30px; background-color: rgb(40, 90, 200); border: 3px solid rgb(20, 20, 20); }
+.k { width: 40px; height: 10px; background-color: rgb(30, 160, 80); }
+.out { position: absolute; left: 50px; top: 20px; width: 50px; height: 30px; background-color: rgb(200, 40, 120); }
+.c0 { left: 8px; clip: rect(0, 0, 0, 0); }
+.c1 { left: 90px; clip: rect(1px, 1px, 1px, 1px); }
+.c2 { left: 172px; clip: rect(5px auto 5px auto); }
+.c3 { left: 254px; clip: rect(auto 0 auto auto); }
+.c4 { left: 8px; clip: rect(10px, 20px, 30px, 20px); }
+.c5 { left: 90px; clip: rect(1em, 2em, 0.5em, 0); }
+.c6 { left: 172px; --c: rect(0 0 0 0); clip: var(--c); }
+.c7 { left: 254px; clip: RECT(3px, -2px, 30px, auto); }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0, 0, 0, 0); background-color: rgb(200, 40, 40); }
+.keep { width: 60px; height: 20px; background-color: rgb(120, 40, 160); clip: rect(0, 0, 0, 0); }
+.keep-rel { position: relative; left: 90px; top: -20px; }
+.keep-auto { left: 172px; clip: auto; }
+.keep-init { left: 254px; clip: rect(0, 0, 0, 0); clip: initial; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="cut-a" class="box c0"><div data-dragon-id="cut-a-k" class="k"></div></div>
+<div data-dragon-id="cut-b" class="box c1"><div data-dragon-id="cut-b-out" class="out"></div></div>
+<div data-dragon-id="cut-c" class="box c2"><div data-dragon-id="cut-c-k" class="k"></div></div>
+<div data-dragon-id="cut-d" class="box c3"></div>
+</div>
+<div data-dragon-id="row2" class="row">
+<div data-dragon-id="cut-e" class="box c4"></div>
+<div data-dragon-id="cut-f" class="box c5"><div data-dragon-id="cut-f-k" class="k"></div></div>
+<div data-dragon-id="cut-g" class="box c6"></div>
+<div data-dragon-id="cut-h" class="box c7"></div>
+</div>
+<div data-dragon-id="row3" class="row">
+<div data-dragon-id="keep-static" class="keep"></div>
+<div data-dragon-id="keep-rel" class="keep keep-rel"></div>
+<div data-dragon-id="keep-auto" class="box keep-auto"><div data-dragon-id="keep-auto-k" class="k"></div></div>
+<div data-dragon-id="keep-init" class="box keep-init"></div>
+</div>
+<div data-dragon-id="row4" class="row"><div data-dragon-id="t1">XXXX</div><div data-dragon-id="cut-sr" class="sr"><div data-dragon-id="cut-sr-k" class="k"></div></div><div data-dragon-id="t2">XX</div></div>
+</div>
+</body>
+</html>

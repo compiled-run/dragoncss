@@ -7,10 +7,13 @@ import { INHERITED, LONGHANDS } from '../src/css/properties.ts';
 import { properties, webrefVersion } from '../src/css/grammar.generated.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import { borderWidthKeywords, chromeVersion, computed, platform, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
-import { referenceDataset } from '../src/ua/datasets.ts';
+import { referenceDataset, UNCAPTURED_LONGHANDS } from '../src/ua/datasets.ts';
 import { elementKeyComputed, elementKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { phrasingKeyComputed, phrasingKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
+
+/** The longhands the UA capture holds: all but font-weight and font-style (datasets.ts html.css rows) and font-synthesis. */
+const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(UNCAPTURED_LONGHANDS as readonly string[]).includes(p));
 
 describe('captured Chrome defaults and the webref grammar', () => {
   it('pin Chrome 145.0.7632.6 and @webref/css 8.7.5, captured on darwin-arm64', () => {
@@ -20,8 +23,10 @@ describe('captured Chrome defaults and the webref grammar', () => {
   });
   it('cover every longhand for every supported tag and an element with no UA rules', () => {
     for (const tag of Object.keys(computed) as (keyof typeof computed)[]) {
-      for (const p of LONGHANDS) expect(computed[tag][p], `${tag} ${p}`).toBeTypeOf('string');
+      for (const p of CAPTURED_LONGHANDS) expect(computed[tag][p], `${tag} ${p}`).toBeTypeOf('string');
       for (const p of LONGHANDS) expect(properties[p], p).toBeDefined();
+      // The capture writes no uncaptured longhand (capture-ua-defaults.ts reads UNCAPTURED_LONGHANDS); the dataset supplies them.
+      for (const p of UNCAPTURED_LONGHANDS) expect(p in computed[tag], `${tag} ${p}`).toBe(false);
     }
     expect(computed.div.display).toBe('block');
     expect(computed.body['margin-top']).toBe('8px');
@@ -117,6 +122,15 @@ describe('dependency boundaries', () => {
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",
       "import { LONGHANDS } from '../css/properties.ts';",
+      // PNT1 outline: the outline longhand names, to leave unauthored outlines to Chrome's UA :focus-visible rule.
+      "import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';",
+      // TXT2-g: the line-clamp longhand names and the clamp container's authored display, from the resolved element alone.
+      "import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';",
+      // MASK-CLIP: the mask longhand names and their initial values, to leave initial masks unwritten.
+      "import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';",
+      // MISC-PAINT: the border image longhand names and their initial values, to leave initial border images unwritten.
+      "import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';",
+      "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.
       "import { familyListText } from '../css/values.ts';",
@@ -145,6 +159,8 @@ describe('dependency boundaries', () => {
       if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       // CASC 2: css/chrome-number.ts writes registered @property numbers as Chrome 145 serialises them (six significant digits, %g; probed in casc-property); only that file.
       if (f.endsWith(join('src', 'css', 'chrome-number.ts'))) continue;
+      // SVG-a1: analysis/elements/svg-path.ts reproduces Chrome's float32 path-number arithmetic (svg.test.ts pins it); only that file.
+      if (f.endsWith(join('src', 'analysis', 'elements', 'svg-path.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });
@@ -164,16 +180,16 @@ describe('dependency boundaries', () => {
 describe('UA longhands of the element keys (ELB-2)', () => {
   it('pins the longhands a Chrome UA rule sets per element key', () => {
     expect(elementKeyLonghands).toEqual({
-      button: ['background-color', 'border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'text-align'],
-      input: ['background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],
-      'input[type=range]': ['background-color', 'color', 'font-family', 'font-size', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
+      button: ['appearance', 'background-color', 'border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'text-align'],
+      input: ['appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],
+      'input[type=range]': ['appearance', 'background-color', 'color', 'font-family', 'font-size', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
       a: [],
       'a[href]': ['color'],
       img: ['overflow-x', 'overflow-y'],
       span: [],
     });
     for (const key of Object.keys(elementKeyComputed) as (keyof typeof elementKeyComputed)[]) {
-      for (const p of LONGHANDS) expect(elementKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
+      for (const p of CAPTURED_LONGHANDS) expect(elementKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
     }
   });
 });
@@ -181,10 +197,10 @@ describe('UA longhands of the element keys (ELB-2)', () => {
 describe('UA longhands of the phrasing keys (INL-U)', () => {
   it('pins the longhands a Chrome UA rule sets on br, strong, b, em, i, code, small, sub, sup and label', () => {
     expect(phrasingKeyLonghands).toEqual({
-      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size'], sup: ['font-size'], label: [],
+      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size', 'vertical-align'], sup: ['font-size', 'vertical-align'], label: [],
     });
     for (const key of Object.keys(phrasingKeyComputed) as (keyof typeof phrasingKeyComputed)[]) {
-      for (const p of LONGHANDS) expect(phrasingKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
+      for (const p of CAPTURED_LONGHANDS) expect(phrasingKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
     }
   });
 });

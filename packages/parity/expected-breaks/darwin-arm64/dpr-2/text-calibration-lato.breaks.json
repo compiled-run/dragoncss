@@ -1,0 +1,10 @@
+{
+  "case": "text-calibration-lato",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"p1:text0","data":"Morning light settles on a calm river bank near the old mill","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[37]},
+    {"id":"p2:text0","data":"Sixty jugglers marched past the bright yellow kiosk","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[31]},
+    {"id":"p3:text0","data":"Evening Programme Notes","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

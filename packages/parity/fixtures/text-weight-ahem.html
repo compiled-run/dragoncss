@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 100px; }
+.row { display: flex; width: 200px; }
+.col { display: flex; flex-direction: column; width: 100px; }
+.w1 { font-weight: 1; }
+.w100 { font-weight: 100; }
+.w300 { font-weight: 300; }
+.w400 { font-weight: 400; }
+.w500 { font-weight: 500; }
+.w599 { font-weight: 599; }
+.wn { font-weight: normal; }
+.lt { font-weight: lighter; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b1" class="w w1">XX XX XX XX</div>
+<div data-dragon-id="b100" class="w w100">XX XX</div>
+<div data-dragon-id="b300" class="w w300">XX XX XX</div>
+<div data-dragon-id="b400" class="w w400">XX XX XX XX XX</div>
+<div data-dragon-id="b500" class="w w500">XX XX</div>
+<div data-dragon-id="b599" class="w w599">XX XX XX</div>
+<div data-dragon-id="bn" class="w wn">XX XX</div>
+<div data-dragon-id="bl" class="w lt">XX XX XX</div>
+<div data-dragon-id="row" class="row w500"><div data-dragon-id="ra" class="w400">XX XX</div><div data-dragon-id="rb" class="w599">XX</div></div>
+<div data-dragon-id="col" class="col"><div data-dragon-id="ca" class="w300">XX XX</div><div data-dragon-id="cb" class="w500">XX XX XX</div></div>
+<div data-dragon-id="arow" class="row w400">XX X<div data-dragon-id="arb">XX</div></div>
+</body>
+</html>

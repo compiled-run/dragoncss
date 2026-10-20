@@ -56,8 +56,10 @@ describe('Selectors-4 §17 specificity', () => {
 
 describe('precise refusals', () => {
   it.each([
-    ['.a::before', 'pseudo-element ::before'],
-    ['.a::after', 'pseudo-element ::after'],
+    ['.a::first-line', 'pseudo-element ::first-line'],
+    ['.a::first-letter', 'pseudo-element ::first-letter'],
+    ['.a::before:hover', '":hover" after the pseudo-element ::before of .a::before:hover is not supported (state-dependent generated content, GEN-d8)'],
+    ['.a::after.b', 'after the pseudo-element ::after'],
     ['.a:focus-within', ':focus-within depends on user interaction'],
     ['.a:visited', ':visited depends on user interaction'],
     ['.a:checked', ':checked depends on user interaction'],

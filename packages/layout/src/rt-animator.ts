@@ -6,7 +6,7 @@
 // the caller lays out again (R16). The compiler's tables are plain data (EasingCode, ValueCode), so a device holds them as
 // literals; length endpoints come from the engine input of each assignment, resolved for the environment by the engine's own
 // resolver (R14).
-import type { CalcExpr, ControlBox, GapValue, InlineChild, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, ReplacedLeaf, SizeValue } from './input.ts';
+import type { CalcExpr, ControlBox, GapValue, InlineChild, InlineSizeValue, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxInlineSizeValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, ReplacedLeaf, SizeValue } from './input.ts';
 import type { Easing, RtFaults, StepPosition } from './rt-easing.ts';
 import { cubicBezierEasing, froundOf, LINEAR, stepsEasing } from './rt-easing.ts';
 import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, ValueRange } from './rt-interpolate.ts';
@@ -203,7 +203,7 @@ function findStyle(b: LayoutBox | ControlBox, id: string): LayoutStyle | null {
   return null;
 }
 
-type LengthField = SizeValue | MinSizeValue | MaxSizeValue | MarginValue | PaddingValue | GapValue | InsetValue;
+type LengthField = InlineSizeValue | MaxInlineSizeValue | SizeValue | MinSizeValue | MaxSizeValue | MarginValue | PaddingValue | GapValue | InsetValue;
 
 /** The engine value of an admitted length longhand; a property without an animation writer throws. */
 function styleLength(s: LayoutStyle, property: string): LengthField {

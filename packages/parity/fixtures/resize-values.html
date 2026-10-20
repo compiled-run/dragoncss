@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --r: vertical; }
+.box { width: 80px; height: 10px; background-color: rgb(40, 90, 200); }
+.both { resize: both; }
+.hz { resize: horizontal; }
+.vt { resize: vertical; }
+.blk { resize: block; }
+.inl { resize: inline; }
+.au { resize: auto; }
+.up { RESIZE: Vertical; }
+.v { resize: var(--r); }
+.none { resize: none; }
+.par { resize: both; width: 120px; height: 20px; background-color: rgb(200, 60, 40); }
+.inh { resize: inherit; width: 60px; height: 10px; }
+.ini { resize: initial; width: 60px; height: 10px; }
+.uns { resize: unset; width: 60px; height: 10px; }
+.clip { overflow: clip; resize: both; width: 40px; height: 10px; }
+.f { display: flex; width: 200px; height: 20px; }
+.fi { width: 60px; height: 20px; resize: horizontal; background-color: rgb(20, 160, 80); }
+.rel { position: relative; width: 60px; height: 20px; resize: vertical; }
+.abs { position: absolute; left: 4px; top: 2px; width: 20px; height: 10px; resize: both; }
+.sp { resize: both; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="both" class="box both">X</div>
+<div data-dragon-id="hz" class="box hz">X</div>
+<div data-dragon-id="vt" class="box vt">X</div>
+<div data-dragon-id="blk" class="box blk">X</div>
+<div data-dragon-id="inl" class="box inl">X</div>
+<div data-dragon-id="au" class="box au">X</div>
+<div data-dragon-id="up" class="box up">X</div>
+<div data-dragon-id="v" class="box v">X</div>
+<div data-dragon-id="none" class="box none">X</div>
+<div data-dragon-id="par" class="par"><div data-dragon-id="inh" class="inh">XX</div><div data-dragon-id="ini" class="ini">X</div></div>
+<div data-dragon-id="par2" class="par au"><div data-dragon-id="inh2" class="inh">X</div><div data-dragon-id="uns" class="uns">X</div></div>
+<div data-dragon-id="clip" class="clip">XXXXXX</div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXX</div><div data-dragon-id="f2" class="fi">X</div></div>
+<div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs">X</div></div>
+<div data-dragon-id="t">XX <span data-dragon-id="sp" class="sp">XX</span> X</div>
+</body>
+</html>

@@ -1,5 +1,6 @@
 // The one pixel-snap rule (docs/research/native-strategy.md section 3.3): engine LU are 1/64 device px, every edge is snapped from
-// its absolute position with snapEdge(lu) = floor((lu + 32) / 64), sizes come from the snapped edges, and results stay numbers.
+// its absolute position with snapEdge(lu) = floor((lu + 32) / 64), sizes come from the snapped edges (at least one px for a size above
+// 4 LU, Blink SnapSizeToPixel), and results stay numbers.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,7 +37,13 @@ describe('snapRect and snapEdges', () => {
   });
   it('edges are absolute: a child at 16 LU inside a parent at 16 LU snaps from 32 LU', () => {
     const out = snapEdges([r('p', null, 16, 16, 128, 128), r('c', 'p', 16, 16, 16, 16)]);
-    expect(out.map((x) => [x.id, x.left, x.top, x.right, x.bottom])).toEqual([['p', 0, 0, 2, 2], ['c', 1, 1, 1, 1]]);
+    // The 16 LU child snaps to no px from its edges, and SnapSizeToPixel keeps it one px wide and high.
+    expect(out.map((x) => [x.id, x.left, x.top, x.right, x.bottom])).toEqual([['p', 0, 0, 2, 2], ['c', 1, 1, 2, 2]]);
+  });
+  it('a size above 4 LU that snaps to no px is one px (Blink SnapSizeToPixel); 4 LU and less, and zero, stay empty', () => {
+    expect([0, 1, 4, 5, 16, 31].map((w) => snapRect(r('a', null, 0, 0, w, w)).width)).toEqual([0, 0, 0, 1, 1, 1]);
+    // From the edge it would span none (32 + 31 rounds like 32), and it still paints one px at the rounded left edge.
+    expect(snapRect(r('a', null, 32, 32, 31, 0))).toEqual({ id: 'a', left: 1, top: 1, right: 2, bottom: 1, width: 1, height: 0 });
   });
   it('right and bottom use the saturating add, so an edge past int32 stays at INT_MAX', () => {
     const out = snapRect(r('s', null, 2147483600, 0, 1000, 0));

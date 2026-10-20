@@ -22,23 +22,25 @@ describe('display: -webkit-box and -webkit-inline-box', () => {
   for (const [value, fix] of [['-webkit-box', 'display: flex'], ['-webkit-inline-box', 'display: inline-flex']] as const) {
     it(`${value} is refused on every target with the legacy box reason, not called invalid`, () => {
       const { input, c } = compile(`.a { display: ${value.toUpperCase()}; }`);
-      expect(c.diagnostics.map((d) => [d.code, d.target, d.message])).toEqual([[
+      // TXT2-g: the reason is a computed-value refusal (analysis/line-clamp.ts), beside the support profile's per-target rows.
+      const reason = c.diagnostics.filter((d) => d.target === null);
+      expect(reason.map((d) => [d.code, d.target, d.message])).toEqual([[
         'DRAGON_UNSUPPORTED_VALUE', null,
-        `display: ${value} is unsupported: it selects Chrome's legacy -webkit-box layout, which Dragon does not lay out, line clamping with -webkit-box-orient: vertical and -webkit-line-clamp included`,
+        `display: ${value} is unsupported: it selects Chrome's legacy -webkit-box layout, which Dragon does not lay out; Dragon takes display: -webkit-box only as the line clamp, with -webkit-box-orient: vertical and a -webkit-line-clamp`,
       ]]);
-      expect(spanTextOf(input, c.diagnostics[0] as (typeof c.diagnostics)[number])).toBe(value.toUpperCase());
-      expect(c.diagnostics[0]?.fix).toMatchObject({ manual: `Use ${fix}, with flex-direction and the flex properties.` });
+      expect(spanTextOf(input, reason[0] as (typeof c.diagnostics)[number])).toBe(value.toUpperCase());
+      expect(reason[0]?.fix).toMatchObject({ manual: `Use ${fix}, with flex-direction and the flex properties.` });
       expect([c.outputs.ios.kind, c.outputs.android.kind, c.outputs.web.kind]).toEqual(['blocked', 'blocked', 'blocked']);
       expectCatalogued(c.diagnostics);
     });
   }
-  it('the line-clamp pattern is refused for its display, and its two properties stay unsupported', () => {
+  it('the line-clamp pattern is no legacy box: it computes to flow-root (line-clamp.test.ts)', () => {
     const { c } = compile('.a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }');
-    expect(c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE', 'DRAGON_UNSUPPORTED_PROPERTY', 'DRAGON_UNSUPPORTED_PROPERTY']);
+    expect(c.diagnostics.filter((d) => d.target === null)).toEqual([]);
   });
-  it('a var() that substitutes -webkit-box is refused with the same reason', () => {
+  it('a var() that substitutes -webkit-box is refused with the same reason, at computed-value time', () => {
     const { c } = compile('.a { --d: -webkit-box; display: var(--d); }');
-    expect(c.diagnostics.map((d) => [d.code, d.message])).toEqual([['DRAGON_UNSUPPORTED_VALUE', expect.stringMatching(/substitutes to "-webkit-box": display: -webkit-box is unsupported: it selects Chrome's legacy -webkit-box layout/)]]);
+    expect(c.diagnostics.filter((d) => d.target === null).map((d) => [d.code, d.message])).toEqual([['DRAGON_UNSUPPORTED_VALUE', expect.stringMatching(/^display: -webkit-box is unsupported: it selects Chrome's legacy -webkit-box layout/)]]);
   });
 });
 
@@ -49,11 +51,13 @@ describe('display: -webkit-flex and -webkit-inline-flex', () => {
     expect(prefixed.diagnostics).toEqual([]);
     expect(webCss(prefixed)).toContain('display: flex;');
     expect(webCss(prefixed)).toBe(webCss(plain));
-    // inline-flex is unproven in block context, so the two compile to the same refusals.
-    const summary = (c: Compiled<K>): string[] => c.diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message}`);
+    // inline-flex compiles in block context (INL2a), and the prefixed spelling compiles to the same output.
     const inline = compile('.a { display: inline-flex; width: 10px; }').c;
-    expect(summary(inline).length).toBeGreaterThan(0);
-    expect(summary(compile('.a { display: -WEBKIT-INLINE-FLEX; width: 10px; }').c)).toEqual(summary(inline));
+    const inlinePrefixed = compile('.a { display: -WEBKIT-INLINE-FLEX; width: 10px; }').c;
+    expect(inline.diagnostics).toEqual([]);
+    expect(inlinePrefixed.diagnostics).toEqual([]);
+    expect(webCss(inlinePrefixed)).toContain('display: inline-flex;');
+    expect(webCss(inlinePrefixed)).toBe(webCss(inline));
   });
   it('the autoprefixer chain ends in its last value', () => {
     const { c } = compile('.a { display: -webkit-flex; display: flex; width: 10px; }');

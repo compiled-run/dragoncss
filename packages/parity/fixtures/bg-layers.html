@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; flex-wrap: wrap; width: 400px; column-gap: 5px; row-gap: 5px; }
+.b { width: 70px; height: 40px; }
+.two { background: linear-gradient(90deg, rgba(255, 255, 255, 0.3), transparent 60%), repeating-linear-gradient(45deg, #222 0 5px, #ddd 5px 10px) #333; }
+.three { background: radial-gradient(circle at 20% 30%, #fff 0 4px, transparent 5px), linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent), linear-gradient(to right, #2f4f66, #a57c5b); }
+.none { background: none, linear-gradient(#08f, #f80), none #444; }
+.norep { background: linear-gradient(45deg, #2f4f66, #a57c5b) 10px 6px / 60% 20px no-repeat #eee; }
+.norep2 { background-color: #fff; background-image: radial-gradient(circle, #fa0, #05a), linear-gradient(#0a0, #050); background-repeat: no-repeat; background-position: 70% 30%, 0 0; background-size: 24px 50%, auto; }
+.rx { background: linear-gradient(to right, #c33, #33c) 0 0 / auto 12px repeat-x #eee; }
+.ry { background: linear-gradient(#c33, #33c) 50% 0 / 20px auto repeat-y #eee; }
+.border { border: 4px solid #123; background: linear-gradient(to right, #2f4f66, #a57c5b); }
+.pclip { border: 5px solid #800; padding: 3px; background: linear-gradient(#2f4f66, #a57c5b) padding-box #fff; }
+.bclip { border: 3px solid #000; background: radial-gradient(circle, #fa0, #05a) border-box; }
+.cbox { border: 2px solid #080; background: linear-gradient(to right, #2f4f66, #a57c5b) content-box #fff; }
+.origin { border: 6px solid #024; background: linear-gradient(to bottom, #fa0, #05a) border-box border-box; }
+.long { background-image: linear-gradient(#222, #999), linear-gradient(to right, #e44, #44e); background-size: 30px 30px, auto; background-repeat: no-repeat; background-color: #ccc; }
+.clipcolor { border: 4px solid #111; padding: 2px; background: linear-gradient(90deg, #fa0, #05a) padding-box padding-box #c0c0c0; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="two" class="b two"></div>
+<div data-dragon-id="three" class="b three"></div>
+<div data-dragon-id="none" class="b none"></div>
+<div data-dragon-id="norep" class="b norep"></div>
+<div data-dragon-id="norep2" class="b norep2"></div>
+<div data-dragon-id="rx" class="b rx"></div>
+<div data-dragon-id="ry" class="b ry"></div>
+<div data-dragon-id="border" class="b border"></div>
+<div data-dragon-id="pclip" class="b pclip"></div>
+<div data-dragon-id="bclip" class="b bclip"></div>
+<div data-dragon-id="cbox" class="b cbox"></div>
+<div data-dragon-id="origin" class="b origin"></div>
+<div data-dragon-id="long" class="b long"></div>
+<div data-dragon-id="clipcolor" class="b clipcolor"></div>
+</div>
+</body>
+</html>

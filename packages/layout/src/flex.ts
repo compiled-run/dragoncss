@@ -2,7 +2,7 @@
 // alignment (§8.3, §9.4 step 8). Chrome 145 computes every offset in flow coordinates, from the writing-mode start edge of each
 // axis: a reverse direction reverses the items and swaps flex-start and flex-end, and wrap-reverse does the same for the lines and
 // the cross axis (measured, notes/T035-slice-4a.md). Flow offsets are then mapped to physical ones.
-import type { AlignItems, ControlBox, JustifyContent, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
+import type { AlignItems, ControlBox, JustifyContent, LayoutBox, LayoutNode, LayoutStyle, SizeValue } from './input.ts';
 import type { DistributedMode, FactorSum, LU } from './units.ts';
 import {
   add,
@@ -33,6 +33,9 @@ import {
   contentBox,
   hasPercent,
   isScrollContainer,
+  lengthMaxWidth,
+  lengthMinWidth,
+  lengthWidth,
   resolveBorder,
   resolveLength,
   resolveLengthOrNull,
@@ -292,7 +295,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
       // A replaced item takes its flexed main size and its cross size as they are: it has no content to lay out.
       const placedSize: ReplacedSize = isRow ? { inline: mainBorderBox, block: crossSize } : { inline: crossSize, block: mainBorderBox };
       const r: ContentsResult = node.kind === 'replaced'
-        ? { frag: replacedFrag(node, placedSize), escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false }
+        ? { frag: replacedFrag(node, placedSize), escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: '', defaultLastBaseline: null, defaultLastBaselineFlex: '' }
         : layoutContents(ctx, node, {
           cbInline: a.contentWidth,
           borderBoxWidth: isRow ? mainBorderBox : crossSize,
@@ -348,7 +351,7 @@ function staticPosition(ctx: Ctx, container: LayoutBox, child: LayoutBox, axes: 
   const cross: FlowPosition = align === 'stretch' ? (axes.wrapReverse ? 'end' : 'start') : align === 'baseline' ? 'start' : align;
   const xAxis = axes.isRow ? staticAxis(main, content.left, content.width, axes.mainStartIsPhysical) : staticAxis(cross, content.left, content.width, axes.crossStartIsPhysical);
   const yAxis = axes.isRow ? staticAxis(cross, content.top, content.height, axes.crossStartIsPhysical) : staticAxis(main, content.top, content.height, axes.mainStartIsPhysical);
-  return { box: child, x: xAxis, y: yAxis };
+  return { box: child, x: xAxis, y: yAxis, area: null };
 }
 
 /** css-align-3 §9.3: a box with no baseline set synthesizes one from its border box: the line-under (bottom) edge. */
@@ -419,6 +422,8 @@ function effectiveAlign(ctx: Ctx, container: LayoutBox, item: LayoutNode, axes: 
       return 'center';
     case 'baseline':
       return 'baseline';
+    case 'last baseline':
+      return unsupported('flex-baseline', item.id, 'css-align-3 §9.3', 'last baseline self-alignment in a flex container (not yet supported)');
   }
 }
 
@@ -480,12 +485,15 @@ function buildItem(
   if (!isRow && box.kind === 'replaced') {
     columnCross = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, 'normal').inline;
   } else if (!isRow && box.kind !== 'replaced') {
-    const crossMin = s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(s.minWidth, cbInline, ctx.faults), hbp, s.boxSizing);
-    const crossMax = s.maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(s.maxWidth, cbInline, ctx.faults), hbp, s.boxSizing);
+    const minWidth = lengthMinWidth(box.id, s.minWidth);
+    const maxWidth = lengthMaxWidth(box.id, s.maxWidth);
+    const width = lengthWidth(box.id, s.width);
+    const crossMin = minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(minWidth, cbInline, ctx.faults), hbp, s.boxSizing);
+    const crossMax = maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(maxWidth, cbInline, ctx.faults), hbp, s.boxSizing);
     const mm: MinMax = { min: crossMin, max: crossMax };
     const avail = sub(cbInline, add(ml.value, mr.value));
     let w: LU;
-    if (s.width.kind !== 'auto') w = borderBoxFromSpecified(resolveLength(s.width, cbInline, ctx.faults), hbp, s.boxSizing);
+    if (width.kind !== 'auto') w = borderBoxFromSpecified(resolveLength(width, cbInline, ctx.faults), hbp, s.boxSizing);
     else if (align === 'stretch' && singleLine && crossInner !== null && !ml.auto && !mr.auto) w = avail;
     else {
       const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
@@ -498,7 +506,7 @@ function buildItem(
     columnCross = max(constrain(w, mm), hbp);
   }
 
-  const mainSizeProp = isRow ? s.width : s.height;
+  const mainSizeProp = isRow ? lengthWidth(box.id, s.width) : s.height;
   const specifiedMain = mainSizeContent(box, mainSizeProp, isRow, mainInner, mainBp, heightBasis, ctx.faults);
   let contentSized: LU | null = null;
   const contentMain = (): LU => {
@@ -542,8 +550,8 @@ function buildItem(
 
   // Main-axis min and max in content-box terms; min auto is the automatic minimum size (§4.5), which is 0 for a scroll container
   // (planted fault scrollMinAuto keeps the content-based minimum).
-  const minProp = isRow ? s.minWidth : s.minHeight;
-  const maxProp = isRow ? s.maxWidth : s.maxHeight;
+  const minProp = isRow ? lengthMinWidth(box.id, s.minWidth) : s.minHeight;
+  const maxProp = isRow ? lengthMaxWidth(box.id, s.maxWidth) : s.maxHeight;
   let maxMain: LU | null = null;
   if (maxProp.kind !== 'none') {
     const basisLu = !hasPercent(maxProp) ? ZERO : isRow ? cbInline : percentMainHeight(box, heightBasis, 'max-height');
@@ -642,7 +650,7 @@ function percentMainHeight(box: LayoutNode, basis: HeightBasis, prop: string): L
 // css-sizing-3 §4: the definite main size property in content-box terms, or null when auto or indefinite.
 function mainSizeContent(
   box: LayoutNode,
-  v: LayoutStyle['width'],
+  v: SizeValue,
   isRow: boolean,
   mainInner: LU | null,
   mainBp: LU,
@@ -767,8 +775,8 @@ function abs(v: LU): LU {
 // css-flexbox-1 §9.4 step 11: a stretched item's cross size is the line's, minus margins, clamped by min/max (percentages too).
 function stretchedCrossSize(item: Item, lineCross: LU, isRow: boolean, percentBasis: HeightBasis, faults: EngineFaults): LU {
   const s = item.box.style;
-  const minProp = isRow ? s.minHeight : s.minWidth;
-  const maxProp = isRow ? s.maxHeight : s.maxWidth;
+  const minProp = isRow ? s.minHeight : lengthMinWidth(item.box.id, s.minWidth);
+  const maxProp = isRow ? s.maxHeight : lengthMaxWidth(item.box.id, s.maxWidth);
   const resolve = (v: LengthPercent, prop: string): LU | null => {
     if (!hasPercent(v)) return resolveLength(v, ZERO, faults);
     return resolveLengthOrNull(v, percentMainHeight(item.box, percentBasis, prop), faults);
@@ -924,9 +932,11 @@ function ratioFlexMain(ctx: Ctx, box: LayoutBox, isRow: boolean, columnCross: LU
   // The content height without the ratio (Blink LayoutResult::IntrinsicBlockSize).
   const plain: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: { ...s, aspectRatio: { kind: 'auto' } }, strut: box.strut, children: box.children };
   const r = layoutContents(ctx, plain, { cbInline, borderBoxWidth: columnCross, forcedBorderBoxHeight: null, forcedHeightDefinite: false, heightBasis: { kind: 'indefinite' }, formattingContextRoot: true, bfcLineOffset: ZERO });
+  const minWidth = lengthMinWidth(box.id, s.minWidth);
+  const maxWidth = lengthMaxWidth(box.id, s.maxWidth);
   const inlineMm: MinMax = {
-    min: s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(s.minWidth, cbInline, ctx.faults), hbp, s.boxSizing),
-    max: s.maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(s.maxWidth, cbInline, ctx.faults), hbp, s.boxSizing),
+    min: minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(minWidth, cbInline, ctx.faults), hbp, s.boxSizing),
+    max: maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(maxWidth, cbInline, ctx.faults), hbp, s.boxSizing),
   };
   const content = constrain(r.frag.height, transferredBlockMinMax(s, inlineMm, hbp, vbp));
   return { base: contentBox(fromRatio, vbp), suggestion: contentBox(max(fromRatio, content), vbp) };

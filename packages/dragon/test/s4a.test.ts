@@ -86,8 +86,8 @@ describe('the css-overflow-3 §3.1 computed pair and the overflow refusals', () 
   // OVFL (T078J) supports every computed pair but clip beside visible; the refusal pins moved to that pair (OVFL-c).
   it('visible beside hidden computes to auto, clip beside hidden to hidden, and clip beside visible stays', () => {
     const pair = project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])]));
-    // The computed auto makes a box the user scrolls, which native refuses until OVFL-B (T078 R14); web compiles it.
-    expect(pair.diagnostics.map((d) => `${d.target} ${d.message}`)).toEqual(['ios overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on a, a box the user scrolls; ios has no native scroll views until OVFL-B']);
+    // The computed auto makes a box the user scrolls: a native scroll view (OVFL-B) on ios, the browser's on web.
+    expect(pair.diagnostics).toEqual([]);
     expect([resolved('.a { overflow-x: hidden; }').x, resolved('.a { overflow-x: hidden; }').y]).toEqual(['hidden', 'auto']);
     expect([resolved('.a { overflow: clip hidden; }').x, resolved('.a { overflow: clip hidden; }').y]).toEqual(['hidden', 'hidden']);
     // clip beside visible keeps both (the refusal below names the pair as computed).
@@ -107,8 +107,8 @@ describe('the css-overflow-3 §3.1 computed pair and the overflow refusals', () 
     for (const css of ['.a { overflow: hidden; }', 'body { overflow: hidden; }', 'body { overflow-x: hidden; }']) {
       expect(project('ltr').compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'])])).diagnostics, css).toEqual([]);
     }
-    // overflow-x: hidden alone computes overflow-y to auto: web compiles it, native refuses it until OVFL-B (T078 R14).
-    expect(project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])])).diagnostics.map((d) => d.target)).toEqual(['ios']);
+    // overflow-x: hidden alone computes overflow-y to auto, a native scroll view (OVFL-B).
+    expect(project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);
   });
 });
 
@@ -192,14 +192,15 @@ describe('the root font size the engine input carries (V2 rootFontSize)', () => 
   const compileRoot = (fontSize: string) => project('ltr').compile(inputFor(`html { font-size: ${fontSize}; } ${FONT}`, (r) => [div(r, 'a', [], [text(r, 't', 'XX')])]));
   it('is the root font size in px when it computes to px', () => {
     // INL1a: larger computes to the parent's size times 1.2 (css-fonts-4 §2.5, Blink FontDescription::LargerSize), at the root the
-    // initial 16px, so it is px now.
-    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12], ['larger', 19.2]] as const) {
+    // initial 16px, so it is px now. TXT-FS: an <absolute-size> keyword is Chrome's table at medium 16px, and a percentage is the
+    // parent's size (at the root the initial 16px) times it, so both are px too.
+    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12], ['larger', 19.2], ['medium', 16], ['small', 13], ['120%', 19.2]] as const) {
       const p = iosLayoutProjection(compileRoot(fontSize), { ...ENV, direction: 'ltr' }, []);
       expect(p.kind === 'ready' ? p.input.rootFontSize : p.reason, fontSize).toBe(px);
     }
   });
   it('blocks the ios output with a typed diagnostic, instead of throwing at projection, when it does not compute to px', () => {
-    for (const fontSize of ['medium', '120%', 'calc(10px + 1vw)']) {
+    for (const fontSize of ['calc(10px + 1vw)', 'calc(50% + 2px)']) {
       const c = compileRoot(fontSize);
       expect(c.outputs.ios.kind, fontSize).toBe('blocked');
       expect(c.diagnostics.map((d) => d.code), fontSize).toEqual(['DRAGON_LOWERING_FAILED']);
@@ -217,6 +218,7 @@ describe('C5: a text leaf carries the text-align and direction of its block cont
       ['text-align', { value: { kind: 'keyword', value: align }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }],
       ['direction', { value: { kind: 'keyword', value: direction }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }],
     ]),
+    smallCaps: false,
   } as ResolvedText);
   const container = (textAlign: LayoutStyle['textAlign'], direction: LayoutStyle['direction']) => ({ textAlign, direction }) as LayoutStyle;
   it('passes when they are equal, in both directions', () => {

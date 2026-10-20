@@ -1,0 +1,22 @@
+{
+  "case": "alias-font",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 836,
+  "gridSha256": "d611acd85ef1032ace5099e58311332183ae6a147e0c5ee3907a7de3e620efb7",
+  "ids": [
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "f7",
+    "html"
+  ],
+  "runs": [[0,102],[1,142],[2,142],[3,142],[4,142],[5,142],[6,24]]
+}

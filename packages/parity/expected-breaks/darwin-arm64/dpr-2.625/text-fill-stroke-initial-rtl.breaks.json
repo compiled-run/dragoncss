@@ -1,0 +1,14 @@
+{
+  "case": "text-fill-stroke-initial-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"cc:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"s0:text0","data":"XXX X","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"inh:text0","data":"X XX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"sw:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"sh:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"ra:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"rb:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

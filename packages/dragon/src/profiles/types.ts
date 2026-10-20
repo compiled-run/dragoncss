@@ -3,10 +3,11 @@ import type { SupportStatus, Target } from '../types.ts';
 /**
  * What a proof covers (docs/api.md §4.1, §7). layout on linux-dragon-layout: Dragon's engine against Chrome's authored boxes.
  * layout or computed-value on chrome-dual: compiled web CSS against authored CSS in Chrome, boxes and getComputedStyle values,
- * plus Dragon's resolved colour channels against Chrome's. No lane proves native paint in milestone 1.
+ * plus Dragon's resolved colour channels against Chrome's. computed-value on device-anim (T065 R18): every frame sample's device
+ * dump against Chrome's frame capture through the four device checks. No other lane proves native paint in milestone 1.
  */
 export type ProofAspect = 'layout' | 'computed-value';
-export type ProofLane = 'linux-dragon-layout' | 'chrome-dual';
+export type ProofLane = 'linux-dragon-layout' | 'chrome-dual' | 'device-anim';
 
 /** docs/api.md §6.3: a proof names its value subset, context and the parity cases that passed its lane in the same run. */
 export type Proof = {
@@ -35,11 +36,12 @@ export const PROFILE_NOTES = {
 export type ProfileNote = keyof typeof PROFILE_NOTES;
 
 /**
- * T078 R14: overflow auto and scroll make a box the user scrolls, and the native outputs have no scroll views until OVFL-B, so a
- * native target claims no row for them: outside the parity lanes the compiler refuses them on native, naming OVFL-B.
+ * PNT1 outline: the native targets draw every outline style but auto, Chrome's focus ring, which they refuse by name wherever it
+ * paints, at any width (analysis/paint-values/outline.ts checkOutline). An auto outline that paints nothing (display: contents)
+ * compiles, but that proves no paint, so a native target claims no row for auto and the value check leaves it to checkOutline.
  */
-export function nativeScrollPending(feature: string): boolean {
-  return /^overflow-[xy]:(auto|scroll)$/.test(feature);
+export function nativeOutlinePending(feature: string): boolean {
+  return feature === 'outline-style:auto';
 }
 
 /** The note a target's row for a feature carries, or null: web overflow auto and scroll depend on the scrollbar environment (R3). */
@@ -86,8 +88,11 @@ export function supportedValuesFor(profile: SupportProfile, property: string): s
 }
 
 /** The value subsets of a property with a supported row in one context, sorted (T005 rec 6: alternatives in context). */
+/** Values a profile proves only inside a pattern, never offered alone as an alternative: display: -webkit-box is the line clamp (TXT2-g). */
+const PATTERN_ONLY: ReadonlySet<string> = new Set(['display:-webkit-box']);
+
 export function supportedValuesIn(profile: SupportProfile, property: string, context: string): string[] {
   return [...new Set(profile.rows
-    .filter((r) => r.status !== 'unsupported' && r.context === context && r.feature.startsWith(`${property}:`))
+    .filter((r) => r.status !== 'unsupported' && r.context === context && r.feature.startsWith(`${property}:`) && !PATTERN_ONLY.has(r.feature))
     .map((r) => r.feature.slice(property.length + 1)))].sort();
 }

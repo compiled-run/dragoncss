@@ -1,0 +1,22 @@
+{
+  "case": "text-weight-styles-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"it:text0","data":"Italic style","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"ob:text0","data":"Oblique style","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"o14:text0","data":"Oblique fourteen","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"o20:text0","data":"Oblique twenty","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"o10:text0","data":"Oblique ten","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"on20:text0","data":"Oblique negative","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"o0:text0","data":"Oblique zero","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"orad:text0","data":"Oblique radians","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"ograd:text0","data":"Oblique gradians","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"oturn:text0","data":"Oblique turns","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"bi:text0","data":"Bold italic","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"li:text0","data":"Light italic","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"nni:text0","data":"Normal inside italic","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"lo:text0","data":"Lato oblique ten","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"lbn:text0","data":"Lato bold negative","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

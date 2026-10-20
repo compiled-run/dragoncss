@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; width: 101px; height: 24px; grid-template-columns: 10px 11px 12px; grid-template-rows: 6px 7px; margin-bottom: 2px; }
+.jc1 { justify-content: start; align-content: end; }
+.jc2 { justify-content: end; align-content: center; }
+.jc3 { justify-content: center; align-content: space-between; }
+.jc4 { justify-content: space-between; align-content: space-around; }
+.jc5 { justify-content: space-around; align-content: space-evenly; }
+.jc6 { justify-content: space-evenly; align-content: stretch; }
+.jc7 { justify-content: left; align-content: start; }
+.jc8 { justify-content: right; align-content: flex-end; }
+.jc9 { justify-content: flex-start; align-content: flex-start; }
+.jc10 { justify-content: flex-end; align-content: normal; }
+.st { display: grid; width: 101px; height: 23px; grid-template-columns: auto auto 10px; grid-template-rows: auto auto; margin-bottom: 2px; }
+.st2 { justify-content: stretch; align-content: normal; }
+.ov { display: grid; width: 40px; height: 10px; grid-template-columns: 100px; grid-template-rows: 30px; justify-content: center; align-content: end; margin-bottom: 25px; }
+.self { display: grid; width: 150px; grid-template-columns: 30px 30px 30px 30px; grid-auto-rows: 12px; justify-items: center; align-items: end; }
+.x { height: 3px; }
+.i { width: 6px; height: 4px; }
+.js1 { justify-self: start; align-self: start; }
+.js2 { justify-self: end; align-self: center; }
+.js3 { justify-self: stretch; align-self: stretch; width: auto; height: auto; }
+.js4 { justify-self: self-start; align-self: self-end; }
+.js5 { justify-self: self-end; align-self: self-start; }
+.js6 { justify-self: left; align-self: flex-start; }
+.js7 { justify-self: right; align-self: flex-end; }
+.js8 { justify-self: flex-start; }
+.js9 { justify-self: flex-end; }
+.js10 { justify-self: normal; align-self: normal; width: auto; height: auto; }
+.js11 { justify-self: unsafe center; }
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
+.am1 { margin-left: auto; margin-right: auto; margin-top: auto; }
+.am2 { margin-left: auto; }
+.am3 { margin-right: auto; margin-bottom: auto; }
+.big { width: 50px; height: 20px; }
+.bigm { width: 50px; height: 5px; margin-left: auto; margin-right: auto; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="g jc1"><div data-dragon-id="c1a" class="x"></div><div data-dragon-id="c1b" class="x"></div><div data-dragon-id="c1c" class="x"></div></div>
+<div data-dragon-id="c2" class="g jc2"><div data-dragon-id="c2a" class="x"></div><div data-dragon-id="c2b" class="x"></div></div>
+<div data-dragon-id="c3" class="g jc3"><div data-dragon-id="c3a" class="x"></div><div data-dragon-id="c3b" class="x"></div></div>
+<div data-dragon-id="c4" class="g jc4"><div data-dragon-id="c4a" class="x"></div><div data-dragon-id="c4b" class="x"></div><div data-dragon-id="c4c" class="x"></div><div data-dragon-id="c4d" class="x"></div></div>
+<div data-dragon-id="c5" class="g jc5"><div data-dragon-id="c5a" class="x"></div><div data-dragon-id="c5b" class="x"></div></div>
+<div data-dragon-id="c6" class="g jc6"><div data-dragon-id="c6a" class="x"></div><div data-dragon-id="c6b" class="x"></div></div>
+<div data-dragon-id="c7" class="g jc7"><div data-dragon-id="c7a" class="x"></div></div>
+<div data-dragon-id="c8" class="g jc8"><div data-dragon-id="c8a" class="x"></div></div>
+<div data-dragon-id="c9" class="g jc9"><div data-dragon-id="c9a" class="x"></div></div>
+<div data-dragon-id="c10" class="g jc10"><div data-dragon-id="c10a" class="x"></div></div>
+<div data-dragon-id="s1" class="st"><div data-dragon-id="s1a" class="x">X</div><div data-dragon-id="s1b">XX</div><div data-dragon-id="s1c" class="x"></div></div>
+<div data-dragon-id="s2" class="st st2"><div data-dragon-id="s2a">XXX</div><div data-dragon-id="s2b" class="x"></div></div>
+<div data-dragon-id="o" class="ov"><div data-dragon-id="oa" class="big"></div></div>
+<div data-dragon-id="p" class="self"><div data-dragon-id="p1" class="i js1"></div><div data-dragon-id="p2" class="i js2"></div><div data-dragon-id="p3" class="i js3"></div><div data-dragon-id="p4" class="i js4 rtl"></div><div data-dragon-id="p5" class="i js5 ltr"></div><div data-dragon-id="p6" class="i js6"></div><div data-dragon-id="p7" class="i js7"></div><div data-dragon-id="p8" class="i js8"></div><div data-dragon-id="p9" class="i js9"></div><div data-dragon-id="p10" class="i js10">X</div><div data-dragon-id="p11" class="i js11"></div><div data-dragon-id="p12" class="i"></div><div data-dragon-id="p13" class="i am1"></div><div data-dragon-id="p14" class="i am2"></div><div data-dragon-id="p15" class="i am3"></div><div data-dragon-id="p16" class="bigm"></div></div>
+</body>
+</html>

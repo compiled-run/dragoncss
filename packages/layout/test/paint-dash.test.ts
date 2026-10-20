@@ -1,10 +1,10 @@
-// P6a: the dashed and dotted border reference (src/paint-dash.ts), Blink 145's side painter in device px. The paint vectors
-// (packages/layout/paint-vectors/dash) carry its results to the Swift and Kotlin translations bit for bit; these tests pin the
-// Blink and Skia rules it ports and prove each planted fault changes the drawing.
+// P6a: the dashed and dotted border reference (src/paint-dash.ts), Blink 145's side painter in device px, and the dotted, dashed
+// and 3D outlines it draws (PNT1). The paint vectors (packages/layout/paint-vectors/dash) carry its results to the Swift and Kotlin
+// translations bit for bit; these tests pin the Blink and Skia rules it ports and prove each planted fault changes the drawing.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { BorderOp, DashFaults } from '../src/paint-dash.ts';
-import { borderNeedsSidePainter, borderPaintOps, innerBorderRect, NO_DASH_FAULTS, selectBestDashGap } from '../src/paint-dash.ts';
+import { borderNeedsSidePainter, borderPaintOps, innerBorderRect, NO_DASH_FAULTS, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../src/paint-dash.ts';
 
 const INPUTS = new URL('../paint-vectors/dash/inputs.jsonl', import.meta.url);
 const black = (n: number): number[] => Array.from({ length: n }, () => [0, 0, 0, 255]).flat();
@@ -63,8 +63,21 @@ export function dashVectorInputs(): string[] {
   out.push(box(0, 0, 8, 6, [10, 9, 7, 6], ['dotted', 'solid', 'dashed', 'double'], COLORS[2] as number[], NO_DASH_FAULTS));
   out.push(box(0, 0, 40, 30, [0, 5, 0, 5], uniform('dashed'), COLORS[0] as number[], NO_DASH_FAULTS));
   out.push(box(5, 5, 5, 5, [2, 2, 2, 2], uniform('dashed'), COLORS[0] as number[], NO_DASH_FAULTS));
+  // Outlines (PNT1): the routing, then every side painter style at thicknesses about the 1 and 3 device px rules, opaque and
+  // translucent, a dark and a light colour, a zero alpha, and the gap fault.
+  for (const style of OUTLINE_STYLES) out.push(JSON.stringify(['paint:dash:outlineNeedsSidePainter', style]));
+  const outline = (l: number, t: number, r: number, b: number, w: number, style: string, c: readonly number[], f: DashFaults): string =>
+    JSON.stringify(['paint:dash:outlinePaintOps', h(l), h(t), h(r), h(b), h(w), style, ...c.map(h), f.phase1, f.gapUnfitted]);
+  for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset']) {
+    for (const w of [1, 2, 3, 5, 8]) out.push(outline(13, 27, 13 + 4 * w + 37, 27 + 2 * w + 19, w, style, [200, 60, 60, 255], NO_DASH_FAULTS));
+    out.push(outline(-6, 4, 90, 61, 6, style, [0, 90, 200, 153], NO_DASH_FAULTS));
+    out.push(outline(0, 0, 40, 30, 4, style, [20, 40, 60, 0], NO_DASH_FAULTS));
+    out.push(outline(3, 3, 101, 47, 4, style, [255, 255, 255, 255], { phase1: false, gapUnfitted: true }));
+  }
   return out;
 }
+
+const OUTLINE_STYLES = ['solid', 'double', 'dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset', 'auto', 'none', 'hidden'];
 
 describe('paint-vectors/dash inputs', () => {
   it('the committed inputs are dashVectorInputs() (write them with DRAGON_WRITE_DASH_INPUTS=1, then pnpm run layout:paint-vectors)', () => {
@@ -210,6 +223,70 @@ describe('the inner border rect (contoured_border_geometry.cc PixelSnappedContou
       const y = c.points[i + 1] as number;
       expect(x === -1 || y === -1, `clip point ${x},${y}`).toBe(false);
     }
+  });
+});
+
+describe("outlines: BoxBorderPainter::PaintSingleRectOutline's side painter (outline_painter.cc, box_border_painter.cc)", () => {
+  const outline = (style: string, w = 4, rgba: readonly number[] = [200, 60, 60, 255], f: DashFaults = NO_DASH_FAULTS): BorderOp[] => outlinePaintOps(0, 0, 40, 30, w, style, rgba[0] as number, rgba[1] as number, rgba[2] as number, rgba[3] as number, f);
+  const painted = (xs: readonly BorderOp[]): [number, number[]][] => xs.filter((o) => o.op === 'fill').map((o) => [o.side, [...o.points]]);
+  it('draws dotted, dashed, groove, ridge, inset and outset; solid and double take the ring path, auto the focus ring', () => {
+    for (const s of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset']) expect(outlineNeedsSidePainter(s), s).toBe(true);
+    for (const s of ['solid', 'double', 'auto', 'none', 'hidden', '']) expect(outlineNeedsSidePainter(s), s).toBe(false);
+    for (const s of ['solid', 'double', 'auto']) expect(() => outline(s), s).toThrow(/has no side painter/);
+  });
+  it('refuses a width that does not fit the outer rect, or is not positive', () => {
+    expect(() => outlinePaintOps(0, 0, 7, 30, 4, 'dashed', 0, 0, 0, 255, NO_DASH_FAULTS)).toThrow(/does not fit/);
+    expect(() => outlinePaintOps(0, 0, 40, 7, 4, 'inset', 0, 0, 0, 255, NO_DASH_FAULTS)).toThrow(/does not fit/);
+    expect(() => outlinePaintOps(0, 0, 40, 30, 0, 'dotted', 0, 0, 0, 255, NO_DASH_FAULTS)).toThrow(/does not fit/);
+    expect(outlinePaintOps(0, 0, 8, 8, 4, 'inset', 0, 0, 0, 255, NO_DASH_FAULTS).length).toBeGreaterThan(0);
+  });
+  it('a dashed outline is four uniform dashed sides in the outline colour (side 0): fitted dashes, no clip', () => {
+    const o = outline('dashed');
+    expect(o.every((x) => x.op === 'fill' && x.side === 0)).toBe(true);
+    // 40 device px at thickness 4: dashes of 2 x 4 with the gap fitted so a dash ends each side (SelectBestDashGap).
+    expect(runs(o, 0).slice(0, 2)).toEqual([[0, 8], [Math.fround(32 / 3), Math.fround(56 / 3)]]);
+  });
+  it('inset darkens the top and left (colour 2), lightens the bottom and right (colour 1); outset the reverse (DarkenBoxSide)', () => {
+    expect(painted(outline('inset'))).toEqual([[2, [0, 0, 40, 0, 40, 4, 0, 4]], [1, [0, 26, 40, 26, 40, 30, 0, 30]], [1, [36, 4, 36, 30, 40, 30, 40, 0]], [2, [0, 0, 0, 30, 4, 26, 4, 0]]]);
+    expect(painted(outline('outset')).map(([c]) => c)).toEqual([1, 2, 2, 1]);
+  });
+  it('3D colours do not match at the top-right and bottom-left corners: the later side meets them on a soft miter', () => {
+    // The top and bottom paint first and overdraw nothing; the right side's trapezoid starts at the top-right corner only, the
+    // left side's at the bottom-left only (BorderStyleHasUnmatchedColorsAtCorner).
+    const [, , right, left] = painted(outline('inset'));
+    expect(right?.[1]).toEqual([36, 4, 36, 30, 40, 30, 40, 0]);
+    expect(left?.[1]).toEqual([0, 0, 0, 30, 4, 26, 4, 0]);
+    expect(outline('inset').every((x) => x.op === 'fill' && x.antialias)).toBe(true);
+  });
+  it('groove and ridge draw two halves of the width, inset and outset (DrawRidgeOrGrooveBoxSide), their sides clipped on a hard miter next to a groove or ridge side', () => {
+    expect(painted(outline('groove')).slice(0, 4)).toEqual([[2, [0, 0, 40, 0, 40, 2, 0, 2]], [1, [0, 2, 40, 2, 40, 4, 0, 4]], [2, [0, 26, 40, 26, 40, 28, 0, 28]], [1, [0, 28, 40, 28, 40, 30, 0, 30]]]);
+    expect(painted(outline('ridge')).map(([c]) => c)).toEqual([1, 2, 1, 2, 1, 2, 1, 2]);
+    const g = outline('groove');
+    const clips = g.filter((x) => x.op === 'clip');
+    // The right side: soft at the top-right (unmatched colours), hard at the bottom-right (BorderStylesRequireMiter).
+    expect(clips.slice(0, 2).map((x) => x.antialias)).toEqual([true, false]);
+    expect(g.filter((x) => x.op === 'save').length).toBe(g.filter((x) => x.op === 'restore').length);
+  });
+  it('a groove or ridge of 1 device px is solid (BorderEdge::EffectiveStyle): four fills in the outline colour', () => {
+    for (const s of ['groove', 'ridge']) {
+      const o = outline(s, 1);
+      expect(o.map((x) => [x.op, x.side]), s).toEqual([['fill', 0], ['fill', 0], ['fill', 0], ['fill', 0]]);
+    }
+    expect(outline('groove', 2).some((x) => x.side === 1)).toBe(true);
+  });
+  it('a translucent outline paints its sides inside one transparency layer at its alpha, the sides opaque within it; a zero alpha paints nothing', () => {
+    const o = outline('ridge', 4, [0, 90, 200, 153]);
+    expect(o[0]).toMatchObject({ op: 'begin-layer', alpha: Math.fround(153 / 255) });
+    expect(o[o.length - 1]).toMatchObject({ op: 'end-layer' });
+    expect(o.filter((x) => x.op === 'fill').every((x) => x.alpha === 1)).toBe(true);
+    expect(outline('dashed', 4, [0, 0, 0, 0])).toEqual([]);
+  });
+  it('the unfitted-gap fault moves the dashes and dots of an outline, and leaves a 3D one alone', () => {
+    for (const s of ['dashed', 'dotted']) expect(JSON.stringify(outlinePaintOps(3, 3, 101, 47, 4, s, 0, 0, 0, 255, { phase1: false, gapUnfitted: true })), s).not.toBe(JSON.stringify(outlinePaintOps(3, 3, 101, 47, 4, s, 0, 0, 0, 255, NO_DASH_FAULTS)));
+    expect(outline('inset', 4, [200, 60, 60, 255], { phase1: false, gapUnfitted: true })).toEqual(outline('inset'));
+  });
+  it('a border in a 3D style still has no painter (the border lowering refuses it)', () => {
+    for (const s of ['groove', 'ridge', 'inset', 'outset']) expect(() => ops(0, 0, 10, 10, uniform(2), [s, 'solid', 'solid', 'solid']), s).toThrow(new RegExp(s));
   });
 });
 

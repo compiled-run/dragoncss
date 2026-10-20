@@ -1,0 +1,19 @@
+{
+  "case": "white-space-preserve",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","lines":[[0,7],[7,20]]},
+    {"id":"b:text0","lines":[[0,8]]},
+    {"id":"c:text0","lines":[[0,3],[3,4],[4,7]]},
+    {"id":"d:text0","lines":[[0,17]]},
+    {"id":"e:text0","lines":[[0,6],[6,8]]},
+    {"id":"f:text0","lines":[[0,1],[1,2],[2,11],[11,16]]},
+    {"id":"g:text0","lines":[[0,5],[5,8]]},
+    {"id":"j:text0","lines":[[0,3]]},
+    {"id":"j:text1","lines":[[0,3]]},
+    {"id":"j:text2","lines":[[0,3],[3,6],[6,7]]},
+    {"id":"r1:text0","lines":[[0,5]]},
+    {"id":"r2:text0","lines":[[0,6],[6,7]]},
+    {"id":"r3:text0","lines":[[0,3],[3,7]]}
+  ]
+}

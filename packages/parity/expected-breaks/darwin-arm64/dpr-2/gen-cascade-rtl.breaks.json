@@ -1,0 +1,21 @@
+{
+  "case": "gen-cascade-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"c:text0","data":"xx","lines":1,"units":[0,0],"blank":[]},
+    {"id":"k:text0","data":"xx","lines":1,"units":[0,0],"blank":[]},
+    {"id":"l:text0","data":"yy","lines":1,"units":[0,0],"blank":[]},
+    {"id":"i:text0","data":"zz","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t:text0","data":"ww","lines":1,"units":[0,0],"blank":[]},
+    {"id":"h:text0","data":"vv","lines":1,"units":[0,0],"blank":[]},
+    {"id":"o:text0","data":"uu","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c::before:text0","data":"bb","lines":1,"units":[0,0],"blank":[]},
+    {"id":"k::before:text0","data":"cc","lines":1,"units":[0,0],"blank":[]},
+    {"id":"l::before:text0","data":"dd","lines":1,"units":[0,0],"blank":[]},
+    {"id":"l::after:text0","data":"ee","lines":1,"units":[0,0],"blank":[]},
+    {"id":"i::before:text0","data":"f","lines":1,"units":[0],"blank":[]},
+    {"id":"t::after:text0","data":"g","lines":1,"units":[0],"blank":[]},
+    {"id":"h::after:text0","data":"h","lines":1,"units":[0],"blank":[]}
+  ]
+}

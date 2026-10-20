@@ -1,0 +1,30 @@
+{
+  "case": "touch-action-values-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"au:text0","lines":[[0,1]]},
+    {"id":"man:text0","lines":[[0,1]]},
+    {"id":"xy:text0","lines":[[0,1]]},
+    {"id":"yx:text0","lines":[[0,1]]},
+    {"id":"xyz:text0","lines":[[0,1]]},
+    {"id":"up:text0","lines":[[0,1]]},
+    {"id":"v:text0","lines":[[0,1]]},
+    {"id":"inh:text0","lines":[[0,2]]},
+    {"id":"ini:text0","lines":[[0,1]]},
+    {"id":"inh2:text0","lines":[[0,1]]},
+    {"id":"uns:text0","lines":[[0,1]]},
+    {"id":"f1:text0","lines":[[0,4]]},
+    {"id":"f2:text0","lines":[[0,1]]},
+    {"id":"t:text0","lines":[[0,3]]},
+    {"id":"sp:text0","lines":[[0,2]]},
+    {"id":"t:text1","lines":[[0,2]]},
+    {"id":"no:text0","lines":[[0,1]]},
+    {"id":"px:text0","lines":[[0,1]]},
+    {"id":"py:text0","lines":[[0,1]]},
+    {"id":"lu:text0","lines":[[0,1]]},
+    {"id":"pz:text0","lines":[[0,1]]},
+    {"id":"noi:text0","lines":[[0,1]]},
+    {"id":"sci:text0","lines":[[0,1]]},
+    {"id":"abs:text0","lines":[[0,1]]}
+  ]
+}

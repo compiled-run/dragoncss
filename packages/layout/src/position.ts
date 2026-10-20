@@ -9,7 +9,8 @@ import {
   borderBoxFromSpecified,
   constrain,
   hasPercent,
-  inlineMinMaxWith,
+  inlineMinMaxOf,
+  lengthWidth,
   resolveBorder,
   resolveInlineLengthWith,
   resolveLength,
@@ -207,7 +208,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
 
   // Width: specified, stretched between two insets, or shrink-to-fit (min(max(min-content, available), max-content)); then min/max.
   const margins = add(inlineAxis.marginStart.value, inlineAxis.marginEnd.value);
-  const specified = resolveInlineLengthWith(s.width, cb.width, ctx.faults);
+  const specified = resolveInlineLengthWith(lengthWidth(box.id, s.width), cb.width, ctx.faults);
   let width: LU;
   const bothBlockInsets = blockAxis.insetStart !== null && blockAxis.insetEnd !== null;
   // css-sizing-4 §5.1 (ratio.ts): an auto width may come through the ratio from a height or a stretched block size.
@@ -219,7 +220,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
     const maxContent = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
     width = min(maxContent, max(minContent, sub(axisAvailable(inlineAxis), margins)));
   }
-  width = max(constrain(width, inlineMinMaxWith(s, cb.width, hbp, ctx.faults)), hbp);
+  width = max(constrain(width, inlineMinMaxOf(box.id, s, cb.width, hbp, ctx.faults)), hbp);
 
   // Height: auto with both insets set stretches; otherwise the contents decide (layoutContents applies height and min/max).
   const heightBasis: HeightBasis = { kind: 'definite', value: cb.height };

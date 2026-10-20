@@ -1,0 +1,15 @@
+{
+  "case": "text-transform-text",
+  "dpr": 3,
+  "texts": [
+    {"id":"eszett:text0","lines":[[0,6],[6,10]]},
+    {"id":"punct:text0","lines":[[0,24]]},
+    {"id":"br:text0","lines":[[0,2]]},
+    {"id":"br:text1","lines":[[0,2]]},
+    {"id":"hidden:text0","lines":[[0,2]]},
+    {"id":"hidden:text1","lines":[[0,2]]},
+    {"id":"space:text0","lines":[[0,3]]},
+    {"id":"sp:text0","lines":[[0,2]]},
+    {"id":"collapse:text0","lines":[[0,8],[8,14]]}
+  ]
+}

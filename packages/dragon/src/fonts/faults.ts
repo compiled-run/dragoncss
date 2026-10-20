@@ -30,6 +30,32 @@ export type FontFaults = {
   readonly skipUnreadableSrc: boolean;
   /** (unit) The variable-font fence lets every variable face and instance through. */
   readonly fenceDisabled: boolean;
+  /** bolder of a parent weight of exactly 350 stays in the band below (400 instead of 700). */
+  readonly bolderBandEdge: boolean;
+  /** lighter of a parent weight of exactly 550 stays in the band below (100 instead of 400). */
+  readonly lighterBandEdge: boolean;
+  /** An element with no font-weight of its own takes 400 instead of its parent's computed weight. */
+  readonly weightNotInherited: boolean;
+  /** font-style: oblique <angle> computes to italic, dropping the angle. */
+  readonly obliqueAngleDropped: boolean;
+  /** Bold is synthesized only for a request of 700 and up, not 600. */
+  readonly syntheticBoldThreshold700: boolean;
+  /** Weights and oblique angles round to the nearest quarter unit instead of truncating toward zero. */
+  readonly quarterUnitRounding: boolean;
+  /** The font shorthand leaves line-height alone when it has no "/ <line-height>" (instead of resetting it to normal). */
+  readonly lineHeightNotReset: boolean;
+  /** The font shorthand also resets the font-synthesis longhands (Chrome's does not). */
+  readonly synthesisResetByShorthand: boolean;
+  /** font: inherit (any CSS-wide keyword) sets every font longhand Dragon models but line-height. */
+  readonly inheritNotAllLonghands: boolean;
+  /** The font shorthand leaves the font-variant longhands alone (Chrome's resets each to normal). */
+  readonly variantNotReset: boolean;
+  /** The font shorthand leaves font-kerning, font-optical-sizing and font-language-override alone (Chrome's resets each). */
+  readonly tuningNotReset: boolean;
+  /** The font shorthand without a width keyword leaves font-stretch alone (Chrome's resets it to normal). */
+  readonly stretchNotReset: boolean;
+  /** The font shorthand leaves font-feature-settings and font-variation-settings alone (Chrome's resets both to normal). */
+  readonly featureSettingsNotReset: boolean;
 };
 
 export const NO_FONT_FAULTS: FontFaults = {
@@ -47,6 +73,19 @@ export const NO_FONT_FAULTS: FontFaults = {
   manifestOrderSensitive: false,
   skipUnreadableSrc: false,
   fenceDisabled: false,
+  bolderBandEdge: false,
+  lighterBandEdge: false,
+  weightNotInherited: false,
+  obliqueAngleDropped: false,
+  syntheticBoldThreshold700: false,
+  quarterUnitRounding: false,
+  lineHeightNotReset: false,
+  synthesisResetByShorthand: false,
+  inheritNotAllLonghands: false,
+  variantNotReset: false,
+  tuningNotReset: false,
+  stretchNotReset: false,
+  featureSettingsNotReset: false,
 };
 
 export type FontFaultName = keyof FontFaults;
@@ -57,6 +96,10 @@ export const CAPTURE_FAULTS: readonly FontFaultName[] = [
   'metricsRoundHalfDown', 'xHeightFromOs2', 'chWith16_16', 'capHeightFromBounds', 'overridesIgnored',
 ];
 export const UNIT_FAULTS: readonly FontFaultName[] = ['remoteUrlAccepted', 'manifestOrderSensitive', 'skipUnreadableSrc', 'fenceDisabled'];
+/** The font shorthand faults (TXT-W2, css/shorthands/text.ts fontShorthand), each caught against Chrome by font-shorthand.test.ts. */
+export const SHORTHAND_FAULTS: readonly FontFaultName[] = ['lineHeightNotReset', 'synthesisResetByShorthand', 'inheritNotAllLonghands', 'variantNotReset', 'tuningNotReset', 'stretchNotReset', 'featureSettingsNotReset'];
+/** The computed font-weight and font-style faults (TXT-W1, fonts/weight.ts), each caught against Chrome by text-weight.test.ts. */
+export const WEIGHT_FAULTS: readonly FontFaultName[] = ['bolderBandEdge', 'lighterBandEdge', 'weightNotInherited', 'obliqueAngleDropped', 'syntheticBoldThreshold700', 'quarterUnitRounding'];
 
 export function withFault(name: FontFaultName): FontFaults {
   return { ...NO_FONT_FAULTS, [name]: true };

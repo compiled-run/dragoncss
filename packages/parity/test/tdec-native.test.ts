@@ -1,0 +1,212 @@
+// TDEC-b on the host (notes/T148J-tdec.md): text-decoration-native's decoration points against the committed Chrome PNGs at every
+// device DPR. The model is what the device draws (dragon emit/paint/text-decoration.ts): the page background, then each under and
+// overline rect, then the Ahem glyphs, then each line-through rect, where a rect covers the rows of placedDecorations and the
+// columns columnAlpha fully covers outside its skip-ink clips, and a covered pixel is the rect's colour blended as Skia blends it
+// (blendOver). Every decoration point must equal Chrome exactly, so the rows, the paint order, the skip-ink gaps and the
+// transparent line are proven before any device runs. Each raster plant of the module (device-run.ts PLANT_CASES) has a model
+// that must fail at every device DPR: decoration-above-text paints the under and overlines after the glyphs, decoration-snap-css-px
+// moves each rect's top to a whole css px (Swift's and Kotlin's rounding), decoration-alpha-ignored paints each line opaque. Each
+// decorated text needs a row point, and each visible one a point that its lines' absence would change. text-decoration-native-current
+// holds currentcolor lines (the decorating box's colour over a differently coloured child's glyphs) and none; its glyphs take each
+// text's own colour, and the plants are judged on the plant case alone. text-decoration-native-values holds named and hex line colours
+// and em and rem underline offsets. text-decoration-native-styles holds double lines (TDEC-c), each of whose second lines Chrome sees.
+import { describe, expect, it } from 'vitest';
+import { textDecoration as td } from '@dragon/layout';
+import type { NativeProgram } from 'dragon';
+import { nativePrograms } from 'dragon';
+import { casesOf, fixtureInput } from '../src/cases.ts';
+import { PLANT_CASES } from '../src/device-run.ts';
+import { DPRS } from '../src/dpr.ts';
+import type { FixtureSpec } from '../src/fixtures.ts';
+import { FIXTURE_GROUPS } from '../src/fixtures.ts';
+import { nativeCompile } from '../src/native-host.ts';
+import type { PlacedDecoration } from '../src/paint-samples/decoration-rects.ts';
+import { placedDecorations } from '../src/paint-samples/decoration-rects.ts';
+import type { RgbaImage } from '../src/native-compare.ts';
+import { casePoints, committedPixels, glyphLines } from '../src/pixel-reference.ts';
+import type { GlyphBox } from '../src/samples.ts';
+
+const CASE = 'text-decoration-native';
+const CURRENT = 'text-decoration-native-current';
+const VALUES = 'text-decoration-native-values';
+const STYLES = 'text-decoration-native-styles';
+const specOf = (id: string): FixtureSpec | undefined => FIXTURE_GROUPS.flatMap((g) => g.fixtures).find((f) => f.id === id);
+const SPEC = specOf(CASE);
+const PLANTS = ['decoration-above-text', 'decoration-snap-css-px', 'decoration-alpha-ignored'] as const;
+type Plant = (typeof PLANTS)[number] | null;
+
+const WHITE: td.Rgba = { r: 255, g: 255, b: 255, a: 255 };
+
+/** A glyph box with its text's colour. */
+type InkBox = GlyphBox & { readonly ink: td.Rgba };
+
+const insideGlyph = (x: number, y: number, glyphs: readonly GlyphBox[]): boolean => glyphs.some((g) => x >= g.left && x + 1 <= g.right && y >= g.top && y + 1 <= g.bottom);
+
+/** Every glyph box of a program with the colour its text view draws (the text-color write); only an opaque colour is modelled. */
+function inkBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): InkBox[] {
+  const colors = new Map<string, td.Rgba>();
+  for (const n of p.nodes) {
+    for (const w of n.writes) {
+      if (w.kind !== 'text-color') continue;
+      if (w.color.alpha !== 255) throw new Error(`${n.id}: a translucent text colour, which the model does not blend`);
+      colors.set(n.id, { r: w.color.r, g: w.color.g, b: w.color.b, a: 255 });
+    }
+  }
+  return glyphLines(p, viewport, dpr).flatMap((l) => {
+    const text = l.id.slice(0, l.id.lastIndexOf(':line'));
+    const ink = colors.get(text);
+    if (ink === undefined) throw new Error(`${l.id}: no text colour for ${text}`);
+    return l.glyphs.map((g) => ({ ...g, ink }));
+  });
+}
+
+/** Swift's rounded() (half away from zero; the rect tops are positive) and Kotlin's kotlin.math.round (half to even). */
+const ROUNDINGS = {
+  uikit: (v: number): number => Math.round(v),
+  'android-views': (v: number): number => {
+    const f = Math.floor(v);
+    const d = v - f;
+    return d > 0.5 || (d === 0.5 && f % 2 !== 0) ? f + 1 : f;
+  },
+} as const;
+
+/** The rects as a plant places them (round is the target's rounding, for the css px snap). */
+function plantedRects(rects: readonly PlacedDecoration[], dpr: number, plant: Plant, round: (v: number) => number): PlacedDecoration[] {
+  return rects.map((r) => {
+    if (plant === 'decoration-snap-css-px') return { ...r, top: Math.floor(round(r.top / dpr) * dpr) };
+    if (plant === 'decoration-alpha-ignored') return { ...r, color: { ...r.color, a: 255 } };
+    return r;
+  });
+}
+
+/** Whether Chrome's pixel at a point differs from a model colour. */
+function chromeDiffers(chrome: RgbaImage, q: { readonly x: number; readonly y: number }, m: td.Rgba): boolean {
+  const i = (q.y * chrome.width + q.x) * 4;
+  return chrome.data[i] !== m.r || chrome.data[i + 1] !== m.g || chrome.data[i + 2] !== m.b;
+}
+
+/** The model's colour at a pixel: the background, the before-text rects, the glyphs, the line-throughs. */
+function modelAt(rects: readonly PlacedDecoration[], glyphs: readonly InkBox[], x: number, y: number, plant: Plant): td.Rgba {
+  const covers = (r: PlacedDecoration): boolean => y >= r.top && y < r.top + r.height && td.columnAlpha(x, r.left, r.right, r.height) === 256 && !td.columnClipped(x, r.clips);
+  const before = rects.filter((r) => r.beforeText);
+  const after = rects.filter((r) => !r.beforeText);
+  // The decoration-above-text plant puts the under and overline views above the text view, beneath the line-throughs.
+  const under = plant === 'decoration-above-text' ? [] : before;
+  const over = plant === 'decoration-above-text' ? [...before, ...after] : after;
+  let c = WHITE;
+  for (const r of under) if (covers(r)) c = td.blendOver(c, r.color, 256);
+  const glyph = glyphs.find((g) => insideGlyph(x, y, [g]));
+  if (glyph !== undefined) c = glyph.ink;
+  for (const r of over) if (covers(r)) c = td.blendOver(c, r.color, 256);
+  return c;
+}
+
+describe('TDEC-b: text-decoration-native\'s decoration points equal the committed Chrome pixels', () => {
+  it('is a layout fixture of the text-decoration group whose cases are the plant cases', () => {
+    expect(SPEC?.kind).toBe('layout');
+    for (const p of PLANTS) expect(PLANT_CASES[p]).toEqual([CASE]);
+  });
+  it('text-decoration-native-current and text-decoration-native-values are layout fixtures of the text-decoration group', () => {
+    expect(specOf(CURRENT)?.kind).toBe('layout');
+    expect(specOf(VALUES)?.kind).toBe('layout');
+    expect(specOf(STYLES)?.kind).toBe('layout');
+  });
+  /** Per case: whether the module's plants are judged on it, the point states it must hold, and its texts' line colours (if pinned). */
+  const checks = [
+    { spec: SPEC, plants: true, states: ['row', 'above', 'below', 'ink', 'gap'], colors: null, offsetShifts: null, doubles: false },
+    // currentcolor resolves against the decorating box (n3's green over n3r's red text); none draws nothing of its own (n4) and
+    // leaves the parent's line on the child (n3n).
+    {
+      spec: specOf(CURRENT),
+      plants: false,
+      states: ['row', 'above', 'below', 'ink'],
+      colors: { 'n1:text0': [0, 90, 200], 'n2:text0': [160, 0, 80], 'n3n:text0': [0, 130, 60], 'n3r:text0': [0, 130, 60] },
+      offsetShifts: null,
+      doubles: false,
+    },
+    // Named and hex line colours resolve to their channels; the em and rem underline offsets move the line (its row points).
+    {
+      spec: specOf(VALUES),
+      plants: false,
+      states: ['row', 'above', 'below', 'ink'],
+      colors: { 'v1:text0': [255, 0, 0], 'v2:text0': [0, 0, 128], 'v3:text0': [204, 0, 102], 'v4:text0': [10, 127, 94], 'v5:text0': [0, 128, 128], 'v6:text0': [200, 100, 0], 'v7:text0': [220, 20, 60] },
+      offsetShifts: { 'v5:text0': -0.8, 'v6:text0': 2.5, 'v7:text0': 1 },
+      doubles: false,
+    },
+    // Double under, over and line-through lines: every decorated text's lines are double, each line's second rect (odd index)
+    // follows its first, and a model without the second rects disagrees with Chrome for every text.
+    {
+      spec: specOf(STYLES),
+      plants: false,
+      states: ['row', 'above', 'below', 'ink'],
+      colors: { 's1:text0': [220, 0, 0], 's2:text0': [0, 0, 220], 's3:text0': [0, 140, 0], 's4:text0': [128, 0, 160], 's5:text0': [200, 100, 0], 's6s:text0': [0, 120, 120] },
+      offsetShifts: null,
+      doubles: true,
+    },
+  ] as const;
+  for (const check of checks) {
+    const spec = check.spec;
+    if (spec === undefined) continue;
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      it(`${c.id} at ${DPRS.join(', ')}`, () => {
+        const compiled = nativeCompile(spec, c.environment.direction);
+        expect(compiled.diagnostics.filter((d) => d.message.includes('text-decoration')), 'decoration refusals').toEqual([]);
+        const programs = nativePrograms(compiled, c.assignment);
+        if (programs.kind !== 'ready') throw new Error(programs.reason);
+        const p: NativeProgram = programs.programs.uikit;
+        const problems: string[] = [];
+        const states = new Set<string>();
+        for (const dpr of DPRS) {
+          const rects = placedDecorations(p, c.environment.viewport, dpr);
+          const glyphs = inkBoxes(p, c.environment.viewport, dpr);
+          if (check.colors !== null) expect(Object.fromEntries(rects.map((r) => [r.text, [r.color.r, r.color.g, r.color.b]])), `line colours @${dpr}`).toEqual(check.colors);
+          const caught = new Map<string, number>((check.plants ? PLANTS : []).flatMap((x) => Object.keys(ROUNDINGS).map((t) => [`${x} ${t}`, 0] as const)));
+          const points = casePoints(p, c.environment.viewport, dpr).filter((q) => q.rule.startsWith('decoration:'));
+          // Every decorated text has a point on its line's own rows clear of the glyphs, so a line hidden under the glyphs fails here.
+          const texts = [...new Set(rects.map((r) => r.text))];
+          for (const t of texts) expect(points.some((q) => q.rule.startsWith(`decoration:${t}:`) && q.rule.endsWith(':row')), `${t} has a row point @${dpr}`).toBe(true);
+          // Every visible decorated text's points see its lines: the model without that text's rects disagrees with Chrome somewhere.
+          const seen = new Map<string, number>(texts.map((t) => [t, 0]));
+          const chrome = committedPixels(c.id, dpr);
+          if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
+          for (const q of points) {
+            states.add(q.rule.slice(q.rule.lastIndexOf(':') + 1));
+            const i = (q.y * chrome.width + q.x) * 4;
+            const got = [chrome.data[i], chrome.data[i + 1], chrome.data[i + 2]];
+            const differs = (m: td.Rgba): boolean => got[0] !== m.r || got[1] !== m.g || got[2] !== m.b;
+            const want = modelAt(rects, glyphs, q.x, q.y, null);
+            if (differs(want)) problems.push(`${q.rule} at ${q.x},${q.y} @${dpr}: Chrome ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
+            for (const plant of check.plants ? PLANTS : []) {
+              for (const [t, round] of Object.entries(ROUNDINGS)) if (differs(modelAt(plantedRects(rects, dpr, plant, round), glyphs, q.x, q.y, plant))) caught.set(`${plant} ${t}`, (caught.get(`${plant} ${t}`) ?? 0) + 1);
+            }
+            for (const t of texts) if (differs(modelAt(rects.filter((r) => r.text !== t), glyphs, q.x, q.y, null))) seen.set(t, (seen.get(t) ?? 0) + 1);
+          }
+          // Plant offset-font-size: each em or rem underline offset resolved against the wrong font size (v5 and v7 against the other
+          // of the root's 16px and the body's 20px, v6's 0.5em against its parent's 20px) moves its line, and Chrome sees the move.
+          if (check.offsetShifts !== null) {
+            for (const [t, shift] of Object.entries(check.offsetShifts)) {
+              const moved = rects.map((r) => (r.text === t ? { ...r, top: r.top + Math.round(shift * dpr) } : r));
+              const at = points.filter((q) => chromeDiffers(chrome, q, modelAt(moved, glyphs, q.x, q.y, null)));
+              expect(at.length, `offset-font-size on ${t} caught @${dpr}`).toBeGreaterThan(0);
+            }
+          }
+          // TDEC-c: each double line is two rects, and dropping a text's second lines (a double drawn single) is seen by Chrome.
+          if (check.doubles) {
+            for (const t of texts) {
+              const mine = rects.filter((r) => r.text === t);
+              expect(mine.length % 2, `${t} draws rect pairs @${dpr}`).toBe(0);
+              const single = rects.filter((r) => r.text !== t || r.index % 2 === 0);
+              expect(points.filter((q) => chromeDiffers(chrome, q, modelAt(single, glyphs, q.x, q.y, null))).length, `${t} drawn single caught @${dpr}`).toBeGreaterThan(0);
+            }
+          }
+          expect(points.length, `decoration points @${dpr}`).toBeGreaterThan(0);
+          for (const [key, n] of caught) expect(n, `${key} @${dpr}`).toBeGreaterThan(0);
+          for (const t of texts) if (rects.some((r) => r.text === t && r.color.a > 0)) expect(seen.get(t), `${t}'s lines seen @${dpr}`).toBeGreaterThan(0);
+        }
+        expect(problems).toEqual([]);
+        // Rows beside and inside the lines, under and over glyphs (the paint order), and (in the plant case) skip-ink gaps.
+        for (const s of check.states) expect(states.has(s), s).toBe(true);
+      });
+    }
+  }
+});

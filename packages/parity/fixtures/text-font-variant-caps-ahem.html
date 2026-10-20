@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 100px; }
+.sc { font-variant-caps: small-caps; }
+.fv { font-variant: small-caps; }
+.f15 { font: small-caps 15px Ahem; }
+.s13 { font-size: 13px; }
+.s16 { font-size: 16px; }
+.s20 { font-size: 20px; }
+.nsyn { font-synthesis-small-caps: none; }
+.fsn { font-synthesis: none; }
+.n { font-variant-caps: normal; }
+.narrow { width: 50px; }
+.row { display: flex; width: 120px; }
+.col { display: flex; flex-direction: column; width: 100px; }
+.shrink { display: flex; width: 30px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="sc" class="w sc">Ab cd Ef gh</div>
+<div data-dragon-id="fv" class="w fv s20">Xx pp Pp</div>
+<div data-dragon-id="f15" class="w f15">abc Abc ABC</div>
+<div data-dragon-id="s13" class="w sc s13">ab cd</div>
+<div data-dragon-id="s16" class="w sc s16">ab XY</div>
+<div data-dragon-id="narrow" class="narrow sc">abcdefg hi</div>
+<div data-dragon-id="nsyn" class="w sc nsyn">Ab cd</div>
+<div data-dragon-id="fsn" class="w fv fsn">Ab cd</div>
+<div data-dragon-id="up" class="w sc">XX XX</div>
+<div data-dragon-id="inl" class="w">XX <span data-dragon-id="sp" class="sc">ab cd</span> xx</div>
+<div data-dragon-id="inh" class="sc"><div data-dragon-id="inhn" class="w n">ab cd</div></div>
+<div data-dragon-id="row" class="row sc"><div data-dragon-id="ra">ab cd</div><div data-dragon-id="rb" class="n">ab</div></div>
+<div data-dragon-id="col" class="col fv"><div data-dragon-id="ca">Ab cd ef</div><div data-dragon-id="cb">xy</div></div>
+<div data-dragon-id="arow" class="row sc">ab c<div data-dragon-id="arb" class="n">ab</div></div>
+<div data-dragon-id="shrink" class="shrink sc"><div data-dragon-id="sha">abcde fg</div></div>
+</body>
+</html>
