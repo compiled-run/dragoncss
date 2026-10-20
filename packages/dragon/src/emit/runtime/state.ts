@@ -378,6 +378,8 @@ public final class DragonStateMount {
     }
     media.onSize = { [weak self] w, h, cw, ch in
       guard let self = self else { return }
+      // css-env-1: the media root's new size changes how far the unsafe area reaches into it, and the probe sees only the stage.
+      self.machine.setSafeArea(dragonSafeArea(self.media))
       self.machine.resize(w, h, css: (cw, ch), scale: self.scale)
     }
     observer = DragonReadingsObserver { [weak self] in
@@ -771,6 +773,8 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     media.onSize = { w, h ->
       val css = requested ?: Pair(w / scale, h / scale)
       requested = null
+      // css-env-1: the media root's new size changes how far the unsafe area reaches into it.
+      machine.setSafeArea(dragonSafeArea(media, scale))
       machine.resize(w, h, css, scale)
     }
     // The first size: laid out here, so the machine takes its band before the first render; the setter then renders nothing.
@@ -822,6 +826,7 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
   fun close() {
     observer?.close()
     observer = null
+    (probe.parent as? ViewGroup)?.removeView(probe)
   }
 
   /** Takes the media root, with the views, and the safe-area probe off the stage, and closes the mount; it renders no more. */
@@ -830,7 +835,6 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     machine.onChange = null
     machine.onFrame = null
     driver?.stop()
-    stage.removeView(probe)
     stage.removeView(media)
   }
 

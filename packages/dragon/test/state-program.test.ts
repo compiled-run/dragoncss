@@ -321,6 +321,8 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     expect(t).toContain('return dragonWithSafeArea(variants[v](dpr, viewport.0, viewport.1), safeArea)');
     expect(t).toContain('environment_resolveEnvironment(laid(d.variant, 1)');
     expect(t).toMatch(/guard let self = self, self\.machine\.setSafeArea\(dragonSafeArea\(self\.media\)\) else \{ return \}\n {6}self\.render\(\)/);
+    // A resize of the media root alone re-measures its insets before the machine lays out at the new size.
+    expect(t).toMatch(/self\.machine\.setSafeArea\(dragonSafeArea\(self\.media\)\)\n {6}self\.machine\.resize\(w, h, css: \(cw, ch\), scale: self\.scale\)/);
     expect(t).toMatch(/shown\.root\.removeFromSuperview\(\)\n {4}shown = t\n {4}renders \+= 1/);
     // MQ-R1: a script runs on the mount (its resize steps size the mount's media root), its setters on the mount's machine.
     expect(t).toContain('case .set(let a, let b): m.machine.set(a, b)');
@@ -335,6 +337,7 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     expect(t).toContain('dragonWithSafeArea(variants[v](dpr, viewport.first, viewport.second), safeArea)');
     expect(t).toContain('environment_resolveEnvironment(laid(it.variant, 1.0)');
     expect(t).toContain('if (m.machine.setSafeArea(dragonSafeArea(m.media, m.scale))) m.render()');
+    expect(t).toMatch(/machine\.setSafeArea\(dragonSafeArea\(media, scale\)\)\n {6}machine\.resize\(w, h, css, scale\)/);
     expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), bridge\.measurer, scale, bridge\)\n {4}media\.addView\(t\.root/);
     expect(t).toMatch(/media\.removeView\(shown\.root\)\n {4}shown = t\n {4}renders\+\+/);
     expect(t).toContain('is DragonScriptStep.Set -> m.machine.set(s.s, s.v)');
