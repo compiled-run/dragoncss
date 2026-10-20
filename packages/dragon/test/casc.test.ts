@@ -147,3 +147,26 @@ describe('revert and revert-layer', () => {
     expect(value(compile(css, { tag: 'p', faults: { ...NO_FAULTS, revertAsUnset: true } }).c, 'margin-top')).toBe('0px');
   });
 });
+
+describe('all', () => {
+  const codes = (c: Compiled<K>): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${String(d.target)}`);
+  it('sets every longhand but direction to its CSS-wide keyword, and a later declaration wins over it', () => {
+    const css = '.a { all: UNSET; }';
+    const d = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, [])[0]?.declarations[0];
+    expect(d?.property).toBe('all');
+    expect(d?.longhands.some((lh) => lh.property === 'direction')).toBe(false);
+    expect(d?.longhands.some((lh) => lh.property === 'display')).toBe(true);
+    expect(new Set(d?.longhands.map((lh) => JSON.stringify(lh.value)))).toEqual(new Set([JSON.stringify({ kind: 'keyword', value: 'unset' })]));
+    expect([...(d?.animation?.longhands.values() ?? [])].every((l) => l.kind === 'wide' && l.keyword === 'unset')).toBe(true);
+    const { c } = compile('.a { width: 20px; color: #ff0000; direction: rtl; } .a { all: initial; color: #00ff00; }');
+    expect(value(c, 'width')).toBe('auto');
+    expect(value(c, 'display')).toBe('inline');
+    expect(value(c, 'color')).toBe('rgb(0, 255, 0)');
+    expect(value(c, 'direction')).toBe('rtl');
+  });
+  it('takes only a CSS-wide keyword, and refuses var()', () => {
+    expect(codes(compile('.a { all: red; }').c)).toEqual(['DRAGON_CSS_INVALID_VALUE null']);
+    expect(codes(compile('.a { all: initial initial; }').c)).toEqual(['DRAGON_CSS_INVALID_VALUE null']);
+    expect(codes(compile('.a { all: var(--k); }').c)).toEqual(['DRAGON_UNSUPPORTED_VALUE null']);
+  });
+});

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; color: #123456; }
+.base { width: 60px; height: 6px; margin: 3px 5px 7px 9px; padding: 2px 4px 6px 8px; border: 2px solid #00aa00; color: #654321; background-color: #fedcba; }
+.wrap { width: 160px; line-height: 20px; color: #224466; background-color: #eeeeee; }
+.mark { width: 40px; height: 6px; margin: 4px; padding: 3px; background-color: #3366cc; border: 1px solid #000000; }
+.u { all: unset; }
+.i { all: initial; font-family: Ahem; display: block; height: 5px; background-color: #00aa00; }
+.i2 { color: #ff0000; all: initial; font-family: Ahem; display: block; width: 30px; height: 8px; background-color: #aa0000; }
+.r { all: revert; }
+.h { all: inherit; }
+.imp { all: initial !important; }
+.imp2 { display: block; height: 4px; font-family: Ahem !important; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="w1" class="wrap">XX <div data-dragon-id="u1" class="mark u">YY</div> ZZ</div>
+<div data-dragon-id="w2" class="wrap"><div data-dragon-id="i1" class="mark i"></div><div data-dragon-id="i2" class="mark i2"></div></div>
+<div data-dragon-id="w3" class="wrap"><p data-dragon-id="r1" class="mark r"></p><div data-dragon-id="r2" class="base r"></div></div>
+<div data-dragon-id="h0" class="base"><div data-dragon-id="h1" class="h"></div></div>
+<div data-dragon-id="w4" class="wrap"><div data-dragon-id="m1" class="mark imp imp2"></div></div>
+</body>
+</html>

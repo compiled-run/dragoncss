@@ -17,7 +17,7 @@ import { webrefLexer } from './lexer.ts';
 import type { PlaceShorthand } from './place.ts';
 import { isPlaceShorthand, PLACE_SHORTHANDS, splitPlace } from './place.ts';
 import type { Longhand, Shorthand } from './properties.ts';
-import { isLonghand, isShorthand } from './properties.ts';
+import { isLonghand, isShorthand, LONGHANDS } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
 import { markNotApplicable } from './not-applicable.ts';
@@ -39,7 +39,8 @@ import type { KeyframesSource } from './at-rules/keyframes.ts';
 import type { PropertySource } from './at-rules/property.ts';
 import type { CascFaults } from '../faults/casc.ts';
 import { CASC_FAULTS } from '../faults/casc.ts';
-import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
+import { ANIM_INITIAL, isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
+import type { AnimLonghand, AnimList } from './properties/animation.ts';
 import { layerLonghandValue } from './shorthands/background.ts';
 import { isBackgroundLayerLonghand } from './properties/background-layers.ts';
 
@@ -335,6 +336,7 @@ function parseResolved(d: CssNode, property: string, base: Span, sheetText: stri
     const animation = parseAnimationDeclaration(property, valueNode, { span, valueSpan, text, source, base }, diagnostics);
     return animation === null ? null : { property, text, span, valueSpan, longhands: [], order, ...important, animation };
   }
+  if (property === 'all') return parseAll(valueNode, span, valueSpan, text, order, important, diagnostics);
   if (!isLonghand(property) && !isShorthand(property)) {
     const refusal = diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
       origin: authored(span),
@@ -397,6 +399,29 @@ function parseResolved(d: CssNode, property: string, base: Span, sheetText: stri
     case 'ok':
       return { property, text, span, valueSpan, longhands: parsed.longhands, order, ...important };
   }
+}
+
+/**
+ * css-cascade-5 §3.2: all takes only a CSS-wide keyword and sets it on every property but direction, unicode-bidi and the custom
+ * properties (css_properties.json5 affected_by_all at tag 145.0.7632.6), so here on every Dragon longhand but direction, and on
+ * the transition and animation lists. A var() value is refused: Dragon reads the keyword at parse time.
+ */
+function parseAll(valueNode: CssNode, span: Span, valueSpan: Span, text: string, order: number, important: { important?: true }, diagnostics: Diagnostic[]): Declaration | null {
+  const tokens = list(valueNode, 'children').filter((n) => n.type !== 'WhiteSpace');
+  const only = tokens[0];
+  const keyword = tokens.length === 1 && only?.type === 'Identifier' ? asciiLower(decodeName(String(only['name']))) : null;
+  if (keyword === null || !CSS_WIDE.has(keyword)) {
+    if (tokens.some((t) => t.type === 'Function' && asciiLower(String(t['name'])) === 'var')) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `all: ${text} is unsupported: Dragon reads the CSS-wide keyword of all at parse time, and a var() value only exists after substitution`, manual: 'Write all: initial, inherit, unset, revert or revert-layer without var().' }));
+      return null;
+    }
+    diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', { origin: authored(valueSpan), message: `"${text}" is not a valid value for all: it takes only initial, inherit, unset, revert or revert-layer (css-cascade-5 §3.2)`, manual: 'Write all: initial, inherit, unset, revert or revert-layer.' }));
+    return null;
+  }
+  const value: CssValue = { kind: 'keyword', value: keyword };
+  const longhands = LONGHANDS.filter((p) => p !== 'direction').map((p) => ({ property: p, value, explicit: true }));
+  const animation: AnimationDeclValue = { longhands: new Map((Object.keys(ANIM_INITIAL) as AnimLonghand[]).map((p): [AnimLonghand, AnimList] => [p, { kind: 'wide', keyword }])) };
+  return { property: 'all', text, span, valueSpan, longhands, order, ...important, animation };
 }
 
 /**
