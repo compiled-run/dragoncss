@@ -4,6 +4,7 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { radiusLengths, roundsAnyCorner } from '../lower/paint/radius.ts';
 import { ProgramError } from '../lower/paint/types.ts';
+import { fontLoweringGap } from '../lower/ios-layout.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -101,6 +102,27 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
     if (reported.has(id)) continue;
     reported.add(id);
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: clip on both axes, or hidden.', basis: 'computed-value' }));
+  }
+}
+
+/**
+ * CALC-2: a font size the native targets cannot lower (lower/ios-layout.ts fontLoweringGap): one Chrome takes of a parent font-size
+ * that follows the viewport, or a line-height on text whose em or % was taken of one. The line-height is checked only where the
+ * element lays out text (a text child, or an inline box), as lowerFont reads it only there.
+ */
+function checkViewportFont(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const get = (p: Longhand): CssValue => (el.props.get(p) as ResolvedValue).value;
+  // A refused calculation is reported where it is declared.
+  if (isRefusedMath(get('font-size')) || isRefusedMath(get('line-height'))) return;
+  const gap = fontLoweringGap(get('font-size'), get('line-height'), (el.props.get('line-height') as ResolvedValue).origin === 'inherited' && (el.props.get('font-size') as ResolvedValue).origin !== 'inherited');
+  if (gap === null) return;
+  if (gap.property === 'line-height' && !el.children.some((c) => c.kind === 'text') && keywordOf(el.props.get('display') as ResolvedValue) !== 'inline') return;
+  const message = `${gap.property}: ${valueToString(get(gap.property))} on <${el.element.tag}> ${el.element.address} is not resolved on the device: ${gap.reason}`;
+  for (const t of targets) {
+    const id = `${t}|viewport-font|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: el.element.node.origin, target: t, message, manual: `Set a px or vw ${gap.property} on <${el.element.tag}> ${el.element.address}.`, basis: 'computed-value' }));
   }
 }
 
@@ -1049,6 +1071,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
+      checkViewportFont(el, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
