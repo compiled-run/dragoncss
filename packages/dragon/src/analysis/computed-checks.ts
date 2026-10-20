@@ -1215,7 +1215,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
       // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
-      checkWordBreak(el, targets, diagnostics, reported, shapedAt, faults);
+      checkWordBreak(el, targets, diagnostics, reported, faults);
       // TXT2-lb: line-break strictness over text no Chrome case proves (analysis/line-break.ts).
       checkLineBreak(el, targets, diagnostics, reported, shapedAt, faults);
       checkHyphens(el, targets, diagnostics, reported, faults);

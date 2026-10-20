@@ -194,7 +194,7 @@ export type EngineFaults = {
   readonly emergencyBreakBeforeOpportunity: boolean;
   /** TXT2-a: word-break: break-word is laid out as normal. */
   readonly wordBreakBreakWordIgnored: boolean;
-  /** TXT2-d: word-break: break-all is laid out as normal. */
+  /** TXT2-d, TXT-BREAK-2: word-break: break-all is laid out as normal. */
   readonly breakAllIgnored: boolean;
   /** TXT2-g: a line-clamp container's content height takes every line instead of ending after line N. */
   readonly clampHeightIncludesHiddenLines: boolean;
