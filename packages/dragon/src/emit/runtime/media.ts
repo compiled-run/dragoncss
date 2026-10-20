@@ -224,14 +224,17 @@ data class DragonReadings(val pointer: String, val hover: Boolean, val anyCoarse
       return DragonReadings(p.pointer, p.hover, p.anyCoarse, p.anyFine, p.anyHover, dragonReduceMotion(context), dragonDarkScheme(context, config))
     }
 
-    /** Every input device's getSources() (TouchDevice.availablePointerAndHoverTypes skips a device it cannot read). */
+    /**
+     * Every input device's getSources() (TouchDevice.availablePointerAndHoverTypes skips a device it cannot read), as the unsigned
+     * 32-bit mask: a device with the top source bit set reads as a negative Int, which the band lookup refuses.
+     */
     fun platformInputs(): List<Double> = InputDevice.getDeviceIds().toList().mapNotNull { id ->
       try {
         InputDevice.getDevice(id)
       } catch (e: RuntimeException) {
         null
       }
-    }.map { it.sources.toDouble() }
+    }.map { (it.sources.toLong() and 0xFFFFFFFFL).toDouble() }
   }
 }
 
