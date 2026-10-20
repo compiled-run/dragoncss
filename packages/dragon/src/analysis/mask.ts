@@ -16,8 +16,10 @@
 // native compositors' in a channel over most colours (as opacity, PNT1), and exact where every backdrop channel is 0 or 255, where
 // both reduce to whole numbers (packages/parity/test/mask-gradient.test.ts). So the native targets take a mask only over the canvas,
 // when the canvas colour is such a colour: no ancestor paints a background under the masked box (the one whose background is the
-// canvas's aside), and the box is not positioned, so it is laid over its ancestors alone. Content another box overflows onto it
-// is not known before layout, and is the author's to avoid.
+// canvas's aside), neither the box nor an ancestor is positioned and no positioned box has a negative z-index, so it is laid over
+// its ancestors alone. Content a float or a negative margin brings under it is not known before layout, and is the author's to
+// avoid. Chrome rounds the content and the mask separately in 8 bits, which agrees with the native composite only for opaque
+// content, so a translucent colour inside the masked box is refused too.
 import { zIndexOf } from '../css/properties/effects.ts';
 import type { MaskLonghand } from '../css/properties/mask.ts';
 import { maskGradientOf } from '../css/properties/mask.ts';
@@ -59,6 +61,9 @@ export function maskRefusal(el: ResolvedElement, g: GradientSpec, propagated: Re
   if (g.stops.some((s) => s.color.kind === 'currentcolor')) return { fact: 'its gradient has a currentcolor stop, whose alpha the raster bakes in once per layout while the native animator changes colours without one', manual: 'Write the stop colours of the mask out, such as black and transparent.' };
   const visit = (e: ResolvedElement, root: boolean, flexOrGrid: boolean): MaskRefusal | null => {
     if (keywordOf(e, 'display') === 'none') return null;
+    const colors = usedColors(e);
+    const translucent = (Object.keys(colors) as (keyof typeof colors)[]).find((k) => colors[k].alpha !== 0 && colors[k].alpha !== 255);
+    if (translucent !== undefined) return { fact: `${root ? 'its' : `the ${e.element.address}`} ${translucent} is translucent, and Chrome rounds translucent content and the mask separately in 8 bits, unlike the native composite`, manual: `Make the ${translucent} of ${e.element.address} opaque or transparent, or remove the mask.` };
     if (paintedOutlineStyle(e) !== null) return { fact: `${root ? 'it has' : `${e.element.address} has`} an outline, which Dragon draws in the root view, outside the mask`, manual: `Remove the outline inside ${at}, or the mask.` };
     if (!root) {
       const z = zIndexOf((e.props.get('z-index') as ResolvedValue).value);
@@ -111,6 +116,20 @@ export function maskBackdropRefusals(root: ResolvedElement): { readonly el: Reso
   const canvasColor: Rgba8 = canvasFrom === null ? { r: 255, g: 255, b: 255, alpha: 255 } : usedColors(canvasFrom)['background-color'];
   const canvasImage = canvasFrom !== null && !(canvasFrom.props.get('background-image')?.value.kind === 'keyword' && (canvasFrom.props.get('background-image')?.value as { value: string }).value === 'none');
   const out: { el: ResolvedElement; refusal: MaskRefusal }[] = [];
+  // Every positioned box with a negative z-index paints under the in-flow boxes of its stacking context, so it may be behind a
+  // masked box; one inside the masked box is part of its masked paint instead.
+  const negativeLayers: ResolvedElement[] = [];
+  const layers = (e: ResolvedElement): void => {
+    if (keywordOf(e, 'display') === 'none') return;
+    const p = keywordOf(e, 'position');
+    const z = zIndexOf((e.props.get('z-index') as ResolvedValue).value);
+    if (p !== 'static' && p !== '' && z !== null && z < 0) negativeLayers.push(e);
+    for (const c of e.children) if (c.kind === 'element') layers(c);
+  };
+  layers(root);
+  const inside = (n: ResolvedElement, box: ResolvedElement): boolean => n === box || box.children.some((c) => c.kind === 'element' && inside(n, c));
+  // The nearest positioned ancestor of the box being walked: a positioned ancestor may lay the box over boxes other than its ancestors.
+  let positioned: ResolvedElement | null = null;
   const walk = (e: ResolvedElement, under: ResolvedElement | null): void => {
     if (keywordOf(e, 'display') === 'none') return;
     if (elementMaskGradient(e) !== null) {
@@ -121,9 +140,19 @@ export function maskBackdropRefusals(root: ResolvedElement): { readonly el: Reso
       else if (!pure(canvasColor)) out.push({ el: e, refusal: { fact: `the canvas is ${rgb(canvasColor)}, over which Chrome's 8-bit blend of the masked box is one off the native compositors' in a channel; they agree only over a backdrop whose every channel is 0 or 255`, manual } });
       else if (under !== null) out.push({ el: e, refusal: { fact: `${under.element.address} paints a background under it, over which Chrome's 8-bit blend of the masked box is one off the native compositors' in a channel; the native targets mask a box over the canvas only`, manual } });
       else if (position !== 'static' && position !== '') out.push({ el: e, refusal: { fact: `it is position: ${position}, so it may lie over boxes other than its ancestors, over which Chrome's blend and the native compositors' differ; the native targets mask a box over the canvas only`, manual: `Give ${at} position: static, or move the mask to a static box.` } });
+      else if (positioned !== null) out.push({ el: e, refusal: { fact: `its ancestor ${positioned.element.address} is position: ${keywordOf(positioned, 'position')}, so the box may lie over boxes other than its ancestors, over which Chrome's blend and the native compositors' differ; the native targets mask a box over the canvas only`, manual: `Give ${positioned.element.address} position: static, or move the mask out of it.` } });
+      else {
+        const behind = negativeLayers.find((n) => !inside(n, e));
+        if (behind !== undefined) out.push({ el: e, refusal: { fact: `${behind.element.address} is positioned with a negative z-index, so it paints under the page's in-flow boxes and may lie behind the masked box, over which Chrome's blend and the native compositors' differ; the native targets mask a box over the canvas only`, manual: `Give ${behind.element.address} z-index auto or 0 or more, or remove the mask.` } });
+      }
     }
     const paints = e !== canvasFrom && paintsBackground(e) ? e : under;
+    const p = keywordOf(e, 'position');
+    const moves = p !== 'static' && p !== '' ? e : positioned;
+    const saved = positioned;
+    positioned = moves;
     for (const c of e.children) if (c.kind === 'element') walk(c, paints);
+    positioned = saved;
   };
   walk(root, null);
   return out;

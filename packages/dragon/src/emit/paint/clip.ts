@@ -256,8 +256,10 @@ const KOTLIN_MEMBERS = String.raw`  /** The view the children are hosted in over
   override fun draw(canvas: Canvas) {
     val r = dragonClipPathRect
     val p = dragonClipShapePath
-    // A gradient mask (gradient module) masks the whole draw: the box's own paint and every view inside it.
+    // A gradient mask (gradient module) masks the whole draw: the box's own paint and every view inside it. It skips the clip-path
+    // clip, which is safe only because analysis refuses a mask together with a clip-path (analysis/mask.ts maskRefusal).
     if (dragonMaskLayer != null) {
+      if (r != null || p != null) throw IllegalStateException("dragon: " + dragonId + ": a gradient mask and a clip-path on one box")
       dragonDrawMasked(this, canvas, dragonShape) { super.draw(canvas) }
       return
     }

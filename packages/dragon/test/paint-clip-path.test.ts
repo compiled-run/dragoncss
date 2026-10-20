@@ -158,7 +158,7 @@ describe('clip-path: native refusals', () => {
       return [p.uikit, p['android-views']].map((prog) => prog.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'clip-text').map((w) => [n.id, w])));
     };
     // The box's own text and its descendants', in tree order, with the key the readback reports under.
-    for (const css of ['.a { clip-path: inset(1px); }', '.a { clip-path: circle(50%); }', '.a { -webkit-mask-image: linear-gradient(black, transparent); }']) {
+    for (const css of ['.a { clip-path: inset(1px); }', '.a { clip-path: circle(50%); }', '.p { position: static; } .a { -webkit-mask-image: linear-gradient(black, transparent); }']) {
       for (const writes of clipText(css)) expect(writes, css).toEqual([['a', expect.objectContaining({ kind: 'clip-text', texts: ['XX', 'YY'], key: 'dragonClipText.exposed' })]]);
     }
     // Text under visibility: hidden or display: none is in no accessibility tree; a box with no visible text gets no write.
