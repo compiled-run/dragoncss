@@ -10,7 +10,9 @@ import { repoPath } from '../src/paths.ts';
 import type { DeviceEvidence } from '../src/profile-rows.ts';
 import { checkedFailures, checkedLanes, committedLanes, deriveRows, deviceCoverageProblems, deviceEvidence, nativeLanesSource, nativeVerdict, promotionBlocker } from '../src/profile-rows.ts';
 import type { LanesFile } from '../src/lanes.ts';
-import { staleLanes } from '../src/lanes.ts';
+import { lanesFile, staleLanes } from '../src/lanes.ts';
+import { carryDeviceLanes } from '../src/lanes-file.ts';
+import type { TargetConfig } from '../src/targets.ts';
 import { nativeTargets } from '../src/targets.ts';
 import { NATIVE_LANES } from '../../dragon/src/profiles/native-lanes.ts';
 
@@ -28,6 +30,41 @@ describe('the device evidence of the committed lanes', () => {
     expect(deviceEvidence('ios', { ...l, parity: { pass: false, problems: ['x'] } }, failures, configured, []).unavailable).toMatch(/lane-parity failure: x/);
     expect(deviceEvidence('ios', l, null, configured, []).unavailable).toMatch(/device-failures-ios\.json/);
     expect(deviceEvidence('ios', l, failures.slice(1), configured, []).unavailable).toMatch(/lists \d+ device-\w+ failures, lanes\.json records \d+/);
+  });
+});
+
+describe('the device evidence before lanes-host carries the device records', () => {
+  const l = lanes.lanes;
+  if (l === null) throw new Error('no committed lanes.json');
+  const configured = nativeTargets();
+  // iOS with one host lane's cases changed (a new case, as a lane PR adds), and optionally one device lane's DPR sets changed.
+  const changed = (device: boolean): TargetConfig[] => configured.map((t) => {
+    if (t.target !== 'ios') return t;
+    const host = t.lanes.find((x) => x.where === 'host' && x.sets.some((s) => s.ids.length > 1));
+    const dev = t.lanes.find((x) => x.where === 'device' && x.kind === 'device');
+    if (host === undefined || dev === undefined) throw new Error('ios has no host lane with cases or no device lane');
+    return { ...t, lanes: t.lanes.map((x) => (x === host ? { ...x, sets: x.sets.map((s) => ({ ...s, ids: s.ids.slice(1) })) } : device && x === dev ? { ...x, sets: [...x.sets, { ...x.sets[0]!, dpr: 9 }] } : x)) };
+  });
+  it('carries every device lane as the host lanes run does (lanesFile with no device run)', () => {
+    for (const device of [false, true]) {
+      const c = changed(device);
+      expect(staleLanes(l, c).length, `device ${device}`).toBeGreaterThan(0);
+      const devicesOf = (f: LanesFile): unknown => f.targets.map((t) => ({ target: t.target, lanes: t.lanes.filter((x) => x.where === 'device') }));
+      expect(devicesOf(carryDeviceLanes(l, c)), `device ${device}`).toEqual(devicesOf(lanesFile(c, l.parity.problems, new Map(), null, new Map(), l)));
+    }
+  });
+  it('is the fresh evidence when only a host lane changed, and drops the device lane whose cases changed', () => {
+    for (const t of ['ios', 'android'] as const) {
+      const failures = committedFailures(t);
+      const fresh = deviceEvidence(t, l, failures, configured, []);
+      expect(fresh.unavailable, t).toBeNull();
+      expect(deviceEvidence(t, carryDeviceLanes(l, changed(false)), failures, changed(false), []), t).toEqual(fresh);
+    }
+    expect(deviceEvidence('ios', carryDeviceLanes(l, changed(true)), committedFailures('ios'), changed(true), []).unavailable).toMatch(/^ios device-\S+ did not run$/);
+  });
+  it('a fresh lanes.json is its own carry', () => {
+    expect(lanes.stale).toEqual([]);
+    for (const t of ['ios', 'android'] as const) expect(lanes.evidence(t), t).toEqual(deviceEvidence(t, l, committedFailures(t), configured, []));
   });
 });
 

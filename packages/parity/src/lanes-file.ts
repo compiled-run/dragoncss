@@ -52,6 +52,44 @@ export function laneRecord(l: LaneConfig, state: LaneState, reason: string | nul
   };
 }
 
+export const DEVICE_NOT_RUN = 'run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked';
+
+/**
+ * A device lane's record in a lanes run without a device run of its target (lanes.ts lanesFile): the committed record carried as
+ * the last device evidence while keep (it ran and no staleLanes problem covers it), else not run.
+ */
+export function carriedDeviceRecord(l: LaneConfig, kept: LaneRecord | undefined, keep: boolean): LaneRecord {
+  // A record from before RanCases whose case list is the configured one ran exactly the configured cases.
+  if (keep && kept !== undefined) return { ...kept, device: kept.device ?? null, ...(kept.ran === undefined && kept.caseListSha256 === laneRecord(l, 'not run', null, null).caseListSha256 ? { ran: ranOf(l) } : {}) };
+  return laneRecord(l, 'not run', DEVICE_NOT_RUN, null);
+}
+
+/**
+ * The committed file with its device lanes as the next host lanes run writes them (carriedDeviceRecord), its host lanes and
+ * parity as committed: the device evidence lanes-host will leave, before it runs. Every configured case list joins caseLists.
+ */
+export function carryDeviceLanes(f: LanesFile, targets: readonly TargetConfig[]): LanesFile {
+  const stale = staleLanes(f, targets);
+  const caseLists: Record<string, readonly string[]> = { ...(f.caseLists ?? {}) };
+  for (const t of targets) for (const l of t.lanes) for (const s of l.sets) caseLists[sha256(s.ids)] = s.ids;
+  return {
+    ...f,
+    caseLists,
+    targets: f.targets.map((ft) => {
+      const t = targets.find((x) => x.target === ft.target);
+      if (t === undefined) return ft;
+      return {
+        ...ft,
+        lanes: t.lanes.flatMap((l) => {
+          const kept = ft.lanes.find((x) => x.lane === l.lane);
+          if (l.where === 'host') return kept === undefined ? [] : [kept];
+          return [carriedDeviceRecord(l, kept, kept !== undefined && kept.state !== 'not run' && !stale.some((p) => staleCovers(p, t.target, l.lane)))];
+        }),
+      };
+    }),
+  };
+}
+
 export function readLanesFile(): LanesFile | null {
   return existsSync(repoPath(LANES_JSON)) ? (JSON.parse(readFileSync(repoPath(LANES_JSON), 'utf8')) as LanesFile) : null;
 }
