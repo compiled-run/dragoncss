@@ -3,7 +3,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { keyframesOverride } from '../src/analysis/animations.ts';
-import { ALIAS_FAMILIES, legacyAliasRefusal, resolveAlias } from '../src/css/aliases.ts';
+import { parse as parseCss } from 'css-tree';
+import type { CssNode } from 'css-tree';
+import { ALIAS_FAMILIES, aliasValueParser, legacyAliasRefusal, resolveAlias } from '../src/css/aliases.ts';
 import { parseKeyframesRules } from '../src/css/at-rules/keyframes.ts';
 import type { KeyframesSource } from '../src/css/at-rules/keyframes.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
@@ -49,6 +51,7 @@ const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'backface-visibility': ['visible', 'HIDDEN', 'none'],
   'transform-style': ['flat', 'Preserve-3d', 'flat flat'],
   perspective: ['none', 'NONE', '100px', 'auto'],
+  'box-decoration-break': ['slice', 'CLONE', 'none'],
   'perspective-origin': ['center', 'left 10px top 20%', '1em 0', 'left right'],
   'user-select': ['none', 'TEXT', 'all', 'contain'],
   mask: ['none', 'NONE', 'url(m.svg) no-repeat center / contain', 'none, none'],
@@ -125,15 +128,26 @@ const SAMPLES: { readonly [property: string]: readonly string[] } = {
 };
 const COMMON = ['inherit', 'initial', 'unset', 'revert', 'var(--x)', 'var(--x, 1px) var(--y)', 'not-a-value', '1px !important'];
 
+/** Whether an alias's own value parser decides a value, rather than deferring to its property's parser. */
+function aliasDecides(alias: string, v: string): boolean {
+  const own = aliasValueParser(alias);
+  if (own === undefined) return false;
+  const value = parseCss(v.replace(/!important$/, ''), { context: 'value' }) as CssNode & { children?: { toArray(): CssNode[] } };
+  return own((value.children?.toArray() ?? []).filter((n) => n.type !== 'WhiteSpace')) !== null;
+}
+
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(83);
+    expect(ALIASES.length).toBe(84);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
       expect(resolveAlias(property)).toBe(property);
     }
     expect(resolveAlias('-webkit-box-reflect')).toBe('-webkit-box-reflect');
+    // Only -webkit-mask-composite parses its own values (aliases/mask.ts); the rest parse exactly as their property.
+    expect(ALIASES.filter(([alias]) => aliasValueParser(alias) !== undefined).map(([alias]) => alias)).toEqual(['-webkit-mask-composite']);
+    expect(['add', 'exclude, add', 'not-a-value', 'inherit', 'var(--x)', '1px !important'].map((v) => aliasDecides('-webkit-mask-composite', v))).toEqual([true, true, true, false, false, false]);
     expect(resolveAlias('--webkit-flex')).toBe('--webkit-flex');
   });
   it('an alias declaration parses exactly as its property declaration, for valid, multi-token, wide, var() and invalid values', () => {
@@ -143,6 +157,8 @@ describe('legacy aliases parse as their property', () => {
       for (const v of [...(values ?? []), ...COMMON]) {
         // A value legacyAliasRefusal covers is refused instead (the legacy-parsing test below).
         if (legacyAliasRefusal(alias, v) !== null) continue;
+        // A value the alias's own parser decides (UseAliasParsing) is pinned by that family's test (mask.test.ts).
+        if (aliasDecides(alias, v)) continue;
         expect(parsed(`${alias}: ${v}`), `${alias}: ${v}`).toEqual(asAlias(parsed(`${property}: ${v}`), alias, property));
       }
     }
@@ -297,9 +313,9 @@ describe('profile diagnostics name the alias as written', () => {
 describe('the alias fixtures cover every alias', () => {
   it('each alias appears in a fixture of the aliases group or its property\'s group, or the animation ones in the anim-webkit frame fixture', () => {
     // shadow-webkit-alias (shadow group), opacity-cascade (effects group), filter-none (filter group), mask-initial (mask group),
-    // transform-extra-initial (transform-extra group) and appearance-values (appearance group) hold the paint aliases where their
+    // transform-extra-initial (transform-extra group) appearance-values (appearance group) and box-decoration-initial (box-decoration group) hold the paint aliases where their
     // pixel tests read them.
-    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial', 'appearance-values'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
+    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial', 'appearance-values', 'box-decoration-initial'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
     const frames = readFileSync(new URL('../../parity/fixtures/anim-webkit/view.css', import.meta.url), 'utf8');
     for (const [alias] of ALIASES) expect((alias.includes('-transition') || alias.includes('-animation') ? frames : html).includes(`${alias}:`), alias).toBe(true);
     expect(frames).toContain('@-webkit-keyframes');

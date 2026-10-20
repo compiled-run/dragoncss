@@ -448,7 +448,7 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   };
 }
 
-/** The overflow-wrap and word-break values the engine reads (input.ts OverflowWrap, WordBreak); it refuses the word-break values TXT2-d adds. */
+/** The overflow-wrap and word-break values the engine reads (input.ts OverflowWrap, WordBreak); it refuses auto-phrase, and break-all over anything but ASCII letters, digits and spaces (TXT2-d). */
 const OVERFLOW_WRAP: readonly string[] = ['normal', 'break-word', 'anywhere'] satisfies readonly OverflowWrap[];
 const WORD_BREAK: readonly string[] = ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'] satisfies readonly WordBreak[];
 

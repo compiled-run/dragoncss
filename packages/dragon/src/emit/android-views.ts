@@ -32,6 +32,8 @@ function writeLines(v: string, n: ProgramNode, w: ProgramWrite): string[] {
       return [`  ${v}.dragonSetGlyphShear(${doubleLit(w.shear)})`];
     case 'synthetic-bold':
       return [`  ${v}.dragonSetSyntheticBold(doubleArrayOf(${w.keys.map(doubleLit).join(', ')}), doubleArrayOf(${w.values.map(doubleLit).join(', ')}))`];
+    case 'text-stroke':
+      return [`  ${v}.dragonSetTextStroke(${doubleLit(w.width)}, ${rgba(w.color)})`];
   }
   throw new Error(`${n.id}: write kind ${w.kind} has no Android Views lines`);
 }

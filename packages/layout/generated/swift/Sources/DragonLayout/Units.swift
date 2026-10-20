@@ -69,7 +69,7 @@ public func units_saturate(_ v: Double) throws -> Double {
 public func units_fromRaw(_ raw: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:25
   if (!jsIsInteger(raw)) {
-    throw JsError(message: jsConcat(S.s314, jsNumberToString(raw)))
+    throw JsError(message: jsConcat(S.s310, jsNumberToString(raw)))
   }
   return try units_saturate(raw)
 }
@@ -125,7 +125,7 @@ public func units_fromFloatRound(_ px: Double) throws -> Double {
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:85
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s986, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s978, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
@@ -170,11 +170,11 @@ public func units_sum(_ values: JsArray<Double>) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:127
   do {
-    let _a320 = values
-    var _i320 = 0
-    while _i320 < _a320.items.count {
-      let v: Double = _a320.items[_i320]
-      _i320 += 1
+    let _a317 = values
+    var _i317 = 0
+    while _i317 < _a317.items.count {
+      let v: Double = _a317.items[_i317]
+      _i317 += 1
       try total = units_add(total, v)
     }
   }
@@ -205,7 +205,7 @@ public func units_clampNegativeToZero(_ a: Double) throws -> Double {
 public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:149
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s689, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s685, jsNumberToString(n)))
   }
   return try units_saturate((a * n))
 }
@@ -214,7 +214,7 @@ public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
 public func units_divInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:155
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s783, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s780, jsNumberToString(n)))
   }
   return try units_saturate(jsTrunc((a / n)))
 }
@@ -228,7 +228,7 @@ public func units_floatToInlineRaw(_ px: Double) throws -> Double {
 public func units_inlineDivInt(_ raw: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:166
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s783, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s780, jsNumberToString(n)))
   }
   return jsTrunc((raw / n))
 }
@@ -237,7 +237,7 @@ public func units_inlineDivInt(_ raw: Double, _ n: Double) throws -> Double {
 public func units_divLu(_ a: Double, _ b: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:172
   if (b == 0.0) {
-    throw JsError(message: S.s313)
+    throw JsError(message: S.s309)
   }
   return try units_saturate(jsTrunc(((a * units_LU_PER_PX) / b)))
 }
@@ -379,7 +379,7 @@ public func units_isFiniteFactorSum(_ total: Double) throws -> Bool {
 public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:318
   if ((total < 0.0) || (parts <= 0.0)) {
-    throw JsError(message: S.s584)
+    throw JsError(message: S.s581)
   }
   return try units_saturate(jsFloor(((((2.0 * total) * k) + parts) / (2.0 * parts))))
 }
@@ -388,7 +388,7 @@ public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: 
 public func units_cumulativeShareTruncated(_ total: Double, _ numerator: Double, _ denominator: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:324
   if ((total < 0.0) || (denominator <= 0.0)) {
-    throw JsError(message: S.s585)
+    throw JsError(message: S.s582)
   }
   return try units_saturate(jsTrunc(((total * numerator) / denominator)))
 }
@@ -410,7 +410,7 @@ public func units_distributedOffset(_ mode: JsString, _ free: Double, _ n: Doubl
 public func units_intDiv(_ a: Double, _ b: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:342
   if (((!jsIsInteger(a)) || (!jsIsInteger(b))) || (b == 0.0)) {
-    throw JsError(message: jsConcat(S.s688, jsNumberToString(a), S.s12, jsNumberToString(b)))
+    throw JsError(message: jsConcat(S.s684, jsNumberToString(a), S.s12, jsNumberToString(b)))
   }
   return jsTrunc((a / b))
 }
@@ -530,7 +530,7 @@ public func units_mod32(_ x: Double) throws -> Double {
 public func units_equalShare(_ extra: Double, _ setTrackCount: Double, _ growableTrackCount: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:457
   if (((!jsIsInteger(setTrackCount)) || (!jsIsInteger(growableTrackCount))) || (growableTrackCount <= 0.0)) {
-    throw JsError(message: jsConcat(S.s615, jsNumberToString(setTrackCount), S.s12, jsNumberToString(growableTrackCount)))
+    throw JsError(message: jsConcat(S.s612, jsNumberToString(setTrackCount), S.s12, jsNumberToString(growableTrackCount)))
   }
   let a: Double = try units_mod32(extra)
   let high: Double = jsFloor((a / units_TWO_16))
@@ -824,7 +824,7 @@ public func units_calcEvaluateFloat(_ value: Double, _ nonNegative: Bool) throws
 public func units_mulDiv(_ v: Double, _ m: Double, _ d: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:740
   if ((((d <= 0.0) || (m < 0.0)) || (!jsIsInteger(m))) || (!jsIsInteger(d))) {
-    throw JsError(message: S.s753)
+    throw JsError(message: S.s750)
   }
   let negative: Bool = (v < 0.0)
   let a: Double = (negative ? (-v) : v)

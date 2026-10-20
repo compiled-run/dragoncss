@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.stage { height: 240px; padding-top: 8px; background-color: rgb(235, 235, 245); }
+.box { width: 80px; height: 40px; }
+.iso { isolation: isolate; background-color: rgb(40, 160, 40); }
+.neg { position: relative; z-index: -1; top: 10px; left: 16px; width: 48px; height: 20px; background-color: rgb(200, 40, 40); }
+.r { position: relative; margin-top: 16px; background-color: rgb(40, 40, 200); }
+.over { margin-top: -30px; margin-inline-start: 30px; isolation: ISOLATE; background-color: rgb(220, 180, 0); }
+.auto { isolation: auto; margin-top: 16px; background-color: rgb(120, 40, 160); }
+.auto > .neg { background-color: rgb(0, 150, 150); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="i-iso" class="box iso"><div data-dragon-id="i-neg" class="neg"></div></div>
+<div data-dragon-id="i-r" class="box r"></div>
+<div data-dragon-id="i-over" class="box over"></div>
+<div data-dragon-id="i-auto" class="box auto"><div data-dragon-id="i-auto-neg" class="neg"></div></div>
+</div>
+</body>
+</html>

@@ -15,7 +15,7 @@ import { iosLayoutProjection, NO_FAULTS } from 'dragon';
 import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import type { ParityCase } from './cases.ts';
-import { CHROME_VERSION, chromeArgsAt, openPage, PLAYWRIGHT_VERSION } from './chrome.ts';
+import { CHROME_VERSION, chromeArgsAt, openPage, PLAYWRIGHT_VERSION, recordLaunchArgs } from './chrome.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { dprLabel, layoutCases } from './dpr.ts';
 import { repoPath } from './paths.ts';
@@ -27,6 +27,9 @@ export const SCROLL_DPRS: readonly number[] = [1, 2, 3, 2.625];
 
 /** The fixture groups whose cases carry scroll metrics. */
 export const SCROLL_FIXTURE_PREFIXES: readonly string[] = ['overflow-', 'viewport-prop-', 'scroll-'];
+
+/** Whether a fixture or case id is a scroll case (SCROLL_FIXTURE_PREFIXES), whose layout depends on the scrollbar environment. */
+export const isScrollCase = (id: string): boolean => SCROLL_FIXTURE_PREFIXES.some((p) => id.startsWith(p));
 
 /** One scroll container's metrics in CSS px, as Element reports them; id "viewport" is document.scrollingElement. */
 export type ScrollRecord = { readonly id: string; readonly scrollWidth: number; readonly scrollHeight: number; readonly clientWidth: number; readonly clientHeight: number };
@@ -190,6 +193,7 @@ export async function launchOverlayChrome(forceDeviceScaleFactor: number): Promi
       await browser.close();
       throw new Error(`Chrome must be ${CHROME_VERSION} (Playwright ${PLAYWRIGHT_VERSION}), got ${browser.version()}`);
     }
+    recordLaunchArgs(browser, [...chromeArgsAt(forceDeviceScaleFactor), ...SCROLLBAR_ARGS]);
     return browser;
   } finally {
     rmSync(dir, { recursive: true, force: true });

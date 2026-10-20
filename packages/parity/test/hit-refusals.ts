@@ -17,12 +17,16 @@ export const INLINE_OUT: readonly string[] = [
   // inline box and text-transform-text a <br>; TXT2's text-justify-ahem and TXT2-a's text-break-ahem hold an inline box.
   'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
   'text-justify-ahem', 'text-justify-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl',
+  // TXT-FX's text-stroke-ahem holds inline boxes (cur, sp).
+  'text-stroke-ahem', 'text-stroke-ahem-rtl',
   // TXT2-h's text-indent-ahem holds an inline box, a <br> and inline-blocks.
   'text-indent-ahem', 'text-indent-ahem-rtl',
   // TXT-FONT's text-font-variant-ahem, text-font-variant-caps-ahem (sp), text-font-tuning-ahem and text-font-size-values-ahem hold inline boxes, and so does TXT-W's text-style-ahem (em, i).
   'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-variant-caps-ahem', 'text-font-variant-caps-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
   // TXT-W's text-weight-bold-ahem holds inline boxes (b, strong).
   'text-weight-bold-ahem', 'text-weight-bold-ahem-rtl',
+  // TXT2-d's text-word-break-ahem, TXT2-lb's text-line-break-ahem and TXT2-tal's text-align-last-ahem hold inline boxes (text-align-last-ahem also a <br>).
+  'text-word-break-ahem', 'text-word-break-ahem-rtl', 'text-line-break-ahem', 'text-line-break-ahem-rtl', 'text-align-last-ahem', 'text-align-last-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
   'text-decoration-native', 'text-decoration-native-rtl',
   // TDEC-c's text-decoration-native-styles holds an inline box (s6s, the inline box's double underline).
@@ -31,6 +35,8 @@ export const INLINE_OUT: readonly string[] = [
   'resize-values', 'resize-values-rtl',
   // touch-action-values holds an inline box (sp, touch-action none on an inline span).
   'touch-action-values', 'touch-action-values-rtl',
+  // TXT-FX's text-fill-stroke-colors holds an inline box (sp, a fill on an inline span).
+  'text-fill-stroke-colors', 'text-fill-stroke-colors-rtl',
   // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];
@@ -43,9 +49,9 @@ export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which 
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint'];
 export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;
 export const STACKING_OUT: readonly string[] = [
-  'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'stacking-basic',
+  'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
-  'stacking-grid-items-rtl',
+  'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl',
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in

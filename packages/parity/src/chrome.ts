@@ -33,8 +33,13 @@ export function ahemFontFace(): string {
 
 const launchArgs = new WeakMap<Browser, readonly string[]>();
 
-/** The flags launchChrome started a browser with, or null for a browser it did not start (chrome-memo.ts keys by them). */
+/** The flags a browser was started with (launchChrome, or recordLaunchArgs for another launcher), or null when unknown (chrome-memo.ts keys by them). */
 export const launchArgsOf = (browser: Browser): readonly string[] | null => launchArgs.get(browser) ?? null;
+
+/** Records the flags of a browser started by another launcher over launchChrome's (scroll-metrics.ts launchOverlayChrome). */
+export function recordLaunchArgs(browser: Browser, args: readonly string[]): void {
+  launchArgs.set(browser, args);
+}
 
 /**
  * The pointer and hover types Playwright's headless launch passes to Blink. Blink writes --blink-settings straight into the page
