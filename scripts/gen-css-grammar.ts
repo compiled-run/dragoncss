@@ -144,6 +144,8 @@ const SUBSET = [
   'border-collapse', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing', 'caption-side', 'empty-cells', 'table-layout', 'border-spacing',
   // GEN-d1 and GEN-d2: the counter properties (css-lists-3 §4) and quotes (css-content-3 §3.1), after the table family, as LONGHANDS registers them.
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
+  // color-scheme (css-color-adjust-1 §2.1), after the counters family, as LONGHANDS registers it.
+  'color-scheme',
 ] as const;
 
 /**

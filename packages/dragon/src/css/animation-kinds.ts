@@ -13,6 +13,7 @@ import { BORDER_IMAGE_ANIMATION } from './animation-kinds/border-image.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
 import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
+import { COLOR_SCHEME_ANIMATION } from './animation-kinds/color-scheme.ts';
 import { CONTAINER_QUERY_ANIMATION } from './animation-kinds/container-query.ts';
 import { CONTAINMENT_ANIMATION } from './animation-kinds/containment.ts';
 import { COUNTERS_ANIMATION } from './animation-kinds/counters.ts';
@@ -73,6 +74,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...BOX_ANIMATION,
   ...CLIP_PATH_ANIMATION,
   ...CLIP_RECT_ANIMATION,
+  ...COLOR_SCHEME_ANIMATION,
   ...CONTAINER_QUERY_ANIMATION,
   ...CONTAINMENT_ANIMATION,
   ...COUNTERS_ANIMATION,

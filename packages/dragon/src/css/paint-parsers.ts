@@ -9,6 +9,7 @@ import { APPEARANCE_VALUE_PARSERS } from './properties/appearance.ts';
 import { USER_MODIFY_VALUE_PARSERS } from './properties/user-modify.ts';
 import { CLIP_PATH_VALUE_PARSERS } from './properties/clip-path.ts';
 import { CLIP_RECT_VALUE_PARSERS } from './properties/clip-rect.ts';
+import { COLOR_SCHEME_VALUE_PARSERS } from './properties/color-scheme.ts';
 import { EFFECTS_VALUE_PARSERS, parseOpacityValue } from './properties/effects.ts';
 import { FILTER_VALUE_PARSERS } from './properties/filter.ts';
 import { FONT_VARIANT_VALUE_PARSERS } from './properties/font-variant.ts';
@@ -77,4 +78,5 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(CONTAINMENT_VALUE_PARSERS),
   ...Object.entries(CONTAINER_QUERY_VALUE_PARSERS),
   ...Object.entries(COUNTERS_VALUE_PARSERS),
+  ...Object.entries(COLOR_SCHEME_VALUE_PARSERS),
 ]);
