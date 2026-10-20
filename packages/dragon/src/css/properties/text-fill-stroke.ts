@@ -1,7 +1,7 @@
 // -webkit-text-fill-color, -webkit-text-stroke-color and -webkit-text-stroke-width (compat §5), and the -webkit-text-stroke
-// shorthand of the last two: all inherited, initial currentcolor, currentcolor and 0. Dragon paints glyphs in color (TXT-FX), so it
-// accepts a fill of currentcolor (computed-checks.ts checkTextFillStroke refuses the rest), and strokes them where
-// analysis/text-stroke.ts checkTextStrokes finds the native view draws what Chrome draws.
+// shorthand of the last two: all inherited, initial currentcolor, currentcolor and 0. Dragon fills glyphs in the fill colour
+// (native-program.ts textPaint), and strokes them where analysis/text-stroke.ts checkTextStrokes finds the native view draws what
+// Chrome draws (TXT-FX).
 import type { PropertyAspect } from '../properties.ts';
 
 export const TEXT_FILL_STROKE_LONGHANDS = ['-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke-width'] as const;

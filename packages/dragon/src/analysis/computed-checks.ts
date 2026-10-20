@@ -60,7 +60,8 @@ import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
-import { usedColors } from '../lower/paint/colors.ts';
+import { serializeColor } from '../css/color.ts';
+import { glyphFill, usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
@@ -513,7 +514,7 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
     refuse(targets, 'anonymous-block', `${at} holds text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, whose anonymous block lines Chrome truncates and Dragon does not`, `Wrap the text of ${el.element.address} in its own block, and give that block the text-overflow.`);
   }
   // The style the ellipsis takes from its block and the native view from its text: font size is drawn per run, the rest is not.
-  const styleOf = (e: ResolvedElement): string => JSON.stringify([usedColors(e).color, ...(['visibility', 'font-family', 'font-weight', 'font-style'] as const).map((p) => valueToString((e.props.get(p) as ResolvedValue).value))]);
+  const styleOf = (e: ResolvedElement): string => JSON.stringify([glyphFill(e), ...(['visibility', 'font-family', 'font-weight', 'font-style'] as const).map((p) => valueToString((e.props.get(p) as ResolvedValue).value))]);
   const own = styleOf(el);
   const native = targets.filter((t) => t === 'ios' || t === 'android');
   for (const run of runs) {
@@ -732,14 +733,13 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     if (!here && synthetic.length === 0 && synthesizesBold(el.props)) {
       for (const c of el.children) {
         if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
-        const color = c.props.get('color') as ResolvedValue;
-        const alpha = color.value.kind === 'color' ? color.value.value.alpha : 255;
-        if (alpha === 0 || alpha === 255) continue;
+        const fill = glyphFill(el);
+        if (fill.alpha === 0 || fill.alpha === 255) continue;
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
           once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
             origin: c.node.node.origin,
             target: t,
-            message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is drawn in synthetic bold in the translucent colour ${valueToString(color.value)}; Chrome composites each emboldened glyph on its own, so overlapping glyphs blend darker, and no fixture proves a translucent synthetic bold on ${t}`,
+            message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is drawn in synthetic bold in the translucent colour ${serializeColor(fill)}; Chrome composites each emboldened glyph on its own, so overlapping glyphs blend darker, and no fixture proves a translucent synthetic bold on ${t}`,
             manual: `Give ${c.node.address} an opaque colour, or a font-weight below 600.`,
           })));
         }
@@ -1040,7 +1040,6 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFontTuning(el, targets, diagnostics, reported, shapedAt, faults);
       checkFontStretch(el, targets, diagnostics, reported, shapedAt, faults);
       checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
-      checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
     checkMask(el, targets, diagnostics, reported, faults);
     checkBorderImage(el, targets, diagnostics, reported, faults);
@@ -1085,34 +1084,6 @@ function checkFontStretch(el: ResolvedElement, targets: readonly string[], diagn
         target: t,
         message: `font-stretch: ${valueToString(v.value)} reaches text ${c.node.address}, which is drawn in a real face: Dragon matches no face by width yet (TXT-FONTFEAT)`,
         manual: `Set font-stretch to normal on the text of ${el.element.address}, or draw it in a one-face family such as Ahem.`,
-        basis: 'computed-value',
-      }));
-    }
-  }
-}
-
-// TXT-FX (compat §5): glyphs are painted in color and no stroke is drawn, which is what Chrome draws for a fill colour of currentcolor
-// and a stroke of width 0 in any colour. Any other fill colour or a wider stroke over the element's text is refused for every
-// target, once per text. Planted faults textFillColorAccepted and textStrokeAccepted accept them.
-function checkTextFillStroke(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: TxtFillFaults): void {
-  // The stroke is checkTextStrokes' (analysis/text-stroke.ts).
-  const fill = el.props.get('-webkit-text-fill-color') as ResolvedValue;
-  const problems: string[] = [];
-  if (!faults.textFillColorAccepted && keywordOf(fill) !== 'currentcolor') problems.push(`-webkit-text-fill-color: ${valueToString(fill.value)}, a fill other than currentcolor (Dragon paints glyphs in color)`);
-  if (problems.length === 0) return;
-  // Located at the element's own declaration when it has one, else at the text.
-  const declared = [fill].find((v) => v.origin !== 'inherited' && v.declaration !== null);
-  for (const c of el.children) {
-    if (c.kind !== 'text') continue;
-    const id = `text-fill-stroke|${c.node.address}`;
-    if (reported.has(id)) continue;
-    reported.add(id);
-    for (const t of targets) {
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-        origin: declared?.declaration ? authored(declared.declaration.valueSpan) : c.node.node.origin,
-        target: t,
-        message: `text ${c.node.address} takes ${problems.join(', and ')} (TXT-FX)`,
-        manual: `Give the text of ${el.element.address} -webkit-text-fill-color: currentcolor, and set color instead.`,
         basis: 'computed-value',
       }));
     }

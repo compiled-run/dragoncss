@@ -35,6 +35,7 @@ import { refuseStatefulStrokes } from './analysis/text-stroke.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { refuseAnimatedTranslucentPaint } from './analysis/paint-values/translucent-paint.ts';
+import { refuseAnimatedTextFill } from './analysis/paint-values/text-fill.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -1295,12 +1296,13 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
       // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. PNT1: an animated color
       // must not turn a currentcolor dotted, dashed or 3D outline or rounded double border translucent, nor reach a currentcolor
-      // paint native bakes in the resting color. MQ-R1: native switches bands at run time, so every band's cases and animations are
+      // paint native bakes in the resting color, nor text with its own fill (TXT-FX). MQ-R1: native switches bands at run time, so every band's cases and animations are
       // checked (each refusal once).
       const gradientsReported = new Set<string>();
       const doublesReported = new Set<string>();
       const translucentReported = new Set<string>();
       const currentColorReported = new Set<string>();
+      const textFillReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
@@ -1308,6 +1310,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
+        refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
       });
       // TXT-FX: a state program's text records carry no stroke, so native refuses a drawn stroke wherever the output is one.
       const animated = bandAnimations.some((a) => a.cases.some((c) => [...c.elements.values()].some((e) => e.declared || e.animations.some((x) => x.name !== 'none'))));
@@ -1541,7 +1544,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       },
       laneOnlyNative,
       images: images === null ? new Map() : images.bytes,
-      textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textStrokeAccepted: options.faults.textStrokeAccepted },
+      textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textFillIgnored: options.faults.textFillIgnored, textStrokeAccepted: options.faults.textStrokeAccepted },
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,

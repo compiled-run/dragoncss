@@ -107,6 +107,13 @@ describe('-webkit-text-stroke on the native targets', () => {
     const earlier = (r: SourceRef): TreeNode[] => [div(r, 'b', ['g'], []), div(r, 'a', ['s'], [text(r, 't', 'XX')])];
     expect(codes(`${s} .g { height: 10px; background-color: red; }`, later)).toEqual(NATIVE);
     expect(codes(`${s} .g { height: 10px; background-color: red; }`, earlier)).toEqual([]);
+    // A background clipped to the text, here or on an ancestor (Chrome's clip takes the stroke too); a fill colour alone is fine.
+    const clipWhy = (css: string, body?: (r: SourceRef) => TreeNode[]): string[] => errors(compile(`${s} ${css}`, body)).filter((d) => d.message.startsWith('-webkit-text-stroke')).map((d) => `${d.target} ${d.message.slice(d.message.indexOf(': ', 30) + 2)}`).sort();
+    const CLIPPED = ['android a background is clipped to the text, whose clip in Chrome takes the stroke too (TXT-FX)', 'ios a background is clipped to the text, whose clip in Chrome takes the stroke too (TXT-FX)'];
+    expect(clipWhy('.s { background-color: red; background-clip: text; -webkit-text-fill-color: transparent; }')).toEqual(CLIPPED);
+    const clippedAbove = (r: SourceRef): TreeNode[] => [div(r, 'p', ['c'], [div(r, 'a', ['s'], [text(r, 't', 'XX')])])];
+    expect(clipWhy('.c { background-color: red; background-clip: text; -webkit-text-fill-color: transparent; }', clippedAbove)).toEqual(CLIPPED);
+    expect(codes(`${s} .s { -webkit-text-fill-color: blue; }`)).toEqual([]);
     // A line clamp may end the text in an ellipsis.
     expect(codes(`${s} .s { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }`)).toEqual(NATIVE);
     const msg = errors(compile(`${s} .s { -webkit-text-stroke-color: rgba(255, 0, 0, 0.5); }`)).find((d) => d.target === 'ios');

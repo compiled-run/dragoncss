@@ -10,6 +10,7 @@ import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
 import { analyzeDecorations } from '../analysis/text-decoration.ts';
 import { synthesizesBold, SYNTHETIC_OBLIQUE_SHEAR, synthesizesOblique } from '../analysis/computed.ts';
 import { nativeTextShadows } from '../analysis/text-shadow.ts';
+import { textClipFillOf } from '../analysis/paint-values/gradient.ts';
 import { strokeColorOf, strokeWidthOf } from '../analysis/text-stroke.ts';
 import { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES } from '../fonts/synthetic-bold.ts';
 import { canonicalJson } from '../digest.ts';
@@ -18,9 +19,9 @@ import type { TxtWFaults } from '../faults/txt-w.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
 import type { Longhand } from '../css/properties.ts';
-import { colorChannels, usedColors } from './paint/colors.ts';
+import { colorChannels, glyphFill, usedColors } from './paint/colors.ts';
 import { borderWrites } from './paint/border.ts';
-import { clipsChildren } from './paint/clip.ts';
+import { hostsClipView } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
 import { lowerBoxPaint, paintVocabulary, paintWriteCss } from './paint/registry.ts';
 import { inlineStackingFacts } from './paint/stacking.ts';
@@ -129,7 +130,7 @@ export const VOCABULARY: { readonly [B in NativeBackend]: Vocabulary } = {
 export const WRITE_CSS: { readonly [K in WriteKind['kind']]: readonly Longhand[] } = {
   ...paintWriteCss(),
   font: ['font-family', 'font-size'],
-  'text-color': ['color'],
+  'text-color': ['color', '-webkit-text-fill-color'],
   'synthetic-oblique': ['font-style', 'font-synthesis-style'],
   'synthetic-bold': ['font-weight', 'font-synthesis-weight'],
   'text-stroke': ['-webkit-text-stroke-width', '-webkit-text-stroke-color'],
@@ -177,7 +178,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
     const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, decorations, textShadows });
-    out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: clipsChildren(b), text: null, writes, facts });
+    out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: hostsClipView(b, el), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
     for (const c of b.children) {
@@ -212,15 +213,20 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
 type OwnedText = { readonly text: ResolvedText; readonly owner: ResolvedElement };
 
 /** The TXT-W plants the lowering reads: the synthetic bold from 700 instead of 600 or never stroked, and the oblique never sheared. */
-export type TextPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked' | 'ahemObliqueUnsheared'> & Pick<TxtFillFaults, 'textStrokeAccepted'>;
-const NO_TEXT_PLANTS: TextPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false, textStrokeAccepted: false };
+export type TextPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked' | 'ahemObliqueUnsheared'> & Pick<TxtFillFaults, 'textFillIgnored' | 'textStrokeAccepted'>;
+const NO_TEXT_PLANTS: TextPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false, textFillIgnored: false, textStrokeAccepted: false };
 
 function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, OwnedText>, plants: TextPlants): NodePaint {
   const owned = texts.get(t.id);
   if (owned === undefined) throw new ProgramError(`${t.id}: no resolved text for the text leaf`);
   const color = owned.text.props.get('color');
   if (color === undefined) throw new ProgramError(`${t.id}: color did not resolve`);
-  const writes: WriteKind[] = [{ kind: 'font', font: t.font }, { kind: 'text-color', color: colorChannels(color.value, t.id) }];
+  // compat §5: glyphs are filled in -webkit-text-fill-color (inherited, so the owner's), which is color where it is currentcolor.
+  const own = plants.textFillIgnored ? colorChannels(color.value, t.id) : glyphFill(owned.owner);
+  // background-clip: text over a colour draws each glyph in that colour; the check admits it only for a transparent glyph fill.
+  const fill = textClipFillOf(owned.owner);
+  if (fill !== null && own.alpha !== 0) throw new ProgramError(`${t.id}: text over a background colour clipped to it is not transparent, which the native check refuses`);
+  const writes: WriteKind[] = [{ kind: 'font', font: t.font }, { kind: 'text-color', color: fill ?? own }];
   // Native draws only Ahem (a real face is refused on native), whose one regular face Chrome shears for a slope of 14deg and up
   // and emboldens from weight 600 (both together are refused, computed-checks.ts syntheticTextFont).
   if (t.font.family === 'Ahem' && synthesizesOblique(owned.owner.props) && !plants.ahemObliqueUnsheared) writes.push({ kind: 'synthetic-oblique', shear: SYNTHETIC_OBLIQUE_SHEAR });

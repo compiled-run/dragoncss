@@ -52,29 +52,31 @@ export function strokeColorOf(el: ResolvedElement): Rgba8 {
 }
 
 /** parent: the element whose computed font and stroke the text takes; container: the block container whose lines hold it. */
-type Stroked = { readonly text: ResolvedText; readonly parent: ResolvedElement; readonly container: ResolvedElement; readonly clamped: boolean; readonly order: number };
+type Stroked = { readonly text: ResolvedText; readonly parent: ResolvedElement; readonly container: ResolvedElement; readonly clamped: boolean; readonly clipped: boolean; readonly order: number };
 
 /** Every text drawn with a stroke wider than 0 (or with a width other than px), in tree order, and every box-painting element's tree order. */
 function survey(root: ResolvedElement): { readonly stroked: Stroked[]; readonly painters: number[] } {
   const stroked: Stroked[] = [];
   const painters: number[] = [];
   let order = 0;
-  const walk = (el: ResolvedElement, outer: ResolvedElement, clampedAbove: boolean): void => {
+  const walk = (el: ResolvedElement, outer: ResolvedElement, clampedAbove: boolean, clippedAbove: boolean): void => {
     if (keyword(el, 'display') === 'none') return;
     const clamped = clampedAbove || lineClampOf(el) !== 0;
+    // background-clip: text clips the element's background to its descendants' text.
+    const clipped = clippedAbove || /\btext\b/.test(keyword(el, 'background-clip'));
     const container = keyword(el, 'display') === 'inline' ? outer : el;
     order++;
     if (el !== root && paintsBox(el)) painters.push(order);
     const width = strokeWidthOf(el);
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c, container, clamped);
+      if (c.kind === 'element') walk(c, container, clamped, clipped);
       else {
         order++;
-        if (width !== 0) stroked.push({ text: c, parent: el, container, clamped, order });
+        if (width !== 0) stroked.push({ text: c, parent: el, container, clamped, clipped, order });
       }
     }
   };
-  walk(root, root, false);
+  walk(root, root, false, false);
   return { stroked, painters };
 }
 
@@ -92,6 +94,7 @@ function nativeRefusal(s: Stroked, painters: readonly number[], decorated: Reado
   if (alpha !== 0 && width > TEXT_STROKE_MAX_PX) return `a stroke ${width}px wide is over the ${TEXT_STROKE_MAX_PX}px the native stroke draws`;
   if (alpha !== 255 && alpha !== 0) return 'the stroke colour is not opaque: Chrome composites each glyph\'s stroke on its own, the native view one path per line';
   if (realFaceAt(text.node.address)) return 'the text is in a real face; the native stroke is drawn over Ahem only';
+  if (s.clipped) return 'a background is clipped to the text, whose clip in Chrome takes the stroke too';
   if (synthesizesBold(parent.props)) return 'the text is drawn in synthetic bold, whose stroke the native view does not combine with this one';
   if (synthesizesOblique(parent.props)) return 'the text is drawn in synthetic oblique, which shears the native stroke with the outline';
   if (keyword(parent, 'font-variant-caps') !== 'normal') return 'the text has small caps, whose runs the native view does not stroke';
