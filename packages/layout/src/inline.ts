@@ -525,18 +525,9 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
     }
-    // TXT2-d (notes/T149-txt2-spec.md R15): keep-all changes nothing outside CJK, which the script gate keeps out; break-all is laid
-    // out over ASCII letters, digits and spaces alone, the text whose break-all opportunities Chrome is proven on (breakAllOpportunities).
-    if (t.wordBreak === 'auto-phrase') unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: ${t.wordBreak} on ${t.id} (TXT2-d)`);
-    if ((t.wordBreak === 'break-all' || t.wordBreak === 'keep-all') && t.font.family !== AHEM_FACE_ID) {
-      unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: ${t.wordBreak} on ${t.id}, which is in a real face: it is proven over Ahem only (TXT2-d)`);
-    }
-    if (t.wordBreak === 'break-all') {
-      for (const ch of t.text) {
-        const cp = ch.codePointAt(0) as number;
-        if (cp !== SPACE && !isAsciiAlphanumeric(cp)) unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: break-all on ${t.id}, which holds U+${cp.toString(16).toUpperCase()}: break-all is laid out over ASCII letters, digits and spaces only (TXT2-d)`);
-      }
-    }
+    // keep-all suppresses breaks between letters of the NU, AL, AI and ID classes; over the Latin set Chrome 145 breaks exactly as
+    // under normal (TXT-BREAK-2, test/fixtures/linebreak/chrome145-break-all.json), so only auto-phrase is refused.
+    if (t.wordBreak === 'auto-phrase') unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: ${t.wordBreak} on ${t.id}`);
     if (first !== undefined && (t.overflowWrap !== first.overflowWrap || t.wordBreak !== first.wordBreak)) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-3 §5.2, §5.5', `text runs with different overflow-wrap or word-break in one formatting context of ${box.id}`);
     }
@@ -557,7 +548,7 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   const starts: number[] = [];
   const wrap = first === undefined || first.textWrapMode === 'wrap';
   const breakAll = first !== undefined && first.wordBreak === 'break-all' && !ctx.faults.breakAllIgnored;
-  const boundaries = boundariesOf(ctx, box, items, wrap, shaped, mode, starts, breakAll);
+  const boundaries = boundariesOf(ctx, box, items, wrap, shaped, mode, breakAll, starts);
   const graphemeItems: number[] = [];
   const graphemes = wrap && (anywhere || minAnywhere) ? graphemeBoundariesOf(items, graphemeItems) : [];
   return {
@@ -750,7 +741,7 @@ function afterCloses(items: readonly Item[], i: number): number {
 }
 
 /** Adds the soft boundaries of one run of text (the item indices of its characters) to out. */
-function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, out: Boundary[], starts: number[], breakAll: boolean): void {
+function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, breakAll: boolean, out: Boundary[], starts: number[]): void {
   for (const p of opportunities(ctx, box, run.map((i) => (items[i] as Item).cp), wrap, shaped, mode, breakAll)) {
     out.push({ at: afterCloses(items, run[p - 1] as number), forced: false });
     starts.push(run[p] as number);
@@ -764,24 +755,24 @@ function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run
  * opportunity between two characters becomes a boundary after the close tags that follow the first (Blink moves a break before a
  * close tag after it) and before any open tag. A <br> forces a boundary after it and the close tags that follow it.
  */
-function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, starts: number[], breakAll: boolean): Boundary[] {
+function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, mode: WhiteSpaceCollapse, breakAll: boolean, starts: number[]): Boundary[] {
   const out: Boundary[] = [];
   let run: number[] = [];
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Item;
     if (it.kind === 'char' || it.kind === 'atomic') run.push(i);
     else if ((it.kind === 'br' && !ctx.faults.brIgnored) || it.kind === 'nl') {
-      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts, breakAll);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts);
       run = [];
       out.push({ at: afterCloses(items, i), forced: true });
     } else if (ctx.faults.breakAtBoxBoundary && wrap && run.length > 0 && (it.kind === 'open' || it.kind === 'close')) {
       // Planted fault breakAtBoxBoundary: a soft wrap opportunity at every box boundary inside text.
-      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts, breakAll);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts);
       run = [];
       out.push({ at: it.kind === 'open' ? i : afterCloses(items, i), forced: false });
     }
   }
-  addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, out, starts, breakAll);
+  addSoftBoundaries(ctx, box, items, run, wrap, shaped, mode, breakAll, out, starts);
   // One boundary per place, in item order; a forced one wins over a soft one at the same place.
   const ordered = [...out].sort((x, y) => (x.at !== y.at ? x.at - y.at : x.forced === y.forced ? 0 : x.forced ? -1 : 1));
   const sorted: Boundary[] = [];
@@ -808,25 +799,12 @@ function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: b
     return out;
   }
   const faults: LineBreakFaults = { breakAfterSolidus: ctx.faults.breakAfterSolidus, noHyphenDigitBreak: ctx.faults.noHyphenDigitBreak };
-  const base = shaped ? latinOpportunities(box, cps, wrap, faults) : atomicOpportunities(box, cps, wrap, ctx.faults.noBreakAroundAtomic, faults);
-  const spaced = wrap && mode === 'break-spaces' ? withEverySpace(cps, base) : base;
-  return wrap && breakAll ? breakAllOpportunities(cps, spaced) : spaced;
-}
-
-/**
- * word-break: break-all (css-text-3 §5.2, notes/T149-txt2-spec.md R15): letters and numbers break as ideographs (UAX #14 AL and NU
- * as ID, so LB31 allows a break between any two), on top of the normal opportunities. Only ASCII letters, digits and spaces reach
- * it (prepareInline refuses the rest). Planted fault breakAllIgnored lays break-all out as normal.
- */
-export function breakAllOpportunities(cps: readonly number[], base: readonly number[]): number[] {
-  const out: number[] = [];
-  let k = 0;
-  for (let i = 1; i < cps.length; i++) {
-    while (k < base.length && (base[k] as number) < i) k++;
-    const listed = k < base.length && (base[k] as number) === i;
-    if (listed || (isAsciiAlphanumeric(cps[i - 1] as number) && isAsciiAlphanumeric(cps[i] as number))) out.push(i);
+  if (breakAll) {
+    for (const cp of cps) if (cp === OBJECT) unsupported('word-break', box.id, 'css-text-3 §5.2', `word-break: break-all beside an atomic inline in ${box.id} is not measured`);
+    if (!shaped) for (const cp of cps) if (coveredIndex(cp) < 0) unsupported('line-break', box.id, 'css-text-3 §5', `U+${cp.toString(16).toUpperCase()} is outside the code points the line breaker decides`);
   }
-  return out;
+  const base = breakAll ? breakAllOpportunities(box, cps, wrap) : shaped ? latinOpportunities(box, cps, wrap, faults) : atomicOpportunities(box, cps, wrap, ctx.faults.noBreakAroundAtomic, faults);
+  return wrap && mode === 'break-spaces' ? withEverySpace(cps, base) : base;
 }
 
 /**
@@ -1075,6 +1053,16 @@ function latinBreaksAllowed(cps: readonly number[]): boolean[] {
 }
 
 /**
+ * A hyphen-minus before a Latin-1 letter (UAX #14 HY then AL): Chrome 145 breaks there unless the hyphen begins the text its line
+ * breaker reads, that is unless it is the first code point, follows an opportunity, or follows a no-break space (LB20a: sot, SP,
+ * ZW, GL); so "A-ä" breaks after the hyphen and "?-ä" and "--ä" do not (TXT-BREAK-2, test/fixtures/linebreak/chrome145-break-all.json,
+ * under keep-all, which breaks as normal here, and break-all). out holds the opportunities before position i.
+ */
+function hyphenLetterBreaks(cps: readonly number[], i: number, out: readonly number[]): boolean {
+  return i >= 2 && (out.length === 0 || (out[out.length - 1] as number) !== i - 1) && latinBreakClass(cps[i - 2] as number) !== LC_GL;
+}
+
+/**
  * lineBreakOpportunitiesWith (linebreak.ts) on the code points latinBreakClass covers: a space run breaks after its end; ASCII
  * pairs read Blink's ASCII table with the hyphen-before-digit rule; Latin-1 pairs read ICU's rule on the pair alone
  * (LineBreakData::FillFromIcu); any other pair reads UAX #14 over the whole run. Returns code point positions where a line may
@@ -1100,6 +1088,9 @@ export function latinOpportunities(box: LayoutBox, cps: readonly number[], wrap:
       if (last === HYPHEN_MINUS && cur <= 0x7f && cur >= 0x30 && cur <= 0x39) {
         decided = true;
         breaks = !faults.noHyphenDigitBreak && i >= 2 && isAsciiAlphanumeric(cps[i - 2] as number);
+      } else if (last === HYPHEN_MINUS && cur > 0x7f && cur <= 0xff && latinBreakClass(cur) === LC_AL) {
+        decided = true;
+        breaks = hyphenLetterBreaks(cps, i, out);
       } else if (last <= 0xff && cur <= 0xff) {
         decided = true;
         if (last <= 0x7f && cur <= 0x7f) breaks = faults.breakAfterSolidus && last === SOLIDUS && isAsciiAlphanumeric(cur) ? true : asciiPairBreaks(last, cur);
@@ -1117,6 +1108,98 @@ export function latinOpportunities(box: LayoutBox, cps: readonly number[], wrap:
       breaks = full[i] as boolean;
     }
     if (breaks) out.push(i);
+  }
+  return out;
+}
+
+// word-break: break-all (TXT-BREAK-2): the soft wrap opportunities Chrome 145 gives between two code points of the Latin set,
+// as a matrix of row classes (the code point before) and column classes (the code point after). Measured with the width-0 method
+// over every pair of the set and 5,000 generated runs (test/fixtures/linebreak/chrome145-break-all.json); the pair alone decides
+// every position but a hyphen-minus before a Latin-1 letter (hyphenLetterBreaks), and U+00AD, which the engine refuses here.
+const BREAK_ALL_COLUMNS = 18;
+/** The break-all row class of U+0020..U+007E (-1: U+0020, which the space rules decide). */
+const BREAK_ALL_ROW_ASCII: readonly number[] = [
+  -1, 0, 1, 2, 3, 0, 2, 4, 4, 5, 2, 5, 6, 7, 6, 5, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 6, 6, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 8, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 9, 5, 2,
+];
+/** The break-all column class of U+0020..U+007E. */
+const BREAK_ALL_COL_ASCII: readonly number[] = [
+  -1, 0, 1, 2, 3, 4, 2, 1, 5, 0, 2, 6, 0, 7, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 0, 0, 8, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 9, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 7, 0, 2,
+];
+/** The break-all row class of U+00A0..U+00FF. */
+const BREAK_ALL_ROW_LATIN1: readonly number[] = [
+  4, 4, 0, 10, 10, 10, 2, 2, 2, 2, 2, 4, 2, 11, 2, 2, 0, 10, 2, 2, 4, 2, 2, 2,
+  2, 2, 2, 4, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+];
+/** The break-all column class of U+00A0..U+00FF. */
+const BREAK_ALL_COL_LATIN1: readonly number[] = [
+  10, 11, 12, 11, 11, 11, 13, 13, 13, 13, 13, 0, 13, 14, 13, 13, 12, 11, 13, 13, 11, 13, 13, 13,
+  13, 13, 13, 0, 13, 13, 13, 11, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+  13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+  13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+];
+/** The other code points of the Latin set, with their break-all row and column classes. */
+const BREAK_ALL_EXTRA: readonly number[] = [0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2018, 0x2019, 0x201c, 0x201d, 0x2026, 0x200b];
+const BREAK_ALL_ROW_EXTRA: readonly number[] = [12, 4, 12, 12, 13, 4, 4, 4, 4, 14, 15];
+const BREAK_ALL_COL_EXTRA: readonly number[] = [15, 10, 15, 15, 16, 0, 0, 0, 0, 0, 17];
+/** Whether a break-all line may break between a code point of row class r and one of column class c: BREAK_ALL[r * 18 + c]. */
+const BREAK_ALL: readonly number[] = [
+  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0,
+  0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0,
+  0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0,
+  0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0,
+  0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0,
+  0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0,
+  0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+  0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0,
+  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0,
+  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+  0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0,
+  0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+];
+
+function breakAllClass(cp: number, row: boolean): number {
+  if (cp >= 0x20 && cp <= 0x7e) return (row ? BREAK_ALL_ROW_ASCII : BREAK_ALL_COL_ASCII)[cp - 0x20] as number;
+  if (cp >= 0xa0 && cp <= 0xff) return (row ? BREAK_ALL_ROW_LATIN1 : BREAK_ALL_COL_LATIN1)[cp - 0xa0] as number;
+  for (let i = 0; i < BREAK_ALL_EXTRA.length; i++) if ((BREAK_ALL_EXTRA[i] as number) === cp) return (row ? BREAK_ALL_ROW_EXTRA : BREAK_ALL_COL_EXTRA)[i] as number;
+  return -1;
+}
+
+/**
+ * The soft wrap opportunities of word-break: break-all over the Latin set (latinBreakClass): a space run breaks after its end, as
+ * under normal, a hyphen-minus before a Latin-1 letter reads hyphenLetterBreaks, and every other position reads BREAK_ALL for the
+ * pair. A code point outside the set and U+00AD, whose break Chrome shows with a hyphen, are refused.
+ */
+export function breakAllOpportunities(box: LayoutBox, cps: readonly number[], wrap: boolean): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < cps.length; i++) {
+    const cp = cps[i] as number;
+    if (latinBreakClass(cp) < 0) unsupported('line-break', box.id, 'css-text-3 §5', `U+${cp.toString(16).toUpperCase()} is outside the code points the line breaker decides`);
+    if (cp === SOFT_HYPHEN) unsupported('word-break', box.id, 'css-text-3 §5.2', `word-break: break-all with a soft hyphen in ${box.id} is not measured`);
+  }
+  if (!wrap) return out;
+  for (let i = 1; i < cps.length; i++) {
+    const cur = cps[i] as number;
+    const last = cps[i - 1] as number;
+    if (cur === SPACE) continue;
+    if (last === SPACE) {
+      out.push(i);
+      continue;
+    }
+    if (last === HYPHEN_MINUS && cur > 0x7f && cur <= 0xff && latinBreakClass(cur) === LC_AL) {
+      if (hyphenLetterBreaks(cps, i, out)) out.push(i);
+    } else if ((BREAK_ALL[breakAllClass(last, true) * BREAK_ALL_COLUMNS + breakAllClass(cur, false)] as number) === 1) out.push(i);
   }
   return out;
 }
