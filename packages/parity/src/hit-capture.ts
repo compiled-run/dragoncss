@@ -216,14 +216,27 @@ export function compareHitsAt(n: NativeCase, c: HitCapture, dpr: number, faults:
 
 /**
  * A case's reviewed divergence at one device DPR (hit-divergence.ts): the grid it was found on (gridSha256) and the exact grid
- * points where the TS hit test does not name Chrome's element, as grid indices in runs ("3-7 12": 3 to 7 and 12, ascending).
+ * points where the TS hit test does not name Chrome's element, per pair of elements named there ("<Chrome's> <Dragon's>"), as grid
+ * indices in runs ("3-7 12": 3 to 7 and 12, ascending). A pinned point that comes to name another pair is a delta too.
  */
-export type HitDivergenceAt = { readonly grid: string; readonly points: string };
-/** One reviewed case: its reason line and its pinned points per device DPR (keys: the DPR as dpr.ts DPRS writes it). */
+export type HitDivergenceAt = { readonly grid: string; readonly points: Readonly<Record<string, string>> };
+/**
+ * One reviewed case: its reason line, which starts with the DPRs it pins, as its at keys list them ("DPR 2, 2.625: ..."), and its
+ * pinned points per device DPR (keys: the DPR as dpr.ts DPRS writes it).
+ */
 export type HitDivergenceEntry = { readonly case: string; readonly reason: string; readonly at: Readonly<Record<string, HitDivergenceAt>> };
-/** The reason the helper writes for a case it adds; hit-report.test fails while any is left. */
+/** The reason text the helper writes for a case it adds or whose pinned points grow; hit-report.test fails while any is left. */
 export const TODO_REASON = 'TODO reason';
 export const HIT_DIVERGENCE_PATH = 'packages/parity/src/hit-divergence.ts';
+
+/** The DPR list a reason must start with for an entry's at keys. */
+export const reasonPrefix = (at: Readonly<Record<string, unknown>>): string => `DPR ${Object.keys(at).join(', ')}: `;
+
+/** A reason's text after its DPR list, or null when it does not start with one. */
+export function reasonText(reason: string): string | null {
+  const m = /^DPR \d+(?:\.\d+)?(?:, \d+(?:\.\d+)?)*: (.+)$/.exec(reason);
+  return m === null ? null : (m[1] as string);
+}
 
 /** Grid indices (ascending, distinct) as runs. */
 export function indexRuns(indices: readonly number[]): string {
@@ -261,72 +274,121 @@ export function reviewedAt(entries: readonly HitDivergenceEntry[], id: string, d
   return entries.find((e) => e.case === id)?.at[String(dpr)];
 }
 
+/** An element pair's key in HitDivergenceAt.points. */
+export const pairKey = (chrome: string, dragon: string): string => `${chrome} ${dragon}`;
+
+/** A reviewed DPR's points as grid index to pair key, checked: each pair well formed, each index pinned once, inside the grid. */
+export function pinnedPairs(at: HitDivergenceAt, size: number, where: string): Map<number, string> {
+  const out = new Map<number, string>();
+  for (const [pair, runs] of Object.entries(at.points)) {
+    if (!/^\S+ \S+$/.test(pair)) throw new Error(`${where}: ${JSON.stringify(pair)} is not a "<Chrome's element> <Dragon's element>" pair`);
+    for (const i of parseIndexRuns(runs, size, `${where} ${pair}`)) {
+      if (out.has(i)) throw new Error(`${where}: grid point ${i} is pinned under two pairs`);
+      out.set(i, pair);
+    }
+  }
+  if (out.size === 0) throw new Error(`${where}: no pinned points`);
+  return out;
+}
+
+/** The reviewed form of a case's mismatches at a DPR: per pair, its grid indices in runs, pairs in sorted order. */
+export function pairRuns(points: readonly { readonly index: number; readonly chrome: string; readonly dragon: string }[]): Record<string, string> {
+  const by = new Map<string, number[]>();
+  for (const p of points) {
+    const k = pairKey(p.chrome, p.dragon);
+    const list = by.get(k) ?? [];
+    list.push(p.index);
+    by.set(k, list);
+  }
+  const out: Record<string, string> = {};
+  for (const k of [...by.keys()].sort()) out[k] = indexRuns((by.get(k) as number[]).sort((x, y) => x - y));
+  return out;
+}
+
 /**
  * How a case's comparison at a DPR differs from its reviewed points: a case the file does not pin, a grid other than the one the
- * points were found on, each mismatch it does not pin (extra) and each pinned point that now names Chrome's element (fixed), in
- * device px, at most limit of each; empty when the mismatches are exactly the reviewed points.
+ * points were found on, each mismatch it does not pin (extra), each pinned point that now names Chrome's element (fixed) and each
+ * that now names another pair (changed), in device px, at most limit of each; empty when the mismatches are exactly the reviewed ones.
  */
 export function divergenceDelta(id: string, dpr: number, grid: readonly (readonly [number, number])[], mismatches: readonly HitMismatch[], pinned: HitDivergenceAt | undefined, limit = 3): string[] {
   const px = (i: number): string => {
     const p = grid[i];
     return p === undefined ? `#${i}` : `(${p[0] / (dpr * 64)}, ${p[1] / (dpr * 64)})`;
   };
-  if (pinned === undefined) return mismatches.length === 0 ? [] : [`${id} at DPR ${dpr}: a new divergence of ${mismatches.length} points, first ${mismatches.slice(0, limit).map((m) => `${px(m.index)} Chrome ${m.chrome}, Dragon ${m.dragon}`).join('; ')}`];
+  const named = (m: HitMismatch): string => `${px(m.index)} Chrome ${m.chrome}, Dragon ${m.dragon}`;
+  if (pinned === undefined) return mismatches.length === 0 ? [] : [`${id} at DPR ${dpr}: a new divergence of ${mismatches.length} points, first ${mismatches.slice(0, limit).map(named).join('; ')}`];
   if (pinned.grid !== gridSha256(grid)) return [`${id} at DPR ${dpr}: the reviewed points were found on another grid`];
-  const want = new Set(parseIndexRuns(pinned.points, grid.length, `${id} at DPR ${dpr}`));
+  const want = pinnedPairs(pinned, grid.length, `${id} at DPR ${dpr}`);
   const got = new Set(mismatches.map((m) => m.index));
   const extra = mismatches.filter((m) => !want.has(m.index));
-  const fixed = [...want].filter((i) => !got.has(i));
+  const changed = mismatches.filter((m) => want.has(m.index) && want.get(m.index) !== pairKey(m.chrome, m.dragon));
+  const fixed = [...want.keys()].filter((i) => !got.has(i));
   const out: string[] = [];
-  if (extra.length > 0) out.push(`${id} at DPR ${dpr}: ${extra.length} points not reviewed, first ${extra.slice(0, limit).map((m) => `${px(m.index)} Chrome ${m.chrome}, Dragon ${m.dragon}`).join('; ')}`);
+  if (extra.length > 0) out.push(`${id} at DPR ${dpr}: ${extra.length} points not reviewed, first ${extra.slice(0, limit).map(named).join('; ')}`);
+  if (changed.length > 0) out.push(`${id} at DPR ${dpr}: ${changed.length} reviewed points name another pair, first ${changed.slice(0, limit).map((m) => `${named(m)} (reviewed ${want.get(m.index)})`).join('; ')}`);
   if (fixed.length > 0) out.push(`${id} at DPR ${dpr}: ${fixed.length} reviewed points now name Chrome's element, first ${fixed.slice(0, limit).map(px).join('; ')}`);
   return out;
 }
 
-/** A case's observed divergence at a DPR: its grid and the grid indices of its mismatches (none when it matches Chrome). */
-export type ObservedDivergence = { readonly case: string; readonly dpr: number; readonly grid: string; readonly indices: readonly number[] };
+/** A case's observed divergence at a DPR: its grid and its mismatches (none when it matches Chrome). */
+export type ObservedDivergence = { readonly case: string; readonly dpr: number; readonly grid: string; readonly points: readonly { readonly index: number; readonly chrome: string; readonly dragon: string }[] };
+
+/** Whether every (point, pair) of next is pinned in before, on the same grid: the pinned points did not grow. */
+function within(before: HitDivergenceAt | undefined, next: HitDivergenceAt): boolean {
+  if (before === undefined || before.grid !== next.grid) return false;
+  const was = new Set<string>();
+  for (const [pair, runs] of Object.entries(before.points)) for (const i of parseIndexRuns(runs, Number.MAX_SAFE_INTEGER, pair)) was.add(`${i} ${pair}`);
+  for (const [pair, runs] of Object.entries(next.points)) for (const i of parseIndexRuns(runs, Number.MAX_SAFE_INTEGER, pair)) if (!was.has(`${i} ${pair}`)) return false;
+  return true;
+}
 
 /**
  * The reviewed entries rewritten to what was observed (the helper, cli/hit-divergence.ts --write): every case with a mismatch at
- * some DPR, in case order, its points at each DPR it diverges at; a case keeps its reason line, a new one gets TODO_REASON.
+ * some DPR, in case order, its points at each DPR it diverges at. A case whose pinned points only stayed or shrank keeps its reason
+ * text under its new DPR list; one that is new, gains a DPR, or gains a point or a pair anywhere gets TODO_REASON, so its reason is
+ * written again against what it now pins.
  */
 export function rewrittenDivergence(entries: readonly HitDivergenceEntry[], observed: readonly ObservedDivergence[]): HitDivergenceEntry[] {
-  const by = new Map<string, Record<string, HitDivergenceAt>>();
+  const by = new Map<string, Map<number, HitDivergenceAt>>();
   for (const o of observed) {
-    if (o.indices.length === 0) continue;
-    const at = by.get(o.case) ?? {};
-    at[String(o.dpr)] = { grid: o.grid, points: indexRuns([...o.indices].sort((a, b) => a - b)) };
+    if (o.points.length === 0) continue;
+    const at = by.get(o.case) ?? new Map<number, HitDivergenceAt>();
+    at.set(o.dpr, { grid: o.grid, points: pairRuns(o.points) });
     by.set(o.case, at);
   }
   return [...by.keys()].sort().map((id) => {
-    const at = by.get(id) as Record<string, HitDivergenceAt>;
-    const sorted: Record<string, HitDivergenceAt> = {};
-    for (const k of Object.keys(at).sort((a, b) => Number(a) - Number(b))) sorted[k] = at[k] as HitDivergenceAt;
-    return { case: id, reason: entries.find((e) => e.case === id)?.reason ?? TODO_REASON, at: sorted };
+    const dprs = by.get(id) as Map<number, HitDivergenceAt>;
+    const at: Record<string, HitDivergenceAt> = {};
+    for (const d of [...dprs.keys()].sort((x, y) => x - y)) at[String(d)] = dprs.get(d) as HitDivergenceAt;
+    const old = entries.find((e) => e.case === id);
+    const kept = old === undefined ? null : reasonText(old.reason);
+    const same = old !== undefined && kept !== null && kept !== TODO_REASON && Object.keys(at).every((d) => within(old.at[d], at[d] as HitDivergenceAt));
+    return { case: id, reason: `${reasonPrefix(at)}${same ? kept : TODO_REASON}`, at };
   });
 }
 
 /** The reviewed file's source (hit-divergence.ts) for entries: its header, then one line per case. */
 export function divergenceSource(entries: readonly HitDivergenceEntry[]): string {
   const header = [
-    '// The reviewed known divergences of the hit lane at the device DPRs: per case, a one-line reason and, per DPR, the exact grid',
-    "// points (grid indices in runs, on the grid named by its gridSha256) where the TS hit test does not name Chrome's element. Not",
-    '// regen output: pnpm regen (parity:hit-capture) fails when any case\'s mismatches at a DPR are not exactly its points here, and',
+    '// The reviewed known divergences of the hit lane at the device DPRs: per case, a one-line reason that starts with the DPRs it',
+    "// pins, and per DPR the exact grid points (grid indices in runs, on the grid its gridSha256 names) where the TS hit test does not",
+    "// name Chrome's element, per pair of elements named there (\"<Chrome's> <Dragon's>\"). Not regen output: pnpm regen",
+    "// (parity:hit-capture) fails when any case's mismatches at a DPR are not exactly its points and pairs here, and",
     "// hit-report.test.ts demands them point for point and fails while any reason is 'TODO reason'. A case listed at a DPR is not",
     '// proven there (hit-capture.ts hitProvenIds).',
     '//',
-    '// When regen fails on them: pnpm run parity:hit-divergence -- --write rewrites the points from the committed captures, keeping',
-    "// each reason and giving a new case 'TODO reason'; review the diff, write the reasons, commit, and re-run regen.",
-    '//',
-    '// Seeded from the Linux probe of Chrome 145.0.7632.6 against the committed darwin captures (PR #502); the darwin regen replaces',
-    '// the points with darwin\'s through the helper.',
+    '// When regen fails on them (its log also prints this file as rewritten): pnpm run parity:hit-divergence -- --write rewrites the',
+    "// points from the committed captures. A case whose points only stayed or shrank keeps its reason; a new case, or one that gains",
+    "// a DPR, a point or a pair, gets 'TODO reason'. Review the diff, write those reasons against what the case now pins, commit, and",
+    '// re-run regen.',
     '//',
     '// Written by pnpm run parity:hit-divergence -- --write; edit only the reasons by hand.',
     "import type { HitDivergenceEntry } from './hit-capture.ts';",
     '',
     'export const HIT_DIVERGENCE: readonly HitDivergenceEntry[] = [',
   ];
-  const lines = entries.map((e) => `  { case: ${JSON.stringify(e.case)}, reason: ${JSON.stringify(e.reason)}, at: { ${Object.entries(e.at).map(([d, a]) => `${JSON.stringify(d)}: { grid: ${JSON.stringify(a.grid)}, points: ${JSON.stringify(a.points)} }`).join(', ')} } },`);
+  const at = (a: HitDivergenceAt): string => `{ grid: ${JSON.stringify(a.grid)}, points: { ${Object.entries(a.points).map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(', ')} } }`;
+  const lines = entries.map((e) => `  { case: ${JSON.stringify(e.case)}, reason: ${JSON.stringify(e.reason)}, at: { ${Object.entries(e.at).map(([d, a]) => `${JSON.stringify(d)}: ${at(a)}`).join(', ')} } },`);
   return `${[...header, ...lines, '];'].join('\n')}\n`;
 }
 
@@ -340,11 +402,11 @@ export function hitProvenIds(dpr: number, ids: readonly string[], entries: reado
   return ids.filter((id) => reviewedAt(entries, id, dpr) === undefined);
 }
 
-/**
- * Every delta between the hit cases' comparisons at the device DPRs and the reviewed file, plus the reviewed cases that are not hit
- * cases; compared holds each case's comparison at each DPR, on its grid.
- */
-export function hitDivergenceDeltas(entries: readonly HitDivergenceEntry[], compared: readonly { readonly case: string; readonly dpr: number; readonly grid: readonly (readonly [number, number])[]; readonly stale: boolean; readonly mismatches: readonly HitMismatch[] }[]): string[] {
+/** One case's comparison at one DPR, on its grid. */
+export type ComparedAt = { readonly case: string; readonly dpr: number; readonly grid: readonly (readonly [number, number])[]; readonly stale: boolean; readonly mismatches: readonly HitMismatch[] };
+
+/** Every delta between the hit cases' comparisons at the device DPRs and the reviewed file, plus reviewed cases or DPRs not compared. */
+export function hitDivergenceDeltas(entries: readonly HitDivergenceEntry[], compared: readonly ComparedAt[]): string[] {
   const out: string[] = [];
   const ids = new Set(compared.map((c) => c.case));
   for (const e of entries) if (!ids.has(e.case)) out.push(`${e.case}: reviewed, but not a hit case`);
@@ -355,6 +417,15 @@ export function hitDivergenceDeltas(entries: readonly HitDivergenceEntry[], comp
   const dprs = new Set(compared.map((c) => String(c.dpr)));
   for (const e of entries) for (const d of Object.keys(e.at)) if (!dprs.has(d)) out.push(`${e.case}: reviewed at DPR ${d}, which is not captured`);
   return out;
+}
+
+/** The markers around the rewritten reviewed file in parity:hit-capture's failure output. */
+export const REWRITTEN_BEGIN = '----- BEGIN rewritten packages/parity/src/hit-divergence.ts -----';
+export const REWRITTEN_END = '----- END rewritten packages/parity/src/hit-divergence.ts -----';
+
+/** The reviewed file rewritten to compared (rewrittenDivergence over each case's mismatches at each DPR). */
+export function rewrittenFrom(entries: readonly HitDivergenceEntry[], compared: readonly ComparedAt[]): HitDivergenceEntry[] {
+  return rewrittenDivergence(entries, compared.map((c) => ({ case: c.case, dpr: c.dpr, grid: gridSha256(c.grid), points: c.mismatches })));
 }
 
 /** Tap dispatch on the host: the element a tap at (x, y) in LU activates, or null when no ancestor has a handler. */

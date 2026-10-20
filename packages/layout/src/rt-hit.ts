@@ -20,6 +20,7 @@ import { absoluteRects, layout, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
 import { floorOf, froundOf, roundOf } from './rt-easing.ts';
 import type { TextMeasurer } from './text.ts';
+import { AHEM_FACE_ID } from './text.ts';
 
 /** One hit node: a box, or a text piece or line of a block's inline content. target is the node index hit testing returns. */
 export type HitNode = {
@@ -543,6 +544,11 @@ function pieceFlags(s: TableState, b: LayoutBox, zb: LayoutBox, zLeaves: readonl
     if (l.whiteSpaceCollapse !== 'collapse') preserved = true;
   }
   if (!preserved) return out;
+  // inline.ts joins a real face's fragments of one leaf on a line into one piece (joinedFragments), hanging spaces included, so its
+  // pieces carry no hangs flag: the hit table models preserved text in Ahem only.
+  for (const l of zLeaves) {
+    if (l.font.family !== AHEM_FACE_ID) throw new HitError(`${l.id}: preserved text in ${l.font.family}, whose hanging spaces the engine joins into its text piece; the hit table models preserved text in Ahem only`);
+  }
   const st = zb.style;
   if (hasPercent(st.paddingLeft) || hasPercent(st.paddingRight)) throw new HitError(`${b.id}: preserved text in a box with percentage inline padding, whose content width the hit table does not resolve`);
   const border = resolveBorder(st, s.ctx.devicePixelRatio);

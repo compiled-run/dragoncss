@@ -395,6 +395,35 @@ describe('the hit test at a device scale', () => {
     { name: 'hanging spaces that start their own text node: XXXXXXXXX<!---->  XX at 190px', width: 190, texts: ['XXXXXXXXX', '  XX'], lines: 2, chrome: HANG },
     { name: 'hanging spaces at a soft wrap: XXXXXXXXX  XX at 190px', width: 190, texts: ['XXXXXXXXX  XX'], lines: 2, chrome: HANG },
   ];
+  it('refuses preserved text in a real face, whose hanging spaces the engine joins into its text piece', async () => {
+    // A face the engine shapes (any family but Ahem): Ahem's data and glyphs under another name, through the WASM HarfBuzz.
+    const { HitError: Refused, hitTableOf } = await import('../src/rt-hit.ts');
+    const { deviceShapedMeasurer } = await import('../src/platform.ts');
+    const { AHEM_FONT_DATA, ahemMeasurer } = await import('../src/text.ts');
+    const { FEATURE_STRIDE } = await import('../src/shaping.ts');
+    const { readFileSync } = await import('node:fs');
+    const wasm = (await import(new URL('../../text-shaper/src/wasm.ts', import.meta.url).href)) as { DragonHB: { load(): { createFace(b: Uint8Array): number; createFont(f: number, o: { size: number }): number; shape(font: number, text: string, offset: number, length: number, o: object): Int32Array } }; tagToString(t: number): string };
+    const hb = wasm.DragonHB.load();
+    const face = hb.createFace(readFileSync(new URL('../../../vendor/fonts/Ahem.ttf', import.meta.url)));
+    const shaper = {
+      shape(_f: string, size: number, value: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
+        const fs: object[] = [];
+        for (let i = 0; i < features.length; i += FEATURE_STRIDE) fs.push({ tag: wasm.tagToString(features[i] as number), value: features[i + 1], start: features[i + 2], end: features[i + 3] });
+        return Array.from(hb.shape(hb.createFont(face, { size }), value, start, end - start, { script, direction: rtl ? 'rtl' : 'ltr', language, features: fs }));
+      },
+    };
+    const measurer = deviceShapedMeasurer(new Map([['Shaped', AHEM_FONT_DATA]]), shaper);
+    const { ahemFont, box: lbox, neutralEnvironment, px, text } = await import('./helpers.ts');
+    const facts = new Map(['html', 'g'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    const viewport = { width: 400, height: 300 };
+    const table = (family: string, collapse: 'preserve' | 'collapse', m: typeof measurer) => () => hitTableOf({ viewport, devicePixelRatio: 1, ...neutralEnvironment(viewport), root: lbox('html', {}, [lbox('g', { width: px(100) }, [text('t', 'XX  XX', { font: { ...ahemFont(20), family }, lineHeight: { kind: 'px', value: 40 }, whiteSpaceCollapse: collapse })])]) }, m, facts, NO_HIT_TABLE_FAULTS);
+    expect(table('Shaped', 'preserve', measurer)).toThrow(Refused);
+    expect(table('Shaped', 'preserve', measurer)).toThrow(/t: preserved text in Shaped, .* the hit table models preserved text in Ahem only/);
+    // The same text collapsed, and preserved in Ahem, have tables.
+    expect(table('Shaped', 'collapse', measurer)().nodes.length).toBeGreaterThan(0);
+    expect(table('Ahem', 'preserve', ahemMeasurer)().nodes.length).toBeGreaterThan(0);
+  });
+
   for (const page of pages) {
     it(`names Chrome's element at every grid point of ${page.name} at DPR 1, 2 and 3`, async () => {
       const { hitGrid, hitRuns, hitTableOf } = await import('../src/rt-hit.ts');
