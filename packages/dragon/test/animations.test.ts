@@ -224,6 +224,7 @@ describe('animation analysis', () => {
     expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { flex-grow: 2 } }'))).toEqual(['ANIM-p']);
     // The spec's row: transform (and opacity, once it is a longhand) names ANIM-b2, the package that admits it.
     expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { transform: translateX(2px) } }'))).toEqual(['ANIM-b2']);
+    expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { rotate: 30deg } }'))).toEqual(['ANIM-b2']);
   });
 
   it('refuses a transitioned property an animation also sets (R12, ANIM-o) and a currentcolor pair (ANIM-cc)', () => {

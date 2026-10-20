@@ -22,6 +22,7 @@ import { captureBreakTexts } from './line-breaks.ts';
 import type { RgbaImage } from './native-compare.ts';
 import type { RasterPath } from './pixel-reference.ts';
 import { decodePng, PIXEL_CAPTURE, RASTER_RULE, rasterPathProblems, rasterSize } from './pixel-reference.ts';
+import { transformedIds } from './transform-capture.ts';
 import { authoredModel } from './render.ts';
 import { fixtureInput } from './cases.ts';
 import type { Assignment } from 'dragon';
@@ -226,8 +227,9 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
       }, { pageSteps: chunk, tracked }));
       if (pixels === null || dumps.length === k) continue;
       if (dumps.length !== k + 1) throw new Error(`${c.id}: a reference chunk gave ${dumps.length - k} dumps`);
-      // captureBreakTexts' transform twin would restyle the running script, so a transformed element is refused instead.
-      const transformed = await page.evaluate(() => Array.from(document.querySelectorAll('[data-dragon-id]')).filter((el) => getComputedStyle(el).transform !== 'none').map((el) => el.getAttribute('data-dragon-id')));
+      // captureBreakTexts' transform twin would restyle the running script, so an element it would restyle (a transform, translate,
+      // rotate or scale that is not none) is refused instead.
+      const transformed = await transformedIds(page);
       if (transformed.length > 0) throw new Error(`${c.id} sample ${k}: ${transformed.join(', ')} transformed; the frame break capture refuses the transform twin`);
       breaks.push(await captureBreakTexts(page));
       if (!pixels.has(k)) continue;

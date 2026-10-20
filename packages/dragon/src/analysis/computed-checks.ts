@@ -985,10 +985,10 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     const why = v.value.kind === 'percentage' ? `a percentage ${p} is relative to ${of}, which is not built yet (package SVG-units)` : `a calculated ${p} is not resolved yet (package SVG-units)`;
     refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} in px or as a number.`);
   }
-  for (const p of ['width', 'height', 'transform'] as const) {
+  for (const p of ['width', 'height', 'transform', 'translate', 'rotate', 'scale'] as const) {
     const v = el.props.get(p) as ResolvedValue;
     if (v.declaration === null) continue;
-    refuse(p, authored(v.declaration.valueSpan), `${p}: ${v.declaration.text} on <${tag}> ${el.element.address} is not supported: a shape's geometry comes from its attributes until the SVG structure package SVG-b`, `Remove the declaration, or set the ${p === 'transform' ? 'geometry' : p} attribute.`);
+    refuse(p, authored(v.declaration.valueSpan), `${p}: ${v.declaration.text} on <${tag}> ${el.element.address} is not supported: a shape's geometry comes from its attributes until the SVG structure package SVG-b`, `Remove the declaration, or set the ${p === 'width' || p === 'height' ? p : 'geometry'} attribute.`);
   }
 }
 
