@@ -7,6 +7,7 @@ import type { FontSpec, InlineChild, LayoutBox, LayoutNode, ListMarker, TextLeaf
 import { rootFontSizeOf } from './ios-layout.ts';
 import type { AnimationAnalysis } from '../analysis/animations.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
+import { markerStyleOf } from '../analysis/resolve.ts';
 import { analyzeDecorations } from '../analysis/text-decoration.ts';
 import { synthesizesBold, SYNTHETIC_OBLIQUE_SHEAR, synthesizesOblique } from '../analysis/computed.ts';
 import { nativeTextShadows } from '../analysis/text-shadow.ts';
@@ -183,11 +184,12 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   };
   // GEN-c: a list item's outside marker is the last child of its view, as the engine places its rect after the item's content. The dump
   // schema knows element nodes, so it is one: a box view with a transparent background, no borders (currentcolor ones of zero width,
-  // as an anonymous box's), the item's visibility (the marker inherits it) and, for a symbol, the marker write in the item's color.
-  // A text marker's box holds a text node at the engine's text fragment ("<marker>:text0"), drawn as a text leaf in the item's font.
+  // as an anonymous box's), the item's visibility (the marker inherits it) and, for a symbol, the marker write in the marker's color
+  // (its ::marker rules' or the item's). A text marker's box holds a text node at the engine's text fragment ("<marker>:text0"),
+  // drawn as a text leaf in the item's font and the marker's color.
   const marker = (m: ListMarker, item: string, el: ResolvedElement | null): void => {
     if (el === null) throw new ProgramError(`${m.id}: the list item ${item} has no resolved element`);
-    const color = usedColors(el).color;
+    const color = usedColors(markerStyleOf(el)).color;
     const hidden = visibilityWrites(el);
     const facts: Record<string, unknown> = { stacking: markerStackingFacts(m) };
     for (const w of hidden) facts['visibility'] = { visible: false, value: w.value };
@@ -231,7 +233,7 @@ function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, Owned
   return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes: textWrites(t.font, colorChannels(color.value, t.id), owned.owner, plants), facts: {} };
 }
 
-/** A text marker's text node: its compile-time text in the list item's font and used color, parented to the marker's box. */
+/** A text marker's text node: its compile-time text in the list item's font and the marker's used color, parented to the marker's box. */
 function markerTextPaint(m: ListMarker, item: ResolvedElement, color: Rgba8, plants: TextPlants): NodePaint {
   if (m.text === null) throw new ProgramError(`${m.id}: a text marker has no text`);
   return { id: markerTextId(m.id), parent: m.id, kind: 'text', clips: false, text: m.text, writes: textWrites(m.font, color, item, plants), facts: {} };
