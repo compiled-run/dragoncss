@@ -12,7 +12,10 @@
 // folds when the border is four solid sides in one colour or a lone side, and does not with two sides, a child or text
 // (-border-only), groups over earlier flow rects
 // (-over-rects), a group over an earlier group (-over-group), and groups clipped by an opaque overflow: hidden backdrop
-// (-clipped). Every group sits clear of the cc raster tile seams at DPR 2, 3
+// (-clipped). S2: nested groups, one and two levels deep, whose inner group folds into its one fill or is a layer, inside an outer
+// group with or without its own paint, a translucent fill or text (-nested), and translucent paint inside a group: a lone translucent
+// fill (folded at the float alpha product), a translucent child fill, a translucent fill under a translucent four-side border, a
+// translucent border alone (one op, folded), a translucent lone side, and opaque text over a translucent fill (-translucent). Every group sits clear of the cc raster tile seams at DPR 2, 3
 // and 2.625 in both directions (x in 16-48, 64-96 or 104-136 css px, y below 168). opacity-web holds the fractional cases (0.3,
 // 45%, an inherited 0.5, translucent groups with a child, text and a border): the lanes compile it on native as a lane-only case
 // (project.ts), so it proves web rows only, and the device pixel lanes skip what its groups paint (pixel-reference.ts devicePoints).
@@ -42,6 +45,8 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-group-over-rects'),
   both('opacity-group-over-group'),
   both('opacity-group-clipped'),
+  both('opacity-group-nested'),
+  both('opacity-group-translucent'),
   reject('opacity-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(50% + 10%)', 'opacity: calc(50% + 10%) is unsupported:'),
   both('stacking-basic'),
   both('stacking-context'),

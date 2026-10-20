@@ -507,7 +507,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity, stacking and filter fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -692,7 +692,7 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
   const precomposited = (id: string): boolean => id.startsWith('opacity-group-') || id.startsWith('filter-matrix-');
   const groupFixtures = FIXTURES.filter((f) => precomposited(f.id));
   it('admits every translucent or filtered group of the opacity-group and filter-matrix fixtures, which compile on native as user cases', () => {
-    expect(groupFixtures.length).toBe(8);
+    expect(groupFixtures.length).toBe(10);
     for (const spec of groupFixtures) {
       for (const c of casesOf(spec, fixtureInput(spec))) {
         const lanes = nativeCompile(spec, c.environment.direction);
@@ -706,7 +706,9 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
             return e !== undefined && e.opacity > 0 && (e.opacity < 1 || (e.filter ?? []).length > 0);
           });
           expect(translucent.length, c.id).toBeGreaterThan(0);
-          expect(translucent.filter((n) => groupPlanOf(n) === null).map((n) => n.id), c.id).toEqual([]);
+          // A group nested in an admitted group has an opacity-nested write: its outer group's overlay composites it.
+          const nested = (n: ProgramNode): boolean => n.writes.some((w) => w.kind === 'opacity-nested');
+          expect(translucent.filter((n) => groupPlanOf(n) === null && !nested(n)).map((n) => n.id), c.id).toEqual([]);
           expect(p.nodes.some((n) => n.writes.some((w) => w.kind === 'opacity')), c.id).toBe(false);
         }
       }

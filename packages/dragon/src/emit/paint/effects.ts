@@ -541,11 +541,15 @@ public final class DragonGroupView: UIView {
       if let tv = c as? DragonTextView {
         guard let font = tv.dragonFont else { continue }
         let r = dragonLayoutRect(tv, in: f.root)
+        // The fold item is the line's ink with its run box, as the group's own fold counts it.
+        let ascent = Double(CTFontGetAscent(font as CTFont)) * f.s
+        let descent = Double(CTFontGetDescent(font as CTFont)) * f.s
         for l in tv.specs where !l.glyphs.isEmpty {
-          if let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * f.s, Double(r.minY) * f.s, f.s) {
-            draws += ink + [0]
-            colours.append(tv.dragonColor)
-          }
+          guard let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * f.s, Double(r.minY) * f.s, f.s) else { continue }
+          let x0 = Double(r.minX) * f.s + l.xLU / units_LU_PER_PX
+          let base = Double(r.minY) * f.s + l.baseline
+          draws += [min(ink[0], x0.rounded(.down)), min(ink[1], (base - ascent).rounded(.down)), max(ink[2], (x0 + l.widthLU / units_LU_PER_PX).rounded(.up)), max(ink[3], (base + descent).rounded(.up)), 0]
+          colours.append(tv.dragonColor)
         }
       } else {
         dragonSoftwareDraws(c, nested || ((c as? DragonBoxView)?.dragonNestedGroup ?? false), f, &draws, &colours)
@@ -1133,9 +1137,16 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       val c = v.getChildAt(i)
       if (c === this || c is DragonGroupView || c.visibility != View.VISIBLE) continue
       if (c is DragonTextView) {
+        // The fold item is the line's ink with its run box, as the group's own fold counts it.
         val o = dragonLayoutOffset(c, f.root)
-        for (e in dragonGroupLineInks(c, o[0].toDouble(), o[1].toDouble())) {
-          for (k in 0 until 4) draws.add(e[k])
+        val fm = c.paint.fontMetrics
+        val lines = c.specs.filter { it.glyphs.isNotEmpty() }
+        for ((n, e) in dragonGroupLineInks(c, o[0].toDouble(), o[1].toDouble()).withIndex()) {
+          val l = lines[n]
+          val x0 = o[0] + l.xLU / units_LU_PER_PX
+          val base = (o[1] + l.baseline).toDouble()
+          draws.add(minOf(e[0], kotlin.math.floor(x0))); draws.add(minOf(e[1], kotlin.math.floor(base + fm.ascent)))
+          draws.add(maxOf(e[2], kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX))); draws.add(maxOf(e[3], kotlin.math.ceil(base + fm.descent)))
           draws.add(0.0)
           colours.add(c.dragonColor)
         }
