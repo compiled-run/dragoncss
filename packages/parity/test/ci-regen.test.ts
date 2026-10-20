@@ -677,9 +677,14 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
 
 describe('regen-on-ci.yml resume: chrome-1 taken from an earlier run, run locally', () => {
   const check = stepScript('Check the run to resume from');
+  // The branch the run regenerates and this run's id, as resolve and GitHub give them.
+  const base = { BRANCH: BR, GITHUB_RUN_ID: '5000', RUNS_TRIED: '5' };
   const RUN = '4242';
-  const ghFor = (o: { readonly path?: string; readonly artifacts?: readonly object[]; readonly jobs?: readonly object[]; readonly missing?: boolean } = {}) => `
+  const ghFor = (o: { readonly path?: string; readonly artifacts?: readonly object[]; readonly jobs?: readonly object[]; readonly missing?: boolean; readonly labelled?: readonly object[]; readonly dispatched?: readonly object[] } = {}) => `
 case "$2" in
+  *workflows/regen-on-ci.yml/runs?event=pull_request*) body='${JSON.stringify({ workflow_runs: o.labelled ?? [] })}' ;;
+  *workflows/regen-on-ci.yml/runs?event=workflow_dispatch*) body='${JSON.stringify({ workflow_runs: o.dispatched ?? [] })}' ;;
+  repos/${REPO}/actions/runs/[0-9]*/artifacts*|repos/${REPO}/actions/runs/[0-9]*/jobs*|repos/${REPO}/actions/runs/[0-9]*) [ "$(cut -d/ -f6 <<<"$2" | cut -d'?' -f1)" = ${RUN} ] || { echo '{"message":"Not Found"}'; exit 1; } ;;&
   repos/${REPO}/actions/runs/${RUN}) ${o.missing === true ? `echo '{"message":"Not Found"}'; exit 1` : `body='${JSON.stringify({ path: o.path ?? '.github/workflows/regen-on-ci.yml' })}'`} ;;
   repos/${REPO}/actions/runs/${RUN}/artifacts*) body='${JSON.stringify({ artifacts: o.artifacts ?? [{ name: 'chrome-1', expired: false }] })}' ;;
   repos/${REPO}/actions/runs/${RUN}/jobs*) body='${JSON.stringify({ jobs: o.jobs ?? [{ name: 'resolve', conclusion: 'success' }, { name: 'chrome-1 / round', conclusion: 'success' }, { name: 'host-1 / round', conclusion: 'failure' }] })}' ;;
@@ -687,14 +692,36 @@ case "$2" in
 esac
 if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
   it('takes a regen-on-ci run whose chrome-1 succeeded, and a run given resume saves no cache', () => {
-    expect(runStep(check, { RESUME: RUN, MODE: 'patch' }, ghFor()).out).toEqual({ resume: RUN, save: 'false' });
-    expect(runStep(check, { RESUME: RUN, MODE: 'push' }, ghFor()).out).toEqual({ resume: RUN, save: 'false' });
+    expect(runStep(check, { ...base, RESUME: RUN, MODE: 'patch' }, ghFor()).out).toEqual({ resume: RUN, save: 'false' });
+    expect(runStep(check, { ...base, RESUME: RUN, MODE: 'push' }, ghFor()).out).toEqual({ resume: RUN, save: 'false' });
     // A chrome-1 that resume-chrome-1 itself supplied (its round skipped) qualifies too, so resumes chain.
-    expect(runStep(check, { RESUME: RUN, MODE: 'patch' }, ghFor({ jobs: [{ name: 'resume-chrome-1', conclusion: 'success' }, { name: 'chrome-1', conclusion: 'skipped' }] })).out).toEqual({ resume: RUN, save: 'false' });
+    expect(runStep(check, { ...base, RESUME: RUN, MODE: 'patch' }, ghFor({ jobs: [{ name: 'resume-chrome-1', conclusion: 'success' }, { name: 'chrome-1', conclusion: 'skipped' }] })).out).toEqual({ resume: RUN, save: 'false' });
     // Without resume, patch mode saves nothing and the other modes save as before.
-    expect(runStep(check, { RESUME: '', MODE: 'patch' }, 'exit 9').out).toEqual({ resume: '', save: 'false' });
-    expect(runStep(check, { RESUME: '', MODE: 'push' }, 'exit 9').out).toEqual({ resume: '', save: 'true' });
-    expect(runStep(check, { RESUME: '', MODE: 'warm' }, 'exit 9').out).toEqual({ resume: '', save: 'true' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'patch' }, 'exit 9').out).toEqual({ resume: '', save: 'false' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, 'exit 9').out).toEqual({ resume: '', save: 'true' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'warm' }, 'exit 9').out).toEqual({ resume: '', save: 'true' });
+  });
+  it('a label run or a branch dispatch takes the newest earlier run of its branch that qualifies, and then saves no cache', () => {
+    const lab = (id: number, head_branch = BR) => ({ id, head_branch, display_title: 'Batch 3 landing' });
+    const dis = (id: number, branch = BR) => ({ id, head_branch: 'master', display_title: runTitle(branch, HEAD, NONCE) });
+    // 4242 qualifies; 4300 (newer) has no such run in the stub, so it is passed over; 6000 is newer than this run; other branches never count.
+    const found = runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ labelled: [lab(4300), lab(4242), lab(6000), lab(4400, 'other')], dispatched: [dis(4350, 'other'), dis(4100)] }));
+    expect(found.status, found.stderr).toBe(0);
+    expect(found.out).toEqual({ resume: RUN, save: 'false' });
+    expect(found.stdout).toContain('not resuming from run 4300: run 4300 was not found');
+    expect(found.stdout).not.toContain('4400');
+    expect(found.stdout).not.toContain('4350');
+    // A branch dispatch (run-name "regen of branch <b> at ...") counts too.
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ dispatched: [dis(4242)] })).out).toEqual({ resume: RUN, save: 'false' });
+    // Nothing that qualifies, or a failed list: no resume, and the cache is saved as before.
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ labelled: [lab(4300)] })).out).toEqual({ resume: '', save: 'true' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, 'echo nope; exit 1').out).toEqual({ resume: '', save: 'true' });
+    // At most RUNS_TRIED runs are tried.
+    const capped = runStep(check, { ...base, RESUME: '', MODE: 'push', RUNS_TRIED: '1' }, ghFor({ labelled: [lab(4300), lab(4242)] }));
+    expect(capped.out).toEqual({ resume: '', save: 'true' });
+    // Patch mode (the landing driver) and master's warm run never look for one.
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'patch' }, ghFor({ labelled: [lab(4242)] })).out).toEqual({ resume: '', save: 'false' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'warm' }, ghFor({ labelled: [lab(4242)] })).out).toEqual({ resume: '', save: 'true' });
   });
   it('warns and regenerates from scratch for a run that does not qualify, and refuses an id that is not a number', () => {
     for (const [o, why] of [
@@ -706,12 +733,12 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
       [{ jobs: [{ name: 'chrome-1 / round', conclusion: 'cancelled' }] }, `run ${RUN}'s chrome-1 did not succeed`],
       [{ jobs: [{ name: 'chrome-1 / round', conclusion: null }] }, `run ${RUN}'s chrome-1 did not succeed`],
     ] as const) {
-      const r = runStep(check, { RESUME: RUN, MODE: 'patch' }, ghFor(o));
+      const r = runStep(check, { ...base, RESUME: RUN, MODE: 'patch' }, ghFor(o));
       expect(r.status, why).toBe(0);
       expect(r.stdout, why).toContain(`::warning::${why}; chrome-1 runs from scratch`);
       expect(r.out, why).toEqual({ resume: '', save: 'false' });
     }
-    const bad = runStep(check, { RESUME: '12; rm -rf /', MODE: 'patch' }, 'exit 9');
+    const bad = runStep(check, { ...base, RESUME: '12; rm -rf /', MODE: 'patch' }, 'exit 9');
     expect(bad.status).toBe(1);
     expect(bad.stdout).toContain('::error::resume is not a run id');
   });
