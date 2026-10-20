@@ -27,10 +27,11 @@ export type ProfileRow = { readonly feature: string; readonly context: string; r
 /**
  * Environment limits of support claims (T078 R1-R3, decisions.md overlay-scrollbar rule). overlayScrollbars: Chrome's scroll
  * metrics are captured with overlay scrollbars, the reference environment; with classic scrollbars Chrome reserves a gutter,
- * measured on Chrome 145.0.7632.6 at 15px for overflow: scroll, and for auto once its content overflows.
+ * measured on Chrome 145.0.7632.6 at 15px for overflow: scroll, for auto once its content overflows, and for scrollbar-gutter:
+ * stable even when nothing overflows; 11px with scrollbar-width: thin.
  */
 export const PROFILE_NOTES = {
-  overlayScrollbars: 'holds with overlay scrollbars only (the reference environment); classic scrollbars reserve a 15px gutter at the inline and block end (measured on Chrome 145), which this claim does not cover',
+  overlayScrollbars: 'holds with overlay scrollbars only (the reference environment); classic scrollbars reserve a 15px gutter at the inline and block end (11px for scrollbar-width: thin; measured on Chrome 145), which this claim does not cover',
 } as const;
 
 export type ProfileNote = keyof typeof PROFILE_NOTES;
@@ -44,9 +45,9 @@ export function nativeOutlinePending(feature: string): boolean {
   return feature === 'outline-style:auto';
 }
 
-/** The note a target's row for a feature carries, or null: web overflow auto and scroll depend on the scrollbar environment (R3). */
+/** The note a target's row for a feature carries, or null: web overflow auto and scroll, scrollbar-width other than none and a stable gutter depend on the scrollbar environment (R3). */
 export function profileNoteFor(target: Target, feature: string): ProfileNote | null {
-  return target === 'web' && /^overflow-[xy]:(auto|scroll)$/.test(feature) ? 'overlayScrollbars' : null;
+  return target === 'web' && /^(overflow-[xy]:(auto|scroll)|scrollbar-width:(auto|thin)|scrollbar-gutter:stable( both-edges)?)$/.test(feature) ? 'overlayScrollbars' : null;
 }
 
 export type SupportProfile = { readonly target: Target; readonly revision: string; readonly rows: readonly ProfileRow[] };

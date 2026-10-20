@@ -1,0 +1,17 @@
+{
+  "case": "scroll-scrollbar-root",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 172,
+  "gridSha256": "06d579f31864b66980d27c98e0fe1a3d1d8aaee36fa2b60b8f41d197e266582d",
+  "ids": [
+    "html",
+    "t"
+  ],
+  "runs": [[0,40],[1,16],[0,2],[1,16],[0,2],[1,16],[0,2],[1,9],[0,2],[1,9],[0,2],[1,9],[0,2],[1,9],[0,2],[1,9],[0,2],[1,9],[0,2],[1,10],[0,1],[1,1]]
+}

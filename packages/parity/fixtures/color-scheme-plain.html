@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+html { color-scheme: light; }
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 60px; height: 30px; margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.a { color-scheme: dark; }
+.b { color-scheme: light dark; }
+.c { COLOR-SCHEME: Only Dark; }
+.d { color-scheme: dark light; }
+.e { color-scheme: brand dark; }
+.f { --cs: dark; color-scheme: var(--cs); }
+.g { color-scheme: light only; }
+.h { color-scheme: normal; }
+.i { color-scheme: inherit; }
+.k { color-scheme: initial; }
+.row { display: flex; width: 200px; color-scheme: dark; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="box a">XX <span data-dragon-id="s1e">XX</span></div>
+<div data-dragon-id="s2" class="box b"><div data-dragon-id="s2c" class="i">XXX</div></div>
+<div data-dragon-id="s3" class="box c"><a data-dragon-id="s3a">XX</a></div>
+<div data-dragon-id="s4" class="box d">XX</div>
+<div data-dragon-id="s5" class="box e">XX</div>
+<div data-dragon-id="s6" class="box f">XX</div>
+<div data-dragon-id="s7" class="box g">XX</div>
+<div data-dragon-id="s8" class="box h"><div data-dragon-id="s8c" class="k">XX</div></div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="ra" class="box">XX XX</div><div data-dragon-id="rb" class="box b">XX</div></div>
+</body>
+</html>

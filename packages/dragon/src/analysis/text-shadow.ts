@@ -130,7 +130,7 @@ function singleLine(t: ResolvedText): boolean {
 }
 
 /** Whether an element paints a background, a border or a box shadow (the paints Chrome puts beneath every text shadow of its stacking context). */
-function paintsBox(el: ResolvedElement): boolean {
+export function paintsBox(el: ResolvedElement): boolean {
   const bg = el.props.get('background-color') as ResolvedValue;
   if (!(bg.value.kind === 'keyword' && bg.value.value === 'transparent') && !(bg.value.kind === 'color' && bg.value.value.alpha === 0)) return true;
   if (keyword(el.props, 'background-image') !== 'none' || keyword(el.props, 'box-shadow') !== 'none') return true;
