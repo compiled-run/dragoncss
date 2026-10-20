@@ -2019,18 +2019,13 @@
         { "lines": "2744-2770", "symbol": "AdjustRoundedClipForOverflowClipMargin", "source": "cited" },
         { "lines": "2772-2815", "symbol": "UpdateInnerBorderRadiusClip", "source": "cited" },
         { "lines": "2381-2405", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateCssClip", "source": "located" },
-        { "lines": "2426-2527", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateClipPathClip", "source": "located" },
-        { "lines": "552-662", "symbol": "NeedsPaintOffsetTranslation", "source": "located" },
-        { "lines": "1238-1258", "symbol": "NeedsTransform", "source": "located" },
-        { "lines": "1664-1725", "symbol": "NeedsEffectIgnoringClipPathAnd2DScale", "source": "located" }
+        { "lines": "2426-2527", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateClipPathClip", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/paint-values/clip.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/lower/paint/clip.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/parity/src/paint-samples/replaced-geometry.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/analysis/transform-extra.ts", "symbol": "hiddenBackfaceIsInert", "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/isolation.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/parity/src/paint-samples/replaced-geometry.ts", "symbol": null, "use": "reference" }
         ]
       },
       {
@@ -2745,21 +2740,6 @@
       "dragon": [
         { "file": "packages/dragon/src/css/color.ts", "symbol": "darkColor", "use": "port" },
         { "file": "packages/dragon/src/css/color.ts", "symbol": "lightColor", "use": "port" }
-      ]
-    },
-    {
-      "upstream": "third_party/blink/renderer/platform/graphics/compositing/pending_layer.cc",
-      "licence": "bsd-chromium",
-      "noticeText": "chromium-bsd",
-      "licencePhrase": "Use of this source code is governed by a BSD-style license",
-      "copyright": "Copyright 2021 The Chromium Authors",
-      "fileSha256": "efbd23a6cac266da7b5af66bf412127f5769726485d369dc3c90bb85b8017708",
-      "headerSha256": "40ecbf467cce38f1e17971fdcdfe424a7eaa7178173604fc79e6715eb35f11a8",
-      "ranges": [
-        { "lines": "463-563", "symbol": "PendingLayer::DecompositeTransforms", "source": "located" }
-      ],
-      "dragon": [
-        { "file": "packages/dragon/src/analysis/transform-extra.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -3740,13 +3720,11 @@
       "fileSha256": "eeba0f6eab6f73cd962281fcc932c75413a0d15a8a3808309904974b956a9876",
       "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
       "ranges": [
-        { "lines": "223-229", "symbol": null, "source": "cited" },
-        { "lines": "424-477", "symbol": "Transform::IsBackFaceVisible", "source": "located" }
+        { "lines": "223-229", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-interpolate.ts", "symbol": "translateMatrix", "use": "port" },
-        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/analysis/transform-extra.ts", "symbol": "hiddenBackfaceIsInert", "use": "reference" }
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

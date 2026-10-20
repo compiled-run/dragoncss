@@ -9,7 +9,7 @@ import { inDomain } from './analysis/input.ts';
 import { isLonghand, PROPERTY_ROLE } from './css/properties.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { notApplicableMark } from './css/not-applicable.ts';
-import { notApplicableEntry } from './profiles/not-applicable-native.ts';
+import { notApplicableEntry, notApplicableSentence } from './profiles/not-applicable-native.ts';
 import type { ProfileRow, SupportProfile } from './profiles/types.ts';
 import { ANDROID_MIN_SDK, COMMITTED_PROFILES, findResolved, internalRecord, profileFor, validAndroid } from './project.ts';
 import type { Diagnostic, SupportAnswer, SupportCandidate, SupportQuery } from './types.ts';
@@ -40,7 +40,7 @@ function possibilities(target: unknown, css: unknown): SupportAnswer {
   const rules = parseStylesheet(text, { source: ref, start: 0, end: text.length }, { id: 'query', owner: 'query', scope: 'document' }, 0, problems);
   // NA-NATIVE: a listed property has no meaning on a native target; web still refuses it.
   const na = t.kind === 'web' || problems.length !== 1 || rules.length !== 1 || rules[0]?.declarations.length !== 0 ? null : notApplicableMark(problems[0] as Diagnostic);
-  if (na !== null) return { kind: 'not-applicable', declaration: css.trim(), reason: `${na.name} has no effect on ${t.kind}: ${na.reason}` };
+  if (na !== null) return { kind: 'not-applicable', declaration: css.trim(), reason: notApplicableSentence(na, t.kind) };
   if (problems.length > 0) return { kind: 'invalid-query', diagnostics: problems };
   const declarations = rules.flatMap((r) => r.declarations);
   if (rules.length !== 1 || declarations.length !== 1) return invalid('css must hold exactly one declaration, for example "gap: 7px"');
@@ -97,7 +97,7 @@ function resolved(q: Extract<SupportQuery<string>, { kind: 'resolved' }>): Suppo
     out.push({ assignment: c.assignment, decision: row === undefined ? null : candidate(row) });
   }
   if (out.length === 0) return invalid(`no element ${address} in any case matching the assignment`, 'DRAGON_TREE_REFERENCE');
-  if (na !== null) return { kind: 'not-applicable', declaration: q.property, reason: `${na.name} has no effect on ${target}: ${na.reason}` };
+  if (na !== null) return { kind: 'not-applicable', declaration: q.property, reason: notApplicableSentence(na, target) };
   return { kind: 'decided', cases: out };
 }
 

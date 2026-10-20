@@ -2,7 +2,8 @@
 // Regen rebuilds the host parts of the file but not the device records, which only a device run writes (on master, by
 // device-refresh.yml): so ours is kept, as dragon-generated keeps it, except that each device lane record and each target's dump
 // fault rows take the side that changed them since the base. A record both sides changed to different device runs is a
-// conflict; the case lists (caseLists) of both sides are kept.
+// conflict; the case lists (caseLists) of both sides are kept. The constants the records were judged by follow the side that
+// changed them, so they keep describing the records they came with (ours' stale ones made regen drop every device lane).
 // Run by git as: node scripts/lanes-merge.ts %O %A %B %P   (writes the result into %A; exit 1 leaves ours as a conflict)
 import { readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -51,6 +52,9 @@ const pick = <T>(at: string, o: T, a: T, b: T, key: (x: T) => unknown): T => {
   throw new Refuse(`${at}: both sides hold a different device run`);
 };
 
+// The file-wide constants staleLanes compares with the tree; regen rewrites them, but only after judging the carried records by them.
+const CONSTANTS = ['schema', 'tolerances', 'sharedDprs', 'extras', 'sampleRules', 'dumpFaults'] as const;
+
 /** The merged file: ours, with each device lane record and dump fault rows taken from the side that changed them. */
 export function mergeLanesFile(base: string, ours: string, theirs: string): string {
   if (base.trim() === '') throw new Refuse('no base (the file was added on both sides)');
@@ -75,6 +79,8 @@ export function mergeLanesFile(base: string, ours: string, theirs: string): stri
   for (const tb of b['targets'] as Obj[]) if (targetOf(a, tb['target'] as string) === undefined) targets.push(tb);
   const lists = { ...((b['caseLists'] as Obj | undefined) ?? {}), ...((a['caseLists'] as Obj | undefined) ?? {}) };
   const merged: Obj = { ...a, targets };
+  // A constant only theirs changed is theirs; one ours changed (alone or both, differently) stays ours, and regen judges by it.
+  for (const k of CONSTANTS) if (!same(a[k], b[k]) && same(a[k], o[k]) && k in b) merged[k] = b[k];
   if (a['caseLists'] !== undefined || b['caseLists'] !== undefined) merged['caseLists'] = Object.fromEntries(Object.keys(lists).sort().map((k) => [k, lists[k]]));
   return `${JSON.stringify(merged, null, 2)}\n`;
 }

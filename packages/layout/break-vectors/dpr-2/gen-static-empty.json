@@ -1,0 +1,7 @@
+{
+  "case": "gen-static-empty",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","lines":[[0,5]]}
+  ]
+}

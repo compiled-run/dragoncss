@@ -1,12 +1,9 @@
-// isolation (compositing-1 §3.3): auto | isolate, not inherited, initial auto, computed as specified (Chrome 145
-// css_properties.json5: a keyword field, auto and isolate, no alias). isolate makes a stacking context on any box, positioned or
-// not (Blink ComputedStyle::HasStackingGroupingProperty, which CalculateIsStackingContextWithoutContainment reads), and otherwise
-// only scopes mix-blend-mode, which Dragon refuses everywhere (it is no registered property): with no blending descendant Blink
-// gives the box no effect node (paint_property_tree_builder.cc NeedsEffectIgnoringClipPathAnd2DScale) and no compositing reason, so
-// it paints as opacity below 1 does in the z-index 0 layer, without the group. It makes no containing block. Every value is accepted:
-// lower/paint/stacking.ts treats isolate as a stacking context creator. The keyword grammar is webref's, which lists exactly Chrome
-// 145's keywords.
-import type { CssValue } from '../values.ts';
+// isolation (compositing-1 §3.2): auto | isolate, initial auto, not inherited, one keyword computed as specified (Chrome 145
+// css_properties.json5 field_template keyword). isolate makes the box a stacking context (Blink StyleAdjuster: IsStackingContext),
+// which paints in its context's z-index 0 layer like a transformed box (lower/paint/stacking.ts). Dragon draws no mix-blend-mode, so
+// the group isolation it also asks for changes nothing a target paints. The grammar is webref's, which lists exactly Chrome 145's
+// keywords.
+import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import type { PropertyAspect } from '../properties.ts';
 
 export const ISOLATION_LONGHANDS = ['isolation'] as const;
@@ -19,5 +16,8 @@ export const ISOLATION_ASPECTS: { readonly [P in (typeof ISOLATION_LONGHANDS)[nu
   isolation: { layout: false, paint: true },
 };
 
-/** Whether a computed isolation is isolate (a stacking context). */
-export const isIsolate = (v: CssValue | undefined): boolean => v !== undefined && v.kind === 'keyword' && v.value === 'isolate';
+/** Whether an element's computed isolation is isolate, which makes it a stacking context. */
+export function isolates(el: Pick<ResolvedElement, 'props'>): boolean {
+  const v = (el.props.get('isolation') as ResolvedValue | undefined)?.value;
+  return v !== undefined && v.kind === 'keyword' && v.value === 'isolate';
+}

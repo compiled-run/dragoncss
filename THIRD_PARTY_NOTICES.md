@@ -99,7 +99,6 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/geometry/contoured_rect.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/path_builder.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/physical_size.cc`: Copyright 2016 The Chromium Authors
-- `third_party/blink/renderer/platform/graphics/compositing/pending_layer.cc`: Copyright 2021 The Chromium Authors
 - `third_party/blink/renderer/platform/text/capitalize.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data.h`: Copyright 2016 The Chromium Authors

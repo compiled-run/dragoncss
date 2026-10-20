@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.row { display: flex; }
+.cell { width: 80px; height: 90px; }
+.box { margin: 25px; width: 40px; height: 30px; background-color: #1f6feb; }
+.t1 { translate: 6px -4px; background-color: #cf222e; }
+.t2 { translate: 25% 1em; background-color: #1a7f37; }
+.t3 { translate: -10%; border-left: 6px solid #111111; width: 34px; }
+.r1 { rotate: 30deg; background-color: #8250df; }
+.r2 { rotate: -0.125turn; border-top: 6px solid #111111; height: 24px; }
+.s1 { scale: 1.25; background-color: #bf8700; }
+.s2 { scale: 50% 1.5; background-color: #0a3069; }
+.s3 { scale: -1 1; border-left: 6px solid #111111; width: 34px; }
+.all { translate: 4px 2px; rotate: 20deg; scale: 0.75; background-color: #953800; }
+.mix { scale: 2 1; rotate: 45deg; transform: translateX(3px); transform-origin: 0 0; background-color: #6639ba; }
+.with { translate: 5px; transform: rotate(10deg) scale(1.1); background-color: #116329; }
+.outer { rotate: 15deg; width: 60px; height: 50px; margin: 15px; background-color: #ddf4ff; }
+.inner { translate: 10px 5px; scale: 0.5; width: 40px; height: 30px; background-color: #cf222e; }
+.wide { width: 100px; }
+.none { translate: none; rotate: none; scale: none; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row0" class="row"><div data-dragon-id="a0c" class="cell"><div data-dragon-id="a0" class="box t1"></div></div><div data-dragon-id="a1c" class="cell"><div data-dragon-id="a1" class="box t2"></div></div><div data-dragon-id="a2c" class="cell"><div data-dragon-id="a2" class="box t3"></div></div><div data-dragon-id="a3c" class="cell"><div data-dragon-id="a3" class="box r1"></div></div><div data-dragon-id="a4c" class="cell"><div data-dragon-id="a4" class="box r2"></div></div></div>
+<div data-dragon-id="row1" class="row"><div data-dragon-id="b0c" class="cell"><div data-dragon-id="b0" class="box s1"></div></div><div data-dragon-id="b1c" class="cell"><div data-dragon-id="b1" class="box s2"></div></div><div data-dragon-id="b2c" class="cell"><div data-dragon-id="b2" class="box s3"></div></div><div data-dragon-id="b3c" class="cell"><div data-dragon-id="b3" class="box all"></div></div><div data-dragon-id="b4c" class="cell"><div data-dragon-id="b4" class="box mix"></div></div></div>
+<div data-dragon-id="row2" class="row"><div data-dragon-id="c0c" class="cell"><div data-dragon-id="c0" class="box with"></div></div><div data-dragon-id="c1c" class="cell wide"><div data-dragon-id="c1" class="outer"><div data-dragon-id="c1i" class="inner"></div></div></div><div data-dragon-id="c2c" class="cell"><div data-dragon-id="c2" class="box none">XX</div></div></div>
+</body>
+</html>

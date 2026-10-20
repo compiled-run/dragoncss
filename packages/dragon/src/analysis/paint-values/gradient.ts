@@ -19,6 +19,7 @@ import type { CssValue } from '../../css/values.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
 import { elementWillChange } from './transform.ts';
+import { colourClipsToText, nativeTextClipRefusal, textClipFill, textClipRefusal } from './background-clip-text.ts';
 import { linearSlope } from '../../paint-data/libm.ts';
 import type { Diagnostic } from '../../types.ts';
 import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
@@ -415,6 +416,13 @@ export function boxItem(tokens: readonly CssNode[], property: string): Item<BoxI
   return no(t, `${property}: ${k ?? 'this value'} is not supported: Dragon clips backgrounds to a box (${BG2C})`);
 }
 
+/** One background-clip item: a box, or text (css-backgrounds-4 §2.1), which background-clip-text.ts decides where it is drawn. */
+export function clipItem(tokens: readonly CssNode[]): Item<BoxItem | 'text'> {
+  const [t, extra] = tokens as [CssNode?, CssNode?];
+  if (t !== undefined && extra === undefined && ident(t) === 'text') return ok('text');
+  return boxItem(tokens, 'background-clip');
+}
+
 /** One background-attachment item: scroll; fixed and local are refused (BG2b). */
 export function attachmentItem(tokens: readonly CssNode[]): Item<'scroll'> {
   const [t, extra] = tokens as [CssNode?, CssNode?];
@@ -441,8 +449,9 @@ export function checkLayerItem(property: BackgroundLayerLonghand, tokens: readon
     case 'background-attachment':
       return r(attachmentItem(tokens));
     case 'background-origin':
-    case 'background-clip':
       return r(boxItem(tokens, property));
+    case 'background-clip':
+      return r(clipItem(tokens));
   }
 }
 
@@ -486,7 +495,11 @@ export type LayerGeometrySpec = {
   readonly clip: BoxItem;
 };
 
-export type ElementLayer = { readonly image: ImageItem; readonly geometry: LayerGeometrySpec };
+/**
+ * clipsToText: the layer's background-clip is text (absent: it is not). Its geometry then clips to the border box, which nothing reads: a text clip
+ * over an image is refused, and the colour it clips is drawn by the glyphs (background-clip-text.ts).
+ */
+export type ElementLayer = { readonly image: ImageItem; readonly geometry: LayerGeometrySpec; readonly clipsToText?: boolean };
 
 /** The item of a list for layer i: lists shorter than the layer count repeat (css-backgrounds-3 §2.2). */
 function nth(items: readonly CssNode[][], i: number): CssNode[] {
@@ -508,6 +521,7 @@ export function elementLayers(value: (p: BackgroundLayerLonghand) => CssValue): 
   return images.map((img, i) => {
     const s = must(sizeItem(nth(size, i)), 'background-size');
     const r = must(repeatItem(nth(repeat, i)), 'background-repeat');
+    const c = must(clipItem(nth(clip, i)), 'background-clip');
     return {
       image: must(imageItem(img), 'background-image'),
       geometry: {
@@ -519,8 +533,9 @@ export function elementLayers(value: (p: BackgroundLayerLonghand) => CssValue): 
         repeatX: r.x,
         repeatY: r.y,
         origin: must(boxItem(nth(origin, i), 'background-origin'), 'background-origin'),
-        clip: must(boxItem(nth(clip, i), 'background-clip'), 'background-clip'),
+        clip: c === 'text' ? 'border-box' : c,
       },
+      ...(c === 'text' ? { clipsToText: true } : {}),
     };
   });
 }
@@ -690,14 +705,23 @@ export function resolvedLayers(el: ResolvedElement): ElementLayer[] {
   return elementLayers((p) => (el.props.get(p) as ResolvedValue).value);
 }
 
-/** Whether an element paints a gradient layer; one whose layers keep an unfolded length is refused (CALC-p) before it is read. */
-export function paintsGradient(el: ResolvedElement): boolean {
+/** Whether an element's layers can be read: it has them, and none keeps an unfolded length (refused by CALC-p before it is read). */
+function readableLayers(el: ResolvedElement): boolean {
   if (el.props.get('background-image') === undefined) return false;
-  if (BACKGROUND_LAYERS_LONGHANDS.some((p) => {
+  return !BACKGROUND_LAYERS_LONGHANDS.some((p) => {
     const v = el.props.get(p as Longhand);
     return v !== undefined && unfoldedLength(v.value) !== null;
-  })) return false;
-  return resolvedLayers(el).some((l) => l.image.kind === 'gradient');
+  });
+}
+
+/** Whether an element paints a gradient layer. */
+export function paintsGradient(el: ResolvedElement): boolean {
+  return readableLayers(el) && resolvedLayers(el).some((l) => l.image.kind === 'gradient');
+}
+
+/** The colour an element's glyphs draw in on the native targets when it clips a painted background colour to its text, or null. */
+export function textClipFillOf(el: ResolvedElement): Rgba8 | null {
+  return readableLayers(el) ? textClipFill(el, resolvedLayers(el)) : null;
 }
 
 /**
@@ -760,6 +784,22 @@ export function unfoldedLength(v: CssValue): string | null {
   return found;
 }
 
+/**
+ * The text clip refusals (background-clip-text.ts), at background-clip. Whether the other layer checks are done: the box clips its
+ * colour to text (its bottom layer), or a text clip was refused on every target. A text clip on another layer whose image is none
+ * paints nothing, and the colour's own clip is checked as usual.
+ */
+function checkTextClip(el: ResolvedElement, clip: ResolvedValue, targets: readonly string[], native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): boolean {
+  const layers = resolvedLayers(el);
+  if (!layers.some((l) => l.clipsToText)) return false;
+  const manual = 'Clip a background colour to the transparent text of a block that holds only text, or clip the background to a box.';
+  const every = textClipRefusal(el, layers);
+  if (every !== null) refuse(el, clip, targets, 'background-clip-text', `background-clip: text on ${el.element.address}: ${every} (${BG2C})`, manual, diagnostics, reported);
+  const own = every === null ? nativeTextClipRefusal(el, layers) : null;
+  if (own !== null) refuse(el, clip, native, 'background-clip-text', `background-clip: text on ${el.element.address}: ${own} (${BG2C})`, manual, diagnostics, reported);
+  return every !== null || colourClipsToText(layers);
+}
+
 const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, propagated) => {
   const native = targets.filter((t) => t !== 'web');
   if (transformsSubtree(el)) refuseTransformed(el, el, native, diagnostics, reported);
@@ -772,6 +812,7 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
     return;
   }
   const clip = el.props.get('background-clip') as ResolvedValue | undefined;
+  if (clip !== undefined && checkTextClip(el, clip, targets, native, diagnostics, reported)) return;
   if (clip !== undefined && clip.declaration !== null) {
     const reason = colourClipRefusal(resolvedLayers(el), usedColors(el)['background-color'], boxWidths(el));
     if (reason !== null) refuse(el, clip, native, 'background-clip', `background-clip on ${el.element.address}: ${reason}`, 'Clip the background to the border box, or give every side with a border an opaque solid style.', diagnostics, reported);
@@ -831,6 +872,8 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
 
 /** The colours a gradient box bakes into its one raster: the layers' backdrop, currentcolor stops, and the borders that obscure it. */
 const RASTER_COLORS: readonly Longhand[] = ['background-color', 'color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
+/** The longhands a background colour clipped to text bakes into its glyphs' colour on the native targets (background-clip-text.ts). */
+const TEXT_CLIP_COLORS: readonly Longhand[] = ['background-color', 'color', 'background-clip'];
 
 /**
  * BG2c on the native targets: a gradient box rasters its layers, with its background colour, currentcolor stops and obscuring
@@ -859,13 +902,31 @@ export function refuseAnimatedGradients(analysis: AnimationAnalysis, roots: read
     for (const ea of c.elements.values()) {
       const el = byAddress.get(ea.address);
       if (el === undefined) continue;
-      const animated = ea.animations.flatMap((a) => (a.name === 'none' || !a.hasKeyframes ? [] : (analysis.keyframes.get(a.name)?.blocks ?? []).flatMap((b) => b.values.map((v) => v.property)))).filter((p) => RASTER_COLORS.includes(p as Longhand));
-      const transitioned = RASTER_COLORS.filter((p) => {
+      const keyframed = ea.animations.flatMap((a) => (a.name === 'none' || !a.hasKeyframes ? [] : (analysis.keyframes.get(a.name)?.blocks ?? []).flatMap((b) => b.values.map((v) => v.property))));
+      // A text clip box draws its colour as its glyphs' colour once per case; an animated background-clip may reach text on any box.
+      const text = readableLayers(el) && colourClipsToText(resolvedLayers(el));
+      const watched = (p: Longhand): boolean => (text ? TEXT_CLIP_COLORS.includes(p) : false) || (p === 'background-clip' && keyframed.includes(p));
+      const transitioned = [...new Set([...RASTER_COLORS, ...TEXT_CLIP_COLORS])].filter((p) => {
         const l = ea.listings.get(p);
         return l !== undefined && l.mode === 'listed' && l.delay + l.duration > 0 && changes(ea.address, p);
       });
-      if ((animated.length === 0 && transitioned.length === 0) || !paintsGradient(el)) continue;
-      for (const [p, what, longhand] of [...animated.map((x) => [x, 'an animation', 'animation-name'] as const), ...transitioned.map((x) => [x, 'a transition', 'transition-property'] as const)]) {
+      const clipped = [...new Set([...keyframed.filter((p) => watched(p as Longhand)), ...transitioned.filter(watched)])];
+      for (const p of clipped) {
+        const what = keyframed.includes(p) ? 'an animation' : 'a transition';
+        const longhand = keyframed.includes(p) ? 'animation-name' : 'transition-property';
+        const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
+        const origin = d === undefined ? el.element.node.origin : authored(d.valueSpan);
+        for (const t of nativeTargets) {
+          const id = `${t}|${ea.address}|${p}|text-clip`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${what} of ${p} on ${ea.address}: the native targets draw a background colour clipped to text as the colour of the glyphs, set once per state, and the native animator would change ${p} without redrawing them (${BG2C})`, manual: `Remove the ${what === 'an animation' ? 'animation' : 'transition'} of ${p}, or clip the background to a box.` }));
+        }
+      }
+      const animated = keyframed.filter((p) => RASTER_COLORS.includes(p as Longhand));
+      const rastered = transitioned.filter((p) => RASTER_COLORS.includes(p));
+      if ((animated.length === 0 && rastered.length === 0) || !paintsGradient(el)) continue;
+      for (const [p, what, longhand] of [...animated.map((x) => [x, 'an animation', 'animation-name'] as const), ...rastered.map((x) => [x, 'a transition', 'transition-property'] as const)]) {
         const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
         const origin = d === undefined ? el.element.node.origin : authored(d.valueSpan);
         for (const t of nativeTargets) {

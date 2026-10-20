@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.s { overflow: auto; width: 60px; height: 30px; padding: 3px; margin: 4px; border: 2px solid #1a1a2e; }
+.c { width: 90px; height: 50px; background-color: #e8d36a; }
+.x { overflow-x: scroll; overflow-y: hidden; }
+.n { scrollbar-width: none; }
+.t { scrollbar-width: thin; }
+.a { scrollbar-width: auto; }
+.g { scrollbar-gutter: stable; }
+.ge { scrollbar-gutter: stable both-edges; }
+.ga { scrollbar-gutter: auto; }
+.U { SCROLLBAR-WIDTH: NONE; SCROLLBAR-GUTTER: BOTH-EDGES STABLE; }
+.k { scrollbar-width: initial; scrollbar-gutter: unset; }
+.i { scrollbar-width: inherit; scrollbar-gutter: inherit; }
+.v { --w: thin; scrollbar-width: var(--w); }
+.f { width: 60px; height: 20px; margin: 4px; background-color: #1f6feb; }
+.row { display: flex; width: 200px; }
+.col { display: flex; flex-direction: column; width: 100px; }
+.grid { display: grid; grid-template-columns: 90px 90px; width: 200px; }
+.rel { position: relative; left: 3px; top: 2px; }
+.wrap { position: relative; height: 50px; }
+.abs { position: absolute; left: 100px; top: 0; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="s n"><div data-dragon-id="c1" class="c">XX XX</div></div>
+<div data-dragon-id="s2" class="s t g"><div data-dragon-id="c2" class="c">XX</div></div>
+<div data-dragon-id="s3" class="s a ge"><div data-dragon-id="c3" class="c">XX</div></div>
+<div data-dragon-id="s4" class="s U"><div data-dragon-id="s4i" class="s i"><div data-dragon-id="c4" class="c">XX</div></div></div>
+<div data-dragon-id="s5" class="s x n"><div data-dragon-id="c5" class="c">XX</div></div>
+<div data-dragon-id="s6" class="s k ga"><div data-dragon-id="c6" class="c">XX</div></div>
+<div data-dragon-id="s7" class="s v"><div data-dragon-id="c7" class="c">XX</div></div>
+<div data-dragon-id="f1" class="f n g">XX</div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="r1" class="s n"><div data-dragon-id="rc1" class="c">X</div></div><div data-dragon-id="r2" class="s t ge"><div data-dragon-id="rc2" class="c">X</div></div></div>
+<div data-dragon-id="col" class="col"><div data-dragon-id="q1" class="s g"><div data-dragon-id="qc1" class="c">X</div></div><div data-dragon-id="q2" class="f a">X</div></div>
+<div data-dragon-id="grid" class="grid"><div data-dragon-id="g1" class="s n"><div data-dragon-id="gc1" class="c">X</div></div><div data-dragon-id="g2" class="s t g"><div data-dragon-id="gc2" class="c">X</div></div></div>
+<div data-dragon-id="s8" class="s rel n"><div data-dragon-id="c8" class="c">XX</div></div>
+<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="s9" class="s abs t g"><div data-dragon-id="c9" class="c">XX</div></div></div>
+</body>
+</html>

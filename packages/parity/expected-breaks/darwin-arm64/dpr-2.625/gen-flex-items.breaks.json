@@ -1,0 +1,13 @@
+{
+  "case": "gen-flex-items",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"r1:text0","data":"xx","lines":1,"units":[0,0],"blank":[]},
+    {"id":"r2:text0","data":"yy","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c1:text0","data":"zz","lines":1,"units":[0,0],"blank":[]},
+    {"id":"row::before:text0","data":"aa","lines":1,"units":[0,0],"blank":[]},
+    {"id":"row::after:text0","data":"b","lines":1,"units":[0],"blank":[]},
+    {"id":"col::before:text0","data":"cc dd","lines":2,"units":[0,0,-1,1,1],"blank":[]}
+  ]
+}
