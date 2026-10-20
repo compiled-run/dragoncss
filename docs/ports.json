@@ -4064,6 +4064,22 @@
         { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" },
         { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
       ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/modules/accessibility/ax_node_object.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-7",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2012, Google Inc. All rights reserved.",
+      "fileSha256": "a11206abbc8bbf5c42d51e6a7272423743aa1ed884fc8002e2b33faa6d5859b9",
+      "headerSha256": "b2bc44785df2be59499d9b7fdaa5efecddbc35ae9c217acdb4f5c0020ae3a258",
+      "ranges": [
+        { "lines": "5357-5466", "symbol": "ShouldInsertSpaceBetweenObjectsIfNeeded", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/paint/clip-label.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/test/paint-clip-rect.test.ts", "symbol": null, "use": "reference" }
+      ]
     }
   ],
   "notChrome": [
