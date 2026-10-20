@@ -34,9 +34,14 @@ const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALU
 
 /** The coverage probe: p holding u holding two c boxes of text. */
 const probe = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'u', ['u'], [div(r, 'c1', ['c', 'c1'], [text(r, 't1', 'Hi')]), div(r, 'c2', ['c'], [text(r, 't2', 'Hi')])])])];
-/** A card: an opaque box with text and a bordered child, alone on the page. */
-const card = (r: SourceRef): TreeNode[] => [div(r, 'x', ['x'], [text(r, 'tx', 'XX'), div(r, 'k', ['k'], [text(r, 'tk', 'X')])])];
-const CARD = '.x { width: 80px; padding: 4px; background-color: #fff; color: #123; } .k { background-color: rgb(250, 200, 40); border: 2px solid rgb(10, 20, 30); }';
+/** The probe's boxes with no text. */
+const boxes = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'u', ['u'], [div(r, 'c1', ['c', 'c1']), div(r, 'c2', ['c'])])])];
+const BOXES = '.c { height: 10px; }';
+/** A card: an opaque box with a bordered child, alone on the page. */
+const card = (r: SourceRef): TreeNode[] => [div(r, 'x', ['x'], [div(r, 'k', ['k'])])];
+/** The card with text in it. */
+const textCard = (r: SourceRef): TreeNode[] => [div(r, 'x', ['x'], [text(r, 'tx', 'XX'), div(r, 'k', ['k'])])];
+const CARD = '.x { width: 80px; padding: 4px; background-color: #fff; color: #123; } .k { height: 6px; background-color: rgb(250, 200, 40); border: 2px solid rgb(10, 20, 30); }';
 
 describe('FX-0: backdrop-filter and mix-blend-mode', () => {
   it('follow isolation in the registry; a backdrop-filter list is not admitted to animate and mix-blend-mode is discrete', () => {
@@ -76,9 +81,9 @@ describe('FX-0: backdrop-filter and mix-blend-mode', () => {
       expect(errors(compile(`body { background-color: rgb(30, 90, 200); } ${CARD} .x { backdrop-filter: ${bf}; }`, card)).map((d) => d.message), bf).toEqual([]);
     }
     // An ancestor background of the canvas colour, and a relative box.
-    expect(errors(compile('body { background-color: #3366cc; } .p { background-color: #3366cc; } .c { background-color: #fff; } .u { backdrop-filter: blur(10px); position: relative; }'))).toEqual([]);
-    // The probe page with opaque fills under its text, the declaration on p or u.
-    for (const on of ['p', 'u']) expect(errors(compile(`.c { background-color: #fff; } .${on} { backdrop-filter: blur(10px); }`)).map((d) => d.message), on).toEqual([]);
+    expect(errors(compile(`${BOXES} body { background-color: #3366cc; } .p { background-color: #3366cc; } .c { background-color: #fff; } .u { backdrop-filter: blur(10px); position: relative; }`, boxes))).toEqual([]);
+    // The probe's boxes with opaque fills and no text, the declaration on p or u.
+    for (const on of ['p', 'u']) expect(errors(compile(`${BOXES} .c { background-color: #fff; } .${on} { backdrop-filter: blur(10px); }`, boxes)).map((d) => d.message), on).toEqual([]);
     for (const d of ['backdrop-filter: none', 'mix-blend-mode: normal', 'backdrop-filter: initial', 'mix-blend-mode: NORMAL']) expect(errors(compile(`.c { ${d}; } .p { border: 1px solid red; }`)), d).toEqual([]);
   });
 
@@ -89,12 +94,14 @@ describe('FX-0: backdrop-filter and mix-blend-mode', () => {
     }
   });
 
-  it('refuses the coverage probe on native: its text is drawn over transparency inside the box, which Chrome composites one off', () => {
+  // Review of #514 at a1f0e402: glyph edges round one off where a line leaves its opaque fill, which this pass cannot see, so no text
+  // is admitted inside the box, over a fill or not.
+  it('refuses text inside the box on native: Chrome composites its glyph edges one off wherever a line is not over an opaque fill', () => {
     for (const on of ['p', 'u', 'c1']) {
       for (const d of ['backdrop-filter: blur(10px)', 'mix-blend-mode: multiply']) {
-        const c = compile(`.${on} { ${d}; }`);
+        const c = compile(`.c { background-color: #fff; } .${on} { ${d}; }`);
         expect(refusedOn(c), `${on} ${d}`).toEqual(NATIVE);
-        expect(errors(c)[0]?.message).toMatch(/\(package FX\).*drawn over transparency/);
+        expect(errors(c)[0]?.message).toMatch(/\(package FX\).*holds text/);
         expectCatalogued(errors(c));
       }
     }
@@ -114,22 +121,27 @@ describe('FX-0: backdrop-filter and mix-blend-mode', () => {
       [`${CARD} .x { backdrop-filter: blur(4px); border-radius: 4px; }`, /border radius/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); } .k { border-style: dashed; }`, /dashed border/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); } .k { border-left-color: red; }`, /more than one colour/, card],
-      [`${CARD} .x { backdrop-filter: blur(4px); color: rgba(0, 0, 0, 0.5); }`, /not opaque/, card],
+      [`${CARD} .x { backdrop-filter: blur(4px); }`, /<div> x holds text/, textCard],
+      [`${CARD} .x { mix-blend-mode: darken; white-space: nowrap; }`, /<div> x holds text/, textCard],
+      // Review of #514 at a1f0e402: an animation or transition anywhere repaints the box or its backdrop while it runs.
+      [`@keyframes k { to { background-color: rgb(200, 0, 0); } } body { animation: k 1s infinite; } ${CARD} .x { mix-blend-mode: multiply; }`, /has an animation or transition/, card],
+      [`@keyframes k { to { background-color: rgba(200, 0, 0, 0.5); } } ${CARD} .x { backdrop-filter: blur(6px); animation: k 1s; }`, /x has an animation or transition/, card],
+      [`${CARD} .x { backdrop-filter: blur(6px); } .k { transition: background-color 0.2s; }`, /k has an animation or transition/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); box-shadow: 0 0 2px red; }`, /box-shadow/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); } .k { opacity: 0; }`, /opacity 0/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); } .k { position: relative; }`, /position relative/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); } .k { mix-blend-mode: darken; }`, /of its own/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); overflow: hidden; }`, /overflow-x: hidden/, card],
       // The backdrop: an earlier or later box painting, an ancestor's own colour or layer.
-      ['.c { background-color: #fff; } .c1 { backdrop-filter: blur(4px); }', /<div> c2 paints text outside it/],
-      ['.c { background-color: #fff; } .u { backdrop-filter: blur(4px); } .p { border-top: 1px solid red; }', /<div> p paints a border outside it/],
-      ['.c { background-color: #fff; } .u { backdrop-filter: blur(4px); } .p { background-color: #eee; }', /<div> p paints a background other than the canvas colour/],
-      ['.c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { opacity: 0.5; }', /inside <div> p, which has opacity 0.5/],
-      ['.c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { position: relative; }', /inside <div> p, which is positioned/],
-      ['.c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { isolation: isolate; }', /inside <div> p, a stacking context/],
-      ['.c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { overflow: hidden; }', /clips or scrolls/],
-      ['.c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { text-decoration: underline; }', /text decoration reaches its text/],
-      ['.c { background-color: #fff; display: inline; } .u { mix-blend-mode: multiply; }', /display inline/],
+      ['.c { background-color: #fff; } .c1 { backdrop-filter: blur(4px); }', /<div> c2 paints text outside it/, (r: SourceRef) => [div(r, 'p', ['p'], [div(r, 'u', ['u'], [div(r, 'c1', ['c', 'c1']), div(r, 'c2', ['c'], [text(r, 't2', 'Hi')])])])]],
+      [`${BOXES} .c { background-color: #fff; } .u { backdrop-filter: blur(4px); } .p { border-top: 1px solid red; }`, /<div> p paints a border outside it/, boxes],
+      [`${BOXES} .c { background-color: #fff; } .u { backdrop-filter: blur(4px); } .p { background-color: #eee; }`, /<div> p paints a background other than the canvas colour/, boxes],
+      [`${BOXES} .c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { opacity: 0.5; }`, /inside <div> p, which has opacity 0.5/, boxes],
+      [`${BOXES} .c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { position: relative; }`, /inside <div> p, which is positioned/, boxes],
+      [`${BOXES} .c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { isolation: isolate; }`, /inside <div> p, a stacking context/, boxes],
+      [`${BOXES} .c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { overflow: hidden; }`, /clips or scrolls/, boxes],
+      [`${BOXES} .c { background-color: #fff; } .u { mix-blend-mode: multiply; } .p { text-decoration: underline; }`, /text decoration reaches its text/, boxes],
+      [`${BOXES} .c { background-color: #fff; display: inline; } .u { mix-blend-mode: multiply; }`, /display inline/, boxes],
     ];
     for (const [css, why, body] of cases) {
       const c = compile(css, body);

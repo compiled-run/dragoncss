@@ -31,6 +31,7 @@ import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './a
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
 import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
+import { refuseAnimatedFx } from './analysis/fx.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { refuseAnimatedTranslucentPaint } from './analysis/paint-values/translucent-paint.ts';
@@ -1300,6 +1301,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const doublesReported = new Set<string>();
       const translucentReported = new Set<string>();
       const currentColorReported = new Set<string>();
+      const fxReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
@@ -1307,6 +1309,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
+        // FX-0: a backdrop-filter or mix-blend-mode is drawn only on a page that does not animate (analysis/fx.ts).
+        refuseAnimatedFx(a, roots, nativeTargets, diagnostics, fxReported);
       });
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);

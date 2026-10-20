@@ -1,9 +1,10 @@
 // FX-0: backdrop-filter and mix-blend-mode on native where Chrome 145 draws exactly what it draws without them. Native draws
 // neither, so a box with one is drawn there only when Chrome's composite is the identity, measured byte-identical with and without
 // the declaration in Chrome 145 at DPR 1 and 2:
-// - the box's layer holds only fully opaque or fully transparent pixels: square opaque fills, solid opaque borders of one colour and
-//   opaque text over an opaque fill inside the box (text drawn over transparency is anti-aliased into partial alpha, which Chrome's
-//   layer composite rounds one off a direct draw);
+// - the box's layer holds only fully opaque or fully transparent pixels: square opaque fills and solid opaque borders of one colour,
+//   and no text (glyph edges are anti-aliased into partial alpha wherever a line leaves an opaque fill, which Chrome's layer composite
+//   rounds one off a direct draw);
+// - nothing animates or transitions anywhere (refuseAnimatedFx), since each case is checked with its static values;
 // - the backdrop is one opaque colour everywhere: the page paints nothing outside the box but backgrounds of the canvas colour (Chrome
 //   crops a backdrop filter's input to the enclosing pixel rect of the border box, PaintLayer::BackdropFilterBounds, so it reads and
 //   repaints the device pixels it shares with a neighbour at a fractional edge, and nothing else may paint there).
@@ -11,6 +12,7 @@
 // paint_layer.cc UpdateCompositorFilterOperationsForBackdropFilter), and mix-blend-mode multiply or darken over opaque white is
 // source-over (multiply: s(1 - da) + d(1 - sa) + sd = s + 255 - sa, darken: s + d - max(s da, d sa) = s + 255 - sa, at d = da = 255).
 // Every other value, and every other case, is refused on native; web emits both as computed.
+import type { AnimationAnalysis } from './animations.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { SIDES } from '../css/properties.ts';
 import { opacityOf } from '../css/properties/effects.ts';
@@ -112,7 +114,7 @@ const MEMBER_KEYWORDS: readonly (readonly [string, readonly string[]])[] = [
 ];
 
 /** Why a box of the FX box's subtree (itself included) draws a pixel that is not fully opaque or fully transparent (null when not). */
-function memberProblem(m: ResolvedElement, box: ResolvedElement, chain: readonly ResolvedElement[]): string | null {
+function memberProblem(m: ResolvedElement, box: ResolvedElement): string | null {
   const a = `<${m.element.tag}> ${m.element.address}`;
   if (!PLAIN_TAGS.has(m.element.tag) || m.element.tag === 'html' || m.element.tag === 'body' || m.element.tag === 'span') return `${a} is a <${m.element.tag}>, not a plain block box`;
   if (!['block', 'flex'].includes(displayOf(m))) return `${a} has display ${displayOf(m)}, not block or flex`;
@@ -129,16 +131,14 @@ function memberProblem(m: ResolvedElement, box: ResolvedElement, chain: readonly
   const border = borderProblem(m);
   if (border !== null) return `${a} has ${border}`;
   if (paintedOutlineStyle(m) !== null) return `${a} has an outline`;
-  if (m.children.some((c) => c.kind === 'text')) {
-    if (colors.color.alpha !== 255) return `the text of ${a} is not opaque`;
-    // The text's own box or a box around it inside the FX box paints an opaque fill under it.
-    if (![m, ...chain].some((b) => usedColors(b)['background-color'].alpha === 255)) return `the text of ${a} is drawn over transparency inside it, which anti-aliases into partial alpha`;
-  }
+  // Text is anti-aliased into partial alpha wherever it is not over an opaque fill, and a line can overflow its fill (sideways or
+  // below) where the layout puts it, which this pass does not see, so no text is admitted inside the box.
+  if (m.children.some((c) => c.kind === 'text' && c.text.trim() !== '')) return `${a} holds text, whose glyph edges Chrome's layer composite can round off a direct draw`;
   return null;
 }
 
 /** Why Chrome would change a pixel by el's FX declaration of property p (null when it changes none). */
-function fxProblem(el: ResolvedElement, p: 'backdrop-filter' | 'mix-blend-mode', ancestors: readonly ResolvedElement[], root: ResolvedElement, propagated: ResolvedElement | null): string | null {
+function fxProblem(el: ResolvedElement, p: FxProperty, ancestors: readonly ResolvedElement[], root: ResolvedElement, propagated: ResolvedElement | null): string | null {
   const bf = el.props.get('backdrop-filter')?.value;
   const mode = blendModeOf(el.props.get('mix-blend-mode')?.value);
   if (hasBackdropFilter(bf) && mode !== 'normal') return 'it has both a backdrop-filter and a mix-blend-mode';
@@ -155,17 +155,17 @@ function fxProblem(el: ResolvedElement, p: 'backdrop-filter' | 'mix-blend-mode',
     if (bad !== null) return bad;
   }
   // Inside the box: every member's pixels fully opaque or fully transparent.
-  const inside = (m: ResolvedElement, chain: readonly ResolvedElement[]): string | null => {
+  const inside = (m: ResolvedElement): string | null => {
     if (displayOf(m) === 'none') return null;
-    const bad = memberProblem(m, el, chain);
+    const bad = memberProblem(m, el);
     if (bad !== null) return bad;
     for (const c of m.children) if (c.kind === 'element') {
-      const deeper = inside(c, [m, ...chain]);
+      const deeper = inside(c);
       if (deeper !== null) return deeper;
     }
     return null;
   };
-  const own = inside(el, []);
+  const own = inside(el);
   if (own !== null) return own;
   // Outside the box: nothing paints but backgrounds of the canvas colour, so the backdrop is that colour at every device pixel.
   const outside = (o: ResolvedElement): string | null => {
@@ -188,30 +188,61 @@ function fxProblem(el: ResolvedElement, p: 'backdrop-filter' | 'mix-blend-mode',
 export function checkFx(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const native = targets.filter((t) => t !== 'web');
   if (native.length === 0) return;
+  eachFx(root, (el, p, v, ancestors) => {
+    const why = fxProblem(el, p, ancestors, root, propagated);
+    if (why !== null) refuseFx(el, p, v, why, native, diagnostics, reported);
+  });
+}
+
+/**
+ * The FX-0 refusals of motion on the native targets: checkFx judges each case by its static values, but a keyframe animation or a
+ * transition (of any duration) anywhere on the page can repaint the box or its backdrop while it runs, so every FX declaration of a
+ * page that animates is refused.
+ */
+export function refuseAnimatedFx(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0) return;
+  let moving: string | null = null;
+  for (const c of analysis.cases) {
+    for (const [address, e] of c.elements) {
+      if (moving === null && (e.animations.some((a) => a.hasKeyframes) || [...e.listings.values()].some((l) => l.mode === 'listed' && l.duration > 0))) moving = address;
+    }
+  }
+  if (moving === null) return;
+  const why = `${moving} has an animation or transition, which can repaint the box or its backdrop while it runs`;
+  for (const root of roots) eachFx(root, (el, p, v) => refuseFx(el, p, v, why, nativeTargets, diagnostics, reported));
+}
+
+/** Each displayed element with a backdrop-filter other than none or a mix-blend-mode other than normal, per property. */
+function eachFx(root: ResolvedElement, visit: (el: ResolvedElement, p: FxProperty, v: ResolvedValue, ancestors: readonly ResolvedElement[]) => void): void {
   const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[]): void => {
     if (displayOf(el) === 'none') return;
     for (const p of ['backdrop-filter', 'mix-blend-mode'] as const) {
       const v = el.props.get(p);
       if (v === undefined || (p === 'backdrop-filter' ? !hasBackdropFilter(v.value) : blendModeOf(v.value) === 'normal')) continue;
-      const why = fxProblem(el, p, ancestors, root, propagated);
-      if (why === null) continue;
-      const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
-      for (const t of native) {
-        const id = `${t}|fx|${p}|${el.element.address}`;
-        if (reported.has(id)) continue;
-        reported.add(id);
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-          origin,
-          target: t,
-          message: p === 'backdrop-filter'
-            ? `backdrop-filter: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is not drawn on ${t} yet (package FX): Dragon draws one only where Chrome changes no pixel, a list of blur() over a page that paints one opaque colour outside the box, with only opaque fills, solid borders and text over a fill inside it; here ${why}`
-            : `mix-blend-mode: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is not drawn on ${t} yet (package FX): Dragon draws one only where Chrome changes no pixel, multiply or darken over a page that paints only opaque white outside the box, with only opaque fills, solid borders and text over a fill inside it; here ${why}`,
-          manual: `Remove the ${p} from ${el.element.address}, or keep its page and content to what Chrome draws unchanged.`,
-          basis: 'computed-value',
-        }));
-      }
+      visit(el, p, v, ancestors);
     }
     for (const c of el.children) if (c.kind === 'element') walk(c, [el, ...ancestors]);
   };
   walk(root, []);
+}
+
+type FxProperty = 'backdrop-filter' | 'mix-blend-mode';
+
+/** Refuses el's FX declaration of p on the native targets, once per target, element and property. */
+function refuseFx(el: ResolvedElement, p: FxProperty, v: ResolvedValue, why: string, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
+  for (const t of native) {
+    const id = `${t}|fx|${p}|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin,
+      target: t,
+      message: p === 'backdrop-filter'
+        ? `backdrop-filter: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is not drawn on ${t} yet (package FX): Dragon draws one only where Chrome changes no pixel, a list of blur() over a page that paints one opaque colour outside the box and does not animate, with only opaque fills and solid borders and no text inside it; here ${why}`
+        : `mix-blend-mode: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is not drawn on ${t} yet (package FX): Dragon draws one only where Chrome changes no pixel, multiply or darken over a page that paints only opaque white outside the box and does not animate, with only opaque fills and solid borders and no text inside it; here ${why}`,
+      manual: `Remove the ${p} from ${el.element.address}, or keep its page and content to what Chrome draws unchanged.`,
+      basis: 'computed-value',
+    }));
+  }
 }
