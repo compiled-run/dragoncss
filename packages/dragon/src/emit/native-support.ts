@@ -364,7 +364,19 @@ public final class DragonTextView: UIView, DragonNodeView {
       e.accessibilityFrameInContainerSpace = CGRect(x: CGFloat(r[0]) / s, y: CGFloat(r[1]) / s, width: CGFloat(r[2]) / s, height: CGFloat(r[3]) / s)
       return e
     }
+    isAccessibilityElement = false
+    accessibilityLabel = nil
     accessibilityElements = dragonAccessibleLines
+  }
+
+  /// P6b: the view as one static text element named with its text, for a leaf text-overflow truncates (for now): Chrome's
+  /// InlineTextBoxes there are its hidden full run, its painted part and the ellipsis, not lines, and its StaticText is the text.
+  public func dragonSetAccessibleWhole(_ text: String) {
+    dragonAccessibleLines = []
+    accessibilityElements = nil
+    isAccessibilityElement = true
+    accessibilityTraits = .staticText
+    accessibilityLabel = text
   }
 
   /// The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's.
@@ -938,6 +950,8 @@ public final class DragonTree {
         return try Array(text.description.unicodeScalars)[Int(from)..<Int(to)].map { try text_smallCapsCodePoint(Double($0.value)) == Double($0.value) ? 0 : small }
       }
       let leafFont = try inline_leafFontOf(leaves[li])
+      // P6b: a leaf text-overflow truncates is exposed whole (dragonSetAccessibleWhole).
+      let elided = placed.contains { l in l.pieces.items.contains { Int($0.leaf) == li && $0.truncated } || (l.ellipsis.map { Int($0.leaf) == li } ?? false) }
       // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
       for line in placed {
         for piece in line.pieces.items where Int(piece.leaf) == li {
@@ -972,7 +986,9 @@ public final class DragonTree {
           let shown = Array(scalars[Int(piece.start)..<Int(paintEnd)])
           // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
           if painted {
-            axNames.append(scalars[Int(piece.start)..<Int(piece.end)].map { String($0) }.joined())
+            // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
+            let nameEnd = !line.breaks.items.isEmpty && line.pieces.items.last === piece ? piece.visibleEnd : piece.end
+            axNames.append(scalars[Int(piece.start)..<Int(nameEnd)].map { String($0) }.joined())
             axRects.append([a.x / lu - e[0], a.y / lu - e[1], a.width / lu, a.height / lu])
             geometry.append([a.x / lu, width / lu, a.y / lu])
             geometryCps.append(shown.map { Double($0.value) })
@@ -985,7 +1001,7 @@ public final class DragonTree {
       if specs.count != pieces.count { fatalError("dragon: \(id): the engine's breaks give \(specs.count) lines, its layout \(pieces.count)") }
       textMetrics[id] = viewMetrics
       tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(size / s)), lines: specs, scale: s)
-      tv.dragonSetAccessibleLines(names: axNames, rects: axRects, scale: s)
+      if elided { tv.dragonSetAccessibleWhole(leaves[li].text.description) } else { tv.dragonSetAccessibleLines(names: axNames, rects: axRects, scale: s) }
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       if let cv = views[pId] as? DragonBoxView, let strut = p.strut, let m = viewMetrics {
@@ -1423,6 +1439,8 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   /** The line holding accessibility focus, or -1. */
   private var dragonAccessibleFocus = -1
+  /** The line under the hover pointer, or -1. */
+  private var dragonAccessibleHover = -1
 
   /**
    * P6b: each line's name (its code points, with the collapsible space it hangs at the line's end, as Chrome's InlineTextBox names
@@ -1432,7 +1450,19 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     dragonAccessibleNames = names
     dragonAccessibleRects = rects
     dragonAccessibleFocus = -1
+    dragonAccessibleHover = -1
+    contentDescription = null
     importantForAccessibility = if (names.isEmpty()) View.IMPORTANT_FOR_ACCESSIBILITY_NO else View.IMPORTANT_FOR_ACCESSIBILITY_YES
+  }
+
+  /**
+   * P6b: the view as one element named with its text, for a leaf text-overflow truncates (for now): Chrome's InlineTextBoxes there
+   * are its hidden full run, its painted part and the ellipsis, not lines, and its StaticText is the text.
+   */
+  fun dragonSetAccessibleWhole(text: String) {
+    dragonSetAccessibleLines(emptyList(), emptyList())
+    contentDescription = text
+    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
   }
 
   /** A line's frame on whole px, covering its fragment. */
@@ -1516,13 +1546,20 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
 
   override fun getAccessibilityNodeProvider(): AccessibilityNodeProvider? = if (dragonAccessibleNames.isEmpty()) null else dragonLineProvider
 
-  /** Explore by touch: a hover over a line announces that line. */
+  /**
+   * Explore by touch: a hover entering a line announces it, and leaving it (for another line, off the lines or out of the view)
+   * exits it, entering the new line first as ExploreByTouchHelper does.
+   */
   override fun dispatchHoverEvent(event: MotionEvent): Boolean {
     if (dragonAccessibleNames.isEmpty()) return super.dispatchHoverEvent(event)
-    val k = dragonLineAt(event.x, event.y)
-    if (k < 0) return super.dispatchHoverEvent(event)
-    if (event.action == MotionEvent.ACTION_HOVER_ENTER || event.action == MotionEvent.ACTION_HOVER_MOVE) dragonLineEvent(k, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER)
-    return true
+    val k = if (event.action == MotionEvent.ACTION_HOVER_EXIT) -1 else dragonLineAt(event.x, event.y)
+    if (k != dragonAccessibleHover) {
+      val was = dragonAccessibleHover
+      dragonAccessibleHover = k
+      if (k >= 0) dragonLineEvent(k, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER)
+      if (was >= 0) dragonLineEvent(was, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT)
+    }
+    return k >= 0 || super.dispatchHoverEvent(event)
   }
 
   /** The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's. */
@@ -2121,6 +2158,8 @@ class DragonTree(val context: Context) {
         return DoubleArray(cps.size) { if (text_smallCapsCodePoint(cps[it].toDouble()) == cps[it].toDouble()) 0.0 else small }
       }
       val leafFont = inline_leafFontOf(leaves[li])
+      // P6b: a leaf text-overflow truncates is exposed whole (dragonSetAccessibleWhole).
+      val elided = placed.any { l -> l.pieces.any { it.leaf.toInt() == li && it.truncated } || l.ellipsis?.leaf?.toInt() == li }
       // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
       for (line in placed) for (piece in line.pieces) {
         if (piece.leaf.toInt() != li) continue
@@ -2159,7 +2198,9 @@ class DragonTree(val context: Context) {
           }
           // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
           if (painted) {
-            axNames.add(leafText.substring(from, utf16(piece.end.toInt())))
+            // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
+            val nameEnd = if (line.breaks.isNotEmpty() && line.pieces.last() === piece) piece.visibleEnd else piece.end
+            axNames.add(leafText.substring(from, utf16(nameEnd.toInt())))
             axRects.add(doubleArrayOf(a.x / lu - e[0], a.y / lu - e[1], a.width / lu, a.height / lu))
             geometry.add(doubleArrayOf(a.x / lu, width / lu, a.y / lu))
             geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
@@ -2172,7 +2213,7 @@ class DragonTree(val context: Context) {
       val vm = viewMetrics
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
       tv.dragonConfigure(bridge, size.toFloat(), specs)
-      tv.dragonSetAccessibleLines(axNames, axRects)
+      if (elided) tv.dragonSetAccessibleWhole(leafText) else tv.dragonSetAccessibleLines(axNames, axRects)
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       val cv = views[pId] as? DragonBoxView

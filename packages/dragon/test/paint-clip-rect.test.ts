@@ -158,7 +158,7 @@ describe('clip: native refusals', () => {
     for (const css of ['.b { position: relative; z-index: 0; }', '.b { z-index: 3; }', '.b { outline: 0px solid red; }', '.b { outline-style: none; }']) expect(clipErrors(compile(HIDDEN + css)), css).toEqual([]);
   });
   it('refuses an empty rect whose subtree has text, which Chrome keeps in the accessibility tree and a hidden native view drops', () => {
-    // Only text views are native accessibility elements (native-support.ts: accessibilityLabel, contentDescription), and a hidden
+    // Only text views give native accessibility elements (native-support.ts: dragonSetAccessibleLines, one per line), and a hidden
     // UIView, or an Android view under an INVISIBLE ancestor (View.isVisibleToUser), leaves the accessibility tree.
     const both = (css: string) => clipErrors(compileInput(inputFor(BASE + css, textTree), { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }));
     const errs = both(HIDDEN);

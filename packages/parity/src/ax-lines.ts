@@ -3,7 +3,9 @@
 // are InlineTextBoxes, one per line fragment, named with the fragment's text and the collapsible space it hangs at the line's end;
 // its layout gives each fragment's rect (DOMSnapshot's text boxes, the same fragments). Native exposes one element per line piece of
 // a text view (native-support.ts dragonSetAccessibleLines) from the engine's own line placement, as the model here reads it: the
-// piece's code points [start, end) (end past its hanging spaces) and its fragment's rect (<leaf>:line<j>).
+// piece's code points [start, end) (end past its hanging spaces, which a line ended by a <br> drops as Chrome does) and its
+// fragment's rect (<leaf>:line<j>). A leaf text-overflow truncates is exposed whole for now: one element named with its text, as
+// Chrome's StaticText is, since Chrome's InlineTextBoxes there (the hidden full run, the painted part and the ellipsis) are not lines.
 import type { CDPSession, Page } from 'playwright';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
@@ -14,8 +16,11 @@ import { absoluteRects, layout, resolvedInput } from '../../layout/src/layout.ts
 import type { TextMeasurer } from '../../layout/src/text.ts';
 import { sub, ZERO } from '../../layout/src/units.ts';
 
-/** One line's accessibility element: the text node it is a line of, its name, and its frame in CSS px from the root. */
-export type AxLine = { readonly leaf: string; readonly name: string; readonly rect: readonly [number, number, number, number] };
+/**
+ * One line's accessibility element: the text node it is a line of, its name, and its frame in CSS px from the root; or, for a
+ * truncated leaf, the leaf's one element (whole) with its text, framed on the text view.
+ */
+export type AxLine = { readonly leaf: string; readonly name: string; readonly rect: readonly [number, number, number, number]; readonly whole?: true };
 
 const LU_PX = 64;
 
@@ -63,17 +68,33 @@ export function axLinesOf(input: LayoutInput, measurer: TextMeasurer, hidden: re
     const ifc = buildIfc(ctx, b);
     const seen = ifc.leaves.map(() => 0);
     const named: AxLine[][] = ifc.leaves.map(() => []);
-    for (const line of placeIfcLines(ctx, b, ifc, width)) {
+    const placed = placeIfcLines(ctx, b, ifc, width);
+    const truncated = new Set<number>();
+    for (const line of placed) {
+      for (const p of line.pieces) if (p.truncated) truncated.add(p.leaf);
+      if (line.ellipsis !== null) truncated.add(line.ellipsis.leaf);
+    }
+    for (const line of placed) {
+      const last = line.pieces[line.pieces.length - 1];
       for (const p of line.pieces) {
+        if (truncated.has(p.leaf)) continue;
         const leaf = ifc.leaves[p.leaf];
         if (leaf === undefined) throw new Error(`${b.id}: no leaf ${p.leaf}`);
         const j = seen[p.leaf] as number;
         seen[p.leaf] = j + 1;
         const f = abs.get(`${leaf.id}:line${j}`);
         if (f === undefined) throw new Error(`no fragment ${leaf.id}:line${j}`);
-        const name = [...leaf.text].slice(p.start, p.end).join('');
+        // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
+        const end = line.breaks.length > 0 && p === last ? p.visibleEnd : p.end;
+        const name = [...leaf.text].slice(p.start, end).join('');
         (named[p.leaf] as AxLine[]).push({ leaf: leaf.id, name, rect: [f.x / LU_PX, f.y / LU_PX, f.width / LU_PX, f.height / LU_PX] });
       }
+    }
+    for (const i of truncated) {
+      const leaf = ifc.leaves[i];
+      const f = leaf === undefined ? undefined : abs.get(leaf.id);
+      if (leaf === undefined || f === undefined) throw new Error(`${b.id}: no text view for leaf ${i}`);
+      (named[i] as AxLine[]).push({ leaf: leaf.id, name: leaf.text, rect: [f.x / LU_PX, f.y / LU_PX, f.width / LU_PX, f.height / LU_PX], whole: true });
     }
     ifc.leaves.forEach((leaf, i) => {
       if (!hidden.includes(owners.get(leaf.id) ?? '')) lines.push(...(named[i] as AxLine[]));
@@ -91,9 +112,10 @@ type AxNode = { readonly nodeId: string; readonly role?: { readonly value: strin
 /**
  * Chrome's lines for the page, in tree order: each StaticText's InlineTextBoxes (Accessibility.getFullAXTree, walked from the root)
  * with the text node's fragment rects (DOMSnapshot.captureSnapshot's text boxes), which must be as many. A text node is named as the
- * compiler names its leaf, <element>:text<k> for the parent's k-th text child.
+ * compiler names its leaf, <element>:text<k> for the parent's k-th text child. A leaf in whole is read as its StaticText alone, named
+ * and with no frame (the model's whole lines, which a comparison reads by name).
  */
-export async function chromeAxLines(page: Page): Promise<AxLine[]> {
+export async function chromeAxLines(page: Page, whole: ReadonlySet<string> = new Set()): Promise<AxLine[]> {
   const cdp: CDPSession = await page.context().newCDPSession(page);
   try {
     await cdp.send('Accessibility.enable');
@@ -118,6 +140,10 @@ export async function chromeAxLines(page: Page): Promise<AxLine[]> {
         const node = (await cdp.send('DOM.resolveNode', { backendNodeId: n.backendDOMNodeId })) as unknown as { readonly object: { readonly objectId: string } };
         const named = (await cdp.send('Runtime.callFunctionOn', { objectId: node.object.objectId, functionDeclaration: LEAF_NAME, returnByValue: true })) as unknown as { readonly result: { readonly value: string } };
         const leaf = named.result.value;
+        if (whole.has(leaf)) {
+          lines.push({ leaf, name: n.name?.value ?? '', rect: [0, 0, 0, 0], whole: true });
+          return;
+        }
         const rects = boxes.get(n.backendDOMNodeId) ?? [];
         const kids = (n.childIds ?? []).map((c) => byId.get(c)).filter((c): c is AxNode => c !== undefined && c.role?.value === 'InlineTextBox');
         if (kids.length !== rects.length) throw new Error(`${leaf}: ${kids.length} InlineTextBoxes but ${rects.length} text boxes`);

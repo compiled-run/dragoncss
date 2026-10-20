@@ -18,7 +18,8 @@ const axHtml = (d: AxDoc): string => `<!DOCTYPE html><html data-dragon-id="html"
 
 // Soft wraps and hanging spaces, an anonymous box around text before a block, padding, borders and margins, paragraphs and an
 // empty block, line metrics and alignment, user-select none (still exposed), text split by inline boxes, and hidden text (in a
-// visible block too), which neither exposes.
+// visible block too), which neither exposes; lines a <br> ends (no hanging space) and preserved line feeds; and text-overflow:
+// ellipsis, whose truncated leaf is exposed whole.
 const AX_DOCS: readonly AxDoc[] = [
   { id: 'nested', css: '', body: '<div data-dragon-id="a">AAAA AAAA AAAA<div data-dragon-id="b">BB BBBB</div></div><div data-dragon-id="d">DDDD</div>' },
   {
@@ -47,6 +48,16 @@ const AX_DOCS: readonly AxDoc[] = [
     css: '.h { visibility: hidden; } .v { visibility: visible; }',
     body: '<div data-dragon-id="a">AAAA</div><div data-dragon-id="b" class="h">BBBB<div data-dragon-id="c" class="v">CCCC</div></div><div data-dragon-id="d">DDDD</div>',
   },
+  {
+    id: 'breaks',
+    css: '.l { white-space: pre-line; } .w { white-space: pre-wrap; }',
+    body: '<div data-dragon-id="a">AA <br data-dragon-id="r1">BB  <br data-dragon-id="r2">CC</div><div data-dragon-id="b">DD DD <span data-dragon-id="s">EE </span><br data-dragon-id="r3">FF</div><div data-dragon-id="c" class="l">GG \nHH</div><div data-dragon-id="d" class="w">II  \nJJ</div>',
+  },
+  {
+    id: 'ellipsis',
+    css: '.t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    body: '<div data-dragon-id="a" class="t">AAAA AAAA AAAA</div><div data-dragon-id="b">BB BB</div><div data-dragon-id="c" class="t">CC</div>',
+  },
 ];
 
 function nativeInput(d: AxDoc): { readonly input: LayoutInput; readonly hidden: readonly string[] } {
@@ -63,7 +74,8 @@ function nativeInput(d: AxDoc): { readonly input: LayoutInput; readonly hidden: 
   return { input: programInput(p.programs.uikit, ENVIRONMENT.viewport, 1), hidden };
 }
 
-const show = (l: AxLine): string => `${l.leaf} ${JSON.stringify(l.name)} ${l.rect.join(',')}`;
+// A whole line (a truncated leaf, exposed as one element) compares by name: Chrome's StaticText has no fragment of its own.
+const show = (l: AxLine): string => `${l.leaf} ${JSON.stringify(l.name)} ${l.whole === true ? 'whole' : l.rect.join(',')}`;
 
 describe('per-line accessibility (P6b): native lines against Chrome InlineTextBoxes', () => {
   it('names and frames every line as Chrome does', async () => {
@@ -73,8 +85,10 @@ describe('per-line accessibility (P6b): native lines against Chrome InlineTextBo
     try {
       for (const d of AX_DOCS) {
         const n = nativeInput(d);
-        const model = axLinesOf(n.input, referenceMeasurer(), n.hidden).map(show);
-        const chrome = (await chromeAxLines(await openPage(browser, axHtml(d), ENVIRONMENT))).map(show);
+        const modelLines = axLinesOf(n.input, referenceMeasurer(), n.hidden);
+        const whole = new Set(modelLines.filter((l) => l.whole === true).map((l) => l.leaf));
+        const model = modelLines.map(show);
+        const chrome = (await chromeAxLines(await openPage(browser, axHtml(d), ENVIRONMENT), whole)).map(show);
         lines += chrome.length;
         if (model.join('\n') !== chrome.join('\n')) problems.push(`${d.id}:\n  Chrome ${chrome.join('\n         ')}\n  model  ${model.join('\n         ')}`);
       }
