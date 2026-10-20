@@ -40,11 +40,13 @@ export const expectedHitDprPath = (caseId: string, dpr: number): string => `${ex
 
 /**
  * Replaces a capture folder with what fill writes into a fresh sibling (<dir>.partial), swapped in only once fill has finished: a
- * capture that fails part-way leaves the folder as it was and removes the partial one.
+ * capture that fails part-way leaves the folder as it was and removes the partial one. The swap moves the folder to <dir>.old
+ * before moving the partial one in, so a run that died between the two leaves only <dir>.old; the next run restores it first.
  */
 export async function replaceDirWhenFilled(dir: string, fill: (into: string) => Promise<void>): Promise<void> {
   const partial = `${dir}.partial`;
   const old = `${dir}.old`;
+  restoreInterruptedSwap(dir);
   rmSync(partial, { recursive: true, force: true });
   mkdirSync(partial, { recursive: true });
   try {
@@ -57,6 +59,21 @@ export async function replaceDirWhenFilled(dir: string, fill: (into: string) => 
   if (existsSync(dir)) renameSync(dir, old);
   renameSync(partial, dir);
   rmSync(old, { recursive: true, force: true });
+}
+
+/** A swap that died after moving <dir> to <dir>.old and before moving <dir>.partial in: <dir>.old is the folder, put back. */
+export function restoreInterruptedSwap(dir: string): void {
+  const old = `${dir}.old`;
+  if (!existsSync(dir) && existsSync(old)) renameSync(old, dir);
+}
+
+/**
+ * The dpr-* entries of the expected-hit folder that no DPR capture owns any more: a DPR's own folder and its .old and .partial
+ * siblings (a swap in progress or interrupted, replaceDirWhenFilled) are kept while hitDprCaptures names that DPR.
+ */
+export function staleDprDirs(names: readonly string[], dprs: readonly number[]): string[] {
+  const own = new Set(dprs.map((d) => `dpr-${d}`));
+  return names.filter((n) => /^dpr-/.test(n) && !own.has(n.replace(/\.(old|partial)$/, '')));
 }
 
 /** A program's hit table at a DPR (rt-hit.ts hitTableOf, the function the device runs translated). */
@@ -192,6 +209,77 @@ export function compareHitsAt(n: NativeCase, c: HitCapture, dpr: number, faults:
     if (dragon !== chrome[i]) mismatches.push({ case: n.case.id, x, y, chrome: chrome[i] as string, dragon });
   });
   return { points: c.points, mismatches, stale };
+}
+
+// ---------------------------------------------------------------- the known divergences at a device DPR
+
+/**
+ * The points at a device DPR where the TS hit test does not name Chrome's element, per case, as the hit-capture step found them
+ * when it captured that DPR: the per-DPR equality test demands exactly these points there and equality everywhere else, so a new
+ * mismatch and a fixed point both fail. A case with any pinned point is not proven at that DPR (hitProvenIds); each one needs a
+ * reviewed reason (hit-divergence.ts). Points are grid points in device LU, sorted by y then x.
+ */
+export type HitDivergence = { readonly chrome: string; readonly version: string; readonly dpr: number; readonly cases: Readonly<Record<string, readonly (readonly [number, number])[]>> };
+
+export const HIT_DIVERGENCE_FILE = 'known-divergence.json';
+export const expectedHitDivergencePath = (dpr: number): string => `${expectedHitDprDir(dpr)}/${HIT_DIVERGENCE_FILE}`;
+
+/** A case's mismatching points of a comparison, sorted by y then x. */
+export function divergencePoints(mismatches: readonly HitMismatch[]): [number, number][] {
+  return mismatches.map((m): [number, number] => [m.x, m.y]).sort((a, b) => (a[1] === b[1] ? a[0] - b[0] : a[1] - b[1]));
+}
+
+/** The divergence file of a DPR from each case's comparison against its fresh capture; a stale comparison is a capture bug. */
+export function hitDivergenceOf(dpr: number, compared: readonly { readonly case: string; readonly stale: boolean; readonly mismatches: readonly HitMismatch[] }[]): HitDivergence {
+  const cases: Record<string, [number, number][]> = {};
+  for (const r of compared) {
+    if (r.stale) throw new Error(`${r.case}: its capture at DPR ${dpr} is not on the grid its table derives`);
+    if (r.mismatches.length > 0) cases[r.case] = divergencePoints(r.mismatches);
+  }
+  return { chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, dpr, cases };
+}
+
+export const hitDivergenceJson = (d: HitDivergence): string => `{\n  "chrome": ${JSON.stringify(d.chrome)},\n  "version": ${JSON.stringify(d.version)},\n  "dpr": ${JSON.stringify(d.dpr)},\n  "cases": {${Object.keys(d.cases).sort().map((id) => `\n    ${JSON.stringify(id)}: ${JSON.stringify(d.cases[id])}`).join(',')}${Object.keys(d.cases).length > 0 ? '\n  ' : ''}}\n}\n`;
+
+/** The committed divergence file of a DPR; a missing or malformed one throws, naming what is wrong. */
+export function committedDivergence(dpr: number, path: string = expectedHitDivergencePath(dpr)): HitDivergence {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (e) {
+    throw new Error(`no readable hit divergence file at ${path} (${e instanceof Error ? e.message : String(e)}); run pnpm run parity:hit-capture`);
+  }
+  const d = raw as Partial<HitDivergence>;
+  const point = (p: unknown): boolean => Array.isArray(p) && p.length === 2 && Number.isInteger(p[0]) && Number.isInteger(p[1]);
+  const ok = d.chrome === CHROME_VERSION && d.version === HIT_CAPTURE_VERSION && d.dpr === dpr && typeof d.cases === 'object' && d.cases !== null && !Array.isArray(d.cases)
+    && Object.values(d.cases).every((ps) => Array.isArray(ps) && ps.length > 0 && ps.every(point));
+  if (!ok) throw new Error(`the hit divergence file at ${path} is malformed or from another Chrome, capture version or DPR`);
+  return d as HitDivergence;
+}
+
+/**
+ * How a case's comparison differs from its pinned points: each mismatch the divergence file does not pin (new) and each pinned
+ * point that now matches Chrome (fixed), in device px, at most limit of each; empty when they are exactly the pinned points.
+ */
+export function divergenceDrift(id: string, dpr: number, mismatches: readonly HitMismatch[], pinned: readonly (readonly [number, number])[] = [], limit = 3): string[] {
+  const key = (x: number, y: number): string => `${x},${y}`;
+  const want = new Set(pinned.map(([x, y]) => key(x, y)));
+  const got = new Set(mismatches.map((m) => key(m.x, m.y)));
+  const px = (v: number): number => v / (dpr * 64);
+  const fresh = mismatches.filter((m) => !want.has(key(m.x, m.y))).map((m) => `${id} (${px(m.x)}, ${px(m.y)}): Chrome ${m.chrome}, Dragon ${m.dragon}, not pinned`);
+  const fixed = pinned.filter(([x, y]) => !got.has(key(x, y))).map(([x, y]) => `${id} (${px(x)}, ${px(y)}): pinned, now Chrome's element`);
+  return [...fresh.slice(0, limit), ...fixed.slice(0, limit)];
+}
+
+/**
+ * The hit cases proven at a DPR: every hit case at DPR 1 (the DPR-1 test demands equality everywhere), and at a device DPR every one
+ * the divergence file pins no point of. Anything that would claim Chrome's hit test at a DPR (device-hit, a profile row) claims
+ * at most these.
+ */
+export function hitProvenIds(dpr: number, ids: readonly string[], divergence: HitDivergence | null): string[] {
+  if (dpr === 1) return [...ids];
+  if (divergence === null || divergence.dpr !== dpr) throw new Error(`the hit cases proven at DPR ${dpr} need that DPR's divergence file`);
+  return ids.filter((id) => divergence.cases[id] === undefined);
 }
 
 /** Tap dispatch on the host: the element a tap at (x, y) in LU activates, or null when no ancestor has a handler. */
