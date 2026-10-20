@@ -11,6 +11,9 @@ export const BLOCK_IN_INLINE: readonly FixtureSpec[] = [
   // The coverage probe's shape: display: inline on a box of two blocks of text.
   both('block-in-inline-probe'),
   both('block-in-inline-cases'),
+  // A border-box and border, margin, padding, background and outline reset, which give the inline box no box; a percentage height
+  // of a block inside an inline element, against the block container; and the first empty line above a top margin.
+  both('block-in-inline-reset'),
   reject('reject-block-in-inline-box', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="b">YY</div>', '<div> b is block-level inside the inline box <span> s'),
   reject('reject-block-in-inline-beside', 'DRAGON_UNSUPPORTED_VALUE', '<span data-dragon-id="s"><div data-dragon-id="b">YY</div></span>', 'the inline box <span> s holds block-level boxes beside the text'),
 ];

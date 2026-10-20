@@ -234,6 +234,10 @@ export function blockInInlineChild(k: ResolvedElement | { readonly kind: 'text';
   if (isBlockInInline(k)) return { kind: 'nested', address: k.element.address };
   const d = displayOf(k);
   if (d === 'none') return { kind: 'none' };
+  // An absolutely positioned or floated child leaves the flow: it neither splits the inline box nor makes it a block's.
+  const position = (k.props.get('position') as ResolvedValue).value;
+  const float = (k.props.get('float') as ResolvedValue).value;
+  if ((position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed')) || (float.kind === 'keyword' && float.value !== 'none')) return { kind: 'out-of-flow' };
   return isInlineBox(k) || isAtomicInline(k) || d === 'contents' || d.startsWith('inline') ? { kind: 'inline-level' } : { kind: 'block' };
 }
 

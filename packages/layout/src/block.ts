@@ -353,13 +353,13 @@ function collapsed(s: Strut): LU {
 /**
  * BII (CSS2 §9.2.1.1, Blink LayoutNG block-in-inline, measured against Chrome 145): an inline box holding only block-level boxes,
  * laid out as their block box, is three fragments of its block container's inline formatting context: an empty line at its line
- * start edge and top, the line holding the blocks (its border box), and an empty line at its line start edge below the margin
+ * start edge and top (or above it, at firstLine, where the blocks' top margin follows the line), the line holding the blocks (its border box), and an empty line at its line start edge below the margin
  * that collapses out of its bottom. The lines are zero-size boxes <id>:line0..2, as an inline box's fragments are.
  */
-function withBlockInInlineLines(frag: Frag, end: Strut, direction: Direction): Frag {
+function withBlockInInlineLines(frag: Frag, firstLine: LU, end: Strut, direction: Direction): Frag {
   const start = direction === 'rtl' ? frag.width : ZERO;
   const line = (j: number, x: LU, y: LU, width: LU, height: LU): Placed => ({ frag: { id: `${frag.id}:line${j}`, width, height, baseline: null, children: [], outOfFlow: [], inflow: null }, x, y });
-  const lines = [line(0, start, ZERO, ZERO, ZERO), line(1, ZERO, ZERO, frag.width, frag.height), line(2, start, add(frag.height, collapsed(end)), ZERO, ZERO)];
+  const lines = [line(0, start, firstLine, ZERO, ZERO), line(1, ZERO, ZERO, frag.width, frag.height), line(2, start, add(frag.height, collapsed(end)), ZERO, ZERO)];
   return { id: frag.id, width: frag.width, height: frag.height, baseline: frag.baseline, children: [...frag.children, ...lines], outOfFlow: frag.outOfFlow, inflow: frag.inflow };
 }
 
@@ -385,8 +385,10 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const fixedBorderBox = a.forcedBorderBoxHeight !== null
     ? a.forcedBorderBoxHeight
     : specified !== null ? constrain(specified, minMax) : fromRatio === null ? null : constrain(fromRatio, minMax);
+  // BII: a block inside an inline box has the inline box's block container as its containing block (CSS2 §10.1 item 2), so the
+  // box Dragon wraps it in passes that basis through.
   const childBasis: HeightBasis = fixedBorderBox === null
-    ? INDEFINITE
+    ? box.boxType === 'block-in-inline' ? a.heightBasis : INDEFINITE
     : a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite ? { kind: 'flex-dependent' } : { kind: 'definite', value: contentBox(fixedBorderBox, vbp) };
 
   if (s.display === 'flex') {
@@ -721,6 +723,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         bfcLineOffset: inline.bfcLineOffset,
       });
     }
+    // BII: the empty line before the blocks takes the flow position when nothing is pending there: the container's top is fixed and
+    // no margin waits to collapse; otherwise it waits for the blocks' margins as they do (measured against Chrome 145).
+    const lineStart = (seen || !a.canCollapseTop) && strut.positive === 0 && strut.negative === 0 ? cursor : null;
     const before = joinStruts(joinMargin(strut, inline.marginTop), c.escapeTop);
     let y: LU;
     if (c.collapseThrough) {
@@ -765,7 +770,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     }
     // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
     const offset = relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults);
-    const frag = kid.kind === 'box' && kid.boxType === 'block-in-inline' ? withBlockInInlineLines(at.frag, c.escapeBottom, direction) : at.frag;
+    const firstLine = lineStart === null || c.collapseThrough ? ZERO : sub(lineStart, y);
+    const frag = kid.kind === 'box' && kid.boxType === 'block-in-inline' ? withBlockInInlineLines(at.frag, firstLine, c.escapeBottom, direction) : at.frag;
     placed.push({ frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
     if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
   }

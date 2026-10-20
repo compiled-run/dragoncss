@@ -26,6 +26,16 @@ const fl = (id: string, side: 'left' | 'right', style: Partial<LayoutStyle> = {}
 const sized = (id: string, side: 'left' | 'right', w: number, h: number, style: Partial<LayoutStyle> = {}): LayoutBox => fl(id, side, { width: px(w), height: px(h), ...style });
 
 describe('FLT: float placement (CSS2 §9.5.1)', () => {
+  it('ignores a zero-width float beside the next one, though its top still holds later floats down (Chrome 145)', () => {
+    const w = (kids: LayoutBox[]): LayoutBox => box('root', {}, [box('w', { width: px(100), overflowX: 'hidden', overflowY: 'hidden' }, kids)]);
+    const m = rects(w([sized('a', 'left', 50, 10), sized('z', 'left', 0, 30), sized('c', 'left', 60, 5)]));
+    expect([at(m, 'c').x, at(m, 'c').y, at(m, 'w').height]).toEqual([0, 10, 30]);
+  });
+
+  it('refuses a float with an aspect-ratio, whose shrink-to-fit width it does not transfer', () => {
+    expect(codeOf(box('root', {}, [box('w', { overflowX: 'hidden', overflowY: 'hidden' }, [fl('a', 'left', { height: px(20), aspectRatio: { kind: 'ratio', width: 128, height: 64 } })])]))).toBe('float');
+  });
+
   it('places floats side by side, and a float that does not fit below the nearest float bottom that leaves room', () => {
     const left = { side: 'left' as const };
     const u = (n: number): LU => (n * 64) as LU;

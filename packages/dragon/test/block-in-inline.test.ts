@@ -39,6 +39,20 @@ describe('BII: block-in-inline', () => {
     expect(css).not.toMatch(/display: inline-block/);
   });
 
+  it('takes a reset that gives the inline box no box of its own: box-sizing, zero borders, margins and padding, a transparent background', () => {
+    const c = compile('* { box-sizing: border-box; } .s { border: 0; margin: 0; padding: 0 0 0 0px; background: transparent; outline: none; width: 9px; overflow: hidden; } .k { height: 10px; }', (r) => [div(r, 'p', [], [tagged(r, 'span', 's', ['s'], [div(r, 'k', ['k'])])])]);
+    expect(errors(c)).toEqual([]);
+    const p = iosLayoutProjection(c, ENV, []);
+    if (p.kind !== 'ready') throw new Error('blocked');
+    expect((find(p.input.root, 's') as LayoutBox).boxType).toBe('block-in-inline');
+  });
+
+  it('refuses keyword widths and an aspect-ratio on a float, which the engine sizes shrink-to-fit', () => {
+    const shown = (css: string): string[] => errors(compile(`.w { overflow: hidden; } ${css}`, (r) => [div(r, 'w', ['w'], [div(r, 'a', ['a'])])])).filter((e) => e.startsWith('DRAGON_UNSUPPORTED_VALUE ios'));
+    expect(shown('.a { float: left; min-width: -webkit-max-content; }')).toEqual(['DRAGON_UNSUPPORTED_VALUE ios min-width: max-content on a on a float (FLT) is not supported yet (css-sizing-3 §3.2, css-sizing-4 §5.1)']);
+    expect(shown('.a { float: right; height: 20px; aspect-ratio: 2 / 1; }')).toEqual(['DRAGON_UNSUPPORTED_VALUE ios float: right with aspect-ratio on a: a float\'s shrink-to-fit width through a ratio is not laid out yet (FLT)']);
+  });
+
   it('keeps refusing an inline box with a box of its own, with text inside or beside it, or holding another such inline box', () => {
     const block = (r: Ref): TreeNode => div(r, 'b', [], [text(r, 't', 'YY')]);
     const cases: [string, (r: Ref) => TreeNode[], string][] = [

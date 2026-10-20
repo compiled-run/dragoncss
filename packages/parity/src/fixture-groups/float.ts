@@ -13,6 +13,10 @@ export const FLOAT: readonly FixtureSpec[] = [
   // Left and right floats side by side and wrapping, with margins, after an in-flow block, a replaced float, a float of text with
   // padding and a border, floats in a flex item sized by its content, and a float in a plain block of an overflow: hidden root.
   both('float-row'),
+  // A zero-width float leaves the line as wide as it was (Blink adds no layout opportunity edge for it), and a flex float.
+  both('float-zero-width'),
+  reject('reject-float-keyword-width', 'DRAGON_UNSUPPORTED_VALUE', 'max-content', 'width: max-content on a on a float (FLT)'),
+  reject('reject-float-aspect-ratio', 'DRAGON_UNSUPPORTED_VALUE', 'left', 'float: left with aspect-ratio on a'),
   reject('reject-float-after', 'DRAGON_UNSUPPORTED_VALUE', 'left', 'float: left on f is followed in its formatting context by k'),
   reject('reject-float-clear', 'DRAGON_UNSUPPORTED_VALUE', 'right', 'float: right with clear: left on g'),
   reject('reject-float-inline-block', 'DRAGON_UNSUPPORTED_VALUE', 'left', 'float: left on f in ib, whose display is inline-block'),

@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle } from '../src/index.ts';
-import { box, neutralEnvironment, px } from './helpers.ts';
+import { box, neutralEnvironment, pct, px } from './helpers.ts';
 
 const env = (root: LayoutBox): LayoutInput => ({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root });
 const bii = (id: string, style: Partial<LayoutStyle>, children: LayoutBox[]): LayoutBox => ({ ...box(id, style, children), boxType: 'block-in-inline' });
@@ -28,6 +28,22 @@ describe('BII: the line fragments of a block-in-inline box', () => {
   it('starts its lines at the right edge in rtl, and takes no margin a fixed-height child keeps', () => {
     const m = rects(box('html', { direction: 'rtl' }, [box('w', { width: px(200), direction: 'rtl' }, [bii('s', { direction: 'rtl' }, [box('k', { height: px(10), direction: 'rtl' }, [box('i', { height: px(5), marginBottom: px(9), direction: 'rtl' })])])])]));
     expect([m['s:line0'], m['s:line1'], m['s:line2']]).toEqual([[400, 0, 0, 0], [200, 0, 200, 10], [400, 10, 0, 0]]);
+  });
+
+  it('puts the first empty line above the blocks\' top margin where the container\'s top is fixed and no margin is pending', () => {
+    // Chrome 145: padding-top 3px and a 4px top margin put the line at 3 and the block at 7; a preceding sibling's pending margin
+    // makes the line wait for the blocks' collapsed margin instead.
+    const pad = rects(box('html', {}, [box('w', { paddingTop: px(3) }, [bii('s', {}, [box('d', { marginTop: px(4), height: px(10) })])])]));
+    expect([pad['s:line0'], pad['s:line1'], pad['s:line2']]).toEqual([[0, 3, 0, 0], [0, 7, 400, 10], [0, 17, 0, 0]]);
+    const neg = rects(box('html', {}, [box('w', { paddingTop: px(3) }, [bii('s', {}, [box('d', { marginTop: px(-4), height: px(10) })])])]));
+    expect([neg['s:line0'], neg['s:line1']]).toEqual([[0, 3, 0, 0], [0, -1, 400, 10]]);
+    const sib = rects(box('html', {}, [box('w', { paddingTop: px(3) }, [box('k', { height: px(5), marginBottom: px(2) }), bii('s', {}, [box('d', { marginTop: px(9), height: px(10) })])])]));
+    expect([sib['s:line0'], sib['s:line1']]).toEqual([[0, 17, 0, 0], [0, 17, 400, 10]]);
+  });
+
+  it('resolves its blocks\' percentage heights against its block container (CSS2 §10.1 item 2)', () => {
+    const m = rects(box('html', {}, [box('p', { height: px(100) }, [bii('s', {}, [box('d', { height: pct(50) })])])]));
+    expect(m['d']?.[3]).toBe(50);
   });
 
   it('validates only as a static block box of block-level boxes', () => {

@@ -10,5 +10,7 @@ export const FIXED: readonly FixtureSpec[] = [
   // The coverage probe's shape: a fixed box of two blocks of text, at its static position.
   both('fixed-probe'),
   both('fixed-viewport'),
+  // Fixed children of a positioned grid take the viewport as their containing block; an absolute one takes the grid's padding box.
+  both('fixed-in-grid'),
   reject('reject-fixed-transform', 'DRAGON_UNSUPPORTED_VALUE', 'translateX(1px)', 'a transform on g makes it the containing block of the fixed a'),
 ];

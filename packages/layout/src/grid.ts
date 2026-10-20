@@ -2471,8 +2471,11 @@ export function gridOutOfFlow(ctx: Ctx, box: LayoutBox, pending: readonly GridOu
   const rtl = directionOf(ctx, box) === 'rtl';
   const bsp = logicalBsp(pad, bor, rtl);
   const edges = ctx.gridFaults.absposAutoLineContentEdge ? bsp : logicalBsp({ top: ZERO, right: ZERO, bottom: ZERO, left: ZERO }, bor, rtl);
-  const positioned = box.style.position !== 'static';
+  const containing = box.style.position !== 'static';
   return pending.map((p): OutOfFlow => {
+    // A fixed child's containing block is the viewport (CSS2 §10.1 item 3): the grid gives it a static position only, as a static
+    // grid does.
+    const positioned = containing && p.box.style.position !== 'fixed';
     const inlineStart = !positioned ? bsp.left : p.inlineStart === null ? edges.left : p.inlineStart;
     const inlineEnd = !positioned ? sub(width, bsp.right) : p.inlineEnd === null ? sub(width, edges.right) : p.inlineEnd;
     const blockStart = !positioned ? bsp.top : p.blockStart === null ? edges.top : p.blockStart;

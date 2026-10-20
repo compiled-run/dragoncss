@@ -24,6 +24,7 @@ import type { Ctx } from './block.ts';
 import { layoutContents } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow } from './position.ts';
+import { hasAspectRatio } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
@@ -70,6 +71,8 @@ export function layoutFloat(ctx: Ctx, node: LayoutNode, cbInline: LU, basis: Hei
   const marginBottom = resolveMarginWith(s.marginBottom, cbInline, ctx.faults).value;
   if (marginLeft < 0 || marginRight < 0 || marginTop < 0 || marginBottom < 0) unsupported('float', node.id, 'CSS2 §9.5.1', `a negative margin on float ${node.id}`);
   if (node.kind === 'replaced') return { frag: layoutReplacedInFlow(ctx, node, cbInline, basis), marginLeft, marginRight, marginTop, marginBottom };
+  // css-sizing-4 §5.1: a ratio would transfer a height into the shrink-to-fit width, which floatWidth does not do.
+  if (hasAspectRatio(s)) unsupported('float', node.id, 'css-sizing-4 §5.1', `aspect-ratio on float ${node.id}`);
   const width = floatWidth(ctx, node, cbInline, add(marginLeft, marginRight));
   const r = layoutContents(ctx, node, {
     cbInline,
@@ -99,9 +102,10 @@ export function placeFloat(floats: readonly FloatArea[], side: Float, width: LU,
     // The next offset to try: the nearest bottom of a float beside this one.
     let next: LU | null = null;
     for (const f of floats) {
-      // An earlier float's top is at or above at, so it is beside the new float while its bottom is below at.
+      // An earlier float's top is at or above at, so it is beside the new float while its bottom is below at. Blink adds no layout
+      // opportunity edge for a float with a zero-width margin box (exclusion_space.cc:345-349), though its top still counts above.
       const bottom = add(f.y, f.height);
-      if (bottom <= at) continue;
+      if (bottom <= at || f.width <= 0) continue;
       beside = true;
       next = next === null ? bottom : min(next, bottom);
       if (f.side === 'left') left = max(left, add(f.x, f.width));
