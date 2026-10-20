@@ -238,9 +238,9 @@ describe('the generated runtime', () => {
   });
 
   it('emits an animated program with viewport-relative lengths and resize steps: a size change restyles the animator', () => {
-    const none = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false } as const;
+    const none = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false, ops: [] } as const;
     const root = (emit.program.variants[0] as StateProgram['variants'][number]).root;
-    const anim = { assignments: emit.program.assignments.length, slots: [], animations: [], keyframes: [], rendered: [], bases: [{ node: root.id, property: 'width', kind: 'length' as const, range: 'all' as const, values: emit.program.assignments.map(() => none) }], closure: [] };
+    const anim = { assignments: emit.program.assignments.length, slots: [], animations: [], keyframes: [], rendered: [], bases: [{ node: root.id, property: 'width', kind: 'length' as const, range: 'all' as const, values: emit.program.assignments.map(() => none) }], closure: [], origins: [] };
     const vw = { kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width', size: 'small' }, range: 'non-negative' };
     const program = { ...emit.program, variants: emit.program.variants.map((v) => ({ ...v, root: { ...v.root, style: { ...v.root.style, width: vw } } })) } as StateProgram;
     const resize = { ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'resize', width: 600, height: 300 } as const, { kind: 'dump' } as const] };
