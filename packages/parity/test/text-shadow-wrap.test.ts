@@ -30,8 +30,8 @@ import { boxes, modelAt } from './paint-model.ts';
 
 const CASE = 'text-shadow-wrap';
 const SPEC = FIXTURE_GROUPS.flatMap((g) => g.fixtures).find((f) => f.id === CASE);
-/** The shadowed texts of the fixture and the least lines each takes at 130px (text-shadow-wrap.html). */
-const TEXTS: { readonly [text: string]: number } = { 'inh:text0': 2, 'hard:text0': 3, 'soft:text0': 3, 'two:text0': 2, 'glow:text0': 2, 'num:text0': 3 };
+/** The shadowed texts of the fixture and the lines each takes at 96px (text-shadow-wrap.html), all inside the 400x300 viewport. */
+const TEXTS: { readonly [text: string]: number } = { 'inh:text0': 2, 'hard:text0': 2, 'soft:text0': 2, 'two:text0': 2, 'glow:text0': 2, 'num:text0': 2 };
 /** The model judges a glyph pixel only when it is this far (device px) inside a glyph box. */
 const MARGIN = 1;
 
@@ -115,7 +115,7 @@ describe('TXT-FX text-shadow on wrapped lines: each line\'s layer against Chrome
         const lines = shadowedLines(p, viewport, dpr, caseBoxes(p, viewport, dpr));
         for (const [text, least] of Object.entries(TEXTS)) {
           const n = lines.filter((l) => l.text === text).length;
-          if (n < least) problems.push(`${c.id}@${dpr}: ${text} has ${n} shadowed lines, not at least ${least}`);
+          if (n !== least) problems.push(`${c.id}@${dpr}: ${text} has ${n} shadowed lines, not ${least}`);
         }
         const points = casePoints(p, viewport, dpr).filter((q) => q.rule.startsWith('text-shadow:'));
         let max = 0;
@@ -151,10 +151,10 @@ describe('TXT-FX text-shadow on wrapped lines: each line\'s layer against Chrome
     // The fixture with glow alone, at line-height normal (Ahem's line box is its em, so the lines touch).
     const only = (html: string, shadow: string): string =>
       html
-        .replace('line-height: 40px;', 'line-height: normal;')
-        .replace('.glow { text-shadow: 0 0 8px #f80; }', `.glow { text-shadow: ${shadow}; }`)
+        .replace('line-height: 64px;', 'line-height: normal;')
+        .replace('.glow { text-shadow: 0 0 4px #f80; }', `.glow { text-shadow: ${shadow}; }`)
         .replace(/<div data-dragon-id="(?!glow")[^\n]*\n/g, '');
-    const glow = only(c.authoredHtml, '0 0 8px #f80');
+    const glow = only(c.authoredHtml, '0 0 4px #f80');
     const none = only(c.authoredHtml, 'none');
     expect(glow).toContain('line-height: normal;');
     expect(glow.match(/data-dragon-id="glow"/g)?.length).toBe(1);
