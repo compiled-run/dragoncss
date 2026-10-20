@@ -9,6 +9,9 @@
     {"id":"dec:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
     {"id":"str:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
     {"id":"pos:text0","data":"X","lines":1,"units":[0],"blank":[]},
-    {"id":"img:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+    {"id":"img:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"disc:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"dt:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"li4:text0","data":"X","lines":1,"units":[0],"blank":[]}
   ]
 }

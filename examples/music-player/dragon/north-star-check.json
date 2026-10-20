@@ -133,16 +133,16 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 6,
+   "blankedDeclarations": 5,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 146,
+  "diagnostics": 148,
   "errors": 141,
   "byCode": {
-   "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
-   "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
+   "DRAGON_NOT_APPLICABLE_NATIVE [android]": 3,
+   "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 3,
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 4,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 4,
@@ -151,8 +151,8 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 22,
    "DRAGON_UNSUPPORTED_FONT [ios]": 22,
-   "DRAGON_UNSUPPORTED_PROPERTY": 3,
-   "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
+   "DRAGON_UNSUPPORTED_PROPERTY": 2,
+   "DRAGON_UNSUPPORTED_PROPERTY [web]": 3,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 5,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 5,
@@ -181,7 +181,7 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 3,
+     "DRAGON_UNSUPPORTED_PROPERTY": 2,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 20
     },
@@ -189,7 +189,7 @@
      "DRAGON_SELECTOR_DROPPED": 1
     },
     "infos": {
-     "DRAGON_NOT_APPLICABLE_NATIVE": 2
+     "DRAGON_NOT_APPLICABLE_NATIVE": 3
     }
    },
    "android": {
@@ -198,7 +198,7 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 3,
+     "DRAGON_UNSUPPORTED_PROPERTY": 2,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 20
     },
@@ -206,20 +206,20 @@
      "DRAGON_SELECTOR_DROPPED": 1
     },
     "infos": {
-     "DRAGON_NOT_APPLICABLE_NATIVE": 2
+     "DRAGON_NOT_APPLICABLE_NATIVE": 3
     }
    }
   },
   "declarations": 291,
-  "notApplicableNative": 2,
-  "notApplicableIos": 2,
-  "notApplicableAndroid": 2,
-  "applicableDeclarations": 289,
+  "notApplicableNative": 3,
+  "notApplicableIos": 3,
+  "notApplicableAndroid": 3,
+  "applicableDeclarations": 288,
   "supportedBothTargets": 256,
   "supportedWeb": 275,
   "supportedIos": 256,
   "supportedAndroid": 256,
-  "supportPercent": 88.6,
+  "supportPercent": 88.9,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -302,9 +302,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 56,
-   "B-unwrapped": 56,
-   "C-context": 107
+   "A-authored": 58,
+   "B-unwrapped": 58,
+   "C-context": 110
   }
  },
  "features": {
@@ -3597,8 +3597,8 @@
    "property": "scrollbar-color",
    "value": "rgba(155, 155, 155, 0.5) transparent",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
@@ -4559,10 +4559,52 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8034-8087|scrollbar-color is not supported in milestone 1",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@8034-8087|scrollbar-color is left out on android by owner ruling: it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8034,
+    "end": 8087,
+    "line": 470,
+    "column": 2,
+    "text": "scrollbar-color: rgba(155, 155, 155, 0.5) transparent"
+   },
+   "message": "scrollbar-color is left out on android by owner ruling: it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@8034-8087|scrollbar-color is left out on ios by owner ruling: it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8034,
+    "end": 8087,
+    "line": 470,
+    "column": 2,
+    "text": "scrollbar-color: rgba(155, 155, 155, 0.5) transparent"
+   },
+   "message": "scrollbar-color is left out on ios by owner ruling: it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_PROPERTY|web|css@8034-8087|scrollbar-color is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 8034,
@@ -4575,7 +4617,8 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
