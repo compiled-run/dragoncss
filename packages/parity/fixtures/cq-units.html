@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.page { container-type: inline-size; margin: 0 8px; padding: 0 4px 0 8px; }
+.card { container: card / inline-size; max-width: 340px; }
+.fix { container-type: inline-size; width: 200px; }
+.x { height: 10px; background-color: #888888; }
+.half { width: 50cqw; }
+.sum { width: calc(33cqi + 7px); background-color: #0000cc; }
+.edge { width: 20px; margin-left: 12.5cqw; padding-right: 3CQI; background-color: #00cc00; }
+.part { width: 37.5cqw; }
+.tall { width: 10px; height: 10cqi; background-color: #cc00cc; }
+.cap { width: min(50cqw, 150px); background-color: #cccc00; }
+.quarter { width: 25cqw; }
+@media (min-width: 384px) { .page { padding: 0 20px; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="page" class="page"><div data-dragon-id="p-a" class="x half"></div><div data-dragon-id="p-b" class="x sum"></div><div data-dragon-id="p-c" class="x edge"></div><div data-dragon-id="card" class="card"><div data-dragon-id="c-a" class="x part"></div><div data-dragon-id="c-b" class="x tall"></div><div data-dragon-id="c-c" class="x cap"></div></div></div>
+<div data-dragon-id="fix" class="fix"><div data-dragon-id="f-a" class="x quarter"></div></div>
+</body>
+</html>

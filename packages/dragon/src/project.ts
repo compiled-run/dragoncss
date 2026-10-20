@@ -51,7 +51,7 @@ import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
 import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
-import type { ContainerBand, ContainerRefusals } from './analysis/container-rules.ts';
+import type { ContainerBand, ContainerRefusals, ContainerUnitRefusals } from './analysis/container-rules.ts';
 import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers } from './analysis/container-rules.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
@@ -1357,18 +1357,23 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       // Every band is checked for every target. Each pass reports on its own, its diagnostics without a target scoped to the pass's
       // targets, then all are merged.
       const containerRefusals: ContainerRefusals = new Map();
-      const contained = rules.some((r) => r.container !== undefined);
-      containerQueries = contained;
+      const unitRefusals: ContainerUnitRefusals = new Map();
+      containerQueries = rules.some((r) => r.container !== undefined);
       const passes = bandList.map((b, k) => {
         const own: Diagnostic[] = [];
         const bandTargets = passTargets(k);
-        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, contained ? containerBand(b, containerRefusals) : null) };
+        // CQ: cqw and cqi resolve against each element's query container, which the same pass finds. Every pass looks, since a unit
+        // may appear only after var() substitution (a custom property, a registered initial value, an escaped unit).
+        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, containerBand(b, containerRefusals, unitRefusals)) };
         return { result, diagnostics: scopedTo(own, bandTargets, targets) };
       });
       bandCases = passes.map((p) => p.result);
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
       for (const { condition, reason } of containerRefusals.values()) {
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', { origin: authored(condition.span), message: `@container ${condition.text} is not supported here: ${reason}` }));
+      }
+      for (const { span, property, text, reason } of unitRefusals.values()) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message: `${property}: ${text} is not supported here: ${reason}`, manual: 'Use %, px, em or rem, or give the element a query container Dragon reads.' }));
       }
       // GEN-a R12: a generated box and its text are the same in every reachable state, interaction state and band.
       checkGeneratedIdentity(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), diagnostics);

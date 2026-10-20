@@ -38,7 +38,10 @@ const FONT_METRIC_FIX = 'Use em, rem or px.';
 const LINE_HEIGHT_REASON = 'it is the used line height, which the layout engine rounds to 1/64 px (and takes from font metrics for line-height: normal), so it needs the engine value-model package';
 const SIZED_VIEWPORT_REASON = 'small, large and dynamic viewport units need the viewport inputs of the value-model package V2 (notes/T012-v2-spec.md)';
 const SIZED_VIEWPORT_FIX = 'Use vw, vh, vi, vb, vmin or vmax.';
-const CONTAINER_REASON = 'container query units need container queries, which are not supported';
+// CQ: cqw and cqi are refused here, so every paint parser that reads the registry refuses them, and the generic length parse and
+// css/math.ts admit them (LAYOUT_CONTAINER_UNITS); analysis/container-rules.ts resolves them against the query container per band.
+const CONTAINER_REASON = 'a container query unit is supported in layout lengths only (width, height, margins, padding, insets and the like), where Dragon resolves it against the query container';
+const CONTAINER_BLOCK_REASON = 'an inline-size query container answers only the inline axis, so a block-axis container unit falls back to the small viewport, which needs the viewport inputs of the value-model package V2';
 
 const refused = (reason: string, fix: string): UnitConversion => ({ kind: 'refused', reason, fix });
 const length = (unit: string, conversion: UnitConversion): UnitEntry => ({ unit, dimension: 'length', featureType: `<length-${unit}>`, conversion });
@@ -63,8 +66,11 @@ export const UNITS: readonly UnitEntry[] = [
   length('vmax', { kind: 'viewport', axis: 'max' }),
   ...['svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax']
     .map((u) => length(u, refused(SIZED_VIEWPORT_REASON, SIZED_VIEWPORT_FIX))),
-  ...['cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax'].map((u) => length(u, refused(CONTAINER_REASON, 'Use %, px, em or rem.'))),
+  ...['cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax'].map((u) => length(u, u === 'cqw' || u === 'cqi' ? refused(CONTAINER_REASON, 'Use %, px, em or rem.') : refused(CONTAINER_BLOCK_REASON, 'Use cqw or cqi, or %, px, em or rem.'))),
 ];
+
+/** CQ: the container query units the generic length parse and calculations admit: the inline axis of an inline-size container. */
+export const LAYOUT_CONTAINER_UNITS: ReadonlySet<string> = new Set(['cqw', 'cqi']);
 
 const BY_NAME: ReadonlyMap<string, UnitEntry> = new Map(UNITS.map((u) => [u.unit, u]));
 
@@ -85,6 +91,7 @@ export function lengthFeatureType(unit: string): string {
 
 /** The refusal of a registered unit with no build-time conversion, or null. */
 export function unitRefusal(unit: string): { readonly reason: string; readonly fix: string } | null {
+  if (LAYOUT_CONTAINER_UNITS.has(unit)) return null;
   const c = unitEntry(unit)?.conversion;
   return c !== undefined && c.kind === 'refused' ? c : null;
 }
