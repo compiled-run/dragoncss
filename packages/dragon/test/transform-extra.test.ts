@@ -118,14 +118,13 @@ describe('the 3D transform longhands', () => {
     }
     expect(errorsAt('-webkit-backface-visibility: hidden')).toEqual(REFUSED);
     expect(errorsAt('-webkit-transform-style: preserve-3d')).toEqual(REFUSED);
-    for (const d of ['perspective: 100px', 'perspective: 0', 'perspective: calc(10px + 1px)', 'perspective-origin: left top', 'perspective-origin: 50% 49%', 'perspective-origin: 10px 50%', '-webkit-perspective-origin: right']) {
-      expect(errorsAt(d), d).toEqual(REFUSED);
+    // perspective and perspective-origin are accepted: over Dragon's 2D transforms a perspective is an identity transform
+    // (paint-values/transform.ts hasPerspective), measured pixel-identical in Chrome 145.
+    for (const d of ['perspective: 100px', 'perspective: 0', 'perspective: calc(10px + 1px)', 'perspective-origin: left top', 'perspective-origin: 50% 49%', 'perspective-origin: 10px 50%', '-webkit-perspective-origin: right', 'perspective: none; perspective: 100px; perspective-origin: 0 0', '--p: 50px; perspective: var(--p)', '--o: left; perspective-origin: var(--o)']) {
+      expect(errorsAt(d), d).toEqual([]);
     }
     // -webkit-perspective other than none is refused as it parses, on every target at once (aliases.ts legacyAliasRefusal).
     expect(errorsAt('-webkit-perspective: 100px')).toEqual(['null DRAGON_UNSUPPORTED_VALUE']);
-    expect(errorsAt('perspective: none; perspective: 100px; perspective-origin: 0 0')).toEqual(REFUSED);
-    expect(errorsAt('--p: 50px; perspective: var(--p)')).toEqual(REFUSED);
-    expect(errorsAt('--o: left; perspective-origin: var(--o)')).toEqual(REFUSED);
     expect(errorsAt('backface-visibility: visible; -webkit-backface-visibility: hidden')).toEqual(REFUSED);
     expect(errorsAt('backface-visibility: hidden; transform-style: preserve-3d; transform-box: border-box')).toEqual(REFUSED);
     // A value that arrives through var() is refused as well, and the initial value through var() is accepted.
@@ -136,6 +135,14 @@ describe('the 3D transform longhands', () => {
     const errors = c.diagnostics.filter((x) => x.severity === 'error');
     expect(errors).toHaveLength(3);
     for (const d of errors) expect(d.message).toMatch(/^backface-visibility: hidden on <div> a is unsupported: .*only visible is accepted$/);
+  });
+
+  it('a perspective acts as an identity transform: a stacking context and a containing block, refused where a transform is', () => {
+    const at = (css: string, kids = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]): string[] =>
+      project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, kids)).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.message}`).sort();
+    expect(at('.s { perspective: 500px; } .c { position: absolute; }')).toEqual(['android', 'ios', 'web'].map((t) => `${t} a transform on a makes it the containing block of the absolutely positioned b (css-transforms-1 §3), which Dragon's layout does not model yet`));
+    expect(at('.s { perspective: 500px; position: relative; } .c { position: absolute; }')).toEqual([]);
+    expect(at('.s { perspective: 500px; } .c { transform: rotate(20deg) scale(1.2); }')).toEqual([]);
   });
 
   it('refuse a value a child inherits explicitly, on the child too', () => {

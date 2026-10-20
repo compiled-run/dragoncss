@@ -73,16 +73,27 @@ const keywordOf = (el: ResolvedElement, p: Longhand): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
-/** Whether an element's transform or will-change makes it a containing block for positioned descendants (css-transforms-1 §3). */
+/**
+ * Whether an element's perspective is not none. With Dragon's 2D transforms below it, a perspective projects nothing (a point of the
+ * z = 0 plane keeps w = 1), so it acts as an identity transform: a stacking context and a containing block, measured pixel-identical
+ * to transform: translateX(0) in Chrome 145 with rotated, scaled and translated children at DPR 1 and 2.625 (css-transforms-2 §5).
+ */
+export function hasPerspective(el: ResolvedElement): boolean {
+  const v = el.props.get('perspective')?.value;
+  return v !== undefined && !(v.kind === 'keyword' && v.value === 'none');
+}
+
+/** Whether an element's transform, perspective or will-change makes it a containing block for positioned descendants (css-transforms-1 §3). */
 export function transformsDescendants(el: ResolvedElement): boolean {
-  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform');
+  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || hasPerspective(el);
 }
 
 /** Where to report a transform refusal: the transform declaration, else the will-change one, else the element. */
 function transformOrigin(el: ResolvedElement): Origin {
-  for (const p of ['transform', 'will-change'] as const) {
+  for (const p of ['transform', 'will-change', 'perspective'] as const) {
     const v = el.props.get(p) as ResolvedValue;
-    if (v.declaration !== null && (p === 'will-change' ? elementWillChange(el).includes('transform') : elementTransform(el).length > 0)) return authored(v.declaration.valueSpan);
+    const applies = p === 'will-change' ? elementWillChange(el).includes('transform') : p === 'perspective' ? hasPerspective(el) : elementTransform(el).length > 0;
+    if (v.declaration !== null && applies) return authored(v.declaration.valueSpan);
   }
   return el.element.node.origin;
 }

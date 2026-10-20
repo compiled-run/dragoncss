@@ -1,7 +1,8 @@
 // css-transforms-1 (PNT2): transform, transform-origin and will-change. Rotated, scaled, translated and matrix() boxes with every
 // origin form, nested and clipped transforms, transformed text, flex items and the music-player demo's patterns; the rejects name
 // what PNT2 refuses (PNT2-m: skew, 3D, perspective, a z origin and a composition that skews; the containing-block, viewport-unit,
-// will-change and root refusals).
+// will-change and root refusals). The perspective property (not the perspective() function) is drawn as an identity transform:
+// over 2D transforms it changes no pixel, only the stacking context and containing block (transform-perspective).
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
@@ -18,6 +19,7 @@ export const TRANSFORMS: readonly FixtureSpec[] = [
   layout('transform-demo'),
   layout('transform-clip'),
   layout('transform-will-change'),
+  layout('transform-perspective'),
   layout('transform-flex'),
   both('transform-direction'),
   reject('reject-transform-skew', 'DRAGON_UNSUPPORTED_VALUE', 'skewX(10deg)', `transform: skewX(10deg) is unsupported: ${M}`),
