@@ -31,6 +31,7 @@ packages/parity/expected-fonts/** merge=dragon-generated
 packages/parity/expected-frames/** merge=dragon-generated
 packages/parity/expected-glyphs/bottom-scanlines.json merge=dragon-generated
 packages/parity/expected-hit/*.hit.json merge=dragon-generated
+packages/parity/expected-hit/dpr-*/*.hit.json merge=dragon-generated
 packages/parity/expected-media/** merge=dragon-generated
 packages/parity/expected-pixels/** merge=dragon-generated
 packages/parity/expected-quads/** merge=dragon-generated

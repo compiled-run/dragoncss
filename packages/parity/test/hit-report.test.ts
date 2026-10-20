@@ -2,10 +2,13 @@
 // in packages/parity/expected-hit for every layout case at every point of its derived grid, must equal the TypeScript hit test
 // (packages/layout/src/rt-hit.ts) over the engine's boxes at every point; each hit plant must fail it; a tap activates the
 // nearest ancestor of Chrome's element that has an activation handler.
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitRefusal, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
+import { capturedIds, caseHitTable, committedHits, committedHitsAt, compareHits, compareHitsAt, gridSha256, HIT_FACTS_PATH, hitCases, hitDprCaptures, hitFactsJson, hitGrid, hitGridAt, hitRefusal, hitRefusedCases, replaceDirWhenFilled, tapTarget } from '../src/hit-capture.ts';
+import { DPRS } from '../src/dpr.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
@@ -89,6 +92,91 @@ describe('the host hit lane', () => {
     }
     expect(mismatches).toEqual([]);
     expect(points).toBeGreaterThan(600000);
+  });
+});
+
+describe('the host hit lane at the device DPRs', () => {
+  // Chrome at --force-device-scale-factor=N lays out in device px and snaps text rects there, as rt-hit.ts does at that DPR: the
+  // device-hit lane's expectedHitRuns and the device-traces reference hit test with that model, so it must name Chrome's element at
+  // every point of every hit case at DPR 2, 3 and 2.625 (elementFromPoint's float point, its CSS px viewport gate, and pre-wrap's
+  // hanging spaces, which only show at a fractional device scale).
+  const dprCaptures = hitDprCaptures(cases);
+  it('captures every hit case at every device DPR', () => {
+    expect(dprCaptures.map((d) => d.dpr)).toEqual(DPRS);
+    for (const d of dprCaptures) expect(d.ids).toEqual(cases.map((n) => n.case.id));
+  });
+
+  // One test per DPR, each case compared at every point of its committed capture on the grid its table derives now (a stale grid
+  // fails by name).
+  for (const dpr of DPRS) {
+    it(`names Chrome's element at every point of every hit case's capture at DPR ${dpr}`, () => {
+      const byId = new Map(cases.map((n) => [n.case.id, n]));
+      const own = dprCaptures.find((d) => d.dpr === dpr);
+      if (own === undefined) throw new Error(`no hit captures at DPR ${dpr}`);
+      const mismatches: string[] = [];
+      const stale: string[] = [];
+      let points = 0;
+      for (const id of own.ids) {
+        const n = byId.get(id);
+        if (n === undefined) throw new Error(`${id} is not a hit case`);
+        const r = compareHitsAt(n, committedHitsAt(id, dpr), dpr);
+        if (r.stale) stale.push(id);
+        points += r.points;
+        for (const m of r.mismatches.slice(0, 3)) mismatches.push(`${m.case} (${m.x / (dpr * 64)}, ${m.y / (dpr * 64)}): Chrome ${m.chrome}, Dragon ${m.dragon}`);
+      }
+      expect(stale).toEqual([]);
+      expect(mismatches).toEqual([]);
+      expect(points).toBeGreaterThan(0);
+    });
+  }
+
+  it('names c at interaction-combo\'s step point (2, 30) at 2.625, where DPR 1 names d', () => {
+    const dpr = 2.625;
+    for (const id of ['interaction-combo', 'interaction-combo-rtl']) {
+      const n = cases.find((x) => x.case.id === id);
+      if (n === undefined) throw new Error(`${id} is not a hit case`);
+      const c = committedHitsAt(id, dpr);
+      const grid = hitGridAt(caseHitTable(n, undefined, dpr), n.case.environment.viewport, dpr);
+      // c's 10 px X, snapped to device px: 0 to 26 at 2.625 (390 to 400 in rtl: 1024 to 1050); the step's y 30 is 78.75 device
+      // px, inside c's text rect snapped to device px (53 to 79).
+      const w = n.case.environment.viewport.width;
+      const [x0, x1] = id.endsWith('-rtl') ? [Math.round((w - 10) * dpr) * 64, Math.round(w * dpr) * 64] : [0, Math.round(10 * dpr) * 64];
+      const chrome = capturedIds(c);
+      const [y0, y1] = [30 * dpr * 64, Math.ceil(30 * dpr) * 64];
+      const row = grid.flatMap(([gx, gy], i) => (gy >= y0 && gy < y1 && gx >= x0 && gx < x1 ? [[gx, gy, chrome[i]]] : []));
+      expect(row.length, id).toBeGreaterThan(1);
+      expect(row.filter(([, , h]) => h !== 'c'), id).toEqual([]);
+    }
+  });
+
+  it('refuses a DPR capture compared at another DPR, and a DPR-1 capture read as a DPR one', () => {
+    const n = cases.find((x) => x.case.id === 'interaction-combo');
+    if (n === undefined) throw new Error('no interaction-combo hit case');
+    expect(() => compareHitsAt(n, committedHits('interaction-combo'), 2.625)).toThrow(/a capture at DPR 1 compared at DPR 2.625/);
+    expect(() => compareHitsAt(n, committedHitsAt('interaction-combo', 2.625), 1)).toThrow(/a capture at DPR 2.625 compared at DPR 1/);
+  });
+
+  it('swaps a DPR capture folder in only once its capture finished: a failed capture leaves the old folder intact', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dragon-hit-dpr-'));
+    try {
+      const dir = join(root, 'dpr-2.625');
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'old.hit.json'), 'old');
+      await expect(replaceDirWhenFilled(dir, async (into) => {
+        writeFileSync(join(into, 'half.hit.json'), 'half');
+        throw new Error('Chrome went away');
+      })).rejects.toThrow(/Chrome went away/);
+      expect(readdirSync(root)).toEqual(['dpr-2.625']);
+      expect(readdirSync(dir)).toEqual(['old.hit.json']);
+      await replaceDirWhenFilled(dir, async (into) => writeFileSync(join(into, 'new.hit.json'), 'new'));
+      expect(readdirSync(root)).toEqual(['dpr-2.625']);
+      expect(readdirSync(dir)).toEqual(['new.hit.json']);
+      // A first capture has no folder to keep.
+      await replaceDirWhenFilled(join(root, 'dpr-3'), async (into) => writeFileSync(join(into, 'a.hit.json'), 'a'));
+      expect(readdirSync(root).sort()).toEqual(['dpr-2.625', 'dpr-3']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

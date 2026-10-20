@@ -7,8 +7,9 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { launchChrome } from '../chrome.ts';
+import { zoomGuard } from '../dpr.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
-import { captureHits, expectedHitDir, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../hit-capture.ts';
+import { captureHits, captureHitsAt, expectedHitDir, expectedHitDprDir, hitCaptureFile, hitDprCaptures, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, replaceDirWhenFilled, withoutPointerEvents } from '../hit-capture.ts';
 import { repoPath } from '../paths.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
 
@@ -56,4 +57,30 @@ try {
 } finally {
   await browser.close();
 }
-console.log(`parity:hit-capture: ${cases.length} cases (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit`);
+// The DPR captures (hitDprCaptures): one launch per DPR at that forced device scale factor, behind the zoom guard, each DPR's folder
+// replaced only once all its captures are written.
+const byId = new Map(cases.map((n) => [n.case.id, n]));
+const dprCaptures = hitDprCaptures(cases);
+for (const f of readdirSync(dir, { withFileTypes: true })) {
+  if (f.isDirectory() && /^dpr-/.test(f.name) && !dprCaptures.some((d) => `dpr-${d.dpr}` === f.name)) rmSync(`${dir}/${f.name}`, { recursive: true });
+}
+for (const { dpr, ids } of dprCaptures) {
+  const own = ids.map((id) => {
+    const n = byId.get(id);
+    if (n === undefined) throw new Error(`hitDprCaptures names ${id} at DPR ${dpr}, which is not a hit case`);
+    return n;
+  });
+  await replaceDirWhenFilled(expectedHitDprDir(dpr), async (into) => {
+    const b = await launchChrome(dpr);
+    try {
+      await zoomGuard(b, dpr);
+      for (const c of await inOrder(own, CHROME_PAGES, (n) => captureHitsAt(b, n, dpr))) {
+        points += c.points;
+        writeFileSync(`${into}/${hitCaptureFile(c.case)}`, hitCaptureJson(c));
+      }
+    } finally {
+      await b.close();
+    }
+  });
+}
+console.log(`parity:hit-capture: ${cases.length} cases and ${dprCaptures.reduce((k, d) => k + d.ids.length, 0)} DPR captures (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit`);

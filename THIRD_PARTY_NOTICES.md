@@ -301,6 +301,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ## Chromium files with a BSD licence in their own header (header-bsd-3)
 
 - `third_party/blink/renderer/core/css/css_font_style_range_value.cc`: Copyright (C) 2017 Apple Inc. All rights reserved.
+- `third_party/blink/renderer/core/dom/tree_scope.cc`: Copyright (C) 2011 Google Inc. All Rights Reserved.; Copyright (C) 2012 Apple Inc. All rights reserved.
 
 ```
 Redistribution and use in source and binary forms, with or without

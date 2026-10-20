@@ -322,3 +322,63 @@ describe('grid containers', () => {
     expect(hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS).ids).toEqual(['html', 'body', 'g', 'a', 'b']);
   });
 });
+
+// SELD-R2 (a): Chrome 145 at a forced device scale factor lays out in device px; these are the hit rules that only show there,
+// measured against Chrome at DPR 2, 2.625 and 3 (packages/parity hit-report.test.ts proves them on every hit case's DPR captures).
+describe('the hit test at a device scale', () => {
+  it('takes elementFromPoint\'s point as Chrome does: the CSS px coordinate as a float, times the float zoom, floored to LU', async () => {
+    const { chromePoint } = await import('../src/rt-hit.ts');
+    // 813.25 device px at 2.625 is 309.8095... CSS px, whose float times 2.625 falls just under 813.25: one LU less.
+    expect(chromePoint(52048 / (2.625 * PX), 2.625)).toBe(52047);
+    expect(chromePoint(2, 2.625)).toBe(336);
+    expect(chromePoint(30, 2.625)).toBe(5040);
+    // At DPR 1 it is the coordinate floored to LU, as before.
+    expect(chromePoint(9.015625, 1)).toBe(577);
+    expect(chromePoint(20.4999, 1)).toBe(1311);
+  });
+
+  it('answers a grid point through that point, so a box edge at a fractional device px holds one more LU', async () => {
+    const { hitRuns } = await import('../src/rt-hit.ts');
+    const nodes = [box(-1, 0, 0, 0, 1050, 787), box(0, 1, 0, 0, 813.25, 100)];
+    const table = (dpr: number) => ({ nodes, ids: ['html', 'b'], activation: [false, false], dpr });
+    expect(hitRuns(table(2.625), [{ x: 52048, y: 3200 }], NO_HIT_FAULTS)).toBe('b 1;');
+    expect(hitRuns(table(1), [{ x: 52048, y: 3200 }], NO_HIT_FAULTS)).toBe('html 1;');
+  });
+
+  it('derives no grid point whose rounded CSS coordinate is outside the viewport in CSS px', async () => {
+    const { hitGrid, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box: lbox, neutralEnvironment, px } = await import('./helpers.ts');
+    const root = lbox('html', {}, [lbox('a', { width: px(399.25), height: px(10) })]);
+    const facts = new Map(['html', 'a'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    const t = hitTableOf({ viewport: { width: 400, height: 300 }, devicePixelRatio: 2, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    expect(t.dpr).toBe(2);
+    const xs = new Set(hitGrid(t, 400 * 2 * PX, 300 * 2 * PX).map((p) => p.x));
+    // a's right edge is 399.25 CSS px (51104 LU at DPR 2): the edge is inside, half a device px past it (399.5) rounds to 400.
+    expect(xs.has(51104)).toBe(true);
+    expect(xs.has(51136)).toBe(false);
+    expect([...xs].every((x) => Math.round(Math.fround(x / (2 * PX))) < 400)).toBe(true);
+  });
+
+  it('gives pre-wrap\'s hanging spaces no glyph ink and leaves them out of the line box', async () => {
+    const { hitRuns, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box: lbox, neutralEnvironment, px, text } = await import('./helpers.ts');
+    const g = lbox('g', { width: px(100) }, [text('t', 'XXXXXXXXXXXX  XX', { whiteSpaceCollapse: 'preserve' })]);
+    const root = lbox('html', {}, [g]);
+    const facts = new Map(['html', 'g'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    const t = hitTableOf({ viewport: { width: 400, height: 300 }, devicePixelRatio: 2.625, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    const dev = (v: number) => v / PX;
+    const hang = t.nodes.find((n, i) => n.kind === 'text' && t.ids[i] === 't:line1');
+    if (hang === undefined) throw new Error('no hanging piece');
+    // The twelve X (315 device px) overflow g's 262.5; the two spaces hang after them, 315 to 367.5, with no ink past their rect.
+    expect([dev(hang.x), dev(hang.x + hang.width), dev(hang.inkRight), dev(hang.inkTop), dev(hang.inkBottom)]).toEqual([315, 367.5, 367.5, dev(hang.y), dev(hang.y + hang.height)]);
+    const line = t.nodes.find((n) => n.kind === 'line' && n.line === 0);
+    expect(line === undefined ? null : dev(line.x + line.width)).toBe(315);
+    // Chrome: g up to 367.5 device px on that line, where the snapped piece (315 to 368) is cut by the line's ink overflow.
+    const y = Math.round((hang.y + 10 * PX) / PX) * PX;
+    const ask = (x: number) => hitRuns(t, [{ x: x * PX, y }], NO_HIT_FAULTS);
+    expect(ask(367.484375)).toBe('g 1;');
+    expect(ask(367.5)).toBe('html 1;');
+  });
+});

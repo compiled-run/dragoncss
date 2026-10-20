@@ -1843,6 +1843,24 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/dom/tree_scope.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-3",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2011 Google Inc. All Rights Reserved.; Copyright (C) 2012 Apple Inc. All rights reserved.",
+      "fileSha256": "85e715ad06371c89950311868ded3e7e8d95291f0097aa2f74464eef05d24d90",
+      "headerSha256": "7be34e73bed89e9e03002d81bd0fc65295803159b9fda9b9406d6644bc70eec0",
+      "ranges": [
+        { "lines": "216-237", "symbol": "PointInFrameContentIfVisible", "source": "cited" },
+        { "lines": "239-254", "symbol": "HitTestInDocumentImpl", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": "chromePoint", "use": "port" },
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": "inView", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/paint/box_fragment_painter.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -3973,11 +3991,13 @@
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
         { "lines": "902-928", "symbol": null, "source": "cited" },
-        { "lines": "331-351", "symbol": "InlineLayoutAlgorithm::GetLineClampState", "source": "located" }
+        { "lines": "331-351", "symbol": "InlineLayoutAlgorithm::GetLineClampState", "source": "located" },
+        { "lines": "370-379", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" },
-        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": "linePieces", "use": "port" }
       ]
     }
   ],
