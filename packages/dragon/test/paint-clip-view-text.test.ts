@@ -191,10 +191,13 @@ describe('clip view over text: auto sizes bound nothing', () => {
     expectCompiles('.a { overflow: hidden; } .s { height: 900px; }', page);
     expectCompiles('.a { overflow: hidden; } .b { transform: translateY(9999px); }', deep);
     expectCompiles('.a { overflow: hidden; height: 50%; } .c { height: 100px; }', tall);
-    expectCompiles('.a { overflow: hidden; max-height: 50vh; } .s { height: 900px; }', page);
+    expectCompiles('.a { overflow: hidden; max-height: 50vh; } .s { height: 300px; }', page);
     // A % height of a px-height parent is decided.
     expectRefused('.p { height: 100px; } .a { overflow: hidden; height: 50%; } .c { height: 100px; }', tall, 'a', 'b:text0', /at least 100px below .* \(50px\)/);
     expectRefused('.a { overflow: hidden; height: 400px; } .s { height: 900px; }', page, 'a', 'f:text0', /at least 4500px below .* \(400px\)/);
+    // A viewport height is at most its share of SCREEN_BOUND (4096px).
+    expectRefused('.a { overflow: hidden; height: 100vh; } .s { height: 900px; }', page, 'a', 'f:text0', /at least 4500px below .* \(4096px\)/);
+    expectRefused('.a { overflow: hidden; max-height: 50vh; } .s { height: 900px; }', page, 'a', 'f:text0', /at least 4500px below .* \(2048px\)/);
   });
   it('compiles an auto width its content can widen: shrink-to-fit, a flex row item, a grid item', () => {
     for (const css of [
@@ -277,4 +280,47 @@ describe('clip view over text: whitespace and the low findings', () => {
     expect(viewErrors(compile('.a { overflow: hidden; font-size: calc(1px + 1vw); }', one))).toEqual([]);
     expectRefused('.a { overflow: hidden; font-size: 2vw; line-height: 0; }', one, 'a', 'a:text0', /its line box is empty \(line-height 0/);
   });
+});
+
+// Landing review round 4: the track-wrapper carousel (Swiper, Embla, Glide markup), the column-flex ticker, and the cost.
+const track: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'w', ['w'], [div(r, 'i1', ['i'], [text(r, 'i1-t', 'XX')]), div(r, 'i2', ['i'], [text(r, 'i2-t', 'YY')])])])])];
+const deepTrack: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'v', ['v'], [div(r, 'w', ['w'], [div(r, 'i1', ['i'], [text(r, 'i1-t', 'XX')]), div(r, 'i2', ['i'], [text(r, 'i2-t', 'YY')])])])])])];
+
+describe('clip view over text: a track as wide as the clip box carries its width', () => {
+  it('refuses a carousel whose slides are 100% of an auto or 100% width track', () => {
+    expectRefused('.a { overflow: hidden; } .w { display: flex; width: 100%; } .i { flex-shrink: 0; width: 100%; }', track, 'a', 'i2:text0', /at least 100% of its width .*\(100px\)/);
+    expectRefused('.a { overflow: hidden; width: 300px; } .w { display: flex; } .i { flex: 0 0 100%; }', track, 'a', 'i2:text0', /at least 100% of its width .*\(300px\)/);
+    expectRefused('.a { overflow: hidden; } .w { display: flex; } .i { flex: 0 0 100%; }', deepTrack, 'a', 'i2:text0', /at least 100% of its width/);
+    expectRefused('.a { overflow: hidden; } .w { display: flex; margin: 0 auto; border: 0 solid; } .i { flex: none; width: 100%; }', track, 'a', 'i2:text0', /at least 100% of its width/);
+  });
+  it('compiles a track its end margin, padding, border, width or max-width makes narrower or wider, and shrinking slides', () => {
+    // (A start-side margin or border shifts the track as much as it narrows it, so the second slide still starts at the clip box's end.)
+    for (const css of [
+      '.a { overflow: hidden; } .w { display: flex; margin-right: 20px; } .i { flex: 0 0 100%; }',
+      '.a { overflow: hidden; } .w { display: flex; padding-right: 20px; } .i { flex: 0 0 100%; }',
+      '.a { overflow: hidden; } .w { display: flex; border-right: 2px solid; } .i { flex: 0 0 100%; }',
+      '.a { overflow: hidden; } .w { display: flex; width: 200%; } .i { flex: 0 0 50%; }',
+      '.a { overflow: hidden; } .w { display: flex; max-width: 80px; } .i { flex: 0 0 100%; }',
+      '.a { overflow: hidden; } .w { display: flex; position: absolute; } .i { flex: 0 0 100%; }',
+      '.a { overflow: hidden; } .w { display: flex; } .i { flex: 0 1 100%; }',
+    ]) expectCompiles(css, track);
+    // A 200% track holds 50% slides of its own width, each the clip box's width: the second is refused once the track width is known.
+    expectRefused('.a { overflow: hidden; width: 100px; } .w { display: flex; width: 200px; } .i { flex: 0 0 50%; }', track, 'a', 'i2:text0', /at least 100px/);
+  });
+  it('refuses a column-flex ticker whose 100% items fill a px height, and compiles one under an auto height', () => {
+    expectRefused('.a { display: flex; flex-direction: column; height: 40px; overflow: hidden; } .i { flex: 0 0 100%; }', slides, 'a', 'i2:text0', /at least 40px below .* \(40px\)/);
+    expectRefused('.a { display: flex; flex-direction: column; height: 40px; overflow: hidden; } .i { flex: none; height: 100%; }', slides, 'a', 'i2:text0', /at least 40px below/);
+    expectCompiles('.a { display: flex; flex-direction: column; overflow: hidden; } .i { flex: 0 0 100%; }', slides);
+    expectCompiles('.a { display: flex; flex-direction: column; height: 40px; overflow: hidden; } .i { flex: 0 0 90%; }', slides);
+  });
+});
+
+describe('clip view over text: cost', () => {
+  it('judges 3000 rows under one clip box without rescanning earlier rows for each (it took 30-90 s)', () => {
+    const rows: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], Array.from({ length: 3000 }, (_, i) => div(r, `r${i}`, ['r'], [div(r, `c${i}`, ['c'], [text(r, `t${i}`, 'Row')])])))])];
+    const start = performance.now();
+    expectCompiles('.a { overflow: hidden; height: 100000px; } .c { height: 20px; }', rows);
+    // About 3.5 s here with or without the clip; the bound leaves room for a loaded machine.
+    expect(performance.now() - start).toBeLessThan(20_000);
+  }, 60_000);
 });

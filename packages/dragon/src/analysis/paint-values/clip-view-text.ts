@@ -149,14 +149,22 @@ const resolve = (v: Value | undefined, basis: number | null): number | null => {
   return null;
 };
 
+/** An upper bound of a length against a basis: resolve's, or for a viewport unit, its share of SCREEN_BOUND. */
+const VIEWPORT = /^[sld]?v(w|h|i|b|min|max)$/;
+const upperOf = (v: Value | undefined, basis: number | null): number | null => {
+  const r = resolve(v, basis);
+  if (r !== null) return r;
+  return v?.kind === 'length' && VIEWPORT.test(v.unit) && v.value >= 0 ? (v.value / 100) * SCREEN_BOUND : null;
+};
+
 /** An upper bound of e's content width (INF when content can widen it or nothing bounds it). */
 function widthBound(e: ResolvedElement): number {
   const parent = PARENT.get(e);
   const cb = parent === undefined ? (e.element.tag === 'html' ? SCREEN_BOUND : INF) : widthBound(parent);
   const inner = keywordOf(e, 'box-sizing') === 'border-box' ? edgesOf(e, 'width') : 0;
   const size = valueOf(e, 'width');
-  let upper = isAuto(size) ? autoWidthBound(e, parent, cb) : (resolve(size, cb) ?? INF) - inner;
-  const max = resolve(valueOf(e, 'max-width'), cb);
+  let upper = isAuto(size) ? autoWidthBound(e, parent, cb) : (upperOf(size, cb) ?? INF) - inner;
+  const max = upperOf(valueOf(e, 'max-width'), cb);
   if (max !== null) upper = Math.min(upper, max - inner);
   // A flex item that grows, or whose flex-basis sets its width, is not held to it.
   if (parent !== undefined && FLEX.includes(keywordOf(parent, 'display')) && !keywordOf(parent, 'flex-direction').startsWith('column')) {
@@ -184,6 +192,19 @@ function autoWidthBound(e: ResolvedElement, parent: ResolvedElement | undefined,
   return cb - less;
 }
 
+/** Whether e's content box is exactly as wide as its parent's content box. */
+function fillsWidth(e: ResolvedElement, parent: ResolvedElement): boolean {
+  const pd = keywordOf(parent, 'display');
+  if (outOfFlow(e) || keywordOf(e, 'float') !== 'none' || isInlineLevel(e) || GRID.includes(pd) || isInlineLevel(parent)) return false;
+  // A flex row sizes its items to their content; a flex column stretches an auto width.
+  const flexRow = FLEX.includes(pd) && !keywordOf(parent, 'flex-direction').startsWith('column');
+  const w = valueOf(e, 'width');
+  const full = w?.kind === 'percentage' && w.value === 100;
+  if (flexRow || (FLEX.includes(pd) && isAuto(w) && !stretched(e, parent))) return false;
+  if (!(isAuto(w) || full) || !isAuto(valueOf(e, 'max-width')) || !(isAuto(valueOf(e, 'min-width')) || isZero(valueOf(e, 'min-width')))) return false;
+  return ['left', 'right'].every((s) => (isZero(valueOf(e, `margin-${s}`)) || isAuto(valueOf(e, `margin-${s}`))) && isZero(valueOf(e, `padding-${s}`)) && (isZero(valueOf(e, `border-${s}-width`)) || ['none', 'hidden'].includes(keywordOf(e, `border-${s}-style`))));
+}
+
 /** e's definite content height (a px height, or a percentage of a definite one; the root's against the screen), or null. */
 function definiteHeight(e: ResolvedElement): number | null {
   const parent = PARENT.get(e);
@@ -201,8 +222,8 @@ function heightBound(e: ResolvedElement): number {
   }
   const cb = parent === undefined ? SCREEN_BOUND : definiteHeight(parent);
   const inner = keywordOf(e, 'box-sizing') === 'border-box' ? edgesOf(e, 'height') : 0;
-  let upper = (resolve(valueOf(e, 'height'), cb) ?? INF) - inner;
-  const max = resolve(valueOf(e, 'max-height'), cb);
+  let upper = (upperOf(valueOf(e, 'height'), cb) ?? INF) - inner;
+  const max = upperOf(valueOf(e, 'max-height'), cb);
   if (max !== null) upper = Math.min(upper, max - inner);
   return Math.max(upper, (pxOf(valueOf(e, 'min-height')) ?? 0) - inner);
 }
@@ -241,13 +262,14 @@ function signed(v: Value | undefined, basis: Basis): { readonly v: Lin; readonly
 }
 
 /** A lower bound of a box's outer size along ax in a line (flex or inline): its size (px or percentage) or min size, edges and margins. */
-function outerFloor(e: ResolvedElement, ax: Axis, sized: boolean, basis: Basis, size: Value | undefined = valueOf(e, ax)): Lin | null {
+function outerFloor(e: ResolvedElement, ax: Axis, sized: boolean, basis: Basis, size: Value | undefined = valueOf(e, ax), heightBasis: number | null = null): Lin | null {
+  const along: Basis = ax === 'width' ? basis : heightBasis;
   const [a, b] = sidesOf(ax, false);
   const edges = edgesOf(e, ax);
   const borderBox = keywordOf(e, 'box-sizing') === 'border-box';
-  const min = signed(valueOf(e, `min-${ax}`), ax === 'width' ? basis : null);
+  const min = signed(valueOf(e, `min-${ax}`), along);
   // A max size could cut the size below what it reads, so only the min size counts under one.
-  const own = sized && isAuto(valueOf(e, `max-${ax}`)) ? signed(size, ax === 'width' ? basis : null) : null;
+  const own = sized && isAuto(valueOf(e, `max-${ax}`)) ? signed(size, along) : null;
   const pick = own !== null && (min === null || min.v.b === 0 && own.v.b === 0 ? true : own.v.b >= min.v.b) ? own.v : (min?.v ?? lin(0));
   const picked = own !== null && min !== null && own.v.b === 0 && min.v.b === 0 ? lin(Math.max(own.v.a, min.v.a)) : pick;
   // An auto height is at least what its blocks stack to.
@@ -258,7 +280,15 @@ function outerFloor(e: ResolvedElement, ax: Axis, sized: boolean, basis: Basis, 
 }
 
 /** A floor of the height e's in-flow block children stack to in block flow (0 for a flex or grid container, or an inline box). */
+const STACKED = new WeakMap<ResolvedElement, number>();
 function stackFloor(e: ResolvedElement): number {
+  const known = STACKED.get(e);
+  if (known !== undefined) return known;
+  const n = stackOf(e);
+  STACKED.set(e, n);
+  return n;
+}
+function stackOf(e: ResolvedElement): number {
   const d = keywordOf(e, 'display');
   if (FLEX.includes(d) || GRID.includes(d) || (isInlineLevel(e) && !ATOMIC.includes(d))) return 0;
   let n = 0;
@@ -272,6 +302,13 @@ function stackFloor(e: ResolvedElement): number {
     n += box.a - mt.v.a - mb.v.a + Math.min(0, mt.v.a) + Math.min(0, mb.v.a);
   }
   return Math.max(0, n);
+}
+
+/** The sum of the first n tracks of a list repeated as needed. */
+function sumTracks(tracks: readonly Lin[], n: number): Lin | null {
+  let out: Lin | null = lin(0);
+  for (let i = 0; i < n; i += 1) out = plus(out, tracks[i % tracks.length] as Lin);
+  return out;
 }
 
 /** The widths of a grid's columns in order (px or percentage lengths, and repeat() of them), or null for any other track list. */
@@ -356,10 +393,18 @@ export function clipViewHidesText(el: ResolvedElement, parent: ResolvedElement):
   const positioned = keywordOf(el, 'position') !== 'static';
   type Found = { readonly text: string; readonly why: string } | null;
   /** The basis of percentages on a box inside e (its containing block's content width). */
+  const bases = new Map<ResolvedElement, Basis>();
   const basisIn = (e: ResolvedElement): Basis => {
     if (e === el) return 'clip';
+    const known = bases.get(e);
+    if (known !== undefined) return known;
     const [lo, hi] = [widthFloor(e), widthBound(e)];
-    return lo === hi ? lo : null;
+    const parent = PARENT.get(e);
+    // An in-flow block as wide as its containing block (an auto or 100% width, no horizontal margin, border or padding, no
+    // min or max width) under the clip box carries the clip box's width: the track of a carousel.
+    const b: Basis = lo === hi ? lo : parent !== undefined && fillsWidth(e, parent) && basisIn(parent) === 'clip' ? 'clip' : null;
+    bases.set(e, b);
+    return b;
   };
   /** Whether x ≥ W + end padding for every W the clip box can take. */
   const pastEnd = (x: Lin): boolean => {
@@ -429,67 +474,105 @@ export function clipViewHidesText(el: ResolvedElement, parent: ResolvedElement):
     return { x, y, exactX, exactY, margin, indent: st.indent };
   };
 
-  /** What the content of e before its child c adds to where c starts. */
-  const before = (e: ResolvedElement, c: Child, st: Start): Start => {
-    const prior = e.children.slice(0, e.children.indexOf(c)).filter(inFlow);
-    if (prior.length === 0) return st;
-    let { x, y, indent } = st;
+  /** What the in-flow content before each child of a box adds to where that child starts, in one pass per box (a prefix sum). */
+  type Prior = { readonly any: boolean; readonly mode: 'flex-x' | 'flex-y' | 'grid' | 'none'; readonly x: Lin | null; readonly y: number | null; readonly line: Lin | null; readonly blocks: number | null };
+  const priors = new Map<ResolvedElement, Prior[]>();
+  const priorOf = (e: ResolvedElement): Prior[] => {
+    const known = priors.get(e);
+    if (known !== undefined) return known;
     const d = keywordOf(e, 'display');
     const dir = keywordOf(e, 'flex-direction');
     const basis = basisIn(e);
     const ordered = e.children.every((k) => k.kind === 'text' || text(valueOf(k, 'order')) === '0');
-    const elements = prior.filter((k): k is ResolvedElement => k.kind === 'element');
-    const sum = (xs: readonly (Lin | null)[]): Lin | null => xs.reduce<Lin | null>((n, k) => plus(n, k), lin(0));
-    if (FLEX.includes(d)) {
-      if (keywordOf(e, 'flex-wrap') === 'nowrap' && START_JUSTIFY.includes(keywordOf(e, 'justify-content')) && ordered && (dir === 'row' || dir === 'column')) {
-        const ax: Axis = dir === 'row' ? 'width' : 'height';
-        const gap = signed(valueOf(e, ax === 'width' ? 'column-gap' : 'row-gap'), ax === 'width' ? basis : null)?.v ?? null;
-        const items = elements.map((k) => {
-          const fixed = !isAuto(valueOf(k, 'flex-basis')) && !(valueOf(k, 'flex-basis')?.kind === 'keyword');
-          const shrink = valueOf(k, 'flex-shrink');
-          const sized = shrink?.kind === 'number' && shrink.value === 0;
-          return outerFloor(k, ax, sized, basis, fixed ? valueOf(k, 'flex-basis') : valueOf(k, ax));
-        });
-        const total = plus(sum(items), gap === null ? null : lin(gap.a * prior.length, gap.b * prior.length));
-        if (ax === 'width') x = plus(x, total);
-        else y = addY(y, total === null || total.b !== 0 ? null : total.a);
-      }
-    } else if (GRID.includes(d)) {
+    const out: Prior[] = [];
+    let n = 0;
+    // Flex: the items' main sizes and gaps; grid: the tracks before the column; block flow: the stacked blocks and the nowrap
+    // inline-blocks since the last line break.
+    let flexKind: Axis | null = null;
+    let gap: Lin | null = lin(0);
+    let flexHBasis: number | null = null;
+    if (FLEX.includes(d) && keywordOf(e, 'flex-wrap') === 'nowrap' && START_JUSTIFY.includes(keywordOf(e, 'justify-content')) && ordered && (dir === 'row' || dir === 'column')) {
+      flexKind = dir === 'row' ? 'width' : 'height';
+      // A column's percentages resolve against its definite height.
+      flexHBasis = flexKind === 'height' ? (e === el ? definiteHeight(el) : definiteHeight(e)) : null;
+      const g = flexKind === 'width' ? signed(valueOf(e, 'column-gap'), basis) : signed(valueOf(e, 'row-gap'), flexHBasis);
+      gap = g === null || (flexKind === 'height' && g.v.b !== 0) ? null : g.v;
+    }
+    let tracks: Lin[] | null = null;
+    let rowFlow = false;
+    if (GRID.includes(d)) {
       const flow = keywordOf(e, 'grid-auto-flow');
       const auto = e.children.every((k) => k.kind === 'text' || ['grid-column-start', 'grid-column-end', 'grid-row-start', 'grid-row-end'].every((p) => keywordOf(k, p) === 'auto'));
-      if (c.kind === 'element' && auto && ordered && START_JUSTIFY.includes(keywordOf(e, 'justify-content'))) {
-        const gap = signed(valueOf(e, 'column-gap'), basis)?.v ?? null;
+      if (auto && ordered && START_JUSTIFY.includes(keywordOf(e, 'justify-content'))) {
+        const g = signed(valueOf(e, 'column-gap'), basis);
+        gap = g === null ? null : g.v;
         const columnFlow = flow === 'column' && isAuto(valueOf(e, 'grid-template-rows')) && isAuto(valueOf(e, 'grid-template-columns'));
-        const tracks = flow === 'row' ? tracksOf(valueOf(e, 'grid-template-columns'), basis) : columnFlow ? tracksOf(valueOf(e, 'grid-auto-columns'), basis) : null;
-        if (tracks !== null) {
-          // Row flow fills the explicit columns in turn; column flow with no explicit tracks puts each item in a new implicit column.
-          const col = flow === 'row' ? prior.length % tracks.length : prior.length;
-          const widths = Array.from({ length: col }, (_, i) => tracks[i % tracks.length] as Lin);
-          x = plus(plus(x, sum(widths)), gap === null ? null : lin(gap.a * col, gap.b * col));
-        }
+        rowFlow = flow === 'row';
+        tracks = rowFlow ? tracksOf(valueOf(e, 'grid-template-columns'), basis) : columnFlow ? tracksOf(valueOf(e, 'grid-auto-columns'), basis) : null;
       }
-    } else {
-      // Block flow: block-level boxes before c stack above it; inline-blocks before it on a line that does not wrap sit beside it.
-      const nowrap = keywordOf(e, 'text-wrap-mode') === 'nowrap';
-      if (c.kind === 'text' || isInlineLevel(c)) {
-        const line = prior.slice(prior.findLastIndex((k) => k.kind === 'element' && (k.element.tag === 'br' || !isInlineLevel(k))) + 1);
-        if (nowrap) x = plus(x, sum(line.map((k) => (k.kind === 'element' && ATOMIC.includes(keywordOf(k, 'display')) ? outerFloor(k, 'width', true, basis) : lin(0)))));
-        // A later line starts at the line start, without the first line's positive indent.
-        else if (x !== null) {
-          x = { a: x.a - Math.max(0, indent.a), b: x.b - Math.max(0, indent.b) };
-          indent = lin(Math.min(0, indent.a), Math.min(0, indent.b));
-        }
-      }
-      let blocks: number | null = 0;
-      for (const k of elements) {
-        if (isInlineLevel(k) || keywordOf(k, 'float') !== 'none') continue;
-        const box = outerFloor(k, 'height', true, null, valueOf(k, 'height'));
-        const [mt, mb] = [signed(valueOf(k, 'margin-top'), null), signed(valueOf(k, 'margin-bottom'), null)];
-        // Margins between blocks collapse, so only their negative parts are sure to count.
-        blocks = box === null || mt === null || mb === null ? null : addY(blocks, box.a - mt.v.a - mb.v.a + Math.min(0, mt.v.a) + Math.min(0, mb.v.a));
-      }
-      y = addY(y, blocks);
     }
+    const nowrap = keywordOf(e, 'text-wrap-mode') === 'nowrap';
+    let main: Lin | null = lin(0);
+    let columns: Lin | null = lin(0);
+    let line: Lin | null = lin(0);
+    let blocks: number | null = 0;
+    for (const k of e.children) {
+      // Grid row flow fills the explicit columns in turn; column flow with no explicit tracks puts each item in a new column.
+      const col = tracks === null ? 0 : rowFlow ? n % tracks.length : n;
+      const gx = tracks === null ? null : rowFlow ? plus(sumTracks(tracks, col), gap === null ? null : lin(gap.a * col, gap.b * col)) : plus(columns, gap === null ? null : lin(gap.a * col, gap.b * col));
+      const flexTotal = plus(main, gap === null ? null : lin(gap.a * n, gap.b * n));
+      out.push({
+        any: n > 0,
+        mode: flexKind === 'width' ? 'flex-x' : flexKind === 'height' ? 'flex-y' : tracks !== null ? 'grid' : 'none',
+        x: flexKind === 'width' ? flexTotal : gx,
+        y: flexKind === 'height' ? (flexTotal === null || flexTotal.b !== 0 ? null : flexTotal.a) : null,
+        line,
+        blocks,
+      });
+      if (!inFlow(k)) continue;
+      if (tracks !== null && !rowFlow) columns = plus(columns, tracks[n % tracks.length] as Lin);
+      n += 1;
+      if (k.kind !== 'element') continue;
+      if (flexKind !== null) {
+        const fb = valueOf(k, 'flex-basis');
+        const fixed = !isAuto(fb) && !(fb?.kind === 'keyword');
+        const shrink = valueOf(k, 'flex-shrink');
+        const sized = shrink?.kind === 'number' && shrink.value === 0;
+        main = plus(main, outerFloor(k, flexKind, sized, basis, fixed ? fb : valueOf(k, flexKind), flexHBasis));
+      }
+      if (k.element.tag === 'br' || !isInlineLevel(k)) line = lin(0);
+      else if (nowrap) line = plus(line, ATOMIC.includes(keywordOf(k, 'display')) ? outerFloor(k, 'width', true, basis) : lin(0));
+      if (isInlineLevel(k) || keywordOf(k, 'float') !== 'none') continue;
+      const box = outerFloor(k, 'height', true, null, valueOf(k, 'height'));
+      const [mt, mb] = [signed(valueOf(k, 'margin-top'), null), signed(valueOf(k, 'margin-bottom'), null)];
+      // Margins between blocks collapse, so only their negative parts are sure to count.
+      blocks = box === null || mt === null || mb === null ? null : addY(blocks, box.a - mt.v.a - mb.v.a + Math.min(0, mt.v.a) + Math.min(0, mb.v.a));
+    }
+    priors.set(e, out);
+    return out;
+  };
+
+  /** What the content of e before its child c (its index i) adds to where c starts. */
+  const before = (e: ResolvedElement, c: Child, i: number, st: Start): Start => {
+    const pr = priorOf(e)[i] as Prior;
+    if (!pr.any) return st;
+    let { x, y, indent } = st;
+    const d = keywordOf(e, 'display');
+    if (FLEX.includes(d) || GRID.includes(d)) {
+      if (pr.mode === 'flex-x' || (pr.mode === 'grid' && c.kind === 'element')) x = plus(x, pr.x);
+      else if (pr.mode === 'flex-y') y = addY(y, pr.y);
+      return { x, y, exactX: false, exactY: false, margin: 0, indent };
+    }
+    // Block flow: block-level boxes before c stack above it; inline-blocks before it on a line that does not wrap sit beside it.
+    if (c.kind === 'text' || isInlineLevel(c)) {
+      if (keywordOf(e, 'text-wrap-mode') === 'nowrap') x = plus(x, pr.line);
+      // A later line starts at the line start, without the first line's positive indent.
+      else if (x !== null) {
+        x = { a: x.a - Math.max(0, indent.a), b: x.b - Math.max(0, indent.b) };
+        indent = lin(Math.min(0, indent.a), Math.min(0, indent.b));
+      }
+    }
+    y = addY(y, pr.blocks);
     return { x, y, exactX: false, exactY: false, margin: 0, indent };
   };
 
@@ -522,17 +605,17 @@ export function clipViewHidesText(el: ResolvedElement, parent: ResolvedElement):
     const flow = !FLEX.includes(d) && !GRID.includes(d) && !inlineBox;
     // A block container's first line takes its text-indent (percentages against its own width), and its lines its text-align.
     const container = flow;
-    const ind = container ? signed(valueOf(e, 'text-indent'), basisIn(e) === 'clip' && e === el ? 'clip' : (() => { const [lo, hi] = [widthFloor(e), widthBound(e)]; return lo === hi ? lo : null; })()) : { v: lin(0), exact: true };
+    const ind = container ? signed(valueOf(e, 'text-indent'), basisIn(e)) : { v: lin(0), exact: true };
     const aligned = !container || startAligned(e, rtl);
     const sealed = !inner || px0(e, 'padding-top') > 0 || (px0(e, 'border-top-width') > 0 && !['none', 'hidden'].includes(keywordOf(e, 'border-top-style')));
     const kids = e.children.filter(inFlow);
     const childBasis = basisIn(e);
     const nextCb = inner ? cbIsClip && keywordOf(e, 'position') === 'static' : positioned;
-    for (const c of e.children) {
+    for (const [i, c] of e.children.entries()) {
       if (c.kind === 'element' && keywordOf(c, 'display') === 'none') continue;
       if (isSpace(c)) continue;
       const lead = kids[0] === c;
-      let here = before(e, c, st);
+      let here = before(e, c, i, st);
       // Inline content: on a block's first line, its text-indent; off start alignment, the line may move toward the end.
       if (container && (c.kind === 'text' || isInlineLevel(c))) {
         if (lead) here = ind === null ? { ...here, x: null } : { ...here, x: plus(here.x, ind.v), exactX: here.exactX && ind.exact, indent: ind.v };
