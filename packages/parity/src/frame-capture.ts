@@ -144,6 +144,7 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
   const page = await openFrozenPage(browser, initial, { viewport: c.viewport, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' });
   try {
     const tracked = trackedProperties(c.ap);
+    type Tracked = typeof tracked;
     // Without references the script runs in one call; with them, in chunks that each end at a dump, read between chunks.
     const chunks: PageStep[][] = [[]];
     for (const s of pageSteps) {
@@ -154,10 +155,8 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
     const breaks: ChromeBreakText[][] = [];
     const shots = new Map<number, Buffer>();
     let cdp: CDPSession | null = null;
-    for (const chunk of chunks) {
-      if (chunk.length === 0) continue;
-      const k = dumps.length;
-      dumps.push(...await page.evaluate(({ pageSteps, tracked }) => {
+    // The page script of one chunk; a replay page (below) runs the same chunks.
+    const play = ({ pageSteps, tracked }: { readonly pageSteps: readonly PageStep[]; readonly tracked: Tracked }): CapturedNode[][] => {
         const frozen = (): void => {
           if (document.timeline.currentTime !== 0) throw new Error(`document.timeline.currentTime is ${String(document.timeline.currentTime)}, not 0`);
         };
@@ -224,13 +223,44 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
           frozen();
         }
         return out;
-      }, { pageSteps: chunk, tracked }));
+    };
+    const env = { viewport: c.viewport, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' as const };
+    const ran: PageStep[][] = [];
+    for (const chunk of chunks) {
+      if (chunk.length === 0) continue;
+      const k = dumps.length;
+      ran.push(chunk);
+      dumps.push(...await page.evaluate(play, { pageSteps: chunk, tracked }));
       if (pixels === null || dumps.length === k) continue;
       if (dumps.length !== k + 1) throw new Error(`${c.id}: a reference chunk gave ${dumps.length - k} dumps`);
-      // captureBreakTexts' transform twin would restyle the running script, so a transformed element is refused instead.
-      const transformed = await page.evaluate(() => Array.from(document.querySelectorAll('[data-dragon-id]')).filter((el) => getComputedStyle(el).transform !== 'none').map((el) => el.getAttribute('data-dragon-id')));
-      if (transformed.length > 0) throw new Error(`${c.id} sample ${k}: ${transformed.join(', ')} transformed; the frame break capture refuses the transform twin`);
-      breaks.push(await captureBreakTexts(page));
+      // ANIM-b2: captureBreakTexts reads the lines on the transform twin, whose transform: none !important would change the page's
+      // transforms for the rest of the script, and cancel a running transition of transform (its after-change style changes). So
+      // when an element is transformed, the breaks are read on a fresh page that replays every chunk so far and is then closed; its
+      // last dump must equal this page's.
+      const transformed = await page.evaluate(() => Array.from(document.querySelectorAll('[data-dragon-id]')).some((el) => getComputedStyle(el).transform !== 'none'));
+      if (!transformed) breaks.push(await captureBreakTexts(page));
+      else {
+        const replay = await openFrozenPage(browser, initial, env);
+        try {
+          let last: CapturedNode[] | undefined;
+          for (const r of ran) last = (await replay.evaluate(play, { pageSteps: r, tracked })).at(-1) ?? last;
+          if (JSON.stringify(last) !== JSON.stringify(dumps[k])) throw new Error(`${c.id} sample ${k}: the replay page's dump differs from the capture's`);
+          // A transition sits above !important in the cascade, so the twin cannot override one, and the twin's transform: none would
+          // start one wherever transform is a transition property. So on the replay page each element's transition-property becomes
+          // its running transitions' properties other than the transform ones: those keep running (their end values are unchanged)
+          // and the transform ones, paint only, are cancelled, which leaves the lines as they are.
+          await replay.evaluate(() => {
+            const moving = ['transform', 'rotate', 'scale', 'translate'];
+            for (const el of Array.from(document.querySelectorAll('[data-dragon-id]')) as HTMLElement[]) {
+              const kept = el.getAnimations().flatMap((a) => (a instanceof CSSTransition && !moving.includes(a.transitionProperty) ? [a.transitionProperty] : []));
+              el.style.setProperty('transition-property', kept.length === 0 ? 'none' : kept.join(', '), 'important');
+            }
+          });
+          breaks.push(await captureBreakTexts(replay));
+        } finally {
+          await replay.context().close();
+        }
+      }
       if (!pixels.has(k)) continue;
       // As parity:pixel-capture shoots: CDP Page.captureScreenshot, checked against the raster size rule, but from a full repaint.
       cdp ??= await page.context().newCDPSession(page);
