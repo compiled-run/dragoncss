@@ -1,4 +1,5 @@
-// The overscroll, scroll-snap, containment and container-query families; Dragon accepts their initial values alone.
+// The overscroll, scroll-snap, containment and container-query families; Dragon accepts the first three at their initial values
+// alone, and container-type at normal and inline-size.
 
 export type ScrollContainmentFaults = {
   /** An overscroll-behavior or overflow-anchor longhand other than auto is accepted, though no target implements it. */
@@ -7,7 +8,7 @@ export type ScrollContainmentFaults = {
   readonly scrollSnapAccepted: boolean;
   /** A contain, content-visibility or contain-intrinsic longhand other than its initial value is accepted, though no target contains. */
   readonly containmentAccepted: boolean;
-  /** A container-type or container-name other than its initial value is accepted, though no target has container queries. */
+  /** Every container-type is accepted, though no target has size containment or scroll-state and anchored queries. */
   readonly containerQueryAccepted: boolean;
 };
 

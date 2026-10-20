@@ -16,6 +16,8 @@ export type IntrinsicKind = 'min' | 'max';
 // css-sizing-3 §5.1: the min-content or max-content inline size of a box's content box. Absolutely positioned children take no
 // part (CSS2 §9.3.1).
 export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
+  // css-contain-2 §3.2: an inline-size contained box sizes as if it had no content.
+  if (box.style.containInlineSize && !ctx.faults.containedContentSized) return ZERO;
   const kids = box.children;
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
   if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);
