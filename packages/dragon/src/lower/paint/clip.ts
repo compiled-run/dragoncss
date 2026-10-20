@@ -5,8 +5,10 @@
 // refused (analysis/paint-values/clip.ts).
 // css-masking-1 §6.1: clip-path: inset() clips the box and every descendant to its border box inset by the four edges (Chrome's
 // clip-path clip node, paint_property_tree_builder.cc UpdateClipPathClip); the box view masks itself and its subviews to that rect.
-import type { InsetEdge } from '../../css/properties/clip-path.ts';
-import { clipPathEdges } from '../../css/properties/clip-path.ts';
+// circle(), ellipse() and polygon() clip them to that shape against the border box (Chrome's mask-based clip-path, an antialiased
+// path clip); the box view masks itself and its subviews to the same path.
+import type { ClipShape, InsetEdge, ShapeLength } from '../../css/properties/clip-path.ts';
+import { clipPathShape, shapeLengths } from '../../css/properties/clip-path.ts';
 import { clipHidesBox } from '../../css/properties/clip-rect.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -15,7 +17,9 @@ export type ClipWrite =
   | { readonly kind: 'padding-box-clip' }
   | { readonly kind: 'clip-rect-empty' }
   /** The computed inset() edges (top, right, bottom, left), each in px or % of the border box's height (top, bottom) or width. */
-  | { readonly kind: 'clip-path-inset'; readonly edges: readonly InsetEdge[] };
+  | { readonly kind: 'clip-path-inset'; readonly edges: readonly InsetEdge[] }
+  /** A computed circle(), ellipse() or polygon(), every length in px or % of the border box. */
+  | { readonly kind: 'clip-path-shape'; readonly shape: Exclude<ClipShape, { readonly kind: 'inset' }> };
 
 export const CLIP_LOWERING: PaintLowering<ClipWrite> = {
   name: 'clip',
@@ -24,24 +28,26 @@ export const CLIP_LOWERING: PaintLowering<ClipWrite> = {
       'padding-box-clip': { key: 'dragonClip.frame', technique: 'native-property', detail: 'a DragonClipView over the padding box with clipsToBounds = true hosts the children; frame in points relative to the node' },
       'clip-rect-empty': { key: 'dragonClipRect.hidden', technique: 'native-property', detail: 'the box view takes isHidden = true, which hides it and every view inside it; 1 when hidden' },
       'clip-path-inset': { key: 'dragonClipPath.frame', technique: 'native-property', detail: "the box view's layer.mask is an opaque CALayer over the inset rect, which clips the box and every view inside it; frame in points relative to the box" },
+      'clip-path-shape': { key: 'dragonClipPath.shape', technique: 'native-property', detail: "the box view's layer.mask is a CAShapeLayer filling the shape's path, which clips the box and every view inside it; circle [cx, cy, r], ellipse [cx, cy, rx, ry] or polygon [evenodd, x0, y0, ...] in points relative to the box" },
     },
     'android-views': {
       'padding-box-clip': { key: 'dragonClip.clipBounds', technique: 'native-property', detail: 'a DragonClipView over the padding box with View.clipBounds = its own bounds hosts the children; [left, top, right, bottom] in device px relative to the node' },
       'clip-rect-empty': { key: 'dragonClipRect.hidden', technique: 'native-property', detail: 'the box view takes View.INVISIBLE, which hides it and every view inside it; 1 when invisible' },
       'clip-path-inset': { key: 'dragonClipPath.rect', technique: 'native-property', detail: 'DragonBoxView.draw clips its canvas to the inset rect before it draws itself and its children; [left, top, right, bottom] in device px relative to the box' },
+      'clip-path-shape': { key: 'dragonClipPath.shape', technique: 'native-property', detail: "DragonBoxView.draw clips its canvas to the shape's antialiased path before it draws itself and its children; circle [cx, cy, r], ellipse [cx, cy, rx, ry] or polygon [evenodd, x0, y0, ...] in device px relative to the box" },
     },
   },
-  css: { 'padding-box-clip': ['overflow-x', 'overflow-y'], 'clip-rect-empty': ['clip'], 'clip-path-inset': ['clip-path'] },
+  css: { 'padding-box-clip': ['overflow-x', 'overflow-y'], 'clip-rect-empty': ['clip'], 'clip-path-inset': ['clip-path'], 'clip-path-shape': ['clip-path'] },
   lower: ({ box, el }) => {
     const out: ClipWrite[] = clipsChildren(box) ? [{ kind: 'padding-box-clip' }] : [];
     if (el === null) return out;
     const hides = clipHidesBox(el);
     if (hides === null) throw new ProgramError(`${el.element.address}: clip applies with a rect that is not empty at every size, which has no native technique (MASK-CLIP)`);
     if (hides) out.push({ kind: 'clip-rect-empty' });
-    const edges = clipPathEdges(el);
-    if (edges !== null) {
-      if (edges.some((e) => e.unit !== 'px' && e.unit !== '%')) throw new ProgramError(`${el.element.address}: clip-path has an inset edge not computed to px or %`);
-      out.push({ kind: 'clip-path-inset', edges: edges.map((e) => ({ value: e.value, unit: e.unit })) });
+    const shape = clipPathShape(el);
+    if (shape !== null) {
+      if (shapeLengths(shape).some((e: ShapeLength) => e.unit !== 'px' && e.unit !== '%')) throw new ProgramError(`${el.element.address}: clip-path has a length not computed to px or %`);
+      out.push(shape.kind === 'inset' ? { kind: 'clip-path-inset', edges: shape.edges.map((e) => ({ value: e.value, unit: e.unit })) } : { kind: 'clip-path-shape', shape });
     }
     return out;
   },

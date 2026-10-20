@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* polygon() clips in each form Chrome parses, over boxes without text (native targets refuse a clip-path */
+/* over a box with text) and without borders, whose children overflow them. Slanted clip edges are antialiased. */
+body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
+.stage { position: relative; height: 264px; padding: 8px; background-color: rgb(236, 240, 244); }
+.row { position: relative; height: 80px; margin-bottom: 8px; background-color: rgb(250, 200, 60); }
+.box { position: absolute; top: 0; width: 80px; height: 64px; background-color: rgb(40, 90, 200); }
+.k { width: 40px; height: 24px; background-color: rgb(30, 160, 80); }
+.out { width: 120px; height: 24px; margin-top: 48px; background-color: rgb(200, 40, 120); }
+.a { left: 8px; }
+.b { left: 104px; }
+.c { left: 200px; }
+.d { left: 296px; }
+.p0 { clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.p1 { clip-path: polygon(evenodd, 0 0, 80px 0, 0 64px, 80px 64px); }
+.p2 { clip-path: polygon(nonzero, 8px 8px, 72px 8px, 72px 56px, 8px 56px, 24px 24px, 56px 24px, 56px 40px, 24px 40px); }
+.p3 { clip-path: polygon(-8px -8px, 110% 0, 0 110%); }
+.p4 { clip-path: polygon(evenodd, 8px 8px, 72px 8px, 72px 56px, 8px 56px, 8px 8px, 24px 24px, 24px 40px, 56px 40px, 56px 24px, 24px 24px); }
+.p5 { clip-path: polygon(1em 0, 100% 50%, 1em 100%, 0 50%); }
+.keep-none { clip-path: none; }
+.keep-init { clip-path: circle(8px); clip-path: initial; }
+.flexrow { display: flex; column-gap: 16px; }
+.stat { width: 80px; height: 64px; background-color: rgb(120, 40, 160); clip-path: circle(28px); }
+.stat1 { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.t { width: 64px; height: 48px; }
+.f0 { background-color: rgb(20, 120, 140); }
+.f1 { background-color: rgb(140, 60, 20); }
+.f2 { background-color: rgb(60, 60, 60); }
+.f3 { background-color: rgb(90, 90, 90); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row4" class="row">
+<div data-dragon-id="cut-m" class="box a p0"><div data-dragon-id="cut-m-k" class="k"></div></div>
+<div data-dragon-id="cut-n" class="box b p1"></div>
+<div data-dragon-id="cut-o" class="box c p2"><div data-dragon-id="cut-o-out" class="out"></div></div>
+<div data-dragon-id="cut-p" class="box d p3"><div data-dragon-id="cut-p-k" class="k"></div></div>
+</div>
+<div data-dragon-id="row5" class="row flexrow">
+<div data-dragon-id="cut-q" class="stat"><div data-dragon-id="cut-q-k" class="k"></div></div>
+<div data-dragon-id="t1" class="t">XXXX</div>
+<div data-dragon-id="cut-r" class="stat stat1"><div data-dragon-id="cut-r-k" class="k"></div></div>
+</div>
+<div data-dragon-id="row6" class="row">
+<div data-dragon-id="cut-s" class="box a p4 f0"></div>
+<div data-dragon-id="cut-t" class="box b p5 f1"><div data-dragon-id="cut-t-k" class="k"></div></div>
+<div data-dragon-id="keep-none" class="box c keep-none f2"><div data-dragon-id="keep-none-k" class="k"></div></div>
+<div data-dragon-id="keep-init" class="box d keep-init f3"></div>
+</div>
+</div>
+</body>
+</html>

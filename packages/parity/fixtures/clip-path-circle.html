@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* circle() and ellipse() clips in each form Chrome parses, over boxes without text (native targets refuse a clip-path */
+/* over a box with text) and without borders, whose children overflow them. Curved clip edges are antialiased. */
+body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
+.stage { position: relative; height: 264px; padding: 8px; background-color: rgb(236, 240, 244); }
+.row { position: relative; height: 80px; margin-bottom: 8px; background-color: rgb(250, 200, 60); }
+.box { position: absolute; top: 0; width: 80px; height: 64px; background-color: rgb(40, 90, 200); }
+.k { width: 40px; height: 24px; background-color: rgb(30, 160, 80); }
+.out { width: 120px; height: 24px; margin-top: 48px; background-color: rgb(200, 40, 120); }
+.a { left: 8px; }
+.b { left: 104px; }
+.c { left: 200px; }
+.d { left: 296px; }
+.c0 { clip-path: circle(); }
+.c1 { clip-path: circle(24px at 40px 32px); }
+.c2 { clip-path: circle(50% at left top); }
+.c3 { clip-path: circle(farthest-side at 25% 75%); }
+.c4 { clip-path: circle(1.5em at right 16px bottom 8px); }
+.c5 { --c: circle(closest-side at 32px); clip-path: var(--c); }
+.c6 { clip-path: CIRCLE(0 AT CENTER) border-box; }
+.c7 { clip-path: circle(40px at bottom 10% right 20%); }
+.e0 { clip-path: ellipse(); }
+.e1 { clip-path: ellipse(32px 16px at 40px 24px); }
+.e2 { clip-path: ellipse(closest-side farthest-side at 10% 20%); }
+.e3 { clip-path: ellipse(50% 25%); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="cut-a" class="box a c0"><div data-dragon-id="cut-a-k" class="k"></div></div>
+<div data-dragon-id="cut-b" class="box b c1"><div data-dragon-id="cut-b-out" class="out"></div></div>
+<div data-dragon-id="cut-c" class="box c c2"><div data-dragon-id="cut-c-k" class="k"></div></div>
+<div data-dragon-id="cut-d" class="box d c3"><div data-dragon-id="cut-d-k" class="k"></div></div>
+</div>
+<div data-dragon-id="row2" class="row">
+<div data-dragon-id="cut-e" class="box a c4"><div data-dragon-id="cut-e-out" class="out"></div></div>
+<div data-dragon-id="cut-f" class="box b c5"><div data-dragon-id="cut-f-k" class="k"></div></div>
+<div data-dragon-id="cut-g" class="box c c6"><div data-dragon-id="cut-g-k" class="k"></div></div>
+<div data-dragon-id="cut-h" class="box d c7"></div>
+</div>
+<div data-dragon-id="row3" class="row">
+<div data-dragon-id="cut-i" class="box a e0"><div data-dragon-id="cut-i-k" class="k"></div></div>
+<div data-dragon-id="cut-j" class="box b e1"><div data-dragon-id="cut-j-out" class="out"></div></div>
+<div data-dragon-id="cut-k" class="box c e2"></div>
+<div data-dragon-id="cut-l" class="box d e3"><div data-dragon-id="cut-l-k" class="k"></div></div>
+</div>
+</div>
+</body>
+</html>

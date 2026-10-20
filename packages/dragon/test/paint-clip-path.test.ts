@@ -88,10 +88,12 @@ describe('clip-path: parse and computed values (Chrome 145 ClipPath::ParseSingle
   });
   it('refuses, on every target, every other shape, a url(), another reference box, a round, a calculation and a viewport unit', () => {
     const cases: readonly [string, string, RegExp][] = [
-      ['circle(50%)', 'circle(50%)', /inset\(\) only/],
-      ['ellipse(closest-side 10px at 0 0)', 'ellipse(closest-side 10px at 0 0)', /inset\(\) only/],
-      ['rect(0 0 0 0)', 'rect(0 0 0 0)', /inset\(\) only/],
-      ['polygon(0 0, 100% 0, 50% 100%)', 'polygon(0 0, 100% 0, 50% 100%)', /inset\(\) only/],
+      ['rect(0 0 0 0)', 'rect(0 0 0 0)', /polygon\(\) only/],
+      ['xywh(0 0 1px 1px)', 'xywh(0 0 1px 1px)', /polygon\(\) only/],
+      ['path("M0 0 L10 0 L5 10 Z")', 'path("M0 0 L10 0 L5 10 Z")', /polygon\(\) only/],
+      ['circle(1px) padding-box', 'padding-box', /border box only/],
+      ['circle(calc(1px + 1%))', 'calc(1px + 1%)', /calculation/],
+      ['polygon(0 0, 1vw 0, 0 1px)', '1vw', /viewport unit/],
       ['url(#c)', 'url(#c)', /not a url\(\) reference/],
       ['padding-box', 'padding-box', /border box only/],
       ['inset(1px) content-box', 'content-box', /border box only/],
@@ -123,7 +125,7 @@ describe('clip-path: native refusals', () => {
   it('refuses an em edge whose font size has no build-time value, saying so', () => {
     const errs = clipErrors(compile('.a { font-size: 1vw; clip-path: inset(1em); }', NATIVE));
     expect(errs.map((d) => d.target).sort()).toEqual(['android', 'ios']);
-    expect(errs.find((d) => d.target === 'ios')?.message).toBe('a has clip-path: inset(1em), whose em edge has no build-time font size to compute it against; ios needs every inset edge in px or % at build time');
+    expect(errs.find((d) => d.target === 'ios')?.message).toBe('a has clip-path: inset(1em), whose em length has no build-time font size to compute it against; ios needs every shape length in px or % at build time');
     expectCatalogued(errs);
   });
   it('refuses a clip beside a view outside the box view, on an inline box and on html or body, natively only, and names it', () => {
@@ -234,7 +236,7 @@ describe('clip-path: the clip rect and emission', () => {
         expect(clip).toContain('    v.layer.mask = m\n');
         expect(clip).toContain('out.append(("dragonClipPath.frame", v.layer.mask == nil || r.count != 4 ? .null');
       } else {
-        expect(all).toContain('    canvas.clipRect(r[0].toFloat(), r[1].toFloat(), r[2].toFloat(), r[3].toFloat())\n');
+        expect(all).toContain('    if (r != null) canvas.clipRect(r[0].toFloat(), r[1].toFloat(), r[2].toFloat(), r[3].toFloat())\n');
         expect(clip).toContain('out.add(Pair("dragonClipPath.rect", if (r == null) DumpJson.Null else DumpJson.Arr(r.map { DumpJson.Num(it) })))');
       }
       expect(clip).toContain(ios ? 'insets[2 * k] * scale + insets[2 * k + 1] / 100 * size }' : 'insets[2 * k] * scale + insets[2 * k + 1] / 100.0 * size\n');

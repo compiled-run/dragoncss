@@ -9,7 +9,13 @@
 // UIKit masks the box view's layer with an opaque layer over the rect; Android clips the canvas of the box view's draw, around its own
 // paint and its children's. Neither touches the views' visibility; analysis still refuses a clip-path over any text, since the native
 // accessibility tree of clipped text is not proven yet.
-import type { InsetEdge } from '../../css/properties/clip-path.ts';
+// circle(), ellipse() and polygon() store their lengths through dragonSetClipShape; after every layout the shape's geometry is
+// computed against the layout size of the border box in device px (clipShapeGeometry): each coordinate is px times the scale plus its
+// percentage of the width or height, or the width or height less px times the scale from the right or bottom; a circle radius
+// percentage is of the normalized diagonal, closest-side and farthest-side the nearest and farthest side from the centre. UIKit
+// masks the box view's layer with a CAShapeLayer filling that path; Android clips the canvas of the box view's draw to it, both
+// antialiased as Chrome's path clip is.
+import type { ClipShape, InsetEdge, ShapeCoord, ShapeLength, ShapeRadius } from '../../css/properties/clip-path.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 
@@ -27,6 +33,12 @@ const SWIFT_MEMBERS = String.raw`  /// The view the children are hosted in over 
   public var dragonClipPathInsets: [Double] = []
   /// The clip-path rect (left, top, right, bottom) in device px relative to the box, from the last layout; empty without one.
   public var dragonClipPathRect: [Double] = []
+  /// clip-path: circle(), ellipse() or polygon() (MASK-CLIP): the shape (0 circle, 1 ellipse, 2 polygon), or -1 without one.
+  public var dragonClipShapeKind = -1
+  /// The shape's writer values (dragonSetClipShape).
+  public var dragonClipShapeValues: [Double] = []
+  /// The shape's geometry in device px relative to the box, from the last layout (dragonClipShapeGeometry); empty without one.
+  public var dragonClipShapeGeometry: [Double] = []
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -63,7 +75,62 @@ public func dragonClipPathRectOf(_ insets: [Double], _ shape: DragonBoxShape, _ 
   return r <= l || b <= t ? [0, 0, 0, 0] : [l, t, r, b]
 }
 
-/// After every layout: the clip view over the padding box, in points relative to the box; the clip-path mask over its rect.
+/// The clip-path shape write of a box (runtime writer): its kind (0 circle, 1 ellipse, 2 polygon) and lengths; the after-layout hook
+/// masks the box view to its path.
+public func dragonSetClipShape(_ v: DragonBoxView, _ kind: Int, _ values: [Double]) {
+  if dragonClipPathPlantIgnored { return }
+  let ok = kind == 0 ? values.count == 9 : kind == 1 ? values.count == 12 : kind == 2 && values.count >= 5 && (values.count - 1) % 4 == 0
+  if !ok { fatalError("dragon: \(v.dragonId): clip-path shape \(kind) with \(values.count) values") }
+  v.dragonClipShapeKind = kind
+  v.dragonClipShapeValues = values
+}
+
+/// The geometry of a clip-path shape in device px relative to the box: circle [cx, cy, r], ellipse [cx, cy, rx, ry], polygon
+/// [evenodd, x0, y0, ...].
+public func dragonClipShapeGeometry(_ kind: Int, _ s: [Double], _ size: [Double], _ scale: Double) -> [Double] {
+  let w = size[0], h = size[1]
+  let coord = { (i: Int, extent: Double) -> Double in s[i] == 1 ? extent - s[i + 1] * scale : s[i + 1] * scale + s[i + 2] / 100 * extent }
+  let side = { (far: Bool, c: Double, extent: Double) -> Double in far ? max(abs(c), abs(extent - c)) : min(abs(c), abs(extent - c)) }
+  if kind == 2 {
+    var out: [Double] = [s[0]]
+    var i = 1
+    while i < s.count {
+      out.append(s[i] * scale + s[i + 1] / 100 * w)
+      out.append(s[i + 2] * scale + s[i + 3] / 100 * h)
+      i += 4
+    }
+    return out
+  }
+  let cx = coord(0, w), cy = coord(3, h)
+  if kind == 0 {
+    let r = s[6] == 0 ? s[7] * scale + s[8] / 100 * ((w * w + h * h).squareRoot() / 2.0.squareRoot()) : s[6] == 2 ? max(side(true, cx, w), side(true, cy, h)) : min(side(false, cx, w), side(false, cy, h))
+    return [cx, cy, r]
+  }
+  let rx = s[6] == 0 ? s[7] * scale + s[8] / 100 * w : side(s[6] == 2, cx, w)
+  let ry = s[9] == 0 ? s[10] * scale + s[11] / 100 * h : side(s[9] == 2, cy, h)
+  return [cx, cy, rx, ry]
+}
+
+/// The path of a clip-path shape's geometry, in points.
+func dragonClipShapePath(_ kind: Int, _ g: [Double], _ scale: Double) -> CGPath {
+  let cg = CGFloat(scale)
+  let path = CGMutablePath()
+  if kind == 2 {
+    var i = 1
+    while i + 1 < g.count {
+      let p = CGPoint(x: CGFloat(g[i]) / cg, y: CGFloat(g[i + 1]) / cg)
+      if i == 1 { path.move(to: p) } else { path.addLine(to: p) }
+      i += 2
+    }
+    path.closeSubpath()
+    return path
+  }
+  let rx = g[2], ry = kind == 0 ? g[2] : g[3]
+  path.addEllipse(in: CGRect(x: CGFloat(g[0] - rx) / cg, y: CGFloat(g[1] - ry) / cg, width: CGFloat(2 * rx) / cg, height: CGFloat(2 * ry) / cg))
+  return path
+}
+
+/// After every layout: the clip view over the padding box, in points relative to the box; the clip-path mask over its rect or shape.
 public func dragonAfterLayoutClip(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
   let cg = CGFloat(scale)
   if !v.dragonClipPathInsets.isEmpty {
@@ -74,6 +141,20 @@ public func dragonAfterLayoutClip(_ v: DragonBoxView, _ shape: DragonBoxShape, _
     let m = v.layer.mask ?? CALayer()
     m.backgroundColor = UIColor.black.cgColor
     m.frame = CGRect(x: CGFloat(r[0]) / cg, y: CGFloat(r[1]) / cg, width: CGFloat(r[2] - r[0]) / cg, height: CGFloat(r[3] - r[1]) / cg)
+    v.layer.mask = m
+    CATransaction.commit()
+  }
+  if v.dragonClipShapeKind >= 0 {
+    let g = dragonClipShapeGeometry(v.dragonClipShapeKind, v.dragonClipShapeValues, shape.size, scale)
+    v.dragonClipShapeGeometry = g
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    let m = (v.layer.mask as? CAShapeLayer) ?? CAShapeLayer()
+    let e = shape.edges
+    m.frame = CGRect(x: 0, y: 0, width: CGFloat(e[2] - e[0]) / cg, height: CGFloat(e[3] - e[1]) / cg)
+    m.fillColor = UIColor.black.cgColor
+    m.fillRule = v.dragonClipShapeKind == 2 && g[0] == 1 ? .evenOdd : .nonZero
+    m.path = dragonClipShapePath(v.dragonClipShapeKind, g, scale)
     v.layer.mask = m
     CATransaction.commit()
   }
@@ -97,6 +178,12 @@ public func dragonAppliedClip(_ v: DragonBoxView) -> DumpJsonObject {
     let r = v.dragonClipPathRect
     out.append(("dragonClipPath.frame", v.layer.mask == nil || r.count != 4 ? .null : .array([r[0] / s, r[1] / s, (r[2] - r[0]) / s, (r[3] - r[1]) / s].map { .number($0) })))
   }
+  if v.dragonClipShapeKind >= 0 {
+    let s = v.dragonScale
+    let g = v.dragonClipShapeGeometry
+    let points = g.enumerated().map { (i, x) -> Double in v.dragonClipShapeKind == 2 && i == 0 ? x : x / s }
+    out.append(("dragonClipPath.shape", (v.layer.mask as? CAShapeLayer)?.path == nil || g.isEmpty ? .null : .array(points.map { .number($0) })))
+  }
   return out
 }
 `;
@@ -116,15 +203,25 @@ const KOTLIN_MEMBERS = String.raw`  /** The view the children are hosted in over
   var dragonClipPathInsets: DoubleArray? = null
   /** The clip-path rect [left, top, right, bottom] in device px relative to the box, from the last layout; null without one. */
   var dragonClipPathRect: DoubleArray? = null
+  /** clip-path: circle(), ellipse() or polygon() (MASK-CLIP): the shape (0 circle, 1 ellipse, 2 polygon), or -1 without one. */
+  var dragonClipShapeKind = -1
+  /** The shape's writer values (dragonSetClipShape). */
+  var dragonClipShapeValues: DoubleArray? = null
+  /** The shape's geometry in device px relative to the box, from the last layout (dragonClipShapeGeometry); null without one. */
+  var dragonClipShapeGeometry: DoubleArray? = null
+  /** The shape's path in device px relative to the box, from the last layout; null without one. */
+  var dragonClipShapePath: android.graphics.Path? = null
   /** clip-path: the canvas is clipped around the box's own paint and its children's; the views' visibility is untouched. */
   override fun draw(canvas: Canvas) {
     val r = dragonClipPathRect
-    if (r == null) {
+    val p = dragonClipShapePath
+    if (r == null && p == null) {
       super.draw(canvas)
       return
     }
     val n = canvas.save()
-    canvas.clipRect(r[0].toFloat(), r[1].toFloat(), r[2].toFloat(), r[3].toFloat())
+    if (r != null) canvas.clipRect(r[0].toFloat(), r[1].toFloat(), r[2].toFloat(), r[3].toFloat())
+    if (p != null) canvas.clipPath(p)
     super.draw(canvas)
     canvas.restoreToCount(n)
   }
@@ -167,11 +264,79 @@ fun dragonClipPathRectOf(insets: DoubleArray, shape: DragonBoxShape, scale: Doub
   return if (r <= l || b <= t) doubleArrayOf(0.0, 0.0, 0.0, 0.0) else doubleArrayOf(l, t, r, b)
 }
 
-/** After every layout: the clip view over the padding box, in device px relative to the box; the clip-path rect. */
+/** The clip-path shape write of a box (runtime writer): its kind (0 circle, 1 ellipse, 2 polygon) and lengths; the after-layout hook */
+/** sets the path its draw clips to. */
+fun dragonSetClipShape(v: DragonBoxView, kind: Int, values: DoubleArray) {
+  if (DRAGON_CLIP_PATH_PLANT_IGNORED) return
+  val ok = if (kind == 0) values.size == 9 else if (kind == 1) values.size == 12 else kind == 2 && values.size >= 5 && (values.size - 1) % 4 == 0
+  if (!ok) throw IllegalStateException("dragon: " + v.dragonId + ": clip-path shape " + kind + " with " + values.size + " values")
+  v.dragonClipShapeKind = kind
+  v.dragonClipShapeValues = values
+  v.invalidate()
+}
+
+/** The geometry of a clip-path shape in device px relative to the box: circle [cx, cy, r], ellipse [cx, cy, rx, ry], polygon */
+/** [evenodd, x0, y0, ...]. */
+fun dragonClipShapeGeometry(kind: Int, s: DoubleArray, size: DoubleArray, scale: Double): DoubleArray {
+  val w = size[0]
+  val h = size[1]
+  fun coord(i: Int, extent: Double): Double = if (s[i] == 1.0) extent - s[i + 1] * scale else s[i + 1] * scale + s[i + 2] / 100.0 * extent
+  fun side(far: Boolean, c: Double, extent: Double): Double = if (far) Math.max(Math.abs(c), Math.abs(extent - c)) else Math.min(Math.abs(c), Math.abs(extent - c))
+  if (kind == 2) {
+    val out = DoubleArray(1 + (s.size - 1) / 2)
+    out[0] = s[0]
+    var i = 1
+    var o = 1
+    while (i < s.size) {
+      out[o] = s[i] * scale + s[i + 1] / 100.0 * w
+      out[o + 1] = s[i + 2] * scale + s[i + 3] / 100.0 * h
+      i += 4
+      o += 2
+    }
+    return out
+  }
+  val cx = coord(0, w)
+  val cy = coord(3, h)
+  if (kind == 0) {
+    val r = if (s[6] == 0.0) s[7] * scale + s[8] / 100.0 * (Math.sqrt(w * w + h * h) / Math.sqrt(2.0)) else if (s[6] == 2.0) Math.max(side(true, cx, w), side(true, cy, h)) else Math.min(side(false, cx, w), side(false, cy, h))
+    return doubleArrayOf(cx, cy, r)
+  }
+  val rx = if (s[6] == 0.0) s[7] * scale + s[8] / 100.0 * w else side(s[6] == 2.0, cx, w)
+  val ry = if (s[9] == 0.0) s[10] * scale + s[11] / 100.0 * h else side(s[9] == 2.0, cy, h)
+  return doubleArrayOf(cx, cy, rx, ry)
+}
+
+/** The path of a clip-path shape's geometry, in device px. */
+fun dragonClipShapePathOf(kind: Int, g: DoubleArray): android.graphics.Path {
+  val path = android.graphics.Path()
+  if (kind == 2) {
+    path.fillType = if (g[0] == 1.0) android.graphics.Path.FillType.EVEN_ODD else android.graphics.Path.FillType.WINDING
+    var i = 1
+    while (i + 1 < g.size) {
+      if (i == 1) path.moveTo(g[i].toFloat(), g[i + 1].toFloat()) else path.lineTo(g[i].toFloat(), g[i + 1].toFloat())
+      i += 2
+    }
+    path.close()
+    return path
+  }
+  val rx = g[2]
+  val ry = if (kind == 0) g[2] else g[3]
+  path.addOval((g[0] - rx).toFloat(), (g[1] - ry).toFloat(), (g[0] + rx).toFloat(), (g[1] + ry).toFloat(), android.graphics.Path.Direction.CW)
+  return path
+}
+
+/** After every layout: the clip view over the padding box, in device px relative to the box; the clip-path rect or shape. */
 fun dragonAfterLayoutClip(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
   val insets = v.dragonClipPathInsets
   if (insets != null) {
     v.dragonClipPathRect = dragonClipPathRectOf(insets, shape, scale)
+    v.invalidate()
+  }
+  val values = v.dragonClipShapeValues
+  if (values != null) {
+    val g = dragonClipShapeGeometry(v.dragonClipShapeKind, values, shape.size, scale)
+    v.dragonClipShapeGeometry = g
+    v.dragonClipShapePath = dragonClipShapePathOf(v.dragonClipShapeKind, g)
     v.invalidate()
   }
   val c = v.dragonClipView ?: return
@@ -193,6 +358,10 @@ fun dragonAppliedClip(v: DragonBoxView): List<Pair<String, DumpJson>> {
   if (v.dragonClipPathInsets != null) {
     val r = v.dragonClipPathRect
     out.add(Pair("dragonClipPath.rect", if (r == null) DumpJson.Null else DumpJson.Arr(r.map { DumpJson.Num(it) })))
+  }
+  if (v.dragonClipShapeValues != null) {
+    val g = v.dragonClipShapeGeometry
+    out.add(Pair("dragonClipPath.shape", if (g == null || v.dragonClipShapePath == null) DumpJson.Null else DumpJson.Arr(g.map { DumpJson.Num(it) })))
   }
   return out
 }
@@ -221,21 +390,85 @@ export function clipPathRect(insets: readonly number[], box: { readonly left: nu
   return r <= l || b <= t ? [0, 0, 0, 0] : [l, t, r, b];
 }
 
+type Shape = Exclude<ClipShape, { readonly kind: 'inset' }>;
+
+const lengthPair = (l: ShapeLength): [number, number] => {
+  if (!Number.isFinite(l.value) || (l.unit !== 'px' && l.unit !== '%')) throw new Error(`clip-path length ${l.value}${l.unit} is not a finite px or % value`);
+  return l.unit === 'px' ? [l.value, 0] : [0, l.value];
+};
+const centred: ShapeCoord = { from: 'start', offset: { value: 50, unit: '%' } };
+const coordValues = (c: ShapeCoord): number[] => [c.from === 'end' ? 1 : 0, ...lengthPair(c.offset)];
+const radiusValues = (r: ShapeRadius): number[] => (r === 'closest-side' ? [1, 0, 0] : r === 'farthest-side' ? [2, 0, 0] : [0, ...lengthPair(r)]);
+
+/** The writer kind of a clip-path shape: 0 circle, 1 ellipse, 2 polygon. */
+export const clipShapeKind = (shape: Shape): number => (shape.kind === 'circle' ? 0 : shape.kind === 'ellipse' ? 1 : 2);
+
+/**
+ * The writer values of a clip-path shape: a coordinate is [from (0 left or top, 1 right or bottom), px, percent], a radius
+ * [0 length, 1 closest-side or 2 farthest-side, px, percent]; circle [cx, cy, r] (9), ellipse [cx, cy, rx, ry] (12), polygon
+ * [evenodd, then x px, x percent, y px, y percent per point]. A circle or ellipse without a position is centred.
+ */
+export function clipShapeValues(shape: Shape): number[] {
+  if (shape.kind === 'polygon') return [shape.evenodd ? 1 : 0, ...shape.points.flatMap(([x, y]) => [...lengthPair(x), ...lengthPair(y)])];
+  const [x, y] = shape.at ?? [centred, centred];
+  const radii = shape.kind === 'circle' ? radiusValues(shape.radius) : [...radiusValues(shape.radii[0]), ...radiusValues(shape.radii[1])];
+  return [...coordValues(x), ...coordValues(y), ...radii];
+}
+
+/**
+ * The geometry of a clip-path shape in device px relative to its border box, as the device computes it (dragonClipShapeGeometry,
+ * in the same order of operations), against the layout size: circle [cx, cy, r], ellipse [cx, cy, rx, ry], polygon [evenodd, x0,
+ * y0, ...]. A circle's percentage radius is of the normalized diagonal (css-shapes-1 §3.1); closest-side and farthest-side are the
+ * nearest and farthest of the box's sides from the centre (a circle's of all four, an ellipse's of the two on its axis).
+ */
+export function clipShapeGeometry(kind: number, s: readonly number[], size: readonly [number, number], dpr: number): number[] {
+  const [w, h] = size;
+  const v = (i: number): number => s[i] as number;
+  const coord = (i: number, extent: number): number => (v(i) === 1 ? extent - v(i + 1) * dpr : v(i + 1) * dpr + (v(i + 2) / 100) * extent);
+  const side = (far: boolean, c: number, extent: number): number => (far ? Math.max(Math.abs(c), Math.abs(extent - c)) : Math.min(Math.abs(c), Math.abs(extent - c)));
+  if (kind === 2) {
+    const out = [v(0)];
+    for (let i = 1; i < s.length; i += 4) out.push(v(i) * dpr + (v(i + 1) / 100) * w, v(i + 2) * dpr + (v(i + 3) / 100) * h);
+    return out;
+  }
+  const cx = coord(0, w);
+  const cy = coord(3, h);
+  if (kind === 0) {
+    const r = v(6) === 0 ? v(7) * dpr + (v(8) / 100) * (Math.sqrt(w * w + h * h) / Math.sqrt(2)) : v(6) === 2 ? Math.max(side(true, cx, w), side(true, cy, h)) : Math.min(side(false, cx, w), side(false, cy, h));
+    return [cx, cy, r];
+  }
+  const rx = v(6) === 0 ? v(7) * dpr + (v(8) / 100) * w : side(v(6) === 2, cx, w);
+  const ry = v(9) === 0 ? v(10) * dpr + (v(11) / 100) * h : side(v(9) === 2, cy, h);
+  return [cx, cy, rx, ry];
+}
+
 const swiftNumber = (n: number): string => {
   const t = String(n);
   return /[.eE]/.test(t) ? t : `${t}.0`;
 };
 
-export const CLIP_EMITTER: PaintEmitter<'padding-box-clip' | 'clip-rect-empty' | 'clip-path-inset', 'clip-rect-ignored' | 'clip-path-ignored'> = {
+export const CLIP_EMITTER: PaintEmitter<'padding-box-clip' | 'clip-rect-empty' | 'clip-path-inset' | 'clip-path-shape', 'clip-rect-ignored' | 'clip-path-ignored'> = {
   name: 'clip',
-  kinds: ['padding-box-clip', 'clip-rect-empty', 'clip-path-inset'],
+  kinds: ['padding-box-clip', 'clip-rect-empty', 'clip-path-inset', 'clip-path-shape'],
   lines: {
-    uikit: (v, _n, w) => [w.kind === 'clip-path-inset' ? `  dragonSetClipPath(${v}, [${clipPathInsets(w.edges).map(swiftNumber).join(', ')}])` : w.kind === 'clip-rect-empty' ? `  dragonClipRectEmpty(${v})` : `  ${v}.dragonEnableClip()`],
-    'android-views': (v, _n, w) => [w.kind === 'clip-path-inset' ? `  dragonSetClipPath(${v}, doubleArrayOf(${clipPathInsets(w.edges).map(swiftNumber).join(', ')}))` : w.kind === 'clip-rect-empty' ? `  dragonClipRectEmpty(${v})` : `  ${v}.dragonEnableClip()`],
+    uikit: (v, _n, w) => [
+      w.kind === 'clip-path-shape' ? `  dragonSetClipShape(${v}, ${clipShapeKind(w.shape)}, [${clipShapeValues(w.shape).map(swiftNumber).join(', ')}])`
+        : w.kind === 'clip-path-inset' ? `  dragonSetClipPath(${v}, [${clipPathInsets(w.edges).map(swiftNumber).join(', ')}])` : w.kind === 'clip-rect-empty' ? `  dragonClipRectEmpty(${v})` : `  ${v}.dragonEnableClip()`,
+    ],
+    'android-views': (v, _n, w) => [
+      w.kind === 'clip-path-shape' ? `  dragonSetClipShape(${v}, ${clipShapeKind(w.shape)}, doubleArrayOf(${clipShapeValues(w.shape).map(swiftNumber).join(', ')}))`
+        : w.kind === 'clip-path-inset' ? `  dragonSetClipPath(${v}, doubleArrayOf(${clipPathInsets(w.edges).map(swiftNumber).join(', ')}))` : w.kind === 'clip-rect-empty' ? `  dragonClipRectEmpty(${v})` : `  ${v}.dragonEnableClip()`,
+    ],
   },
   applied: (_e, backend, w, dpr, g) => {
     // The box view hidden.
     if (w.kind === 'clip-rect-empty') return 1;
+    if (w.kind === 'clip-path-shape') {
+      const kind = clipShapeKind(w.shape);
+      const geometry = clipShapeGeometry(kind, clipShapeValues(w.shape), g.size, dpr);
+      // UIKit reads back points; the polygon's fill rule flag stays as it is.
+      return backend === 'uikit' ? geometry.map((x, i) => (kind === 2 && i === 0 ? x : x / dpr)) : geometry;
+    }
     if (w.kind === 'clip-path-inset') {
       const [l, t, r, b] = clipPathRect(clipPathInsets(w.edges), g.box, g.size, dpr);
       return backend === 'uikit' ? [l / dpr, t / dpr, (r - l) / dpr, (b - t) / dpr] : [l, t, r, b];
