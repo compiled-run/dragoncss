@@ -19,7 +19,7 @@ export const TRANSFORMS: readonly FixtureSpec[] = [
   layout('transform-demo'),
   layout('transform-clip'),
   layout('transform-will-change'),
-  layout('transform-perspective'),
+  both('transform-perspective'),
   layout('transform-flex'),
   both('transform-direction'),
   reject('reject-transform-skew', 'DRAGON_UNSUPPORTED_VALUE', 'skewX(10deg)', `transform: skewX(10deg) is unsupported: ${M}`),

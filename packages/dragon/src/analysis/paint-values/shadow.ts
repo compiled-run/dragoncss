@@ -10,7 +10,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { isReplacedTag } from '../elements/replaced.ts';
 import type { ResolvedElement } from '../resolve.ts';
-import { elementTransform, elementWillChange } from './transform.ts';
+import { elementTransform, elementWillChange, hasPerspective } from './transform.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
 function computeLength(l: ShadowLength, ctx: PaintValueContext): ShadowLength | null {
@@ -34,9 +34,13 @@ function shadowDeclaration(el: ResolvedElement): ResolvedValue | null {
   return shadows !== null && shadows.length > 0 ? v : null;
 }
 
-/** A composited group in Chrome (cc raster of its own): a transform, or will-change naming transform or opacity. */
+/**
+ * A composited group in Chrome (cc raster of its own): a transform, a perspective (a layer item drawn as an identity transform), or
+ * will-change naming transform or opacity.
+ */
 function groupOf(el: ResolvedElement): string | null {
   if (elementTransform(el).length > 0) return 'a transform';
+  if (hasPerspective(el)) return 'a perspective';
   const w = elementWillChange(el).find((f) => f === 'transform' || f === 'opacity');
   return w === undefined ? null : `will-change: ${w}`;
 }

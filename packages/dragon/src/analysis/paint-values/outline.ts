@@ -14,7 +14,7 @@ import type { ResolvedElement } from '../resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { stackingOf } from '../../lower/paint/stacking.ts';
 import { resolvedStackTree } from './stacking.ts';
-import { elementWillChange, transformsDescendants } from './transform.ts';
+import { elementWillChange, transformsDescendants, transformWord } from './transform.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
 
 const keywordOf = (el: ResolvedElement, p: string): string => {
@@ -94,7 +94,7 @@ function layerReason(el: ResolvedElement): string {
   if (['relative', 'absolute', 'fixed', 'sticky'].includes(position)) return `position: ${position}`;
   const opacity = opacityOf((el.props.get('opacity') as ResolvedValue).value);
   if (opacity !== null && opacity < 1) return `opacity: ${opacity}`;
-  if (transformsDescendants(el)) return 'a transform';
+  if (transformsDescendants(el)) return transformWord(el);
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
   if (hasClipPath(el)) return 'a clip-path';
   // A static box's z-index makes it a layer item only as a flex or grid item (resolvedStackTree), the one reason left.

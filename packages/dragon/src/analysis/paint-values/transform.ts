@@ -84,6 +84,11 @@ export function hasPerspective(el: ResolvedElement): boolean {
 }
 
 /** Whether an element's transform, perspective or will-change makes it a containing block for positioned descendants (css-transforms-1 §3). */
+/** What makes el transform its descendants, as the messages name it: a transform, or a perspective alone. */
+export function transformWord(el: ResolvedElement): string {
+  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || !hasPerspective(el) ? 'a transform' : 'a perspective';
+}
+
 export function transformsDescendants(el: ResolvedElement): boolean {
   return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || hasPerspective(el);
 }
@@ -123,15 +128,16 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
     const own = transformsDescendants(el);
     const address = el.element.address;
     if (own) {
+      const what = transformWord(el);
       const tag = el.element.tag;
-      if (tag === 'html' || tag === 'body') refuse(el, 'root', `a transform on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
-      if (display !== 'block' && display !== 'flex') refuse(el, 'display', `a transform on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
+      if (tag === 'html' || tag === 'body') refuse(el, 'root', `${what} on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
+      if (display !== 'block' && display !== 'flex') refuse(el, 'display', `${what} on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
       if (position === 'static') {
         const cb = absoluteDescendant(el);
-        if (cb !== null) refuse(el, 'containing-block', `a transform on ${address} makes it the containing block of the absolutely positioned ${cb.element.address} (css-transforms-1 §3), which Dragon's layout does not model yet`, `Set position: relative on ${address}, so it is the containing block with or without the transform.`);
+        if (cb !== null) refuse(el, 'containing-block', `${what} on ${address} makes it the containing block of the absolutely positioned ${cb.element.address} (css-transforms-1 §3), which Dragon's layout does not model yet`, `Set position: relative on ${address}, so it is the containing block with or without the transform.`);
       }
     }
-    if (position === 'fixed' && transformed !== null) refuse(transformed, 'fixed', `a transform on ${transformed.element.address} makes it the containing block of the fixed ${address} (css-transforms-1 §3; package POSX-f2)`, `Move ${address} outside ${transformed.element.address}.`);
+    if (position === 'fixed' && transformed !== null) refuse(transformed, 'fixed', `${transformWord(transformed)} on ${transformed.element.address} makes it the containing block of the fixed ${address} (css-transforms-1 §3; package POSX-f2)`, `Move ${address} outside ${transformed.element.address}.`);
     for (const c of el.children) if (c.kind === 'element') walk(c, own ? el : transformed);
   };
   walk(root, null);

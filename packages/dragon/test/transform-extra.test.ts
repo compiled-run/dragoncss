@@ -1,7 +1,8 @@
-// PNT2: backface-visibility, transform-style, transform-box, perspective and perspective-origin are accepted at their initial values
-// alone, on every target, and their -webkit- names are aliases; every other value is kept as Chrome keeps it and refused where it
-// applies, since hidden can hide a box (and its text) and none of them is drawn. The Chrome cases are transform-extra-initial,
-// reject-transform-extra-backface and reject-transform-extra-perspective (packages/parity/fixtures);
+// PNT2: backface-visibility, transform-style and transform-box are accepted at their initial values alone, on every target, and their
+// -webkit- names are aliases; every other value is kept as Chrome keeps it and refused where it applies, since hidden can hide a box
+// (and its text) and none of them is drawn. perspective and perspective-origin are accepted at any value: a perspective is drawn as an
+// identity transform. The Chrome cases are transform-extra-initial, reject-transform-extra-backface and transform-perspective
+// (packages/parity/fixtures);
 // packages/parity/test/transform-extra-parse.test.ts pins the parse.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
@@ -140,7 +141,7 @@ describe('the 3D transform longhands', () => {
   it('a perspective acts as an identity transform: a stacking context and a containing block, refused where a transform is', () => {
     const at = (css: string, kids = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]): string[] =>
       project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, kids)).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.message}`).sort();
-    expect(at('.s { perspective: 500px; } .c { position: absolute; }')).toEqual(['android', 'ios', 'web'].map((t) => `${t} a transform on a makes it the containing block of the absolutely positioned b (css-transforms-1 §3), which Dragon's layout does not model yet`));
+    expect(at('.s { perspective: 500px; } .c { position: absolute; }')).toEqual(['android', 'ios', 'web'].map((t) => `${t} a perspective on a makes it the containing block of the absolutely positioned b (css-transforms-1 §3), which Dragon's layout does not model yet`));
     expect(at('.s { perspective: 500px; position: relative; } .c { position: absolute; }')).toEqual([]);
     expect(at('.s { perspective: 500px; } .c { transform: rotate(20deg) scale(1.2); }')).toEqual([]);
   });
