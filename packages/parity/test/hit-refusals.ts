@@ -54,6 +54,8 @@ export const STACKING_OUT: readonly string[] = [
   'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-clipped', 'opacity-group-clipped-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
   'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl',
+  // isolation-values and isolation-stacking: isolation: isolate makes a stacking context below the root.
+  'isolation-values', 'isolation-values-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in

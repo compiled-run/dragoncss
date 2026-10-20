@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.stage { height: 240px; padding-top: 8px; background-color: rgb(235, 235, 245); }
+.box { width: 80px; height: 40px; }
+.iso { isolation: isolate; }
+.i1 { background-color: rgb(200, 40, 40); }
+.after { margin-top: -30px; margin-inline-start: 20px; background-color: rgb(40, 40, 200); }
+.i2 { margin-top: 16px; background-color: rgb(40, 160, 40); }
+.neg { position: relative; z-index: -1; width: 40px; height: 30px; margin-inline-start: 30px; background-color: rgb(255, 140, 0); }
+.i3 { margin-top: 16px; background-color: rgb(120, 40, 160); }
+.pos { position: relative; z-index: 5; width: 40px; height: 30px; margin-inline-start: 50px; background-color: rgb(0, 150, 150); }
+.r1 { position: relative; z-index: 1; margin-top: -20px; background-color: rgb(220, 180, 0); }
+.row { display: flex; margin-top: 16px; }
+.fi { width: 40px; height: 30px; background-color: rgb(150, 150, 150); }
+.fo { width: 40px; height: 30px; margin-inline-start: -20px; background-color: rgb(60, 60, 120); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="x-i1" class="box iso i1"></div>
+<div data-dragon-id="x-after" class="box after"></div>
+<div data-dragon-id="x-i2" class="box iso i2"><div data-dragon-id="x-neg" class="neg"></div></div>
+<div data-dragon-id="x-i3" class="box iso i3"><div data-dragon-id="x-pos" class="pos"></div></div>
+<div data-dragon-id="x-r1" class="box r1"></div>
+<div data-dragon-id="x-row" class="row"><div data-dragon-id="x-fi" class="fi iso"><div data-dragon-id="x-fneg" class="neg"></div></div><div data-dragon-id="x-fo" class="fo"></div></div>
+</div>
+</body>
+</html>
