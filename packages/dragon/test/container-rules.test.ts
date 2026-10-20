@@ -1,6 +1,7 @@
-// CQ: @container rules (analysis/container-rules.ts). A query container's width follows the viewport through block boxes, so each
-// width a query compares with adds a viewport atom, and every band decides each element's rules by its own query container. Chrome
-// agreement is proven by the cq-rules fixture's resize lanes (packages/parity); these cases pin the compiler's decisions.
+// CQ: @container rules and container query units (analysis/container-rules.ts). A query container's width follows the viewport
+// through block boxes, so each width a query compares with adds a viewport atom, every band decides each element's rules by its own
+// query container, and cqw and cqi become that width as a calculation on the viewport. Chrome agreement is proven by the cq-rules
+// and cq-units fixtures' resize lanes (packages/parity); these cases pin the compiler's decisions.
 import { describe, expect, it } from 'vitest';
 import type { Compiled, FrontEndResult, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, mediaFeatures, nativeBandOfViewport, nativeBandPrograms, nativeBands, NO_FAULTS } from '../src/internal.ts';
@@ -54,6 +55,31 @@ describe('CQ: @container rules', () => {
       const b = nativeBandOfViewport(c, { width: w, height: 300 }) as number;
       return widthIn(c, b, [0, 0, 0]);
     })).toEqual([px(30), px(30), px(10), px(10), px(30), px(30)]);
+  });
+
+  it('resolves cqw and cqi against the nearest ancestor query container, as a px constant or a calculation on the viewport', () => {
+    // q's content box is the viewport less 40px, floored at 0; b's is 300px.
+    const body = (r: SourceRef): TreeNode[] => [div(r, 'q', ['q'], [div(r, 'a', ['a']), div(r, 'b', ['b'], [div(r, 'c', ['a'])])])];
+    const c = compile('.q { container-type: inline-size; margin: 0 20px; } .b { container-type: inline-size; width: 300px; } .a { width: 50cqw; height: calc(10cqi + 2px); }', body);
+    expect(errors(c)).toEqual([]);
+    const W = { kind: 'max', terms: [px(0), { kind: 'sum', terms: [{ kind: 'viewport', value: 100, axis: 'width', size: 'large' }, px(-40)] }] };
+    expect(widthIn(c, 0, [0, 0, 0])).toEqual({ kind: 'calc', expr: { kind: 'product', terms: [{ kind: 'number', value: 0.5 }, W] }, range: 'non-negative' });
+    expect(widthIn(c, 0, [0, 0, 1, 0])).toEqual(px(150));
+    // The planted containerUnitUnclamped drops the floor.
+    const planted = createProjectWith({ projectId: 'test', targets: { ...NATIVE, web: {} } }, { faults: { ...NO_FAULTS, containerUnitUnclamped: true }, profiles: 'derive', direction: 'ltr', foldViewport: { width: 400, height: 300 } }).compile(input('.q { container-type: inline-size; margin: 0 20px; } .a { width: 50cqw; }', body));
+    expect(widthIn(planted, 0, [0, 0, 0])).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'viewport', value: 50, axis: 'width', size: 'large' }, px(-20)] }, range: 'non-negative' });
+  });
+
+  it('refuses a container query unit with no query container, on an unreadable one, on an inherited property and on the block axis', () => {
+    const inside = (r: SourceRef): TreeNode[] => [div(r, 'q', ['q'], [div(r, 'a', ['a'])])];
+    const refusal = (css: string): string[] => errors(compile(`.q { container-type: inline-size; } ${css}`, inside)).filter((m) => /cq/.test(m));
+    expect(refusal('.q { margin-left: 5cqw; }')).toEqual(['margin-left: 5cqw is not supported here: <div> has no query container, so the unit falls back to the small viewport, which needs the viewport inputs of the value-model package V2']);
+    expect(refusal('.q { width: 50%; } .a { width: 5cqi; }')).toEqual(['width: 5cqi is not supported here: the width of its query container cannot be read: <div> has width: 50%; Dragon reads a container\'s width only through block boxes in flow with px widths, margins and padding and no left or right border']);
+    expect(refusal('.a { letter-spacing: 1cqw; }')).toEqual(['letter-spacing: 1cqw is not supported here: letter-spacing is inherited, and a container query unit in an inherited property is not resolved yet']);
+    // A refused calculation reports as one with svh does: its reason in a comment on the value.
+    for (const m of refusal('.a { width: calc(1cqb + 1px); }')) expect(m).toContain('cqb is a block-axis container query unit');
+    expect(refusal('.a { width: calc(1cqb + 1px); }').length).toBeGreaterThan(0);
+    expect(refusal('.a { border-top-left-radius: 2cqw; }')).toEqual(['border-top-left-radius: 2cqw is unsupported: a container query unit is supported in layout lengths only (width, height, margins, padding, insets and the like), where Dragon resolves it against the query container']);
   });
 
   it('refuses what Dragon does not resolve', () => {

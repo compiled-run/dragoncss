@@ -42,7 +42,9 @@ describe('unit registry conversions', () => {
     expect(lengthToPx(1, 'vw', none)).toBeNull();
   });
   it('viewport, font-metric, line-height and container units and math functions are refused with a reason', () => {
-    for (const u of ['svh', 'lvh', 'dvh', 'svw', 'ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqw']) expect(unitRefusal(u), u).not.toBeNull();
+    for (const u of ['svh', 'lvh', 'dvh', 'svw', 'ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqh', 'cqb', 'cqmin', 'cqmax']) expect(unitRefusal(u), u).not.toBeNull();
+    // CQ: cqw and cqi parse as lengths and resolve against the query container (analysis/container-rules.ts).
+    for (const u of ['cqw', 'cqi']) expect(unitRefusal(u), u).toBeNull();
     for (const u of ['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'furlong']) expect(unitRefusal(u), u).toBeNull();
     for (const f of ['round', 'mod', 'rem', 'abs', 'sign', 'ROUND']) expect(mathFunctionRefusal(f), f).not.toBeNull();
     expect(mathFunctionRefusal('rgb')).toBeNull();

@@ -14,6 +14,8 @@ export type ScrollContainmentFaults = {
   readonly containerShiftDropped: boolean;
   /** CQ: an element that is a query container answers its own @container rules, as only its pseudo-elements may. */
   readonly containerSelfQueried: boolean;
+  /** CQ: a cqw or cqi length reads its container's width as the viewport less the shift, without its min-width and max-width clamp. */
+  readonly containerUnitUnclamped: boolean;
 };
 
-export const SCROLL_CONTAINMENT_FAULTS: ScrollContainmentFaults = { overscrollAccepted: false, scrollSnapAccepted: false, containmentAccepted: false, containerQueryAccepted: false, containerShiftDropped: false, containerSelfQueried: false };
+export const SCROLL_CONTAINMENT_FAULTS: ScrollContainmentFaults = { overscrollAccepted: false, scrollSnapAccepted: false, containmentAccepted: false, containerQueryAccepted: false, containerShiftDropped: false, containerSelfQueried: false, containerUnitUnclamped: false };

@@ -4,7 +4,7 @@
 // CSS-level CalcExpr (packages/layout/src/input.ts). Blink's tree is binary; the engine's sums and products fold left to right,
 // so a left-deep chain becomes one sum and every other shape keeps its nesting. What V1 does not support is refused with a reason.
 import type { CalcExpr, LengthCalc } from '@dragon/layout';
-import { mathFunctionRefusal, unitEntry } from './units.ts';
+import { LAYOUT_CONTAINER_UNITS, mathFunctionRefusal, unitEntry } from './units.ts';
 import type { SafeAreaSide } from './env.ts';
 import { SAFE_AREA_NAMES } from './env.ts';
 
@@ -546,7 +546,8 @@ class Parser {
     if (FONT_METRIC.has(unit)) return refuse(`${unit} is measured from the primary font at its rendered size, which needs the value-model package V2`, 'Use em, rem or px.');
     if (LINE_HEIGHT_UNITS.has(unit)) return refuse(`${unit} is the used line height, which needs the value-model package V2`, 'Use em, rem or px.');
     if (SIZED_VIEWPORT.test(unit)) return refuse(`${unit} is a small, large or dynamic viewport unit, which needs the viewport inputs of the value-model package V2`, 'Use vw, vh, vi, vb, vmin or vmax.');
-    if (CONTAINER_UNITS.has(unit)) return refuse(`${unit} is a container query unit, and container queries are not supported`, 'Use %, px, em or rem.');
+    if (LAYOUT_CONTAINER_UNITS.has(unit)) return lit(value, unit);
+    if (CONTAINER_UNITS.has(unit)) return refuse(`${unit} is a block-axis container query unit: an inline-size query container answers only the inline axis, so it falls back to the small viewport, which needs the viewport inputs of the value-model package V2`, 'Use cqw or cqi, or %, px, em or rem.');
     return refuse(`${unit === '' ? 'a number' : `the unit ${unit}`} is not a length`);
   }
   private multiplicative(depth: number): { node: MathNode; ws: boolean } {
@@ -1136,6 +1137,7 @@ function lowerLeaf(n: MathLiteral, fonts: MathFonts, faults: MathFaults): CalcEx
   if (n.unit === 'vh' || n.unit === 'vb') return { kind: 'viewport', value: n.value, axis: 'height', size: 'large' };
   if (n.unit === 'vmin') return { kind: 'viewport', value: n.value, axis: 'min', size: 'large' };
   if (n.unit === 'vmax') return { kind: 'viewport', value: n.value, axis: 'max', size: 'large' };
+  if (LAYOUT_CONTAINER_UNITS.has(n.unit)) throw new Error(`${n.unit} reached the lowering: analysis/container-rules.ts resolves container query units first`);
   // An absolute unit: ZoomedComputedPixels multiplies by its px ratio, then by the zoom.
   return { kind: 'px', value: n.value * (pxPer(n.unit) as number) };
 }

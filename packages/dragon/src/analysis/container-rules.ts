@@ -7,7 +7,16 @@
 //
 // A band is resolved twice: without @container rules, to find each container and its width (no @container rule can change them,
 // which the second pass checks), then with them.
+//
+// cqw and cqi (css-contain-3 §6) are 1% of the nearest ancestor query container's width, so each becomes that width as a calculation
+// on the viewport: a px constant, or clamp(lo, 100vw - shift, hi), which the engine resolves on the device as it does vw.
+import { INHERITED } from '../css/properties.ts';
+import type { Longhand } from '../css/properties.ts';
 import type { ContainerCondition, Rule } from '../css/stylesheet.ts';
+import { LAYOUT_CONTAINER_UNITS } from '../css/units.ts';
+import type { CssValue } from '../css/values.ts';
+import { V1_MATH_FUNCTIONS } from '../css/math.ts';
+import type { Span } from '../types.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { Band, Interval, MediaLength, MediaQueryList } from '../media/index.ts';
 import { comparisonsOf, contains, evaluateMediaQueryList, featuresOfList, MEDIA_EPSILON, parseMediaQueryList, resolveLength } from '../media/index.ts';
@@ -31,18 +40,95 @@ export type QueryContainer = { readonly names: readonly string[]; readonly width
 /** Why a band cannot decide a @container rule, keyed by the rule's condition and the reason. */
 export type ContainerRefusals = Map<string, { readonly condition: ContainerCondition; readonly reason: string }>;
 
+/** Why a band cannot resolve a container query unit, keyed by the declaration's value and the reason. */
+export type ContainerUnitRefusals = Map<string, { readonly span: Span; readonly property: Longhand; readonly text: string; readonly reason: string }>;
+
 /** The band a pass decides @container rules in: a viewport width inside it, and its width intervals. */
-export type ContainerBand = { readonly rep: number; readonly intervals: readonly Interval[]; readonly refusals: ContainerRefusals };
+export type ContainerBand = { readonly rep: number; readonly intervals: readonly Interval[]; readonly refusals: ContainerRefusals; readonly units: ContainerUnitRefusals };
 
 const WHOLE_LINE: Interval = { lo: 0, loInclusive: true, hi: Infinity, hiInclusive: false, nominalLo: 0, nominalHi: Infinity };
 
 /** The pass of a band (null: the sheet has no band); a viewport width inside its first interval stands for all of it. */
-export function containerBand(b: Band | null, refusals: ContainerRefusals): ContainerBand {
+export function containerBand(b: Band | null, refusals: ContainerRefusals, units: ContainerUnitRefusals = new Map()): ContainerBand {
   const intervals = b === null ? [WHOLE_LINE] : b.width;
   const i = intervals[0] as Interval;
   const rep = i.lo === i.hi ? i.lo : i.hi === Infinity ? i.lo + 1 : (i.lo + i.hi) / 2;
-  return { rep, intervals, refusals };
+  return { rep, intervals, refusals, units };
 }
+
+/** A cqw or cqi leaf of a calculation's text, as computed.ts EM_IN_MATH finds em leaves. */
+const CQ_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(cq[wi])(?![\w-])/gi;
+
+const isMathText = (v: CssValue): boolean => v.kind === 'other' && V1_MATH_FUNCTIONS.has(v.type.replace('()', ''));
+
+/** Whether a value holds a cqw or cqi length. */
+export function hasContainerUnits(v: CssValue): boolean {
+  if (v.kind === 'length') return LAYOUT_CONTAINER_UNITS.has(v.unit);
+  return isMathText(v) && new RegExp(CQ_IN_MATH.source, 'i').test((v as { text: string }).text);
+}
+
+/** Whether any declaration of the sheet holds a cqw or cqi length. */
+export function usesContainerUnits(rules: readonly Rule[]): boolean {
+  return rules.some((r) => r.declarations.some((d) => d.longhands.some((l) => hasContainerUnits(l.value))));
+}
+
+/** A container's width as calculation text: a px constant, or the viewport less the shift, clamped. */
+function widthText(w: ContainerWidth, faults: ScrollContainmentFaults): string {
+  if (w.lo === w.hi) return `${String(w.lo)}px`;
+  const v = `100vw - ${String(w.shift)}px`;
+  if (faults.containerUnitUnclamped) return `(${v})`;
+  return w.hi === Infinity ? `max(${String(w.lo)}px, ${v})` : `clamp(${String(w.lo)}px, ${v}, ${String(w.hi)}px)`;
+}
+
+/**
+ * css-contain-3 §6.1: each cqw and cqi length of a resolved tree as its query container's width, value * (width / 100) as Blink's
+ * ContainerWidthPercent; a px constant where the width is one, else a calculation on the viewport. The query container is the
+ * nearest ancestor one; with none (the small viewport), one whose width Dragon cannot read, or on an inherited property, the value
+ * is refused and left as it is.
+ */
+function resolveContainerUnits(root: ResolvedElement, found: ReadonlyMap<LinkedElement, QueryContainer>, refusals: ContainerUnitRefusals, faults: ScrollContainmentFaults): ResolvedElement {
+  const visit = (el: ResolvedElement, container: QueryContainer | null): void => {
+    // resolveTree builds each element's props as a Map, and the tree is keyed by identity (resolve.ts environmentOf), so the
+    // values are replaced in place, as computed.ts replaces em leaves while it builds them.
+    const props = el.props as Map<Longhand, ResolvedValue>;
+    for (const [p, v] of el.props) {
+      if (v.origin === 'inherited' || !hasContainerUnits(v.value)) continue;
+      const text = valueToString(v.value);
+      const refuse = (reason: string): void => {
+        const span = v.declaration?.valueSpan ?? v.span;
+        if (span === null) return;
+        const key = `${span.source.uri}|${span.start}|${reason}`;
+        if (!refusals.has(key)) refusals.set(key, { span, property: p, text, reason });
+      };
+      if (INHERITED.has(p)) {
+        refuse(`${p} is inherited, and a container query unit in an inherited property is not resolved yet`);
+        continue;
+      }
+      if (container === null) {
+        refuse(`<${el.element.tag}> has no query container, so the unit falls back to the small viewport, which needs the viewport inputs of the value-model package V2`);
+        continue;
+      }
+      if (typeof container.width === 'string') {
+        refuse(`the width of its query container cannot be read: ${container.width}; Dragon reads a container's width only through block boxes in flow with px widths, margins and padding and no left or right border`);
+        continue;
+      }
+      const w = container.width;
+      let value: CssValue;
+      if (v.value.kind === 'length') {
+        value = w.lo === w.hi ? { kind: 'length', value: v.value.value * (w.lo / 100), unit: 'px' } : { kind: 'other', type: 'calc()', text: `calc(${String(v.value.value)} * (${widthText(w, faults)} / 100))` };
+      } else {
+        const math = v.value as { readonly kind: 'other'; readonly type: string; readonly text: string };
+        value = { ...math, text: math.text.replace(CQ_IN_MATH, (_all, before: string, n: string) => `${before}(${n} * (${widthText(w, faults)} / 100))`) };
+      }
+      props.set(p, { ...v, value });
+    }
+    const inner = found.get(el.element) ?? container;
+    for (const c of el.children) if (c.kind === 'element') visit(c, inner);
+  };
+  visit(root, null);
+  return root;
+}
+
 
 /** Every distinct @container condition of the sheet, in source order. */
 export function containerConditionsOf(rules: readonly Rule[]): ContainerCondition[] {
@@ -202,6 +288,9 @@ function uniformInBand(w: ContainerWidth, list: MediaQueryList, band: ContainerB
 export function resolveWithContainers(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, env: ResolveEnvironment, band: ContainerBand, ix?: InteractionState): ResolvedElement {
   const base = resolveTree(root, rules, faults, env, ix);
   const found = containersOf(base, faults);
+  if (!rules.some((r) => r.container !== undefined)) {
+    return resolveContainerUnits(base, found, band.units, faults);
+  }
   const refuse = (condition: ContainerCondition, reason: string): false => {
     const key = `${condition.span.source.uri}|${condition.span.start}|${reason}`;
     if (!band.refusals.has(key)) band.refusals.set(key, { condition, reason });
@@ -227,5 +316,5 @@ export function resolveWithContainers(root: LinkedElement, rules: readonly Rule[
     const first = rules.find((r) => r.container !== undefined)?.container?.[0];
     if (first !== undefined) refuse(first, 'a @container rule changes the container-type, container-name or width of a query container, which Dragon does not resolve');
   }
-  return resolved;
+  return resolveContainerUnits(resolved, found, band.units, faults);
 }

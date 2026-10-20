@@ -51,6 +51,9 @@ export const RESIZE_SCRIPTS: readonly ResizeScript[] = [
   // CQ: page's content box is the viewport less 28px (less 56px from the @media rule's 384px), and card's is page's up to 340px: the
   // queries switch at 320, 328, 352, 360 and 368 viewport px, and at 388 and 396 inside the @media band, each crossed both ways.
   { fixture: 'cq-rules', start: { width: 400, height: 304 }, steps: [r(304, 304), r(320, 304), r(328, 304), r(336, 304), r(352, 304), r(360, 304), r(368, 304), r(376, 304), r(384, 304), r(392, 304), r(344, 304), r(400, 304)] },
+  // CQ units: page's content box is the viewport less 28px (less 56px from 384px), card's is page's up to 340px (from 368 and from
+  // 396 viewport px), and fix's is 200px; the script crosses both media bands and the clamp in each, then comes back.
+  { fixture: 'cq-units', start: { width: 400, height: 304 }, steps: [r(304, 304), r(328, 304), r(352, 304), r(368, 304), r(376, 304), r(384, 304), r(392, 304), r(344, 304), r(400, 304)] },
   { fixture: 'mqr-orientation', start: { width: 400, height: 296 }, steps: [r(352, 304), r(304, 304), r(304, 400), r(288, 384), r(296, 400), r(400, 296)] },
 ];
 
