@@ -16,6 +16,7 @@
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
 // the resolved one.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
+import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -319,6 +320,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       // GEN-a: a generated box has no DOM element; it is emitted with its host as the host's class plus ::before or ::after.
       const generated = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && isGeneratedElement(ch));
       const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false))];
+      // NA-NATIVE: ::-webkit-scrollbar rules that hide the element's scrollbars are written as the one rule that does (webkit-scrollbar.ts).
+      if (webkitScrollbarHidden(el)) parts.push({ suffix: '::-webkit-scrollbar', decls: ['  display: none;'], diffs: inBands.map(() => []), own: [] });
       const keyOf = (pt: Part): string => `${pt.suffix}\u0000${pt.decls.join('\n')}${pt.diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(pt.diffs)}` : ''}${pt.own.length > 0 ? `\u0001${JSON.stringify(pt.own)}` : ''}`;
       const variant = `${el.element.address}${parts.map(keyOf).join('\u0002')}`;
       let cls = variants.get(variant);

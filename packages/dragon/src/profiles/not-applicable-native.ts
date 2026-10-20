@@ -8,7 +8,7 @@
 // containing block and stacking context, analysis/paint-values/transform.ts); color-scheme (dark changes the UA colours,
 // ua/datasets.ts); ::-webkit-slider-thumb (its appearance decides how a range paints, forms/appearance.ts); ::-moz-range-thumb
 // (Chrome drops it, so Dragon already drops the rule on every target); ::-webkit-scrollbar* rules (several common forms hide the
-// scrollbar, which is visible on native; deferred).
+// scrollbar, which is visible on native: those compile and hide the native scroll indicators, analysis/webkit-scrollbar.ts).
 
 /** owner: listed by owner ruling although Chrome shows a difference for some values, so its message says so instead of "no effect". */
 export type NotApplicableEntry = { readonly name: string; readonly reason: string; readonly owner?: true };

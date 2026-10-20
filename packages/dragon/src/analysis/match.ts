@@ -234,6 +234,18 @@ export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly
 }
 
 /**
+ * NA-NATIVE: whether sel, a ::-webkit-scrollbar selector, reaches the scrollbars of chain[chain.length - 1] (webkit-scrollbar.ts),
+ * at rest or with the whole chain hovered, active and focused, so a rule that applies only in some state is found too.
+ */
+export function scrollbarSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], faults: CompilerFaults): boolean {
+  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind !== 'scrollbar') return false;
+  if (sel.dropped && !faults.invalidSelectorListKept) return false;
+  const all = new Set(chain.map((e) => e.address));
+  const engaged: InteractionState = { hover: all, active: all, focus: all, focusVisible: all };
+  return matchFrom(rule, sel, chain, 0, faults, NO_INTERACTION, () => true) || matchFrom(rule, sel, chain, 0, faults, engaged, () => true);
+}
+
+/**
  * The specificity the cascade uses: the parsed one, or a planted fault's: :is() with its first argument's instead of the largest,
  * ids counted as classes, or a legacy :before or :after counted as a pseudo-class.
  */

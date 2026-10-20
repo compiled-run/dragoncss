@@ -118,6 +118,8 @@ describe('dependency boundaries', () => {
     const imports = [...text.matchAll(/^import .*$/gm)].map((m) => m[0]);
     expect(imports).toEqual([
       "import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';",
+      // NA-NATIVE: whether an element's ::-webkit-scrollbar rules hide its scrollbars, recorded on its resolution (no matching here).
+      "import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",

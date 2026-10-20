@@ -18,6 +18,7 @@ import { GEN_B_FAULTS } from '../faults/gen-b.ts';
 import type { Txt2dFaults } from '../faults/txt2-d.ts';
 import { TXT2_D_FAULTS } from '../faults/txt2-d.ts';
 import { checkWordBreak } from './break-all.ts';
+import { checkWebkitScrollbar } from './webkit-scrollbar.ts';
 import type { Txt2lbFaults } from '../faults/txt2-lb.ts';
 import { TXT2_LB_FAULTS } from '../faults/txt2-lb.ts';
 import { checkLineBreak } from './line-break.ts';
@@ -1110,6 +1111,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkTextIndent(el, targets, diagnostics, reported);
       // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
       checkWordBreak(el, targets, diagnostics, reported, shapedAt, faults);
+      // NA-NATIVE: ::-webkit-scrollbar rules that draw a custom scrollbar (analysis/webkit-scrollbar.ts).
+      checkWebkitScrollbar(el, diagnostics, reported);
       // TXT2-lb: line-break strictness over text no Chrome case proves (analysis/line-break.ts).
       checkLineBreak(el, targets, diagnostics, reported, shapedAt, faults);
       checkHyphens(el, targets, diagnostics, reported, faults);
