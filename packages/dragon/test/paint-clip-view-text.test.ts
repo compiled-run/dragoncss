@@ -1,6 +1,6 @@
-// The native refusal of text a padding-box clip view (overflow other than visible, or background-clip: text) could clip wholly out
-// of sight, which Chrome keeps in its accessibility tree and Android's View.isVisibleToUser drops (clip-view-text.ts): each trigger,
-// and the controls the landing review named that must still compile.
+// The native refusal of text a padding-box clip view (overflow other than visible, or background-clip: text) hides whole for
+// certain, which Chrome keeps in its accessibility tree and Android's View.isVisibleToUser drops (clip-view-text.ts): each trigger,
+// and the cards, lists and moves the landing reviews named, which must still compile because their text may fit.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
@@ -12,16 +12,17 @@ const ALL: Targets = { ...NATIVE, web: {} };
 const BASE = 'body { margin: 0; font-family: Ahem; font-size: 10px; } .p { width: 100px; } ';
 type Body = (r: SourceRef) => TreeNode[];
 
+const tag = (r: SourceRef, name: string, id: string, children: TreeNode[] = []): TreeNode => ({ ...div(r, id, [id], children), tag: name }) as TreeNode;
 // The clip box a under p: text only (one), text then a block b with text (two), a block b with text only (deep).
 const one: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'XX')])])];
 const two: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'XX'), div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])];
 const deep: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])];
-// A tall text-free block c before b.
-const sibling: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'c', ['c']), div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])];
-// Text, then an inline span with text on the same line; and two blocks, each starting its own line.
-const span = (r: SourceRef, id: string, children: TreeNode[]): TreeNode => ({ ...div(r, id, [id], children), tag: 'span' }) as TreeNode;
-const sameLine: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'XXXXXX'), span(r, 's', [text(r, 's-t', 'YY')])])])];
-const twoBlocks: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'XXXXXX')]), div(r, 'c', ['c'], [text(r, 'c-t', 'YYYYYY')])])])];
+// Two items i1 and i2 with text: carousel slides, grid cells, inline-blocks.
+const slides: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'i1', ['i'], [text(r, 'i1-t', 'XX')]), div(r, 'i2', ['i'], [text(r, 'i2-t', 'YY')])])])];
+// A card: a heading and a paragraph (UA margins), or an image then a caption.
+const card: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [tag(r, 'h2', 'h', [text(r, 'h-t', 'Title')]), tag(r, 'p', 'c', [text(r, 'c-t', 'Body text here')])])])];
+const tall: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'c', ['c']), div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])];
+const words: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'Hello '), tag(r, 'b', 'w', [text(r, 'w-t', 'world')])])])];
 
 const compile = (css: string, body: Body, targets: Targets = ALL) =>
   createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(BASE + css, body));
@@ -44,10 +45,10 @@ function expectCompiles(css: string, body: Body): void {
   expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message), css).toEqual([]);
 }
 
-describe('clip view over text: a padding box that can be empty', () => {
+describe('clip view over text: a padding box with no area', () => {
   it('refuses a zero width, height, max-width or max-height, and a zero flex-basis without flex-grow along the flex main axis', () => {
     for (const [css, why] of [
-      ['.a { overflow: hidden; height: 0; }', /its height 0px can leave its padding box no area/],
+      ['.a { overflow: hidden; height: 0; }', /its height 0px leaves its padding box no area/],
       ['.a { overflow: hidden; max-height: 0; }', /its max-height 0px/],
       ['.a { overflow: hidden; width: 0; }', /its width 0px/],
       ['.a { overflow: hidden; max-width: 0%; }', /its max-width 0%/],
@@ -56,118 +57,100 @@ describe('clip view over text: a padding box that can be empty', () => {
       ['.p { display: flex; } .a { overflow: hidden; flex: 0 0 0; }', /its flex-basis 0px without flex-grow in the flex container p/],
       ['.p { display: flex; flex-direction: column; } .a { overflow: hidden; flex: 0 0 0; }', /its flex-basis 0px without flex-grow/],
     ] as const) expectRefused(css, one, 'a', 'a:text0', why);
+    expectRefused('.a { overflow: hidden; } .b { transform: scale(0); }', deep, 'a', 'b:text0', /b has transform scale\(0\), which leaves it no area/);
   });
-  it('compiles a calculated size, a positive min size, end padding, and a flex-basis outside a flex container or with flex-grow', () => {
+  it('compiles a calculated size, a positive min size, end padding (the padding-bottom aspect idiom too), and a flex-basis outside a flex container or with flex-grow', () => {
     for (const css of [
       '.a { overflow: hidden; height: calc(10% - 1px); }',
-      '.a { overflow: hidden; width: min(0px, 10%); }',
       '.a { overflow: hidden; height: 0; min-height: 30px; }',
       '.a { overflow: hidden; width: 0; padding: 0 20px; }',
-      '.a { overflow: hidden; height: 0; padding-bottom: 12px; }',
+      '.a { overflow: hidden; height: 0; padding-bottom: 56.25%; }',
       '.a { overflow: hidden; flex: 0 0 0; }',
       '.p { display: flex; } .a { overflow: hidden; flex: 1 1 0; }',
-      '.p { display: flex; } .a { overflow: hidden; flex: 0 0 0; min-width: 10px; }',
     ]) expectCompiles(css, one);
-    // A card under a calculated width (finding 1's repro).
     expectCompiles('.p { width: calc(100% - 32px); } .a { overflow: hidden; }', two);
   });
-  it('refuses a clip box that takes its size from a zero-size ancestor: an auto width, a percentage size, a flex stretch', () => {
+  it('refuses a clip box that takes its size from a zero-size ancestor, and compiles one with its own size, positioned, atomic or auto height', () => {
     expectRefused('.p { width: 0; } .a { overflow: hidden; }', two, 'a', 'a:text0', /its ancestor p has width 0px, which can leave it no area too/);
     expectRefused('.p { height: 0; } .a { overflow: hidden; height: 100%; }', one, 'a', 'a:text0', /its ancestor p has height 0px/);
-    expectRefused('.p { max-width: 0; } .a { overflow: hidden; width: calc(100% - 4px); }', one, 'a', 'a:text0', /its ancestor p has max-width 0px/);
     expectRefused('.p { display: flex; height: 0; } .a { overflow: hidden; }', one, 'a', 'a:text0', /its ancestor p has height 0px/);
+    for (const css of ['.p { width: 0; } .a { overflow: hidden; width: 50px; }', '.p { width: 0; position: relative; } .a { overflow: hidden; position: absolute; }', '.p { height: 0; } .a { overflow: hidden; }', '.p { width: 0; } .a { overflow: hidden; display: inline-block; }']) expectCompiles(css, two);
   });
-  it('compiles under a zero-size ancestor a clip box with its own size, an absolutely positioned one, an atomic inline, and an auto height', () => {
-    for (const css of [
-      '.p { width: 0; } .a { overflow: hidden; width: 50px; }',
-      '.p { width: 0; position: relative; } .a { overflow: hidden; position: absolute; }',
-      '.p { height: 0; } .a { overflow: hidden; }',
-      '.p { max-height: 0; } .a { overflow: hidden; }',
-      '.p { width: 0; } .a { overflow: hidden; display: inline-block; }',
-    ]) expectCompiles(css, two);
+  it('refuses text whose line box is empty, unless bottom padding shows it', () => {
+    expectRefused('.a { overflow: hidden; line-height: 0; }', one, 'a', 'a:text0', /its line box is empty \(line-height 0/);
+    expectRefused('.a { overflow: hidden; font-size: 0; }', one, 'a', 'a:text0', /its line box is empty/);
+    expectCompiles('.a { overflow: hidden; line-height: 0; padding-bottom: 10px; }', one);
   });
 });
 
-describe('clip view over text: text-indent', () => {
-  it('refuses a negative indent, one of at least 100%, and one of at least the clip box\'s px width, own, inherited or inside', () => {
-    expectRefused('.a { overflow: hidden; text-indent: -9999px; }', two, 'a', 'a:text0', /it has text-indent -9999px, which can move its first line out of the clip/);
-    expectRefused('.p { text-indent: 100%; } .a { overflow: hidden; white-space: nowrap; }', one, 'a', 'a:text0', /it has text-indent 100%, at least its width/);
-    expectRefused('.a { overflow: hidden; width: 50px; text-indent: 60px; }', one, 'a', 'a:text0', /at least the clip box's width and end padding, 50px/);
-    expectRefused('.a { overflow: hidden; } .b { text-indent: calc(10% - 20px); }', deep, 'a', 'b:text0', /b has text-indent calc\(/);
+describe('clip view over text: text past the padding box\'s end', () => {
+  it('refuses an image-replacement indent wider than any screen, and an indent of 100% or of the px width', () => {
+    expectRefused('.a { overflow: hidden; text-indent: 9999px; }', one, 'a', 'a:text0', /the text starts at least 9999px from its content box's start \(text-indent 9999px included\), at or past its padding box's end \(wider than any screen, 4096px\)/);
+    expectRefused('.a { overflow: hidden; text-indent: 100%; white-space: nowrap; }', one, 'a', 'a:text0', /it has text-indent 100%, which starts the text at its content box's end/);
+    expectRefused('.a { overflow: hidden; width: 50px; text-indent: 60px; }', one, 'a', 'a:text0', /at least 60px .* \(50px\)/);
+    expectRefused('.a { overflow: hidden; } .b { margin-left: 9999px; }', deep, 'a', 'b:text0', /at least 9999px/);
+    expectRefused('.a { overflow: hidden; } .b { padding-left: 5000px; }', deep, 'a', 'b:text0', /at least 5000px/);
   });
-  it('compiles a positive indent below those bounds, inherited from the page (finding 3\'s repro)', () => {
-    for (const css of ['body { text-indent: 2em; } .a { overflow: hidden; }', '.a { overflow: hidden; text-indent: 10%; }', '.a { overflow: hidden; width: 50px; text-indent: 40px; }']) expectCompiles(css, deep);
+  it('refuses carousel slides past a px width: non-shrinking flex items, grid tracks, nowrap inline-blocks', () => {
+    expectRefused('.a { display: flex; width: 100px; overflow: hidden; } .i { flex-shrink: 0; width: 200px; }', slides, 'a', 'i2:text0', /at least 200px .* \(100px\)/);
+    expectRefused('.a { display: flex; width: 100px; overflow: hidden; column-gap: 10px; } .i { flex: 0 0 95px; }', slides, 'a', 'i2:text0', /at least 105px/);
+    expectRefused('.a { display: grid; grid-template-columns: repeat(3, 200px); width: 100px; overflow: hidden; }', slides, 'a', 'i2:text0', /at least 200px/);
+    expectRefused('.a { width: 100px; overflow: hidden; white-space: nowrap; } .i { display: inline-block; width: 150px; }', slides, 'a', 'i2:text0', /at least 150px/);
+  });
+  it('refuses text below a px height by the px sizes, margins and paddings above it', () => {
+    expectRefused('.a { overflow: hidden; height: 10px; } .c { height: 100px; }', tall, 'a', 'b:text0', /starts at least 100px below its content box's top, at or past its padding box's bottom \(10px\)/);
+    expectRefused('.a { overflow: hidden; height: 10px; } .b { margin-top: 50px; }', deep, 'a', 'b:text0', /at least 50px below/);
+    expectRefused('.a { overflow: hidden; max-height: 20px; } .b { padding-top: 20px; }', deep, 'a', 'b:text0', /at least 20px below .* \(20px\)/);
+    expectRefused('.a { overflow: hidden; height: 10px; } .b { position: relative; top: 12px; }', deep, 'a', 'b:text0', /at least 12px below/);
+    expectRefused('.a { overflow: hidden; } .b { transform: translateY(9999px); }', deep, 'a', 'b:text0', /taller than any screen/);
+  });
+  it('compiles cards and lists whose text may fit: auto or flex sizes, and px sizes the bound stays under', () => {
+    for (const [css, body] of [
+      ['.p { display: flex; } .a { overflow: hidden; border-radius: 8px; }', card],
+      ['.p { display: grid; } .a { overflow: hidden; border-radius: 8px; }', card],
+      ['.a { overflow: hidden; height: 200px; }', card],
+      ['.a { overflow: hidden; height: 200px; }', two],
+      ['.a { overflow: hidden; height: 20px; }', words],
+      ['.a { overflow: hidden; height: 120px; } .c { height: 100px; }', tall],
+      ['.a { display: flex; overflow: hidden; } .c { width: 24px; height: 24px; }', tall],
+      ['.a { display: flex; width: 100px; overflow: hidden; } .i { width: 200px; }', slides],
+      ['.a { display: grid; grid-template-columns: 1fr 1fr; width: 100px; overflow: hidden; }', slides],
+      ['.a { overflow: hidden; text-indent: 2em; }', one],
+      ['.a { overflow: hidden; width: 50px; text-indent: 40px; }', one],
+    ] as const) expectCompiles(css, body);
   });
 });
 
-describe('clip view over text: boxes that move the text', () => {
-  it('refuses fixed positioning, a non-zero absolute inset, a horizontal offset or negative margin, a transform that can leave, and vertical moves of a line height or more', () => {
-    for (const [css, why] of [
-      ['.a { overflow: hidden; position: relative; } .b { position: absolute; left: -9999px; }', /b is position: absolute with a non-zero inset/],
-      ['.a { overflow: hidden; } .b { position: fixed; }', /b is position: fixed/],
-      ['.a { overflow: hidden; } .b { position: relative; left: 5px; }', /b is offset by left: 5px/],
-      ['.a { overflow: hidden; } .b { position: relative; top: 100px; }', /the text is moved 100px by offsets, translations and negative margins, at least its line box's 5px/],
-      ['.a { overflow: hidden; } .b { position: relative; top: 5%; }', /b is offset by top: 5%/],
-      ['.a { overflow: hidden; } .b { transform: translateX(-200px); }', /b has transform translatex\(-200px\)/i],
-      ['.a { overflow: hidden; } .b { transform: rotate(45deg); }', /b has transform rotate\(45deg\)/],
-      ['.a { overflow: hidden; } .b { transform: scale(0.5); }', /b has transform scale\(0.5\)/],
-      ['.a { overflow: hidden; } .b { transform: scale(2); transform-origin: -10px 0; }', /b has transform scale\(2\)/],
-      ['.a { overflow: hidden; } .b { margin-top: -100px; }', /the text is moved 100px/],
-      ['.a { overflow: hidden; } .b { margin-left: -1px; }', /b has margin-left -1px, which can move content out of the clip/],
-      ['.a { overflow: hidden; } .b { line-height: 20px; transform: translateY(12px); position: relative; top: 8px; }', /the text is moved 20px .* at least its line box's 20px/],
-    ] as const) expectRefused(css, deep, 'a', 'b:text0', why);
+describe('clip view over text: text before the padding box\'s start', () => {
+  it('refuses text moved out before the start by an exact sum: an indent, an offset, a margin or a translation', () => {
+    expectRefused('.a { overflow: hidden; text-indent: -9999px; }', one, 'a', 'a:text0', /the text starts -9999px from its content box's start \(text-indent -9999px included\) and ends before its padding box's start/);
+    expectRefused('.a { overflow: hidden; text-indent: -20px; }', one, 'a', 'a:text0', /starts -20px/);
+    expectRefused('.a { overflow: hidden; position: relative; } .b { position: absolute; left: -9999px; }', deep, 'a', 'b:text0', /starts -9999px/);
+    expectRefused('.a { overflow: hidden; } .b { position: relative; left: -30px; }', deep, 'a', 'b:text0', /starts -30px/);
+    expectRefused('.a { overflow: hidden; } .b { margin-left: -9999px; }', deep, 'a', 'b:text0', /starts -9999px/);
+    expectRefused('.a { overflow: hidden; } .b { transform: translateX(-200px); }', deep, 'a', 'b:text0', /starts -200px/);
+    expectRefused('.a { overflow: hidden; } .b { margin-top: -9999px; }', deep, 'a', 'b:text0', /starts -9999px above its content box's top/);
   });
-  it('compiles moves that keep part of the line box in the clip (finding 4\'s repros)', () => {
+  it('compiles moves that may leave part of the text in sight', () => {
     for (const css of [
-      '.a { overflow: hidden; } .b { position: relative; top: 1px; }',
+      '.a { overflow: hidden; } .b { text-indent: -15px; }',
+      '.a { overflow: hidden; } .b { position: relative; top: 1px; left: -5px; }',
       '.a { overflow: hidden; } .b { margin-top: -1px; }',
       '.a { overflow: hidden; } .b { transform: scale(1); }',
-      '.a { overflow: hidden; } .b { transform: scale(2) rotate(360deg); }',
-      '.a { overflow: hidden; } .b { transform: translateY(2px); }',
+      '.a { overflow: hidden; } .b { transform: rotate(45deg) translateX(-200px); }',
       '.a { overflow: hidden; position: relative; } .b { position: absolute; top: 0; left: 0; }',
-      '.a { overflow: hidden; } .b { margin: 2px auto; }',
+      '.a { overflow: hidden; } .b { letter-spacing: 2px; position: relative; left: -100px; }',
     ]) expectCompiles(css, deep);
   });
 });
 
-describe('clip view over text: text pushed past a fixed block size or the end of its line (finding 5)', () => {
-  it('refuses text that is not the clip box\'s first content when its block size is fixed', () => {
-    expectRefused('.a { overflow: hidden; height: 10px; }', two, 'a', 'b:text0', /its block size is fixed by height 10px, and the text is not its first content, so it can sit wholly below the clip/);
-    expectRefused('.a { overflow: hidden; max-height: 3em; }', two, 'a', 'b:text0', /fixed by max-height 30px/);
-    expectRefused('.a { overflow: hidden; aspect-ratio: 4; }', two, 'a', 'b:text0', /fixed by aspect-ratio 4/);
-    expectRefused('.p { display: grid; } .a { overflow: hidden; }', two, 'a', 'b:text0', /fixed by the grid container p, which sizes it/);
-    expectRefused('.a { overflow: hidden; height: 10px; } .c { height: 100px; }', sibling, 'a', 'b:text0', /is not its first content/);
-  });
-  it('refuses first text a fixed block size moves down: margin, padding or border above it, or a downward offset', () => {
-    expectRefused('.a { overflow: hidden; height: 10px; } .b { margin-top: 50px; }', deep, 'a', 'b:text0', /b has margin-top 50px above its text/);
-    expectRefused('.a { overflow: hidden; height: 10px; } .b { padding-top: 50px; }', deep, 'a', 'b:text0', /b has padding-top 50px above its text/);
-    expectRefused('.a { overflow: hidden; height: 10px; } .b { border-top: 1px solid; }', deep, 'a', 'b:text0', /b has border-top-width 1px above its text/);
-    expectRefused('.a { overflow: hidden; height: 10px; } .b { position: relative; top: 2px; }', deep, 'a', 'b:text0', /the text is moved down 2px/);
-  });
-  it('refuses text after other content on a line that does not wrap, and text whose line box can be empty', () => {
-    expectRefused('.a { overflow: hidden; width: 20px; white-space: nowrap; }', sameLine, 'a', 's:text0', /the text does not wrap \(text-wrap-mode: nowrap\) and follows other content on its line/);
-    expectRefused('.a { overflow: hidden; line-height: 0; }', one, 'a', 'a:text0', /its line box can be empty \(line-height 0/);
-    expectRefused('.a { overflow: hidden; font-size: 0; }', one, 'a', 'a:text0', /its line box can be empty/);
-  });
-  it('compiles the first text of a fixed-size clip, nowrap lines that each start a block, and an empty line box with bottom padding', () => {
-    expectCompiles('.a { overflow: hidden; height: 20px; }', one);
-    expectCompiles('.a { overflow: hidden; height: 2px; line-height: 2px; }', one);
-    expectCompiles('.a { overflow: hidden; height: 10px; } .b { margin-top: -2px; }', deep);
-    expectCompiles('.a { overflow: hidden; width: 20px; white-space: nowrap; }', twoBlocks);
-    expectCompiles('.a { overflow: hidden; line-height: 0; padding-bottom: 10px; }', one);
-    expectCompiles('.a { overflow: hidden; } .c { height: 100px; }', sibling);
-  });
-  it('a scroll container judges only its start side on the axes it scrolls: what lies past its end is scrolled to', () => {
-    expectCompiles('.a { overflow: auto; height: 10px; } .c { height: 100px; }', sibling);
-    expectCompiles('.a { overflow: auto; height: 10px; } .b { position: relative; top: 50px; }', deep);
-    expectCompiles('.a { overflow: auto; width: 50px; text-indent: 60px; }', one);
-    expectCompiles('.a { overflow-x: scroll; overflow-y: hidden; width: 50px; text-indent: 60px; }', one);
-    expectRefused('.a { overflow: auto; } .b { margin-top: -100px; }', deep, 'a', 'b:text0', /the text is moved 100px/);
-    expectRefused('.a { overflow-x: scroll; overflow-y: hidden; height: 10px; }', two, 'a', 'b:text0', /fixed by height 10px/);
-  });
-});
-
 describe('clip view over text: what is not judged', () => {
+  it('a scroll container judges only its start side on the axes it scrolls', () => {
+    expectCompiles('.a { overflow: auto; height: 10px; } .c { height: 100px; }', tall);
+    expectCompiles('.a { overflow: auto; width: 50px; text-indent: 60px; }', one);
+    expectRefused('.a { overflow: auto; text-indent: -9999px; }', one, 'a', 'a:text0', /starts -9999px/);
+    expectRefused('.a { overflow-x: scroll; overflow-y: hidden; height: 10px; } .c { height: 100px; }', tall, 'a', 'b:text0', /at least 100px below/);
+  });
   it('an auto-height clip over text still lowers its clip view', () => {
     expectCompiles('.a { overflow: hidden; }', two);
     const p = nativePrograms(compile('.a { overflow: hidden; }', two, NATIVE), []);
@@ -176,7 +159,7 @@ describe('clip view over text: what is not judged', () => {
   });
   it('a clip box without text, text under display: none, no clip, an inline box, web, and the root', () => {
     const bare: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'])])])];
-    expect(viewErrors(compile('.a { overflow: hidden; height: 0; } .b { text-indent: -9999px; position: fixed; }', bare))).toEqual([]);
+    expect(viewErrors(compile('.a { overflow: hidden; height: 0; } .b { text-indent: -9999px; }', bare))).toEqual([]);
     expect(viewErrors(compile('.a { overflow: hidden; height: 0; } .b { display: none; }', deep))).toEqual([]);
     expect(viewErrors(compile('.a { height: 0; text-indent: -9999px; } .b { margin-top: -100px; }', two))).toEqual([]);
     expect(viewErrors(compile('.a { overflow: hidden; display: inline; text-indent: -9999px; }', two))).toEqual([]);

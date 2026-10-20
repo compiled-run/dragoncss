@@ -233,7 +233,7 @@ describe('background-clip: text: ink past the box (landing review, finding 1)', 
   it('text-indent: -30px moves the text wholly out of the clip view, so the native targets refuse it (clip-view-text.ts)', () => {
     const errs = errors(compile(`.a { ${fill} text-indent: -30px; }`));
     expect(errs.map((d) => d.target).sort()).toEqual(['android', 'ios']);
-    for (const d of errs) expect(d.message).toMatch(/^a has background-clip: text, which (ios|android) draws as a clip view over its padding box, but it has text-indent -30px, which can move its first line out of the clip; its text a:text0 could be clipped out of sight/);
+    for (const d of errs) expect(d.message).toMatch(/^a has background-clip: text, which (ios|android) draws as a clip view over its padding box, but the text starts -30px from its content box's start \(text-indent -30px included\) and ends before its padding box's start; its text a:text0 could be clipped out of sight/);
     expectCatalogued(errs);
   });
   it('an inert text clip and a losing one host no clip view', () => {
