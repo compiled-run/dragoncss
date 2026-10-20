@@ -18,7 +18,7 @@ import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
-import { checkTranslucent } from './analysis/paint-values/effects.ts';
+import { checkTranslucent, refuseAnimatedGroups } from './analysis/paint-values/effects.ts';
 import { checkSelectable } from './analysis/selection.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { checkTranslucentOutlines } from './analysis/paint-values/outline.ts';
@@ -1306,6 +1306,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const doublesReported = new Set<string>();
       const translucentReported = new Set<string>();
       const currentColorReported = new Set<string>();
+      const groupMotionReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
@@ -1313,6 +1314,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
+        // PNT1-opacity-b: motion under a pre-composited group; lane-gated like checkTranslucent (the lanes make such a case lane-only).
+        if (!options.interactionLanes) refuseAnimatedGroups(a, roots, nativeTargets, diagnostics, groupMotionReported);
       });
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
@@ -1348,6 +1351,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         for (const c of bandCases.flatMap((b) => b.cases)) {
           for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkTranslucentPaint(r, native, pending, new Set());
         }
+        bandCases.forEach((r, k) => refuseAnimatedGroups(bandAnimations[k] as AnimationAnalysis, r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), native, pending));
         laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
       }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose

@@ -11,7 +11,7 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { opacityAlpha8, snapEdges } from '@dragon/layout';
+import { groupComposite, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
 import { androidProfile, borderDevicePx, createProjectWith, engineLayoutProjection, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
@@ -255,6 +255,122 @@ export function effectsModelAt(items: readonly Item[], byId: ReadonlyMap<string,
   return out;
 }
 
+// ---------------------------------------------------------------- the device's group composite (PNT1-opacity-b)
+
+type GroupPlan = { readonly alpha8: number; readonly painters: readonly string[] };
+
+/** The plan of a node the compiler pre-composites (an opacity-group write), or null. */
+function groupPlanOf(n: ProgramNode): GroupPlan | null {
+  const w = n.writes.find((x) => x.kind === 'opacity-group');
+  return w === undefined || w.kind !== 'opacity-group' ? null : { alpha8: opacityAlpha8(w.opacity), painters: w.painters };
+}
+
+/** Every item of a paint list by node id, nested groups' items included. */
+function itemsById(items: readonly Item[], into = new Map<string, Item>()): Map<string, Item> {
+  for (const it of items) {
+    // A group's own box is the first of its items; the id names the group.
+    if (it.kind === 'group') itemsById(it.items, into);
+    into.set(it.kind === 'text' ? it.node.id : it.box.node.id, it);
+  }
+  return into;
+}
+
+/** A backdrop painter box as the device paints it (DragonGroupView): its opaque fill and solid opaque sides, unclipped. */
+function backdropBox(dst: Px, b: Box, cx: number, cy: number): Px {
+  if (!inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
+  if (b.node.writes.some((w) => w.kind === 'visibility')) return dst;
+  let out = dst;
+  const bg = b.node.writes.find((w) => w.kind === 'background-color');
+  if (bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0) {
+    if (bg.color.alpha !== 255) throw new Error(`${b.node.id}: a translucent backdrop fill`);
+    out = [bg.color.r, bg.color.g, bg.color.b, 255];
+  }
+  const [bt, br, bb, bl] = b.border as [number, number, number, number];
+  if (inside(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb)) return out;
+  const styles = b.node.writes.find((w) => w.kind === 'border-styles');
+  const colours = b.node.writes.find((w) => w.kind === 'border-colors');
+  if (styles === undefined || styles.kind !== 'border-styles' || colours === undefined || colours.kind !== 'border-colors') return out;
+  // The device fills the sides top, right, bottom, left, each over the last.
+  let c: { r: number; g: number; b: number; alpha: number } | null = null;
+  const hit = [cy < b.t + bt, cx >= b.r - br, cy >= b.b - bb, cx < b.l + bl];
+  for (let k = 0; k < 4; k++) {
+    if (!hit[k] || (b.border[k] as number) <= 0 || styles.styles[k] === 'none' || styles.styles[k] === 'hidden') continue;
+    const s = colours.colors[k] as { r: number; g: number; b: number; alpha: number };
+    if (s.alpha === 0) continue;
+    if (styles.styles[k] !== 'solid' || s.alpha !== 255) throw new Error(`${b.node.id}: a backdrop side that is not solid and opaque`);
+    c = s;
+  }
+  return c === null ? out : [c.r, c.g, c.b, 255];
+}
+
+/** The display items the device counts for the per-tile fold: each painting box (a lone fill folds) and each glyph. */
+function groupDraws(items: readonly Item[]): number[] {
+  return items.flatMap((it) => {
+    if (it.kind === 'box') {
+      const ops = boxOps(it.box);
+      return ops.count === 0 ? [] : [it.box.l, it.box.t, it.box.r, it.box.b, ops.foldable ? 1 : 0];
+    }
+    if (it.kind === 'text') return it.glyphs.flatMap((g) => [Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom), 0]);
+    return groupDraws(it.items);
+  });
+}
+
+/** Whether a pixel lies in a group's extent: its boxes and its glyphs, widened to whole device px. */
+function inExtent(items: readonly Item[], x: number, y: number): boolean {
+  return items.some((it) => (it.kind === 'box' ? x >= it.box.l && x < it.box.r && y >= it.box.t && y < it.box.b : it.kind === 'text' ? it.glyphs.some((g) => x >= Math.floor(g.left) && x < Math.ceil(g.right) && y >= Math.floor(g.top) && y < Math.ceil(g.bottom)) : inExtent(it.items, x, y)));
+}
+
+/**
+ * The device's composite Q of a pre-composited group at pixel (x, y), null outside its extent: the layer (the group's content
+ * drawn opaque into a transparent bitmap), the backdrop (white, then each painter: a box's fill and sides, an earlier group's Q),
+ * and layout paint-group.ts groupComposite with the tile's fold (groupTileFolds), as DragonGroupView computes it.
+ */
+function deviceQ(g: Item & { kind: 'group' }, plan: GroupPlan, x: number, y: number, tile: Tile, all: ReadonlyMap<string, Item>, byId: ReadonlyMap<string, Box>, programs: ReadonlyMap<string, ProgramNode>): Px | null {
+  // paintItems puts the group's own box first among its items.
+  const members = g.items;
+  if (!inExtent(members, x, y)) return null;
+  let d: Px = [255, 255, 255, 255];
+  for (const id of plan.painters) {
+    const it = all.get(id);
+    const node = programs.get(id);
+    if (it === undefined || node === undefined) throw new Error(`${g.box.node.id}: painter ${id} is not painted`);
+    const inner = groupPlanOf(node);
+    if (inner !== null) {
+      if (it.kind !== 'group') throw new Error(`${id}: a planned group that is not a group item`);
+      d = deviceQ(it, inner, x, y, tile, all, byId, programs) ?? d;
+      continue;
+    }
+    if (it.kind === 'text') throw new Error(`${id}: a text painter`);
+    d = backdropBox(d, it.box, x + 0.5, y + 0.5);
+  }
+  let layer: Px = [0, 0, 0, 0];
+  for (const it of members) layer = paintItem(layer, it, x, y, tile, byId);
+  const fold = groupTileFolds(groupDraws(members), tile.l, tile.t, tile.r, tile.b);
+  const v = groupComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.alpha8, fold);
+  return [v % 256, Math.floor(v / 256) % 256, Math.floor(v / 65536) % 256, Math.floor(v / 16777216) % 256];
+}
+
+/** The device's colour at the centre of pixel (x, y): the model, with each pre-composited group shown as its Q over its extent. */
+function deviceAt(p: NativeProgram, items: readonly Item[], byId: ReadonlyMap<string, Box>, x: number, y: number, dpr: number): Px {
+  const size = ccTileSize(true, dpr);
+  const ix = ccTileIndex(x, size);
+  const iy = ccTileIndex(y, size);
+  const tile: Tile = { l: ccTileStart(ix, size), t: ccTileStart(iy, size), r: ccTileEnd(ix, size), b: ccTileEnd(iy, size) };
+  const all = itemsById(items);
+  const programs = new Map(p.nodes.map((n) => [n.id, n]));
+  let out: Px = [255, 255, 255, 255];
+  for (const it of items) {
+    const plan = it.kind === 'group' ? groupPlanOf(it.box.node) : null;
+    if (it.kind !== 'group' || plan === null) {
+      out = paintItem(out, it, x, y, tile, byId);
+      continue;
+    }
+    if (clippedOut(it.box.node, byId, x + 0.5, y + 0.5)) continue;
+    out = deviceQ(it, plan, x, y, tile, all, byId, programs) ?? out;
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- the fixtures
 
 const GROUPS = ['effects'];
@@ -283,7 +399,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity and stacking fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -332,6 +448,74 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
           expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-color' && w.color.alpha > 0 && w.color.alpha < 255)).map((n) => n.id)).toEqual(['of-a', 'of-b', 'of-d', 'of-e', 'of-h', 'of-j']);
         } else if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
         if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
+      });
+    }
+  }
+});
+
+// PNT1-opacity-b: native pre-composites an admitted group itself (DragonGroupView, layout paint-group.ts). The device's composite,
+// simulated as the runtime computes it (the group's layer, the backdrop from the planned painters, the per-tile fold), equals the
+// model at every point of every case, and the model equals Chrome above; so a device that renders the layer as Chrome does shows
+// Chrome's bytes. What stays unproven until a device run: that CALayer.render(in:) and View.draw give Chrome's layer bytes.
+describe('PNT1-opacity-b: the device\'s group composite equals the paint model', () => {
+  it('groupComposite is the measured Color32 and s32a blits', () => {
+    const unpack = (v: number): Px => [v % 256, Math.floor(v / 256) % 256, Math.floor(v / 65536) % 256, Math.floor(v / 16777216) % 256];
+    let seed = 7;
+    const next = (n: number): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed % n;
+    };
+    for (let k = 0; k < 4000; k++) {
+      const a8 = [0, 1, 77, 128, 254, 255][k % 6] ?? next(256);
+      const d: Px = [next(256), next(256), next(256), 255];
+      const la = [0, 255, next(256)][k % 3] as number;
+      const l: Px = [Math.min(la, next(256)), Math.min(la, next(256)), Math.min(la, next(256)), la];
+      expect(unpack(groupComposite(l[0], l[1], l[2], l[3], d[0], d[1], d[2], d[3], a8, false)), `s32a ${l} ${d} ${a8}`).toEqual(a8 === 0 ? d : a8 === 255 ? color32(d, { r: l[0], g: l[1], b: l[2] }, 255).map((v, i) => (la === 255 ? v : (l[i] as number) + (((d[i] as number) * (256 - la)) >> 8))) : s32aBlend(d, l, a8));
+      if (la === 255) expect(unpack(groupComposite(l[0], l[1], l[2], 255, d[0], d[1], d[2], d[3], a8, true)), `fold ${l} ${d} ${a8}`).toEqual(color32(d, { r: l[0], g: l[1], b: l[2] }, a8));
+    }
+  });
+  const groupFixtures = FIXTURES.filter((f) => f.id.startsWith('opacity-group-'));
+  it('admits every translucent group of the opacity-group fixtures, which compile on native as user cases', () => {
+    expect(groupFixtures.length).toBe(5);
+    for (const spec of groupFixtures) {
+      for (const c of casesOf(spec, fixtureInput(spec))) {
+        const lanes = nativeCompile(spec, c.environment.direction);
+        expect(laneOnlyNative(lanes, 'ios'), c.id).toBe(false);
+        expect(laneOnlyNative(lanes, 'android'), c.id).toBe(false);
+        const r = nativePrograms(lanes, c.assignment);
+        if (r.kind !== 'ready') throw new Error(r.reason);
+        for (const p of [r.programs.uikit, r.programs['android-views']]) {
+          const translucent = p.nodes.filter((n) => {
+            const e = n.facts['effects'] as { opacity: number } | undefined;
+            return e !== undefined && e.opacity > 0 && e.opacity < 1;
+          });
+          expect(translucent.length, c.id).toBeGreaterThan(0);
+          expect(translucent.filter((n) => groupPlanOf(n) === null).map((n) => n.id), c.id).toEqual([]);
+          expect(p.nodes.some((n) => n.writes.some((w) => w.kind === 'opacity')), c.id).toBe(false);
+        }
+      }
+    }
+  });
+  for (const spec of FIXTURES) {
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      it(`${c.id}: the device composite at every point`, () => {
+        const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+        if (r.kind !== 'ready') throw new Error(r.reason);
+        const p = r.programs.uikit;
+        let groups = 0;
+        for (const dpr of DPRS) {
+          const items = paintItems(p, c.environment.viewport, dpr);
+          const byId = new Map(boxes(p, c.environment.viewport, dpr).map((b) => [b.node.id, b]));
+          const problems: string[] = [];
+          for (const pt of casePoints(p, c.environment.viewport, dpr)) {
+            const want = effectsModelAt(items, byId, pt.x, pt.y, dpr);
+            const got = deviceAt(p, items, byId, pt.x, pt.y, dpr);
+            if (got.join() !== want.join()) problems.push(`${pt.rule} at ${pt.x},${pt.y} @${dpr}: device ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
+          }
+          expect(problems).toEqual([]);
+          groups += p.nodes.filter((n) => groupPlanOf(n) !== null).length;
+        }
+        if (spec.id.startsWith('opacity-group-')) expect(groups, 'pre-composited groups').toBeGreaterThan(0);
       });
     }
   }
@@ -444,7 +628,8 @@ describe('PNT1 opacity: fractions are proven on web only', () => {
       }
     }
   });
-  it('drops no point of a case without a translucent group', () => {
+  // A pre-composited group (an opacity-group write) keeps its points: the device shows Chrome's bytes for it.
+  it('drops no point of a case without a refused translucent group', () => {
     for (const spec of FIXTURES.filter((f) => f.id !== 'opacity-web')) {
       if (spec.kind !== 'layout') continue;
       for (const c of casesOf(spec, fixtureInput(spec))) {

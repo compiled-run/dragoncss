@@ -256,6 +256,11 @@ ${boxMembers('uikit')}  public init(dragonId: String, kind: String, parent: Stri
     guard let ctx = UIGraphicsGetCurrentContext() else { return }
     dragonPaintBox(self, ctx, dragonShape)
   }
+  /// PNT1-opacity-b: any layout or paint change of a box marks every group overlay's composite stale (the effects module).
+  public override func setNeedsDisplay() {
+    super.setNeedsDisplay()
+    dragonGroupsChanged()
+  }
   /// The device scale the frames were applied at; clip values are read back in whole device px / scale.
   public var dragonScale: Double = 1
   public func dragonApplied() -> DumpJsonObject {
@@ -1295,6 +1300,7 @@ open class DragonGroup(ctx: Context) : ViewGroup(ctx) {
 fun dragonFrameOf(v: View): IntArray = when (v) {
   is DragonGroup -> v.dragonFrame
   is DragonTextView -> v.dragonFrame
+  is DragonGroupView -> v.dragonFrame
   else -> throw IllegalStateException("dragon: " + v.javaClass.name + " is not a Dragon view")
 }
 
@@ -1338,6 +1344,11 @@ ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonCli
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
     dragonPaintBox(this, canvas, dragonShape)
+  }
+  /** PNT1-opacity-b: any layout or paint change of a box marks every group overlay's composite stale (the effects module). */
+  override fun invalidate() {
+    super.invalidate()
+    dragonGroupsChanged()
   }
   override fun dragonApplied(): List<Pair<String, DumpJson>> = dragonPaintApplied(this)
 }
