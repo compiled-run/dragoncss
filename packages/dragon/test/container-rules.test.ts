@@ -82,6 +82,22 @@ describe('CQ: @container rules', () => {
     expect(refusal('.a { border-top-left-radius: 2cqw; }')).toEqual(['border-top-left-radius: 2cqw is unsupported: a container query unit is supported in layout lengths only (width, height, margins, padding, insets and the like), where Dragon resolves it against the query container']);
   });
 
+  it('decides a query only for the elements its rule selects', () => {
+    // .f is a flex container, whose width Dragon cannot read; no @container rule selects anything inside it.
+    const body = (r: SourceRef): TreeNode[] => [...tree(r), div(r, 'f', ['f'], [div(r, 'c', ['c'])])];
+    const c = compile('.q { container-type: inline-size; width: 200px; } .f { display: flex; container-type: inline-size; } .a { width: 10px; height: 5px; } @container (min-width: 150px) { .a { width: 30px; } }', body);
+    expect(errors(c)).toEqual([]);
+    expect(widthIn(c, 0, [0, 0, 0])).toEqual(px(30));
+  });
+
+  it('reads dashed and non-ASCII names, and a comment between the name and the condition, as Chrome does', () => {
+    for (const name of ['--card', 'carté']) {
+      const c = compile(`.q { container: ${name} / inline-size; width: 200px; } .a { width: 10px; height: 5px; } @container ${name} /* c */ (width > 150px) { .a { width: 30px; } }`);
+      expect(errors(c)).toEqual([]);
+      expect(widthIn(c, 0, [0, 0, 0])).toEqual(px(30));
+    }
+  });
+
   it('refuses what Dragon does not resolve', () => {
     const refusal = (css: string): string[] => errors(compile(`.q { container-type: inline-size; } ${css}`)).filter((m) => m.includes('@container'));
     expect(refusal('@container (height > 10px) { .a { width: 1px; } }')).toEqual(['@container (height > 10px) in the stylesheet is not supported: height is not supported; a query container is an inline-size container, and Dragon reads only its width']);
@@ -91,5 +107,9 @@ describe('CQ: @container rules', () => {
     expect(refusal('.q { width: 50%; } @container (min-width: 10px) { .a { width: 1px; } }')).toEqual(['@container (min-width: 10px) is not supported here: the width of its query container cannot be read: <div> has width: 50%; Dragon reads a container\'s width only through block boxes in flow with px widths, margins and padding and no left or right border']);
     expect(refusal('@container (min-width: 10px) { .a { transition: width 1s; } }')).toEqual(['transition inside @container is not supported: transition and animation lists that differ per query container are not built yet']);
     expect(refusal('@container (min-width: 10px) { .a { container-type: inline-size; } }')).toEqual(['@container (min-width: 10px) is not supported here: a @container rule changes the container-type, container-name or width of a query container, which Dragon does not resolve']);
+    // The refusal names the rule that changes the container, not the first @container rule.
+    expect(refusal('@container (min-width: 10px) { .a { height: 1px; } } @container (min-width: 20px) { .a { container-type: inline-size; } }')).toEqual(['@container (min-width: 20px) is not supported here: a @container rule changes the container-type, container-name or width of a query container, which Dragon does not resolve']);
+    // css-syntax-3: card( is a function token, so Chrome drops the rule; Dragon refuses it rather than read card as a name.
+    expect(refusal('@container card(min-width: 1px) { .a { width: 1px; } }')).toHaveLength(1);
   });
 });
