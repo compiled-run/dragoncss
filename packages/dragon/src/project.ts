@@ -34,7 +34,7 @@ import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
 import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
 import { refuseStatefulStrokes } from './analysis/text-stroke.ts';
-import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
+import { refuseAnimatedGradients, refuseNativeUrlLayers } from './analysis/paint-values/gradient.ts';
 import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { refuseAnimatedTranslucentPaint } from './analysis/paint-values/translucent-paint.ts';
 import { refuseAnimatedTextFill } from './analysis/paint-values/text-fill.ts';
@@ -362,6 +362,9 @@ export function validAndroid(v: unknown): boolean {
 function blocksTarget(d: Diagnostic, t: Target): boolean {
   return d.severity === 'error' && (d.target === null || d.target === t);
 }
+
+/** The profile feature of a url() background image (BG2-u), which has no native row until part 2. */
+const URL_PROFILE_FEATURE = 'background-image:<url()>';
 
 /** The profile features of the svg property family (fill, stroke, stroke-width). */
 const SVG_PROFILE_FEATURE = /^(fill|stroke|stroke-width):/;
@@ -895,6 +898,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     // PNT1: outside the parity lanes, native refuses a translucent side-painter outline and a translucent rounded double border; the
     // lanes run them to prove their web rows.
     if (!options.interactionLanes) checkTranslucentPaint(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    // BG2-u part 1: outside the parity lanes, native refuses a url() background layer; the lanes run it to prove its web rows.
+    if (!options.interactionLanes) refuseNativeUrlLayers(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, t, diagnostics, fonts);
@@ -1280,9 +1285,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       // GEN-a R12: a generated box and its text are the same in every reachable state, interaction state and band.
       checkGeneratedIdentity(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), diagnostics);
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
-      // REPL-a: the images every band's resolved cases reference, read once.
+      // REPL-a: the images every band's resolved cases and their interaction states reference (img src, background url()), read once.
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
-      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]))), config.images, assetBytes, diagnostics);
+      const sourceText = new Map(input.snapshot.sources.map((s) => [s.ref.uri, s.text] as const));
+      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       // MQ-R1: native runs every band, so every other band's analysis reports too (each diagnostic once).
@@ -1358,7 +1364,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         }
         // Every band, since native switches bands at run time.
         for (const c of bandCases.flatMap((b) => b.cases)) {
-          for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkTranslucentPaint(r, native, pending, new Set());
+          for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) {
+            if (r === null) continue;
+            checkTranslucentPaint(r, native, pending, new Set());
+            refuseNativeUrlLayers(r, native, pending, new Set());
+          }
         }
         laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
       }
@@ -1405,6 +1415,12 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     if (svgNative.length > 0) {
       diagnostics.splice(0, diagnostics.length, ...diagnostics.filter((d) => !svgNative.includes(d)));
       laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || svgNative.some((d) => d.target === t));
+    }
+    // BG2-u part 1: no native row of a url() background image exists until part 2 draws it, so the lanes run it lane-only too.
+    const urlNative = diagnostics.filter((d) => d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && d.profile !== undefined && d.profile !== null && d.profile.feature === URL_PROFILE_FEATURE);
+    if (urlNative.length > 0) {
+      diagnostics.splice(0, diagnostics.length, ...diagnostics.filter((d) => !urlNative.includes(d)));
+      laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || urlNative.some((d) => d.target === t));
     }
   }
   // The font manifest enters the digest only when the project has fonts, so a project without them keeps its digest.
@@ -1513,7 +1529,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const webBands = options.faults.mediaFractionalBandDropped ? bandCases.filter((r, k) => k === 0 || whole(r.band)) : bandCases;
       const [base, ...extra] = webBands.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement, interaction: webInteraction(c) })) }));
       const first = base as { condition: string; cases: { key: string; root: ResolvedElement; interaction?: WebInteraction | undefined }[] };
-      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated, options.faults.webkitBoxEmittedAsFlowRoot);
+      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated, options.faults.webkitBoxEmittedAsFlowRoot, images === null ? new Map() : images.webUrls);
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };
     }
   }

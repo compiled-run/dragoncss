@@ -123,6 +123,16 @@ export function valueText(v: CssValue): string {
   }
 }
 
+/**
+ * A background-image value with each mapped url() src written as its data: URL (images/compile.ts webUrls). The resolved text holds
+ * every url() as background.ts urlText serializes it, so the token is matched whole.
+ */
+export function backgroundImageText(v: CssValue, imageUrls: ReadonlyMap<string, string>): string {
+  let text = valueText(v);
+  for (const [src, data] of imageUrls) text = text.split(`url(${serializeString(src)})`).join(`url(${serializeString(data)})`);
+  return text;
+}
+
 /** The parts of an interaction state the web output reads (analysis/interaction.ts InteractionValue): who matches each pseudo-class. */
 type StateMatch = { readonly hover: readonly string[]; readonly active: readonly string[]; readonly focus: string | null; readonly focusVisible: string | null };
 type Candidates = { readonly hover: readonly string[]; readonly active: readonly string[]; readonly focus: readonly string[]; readonly focusVisible: readonly string[] };
@@ -225,7 +235,7 @@ export type WebAnimations = {
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
-export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true, webkitBoxEmittedAsFlowRoot = false): WebEmit {
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true, webkitBoxEmittedAsFlowRoot = false, imageUrls: ReadonlyMap<string, string> = new Map()): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
     const text = familyListText(v);
@@ -249,6 +259,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
     // MASK-CLIP: mask-composite's source-over is written under -webkit-mask-composite, the one name that parses it.
     if (p === 'mask-composite') return `  ${maskDeclarationName(p, v)}: ${valueText(v)};`;
+    if (p === 'background-image') return `  ${p}: ${backgroundImageText(v, imageUrls)};`;
     return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
   };
   const classOf = new Map<string, Map<string, string>>();

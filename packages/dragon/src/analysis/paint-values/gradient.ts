@@ -63,7 +63,8 @@ export type GradientSpec = {
   readonly stops: readonly StopSpec[];
 };
 
-export type ImageItem = { readonly kind: 'none' } | { readonly kind: 'gradient'; readonly gradient: GradientSpec };
+/** url: the image's URL as written (css-tree's decoded Url value); images/compile.ts resolves it to build-time bytes (BG2-u, R10). */
+export type ImageItem = { readonly kind: 'none' } | { readonly kind: 'gradient'; readonly gradient: GradientSpec } | { readonly kind: 'url'; readonly url: string };
 export type SizeComponent = { readonly unit: 'auto' | 'percent' | 'px'; readonly value: number };
 export type SizeItem = { readonly kind: 'length' | 'cover' | 'contain'; readonly x: SizeComponent; readonly y: SizeComponent };
 export type RepeatKeyword = 'repeat' | 'no-repeat' | 'space' | 'round';
@@ -323,12 +324,15 @@ export function gradient(fn: CssNode): Item<GradientSpec> {
   return no(fn, `${name}() is not supported`);
 }
 
-/** One background-image item: none or a gradient; url() and the other images are refused (REPL, BG2b). */
+/**
+ * One background-image item: none, a gradient, or a url() (BG2-u: its source is resolved, and refused if remote or unmapped, by
+ * images/compile.ts; the element check decides where it is drawn); the other images are refused (BG2b).
+ */
 export function imageItem(tokens: readonly CssNode[]): Item<ImageItem> {
   const [t, extra] = tokens as [CssNode?, CssNode?];
   if (t === undefined || extra !== undefined) return no(t ?? null, 'a background image is one value');
   if (ident(t) === 'none') return ok({ kind: 'none' });
-  if (t.type === 'Url') return no(t, `url() images are not supported yet: background images take REPL-a's image assets (${BG2_URL})`);
+  if (t.type === 'Url') return ok({ kind: 'url', url: String(t['value']) });
   if (t.type === 'Function') {
     const name = asciiLower(String(t['name']));
     if (name === 'linear-gradient' || name === 'radial-gradient' || name === 'repeating-linear-gradient' || name === 'repeating-radial-gradient' || name === 'conic-gradient' || name === 'repeating-conic-gradient') {
@@ -820,6 +824,10 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
   const image = el.props.get('background-image') as ResolvedValue | undefined;
   if (image === undefined || (image.value.kind === 'keyword' && image.value.value === 'none')) return;
   const layers = resolvedLayers(el);
+  if (layers.some((l) => l.image.kind === 'url')) {
+    checkUrlLayers(el, image, layers, targets, diagnostics, reported);
+    return;
+  }
   if (!layers.some((l) => l.image.kind === 'gradient')) return;
   const tag = el.element.tag;
   const display = (el.props.get('display') as ResolvedValue).value;
@@ -869,6 +877,65 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
     return;
   }
 };
+
+/** Whether an element paints a url() image layer. */
+export function paintsUrl(el: ResolvedElement): boolean {
+  return readableLayers(el) && resolvedLayers(el).some((l) => l.image.kind === 'url');
+}
+
+/**
+ * Why a url() layer stack is refused on every target, with the longhand it is refused at, or null (BG2-u part 1): the one layer of
+ * its box, at size auto, repeat or no-repeat on each axis, and a position in px or % from the left and top edges. A layer list
+ * holding a url(), cover, contain, a size, space, round and an offset from the right or bottom edge wait for BG2-u's later pieces.
+ */
+export function urlLayerRefusal(layers: readonly ElementLayer[]): { readonly at: BackgroundLayerLonghand; readonly reason: string } | null {
+  const [only, ...rest] = layers;
+  if (only === undefined || rest.length > 0) return { at: 'background-image', reason: `a url() image is drawn only as the one layer of its box; a layer list with a url() image is not supported yet (${BG2_URL})` };
+  const g = only.geometry;
+  if (g.sizeKind !== 'length' || g.sizeX.unit !== 'auto' || g.sizeY.unit !== 'auto') return { at: 'background-size', reason: `a url() image is drawn at its natural size only (background-size: auto); ${g.sizeKind === 'length' ? 'a size' : g.sizeKind} is not supported yet (${BG2_URL})` };
+  for (const r of [g.repeatX, g.repeatY]) {
+    if (r === 'space' || r === 'round') return { at: 'background-repeat', reason: `background-repeat: ${r} on a url() image is not supported yet (${BG2_TILING})` };
+  }
+  for (const [axis, v] of [['x', g.positionX], ['y', g.positionY]] as const) {
+    if (v.unit === 'end-px' || v.unit === 'end-percent') return { at: `background-position-${axis}`, reason: `a url() image positioned by an offset from the ${axis === 'x' ? 'right' : 'bottom'} edge is not supported yet; write the position in px or % from the ${axis === 'x' ? 'left' : 'top'} (${BG2_URL})` };
+  }
+  return null;
+}
+
+/** BG2-u part 1: the every-target refusals of a box with a url() layer (the canvas, an inline box, urlLayerRefusal). */
+function checkUrlLayers(el: ResolvedElement, image: ResolvedValue, layers: readonly ElementLayer[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const tag = el.element.tag;
+  const display = (el.props.get('display') as ResolvedValue).value;
+  if (tag === 'html' || tag === 'body') {
+    refuse(el, image, targets, 'background-layers-canvas', `background-image on ${el.element.address}: a url() image on <${tag}> paints the canvas (css-backgrounds-3 §2.11.2), which Dragon does not model (${BG2C})`, 'Put the image on a descendant box that covers the page.', diagnostics, reported);
+    return;
+  }
+  if (display.kind === 'keyword' && display.value === 'inline') {
+    refuse(el, image, targets, 'background-layers-inline', `background-image on ${el.element.address}: a url() image on an inline box is painted per line fragment, which Dragon does not model (${BG2C})`, 'Put the image on a block box.', diagnostics, reported);
+    return;
+  }
+  const why = urlLayerRefusal(layers);
+  if (why === null) return;
+  const at = (el.props.get(why.at as Longhand) as ResolvedValue | undefined) ?? image;
+  refuse(el, at, targets, `background-layers-url-${why.at}`, `${why.at} on ${el.element.address}: ${why.reason}`, 'Give the url() image a box of its own as its one layer, at size auto, with repeat or no-repeat and a position in px or % from the left and top.', diagnostics, reported);
+}
+
+/**
+ * BG2-u part 1: the native targets do not draw a url() layer yet (part 2 draws it natively), so a box with one is refused there, at
+ * its background-image, in every resolved state. The parity lanes run it on native as a lane-only case to prove its web rows
+ * (project.ts), and the device pixel lanes skip the box (the gradient lowering's undrawnImage fact).
+ */
+export function refuseNativeUrlLayers(root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (native.length === 0) return;
+  const walk = (el: ResolvedElement): void => {
+    const image = el.props.get('background-image') as ResolvedValue | undefined;
+    if (image !== undefined && paintsUrl(el)) {
+      refuse(el, image, native, 'background-layers-url-native', `background-image on ${el.element.address}: a url() image is drawn on the web target only until the native image layers land (${BG2_URL})`, 'Use an <img> for the image on iOS and Android, or keep the url() background to a web-only build.', diagnostics, reported);
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  walk(root);
+}
 
 /** The colours a gradient box bakes into its one raster: the layers' backdrop, currentcolor stops, and the borders that obscure it. */
 const RASTER_COLORS: readonly Longhand[] = ['background-color', 'color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
