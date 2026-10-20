@@ -8,7 +8,8 @@
 // and refuses every other value (analysis/scroll-containment.ts); shape-rendering: crispEdges would change how a shape is drawn.
 // Rows are proven by the computed value, as no layout lane reads them. A spelling Chrome 145 computes to the initial value is that
 // value: stop-opacity and flood-opacity from 1 or 100% up (Chrome clamps them to [0, 1]), and baseline-shift: baseline or a zero
-// length or zero length calculation (0em, calc(1px - 1px)); packages/parity/test/render-anchor-parse.test.ts pins each against Chrome.
+// length or zero length calculation (0em, calc(1px - 1px)). A keyword-only longhand takes Chrome's keywords alone, and drops any
+// other value as Chrome does; packages/parity/test/render-anchor-parse.test.ts pins each against Chrome.
 import type { CssNode } from 'css-tree';
 import { generate } from 'css-tree';
 import { asciiLower } from '../escapes.ts';
@@ -19,7 +20,7 @@ import { unitEntry } from '../units.ts';
 import type { CssValue } from '../values.ts';
 import { numberCalc } from './effects.ts';
 import type { InitialOnlyParser } from './initial-only.ts';
-import { initialOnlyLonghand, kwInitial, nonInitial, numInitial, ZERO_LENGTH } from './initial-only.ts';
+import { keywordLonghand, kwInitial, nonInitial, numInitial, ZERO_LENGTH } from './initial-only.ts';
 
 export const SVG_EXTRA_LONGHANDS = ['stop-opacity', 'flood-opacity', 'mask-type', 'text-anchor', 'dominant-baseline', 'alignment-baseline', 'baseline-shift', 'shape-rendering', 'color-interpolation', 'color-interpolation-filters', 'color-rendering', 'buffered-rendering'] as const;
 export const SVG_EXTRA_SHORTHANDS = [] as const;
@@ -87,13 +88,28 @@ function zeroLengthCalc(t: CssNode): boolean {
 const parseBaselineShift: InitialOnlyParser = (tokens) => {
   const t = tokens[0];
   if (t === undefined) return { kind: 'invalid', reason: 'baseline-shift needs a value' };
+  // Chrome 145 parses three keywords (baseline, sub, super) and drops any other, as css-inline-3's top, center and bottom.
+  if (tokens.length === 1 && t.type === 'Identifier' && !['baseline', 'sub', 'super'].includes(asciiLower(String(t['name'])))) return { kind: 'invalid', reason: 'baseline-shift takes baseline, sub, super, a length or a percentage (Chrome 145 drops any other keyword)' };
   const zero = tokens.length === 1 && ((t.type === 'Identifier' && asciiLower(String(t['name'])) === 'baseline') || (t.type === 'Number' && Number(t['value']) === 0)
     || (t.type === 'Dimension' && Number(t['value']) === 0 && unitEntry(asciiLower(String(t['unit']))) !== null) || zeroLengthCalc(t));
   return { kind: 'ok', longhands: [{ property: 'baseline-shift', value: zero ? ZERO_LENGTH : nonInitial(tokens), explicit: true }] };
 };
 
+/** The keywords Chrome 145 parses for each keyword-only longhand (css_properties.json5), lowercase. */
+const SVG_EXTRA_KEYWORDS = {
+  'mask-type': ['luminance', 'alpha'],
+  'text-anchor': ['start', 'middle', 'end'],
+  'dominant-baseline': ['auto', 'alphabetic', 'ideographic', 'middle', 'central', 'mathematical', 'hanging', 'text-after-edge', 'text-before-edge', 'use-script', 'no-change', 'reset-size'],
+  'alignment-baseline': ['auto', 'baseline', 'alphabetic', 'ideographic', 'middle', 'central', 'mathematical', 'hanging', 'text-after-edge', 'text-before-edge', 'before-edge', 'after-edge'],
+  'shape-rendering': ['auto', 'optimizespeed', 'crispedges', 'geometricprecision'],
+  'color-interpolation': ['auto', 'srgb', 'linearrgb'],
+  'color-interpolation-filters': ['auto', 'srgb', 'linearrgb'],
+  'color-rendering': ['auto', 'optimizespeed', 'optimizequality'],
+  'buffered-rendering': ['auto', 'static', 'dynamic'],
+} as const;
+
 export const SVG_EXTRA_VALUE_PARSERS = {
-  ...Object.fromEntries(SVG_EXTRA_LONGHANDS.map((p) => [p, initialOnlyLonghand(p, SVG_EXTRA_INITIAL[p])])),
+  ...Object.fromEntries(Object.entries(SVG_EXTRA_KEYWORDS).map(([p, ks]) => [p, keywordLonghand(p as SvgExtraLonghand, SVG_EXTRA_INITIAL[p as SvgExtraLonghand], ks)])),
   'stop-opacity': opacityLonghand('stop-opacity'),
   'flood-opacity': opacityLonghand('flood-opacity'),
   'baseline-shift': parseBaselineShift,

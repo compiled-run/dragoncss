@@ -51,6 +51,19 @@ export function initialOnlyLonghand(property: Longhand, initial: CssValue): Init
 }
 
 /**
+ * A one-keyword longhand: one of Chrome 145's keywords for it, in any ASCII case, is its initial value or kept as written; any other
+ * value is invalid, as Chrome drops it (packages/parity/test/render-anchor-parse.test.ts pins each keyword list against Chrome).
+ */
+export function keywordLonghand(property: Longhand, initial: CssValue, keywords: readonly string[]): InitialOnlyParser {
+  return (tokens) => {
+    const t = tokens[0];
+    const k = tokens.length === 1 && t !== undefined && t.type === 'Identifier' ? asciiLower(String(t['name'])) : null;
+    if (k === null || !keywords.includes(k)) return { kind: 'invalid', reason: `${property} takes ${keywords.join(', ')} (Chrome 145 drops any other value)` };
+    return { kind: 'ok', longhands: [{ property, value: spellsInitial(initial, t) ? initial : nonInitial(tokens), explicit: true }] };
+  };
+}
+
+/**
  * A shorthand of one to max values over longhands that share one initial value: when every value spells it, each longhand takes
  * it; otherwise each longhand keeps the whole value as written, so the family check refuses it.
  */
