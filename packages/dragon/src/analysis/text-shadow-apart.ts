@@ -109,7 +109,7 @@ type AxisGaps = { readonly v: Gaps | null; readonly h: Gaps | null };
 type Inset = Readonly<Record<Side, number>> & { readonly vKnown: boolean; readonly hKnown: boolean };
 type Kids = { readonly kids: readonly ResolvedElement[]; readonly index: ReadonlyMap<ResolvedElement, number>; readonly settled: boolean; readonly placed: boolean };
 /** Why two texts may meet: across a measured gap (axis), or because nothing keeps them apart. */
-type Meeting = { readonly axis: boolean; readonly why: string };
+type Meeting = { readonly axis: boolean; readonly cause: string };
 
 /** The meeting check of one resolved tree, with every per-box, per-parent and per-pair fact computed once. */
 export class MeetCheck {
@@ -141,7 +141,7 @@ export class MeetCheck {
     const m = this.memo.get(key) as Meeting | null;
     if (m === null) return null;
     const other = `text ${u.text.node.address}`;
-    return m.axis ? `its shadows and ${other} may meet (${m.why}), and the device encodes each shadow over the backdrop alone` : `${other} may meet it: ${m.why}`;
+    return m.axis ? `its shadows and ${other} may meet (${m.cause}), and the device encodes each shadow over the backdrop alone` : `${other} may meet it: ${m.cause}`;
   }
 
   private chainOf(el: ResolvedElement): readonly ResolvedElement[] {
@@ -284,16 +284,16 @@ export class MeetCheck {
     const risky = (x: InkText): boolean => SIDES.some((s) => x.reach[s].some((r) => r.risky));
     if (!risky(second) && (ordered || !risky(first))) return null;
     const moved = first.moved ?? second.moved;
-    if (moved !== null) return { axis: false, why: moved };
+    if (moved !== null) return { axis: false, cause: moved };
     const ct = this.chainOf(first.container);
     const cu = this.chainOf(second.container);
     const inSecond = new Set(cu);
     const common = ct.find((e) => inSecond.has(e));
-    if (common === undefined || common === first.container || common === second.container) return { axis: false, why: 'they share a block container, or one lies inside the other\'s, so their glyphs and shadows may meet' };
+    if (common === undefined || common === first.container || common === second.container) return { axis: false, cause: 'they share a block container, or one lies inside the other\'s, so their glyphs and shadows may meet' };
     const a = ct[ct.indexOf(common) - 1] as ResolvedElement;
     const b = cu[cu.indexOf(common) - 1] as ResolvedElement;
     const gap = this.gapOf(common, a, b);
-    if (gap === null || (gap.v === null && gap.h === null)) return { axis: false, why: 'they are not kept apart by in-flow boxes with margins of 0 or more under a block, flex or grid parent' };
+    if (gap === null || (gap.v === null && gap.h === null)) return { axis: false, cause: 'they are not kept apart by in-flow boxes with margins of 0 or more under a block, flex or grid parent' };
     const ia = this.insetOf(first, a);
     const ib = this.insetOf(second, b);
     const axis = (g: Gaps | null, known: boolean, near: Side, far: Side, name: string): string | null => {
@@ -313,6 +313,6 @@ export class MeetCheck {
       return null;
     };
     const why = axis(gap.v, ia.vKnown && ib.vKnown, 'top', 'bottom', 'vertical') ?? axis(gap.h, ia.hKnown && ib.hKnown, 'left', 'right', 'horizontal');
-    return why === null ? null : { axis: true, why };
+    return why === null ? null : { axis: true, cause: why };
   }
 }
