@@ -48,6 +48,7 @@ import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
 import type { BorderImageFaults } from '../faults/border-image.ts';
 import { BORDER_IMAGE_FAULTS } from '../faults/border-image.ts';
 import { checkBorderImage } from './border-image.ts';
+import { gradientMaskOf } from './paint-values/mask.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -1002,8 +1003,8 @@ function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics:
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no mask yet (MASK-CLIP); only the initial value is accepted`,
-      manual: `Remove the mask from ${el.element.address}, or set mask: none.`,
+      message: `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws a mask only as one linear-gradient() mask-image with every other mask longhand at its initial value (MASK-CLIP)`,
+      manual: `Write the mask as one linear-gradient() mask-image, or set mask: none on ${el.element.address}.`,
       basis: 'computed-value',
     }));
   }
@@ -1060,7 +1061,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
       checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
-    checkMask(el, targets, diagnostics, reported, faults);
+    // MASK-CLIP: the gradient mask Dragon draws is the paint-values mask module's to check (analysis/paint-values/mask.ts).
+    if (gradientMaskOf(el) === null) checkMask(el, targets, diagnostics, reported, faults);
     checkBorderImage(el, targets, diagnostics, reported, faults);
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);

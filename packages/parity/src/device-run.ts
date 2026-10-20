@@ -121,6 +121,9 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'decoration-snap-css-px': ['text-decoration-native'],
   'decoration-alpha-ignored': ['text-decoration-native'],
   'text-shadow-offset-1': ['text-shadow-blur'],
+  // MASK-CLIP: mask-gradient's masks are opaque at the top and transparent at the bottom (or the reverse), so a flipped raster swaps
+  // its mask points between the box's paint and the backdrop.
+  'mask-gradient-flip': ['mask-gradient'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -166,6 +169,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'decoration-snap-css-px': /^decoration:/,
   'decoration-alpha-ignored': /^decoration:/,
   'text-shadow-offset-1': /^text-shadow:/,
+  'mask-gradient-flip': /^(mask:|edge:[^:]+:mask-)/,
 };
 /**
  * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason

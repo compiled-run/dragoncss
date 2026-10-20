@@ -7,5 +7,6 @@ import { layout, reject } from './define.ts';
 
 export const MASK: readonly FixtureSpec[] = [
   layout('mask-initial', ['ltr', 'rtl']),
-  reject('reject-mask-image', 'DRAGON_UNSUPPORTED_VALUE', 'linear-gradient(transparent, transparent)', 'mask-image: linear-gradient(transparent,transparent)'),
+  layout('mask-gradient', ['ltr', 'rtl']),
+  reject('reject-mask-image', 'DRAGON_UNSUPPORTED_VALUE', 'radial-gradient(black, transparent)', 'mask-image: radial-gradient(black,transparent)'),
 ];

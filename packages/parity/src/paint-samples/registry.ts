@@ -10,6 +10,7 @@ import { FIXED_SAMPLES } from './fixed.ts';
 import { FOREIGN_VIEW_SAMPLES } from './foreign-view.ts';
 import { GRADIENT_SAMPLES } from './gradient.ts';
 import { IMAGE_SAMPLES } from './image.ts';
+import { MASK_SAMPLES } from './mask.ts';
 import { OUTLINE_SAMPLES } from './outline.ts';
 import { RADIUS_SAMPLES } from './radius.ts';
 import { SCROLL_SAMPLES } from './scroll.ts';
@@ -46,6 +47,7 @@ export const PAINT_SAMPLES: readonly PaintSamples[] = [
   VISIBILITY_SAMPLES,
   TEXT_DECORATION_SAMPLES,
   TEXT_SHADOW_SAMPLES,
+  MASK_SAMPLES,
 ];
 
 if (PAINT_SAMPLES.map((m) => m.name).join() !== PAINT_SAMPLE_MODULES.join()) throw new Error('the paint-samples registry is not in PAINT_SAMPLE_MODULES order');

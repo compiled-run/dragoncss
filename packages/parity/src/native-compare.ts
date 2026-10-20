@@ -239,6 +239,8 @@ export const CHANNEL_DELTA_BY_KIND: { readonly [K in SampleRule]: number } = {
   decoration: GATE_CHANNEL_DELTA,
   // TXT-FX: a text shadow point reads no glyph edge Core Text dilates, so it is compared strictly.
   'text-shadow': GATE_CHANNEL_DELTA,
+  // MASK-CLIP: a mask point is where the mask's alpha is 255 or 0 throughout, the unmasked paint or the backdrop, compared strictly.
+  mask: GATE_CHANNEL_DELTA,
 };
 
 /**
