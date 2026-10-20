@@ -82,7 +82,7 @@ import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
-import { groupComposite, groupPack, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
+import { groupComposite, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupPack, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -1591,6 +1591,10 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (name === 'paint:group:groupTileIndex') return `["ok",${h(groupTileIndex(arg(a, 1), arg(a, 2)))}]`;
   if (name === 'paint:group:groupTileSpan') return numList(groupTileSpan(arg(a, 1), arg(a, 2)));
   if (name === 'paint:group:groupTileFolds') return `["ok",${groupTileFolds(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)) ? 'true' : 'false'}]`;
+  // PNT1-filter: paint-group.ts colour-matrix filters.
+  if (name === 'paint:group:groupFilterMatrix') return numList(groupFilterMatrix(arg(a, 1), arg(a, 2)));
+  if (name === 'paint:group:groupFilterMatrices') return numList(groupFilterMatrices(bitsList(a, 1)));
+  if (name === 'paint:group:groupFilterComposite') return `["ok",${h(groupFilterComposite(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8), bitsList(a, 9), arg(a, 10)))}]`;
   // PNT2: paint-transform.ts.
   if (name === 'paint:transform:resolveTransformOrigin') {
     const o = resolveTransformOrigin(decodeOrigin(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));

@@ -75,6 +75,7 @@ import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { colorMatrixFilters } from '../css/properties/filter.ts';
 import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { checkTextShadows } from './text-shadow.ts';
@@ -537,21 +538,28 @@ function checkHyphens(el: ResolvedElement, targets: readonly string[], diagnosti
   }
 }
 
-// FX (filter-effects-1 §5): no target draws a filter yet, and a filter such as opacity(0) or brightness(0) can hide text, so a filter
-// other than none is refused for every target where it applies (filter is not inherited). Planted fault filterListAccepted accepts it.
+// FX (filter-effects-1 §5): a filter can hide or recolour text, so a filter other than none is refused for every target where it
+// applies (filter is not inherited) unless it is a list of the colour-matrix functions Dragon draws (PNT1-filter, css/properties
+// filter.ts colorMatrixFilters), on an element that is not an SVG shape. On native such a list is drawn only on a group the overlay
+// pre-composites, which analysis/paint-values/effects.ts checkTranslucent decides. Planted fault filterListAccepted accepts any list.
 function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: FxFaults): void {
   const v = el.props.get('filter') as ResolvedValue;
-  if (faults.filterListAccepted || (v.value.kind === 'keyword' && v.value.value === 'none')) return;
+  if (faults.filterListAccepted) return;
+  const read = colorMatrixFilters(v.value);
+  if (read.kind === 'none') return;
+  const shape = isSvgShapeTag(el.element.tag);
+  if (read.kind === 'list' && !shape) return;
   const id = `filter|${el.element.address}`;
   if (reported.has(id)) return;
   reported.add(id);
   const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
+  const why = shape || read.kind === 'list' ? 'Dragon draws no filter on an SVG shape (FX)' : `Dragon draws only lists of the colour-matrix functions grayscale, sepia, saturate, invert, opacity, brightness and contrast (FX), and ${read.reason}`;
   for (const t of targets) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `filter: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no filter yet (FX); only none is accepted`,
-      manual: `Remove the filter from ${el.element.address}, or set filter: none.`,
+      message: `filter: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: ${why}`,
+      manual: `Remove the filter from ${el.element.address}, set filter: none, or use only grayscale(), sepia(), saturate(), invert(), opacity(), brightness() and contrast() with number or percentage amounts.`,
       basis: 'computed-value',
     }));
   }

@@ -6,6 +6,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { TransformFnDecl, TransformLengthDecl, TransformOriginDecl } from '../../css/properties/transform.ts';
 import { individualTransformOf, INDIVIDUAL_TRANSFORM_TYPE, INDIVIDUAL_TRANSFORMS, inFloatRange, lengthText, originText, skewsBox, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, willChangeFeatures } from '../../css/properties/transform.ts';
+import { filterApplies } from '../../css/properties/filter.ts';
 import { lengthToPx } from '../../css/units.ts';
 import type { Diagnostic, Origin } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -110,8 +111,7 @@ function transformOrigin(el: ResolvedElement): Origin {
  * that refusal.
  */
 export function checkTransformContexts(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const refuse = (el: ResolvedElement, what: string, message: string, manual: string): void => {
-    const origin = transformOrigin(el);
+  const refuse = (el: ResolvedElement, what: string, message: string, manual: string, origin: Origin = transformOrigin(el)): void => {
     for (const t of targets) {
       const id = `${t}|transform-${what}|${JSON.stringify(origin)}|${el.element.address}`;
       if (reported.has(id)) continue;
@@ -124,6 +124,8 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
     if (display === 'none') return;
     const position = keywordOf(el, 'position');
     const own = transformsDescendants(el);
+    // A filter other than none makes its box the containing block of absolute and fixed descendants too (filter-effects-1, the filter property).
+    const creator = own ? 'a transform' : filtered(el) ? 'a filter' : null;
     const address = el.element.address;
     if (own) {
       const tag = el.element.tag;
@@ -131,15 +133,30 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
       if (skewsBox(elementTransform(el))) refuse(el, 'skew', `the translate, rotate, scale and transform of ${address} compose to a rotation after a non-uniform scale, which skews the box: Android's View transform cannot express it (package PNT2-m)`, `Rotate ${address} before scaling it unevenly, or scale it evenly.`);
       if (tag === 'html' || tag === 'body') refuse(el, 'root', `a transform on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
       if (display !== 'block' && display !== 'flex') refuse(el, 'display', `a transform on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
-      if (position === 'static') {
-        const cb = absoluteDescendant(el);
-        if (cb !== null) refuse(el, 'containing-block', `a transform on ${address} makes it the containing block of the absolutely positioned ${cb.element.address} (css-transforms-1 §3), which Dragon's layout does not model yet`, `Set position: relative on ${address}, so it is the containing block with or without the transform.`);
-      }
     }
-    if (position === 'fixed' && transformed !== null) refuse(transformed, 'fixed', `a transform on ${transformed.element.address} makes it the containing block of the fixed ${address} (css-transforms-1 §3; package POSX-f2)`, `Move ${address} outside ${transformed.element.address}.`);
-    for (const c of el.children) if (c.kind === 'element') walk(c, own ? el : transformed);
+    if (creator !== null && position === 'static') {
+      const cb = absoluteDescendant(el);
+      if (cb !== null) refuse(el, 'containing-block', `${creator} on ${address} makes it the containing block of the absolutely positioned ${cb.element.address} (${creator === 'a filter' ? 'filter-effects-1, the filter property' : 'css-transforms-1 §3'}), which Dragon's layout does not model yet`, `Set position: relative on ${address}, so it is the containing block with or without the ${creator.slice(2)}.`, own ? transformOrigin(el) : filterOrigin(el));
+    }
+    if (position === 'fixed' && transformed !== null) {
+      const what = transformsDescendants(transformed) ? 'a transform' : 'a filter';
+      refuse(transformed, 'fixed', `${what} on ${transformed.element.address} makes it the containing block of the fixed ${address} (${what === 'a filter' ? 'filter-effects-1, the filter property' : 'css-transforms-1 §3'}; package POSX-f2)`, `Move ${address} outside ${transformed.element.address}.`, what === 'a filter' ? filterOrigin(transformed) : transformOrigin(transformed));
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c, creator !== null ? el : transformed);
   };
   walk(root, null);
+}
+
+/** The filter declaration's value, or the element when the filter is not authored on it. */
+function filterOrigin(el: ResolvedElement): Origin {
+  const f = el.props.get('filter') as ResolvedValue | undefined;
+  return f !== undefined && f.declaration !== null ? authored(f.declaration.valueSpan) : el.element.node.origin;
+}
+
+/** Whether an element has a filter other than none (a hand-built element may carry no filter value). */
+function filtered(el: ResolvedElement): boolean {
+  const f = el.props.get('filter') as ResolvedValue | undefined;
+  return f !== undefined && filterApplies(f.value);
 }
 
 /** An absolutely positioned descendant whose containing block would be el (no positioned or transformed box between them), or null. */
@@ -148,7 +165,7 @@ function absoluteDescendant(el: ResolvedElement): ResolvedElement | null {
     if (c.kind !== 'element' || keywordOf(c, 'display') === 'none') continue;
     const position = keywordOf(c, 'position');
     if (position === 'absolute') return c;
-    if (position !== 'static' || transformsDescendants(c)) continue;
+    if (position !== 'static' || transformsDescendants(c) || filtered(c)) continue;
     const deeper = absoluteDescendant(c);
     if (deeper !== null) return deeper;
   }

@@ -11,7 +11,8 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { groupComposite, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
+import { groupComposite, groupFilterComposite, groupFilterMatrices, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
+import { filterPairs } from '../../dragon/src/emit/paint/effects.ts';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
 import { androidProfile, borderDevicePx, createProjectWith, engineLayoutProjection, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
@@ -24,6 +25,10 @@ import { ruleKind } from '../src/samples.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 type Px = [number, number, number, number];
+type FilterFunction = { readonly name: Parameters<typeof filterPairs>[0][number]['name']; readonly amount: number };
+
+/** A packed pixel (paint-group.ts: r + g * 2^8 + b * 2^16 + a * 2^24) as bytes. */
+const unpack = (v: number): Px => [v % 256, Math.floor(v / 256) % 256, Math.floor(v / 65536) % 256, Math.floor(v / 16777216) % 256];
 
 /** SkMulDiv255Round. */
 const mdr = (a: number, b: number): number => {
@@ -110,7 +115,7 @@ type Stacking = { paintOrder: number; clipChain: readonly string[] };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
   | { readonly kind: 'text'; readonly node: ProgramNode; readonly glyphs: readonly { left: number; top: number; right: number; bottom: number }[] }
-  | { readonly kind: 'group'; readonly box: Box; readonly alpha8: number; readonly items: readonly Item[] };
+  | { readonly kind: 'group'; readonly box: Box; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly items: readonly Item[] };
 
 const stackingOf = (n: ProgramNode): Stacking => {
   const s = n.facts['stacking'] as Stacking | undefined;
@@ -118,8 +123,11 @@ const stackingOf = (n: ProgramNode): Stacking => {
   return s;
 };
 
-/** Planted model faults the test must catch: the alpha ignored (alpha-ignored), and tree order instead of the paint order (order-swap). */
-type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean };
+/**
+ * Planted model faults the test must catch: the alpha ignored (alpha-ignored), tree order instead of the paint order (order-swap),
+ * and a colour-matrix filter list ignored (filter-ignored).
+ */
+type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean };
 const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false, treeOrder: false };
 
 /** The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. */
@@ -145,7 +153,7 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
     const out: Item[] = [];
     for (let k = 0; k < sorted.length; k++) {
       const n = sorted[k] as ProgramNode;
-      const effects = n.facts['effects'] as { opacity: number } | undefined;
+      const effects = n.facts['effects'] as { opacity: number; filter?: readonly FilterFunction[] } | undefined;
       if (effects === undefined) {
         out.push(...withText(n));
         continue;
@@ -154,7 +162,9 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
       const members = sorted.filter((x) => inside.has(x.id));
       // A stacking context is atomic: its subtree is contiguous in the paint order.
       if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
-      out.push({ kind: 'group', box: byId.get(n.id) as Box, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), items: [...withText(n), ...build(members.filter((x) => x !== n))] });
+      const filter = effects.filter ?? [];
+      const matrices = filter.length === 0 ? null : groupFilterMatrices(faults.filterIgnored ? [] : filterPairs(filter));
+      out.push({ kind: 'group', box: byId.get(n.id) as Box, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
       k += members.length - 1;
     }
     return out;
@@ -226,6 +236,13 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
   }
   if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, 255);
   if (it.alpha8 === 0) return dst;
+  // A filtered group is a layer drawn through the filter's colour matrices, then composited at its alpha; it never folds
+  // (paint-group.ts groupFilterComposite, measured against Chrome 145).
+  if (it.matrices !== null) {
+    let layer: Px = [0, 0, 0, 0];
+    for (const inner of it.items) layer = paintItem(layer, inner, x, y, tile, byId);
+    return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], dst[0], dst[1], dst[2], dst[3], it.matrices, it.alpha8));
+  }
   // The group's one drawing in this tile, when it is a background rect, takes the alpha itself (cc folds the layer into it).
   const content = tileItems(it.items, tile);
   const only = content.direct[0];
@@ -271,12 +288,16 @@ export function effectsModelAt(items: readonly Item[], byId: ReadonlyMap<string,
 
 // ---------------------------------------------------------------- the device's group composite (PNT1-opacity-b)
 
-type GroupPlan = { readonly alpha8: number; readonly painters: readonly string[] };
+type GroupPlan = { readonly alpha8: number; readonly matrices: readonly number[] | null; readonly painters: readonly string[] };
 
-/** The plan of a node the compiler pre-composites (an opacity-group write), or null. */
+/** The plan of a node the compiler pre-composites (an opacity-group or filter-group write), or null. */
 function groupPlanOf(n: ProgramNode): GroupPlan | null {
-  const w = n.writes.find((x) => x.kind === 'opacity-group');
-  return w === undefined || w.kind !== 'opacity-group' ? null : { alpha8: opacityAlpha8(w.opacity), painters: w.painters };
+  for (const w of n.writes) {
+    if (w.kind === 'opacity-group') return { alpha8: opacityAlpha8(w.opacity), matrices: null, painters: w.painters };
+    // The matrices the device builds from the emitted (code, amount) pairs (EFFECTS_EMITTER, DragonGroupView).
+    if (w.kind === 'filter-group') return { alpha8: opacityAlpha8(w.opacity), matrices: groupFilterMatrices(filterPairs(w.filter)), painters: w.painters };
+  }
+  return null;
 }
 
 /** Every item of a paint list by node id, nested groups' items included. */
@@ -359,9 +380,9 @@ function deviceQ(g: Item & { kind: 'group' }, plan: GroupPlan, x: number, y: num
   }
   let layer: Px = [0, 0, 0, 0];
   for (const it of members) layer = paintItem(layer, it, x, y, tile, byId);
+  if (plan.matrices !== null) return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.matrices, plan.alpha8));
   const fold = groupTileFolds(groupDraws(members), tile.l, tile.t, tile.r, tile.b);
-  const v = groupComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.alpha8, fold);
-  return [v % 256, Math.floor(v / 256) % 256, Math.floor(v / 65536) % 256, Math.floor(v / 16777216) % 256];
+  return unpack(groupComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.alpha8, fold));
 }
 
 /** The device's colour at the centre of pixel (x, y): the model, with each pre-composited group shown as its Q over its extent. */
@@ -387,7 +408,7 @@ function deviceAt(p: NativeProgram, items: readonly Item[], byId: ReadonlyMap<st
 
 // ---------------------------------------------------------------- the fixtures
 
-const GROUPS = ['effects'];
+const GROUPS = ['effects', 'filter'];
 const FIXTURES = FIXTURE_GROUPS.filter((g) => GROUPS.includes(g.id)).flatMap((g) => g.fixtures).filter((f) => f.kind === 'layout');
 
 /** The mismatches of the model against the committed Chrome PNGs at every non-edge point of a program, and the points compared. */
@@ -412,8 +433,8 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 }
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
-  it('covers the opacity and stacking fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface']);
+  it('covers the opacity, stacking and filter fixtures', () => {
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -465,6 +486,7 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
           expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-color' && w.folded === true)).map((n) => n.id)).toEqual([]);
         } else if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
         if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
+        if (spec.id.startsWith('filter-matrix-')) expect(caught({ alphaIgnored: false, treeOrder: false, filterIgnored: true }), 'filter-ignored').toBe(true);
       });
     }
   }
@@ -474,9 +496,76 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
 // simulated as the runtime computes it (the group's layer, the backdrop from the planned painters, the per-tile fold), equals the
 // model at every point of every case, and the model equals Chrome above; so a device that renders the layer as Chrome does shows
 // Chrome's bytes. What stays unproven until a device run: that CALayer.render(in:) and View.draw give Chrome's layer bytes.
+/** Chrome 145's captured cells for colour-matrix filters: [(code, amount) pairs, opacity, layer L (premultiplied), backdrop D, pixel]. */
+const FILTER_CELLS: readonly (readonly [number[], number, Px, [number, number, number], [number, number, number]])[] = [
+  [[0,0.36063], 0.872, [0,0,0,255], [204,72,233], [26,9,30]], [[0,0.36063], 0.872, [30,30,30,30], [249,7,147], [249,32,158]], [[0,0.79603], 0.922, [0,0,0,255], [3,73,107], [0,5,8]],
+  [[0,0.79603], 0.922, [64,64,64,64], [221,162,174], [229,183,192]], [[0,0.9726], 0.814, [0,0,0,255], [28,17,112], [5,3,20]], [[0,0.9726], 0.814, [29,29,29,29], [188,212,92], [194,216,107]],
+  [[0,0.9727], 0.655, [0,0,0,255], [12,80,113], [4,27,38]], [[0,0.9727], 0.655, [115,115,115,115], [225,186,163], [234,206,190]], [[0,0.11774], 1, [0,0,0,255], [111,94,243], [0,0,0]],
+  [[0,0.11774], 1, [128,128,128,128], [236,38,228], [246,147,242]], [[0,0.5724], 0.618, [0,0,0,255], [243,4,151], [92,1,57]], [[0,0.5724], 0.618, [253,253,253,253], [53,136,158], [177,209,218]],
+  [[0,0.64378], 1, [0,0,0,255], [150,147,104], [0,0,0]], [[0,0.64378], 1, [78,78,78,78], [126,106,229], [165,152,237]], [[0,0.07638], 1, [0,0,0,255], [238,171,81], [0,0,0]],
+  [[0,0.07638], 1, [178,178,178,178], [228,172,132], [247,230,218]], [[0,0.12264], 0.795, [0,0,0,255], [40,50,89], [8,10,18]], [[0,0.12264], 0.795, [152,152,152,152], [57,71,161], [151,158,206]],
+  [[0,0.48564], 1, [0,0,0,255], [100,74,191], [0,0,0]], [[0,0.48564], 1, [219,219,219,219], [167,49,169], [243,226,243]], [[0,1], 1, [0,0,0,255], [184,75,185], [0,0,0]],
+  [[0,1], 1, [141,141,141,141], [118,207,222], [194,234,240]], [[0,0.5], 1, [0,0,0,255], [157,177,96], [0,0,0]], [[0,0.5], 1, [220,220,220,220], [42,204,176], [226,248,244]],
+  [[1,0.2273], 0.336, [0,0,0,255], [178,44,154], [117,29,101]], [[1,0.2273], 0.336, [15,15,15,15], [33,114,71], [37,116,74]], [[1,0.58034], 1, [0,0,0,255], [31,188,122], [0,0,0]],
+  [[1,0.58034], 1, [20,20,20,20], [84,215,187], [97,218,192]], [[1,0.17652], 1, [0,0,0,255], [251,20,179], [0,0,0]], [[1,0.17652], 1, [216,216,216,216], [61,211,38], [225,248,219]],
+  [[1,0.7178], 0.786, [0,0,0,255], [204,124,242], [43,26,51]], [[1,0.7178], 0.786, [155,155,155,155], [75,244,60], [160,249,147]], [[1,0.43192], 1, [0,0,0,255], [27,235,91], [0,0,0]],
+  [[1,0.43192], 1, [214,214,214,214], [70,36,234], [225,220,246]], [[1,0.97963], 1, [0,0,0,255], [47,87,195], [0,0,0]], [[1,0.97963], 1, [132,132,132,132], [23,69,203], [143,165,222]],
+  [[1,0.59937], 0.8, [0,0,0,255], [224,202,215], [44,40,42]], [[1,0.59937], 0.8, [8,8,8,8], [112,115,64], [115,118,68]], [[1,0.69725], 0.414, [0,0,0,255], [44,103,57], [25,59,33]],
+  [[1,0.69725], 0.414, [226,226,226,226], [235,57,253], [243,130,250]], [[1,0.87312], 0.601, [0,0,0,255], [98,215,94], [39,85,37]], [[1,0.87312], 0.601, [101,101,101,101], [158,236,167], [181,241,185]],
+  [[1,0.73771], 0.559, [0,0,0,255], [167,21,190], [73,9,83]], [[1,0.73771], 0.559, [33,33,33,33], [79,43,176], [92,58,181]], [[1,1], 1, [0,0,0,255], [88,87,114], [0,0,0]],
+  [[1,1], 1, [49,49,49,49], [78,100,182], [112,130,193]], [[1,0.5], 1, [0,0,0,255], [17,255,125], [0,0,0]], [[1,0.5], 1, [133,133,133,133], [1,213,116], [133,235,184]],
+  [[3,0.87828], 0.281, [0,0,0,255], [28,250,118], [83,242,148]], [[3,0.87828], 0.281, [4,4,4,4], [166,76,155], [165,75,154]], [[3,0.19211], 1, [0,0,0,255], [169,82,97], [49,49,49]],
+  [[3,0.19211], 1, [70,70,70,70], [14,133,52], [67,153,94]], [[3,0.21966], 1, [0,0,0,255], [252,88,255], [56,56,56]], [[3,0.21966], 1, [131,131,131,131], [73,105,247], [138,153,222]],
+  [[3,0.14917], 0.672, [0,0,0,255], [122,42,93], [65,39,56]], [[3,0.14917], 0.672, [152,152,152,152], [120,152,118], [158,178,157]], [[3,0.01629], 1, [0,0,0,255], [73,69,32], [4,4,4]],
+  [[3,0.01629], 1, [246,246,246,246], [74,36,176], [245,243,248]], [[3,0.34497], 0.358, [0,0,0,255], [54,30,232], [66,50,180]], [[3,0.34497], 0.358, [219,219,219,219], [16,105,182], [62,123,177]],
+  [[3,0.9938], 1, [0,0,0,255], [56,147,222], [253,253,253]], [[3,0.9938], 1, [86,86,86,86], [223,26,61], [148,18,41]], [[3,0.05005], 1, [0,0,0,255], [171,134,149], [13,13,13]],
+  [[3,0.05005], 1, [163,163,163,163], [153,240,38], [210,241,169]], [[3,0.90515], 1, [0,0,0,255], [247,252,39], [231,231,231]], [[3,0.90515], 1, [112,112,112,112], [35,135,130], [30,86,84]],
+  [[3,0.38743], 0.813, [0,0,0,255], [92,177,242], [97,113,125]], [[3,0.38743], 0.813, [1,1,1,1], [60,0,127], [60,0,127]], [[3,1], 1, [0,0,0,255], [37,156,114], [255,255,255]],
+  [[3,1], 1, [6,6,6,6], [214,251,133], [209,245,130]], [[3,0.5], 1, [0,0,0,255], [222,235,51], [128,128,128]], [[3,0.5], 1, [167,167,167,167], [45,181,80], [99,146,111]],
+  [[4,0.56063], 1, [0,0,0,255], [116,77,25], [51,34,11]], [[4,0.56063], 1, [236,236,236,236], [160,221,67], [209,239,165]], [[4,0.56858], 1, [0,0,0,255], [242,213,142], [104,92,61]],
+  [[4,0.56858], 1, [157,157,157,157], [55,35,152], [125,112,188]], [[4,0.76868], 0.604, [0,0,0,255], [165,148,37], [88,79,19]], [[4,0.76868], 0.604, [64,64,64,64], [122,142,12], [137,155,40]],
+  [[4,0.03152], 1, [0,0,0,255], [6,193,198], [6,187,192]], [[4,0.03152], 1, [230,230,230,230], [183,126,181], [185,130,183]], [[4,0.29963], 0.373, [0,0,0,255], [205,195,15], [182,173,13]],
+  [[4,0.29963], 0.373, [241,241,241,241], [149,247,46], [160,247,68]], [[4,0.57561], 0.739, [0,0,0,255], [159,208,183], [91,120,105]], [[4,0.57561], 0.739, [171,171,171,171], [96,123,234], [141,160,240]],
+  [[4,0.33854], 0.663, [0,0,0,255], [57,6,219], [44,4,170]], [[4,0.33854], 0.663, [140,140,140,140], [20,190,28], [48,198,55]], [[4,0.22775], 0.309, [0,0,0,255], [185,108,144], [171,100,133]],
+  [[4,0.22775], 0.309, [96,96,96,96], [10,158,207], [16,161,209]], [[4,0.0935], 1, [0,0,0,255], [168,59,105], [152,53,95]], [[4,0.0935], 1, [155,155,155,155], [19,249,76], [32,249,86]],
+  [[4,0.88121], 1, [0,0,0,255], [13,154,1], [2,18,0]], [[4,0.88121], 1, [10,10,10,10], [26,223,192], [34,224,194]], [[4,1], 1, [0,0,0,255], [89,46,71], [0,0,0]],
+  [[4,1], 1, [158,158,158,158], [74,240,1], [186,249,158]], [[4,0.5], 1, [0,0,0,255], [210,168,57], [105,84,29]], [[4,0.5], 1, [247,247,247,247], [228,52,230], [241,150,242]],
+  [[2,3.56063], 1, [0,0,0,255], [18,119,141], [0,0,0]], [[2,3.56063], 1, [242,242,242,242], [119,153,49], [248,250,244]], [[2,3.15681], 0.926, [0,0,0,255], [213,130,173], [15,9,12]],
+  [[2,3.15681], 0.926, [161,161,161,161], [204,66,220], [234,176,241]], [[2,2.48632], 1, [0,0,0,255], [117,154,114], [0,0,0]], [[2,2.48632], 1, [174,174,174,174], [204,162,40], [239,225,187]],
+  [[2,0.38839], 1, [0,0,0,255], [197,116,174], [0,0,0]], [[2,0.38839], 1, [109,109,109,109], [159,223,232], [200,237,242]], [[2,2.23888], 1, [0,0,0,255], [105,61,75], [0,0,0]],
+  [[2,2.23888], 1, [136,136,136,136], [182,23,102], [221,147,184]], [[2,1.8398], 1, [0,0,0,255], [103,226,36], [0,0,0]], [[2,1.8398], 1, [192,192,192,192], [213,179,232], [245,236,249]],
+  [[2,3.97253], 0.516, [0,0,0,255], [218,182,3], [104,87,1]], [[2,3.97253], 0.516, [78,78,78,78], [209,126,88], [216,146,114]], [[2,2.20868], 1, [0,0,0,255], [182,175,152], [0,0,0]],
+  [[2,2.20868], 1, [174,174,174,174], [207,140,54], [240,218,191]], [[2,1.42096], 0.259, [0,0,0,255], [132,134,210], [97,98,155]], [[2,1.42096], 0.259, [95,95,95,95], [39,174,160], [60,182,169]],
+  [[2,1.4083], 1, [0,0,0,255], [179,38,71], [0,0,0]], [[2,1.4083], 1, [26,26,26,26], [18,110,27], [42,125,50]], [[2,1], 1, [0,0,0,255], [23,86,18], [0,0,0]],
+  [[2,1], 1, [56,56,56,56], [186,136,77], [201,162,116]], [[2,2], 1, [0,0,0,255], [49,157,201], [0,0,0]], [[2,2], 1, [88,88,88,88], [178,214,236], [205,228,243]],
+  [[5,0.84691], 1, [0,0,0,255], [193,236,165], [0,0,0]], [[5,0.84691], 1, [58,58,58,58], [107,67,177], [132,101,186]], [[5,2.67838], 1, [0,0,0,255], [29,135,66], [0,0,0]],
+  [[5,2.67838], 1, [30,30,30,30], [153,13,13], [165,41,41]], [[5,0.20397], 0.275, [0,0,0,255], [186,103,148], [134,74,106]], [[5,0.20397], 0.275, [15,15,15,15], [194,25,91], [191,25,90]],
+  [[5,1.1374], 0.312, [0,0,0,255], [70,104,53], [47,71,36]], [[5,1.1374], 0.312, [182,182,182,182], [237,181,113], [241,198,145]], [[5,0.40014], 1, [0,0,0,255], [135,11,189], [0,0,0]],
+  [[5,0.40014], 1, [250,250,250,250], [187,129,163], [104,103,103]], [[5,2.68519], 1, [0,0,0,255], [38,28,145], [0,0,0]], [[5,2.68519], 1, [254,254,254,254], [171,185,118], [255,255,254]],
+  [[5,1.85013], 0.485, [0,0,0,255], [135,249,185], [69,127,94]], [[5,1.85013], 0.485, [121,121,121,121], [16,81,30], [71,121,82]], [[5,2.19338], 0.223, [0,0,0,255], [95,179,118], [73,138,91]],
+  [[5,2.19338], 0.223, [28,28,28,28], [159,96,19], [161,100,24]], [[5,2.04142], 1, [0,0,0,255], [213,108,2], [0,0,0]], [[5,2.04142], 1, [51,51,51,51], [198,190,36], [209,203,80]],
+  [[5,1.3415], 1, [0,0,0,255], [164,142,129], [0,0,0]], [[5,1.3415], 1, [210,210,210,210], [116,103,154], [230,228,237]], [[5,1], 1, [0,0,0,255], [60,161,219], [0,0,0]],
+  [[5,1], 1, [20,20,20,20], [9,55,253], [28,71,253]], [[5,1.5], 1, [0,0,0,255], [71,162,221], [0,0,0]], [[5,1.5], 1, [133,133,133,133], [245,100,65], [250,181,164]],
+  [[6,0.97632], 0.332, [0,0,0,255], [131,215,215], [88,143,143]], [[6,0.97632], 0.332, [132,132,132,132], [39,135,79], [75,155,109]], [[6,2.17642], 0.862, [0,0,0,255], [159,107,164], [21,14,22]],
+  [[6,2.17642], 0.862, [194,194,194,194], [38,44,124], [180,182,210]], [[6,0.26672], 1, [0,0,0,255], [89,223,218], [93,93,93]], [[6,0.26672], 1, [170,170,170,170], [245,88,132], [189,137,152]],
+  [[6,1.96486], 1, [0,0,0,255], [149,30,170], [0,0,0]], [[6,1.96486], 1, [192,192,192,192], [15,130,184], [196,224,237]], [[6,1.69151], 1, [0,0,0,255], [224,174,180], [0,0,0]],
+  [[6,1.69151], 1, [197,197,197,197], [36,100,174], [205,220,237]], [[6,2.64413], 1, [0,0,0,255], [249,108,53], [0,0,0]], [[6,2.64413], 1, [11,11,11,11], [196,44,225], [199,53,226]],
+  [[6,1.65513], 1, [0,0,0,255], [133,121,72], [0,0,0]], [[6,1.65513], 1, [178,178,178,178], [200,123,29], [238,215,187]], [[6,2.07258], 1, [0,0,0,255], [137,253,163], [0,0,0]],
+  [[6,2.07258], 1, [203,203,203,203], [234,11,48], [251,205,213]], [[6,2.289], 1, [0,0,0,255], [176,131,5], [0,0,0]], [[6,2.289], 1, [217,217,217,217], [241,191,42], [253,245,223]],
+  [[6,0.11244], 0.567, [0,0,0,255], [152,220,229], [129,158,162]], [[6,0.11244], 0.567, [69,69,69,69], [58,86,148], [70,94,147]], [[6,1], 1, [0,0,0,255], [140,10,156], [0,0,0]],
+  [[6,1], 1, [2,2,2,2], [18,119,195], [20,120,195]], [[6,1.5], 1, [0,0,0,255], [23,52,62], [0,0,0]], [[6,1.5], 1, [100,100,100,100], [57,187,98], [135,214,160]],
+  [[6,0.817,0,0.704,4,0.044,3,0.803], 1, [0,0,0,255], [234,247,50], [232,245,56]], [[6,0.817,0,0.704,4,0.044,3,0.803], 1, [50,50,50,50], [238,238,96], [237,237,96]], [[3,0.251,4,0.202,3,0.764], 1, [0,0,0,255], [65,7,18], [84,38,47]],
+  [[3,0.251,4,0.202,3,0.764], 1, [25,25,25,25], [140,19,175], [139,20,173]], [[0,0.016,3,0.09], 0.55, [0,0,0,255], [61,88,144], [40,52,77]], [[0,0.016,3,0.09], 0.55, [47,47,47,47], [121,123,139], [132,134,149]],
+  [[3,0.29,4,0.421], 1, [0,0,0,255], [54,111,89], [62,95,83]], [[3,0.29,4,0.421], 1, [167,167,167,167], [210,56,180], [202,90,180]], [[5,0.41,4,0.106], 1, [0,0,0,255], [72,77,171], [64,69,153]],
+  [[5,0.41,4,0.106], 1, [98,98,98,98], [15,65,128], [19,67,127]], [[4,0.843,3,0.199,4,0.39,4,0.451], 1, [0,0,0,255], [47,230,146], [48,203,132]], [[4,0.843,3,0.199,4,0.39,4,0.451], 1, [203,203,203,203], [170,39,201], [174,59,201]],
+  [[4,0.816,0,0.293], 1, [0,0,0,255], [154,128,241], [28,24,44]], [[4,0.816,0,0.293], 1, [244,244,244,244], [43,9,119], [209,201,225]], [[2,0.447,0,0.381,2,3.836,2,3.721], 1, [0,0,0,255], [0,174,52], [0,0,0]],
+  [[2,0.447,0,0.381,2,3.836,2,3.721], 1, [252,252,252,252], [236,211,73], [255,254,253]], [[0,0.516,0,0.539], 1, [0,0,0,255], [35,141,231], [0,0,0]], [[0,0.516,0,0.539], 1, [57,57,57,57], [167,95,199], [187,131,212]],
+  [[5,1.451,0,0.436,6,2.859,0,0.352], 0.55, [0,0,0,255], [52,152,18], [23,68,8]], [[5,1.451,0,0.436,6,2.859,0,0.352], 0.55, [202,202,202,202], [122,13,121], [180,118,179]], [[1,0.639,6,0.349], 1, [0,0,0,255], [199,221,204], [83,83,83]],
+  [[1,0.639,6,0.349], 1, [29,29,29,29], [17,240,147], [35,232,149]], [[0,0.125,6,1.11], 0.55, [0,0,0,255], [18,142,200], [8,63,89]], [[0,0.125,6,1.11], 0.55, [51,51,51,51], [142,236,8], [154,238,35]],
+];
+
 describe('PNT1-opacity-b: the device\'s group composite equals the paint model', () => {
   it('groupComposite is the measured Color32 and s32a blits', () => {
-    const unpack = (v: number): Px => [v % 256, Math.floor(v / 256) % 256, Math.floor(v / 65536) % 256, Math.floor(v / 16777216) % 256];
     let seed = 7;
     const next = (n: number): number => {
       seed = (seed * 1103515245 + 12345) % 2147483648;
@@ -490,6 +579,18 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
       expect(unpack(groupComposite(l[0], l[1], l[2], l[3], d[0], d[1], d[2], d[3], a8, false)), `s32a ${l} ${d} ${a8}`).toEqual(a8 === 0 ? d : a8 === 255 ? color32(d, { r: l[0], g: l[1], b: l[2] }, 255).map((v, i) => (la === 255 ? v : (l[i] as number) + (((d[i] as number) * (256 - la)) >> 8))) : s32aBlend(d, l, a8));
       if (la === 255) expect(unpack(groupComposite(l[0], l[1], l[2], 255, d[0], d[1], d[2], d[3], a8, true)), `fold ${l} ${d} ${a8}`).toEqual(color32(d, { r: l[0], g: l[1], b: l[2] }, a8));
     }
+  });
+  // Chrome 145 (chrome-headless-shell, software raster, x86-64 with FMA) drew a 1px box filled with the premultiplied colour L over a
+  // 1px opaque box D, the box carrying filter: <the (code, amount) list> and the opacity; got is the captured pixel. Two cells of each
+  // of 96 filters (single functions at random, rounding-edge, default and percentage amounts, with and without an opacity, and lists
+  // of two to four), one opaque and one translucent. The full sweeps (about 125,000 cells across seeds, DPR 1 to 3, translucent
+  // layers and filter with opacity) matched groupFilterComposite at every cell; an unfused mad misses 410 of 6,000 invert cells.
+  it('groupFilterComposite gives the bytes Chrome drew for each colour-matrix filter, with and without an opacity', () => {
+    for (const [pairs, opacity, l, d, got] of FILTER_CELLS) {
+      const v = unpack(groupFilterComposite(l[0], l[1], l[2], l[3], d[0], d[1], d[2], 255, groupFilterMatrices(pairs), opacityAlpha8(opacity)));
+      expect(v, `${pairs} ${opacity} ${l} ${d}`).toEqual([...got, 255]);
+    }
+    expect(FILTER_CELLS.length).toBe(192);
   });
   it('folds a border-only group whose border is one op: four solid sides in one colour or a lone side, and no text group', () => {
     const spec = FIXTURES.find((f) => f.id === 'opacity-group-border-only');
@@ -518,9 +619,10 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
       expect(groupTileFolds(groupDraws(it.items), it.box.l, it.box.t, it.box.r, it.box.b), it.box.node.id).toBe(false);
     }
   });
-  const groupFixtures = FIXTURES.filter((f) => f.id.startsWith('opacity-group-'));
-  it('admits every translucent group of the opacity-group fixtures, which compile on native as user cases', () => {
-    expect(groupFixtures.length).toBe(6);
+  const precomposited = (id: string): boolean => id.startsWith('opacity-group-') || id.startsWith('filter-matrix-');
+  const groupFixtures = FIXTURES.filter((f) => precomposited(f.id));
+  it('admits every translucent or filtered group of the opacity-group and filter-matrix fixtures, which compile on native as user cases', () => {
+    expect(groupFixtures.length).toBe(8);
     for (const spec of groupFixtures) {
       for (const c of casesOf(spec, fixtureInput(spec))) {
         const lanes = nativeCompile(spec, c.environment.direction);
@@ -530,8 +632,8 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
         if (r.kind !== 'ready') throw new Error(r.reason);
         for (const p of [r.programs.uikit, r.programs['android-views']]) {
           const translucent = p.nodes.filter((n) => {
-            const e = n.facts['effects'] as { opacity: number } | undefined;
-            return e !== undefined && e.opacity > 0 && e.opacity < 1;
+            const e = n.facts['effects'] as { opacity: number; filter?: readonly unknown[] } | undefined;
+            return e !== undefined && e.opacity > 0 && (e.opacity < 1 || (e.filter ?? []).length > 0);
           });
           expect(translucent.length, c.id).toBeGreaterThan(0);
           expect(translucent.filter((n) => groupPlanOf(n) === null).map((n) => n.id), c.id).toEqual([]);
@@ -559,7 +661,7 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
           expect(problems).toEqual([]);
           groups += p.nodes.filter((n) => groupPlanOf(n) !== null).length;
         }
-        if (spec.id.startsWith('opacity-group-')) expect(groups, 'pre-composited groups').toBeGreaterThan(0);
+        if (precomposited(spec.id)) expect(groups, 'pre-composited groups').toBeGreaterThan(0);
       });
     }
   }

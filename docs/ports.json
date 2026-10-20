@@ -632,11 +632,13 @@
         { "lines": "1410-1421", "symbol": "ConsumeSVGGeometryPropertyLength", "source": "located" },
         { "lines": "4837-4840", "symbol": "ConsumePrefixedMaskComposite", "source": "located" },
         { "lines": "4939-4952", "symbol": "ConsumePrefixedBackgroundBox", "source": "located" },
-        { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" }
+        { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" },
+        { "lines": "776-844", "symbol": "ConsumeFilterFunction", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/grid-values.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/properties/filter.ts", "symbol": "colorMatrixFilters", "use": "reference" },
         { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
         { "file": "packages/dragon/src/css/shorthands/radius.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/stylesheet.ts", "symbol": null, "use": "port" },
@@ -3504,7 +3506,8 @@
         { "lines": "1-7029", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFilterComposite", "use": "port" }
       ]
     },
     {
@@ -4109,6 +4112,67 @@
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" },
         { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "cc/paint/render_surface_filters.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "cc6a6295eb7a4fe313b1a3fcd89eeb681d673daf727abf776d3b6facbf39bd70",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "27-143", "symbol": null, "source": "cited" },
+        { "lines": "153-191", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFilterMatrix", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/graphics/compositing/paint_chunks_to_cc_layer.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "51af04a0bf413dd687cc3e858daf10462478ea68ab5a20b56002057957ec65a3",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "676-722", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFilterComposite", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/effects/colorfilters/SkMatrixColorFilter.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2011 Google Inc.",
+      "fileSha256": "8723a94e5d847054909319e816e63b104b338901ebccf6f2944d334be04507bf",
+      "headerSha256": "622b7f15f4ca99db5c6f8699ec00094accecc7c41c7f967a2b66bab3136702e7",
+      "ranges": [
+        { "lines": "70-98", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFilterComposite", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/effects/colorfilters/SkComposeColorFilter.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 Google LLC",
+      "fileSha256": "9932a6274bc4a54ee7e66ce626cfd8ca943f891f260367177c9cd2518981a597",
+      "headerSha256": "85ff422ad7c33f6f9ba935e804196db0376f469dc396329d2b12172cdb055a52",
+      "ranges": [
+        { "lines": "29-35", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFilterComposite", "use": "port" }
       ]
     }
   ],

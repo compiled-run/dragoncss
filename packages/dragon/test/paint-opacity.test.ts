@@ -299,7 +299,7 @@ describe('opacity: a group native pre-composites', () => {
     expect(run(decorated)).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: g has a text-decoration-line, which reaches the text inside it$`))));
   });
   it('refuses on native an animation or transition on a member or a backdrop painter', () => {
-    const motion = (who: string) => `on ${who}, which a pre-composited opacity group draws or composites over: the group's composite is recomputed on layout and paint changes, not on animation frames (package PNT1-opacity-b)`;
+    const motion = (who: string) => `on ${who}, which a pre-composited opacity or filter group draws or composites over: the group's composite is recomputed on layout and paint changes, not on animation frames (package PNT1-opacity-b)`;
     const all = (c: ReturnType<typeof build>): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);
     expect(all(build('.g { opacity: 0.4; } .k { animation: k 1s infinite; } @keyframes k { from { height: 4px } to { height: 6px } }'))).toEqual([`an animation ${motion('k')}`, `an animation ${motion('k')}`]);
     expect(all(build('.g { opacity: 0.4; } .u { transition: height 1s; }'))).toEqual([`a transition ${motion('u')}`, `a transition ${motion('u')}`]);
