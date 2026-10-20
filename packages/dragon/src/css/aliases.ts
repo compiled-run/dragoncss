@@ -84,6 +84,6 @@ export function legacyAliasRefusal(alias: string, source: string): string | null
 }
 
 /** The value node an alias declaration stands for under its property, its own when the two parse alike, or a refusal. */
-export function legacyAliasValue(alias: string, value: CssNode, source: string): CssNode | { readonly refusal: string } {
-  return legacyBackgroundValue(alias, value, source) ?? value;
+export function legacyAliasValue(alias: string, value: CssNode, source: string, important: boolean): CssNode | { readonly refusal: string } {
+  return legacyBackgroundValue(alias, value, source, important) ?? value;
 }

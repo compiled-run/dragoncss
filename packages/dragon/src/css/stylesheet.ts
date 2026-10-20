@@ -182,7 +182,13 @@ function styleRule(prelude: CssNode, selectorText: string, block: CssNode, st: P
   const rule = (): Rule[] => (selectors === null ? [] : [{ sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) }]);
   const children = list(block, 'children');
   const conditional = (c: CssNode): boolean => c.type === 'Atrule' && ['media', 'supports'].includes(asciiLower(decodeName(String(c['name'])))) && c['block'] !== null && c['block'] !== undefined;
-  if (children.some((c) => c.type === 'Rule' || conditional(c) || (c.type === 'Raw' && String(c['value']).includes('{')))) {
+  // css-tree reads a nested rule whose selector starts with a type and a colon (span:first-child { }) as a declaration.
+  const braced = (c: CssNode): boolean => {
+    const s = spanOf(c, st.base);
+    return st.text.slice(s.start - st.base.start, s.end - st.base.start).includes('{');
+  };
+  const declarationRule = (c: CssNode): boolean => c.type === 'Declaration' && !String(c['property']).startsWith('--') && braced(c);
+  if (children.some((c) => c.type === 'Rule' || conditional(c) || declarationRule(c) || (c.type === 'Raw' && String(c['value']).includes('{')))) {
     const nested = parseNestingBlock(block, selectorText, selectors, st, blockDiagnostics, dropped ? [] : enclosed, conditions, layer, declarations);
     return dropped ? rule() : [...rule(), ...nested];
   }
@@ -415,7 +421,19 @@ function parseNestingBlock(block: CssNode, parentText: string, parent: readonly 
       continue;
     }
     // The selector list as & expands it; its nodes point at the nested prelude, which is what the author wrote.
-    const selectorNode = parse(selectorText, { context: 'selectorList', positions: true } as Parameters<typeof parse>[1]);
+    // A selector css-tree cannot read is invalid, and Chrome drops only that nested rule.
+    let selectorError: string | null = null;
+    let selectorNode: CssNode;
+    try {
+      selectorNode = parse(selectorText, { context: 'selectorList', positions: true, onParseError: (e) => (selectorError ??= e.message) } as Parameters<typeof parse>[1]);
+    } catch (e) {
+      selectorError = e instanceof Error ? e.message : String(e);
+      selectorNode = { type: 'SelectorList', children: null } as unknown as CssNode;
+    }
+    if (selectorError !== null) {
+      diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: where, message: `the nested rule "${preludeText.trim()}" has an invalid selector (${selectorError}), so Chrome drops it` }));
+      continue;
+    }
     if (selectorText.includes('\\')) canonicalizeEscapes(selectorNode);
     const at = { source: null, start: { offset: 0, line: 1, column: 1 }, end: { offset: preludeText.trimEnd().length, line: 1, column: 1 } };
     const relocate = (n: CssNode): void => {
@@ -549,7 +567,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   if (property === name) return parseResolved(d, property, base, sheetText, order, diagnostics);
   const valueSpan = spanOf(d['value'] as CssNode, base);
   const source = sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start);
-  const rewritten = legacyAliasValue(name, d['value'] as CssNode, source);
+  const rewritten = legacyAliasValue(name, d['value'] as CssNode, source, d['important'] !== false && d['important'] !== undefined);
   const legacy = 'refusal' in rewritten ? rewritten.refusal : legacyAliasRefusal(name, source);
   if (legacy !== null) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${name}: ${generate(d['value'] as CssNode)} is unsupported: ${legacy}`, manual: `Write ${property} instead of ${name}.` }));
@@ -675,7 +693,8 @@ function parseAll(valueNode: CssNode, span: Span, valueSpan: Span, text: string,
     return null;
   }
   const value: CssValue = { kind: 'keyword', value: keyword };
-  const longhands = LONGHANDS.filter((p) => p !== 'direction').map((p) => ({ property: p, value, explicit: true }));
+  // Chrome's all skips direction, unicode-bidi and -webkit-user-modify (Chrome 145, landing review of #480).
+  const longhands = LONGHANDS.filter((p) => p !== 'direction' && p !== '-webkit-user-modify').map((p) => ({ property: p, value, explicit: true }));
   const animation: AnimationDeclValue = { longhands: new Map((Object.keys(ANIM_INITIAL) as AnimLonghand[]).map((p): [AnimLonghand, AnimList] => [p, { kind: 'wide', keyword }])) };
   return { property: 'all', text, span, valueSpan, longhands, order, ...important, animation };
 }

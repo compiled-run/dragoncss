@@ -176,6 +176,9 @@ describe('legacy aliases parse as their property', () => {
     const value = (css: string): string[] => parse(css).declarations.flatMap((d) => d.longhands.map((l) => `${l.property}: ${JSON.stringify(l.value)}`));
     expect(value('-webkit-background-size: 20px')).toEqual(value('background-size: 20px 20px'));
     expect(value('-webkit-background-size: 50%')).toEqual(value('background-size: 50% 50%'));
+    // Chrome doubles a single size only when the value ends right after it.
+    expect(value('-webkit-background-size: 20px !important')).toEqual(value('background-size: 20px !important'));
+    expect(value('-webkit-background-size: 50% !important')).toEqual(value('background-size: 50% !important'));
     for (const v of ['30px 10px', 'auto', 'cover', 'contain', 'auto 10px', 'inherit']) expect(value(`-webkit-background-size: ${v}`), v).toEqual(value(`background-size: ${v}`));
     expect(value('-webkit-background-origin: padding')).toEqual(value('background-origin: padding-box'));
     expect(value('-webkit-background-origin: BORDER, content')).toEqual(value('background-origin: border-box, content-box'));

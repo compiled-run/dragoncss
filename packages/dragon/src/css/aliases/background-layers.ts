@@ -3,7 +3,8 @@
 // -webkit-background-size parse with legacy rules (UseAliasParsing), which legacyBackgroundValue rewrites into the standard value:
 // the origin keywords border, padding and content are the border-box, padding-box and content-box boxes, and one size names both
 // axes (probed in Chromium: -webkit-background-size: 10px computes 10px 10px, -webkit-background-origin: padding computes
-// padding-box). A var() is parsed after substitution with the standard rules (probed: var(--x) with --x: 7px computes 7px), and a
+// padding-box). Chrome doubles a single size only when the value ends right after it, so with !important it stays one size
+// (probed: -webkit-background-size: 20px !important computes 20px). A var() is parsed after substitution with the standard rules (probed: var(--x) with --x: 7px computes 7px), and a
 // size list is serialized unlike its layers, so both are refused rather than modelled.
 import type { CssNode, List } from 'css-tree';
 import * as cssTree from 'css-tree';
@@ -27,7 +28,7 @@ const withChildren = (value: CssNode, children: readonly CssNode[]): CssNode => 
  * The standard value a legacy -webkit-background-size or -webkit-background-origin value stands for, the value itself when the two
  * parse alike, or a refusal; null for any other alias.
  */
-export function legacyBackgroundValue(alias: string, value: CssNode, source: string): CssNode | { readonly refusal: string } | null {
+export function legacyBackgroundValue(alias: string, value: CssNode, source: string, important: boolean): CssNode | { readonly refusal: string } | null {
   if (alias !== '-webkit-background-size' && alias !== '-webkit-background-origin') return null;
   if (/var\(|env\(|\\/i.test(source)) return { refusal: `Chrome parses ${alias} with legacy rules but a substituted value with the standard ones, and Dragon models only a value it reads at parse time` };
   const children = value['children'] === null || value['children'] === undefined ? [] : (value['children'] as List<CssNode>).toArray();
@@ -40,6 +41,6 @@ export function legacyBackgroundValue(alias: string, value: CssNode, source: str
   const tokens = children.filter((n) => n.type !== 'WhiteSpace');
   if (tokens.some((n) => n.type === 'Operator')) return { refusal: 'Chrome parses a -webkit-background-size list with legacy rules Dragon does not model; write one size' };
   const only = tokens[0];
-  if (tokens.length !== 1 || only === undefined || (only.type === 'Identifier' && SIZE_KEYWORDS.has(asciiLower(String(only['name']))))) return value;
+  if (important || tokens.length !== 1 || only === undefined || (only.type === 'Identifier' && SIZE_KEYWORDS.has(asciiLower(String(only['name']))))) return value;
   return withChildren(value, [only, { type: 'WhiteSpace', value: ' ', loc: null } as CssNode, only]);
 }

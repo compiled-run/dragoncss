@@ -204,6 +204,19 @@ describe('css-nesting-1 block splitting', () => {
     const { c } = compile('.a { & { width: 1px; } div:not(.z)& { height: 5px; } --k: {x}; }');
     expect(value(c, 'height')).toBe('5px');
   });
+  it('a nested rule whose selector starts with a type and a colon is a rule, alone in its block', () => {
+    expect(value(compile('body { div:first-child { width: 9px; } }').c, 'width')).toBe('9px');
+    expect(value(compile('body { margin-left: 1px; div:not(.z) { width: 8px; } }').c, 'width')).toBe('8px');
+    expect(value(compile('body { div:is(.a) { width: 7px; } }').c, 'width')).toBe('7px');
+  });
+  it('a nested rule with an invalid selector is diagnosed and dropped alone, and the declarations around it are kept', () => {
+    for (const css of ['.a { margin-left: 3px; .b:: { margin-left: 9px } height: 4px; }', '.a { margin-left: 3px; .a) {} height: 4px; }', '.a { margin-left: 3px; .b] {} height: 4px; }', '.a { margin-left: 3px; "x" {} height: 4px; }', '.a { margin-left: 3px; 1px {} height: 4px; }', '.a { margin-left: 3px; @ { } .b {} height: 4px; }', '.a { margin-left: 3px; .b {} margin-left 1px {} height: 4px; }', '.a { margin-left: 3px; @media (min-width: 1px) { & { .b:: {} } } height: 4px; }', '.a { margin-left: 3px; & { & { .b:: {} } } height: 4px; }']) {
+      const diagnostics: Diagnostic[] = [];
+      const rules = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+      expect(diagnostics.map((d) => d.code), css).toEqual(['DRAGON_CSS_PARSE']);
+      expect(rules[0]?.declarations.map((d) => `${d.property}: ${d.text}`), css).toEqual(['margin-left: 3px', 'height: 4px']);
+    }
+  });
 });
 
 describe('css-nesting-1 conditional rules', () => {
