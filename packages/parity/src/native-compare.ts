@@ -10,6 +10,8 @@ import { GRADIENT_CHANNEL_DELTA } from './allowances/gradient.ts';
 import { SHADOW_CHANNEL_DELTA } from './allowances/shadow.ts';
 import type { DumpEdges, DumpFrame, DumpLine, DumpNode, DumpSample, JsonValue, NativeDump } from './native-dump.ts';
 import { breakLineGroups, frameOf, REFERENCE_LANE } from './native-dump.ts';
+import { DUMP_FAULTS } from './dump-faults.ts';
+import type { DumpFault } from './dump-faults.ts';
 import type { SamplePoint, SampleRule } from './samples.ts';
 import { GLYPH_EDGE_RULE, isScanlineRule, ruleKind } from './samples.ts';
 
@@ -417,9 +419,8 @@ export function referenceDump(c: ReferenceCase, faults: ReferenceFaults = NO_REF
 
 // ---------------------------------------------------------------- planted dump faults
 
-/** The dump faults the checks must catch, the same on every native target (native-strategy.md 3.1, 3.3; T009 P3 item 6). */
-export const DUMP_FAULTS = ['edge-plus-2-device-px', 'edge-plus-1-device-px', 'applied-changed', 'applied-missing', 'channel-delta-1', 'missing-node', 'snap-disabled', 'break-shifted'] as const;
-export type DumpFault = (typeof DUMP_FAULTS)[number];
+export { DUMP_FAULTS };
+export type { DumpFault };
 
 // ---------------------------------------------------------------- dump faults on real device dumps (P5)
 
