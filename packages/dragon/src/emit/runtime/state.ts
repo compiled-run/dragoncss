@@ -669,7 +669,7 @@ class DragonStateMachine(
    * MQ-R2 (T067 R9): new device readings: the band of the root on them, through env#band's delta when it moves (whose setter lays
    * out once); the same band needs no layout, as the viewport has not changed.
    */
-  fun setReadings(r: DragonReadings) {
+  fun applyReadings(r: DragonReadings) {
     readings = r
     val b = band ?: return
     if (scale <= 0.0) return
@@ -747,18 +747,18 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
       drive()
     }
     observer = DragonReadingsObserver(stage.context) {
-      if (!injected) machine.setReadings(DragonReadings.platform(stage.context))
+      if (!injected) machine.applyReadings(DragonReadings.platform(stage.context))
     }
     // The colour scheme: the configuration the system hands the root when the night mode changes in place.
     media.onConfiguration = { c ->
-      if (!injected) machine.setReadings(DragonReadings.platform(stage.context, c))
+      if (!injected) machine.applyReadings(DragonReadings.platform(stage.context, c))
     }
   }
 
   /** MQ-R2: a script's env step: the readings it names, exactly, from now on. */
   fun inject(r: DragonReadings) {
     injected = true
-    machine.setReadings(r)
+    machine.applyReadings(r)
   }
 
   /**
