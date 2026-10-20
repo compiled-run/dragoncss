@@ -30,6 +30,7 @@ import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
 import { MASK_ANIMATION } from './animation-kinds/mask.ts';
+import { MULTICOL_ANIMATION } from './animation-kinds/multicol.ts';
 import { OUTLINE_ANIMATION } from './animation-kinds/outline.ts';
 import { OVERFLOW_ANIMATION } from './animation-kinds/overflow.ts';
 import { OVERSCROLL_ANIMATION } from './animation-kinds/overscroll.ts';
@@ -89,6 +90,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,
   ...MASK_ANIMATION,
+  ...MULTICOL_ANIMATION,
   ...OUTLINE_ANIMATION,
   ...OVERFLOW_ANIMATION,
   ...OVERSCROLL_ANIMATION,
