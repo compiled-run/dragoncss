@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 16px; }
+.c { display: contents; }
+.box { width: 200px; padding: 4px; background: #0a0; }
+.row { display: flex; width: 240px; }
+.row > * { width: 40px; height: 20px; background: #00a; }
+.grid { display: grid; grid-template-columns: 50px 50px 50px; width: 150px; }
+.grid div { height: 10px; background: #a00; }
+.t { display: flex; width: 240px; }
+.g::before { content: "b"; }
+.g::after { content: "a"; display: block; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="box">xx <span data-dragon-id="a1" class="c">yy <b data-dragon-id="a2">zz</b></span> ww</div>
+<div data-dragon-id="b" class="box"><div data-dragon-id="b1" class="c"><div data-dragon-id="b2">one</div><div data-dragon-id="b3">two</div></div></div>
+<div data-dragon-id="f" class="row"><div data-dragon-id="f1" class="c"><div data-dragon-id="f2"></div><div data-dragon-id="f3"></div></div><div data-dragon-id="f4"></div></div>
+<div data-dragon-id="n" class="box"><div data-dragon-id="n1" class="c"><div data-dragon-id="n2" class="c">deep</div></div></div>
+<div data-dragon-id="g" class="grid"><div data-dragon-id="g1"></div><div data-dragon-id="g2" class="c"><div data-dragon-id="g3"></div><div data-dragon-id="g4"></div></div><div data-dragon-id="g5"></div></div>
+<div data-dragon-id="t" class="t"><span data-dragon-id="t1" class="c">loose <b data-dragon-id="t2">bold</b></span><div data-dragon-id="t3">x</div></div>
+<div data-dragon-id="p" class="box">pp <span data-dragon-id="p1" class="c g">qq</span> rr</div>
+</body>
+</html>

@@ -24,7 +24,7 @@ import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { checkTranslucentOutlines } from './analysis/paint-values/outline.ts';
 import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
-import { checkGeneratedIdentity, generatedRuleRefusals } from './analysis/generated.ts';
+import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
@@ -887,7 +887,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
-    // T154: outside the parity lanes, native refuses an author user-select but none (P6c); the lanes run it to prove its web rows.
+    // T154: outside the parity lanes, native refuses an author user-select that changes what Chrome selects beyond none (P6c); the
+    // lanes run it to prove its web rows.
     if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
@@ -1229,6 +1230,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
     diagnostics.push(...interactionRefusals(rules));
     diagnostics.push(...generatedRuleRefusals(rules));
+    diagnostics.push(...markerRuleRefusals(rules));
     const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else diagnostics.push(...nativeRefusals);
@@ -1279,9 +1281,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       // GEN-a R12: a generated box and its text are the same in every reachable state, interaction state and band.
       checkGeneratedIdentity(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), diagnostics);
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
-      // REPL-a: the images every band's resolved cases reference, read once.
+      // REPL-a: the images every band's resolved cases and their interaction states reference (img src, background url()), read once.
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
-      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]))), config.images, assetBytes, diagnostics);
+      const sourceText = new Map(input.snapshot.sources.map((s) => [s.ref.uri, s.text] as const));
+      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       // MQ-R1: native runs every band, so every other band's analysis reports too (each diagnostic once).
@@ -1515,7 +1518,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const webBands = options.faults.mediaFractionalBandDropped ? bandCases.filter((r, k) => k === 0 || whole(r.band)) : bandCases;
       const [base, ...extra] = webBands.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement, interaction: webInteraction(c) })) }));
       const first = base as { condition: string; cases: { key: string; root: ResolvedElement; interaction?: WebInteraction | undefined }[] };
-      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated, options.faults.webkitBoxEmittedAsFlowRoot);
+      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated, options.faults.webkitBoxEmittedAsFlowRoot, images === null ? new Map() : images.webUrls);
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };
     }
   }

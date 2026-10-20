@@ -1402,10 +1402,12 @@
       "fileSha256": "53ad34a5a950124f9fae8e9511a1ad9220e819dbf27a926888e4d32bb81632ea",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
-        { "lines": "453-472", "symbol": "ShouldBreakShapingBeforeText", "source": "located" }
+        { "lines": "453-472", "symbol": "ShouldBreakShapingBeforeText", "source": "located" },
+        { "lines": "390-394", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/inline.ts", "symbol": "checkShapedText", "use": "port" }
+        { "file": "packages/layout/src/inline.ts", "symbol": "checkShapedText", "use": "port" },
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "reference" }
       ]
     },
     {
@@ -2065,7 +2067,9 @@
       "dragon": [
         { "file": "packages/dragon/src/emit/paint/text-decoration.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/lower/paint/text-decoration.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/marker.ts", "symbol": "symbolPaintRect", "use": "port" },
+        { "file": "packages/layout/src/paint-marker.ts", "symbol": "symbolCoverage", "use": "port" }
       ]
     },
     {
@@ -3551,6 +3555,54 @@
       ]
     },
     {
+      "upstream": "ui/base/pointer/pointer_device.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2013 The Chromium Authors",
+      "fileSha256": "bcb3b2d78aff779aa9f3f1fa11caad08a5d9f7515c9a9cf7303ca225dcf286c5",
+      "headerSha256": "5bde2a7773d1626e4d2987f3588e7e04db2a6628be0fd28c87de5d18607dd8ca",
+      "ranges": [
+        { "lines": "47-57", "symbol": "GetPrimaryPointerType", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-band.ts", "symbol": "BandFaults", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "ui/base/pointer/pointer_device.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "e98e06800b77e7709fb3883b6b6ea4edb50d9ae26769a6907f1b71f430009df6",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "50-68", "symbol": "PointerType", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/java/PointerRule.java", "symbol": "PointerRule", "use": "port" },
+        { "file": "packages/parity/src/resize-capture.ts", "symbol": "POINTER_TYPE", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/base/pointer/pointer_device_android.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2013 The Chromium Authors",
+      "fileSha256": "b007c59a5055e5a06f945f0994c424e03857bd901fdcb5fc6c3eeaf1dc4c4458",
+      "headerSha256": "5bde2a7773d1626e4d2987f3588e7e04db2a6628be0fd28c87de5d18607dd8ca",
+      "ranges": [
+        { "lines": "35-55", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-band.ts", "symbol": null, "use": "port" },
+        { "file": "packages/parity/java/PointerRule.java", "symbol": null, "use": "port" },
+        { "file": "packages/parity/src/pointer-vectors.ts", "symbol": "pointerVectorsJson", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "ui/gfx/animation/keyframe/timing_function.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -3737,13 +3789,44 @@
       "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
       "ranges": [
         { "lines": "159-215", "symbol": "ListMarker::MarkerText", "source": "located" },
-        { "lines": "407-409", "symbol": "ListMarker::InlineMarginsForOutside", "source": "located" }
+        { "lines": "407-409", "symbol": "ListMarker::InlineMarginsForOutside", "source": "located" },
+        { "lines": "345-361", "symbol": "ListMarker::WidthOfSymbol", "source": "located" },
+        { "lines": "394-432", "symbol": "ListMarker::InlineMarginsForOutside", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/parity/src/pseudo-capture.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/marker.ts", "symbol": "symbolWidthPx", "use": "port" },
+        { "file": "packages/layout/src/marker.ts", "symbol": "symbolMarginStartPx", "use": "port" },
+        { "file": "packages/layout/src/marker.ts", "symbol": "MARKER_PADDING_PX", "use": "port" },
+        { "file": "packages/layout/src/input.ts", "symbol": "MarkerSymbol", "use": "reference" },
+        { "file": "packages/layout/test/marker.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "listMarkerOf", "use": "reference" },
         { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "COUNTER_STYLES", "use": "reference" },
         { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "markerText", "use": "port" },
-        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ListItemMarker", "use": "reference" }
+        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ListItemMarker", "use": "reference" },
+        { "file": "packages/layout/src/input.ts", "symbol": "ListMarker", "use": "reference" },
+        { "file": "packages/layout/src/marker.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/marker.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/list/unpositioned_list_marker.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "9f8cb9c2080c34aad9f2e84b414c9fb2a3a8d2289d8c3ddd1c24e10b6df7e2de",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "28-37", "symbol": "UnpositionedListMarker::InlineOffset", "source": "located" },
+        { "lines": "81-123", "symbol": "UnpositionedListMarker::AddToBox", "source": "located" },
+        { "lines": "125-159", "symbol": "UnpositionedListMarker::AddToBoxWithoutLineBoxes", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/marker.ts", "symbol": "markerX", "use": "port" },
+        { "file": "packages/layout/src/marker.ts", "symbol": "alignMarker", "use": "port" },
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutContents", "use": "port" },
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "port" }
       ]
     },
     {
@@ -3891,9 +3974,11 @@
         { "lines": "10996-11003", "symbol": "WebkitBorderImage::ApplyValue", "source": "located" },
         { "lines": "7287-7294", "symbol": "ObjectPosition::ParseSingleValue", "source": "located" },
         { "lines": "8293-8316", "symbol": "Perspective::ParseSingleValue", "source": "located" },
-        { "lines": "8329-8336", "symbol": "PerspectiveOrigin::ParseSingleValue", "source": "located" }
+        { "lines": "8329-8336", "symbol": "PerspectiveOrigin::ParseSingleValue", "source": "located" },
+        { "lines": "9180-9207", "symbol": "ScrollSnapType::ParseSingleValue", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/css/properties/scroll-snap.ts", "symbol": "parseScrollSnapType", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "parseListsValue", "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" },

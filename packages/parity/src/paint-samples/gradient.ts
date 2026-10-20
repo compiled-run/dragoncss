@@ -4,7 +4,7 @@
 // equals Chrome at every such pixel (bg2-reference.test.ts), and the device runs the same code translated, so a device pixel
 // that differs is a device fault. backgroundPlans is the same plan the device builds, for the host reference test. Both keep to the
 // pixels the background alone decides (backgroundOnly): the raster runs under borders and past rounded corners, where the border
-// stage and the rounded clip decide the pixel.
+// stage and the rounded clip decide the pixel. A url() layer's samples are bg-image.ts's (BG2-u).
 import type { BackgroundLayer, BackgroundPaint, BackgroundPlan, GradientFaults, GradientImage, LayoutBox, LayoutRect } from '@dragon/layout';
 import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, zoomInput } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
@@ -13,6 +13,7 @@ import { REFERENCE_PLATFORM } from '../platform.ts';
 import { glyphLines } from '../pixel-reference.ts';
 import type { GlyphBox, SampleBox, SamplePoint } from '../samples.ts';
 import { glyphSpanAt, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
+import { keepsTiles, tilePoints } from './bg-image.ts';
 import { boxRadii, clearInside, nearArc, rectArcs } from './radius.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
 
@@ -233,4 +234,5 @@ export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
   return out;
 }
 
-export const GRADIENT_SAMPLES: PaintSamples = { name: 'gradient', keep: () => true, points: gradientPoints };
+/** The gradient module's samples: the gradient points, and a url() layer's tile points and base-point drops (bg-image.ts, BG2-u). */
+export const GRADIENT_SAMPLES: PaintSamples = { name: 'gradient', keep: keepsTiles, points: (ctx) => [...gradientPoints(ctx), ...tilePoints(ctx)] };

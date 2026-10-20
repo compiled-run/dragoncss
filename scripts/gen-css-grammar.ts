@@ -14,6 +14,7 @@ import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/trans
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 import { MASK_LONGHANDS, MASK_SHORTHANDS } from '../packages/dragon/src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS, BORDER_IMAGE_SHORTHANDS } from '../packages/dragon/src/css/properties/border-image.ts';
+import { FRAGMENTATION_LONGHANDS, FRAGMENTATION_SHORTHANDS } from '../packages/dragon/src/css/properties/fragmentation.ts';
 import { OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS } from '../packages/dragon/src/css/properties/overscroll.ts';
 import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../packages/dragon/src/css/properties/scroll-snap.ts';
 import { CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS } from '../packages/dragon/src/css/properties/containment.ts';
@@ -35,7 +36,7 @@ const css = JSON.parse(readFileSync(join(webrefDir, 'css.json'), 'utf8')) as Web
 
 /** The initial-only families' longhands and shorthands. */
 const INITIAL_ONLY_PROPERTIES = [
-  ...OVERSCROLL_LONGHANDS, ...OVERSCROLL_SHORTHANDS, ...SCROLL_SNAP_LONGHANDS, ...SCROLL_SNAP_SHORTHANDS,
+  ...OVERSCROLL_LONGHANDS, ...OVERSCROLL_SHORTHANDS,
   ...CONTAINMENT_LONGHANDS, ...CONTAINMENT_SHORTHANDS, ...CONTAINER_QUERY_LONGHANDS, ...CONTAINER_QUERY_SHORTHANDS,
 ];
 
@@ -151,6 +152,8 @@ const SUBSET = [
   ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
   // The initial-only families (css/properties/initial-only.ts), after the mask family, as LONGHANDS registers them.
   ...INITIAL_ONLY_PROPERTIES,
+  // SCROLL-SNAP: the scroll-padding, scroll-margin and scroll-snap longhands and shorthands (css-scroll-snap-1 §4-§6).
+  ...SCROLL_SNAP_LONGHANDS, ...SCROLL_SNAP_SHORTHANDS,
   // FORM-a: appearance (css-ui-4 §7.1), after the mask family, as LONGHANDS registers it.
   'appearance',
   // FORM-b: caret-color and accent-color (css-ui-4 §6.2, §6.3), after appearance, as LONGHANDS registers them.
@@ -163,6 +166,8 @@ const SUBSET = [
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
   // color-scheme (css-color-adjust-1 §2.1), after the counters family, as LONGHANDS registers it.
   'color-scheme',
+  // css-break-3: the break properties, orphans and widows, then the legacy break shorthands, after the counters, as LONGHANDS registers them.
+  ...FRAGMENTATION_LONGHANDS, ...FRAGMENTATION_SHORTHANDS,
 ] as const;
 
 /**
@@ -212,11 +217,15 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // refused, never dropped where Chrome would apply it. webref has no -webkit-border-image. Pinned against Chrome by
   // packages/parity/test/border-image-parse.test.ts.
   ...Object.fromEntries([...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS].map((p) => [p, '<any-value>'])),
-  // The overscroll, scroll-snap, containment and container-query families: Dragon accepts their initial values alone and refuses
-  // every other value where it applies (analysis/scroll-containment.ts), so the grammar takes any value, and a value webref's grammar
-  // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
-  // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
+  // The overscroll, containment and container-query families: Dragon accepts their initial values alone and refuses every other
+  // value where it applies (analysis/scroll-containment.ts), so the grammar takes any value, and a value webref's grammar misses (or
+  // lists though Chrome 145 lacks it, as overscroll-behavior: chain) is refused, never dropped where Chrome would apply it. Pinned
+  // against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
+  // Blink ScrollSnapType::ParseSingleValue (longhands_custom.cc) takes no pair axis, which webref's css-scroll-snap-2 grammar lists.
+  // The other scroll-snap, scroll-padding and scroll-margin grammars are webref's, which are Chrome 145's
+  // (packages/parity/test/scroll-containment-parse.test.ts).
+  'scroll-snap-type': 'none | [ x | y | block | inline | both ] [ mandatory | proximity ]?',
   // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
   // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
   // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.
@@ -320,6 +329,10 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'counter-increment': '[ <custom-ident> <integer>? ]+ | none',
   'counter-set': '[ <custom-ident> <integer>? ]+ | none',
   quotes: 'auto | none | [ <string> <string> ]+',
+  // Chrome 145 parses the break properties and their legacy shorthands as fewer keywords than css-break-3 lists (no always, all or
+  // region values), and orphans and widows as a positive integer with calc() rounded (properties/fragmentation.ts), so the grammar
+  // takes any value and the parser decides. Pinned by packages/parity/test/fragmentation-parse.test.ts.
+  ...Object.fromEntries([...FRAGMENTATION_LONGHANDS, ...FRAGMENTATION_SHORTHANDS].map((p) => [p, '<any-value>'])),
 };
 
 /**

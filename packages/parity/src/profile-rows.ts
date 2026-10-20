@@ -4,7 +4,7 @@ import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
 import { MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { LanesFile } from './lanes.ts';
 import { carryDeviceLanes, hostLaneStale, ranIds, readLanesFile, staleLanes } from './lanes-file.ts';
 import { repoPath } from './paths.ts';
@@ -115,9 +115,23 @@ export function deriveMediaRows(target: ProfileTarget, passing: readonly { reado
     const proof: Proof = target === 'web'
       ? { aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: MEDIA_CONTEXT, cases: ids }
       : { aspect: 'layout', lane: 'linux-dragon-layout', valueSubset, context: MEDIA_CONTEXT, cases: ids };
-    return { feature, context: MEDIA_CONTEXT, status: 'exact', proofs: [proof] };
+    return { feature, context: MEDIA_CONTEXT, status: MEDIA_CAVEATS[target].includes(feature) ? 'caveat' : 'exact', proofs: [proof] };
   });
 }
+
+/**
+ * MQ-R2 (T067 R9): the media rows a target answers with a caveat. iOS reports reduced motion as UIAccessibility's setting, whose
+ * simulator toggle (device-env) has no passing device run yet, so the row stays caveat (R9); and an iPad's pointer and hover readings
+ * (a touch screen with a mouse) have no Chrome on iOS to match; any-pointer also leaves out a paired Apple Pencil, which WebKit
+ * counts (hasStylusDevice) and the iOS reading does not. Every other row is exact: Android's readings are Chromium's own rules
+ * (vectors and device-env), and the colour scheme is one bit both platforms report and both can switch (R9: exact both, by the lane
+ * injection and device-env's scheme phase, simctl ui appearance and cmd uimode night).
+ */
+export const MEDIA_CAVEATS: { readonly [T in ProfileTarget]: readonly string[] } = {
+  web: [],
+  ios: ['media-feature:prefers-reduced-motion', 'media-feature:pointer', 'media-feature:any-pointer', 'media-feature:hover', 'media-feature:any-hover'],
+  android: [],
+};
 
 /** The PROFILE_NOTES key of a row's note, written by reference so the generated profile never restates the fact. */
 function noteKey(r: ProfileRow): ProfileNote | null {
@@ -311,8 +325,8 @@ export function checkedFailures(v: unknown, what: string): LaneFailure[] {
     };
     if (!isObject(f)) bad('not an object');
     const o = f as Record<string, unknown>;
-    // allRunFailures writes every device lane's failures, the script, hit and frame sample lanes' too.
-    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE, TRACE_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
+    // allRunFailures writes every device lane's failures, the script, hit, frame sample, trace and rotation lanes' too.
+    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE, TRACE_LANE, ENV_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
     if (typeof o['case'] !== 'string' || o['case'] === '') bad('case is not a non-empty string');
     if (typeof o['dpr'] !== 'number' || !(o['dpr'] > 0)) bad('dpr is not a positive number');
     if (o['node'] !== null && typeof o['node'] !== 'string') bad('node is neither null nor a string');

@@ -13,6 +13,10 @@ body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --u: no
 .fi { width: 60px; height: 20px; user-select: none; background-color: rgb(20, 160, 80); }
 .rel { position: relative; width: 60px; height: 20px; user-select: none; }
 .abs { position: absolute; left: 4px; top: 2px; width: 20px; height: 10px; user-select: none; }
+.au { user-select: auto; width: 80px; height: 10px; }
+.tx { user-select: Text; width: 80px; height: 10px; }
+.kida { width: 60px; height: 10px; user-select: auto; background-color: rgb(20, 160, 80); }
+.wt { -webkit-user-select: text; width: 80px; height: 10px; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -22,5 +26,8 @@ body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --u: no
 <div data-dragon-id="v" class="v">XX</div>
 <div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXX</div><div data-dragon-id="f2" class="fi">X</div></div>
 <div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs">X</div></div>
+<div data-dragon-id="au" class="au">XX</div>
+<div data-dragon-id="tx" class="tx">XXX<div data-dragon-id="tk" class="kida">X</div></div>
+<div data-dragon-id="wt" class="wt">X</div>
 </body>
 </html>

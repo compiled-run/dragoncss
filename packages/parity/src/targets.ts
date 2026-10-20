@@ -9,8 +9,11 @@ import { animSampleIds } from './anim-samples.ts';
 import { DUMP_FAULTS } from './dump-faults.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
+import { directionSuffix, environmentsOf, FIXTURES } from './fixtures.ts';
+import { RESIZE_SCRIPTS } from './fixture-groups/media-runtime.ts';
 import { shapedCaseIds } from './text-latin-run.ts';
 import { traceScriptIds } from './trace-lane.ts';
+import { ENV_SCRIPTS, MEDIA_ENVIRONMENT_FIXTURES } from './fixture-groups/media-environment.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
@@ -18,7 +21,9 @@ export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-fr
   // ANIM-b1 3b (T065 R18): every frame sample's dump.
   'device-anim',
   // SELD-R2 (T064 R14): the interaction scripts' traces, through the entry points (and on Android through MotionEvents too).
-  'device-traces'] as const;
+  'device-traces',
+  // MQ-R1 (notes/T067 R7 (c)): one real rotation per device.
+  'device-env'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -109,6 +114,10 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'animator', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/animator/cases.json').cases.length },
     // SELD-R2 (T064 R12): the interaction runtime's scripts, built in code (packages/translate/src/corpus-interaction.ts).
     { corpus: 'p1', suite: 'interaction', cases: p1.cases['interaction'] ?? 0 },
+    // MQ-R1 (T067 R4): one band case per media fixture band table (packages/layout/rt-vectors/band/cases.json).
+    { corpus: 'p1', suite: 'band', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/band/cases.json').cases.length },
+    // MQ-R2 (T067 R9): one pointer case per input-device source set (packages/layout/rt-vectors/pointer/cases.json).
+    { corpus: 'p1', suite: 'pointer', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/pointer/cases.json').cases.length },
     // A shaped case's vectors are the text-latin suite's (TXT1a-2), so engine-dpr counts the plain ones.
     { corpus: 'extended', suite: 'engine-dpr', cases: vectorCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
@@ -127,13 +136,33 @@ export function corpusSuites(): readonly CorpusSuite[] {
   ];
 }
 
+/**
+ * MQ-R1 device-env (device-env.ts): the rotation's three phases of the fill-the-stage fixture, in the order one launch runs them.
+ * MQ-R2 (T067 R9): then two more on both platforms, the OS's reduced-motion setting turned on and back off while the app holds
+ * (Android's animator duration scale over adb; iOS's Reduce Motion, the simulator's com.apple.Accessibility default and its
+ * change notification), and two with the OS's dark appearance (Android's night mode, cmd uimode night; iOS's simctl ui appearance).
+ */
+export function envCaseIds(_target: NativeTarget): readonly string[] {
+  return ['portrait', 'landscape', 'back', 'motion', 'motion-back', 'scheme', 'scheme-back'].map((p) => `mqr-rotate~env~${p}`);
+}
+
+export function resizeScriptIds(): readonly string[] {
+  // MQ-R2: then the media-environment scripts, whose fixtures run only as scripts.
+  return [...RESIZE_SCRIPTS, ...ENV_SCRIPTS].flatMap((s) => {
+    const spec = [...FIXTURES, ...MEDIA_ENVIRONMENT_FIXTURES].find((f) => f.id === s.fixture);
+    if (spec === undefined) throw new Error(`resize script ${s.fixture}: no such fixture`);
+    return environmentsOf(spec).flatMap((env) => Array.from({ length: s.steps.length + 1 }, (_, k) => `${s.fixture}${directionSuffix(env.direction)}~resize${k}`));
+  });
+}
+
 let scripts: readonly string[] | null = null;
 /**
  * Every case script id (state-cases.ts deriveScripts), from the layout cases alone: one per case of a tree fixture with free states,
  * "<fixture>~script<k>" with k the case's assignment index and "-rtl" for right-to-left.
  */
 export function stateScriptIds(): readonly string[] {
-  if (scripts === null) scripts = layoutCases().flatMap((f) => f.cases.filter((c) => f.spec.format === 'tree' && c.assignment.length > 0).map((c) => `${f.spec.id}~script${c.index}${c.environment.direction === 'rtl' ? '-rtl' : ''}`));
+  // MQ-R1: then every resize prefix script (resize-scripts.ts), after the state groups' scripts as the hosts list them.
+  if (scripts === null) scripts = [...layoutCases().flatMap((f) => f.cases.filter((c) => f.spec.format === 'tree' && c.assignment.length > 0).map((c) => `${f.spec.id}~script${c.index}${c.environment.direction === 'rtl' ? '-rtl' : ''}`)), ...resizeScriptIds()];
   return scripts;
 }
 
@@ -155,6 +184,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
     const vectors = vectorCaseIds();
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids: vectors }, ...DPRS.map((d) => dprSet(d, vectors))], corpora: corpusSuites() };
   }
+  if (lane === 'device-env') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, envCaseIds(target))), corpora: [] };
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   if (lane === 'device-anim') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, animSampleIds(target))), corpora: [] };
   // TXT1a-2: a shaped case is not a device case until phase R gives the device runtime its shaper (the device measures only Ahem).

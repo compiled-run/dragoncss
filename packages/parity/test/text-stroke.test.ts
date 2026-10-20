@@ -19,10 +19,12 @@ import { PROJECT_ID } from '../src/fixture-reader.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import type { RgbaImage } from '../src/native-compare.ts';
+import { readSamples } from '../src/native-compare.ts';
 import { expectedEngine, NATIVE_CONFIG } from '../src/native-host.ts';
-import { decodePng, glyphLines, glyphStrokes, rasterSize } from '../src/pixel-reference.ts';
+import { checkCasePixels, committedPixels, decodePng, devicePoints, glyphLines, glyphStrokes, rasterSize } from '../src/pixel-reference.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import type { Box } from './paint-model.ts';
+import { isScanlineRule } from '../src/samples.ts';
 import { boxes, modelAt } from './paint-model.ts';
 
 const CASE = 'text-stroke-ahem';
@@ -231,6 +233,86 @@ describe('TXT-FX: text-stroke-ahem\'s stroked glyphs equal Chrome\'s pixels', ()
         }
       }
       expect(problems).toEqual([]);
+    }, 600_000);
+  }
+});
+
+/**
+ * What the device draws at a DPR, as an image: each glyph's ring in its stroke colour over every fill (Chrome and both views fill the
+ * run, then stroke it), each box in its fill, the paint model's page elsewhere. Pixels within a device px of a glyph's ring are
+ * averaged over a 4 x 4 grid, so an edge sits where the model puts it; the page's boxes are snapped, so its pixels are read at the centre.
+ */
+function drawn(p: NativeProgram, dpr: number): RgbaImage {
+  const { width, height } = rasterSize(ENVIRONMENT.viewport, dpr);
+  const glyphs = inks(p, dpr);
+  const page = boxes(p, ENVIRONMENT.viewport, dpr);
+  const at = (x: number, y: number): Rgb | null => {
+    const ring = glyphs.findLast((g) => g.stroke !== null && x >= g.outer.left && x < g.outer.right && y >= g.outer.top && y < g.outer.bottom && !(x >= g.inner.left && x < g.inner.right && y >= g.inner.top && y < g.inner.bottom));
+    if (ring !== undefined) return ring.stroke;
+    const g = glyphs.findLast((k) => x >= k.box.left && x < k.box.right && y >= k.box.top && y < k.box.bottom);
+    return g === undefined ? null : g.fill;
+  };
+  const data = new Uint8Array(width * height * 4);
+  const S = 4;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const m = modelAt(page, x, y);
+      const bg: Rgb = [m[0], m[1], m[2]];
+      let rgb: Rgb;
+      if (!glyphs.some((g) => meets(x, y, g.outer, 1))) rgb = bg;
+      else {
+        const sum = [0, 0, 0];
+        for (let sy = 0; sy < S; sy++) for (let sx = 0; sx < S; sx++) {
+          const c = at(x + (sx + 0.5) / S, y + (sy + 0.5) / S) ?? bg;
+          for (let k = 0; k < 3; k++) sum[k] = (sum[k] as number) + (c[k] as number);
+        }
+        rgb = [Math.round((sum[0] as number) / (S * S)), Math.round((sum[1] as number) / (S * S)), Math.round((sum[2] as number) / (S * S))];
+      }
+      data.set([rgb[0], rgb[1], rgb[2], 255], (y * width + x) * 4);
+    }
+  }
+  return { width, height, data };
+}
+
+/**
+ * The device-pixels failures batch 3's device lanes recorded on both platforms at DPR 2 (#470, cec4fbea): edge rescues of the cur and
+ * sp spans that sat beside a ring's inner edge, where the stroke meets the fill, because the sample clearance knew only the ring's
+ * outer edge. Each is a pixel the stroke covers, but the anti-aliasing at that edge rounds differently in Chrome.
+ */
+const RECORDED: { readonly [id: string]: readonly (readonly [number, number])[] } = {
+  'text-stroke-ahem': [[429, 472], [274, 472], [685, 472], [530, 472]],
+  'text-stroke-ahem-rtl': [[493, 472], [338, 472], [237, 472], [82, 472]],
+};
+
+describe('TXT-FX: the device points of text-stroke-ahem pass check (c) against the committed Chrome PNGs', () => {
+  if (SPEC === undefined) return;
+  for (const c of casesOf(SPEC, fixtureInput(SPEC))) {
+    it(`${c.id}: the drawn model passes on both backends' device points at ${DPRS.join(', ')}, none of which is beside a ring's inner edge`, () => {
+      const compiled = compile(SPEC, c.environment.direction, NO_FAULTS);
+      const p = nativePrograms(compiled, c.assignment);
+      if (p.kind !== 'ready') throw new Error(`${c.id}: ${p.reason}`);
+      for (const prog of [p.programs.uikit, p.programs['android-views']]) {
+        for (const dpr of DPRS) {
+          const chrome = committedPixels(c.id, dpr);
+          if (chrome === null) throw new Error(`${c.id}: no committed Chrome PNG at DPR ${dpr}`);
+          const size = rasterSize(ENVIRONMENT.viewport, dpr);
+          const points = devicePoints(prog, ENVIRONMENT.viewport, dpr);
+          const model = drawn(prog, dpr);
+          const r = checkCasePixels(readSamples(model, points), points, chrome, size, size);
+          expect(r.problems, `${prog.backend} DPR ${dpr}`).toEqual([]);
+          expect(r.compared, `${prog.backend} DPR ${dpr}`).toBeGreaterThan(200);
+          // Every colour point is at least two device px from each stroked glyph's inner edge (the ring's other edge). A glyph-edge
+          // scanline is read as one edge position across the ring's outer edge, not by colour, so it may reach a narrow ring's inside.
+          const rings = inks(prog, dpr).filter((g) => g.stroke !== null);
+          expect(points.filter((q) => !isScanlineRule(q.rule) && rings.some((g) => meets(q.x, q.y, g.inner, 2) && !inside(q.x, q.y, g.inner, 2))).map((q) => `${q.rule}@${q.x},${q.y}`), `${prog.backend} DPR ${dpr}`).toEqual([]);
+          if (dpr !== 2) continue;
+          // The recorded failures: the model (what the devices drew) and Chrome differ there, and no point samples them any more.
+          for (const [x, y] of RECORDED[c.id] ?? []) {
+            expect(points.some((q) => q.x === x && q.y === y), `${x},${y}`).toBe(false);
+            expect(same(rgbAt(model, x, y), rgbAt(chrome, x, y)), `${x},${y}`).toBe(false);
+          }
+        }
+      }
     }, 600_000);
   }
 });

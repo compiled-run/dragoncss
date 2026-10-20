@@ -8,6 +8,7 @@ import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf, isMathValue } from '../css/values.ts';
+import { isPercentMath, mathContextFor, parseMath } from '../css/math.ts';
 import type { CssValue, FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
@@ -52,7 +53,7 @@ import { checkTransformExtra } from './transform-extra.ts';
 import { checkZoom } from './zoom.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
-import { checkScrollContainment } from './scroll-containment.ts';
+import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
@@ -84,6 +85,7 @@ import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts'
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, generatedPseudoOf, refusedGenerationOf, valueToString } from './resolve.ts';
 import { serializeColor } from '../css/color.ts';
+import { markerTypeOf } from './markers.ts';
 import { glyphFill, usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
@@ -215,6 +217,10 @@ function checkPercentRelative(el: ResolvedElement, where: string | null, targets
 
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
 const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
+/** css-display-3 §2.5: a display: contents element generates no box; its children take its place in its parent's. */
+const isContents = (el: ResolvedElement): boolean => displayKeyword(el) === 'contents';
+/** The children that take part in el's box: el's children, with each display: contents child replaced by its own (recursively). */
+const boxKids = (el: ResolvedElement): (ResolvedElement | ResolvedText)[] => el.children.flatMap((c) => (c.kind === 'element' && isContents(c) ? boxKids(c) : [c]));
 /** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box (INL2a, G-INL). */
 const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex' || displayKeyword(el) === 'inline-grid';
 
@@ -233,7 +239,7 @@ type IfcItem = { readonly kind: 'text'; readonly text: ResolvedText } | { readon
 function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElement, box: ResolvedElement) => void): IfcItem[][] {
   const runs: IfcItem[][] = [[]];
   const flatten = (box: ResolvedElement, out: IfcItem[]): void => {
-    for (const c of box.children) {
+    for (const c of boxKids(box)) {
       if (c.kind === 'text') out.push({ kind: 'text', text: c });
       else if (displayKeyword(c) === 'none') continue;
       else if (isAtomic(c)) {
@@ -248,7 +254,7 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
       }
     }
   };
-  for (const c of el.children) {
+  for (const c of boxKids(el)) {
     const run = runs[runs.length - 1] as IfcItem[];
     if (c.kind === 'text') run.push({ kind: 'text', text: c });
     else if (displayKeyword(c) === 'none') continue;
@@ -274,7 +280,7 @@ function holdsInlineContent(el: ResolvedElement): boolean {
 // U+200B, and U+200B may not be in the white space that ends a paragraph (at a <br>, bidi class B, or at the end, L1); anything else
 // would be reordered, and it is refused for every target. The text of an inline box belongs to its block container's context.
 function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (isInlineBox(el) || keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
+  if (isInlineBox(el) || isContents(el) || keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
   const report = (t: ResolvedText, message: string): void => {
     const origin = t.node.node.origin;
     const id = `${t.node.address}|${JSON.stringify(origin)}`;
@@ -339,11 +345,42 @@ function checkRtlAtomics(el: ResolvedElement, run: readonly IfcItem[], diagnosti
   }
 }
 
+/**
+ * The inherited values that shape the lines a text lays out on: its font and strut, and how its block container aligns, breaks and
+ * spaces it. Blink wraps the text of a display: contents element in an anonymous inline box in the element's style, whose strut the
+ * line takes (LayoutObjectFactory; probed: line-height: 40px on the contents element makes the line 40px tall).
+ */
+const LINE_SHAPING: readonly Longhand[] = ['font-family', 'font-size', 'font-weight', 'font-style', 'font-stretch', 'line-height', 'text-align', 'direction', 'white-space-collapse', 'text-wrap-mode', 'word-break', 'overflow-wrap', 'letter-spacing', 'word-spacing', 'text-transform'];
+
+/**
+ * css-display-3 §2.5: the native lowering lays the text of a display: contents element out as its layout parent's own, which matches
+ * Chrome only while the element's line-shaping values are its layout parent's (the nearest ancestor with a box). Otherwise it is
+ * refused on the native targets; the web keeps display: contents, which Chrome lays out itself.
+ */
+function checkContentsText(el: ResolvedElement, layoutParent: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (!isContents(el) || layoutParent === null) return;
+  if (!el.children.some((c) => c.kind === 'text')) return;
+  const differs = LINE_SHAPING.find((p) => valueToString((el.props.get(p) as ResolvedValue).value) !== valueToString((layoutParent.props.get(p) as ResolvedValue).value));
+  if (differs === undefined) return;
+  for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+    const id = `${t}|contents-text|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: el.element.node.origin,
+      target: t,
+      message: `display: contents on ${el.element.address} holds text whose ${differs} (${valueToString((el.props.get(differs) as ResolvedValue).value)}) differs from its layout parent ${layoutParent.element.address}'s (${valueToString((layoutParent.props.get(differs) as ResolvedValue).value)}): Chrome lays that text out in an anonymous inline box in ${el.element.address}'s style, which the native targets do not build yet`,
+      manual: `Wrap the text of ${el.element.address} in a span, or set ${differs} on ${layoutParent.element.address} instead.`,
+      basis: 'computed-value',
+    }));
+  }
+}
+
 // CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
 // element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
 // and runs with different text-wrap-mode in one formatting context.
 function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
-  if (isInlineBox(el)) return;
+  if (isInlineBox(el) || isContents(el)) return;
   const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
   const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string, origin: Origin = at.element.node.origin): void => {
     for (const t of on) {
@@ -453,11 +490,11 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
 // text-overflow: ellipsis, and atomic inlines.
 function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const value = el.props.get('text-indent') as ResolvedValue;
-  if (isInlineBox(el) || isZeroLength(value.value)) return;
+  if (isInlineBox(el) || isContents(el) || isZeroLength(value.value)) return;
   const runs = inlineContexts(el, () => {});
   if (runs.length === 0) return;
   const at = `text-indent: ${valueToString(value.value)} on ${el.element.address}`;
-  const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c) && !isAtomic(c));
+  const blockChild = boxKids(el).find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c) && !isAtomic(c));
   const display = displayKeyword(el);
   const texts = runs.flat().filter((it): it is { readonly kind: 'text'; readonly text: ResolvedText } => it.kind === 'text');
   let beside = '';
@@ -526,7 +563,7 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
  * container) that clips its overflow and is not the element whose overflow the viewport takes.
  */
 function truncatesOwnLines(el: ResolvedElement, propagated: ResolvedElement | null): boolean {
-  if (el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
+  if (el === propagated || isInlineBox(el) || isContents(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
   return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible');
 }
 
@@ -566,7 +603,7 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
   if (runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))) {
     refuse(targets, 'white-space', `${at} truncates text whose white space is preserved, which Dragon does not lay out yet`, `Remove the white-space declaration (keep nowrap) from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
   }
-  const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c));
+  const blockChild = boxKids(el).find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c));
   if (blockChild !== undefined) {
     refuse(targets, 'anonymous-block', `${at} holds text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, whose anonymous block lines Chrome truncates and Dragon does not`, `Wrap the text of ${el.element.address} in its own block, and give that block the text-overflow.`);
   }
@@ -690,6 +727,57 @@ function listMarkerOf(el: ResolvedElement): string | null {
   return type.kind === 'keyword' && type.value === 'none' ? null : valueToString(type);
 }
 
+/**
+ * T151 R14: why GEN-c does not draw a list item's marker for a target, or null when it does. The web keeps Chrome's own marker for
+ * every R14 type; iOS and Android draw outside disc and square symbols (paint-aa's oval and rect fills, proven pixel-exact by the
+ * GEN-P oracle) and text markers as a text view in the marker box. Email keeps the GEN-b refusal.
+ */
+function markerRefusal(el: ResolvedElement, ancestors: readonly ResolvedElement[], target: string): string | null {
+  const type = markerTypeOf((el.props.get('list-style-type') as ResolvedValue).value);
+  if (type.kind === 'refused') return type.reason;
+  if (target === 'email') return 'Dragon draws markers from the GEN-c package on the web, iOS and Android only';
+  if (keywordOf(el.props.get('list-style-position') as ResolvedValue) !== 'outside') return 'an inside marker is not supported yet (::marker and inside markers, GEN-d6)';
+  if (target === 'web' || type.kind !== 'type') return null;
+  if (type.type.kind === 'style' && type.type.name === 'circle') return 'a circle marker is a 1 device px hairline (Skia SkScan_Antihair), which Dragon does not draw on iOS and Android yet';
+  if (type.type.kind !== 'style' || (type.type.name !== 'disc' && type.type.name !== 'square')) {
+    const why = textMarkerRefusal(el, ancestors);
+    if (why !== null) return why;
+  }
+  const ox = keywordOf(el.props.get('overflow-x') as ResolvedValue);
+  const oy = keywordOf(el.props.get('overflow-y') as ResolvedValue);
+  if (ox !== 'visible' || oy !== 'visible') return `overflow: ${ox} ${oy} on a list item clips its outside marker in a way Dragon has not proven on iOS and Android`;
+  const first = el.children.find((c): c is ResolvedElement => c.kind === 'element' && keywordOf(c.props.get('display') as ResolvedValue) !== 'none' && keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute');
+  if (first !== undefined && ['grid', 'inline-grid'].includes(keywordOf(first.props.get('display') as ResolvedValue))) return `its first child ${first.element.address} is a grid container, whose first baseline the marker would align with (GEN-c2 after G1)`;
+  return null;
+}
+
+/**
+ * Why iOS and Android do not draw a list item's text marker ("1. ", "a. ", a string) as an Ahem text view in its marker box
+ * (native-program.ts), or null. The marker text inherits the item's text properties; those the view would not draw are refused.
+ */
+function textMarkerRefusal(el: ResolvedElement, ancestors: readonly ResolvedElement[]): string | null {
+  const v = (p: Longhand): ResolvedValue => el.props.get(p) as ResolvedValue;
+  if (keywordOf(v('direction')) === 'rtl') return 'a text marker in a right-to-left list item is reordered by the bidi algorithm (UAX #9), which Dragon does not draw on iOS and Android yet';
+  const family = v('font-family').value;
+  if (!(family.kind === 'family' && family.value === 'Ahem')) return `its text marker is in font-family: ${valueToString(family)}, and iOS and Android draw marker text in Ahem only`;
+  for (const p of ['letter-spacing', 'word-spacing'] as const) if (wordSpaced(v(p))) return `${p}: ${valueToString(v(p).value)} reaches its text marker, which the engine lays out without spacing`;
+  if (valueToString(v('text-shadow').value) !== 'none') return `text-shadow: ${valueToString(v('text-shadow').value)} reaches its text marker, which Dragon does not draw on iOS and Android`;
+  if (keywordOf(v('-webkit-text-fill-color')) !== 'currentcolor') return `-webkit-text-fill-color: ${valueToString(v('-webkit-text-fill-color').value)} reaches its text marker, which Dragon paints in color`;
+  if (!isZeroLength(v('-webkit-text-stroke-width').value)) return `-webkit-text-stroke-width: ${valueToString(v('-webkit-text-stroke-width').value)} reaches its text marker, which Dragon does not stroke`;
+  const decorated = [...ancestors, el].find((a) => valueToString((a.props.get('text-decoration-line') as ResolvedValue).value) !== 'none');
+  if (decorated !== undefined) return `text-decoration-line on ${decorated.element.address} may decorate its text marker, which no Chrome case proves on iOS and Android`;
+  return null;
+}
+
+/** A font-size calculation whose type reduces to a percentage, which Chrome's ConvertFontSize treats as a percentage. */
+function isPercentFontSizeMath(v: CssValue): boolean {
+  if (!isMathValue(v) || v.kind !== 'other') return false;
+  const context = mathContextFor('font-size');
+  if ('refused' in context) return false;
+  const parsed = parseMath(v.text, context);
+  return parsed.ok && isPercentMath(parsed.node);
+}
+
 /** Chrome's font-relative length units but rem (CSSPrimitiveValue::IsFontRelativeLength): a font-size in them keeps the parent's absoluteness. */
 const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 'rex', 'ch', 'rch', 'ic', 'ric', 'lh', 'rlh', 'cap', 'rcap']);
 
@@ -713,11 +801,11 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const tag = el.element.tag;
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     const size = el.props.get('font-size') as ResolvedValue;
-    // A percentage, smaller, larger and a font-relative length other than rem (em, ex, ch, ic, lh, cap and their root forms) keep
-    // the parent's absoluteness; any other length and a math function are absolute (style_builder_converter.cc ConvertFontSize,
+    // A percentage (a calculation whose type is a percentage alone among them), smaller, larger and a font-relative length other
+    // than rem (em, ex, ch, ic, lh, cap and their root forms) keep the parent's absoluteness; any other length and math function are absolute (style_builder_converter.cc ConvertFontSize,
     // 928-974); an <absolute-size> keyword is never absolute.
     const declared = size.origin === 'author' ? size.declared : null;
-    const relative = declared !== null && (declared.kind === 'percentage' || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
+    const relative = declared !== null && (declared.kind === 'percentage' || isPercentFontSizeMath(declared) || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
     const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
     const keyed = uaRows(ua, uaTagOf(tag)).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
@@ -732,8 +820,15 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       const display = keywordOf(el.props.get('display') as ResolvedValue);
       if (display === 'list-item') {
         const marker = listMarkerOf(el);
-        if ((marker !== null && !faults.listItemDiscAccepted) || (marker === null && faults.listItemNoneMarkerRefused)) {
-          perTarget(el, 'list-item', `display: list-item on <${tag}> ${el.element.address} generates a ${marker ?? 'none'} marker (::marker, css-lists-3 §3), which Dragon draws from the GEN-c package`, `Set list-style: none on ${el.element.address} or its list, or set display: block.`);
+        if (marker === null && faults.listItemNoneMarkerRefused) {
+          perTarget(el, 'list-item', `display: list-item on <${tag}> ${el.element.address} generates a none marker (::marker, css-lists-3 §3), which Dragon draws from the GEN-c package`, `Set list-style: none on ${el.element.address} or its list, or set display: block.`);
+        }
+        if (marker !== null && !faults.listItemDiscAccepted) {
+          for (const t of targets) {
+            const why = markerRefusal(el, ancestors, t);
+            if (why === null) continue;
+            once(`${t}|ua-list-item|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: el.element.node.origin, target: t, message: `display: list-item on <${tag}> ${el.element.address} generates a ${marker} marker (::marker, css-lists-3 §3): ${why}`, manual: `Set list-style: none on ${el.element.address} or its list, or set display: block.`, basis: 'computed-value' })));
+          }
         }
       }
       const inset = BORDER_STYLES.filter((p) => {
@@ -1067,7 +1162,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[]): void => {
+  // layoutParent: the nearest ancestor that is not display: contents (the one whose box el's boxes sit in), or null for the root.
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null): void => {
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1096,10 +1192,11 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
     checkZoom(el, targets, diagnostics, reported);
-    // The overscroll, scroll-snap, containment and container-query families, initial values only (analysis/scroll-containment.ts).
+    // The overscroll, containment and container-query families, initial values only (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
+    if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
@@ -1131,9 +1228,12 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkGeneratedContent(el, targets, diagnostics, reported);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners);
+    const boxParent = isContents(el) ? layoutParent : el;
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent);
   };
-  walk(root, false, 'viewport', []);
+  walk(root, false, 'viewport', [], null);
+  // SCROLL-SNAP: a scroll container that snaps to a snap area, which native does not yet (analysis/scroll-containment.ts).
+  checkScrollSnap(root, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, faults);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
