@@ -1,21 +1,32 @@
 // font-size percentages and <absolute-size> keywords, computed to px at compile time as Chrome 145 computes them (analysis/computed.ts
 // computeLengths), and the refusal of a relative size Chrome would clamp to its minimum logical font size (computed-checks.ts). The
 // Chrome cases are text-font-size-values-ahem and reject-text-font-size-minimum (packages/parity/fixtures); this file holds the
-// arithmetic and the three txt-fs plants.
+// arithmetic and the four txt-fs plants.
+import { parse } from 'css-tree';
+import type { CssNode } from 'css-tree';
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import type { Longhand } from '../src/css/properties.ts';
+import type { CssValue } from '../src/css/stylesheet.ts';
+import { toValue } from '../src/css/values.ts';
 import type { ResolvedValue } from '../src/analysis/computed.ts';
 import { computeLengths, parseValueText, valueToString } from '../src/analysis/computed.ts';
 import { TXT_FS_FAULTS } from '../src/faults/txt-fs.ts';
 import type { TxtFsFaults } from '../src/faults/txt-fs.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
+/** A one-token declared value as the stylesheet parses it (css/values.ts toValue): a math function goes through css/math.ts. */
+function declaredValue(property: Longhand, declared: string): CssValue {
+  const node = parse(declared, { context: 'value' });
+  const only = (node['children'] as { toArray(): CssNode[] }).toArray()[0] as CssNode;
+  return only.type === 'Function' ? toValue(only, property) : parseValueText(property, declared);
+}
+
 /** The computed font-size of a declared value under a parent of `parent` px and a root of `root` px. */
 function computed(declared: string, parent: number, root: number = 16, faults: TxtFsFaults = TXT_FS_FAULTS): string {
-  const value = parseValueText('font-size', declared);
+  const value = declaredValue('font-size', declared);
   const props = new Map<Longhand, ResolvedValue>([['font-size', { value, origin: 'author', span: null, declaration: null, declared: value } as unknown as ResolvedValue]]);
   computeLengths(props, parent, root, faults);
   return valueToString((props.get('font-size') as ResolvedValue).value);
@@ -39,6 +50,42 @@ describe('font-size percentages and keywords', () => {
 
   it('plant fontSizePercentOfRoot: a percentage follows the root size, not the parent size', () => {
     expect(computed('50%', 13, 10, { ...TXT_FS_FAULTS, fontSizePercentOfRoot: true })).toBe('5px');
+  });
+});
+
+/** The computed line-height of a declared value on an element whose own font-size is `own` px, under a root of `root` px. */
+function computedLineHeight(declared: string, own: number, root: number = 16, faults: TxtFsFaults = TXT_FS_FAULTS): string {
+  const size = parseValueText('font-size', `${own}px`);
+  const value = declaredValue('line-height', declared);
+  const props = new Map<Longhand, ResolvedValue>([
+    ['font-size', { value: size, origin: 'author', span: null, declaration: null, declared: size } as unknown as ResolvedValue],
+    ['line-height', { value, origin: 'author', span: null, declaration: null, declared: value } as unknown as ResolvedValue],
+  ]);
+  computeLengths(props, own, root, faults);
+  return valueToString((props.get('line-height') as ResolvedValue).value);
+}
+
+// CALC-2: the Chrome case is text-font-size-calc-ahem; the refusals are values-reject-calc-font-size and -line-height.
+describe('calculations in font-size and line-height', () => {
+  it('folds a font-size calculation to px: em and % of the parent size, rem of the root size, clamped at 0', () => {
+    expect([computed('calc(1rem + 1px)', 10), computed('calc(50% + 7px)', 25), computed('calc(1.3em - 1px)', 25), computed('min(30px, 2em)', 25), computed('min(30px, 2em)', 10)]).toEqual(['17px', '19.5px', '31.5px', '30px', '20px']);
+    expect([computed('clamp(11px, 150%, 2rem)', 10), computed('clamp(11px, 150%, 2rem)', 30), computed('calc(12pt - 2px)', 10), computed('calc(1em - 30px)', 10)]).toEqual(['15px', '32px', '14px', '0px']);
+    expect(computed('calc(1em * 1.7 / 3 + 0.25rem)', 25)).toBe(`${(25 * 1.7) / 3 + 4}px`);
+  });
+
+  it('folds a line-height calculation against the element own size, and keeps a number calculation a number', () => {
+    expect([computedLineHeight('calc(1em + 4px)', 20), computedLineHeight('max(120%, 17px)', 10), computedLineHeight('max(120%, 17px)', 25), computedLineHeight('clamp(10px, 1em + 30%, 2rem)', 25)]).toEqual(['24px', '17px', '30px', '32px']);
+    expect([computedLineHeight('calc(1.5)', 20), computedLineHeight('calc(0.75rem + 0.5em)', 20, 10)]).toEqual(['1.5', '17.5px']);
+  });
+
+  it('refuses a calculation that reads the viewport', () => {
+    expect(computed('calc(10px + 1vw)', 10)).toContain('is supported with px, %, em, rem and absolute lengths only');
+    expect(computedLineHeight('calc(1em + 1vh)', 10)).toContain('is supported with px, %, em, rem and absolute lengths only');
+  });
+
+  it('plant calcPercentOfRoot: a percentage in a calculation follows the root size', () => {
+    const plant = { ...TXT_FS_FAULTS, calcPercentOfRoot: true };
+    expect([computed('calc(50% + 7px)', 25, 10, plant), computedLineHeight('max(120%, 17px)', 25, 30, plant)]).toEqual(['12px', '36px']);
   });
 });
 
@@ -85,6 +132,15 @@ describe("the minimum logical font size Chrome clamps a relative size to", () =>
     expect(errors('', 'x-small', '5px')).toEqual([]);
     // A percentage under an em size under the initial medium is still relative to it.
     expect(errors('', '0.5em', '50%')).toEqual(CLAMPED);
+  });
+
+  it('treats a calculation whose type is a percentage alone as a percentage, and any other calculation as absolute', () => {
+    // Chrome's ConvertFontSize asks IsPercentage of the math value, which is true when its type reduces to a percentage.
+    for (const q of ['calc(50%)', 'calc(0.5 * 50%)', 'max(50%, 40%)', 'clamp(1%, 25%, 50%)']) expect(errors('', 'x-small', q), q).toEqual(CLAMPED);
+    expect(errors('', 'calc(100%)', '0.25em')).toEqual(CLAMPED);
+    expect(errors('', 'x-small', 'calc(60%)')).toEqual([]);
+    // 5px, but a length plus a percentage is absolute, as a px size is.
+    expect(errors('', 'x-small', 'calc(40% + 1px)')).toEqual([]);
   });
 
   it('plant keywordMinimumUnchecked: the clamped size is accepted', () => {

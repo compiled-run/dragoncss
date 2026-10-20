@@ -21,6 +21,8 @@ export type MediaFaults = {
   readonly mediaWidthDouble: boolean;
   /** An emulated frame's device px are rounded to nearest instead of up. */
   readonly emulatedSizeRounded: boolean;
+  /** MQ-R2: resolution compares the device scale as a double instead of Chrome's float. */
+  readonly resolutionDouble: boolean;
 };
 
 export const NO_MEDIA_FAULTS: MediaFaults = {
@@ -34,6 +36,7 @@ export const NO_MEDIA_FAULTS: MediaFaults = {
   aspectRatioUntruncated: false,
   mediaWidthDouble: false,
   emulatedSizeRounded: false,
+  resolutionDouble: false,
 };
 
 export const MEDIA_FAULT_NAMES: readonly (keyof MediaFaults)[] = Object.keys(NO_MEDIA_FAULTS) as (keyof MediaFaults)[];

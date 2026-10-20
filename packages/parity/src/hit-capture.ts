@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { hitFacts, programInput, svgScenes } from 'dragon';
+import type { LayoutBox } from '../../layout/src/input.ts';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
@@ -145,7 +146,8 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
  * PNT1), whose layers rt-hit.ts orders as z-index auto, a case with an <svg> until SVG-a2 models its shapes, and one whose program
  * rounds a corner until the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is ever silently
  * mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not
- * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP).
+ * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP), and one with an outside text
+ * ::marker (GEN-c), through whose box Chrome hits its list item.
  */
 export function hitRefusal(n: NativeCase): string | null {
   const nodes = n.programs.uikit.nodes;
@@ -153,7 +155,7 @@ export function hitRefusal(n: NativeCase): string | null {
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
   // MASK-CLIP: Chrome's elementFromPoint passes over a box its empty clip rect hides, and over its descendants, which the hit test
   // does not model yet.
-  const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty')).map((x) => x.id);
+  const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty' || w.kind === 'clip-rect-label')).map((x) => x.id);
   if (cut.length > 0) return `clip on ${cut.join(', ')}: hit testing past a box its clip rect hides is not modelled yet (MASK-CLIP)`;
   // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
   // hit test does not model yet.
@@ -173,8 +175,19 @@ export function hitRefusal(n: NativeCase): string | null {
   // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
   const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
   if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
+  const input = programInput(n.programs.uikit, n.case.environment.viewport, 1);
+  // GEN-c: Chrome hits a list item through its outside text ::marker box (beside the item's border box), which the hit test does not
+  // model yet; Chrome hits no outside symbol marker at any captured point (list-markers-pseudo's disc and square items).
+  const marked = textMarkerItems(input.root);
+  if (marked.length > 0) return `outside text marker on ${marked.join(', ')}: Chrome hits a list item through its outside ::marker box, which rt-hit.ts does not model yet (GEN-c)`;
   // INL1a: hitTableOf refuses an inline box or a <br> by name (rt-hit.ts), so such a case is left out with that reason.
-  return inputHitRefusal(programInput(n.programs.uikit, n.case.environment.viewport, 1));
+  return inputHitRefusal(input);
+}
+
+/** The ids of the boxes under root, in tree order, that carry an outside text marker. */
+function textMarkerItems(root: LayoutBox): string[] {
+  const own = root.marker?.kind === 'text' ? [root.id] : [];
+  return [...own, ...root.children.flatMap((c) => (c.kind === 'box' ? textMarkerItems(c) : []))];
 }
 
 /** Every layout case the hit lane covers: all of them but the refused ones (hitRefusal). */
@@ -240,7 +253,7 @@ export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.jso
  * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
  * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-|fragmentation-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -376,6 +389,12 @@ const JSON_BG2 = new RegExp(BG2_LONGHANDS.map(([k, v]) => `,\\n[ ]*"${k}": "${v}
 const CSS_BG2 = new RegExp(BG2_LONGHANDS.map(([k, v]) => `^[ ]*${k}: ${v};\\n`).join(''), 'gm');
 
 /**
+ * The fragmentation longhands (css-break-3), also added after the identity base, at their initial values only: web output writes
+ * them only where a case sets them, so only captures carry them. Any other value stays in the text.
+ */
+const JSON_FRAGMENTATION = /,\n[ ]*"(?:break-before": "auto|break-after": "auto|break-inside": "auto|orphans": "2|widows": "2)"/g;
+
+/**
  * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and PNT1's, GEN-b's, BG2's and SVG-a1's neutral longhands) removed: the computed
  * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
  * is masked, since every compilation digest moves with the compiler input.
@@ -385,7 +404,7 @@ export function withoutPointerEvents(path: string, text: string): string {
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
     const stripped = withoutCaretColor(withoutTextColors(text)).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_ACCENT, '').replace(genB, '').replace(SVG_JSON, '');
-    return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
+    return (BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '')).replace(JSON_FRAGMENTATION, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');

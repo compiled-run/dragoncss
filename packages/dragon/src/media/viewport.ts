@@ -54,3 +54,12 @@ export function wholeAtOrBelow(size: number): number {
 export function wholeAtOrAbove(size: number): number {
   return Math.ceil(size);
 }
+
+/** Chrome's float of a double (ClampTo<float>): a value past the float range clamps to the largest float. */
+export function clampToFloat(x: number): number {
+  const MAX = 3.4028234663852886e38;
+  return Math.fround(x > MAX ? MAX : x < -MAX ? -MAX : x);
+}
+
+/** Two decimals in float, as Chrome compares dpcm with the device's dppx (floorf(0.5 + 100 x) / 100). */
+export const twoDecimals = (x: number): number => Math.fround(Math.floor(Math.fround(0.5 + Math.fround(100 * x))) / 100);

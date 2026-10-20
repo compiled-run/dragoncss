@@ -27,9 +27,12 @@ export const UNSTYLED_TAGS: ReadonlySet<string> = new Set(['span', 'a', 'label',
  */
 export const GENERATED_TAGS: ReadonlySet<string> = new Set(['::before', '::after']);
 
+/** The tag of the element resolve.ts cascades a list item's ::marker rules on; only its color is read (markerOf). */
+export const MARKER_TAG = '::marker';
+
 /** The UA dataset row an element's tag reads. */
 export function uaTagOf(tag: string): UaKey {
   if (Object.hasOwn(REPLACED_UA_KEYS, tag)) return REPLACED_UA_KEYS[tag] as UaKey;
-  if (GENERATED_TAGS.has(tag)) return 'dragon-unstyled';
+  if (GENERATED_TAGS.has(tag) || tag === MARKER_TAG) return 'dragon-unstyled';
   return (UNSTYLED_TAGS.has(tag) ? 'dragon-unstyled' : tag) as CapturedTag;
 }

@@ -18,6 +18,7 @@ import { FONT_TUNING_VALUE_PARSERS } from './properties/font-tuning.ts';
 import { FONT_STRETCH_VALUE_PARSERS } from './properties/font-stretch.ts';
 import { FONT_FEATURES_VALUE_PARSERS } from './properties/font-features.ts';
 import { LINE_BREAK_VALUE_PARSERS } from './properties/line-break.ts';
+import { FRAGMENTATION_VALUE_PARSERS } from './properties/fragmentation.ts';
 import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
 import { MASK_VALUE_PARSERS } from './properties/mask.ts';
 import { CONTAINMENT_VALUE_PARSERS } from './properties/containment.ts';
@@ -89,4 +90,5 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(COUNTERS_VALUE_PARSERS),
   ...Object.entries(COLOR_SCHEME_VALUE_PARSERS),
   ...Object.entries(BACKGROUND_BLEND_VALUE_PARSERS),
+  ...Object.entries(FRAGMENTATION_VALUE_PARSERS),
 ]);

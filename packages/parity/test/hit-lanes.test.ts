@@ -85,7 +85,7 @@ describe('the device-hit lane record', () => {
 describe('a device process\'s outcome', () => {
   const s = (failures: readonly LaneFailure[]): DeviceSet => ({ dpr: 2, device: { name: 'fake' } as DeviceRecord, cases: 1, dumps: 1, compared: { a: 0, b: 1, c: 0, d: 0, breaks: 0 }, dumpsSha256: '0', failures, faults: [] });
   const f = (lane: string): LaneFailure => ({ lane, case: 'x', dpr: 2, node: null, kind: 'hit-mismatch', detail: 'd' }) as LaneFailure;
-  const o = (set: DeviceSet, states: DeviceSet, hits: DeviceSet, anim: DeviceSet = s([])): string => JSON.stringify({ device: 'fake', set, states, hits, anim, traces: s([]), trust: { device: 'fake', dpr: 2, rows: [] }, vectors: null, blocked: null });
+  const o = (set: DeviceSet, states: DeviceSet, hits: DeviceSet, anim: DeviceSet = s([])): string => JSON.stringify({ device: 'fake', set, states, hits, anim, traces: s([]), env: { ...s([]), cases: 3, dumps: 3 }, trust: { device: 'fake', dpr: 2, rows: [] }, vectors: null, blocked: null });
   it('refuses a failure filed under another set\'s lane, which that lane\'s record would never count', () => {
     expect(parseOutcome(o(s([f('device-frames')]), s([f('device-states')]), s([f(HIT_LANE)])), 'fake').hits?.failures.length).toBe(1);
     expect(() => parseOutcome(o(s([]), s([]), s([f('device-frames')])), 'fake')).toThrow(/hits.failures holds a failure of lane device-frames, not device-hit/);
@@ -95,5 +95,9 @@ describe('a device process\'s outcome', () => {
     expect(parseOutcome(o(s([]), s([]), s([]), s([f(ANIM_LANE)])), 'fake').anim?.failures.length).toBe(1);
     expect(() => parseOutcome(o(s([]), s([]), s([]), s([f('device-frames')])), 'fake')).toThrow(/anim.failures holds a failure of lane device-frames, not device-anim/);
     expect(() => parseOutcome(JSON.stringify({ ...(JSON.parse(o(s([]), s([]), s([]))) as object), anim: undefined }), 'fake')).toThrow(/a set without its anim set/);
+    // MQ-R1: the device-env set holds only device-env failures, and a set without it is malformed.
+    const env = (v: unknown): string => JSON.stringify({ ...JSON.parse(o(s([]), s([]), s([]))), env: v });
+    expect(() => parseOutcome(env(s([f('device-states')])), 'fake')).toThrow(/env.failures holds a failure of lane device-states, not device-env/);
+    expect(() => parseOutcome(env(undefined), 'fake')).toThrow(/a set without its env set/);
   });
 });

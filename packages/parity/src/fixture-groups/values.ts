@@ -52,8 +52,8 @@ export const VALUES: readonly FixtureSpec[] = [
   reject('values-reject-invalid-line-width-percent', 'DRAGON_CSS_INVALID_VALUE', 'calc(1px + 5%)', '"calc(1px + 5%)" is not a valid value for border-left-width: calc(1px + 5%): it resolves to a length with a percentage'),
   reject('values-reject-invalid-flex-grow-percent', 'DRAGON_CSS_INVALID_VALUE', 'calc(1 + 5%)', '"calc(1 + 5%)" is not a valid value for flex-grow: calc(1 + 5%): it adds a number and a percentage'),
   reject('values-reject-percent-gap', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5%)', 'row-gap: calc(10px + 5%) /* a percentage in this property needs percentage gaps'),
-  reject('values-reject-calc-line-height', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1 + 1)', 'line-height: calc(1 + 1) /* a calculation in line-height reaches the font and line metrics'),
-  reject('values-reject-calc-font-size', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 1px)', 'font-size: calc(10px + 1px) /* a calculation in font-size reaches the font and line metrics'),
+  reject('values-reject-calc-line-height', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1em + 1vh)', 'line-height: calc(1em + 1vh) /* a calculation in line-height is supported with px, %, em, rem and absolute lengths only'),
+  reject('values-reject-calc-font-size', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 1vw)', 'font-size: calc(10px + 1vw) /* a calculation in font-size is supported with px, %, em, rem and absolute lengths only'),
   reject('values-reject-order-fraction', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1 / 0)', 'order: calc(1/0) /* it divides by zero or produces an infinite or NaN value'),
   reject('values-reject-border-shorthand', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px * 2px / 1px) solid #000', 'border-left-width: calc(1px*2px/1px) /* it multiplies two lengths, which is typed arithmetic'),
 ];

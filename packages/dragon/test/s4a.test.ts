@@ -193,14 +193,14 @@ describe('the root font size the engine input carries (V2 rootFontSize)', () => 
   it('is the root font size in px when it computes to px', () => {
     // INL1a: larger computes to the parent's size times 1.2 (css-fonts-4 §2.5, Blink FontDescription::LargerSize), at the root the
     // initial 16px, so it is px now. TXT-FS: an <absolute-size> keyword is Chrome's table at medium 16px, and a percentage is the
-    // parent's size (at the root the initial 16px) times it, so both are px too.
-    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12], ['larger', 19.2], ['medium', 16], ['small', 13], ['120%', 19.2]] as const) {
+    // parent's size (at the root the initial 16px) times it, so both are px too. CALC-2: a calculation of px, %, em and rem folds to px.
+    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12], ['larger', 19.2], ['medium', 16], ['small', 13], ['120%', 19.2], ['calc(50% + 2px)', 10], ['calc(1rem + 1px)', 17]] as const) {
       const p = iosLayoutProjection(compileRoot(fontSize), { ...ENV, direction: 'ltr' }, []);
       expect(p.kind === 'ready' ? p.input.rootFontSize : p.reason, fontSize).toBe(px);
     }
   });
   it('blocks the ios output with a typed diagnostic, instead of throwing at projection, when it does not compute to px', () => {
-    for (const fontSize of ['calc(10px + 1vw)', 'calc(50% + 2px)']) {
+    for (const fontSize of ['calc(10px + 1vw)']) {
       const c = compileRoot(fontSize);
       expect(c.outputs.ios.kind, fontSize).toBe('blocked');
       expect(c.diagnostics.map((d) => d.code), fontSize).toEqual(['DRAGON_LOWERING_FAILED']);

@@ -52,7 +52,7 @@ const KNOWN_LGPL_CLEAN_ROOM: readonly string[] = [];
 const CLEAN_ROOM_TASK = 'T123';
 
 // Upstream roots inside the Chromium tree at the tag (third_party/skia and v8 are resolved at their DEPS-pinned revisions).
-const UPSTREAM_ROOTS = ['third_party/blink/', 'third_party/skia/', 'v8/', 'ui/gfx/', 'cc/', 'third_party/rapidhash/', 'third_party/harfbuzz-ng/'];
+const UPSTREAM_ROOTS = ['third_party/blink/', 'third_party/skia/', 'v8/', 'ui/base/', 'ui/gfx/', 'cc/', 'third_party/rapidhash/', 'third_party/harfbuzz-ng/'];
 
 interface Ruling { class: 'A' | 'B' | 'C'; basis: string; proof: string[]; task?: string; note?: string }
 interface Range { lines: string; symbol: string | null; source: 'cited' | 'located' | 'whole-file' }

@@ -138,7 +138,7 @@ describe('the owner-ruled entries are left out whatever their value, and say so 
 describe('off the list, a declaration or rule is still refused on every target', () => {
   const OFF: Record<string, string> = {
     '-webkit-appearance off the compat keywords (Chrome may keep a legacy one)': '.a { -webkit-appearance: push-button; }',
-    'break-inside (fragments columns, not only pages)': '.a { break-inside: avoid; }',
+    'column-count (lays out columns, which break-* then fragment)': '.a { column-count: 2; }',
     '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',
     '::-webkit-scrollbar-corner (not listed)': '.a::-webkit-scrollbar-corner { background: red; }',
     'a ::-webkit-scrollbar rule (deferred)': '.a::-webkit-scrollbar { background-color: #eee; }',

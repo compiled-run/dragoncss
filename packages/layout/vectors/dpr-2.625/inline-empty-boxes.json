@@ -153,6 +153,7 @@
     "gridItem": null
    },
    "strut": null,
+   "marker": null,
    "children": [
     {
      "kind": "box",
@@ -279,6 +280,7 @@
       "gridItem": null
      },
      "strut": null,
+     "marker": null,
      "children": [
       {
        "kind": "box",
@@ -420,6 +422,7 @@
          "value": 12
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -811,6 +814,7 @@
          "value": 12
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "inline",
@@ -1126,6 +1130,7 @@
         "gridItem": null
        },
        "strut": null,
+       "marker": null,
        "children": []
       },
       {
@@ -1268,6 +1273,7 @@
          "value": 12
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "inline",
@@ -1535,6 +1541,7 @@
         "gridItem": null
        },
        "strut": null,
+       "marker": null,
        "children": []
       }
      ]

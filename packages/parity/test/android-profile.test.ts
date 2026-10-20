@@ -11,8 +11,8 @@ import type { FixtureSpec } from '../src/fixtures.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
 import { emitCases, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
-import { ANIMATION_CONTEXT } from '../src/profile-rows.ts';
 import { resizeCaseReport, resizeCases, resizeProgram } from '../src/resize-capture.ts';
+import { ANIMATION_CONTEXT, MEDIA_CAVEATS } from '../src/profile-rows.ts';
 
 const cases = nativeCases();
 const byId = new Map(cases.map((n) => [n.case.id, n]));
@@ -49,10 +49,13 @@ describe('the android profile follows the iOS rule', () => {
     expect(androidProfile.target).toBe('android');
     expect(androidProfile.revision).toBe(iosProfile.revision);
     // Animation rows follow each target's own device-anim record (deriveAnimationRows), so their proving cases may differ;
-    // the features and statuses they claim may not.
+    // the features and statuses they claim may not. MQ-R2 (T067 R9): the one planned difference among the others is a media row
+    // iOS answers with a caveat that Android answers exactly.
+    const exactOnAndroid = (r: (typeof iosProfile.rows)[number]) => r.context === MEDIA_CONTEXT && MEDIA_CAVEATS.ios.includes(r.feature) && !MEDIA_CAVEATS.android.includes(r.feature);
     const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
     const claims = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context === ANIMATION_CONTEXT).map((r) => `${r.feature} ${r.status}`);
-    expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows));
+    expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows).map((r) => (exactOnAndroid(r) ? { ...r, status: 'exact' } : r)));
+    expect(iosProfile.rows.filter(exactOnAndroid).map((r) => r.status)).toEqual(MEDIA_CAVEATS.ios.map(() => 'caveat'));
     expect(claims(androidProfile.rows)).toEqual(claims(iosProfile.rows));
     expect(promoted.length).toBeGreaterThan(0);
   });

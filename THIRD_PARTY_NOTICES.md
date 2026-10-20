@@ -63,6 +63,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/length_utils.h`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/list/layout_list_item.h`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/list/list_marker.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/list/unpositioned_list_marker.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/logical_box_fragment.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/logical_box_fragment.h`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/physical_box_fragment.h`: Copyright 2016 The Chromium Authors
@@ -103,6 +104,9 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data.h`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/text/justification_opportunity.cc`: Copyright 2025 The Chromium Authors
+- `ui/base/pointer/pointer_device_android.cc`: Copyright 2013 The Chromium Authors
+- `ui/base/pointer/pointer_device.cc`: Copyright 2013 The Chromium Authors
+- `ui/base/pointer/pointer_device.h`: Copyright 2012 The Chromium Authors
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/color_utils.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors

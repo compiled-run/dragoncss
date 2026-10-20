@@ -61,7 +61,6 @@ describe('precise refusals', () => {
     ['.a::before:hover', '":hover" after the pseudo-element ::before of .a::before:hover is not supported (state-dependent generated content, GEN-d8)'],
     ['.a::after.b', 'after the pseudo-element ::after'],
     ['.a:focus-within', ':focus-within depends on user interaction'],
-    ['.a:visited', ':visited depends on user interaction'],
     ['.a:checked', ':checked depends on user interaction'],
     [':is(.a:focus-within)', ':focus-within depends on user interaction'],
     ['.a:has(:has(.b))', ':has(.b) is invalid inside :has()'],
@@ -78,6 +77,20 @@ describe('precise refusals', () => {
     expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_SELECTOR']);
     expect((diagnostics[0] as Diagnostic).message).toContain(message);
     expectCatalogued(diagnostics);
+  });
+
+  it('LINK-RT: :link, :visited and :any-link parse with class specificity; a rule testing a visit refuses its visited colours on the web only', () => {
+    for (const sel of ['a:link', 'a:visited', 'a:any-link', 'a:not(:link)']) expect(specificity(sel), sel).toEqual([0, 1, 1]);
+    const web = (css: string): string[] => parse(css).diagnostics.map((d) => `${d.code} ${String(d.target)}`);
+    expect(web('a:link { color: red; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
+    expect(web('a:visited { border: 1px solid red; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
+    expect(web(':is(a:visited) { --c: 1; background-color: var(--x); }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
+    expect(web('a:visited { -webkit-text-fill-color: red; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
+    expect(web('a:not(:link) { outline-color: red; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
+    expect(web('a:any-link { color: red; }')).toEqual([]);
+    expect(web('a:link { font-size: 12px; }')).toEqual([]);
+    expect(web('a:visited { width: 1px; }')).toEqual([]);
+    expectCatalogued(parse('a:link { color: red; }').diagnostics);
   });
 
   it('[data-x] and #x are accepted: every attribute is element data, and an id selector matches the id attribute', () => {
@@ -155,6 +168,21 @@ describe('matching on the fixed tree', () => {
     [':root > :last-child > .list', ['list']],
   ])('%s', (sel, expected) => {
     expect(hit(sel).sort()).toEqual([...expected].sort());
+  });
+
+  it('LINK-RT: :link and :any-link match an a with an href, and :visited matches nothing (every link is unvisited)', () => {
+    const attr = { name: 'href', value: [{ when: always, value: 'x' }], origin: { kind: 'unlocated', reason: 'test' } as const };
+    const links = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [{ ...div(r, 'l', ['l'], [text(r, 't1', 'X')]), tag: 'a', attributes: [attr] } as ElementNode, { ...div(r, 'n', ['l'], [text(r, 't2', 'X')]), tag: 'a' } as ElementNode])];
+    const sizes = (css: string): string[] => {
+      const c = project().compile(inputFor(`body { font-family: Ahem; } ${css}`, links));
+      expect(c.diagnostics).toEqual([]);
+      return ['l', 'n'].map((n) => explainOne(c, 'ios', n, 'font-size').value);
+    };
+    expect(sizes('.l:link { font-size: 12px; }')).toEqual(['12px', '16px']);
+    expect(sizes('.l:any-link { font-size: 12px; }')).toEqual(['12px', '16px']);
+    expect(sizes('.l:visited { font-size: 12px; }')).toEqual(['16px', '16px']);
+    expect(sizes('.l:not(:link) { font-size: 12px; }')).toEqual(['16px', '12px']);
+    expect(sizes('.p:has(:any-link) .l { font-size: 12px; }')).toEqual(['12px', '12px']);
   });
 
   it('the <head> is the first child of <html> and body is its last', () => {

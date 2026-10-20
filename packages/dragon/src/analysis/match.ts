@@ -35,6 +35,9 @@ const HEAD: LinkedElement = { kind: 'element', address: ':head', node: null as n
 const last = (path: Path): LinkedElement => path[path.length - 1] as LinkedElement;
 const isElement = (c: LinkedElement | LinkedText): c is LinkedElement => c.kind === 'element';
 
+/** An a element with an href is a hyperlink (HTML §4.6.1): :link and :any-link match it, and :visited never does in Dragon. */
+export const isAnyLink = (el: LinkedElement): boolean => el.tag === 'a' && el.attributes.has('href');
+
 /** The element children of the path's parent, and the element's index among them (the root is the document's only element). */
 function siblings(path: Path): { readonly list: readonly LinkedElement[]; readonly index: number } {
   const el = last(path);
@@ -126,6 +129,8 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
       return !p.selectors.some((s) => complexMatches(rule, s, path, faults, ix));
     case 'has':
       return p.selectors.some((s) => hasMatches(rule, s, path, faults, ix));
+    case 'link':
+      return p.state !== 'visited' && isAnyLink(el);
     case 'interaction': {
       const set = p.pseudo === 'focus-visible' ? 'focusVisible' : p.pseudo;
       ix.probe?.[set].add(el.address);
@@ -226,9 +231,9 @@ export function selectorMatches(rule: Rule, sel: Selector, chain: readonly Linke
   return matchFrom(rule, sel, chain.slice(0, index + 1), part, faults, ix, () => true);
 }
 
-/** GEN-a (notes/T151-gen-spec.md R6): whether sel styles the ::before or ::after box of the host chain[chain.length - 1]. */
-export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
-  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind !== 'generated' || sel.pseudoElement.name !== pseudo) return false;
+/** GEN-a (notes/T151-gen-spec.md R6): whether sel styles the ::before, ::after or ::marker box of the host chain[chain.length - 1]. */
+export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo | 'marker', faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
+  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind === 'static-empty' || sel.pseudoElement.name !== pseudo) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
   return matchFrom(rule, sel, chain, 0, faults, ix, () => true);
 }

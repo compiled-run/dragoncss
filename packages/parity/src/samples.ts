@@ -61,9 +61,11 @@ export type GlyphSlant = { readonly k: number; readonly baseline: number; readon
 /**
  * One glyph's ink box in device px, from engine data only: the pen x and the font's glyph box scaled to the instance size. A sheared
  * glyph's box is the bounding box of its ink, and slant gives the slanted sides: clearance and the glyph scanlines follow those, since
- * a slanted side runs through the bounding box.
+ * a slanted side runs through the bounding box. A text stroke's ink is a ring: the box is its outer edge, and inner its inner edge
+ * (the outline less half the stroke, pixel-reference.ts uprightGlyphLines), where the stroke meets the fill. Both are edges of the ink,
+ * so a colour point keeps clear of both (inkClearance).
  */
-export type GlyphBox = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly slant?: GlyphSlant };
+export type GlyphBox = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly slant?: GlyphSlant; readonly inner?: GlyphBox };
 /** A line box's inked glyphs in drawing order; id is the line id "<text>:line<j>". */
 export type GlyphLine = { readonly id: string; readonly glyphs: readonly GlyphBox[] };
 
@@ -132,9 +134,20 @@ export function glyphClearance(x: number, y: number, g: GlyphBox): number {
   return Math.max(0, g.top - (y + 1), y - g.bottom, leftGap, rightGap);
 }
 
-/** Whether a pixel is at least inset device px from every edge of every glyph box. */
+/**
+ * glyphClearance against the edges of a glyph's ink: its box and, for a stroked glyph, the ring's inner edge, where the stroke meets
+ * the fill. A colour point near either sits on anti-aliasing. (A glyph-edge scanline is read as one edge position, and keeps clear of
+ * the boxes alone.)
+ */
+export function inkClearance(x: number, y: number, g: GlyphBox): number {
+  const outer = glyphClearance(x, y, g);
+  const inner = g.inner;
+  return inner === undefined || inner.left >= inner.right || inner.top >= inner.bottom ? outer : Math.min(outer, glyphClearance(x, y, inner));
+}
+
+/** Whether a pixel is at least inset device px from every edge of every glyph's ink (inkClearance). */
 export function clearOfGlyphs(x: number, y: number, glyphs: readonly GlyphBox[], inset: number = SAMPLE_INSET_DEVICE_PX): boolean {
-  return glyphs.every((g) => glyphClearance(x, y, g) >= inset);
+  return glyphs.every((g) => inkClearance(x, y, g) >= inset);
 }
 
 /** Every sample point of the boxes, deterministic: boxes in order, rules in SAMPLE_RULES order, sides top, right, bottom, left. */
@@ -364,9 +377,10 @@ export function sampleGlyphs(lines: readonly GlyphLine[], size: ImageSize, inset
       const y = Math.floor((g.top + g.bottom) / 2);
       const [l, r] = glyphSpanAt(g, y + 0.5);
       const x = Math.floor((l + r) / 2);
-      if (!(inImage(x, y) && (g.slant === undefined ? clear(x, g.left, g.right) && clear(y, g.top, g.bottom) : glyphClearance(x, y, g) >= inset))) return;
+      if (!(inImage(x, y) && (g.slant === undefined && g.inner === undefined ? clear(x, g.left, g.right) && clear(y, g.top, g.bottom) : inkClearance(x, y, g) >= inset))) return;
       const rule = `glyph:${line.id}:${k}`;
-      if (clearOfOthers(x, y, g)) out.push({ x, y, rule });
+      // A colour point: clear of the other glyphs' ink, rings included.
+      if (all.every((o) => o === g || inkClearance(x, y, o) >= inset)) out.push({ x, y, rule });
       else dropped.push(rule);
     });
     const first = line.glyphs[0];

@@ -71,11 +71,11 @@ function firstLeaf(children: readonly Child[]): TextLeaf | null {
 }
 
 export function box(id: string, style: Partial<LayoutStyle>, children: Child[] = [], strut: LineStrut | null = strutFor(children)): LayoutBox {
-  return { kind: 'box', id, boxType: 'element', style: { ...divStyle, ...style }, strut, children };
+  return { kind: 'box', id, boxType: 'element', style: { ...divStyle, ...style }, strut, marker: null, children };
 }
 
 export function anon(id: string, style: Partial<LayoutStyle>, children: Child[] = [], strut: LineStrut | null = strutFor(children)): LayoutBox {
-  return { kind: 'box', id, boxType: 'anonymous', style: { ...divStyle, ...style }, strut, children };
+  return { kind: 'box', id, boxType: 'anonymous', style: { ...divStyle, ...style }, strut, marker: null, children };
 }
 
 /** An inline box (display inline) with a 10px Ahem font and line-height normal unless given. */

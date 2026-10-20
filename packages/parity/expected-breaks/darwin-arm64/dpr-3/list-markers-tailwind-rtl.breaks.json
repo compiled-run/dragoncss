@@ -1,0 +1,11 @@
+{
+  "case": "list-markers-tailwind-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"u1:text0","data":"Hi","lines":1,"units":[0,0],"blank":[]},
+    {"id":"tw1:text0","data":"One","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"tw2:text0","data":"Two two","lines":1,"units":[0,0,0,0,0,0,0],"blank":[]},
+    {"id":"tw3:text0","data":"Three","lines":1,"units":[0,0,0,0,0],"blank":[]}
+  ]
+}

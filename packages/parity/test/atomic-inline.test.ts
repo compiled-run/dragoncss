@@ -36,11 +36,11 @@ const STYLE = {
 
 describe('compare.ts: an anonymous box holding only atomic inlines', () => {
   const font = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true } as const;
-  const atomic = (id: string): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { ...STYLE, display: 'inline-block' }, strut: null, children: [] });
+  const atomic = (id: string): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { ...STYLE, display: 'inline-block' }, strut: null, marker: null, children: [] });
   const input = (kids: readonly LayoutBox[]): LayoutInput => ({
     viewport: { width: 400, height: 300 }, devicePixelRatio: 1, viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } },
     safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16,
-    root: { kind: 'box', id: 'r', boxType: 'element', style: STYLE, strut: null, children: [{ kind: 'box', id: 'r:anon0', boxType: 'anonymous', style: STYLE, strut: { font, lineHeight: { kind: 'normal' } }, children: kids }] },
+    root: { kind: 'box', id: 'r', boxType: 'element', style: STYLE, strut: null, marker: null, children: [{ kind: 'box', id: 'r:anon0', boxType: 'anonymous', style: STYLE, strut: { font, lineHeight: { kind: 'normal' } }, marker: null, children: kids }] },
   });
   const rect = (id: string, parent: string | null): LayoutRect => ({ id, parent, x: 0 as LayoutRect['x'], y: 0 as LayoutRect['y'], width: 640 as LayoutRect['width'], height: 640 as LayoutRect['height'] });
   const capture = (ids: readonly string[]): WebCapture => ({

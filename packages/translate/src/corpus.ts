@@ -302,19 +302,19 @@ function randomInput(r: Rng): LayoutInput {
     if (made < total && r.chance(0.35) && style.display === 'block') {
       const n = 1 + r.int(2);
       for (let i = 0; i < n; i++) children.push(textLeaf(r, `${id}:t${i}`, font, style.direction === 'rtl'));
-      return { kind: 'box', id, boxType: 'element', style, strut: strutOf(font), children };
+      return { kind: 'box', id, boxType: 'element', style, strut: strutOf(font), marker: null, children };
     }
     while (made < total && r.chance(0.75)) {
       if (r.chance(0.15)) {
         // Text beside boxes, or in a flex container, arrives wrapped in an anonymous box (CSS2 §9.2.1.1, css-flexbox-1 §4).
         const aid = `${id}:anon${children.length}`;
         const astyle: LayoutStyle = { ...INITIAL, direction: style.direction, textAlign: style.textAlign };
-        children.push({ kind: 'box', id: aid, boxType: 'anonymous', style: astyle, strut: strutOf(font), children: [textLeaf(r, `${aid}:t0`, font, style.direction === 'rtl')] });
+        children.push({ kind: 'box', id: aid, boxType: 'anonymous', style: astyle, strut: strutOf(font), marker: null, children: [textLeaf(r, `${aid}:t0`, font, style.direction === 'rtl')] });
         continue;
       }
       children.push(makeBox(depth + 1, style.display === 'flex'));
     }
-    return { kind: 'box', id, boxType: 'element', style, strut: null, children };
+    return { kind: 'box', id, boxType: 'element', style, strut: null, marker: null, children };
   };
   const root = makeBox(0, false);
   const dpr = r.pick(DPRS);
@@ -667,6 +667,51 @@ export function animatorExpected(lines: readonly string[]): string[] {
   });
 }
 
+// ---------------------------------------------------------------- band suite (MQ-R1, T067 R4)
+
+/** Every media fixture's band table at root sizes around its thresholds (packages/parity parity:band-vectors). */
+export const BAND_VECTORS = join(RT_VECTORS_DIR, 'band/cases.json');
+
+/**
+ * The band suite: one library-mode line per band table: its atoms and bands, and root sizes in whole device px at a DPR. The
+ * TypeScript harness's answers (media width, height and band) are the expected results; Swift and Kotlin must equal them, and
+ * packages/parity media-runtime.test.ts proves the TypeScript lookup equals MQ-R0's partition, which equals Chrome.
+ */
+export function bandCases(): string[] {
+  const v = JSON.parse(readFileSync(BAND_VECTORS, 'utf8')) as { schema: string; cases: { table: unknown; sizes: unknown }[] };
+  if (v.schema !== 'dragon-band-vectors/3') throw new Error(`${BAND_VECTORS}: schema ${v.schema}; run pnpm run parity:band-vectors`);
+  const out = v.cases.map((c) => JSON.stringify(['rt-band', c.table, c.sizes]));
+  if (out.length === 0) throw new Error('the band suite has no cases');
+  return out;
+}
+
+/** The band suite's expected results; a line the TypeScript reference threw on or refused fails the build, not the natives. */
+export function bandExpected(lines: readonly string[]): string[] {
+  return lines.map((line, i) => {
+    const r = runLibraryCase(line);
+    if (!r.startsWith('["ok",')) throw new Error(`band case ${i}: the TypeScript reference answered ${r.slice(0, 200)}, not a result`);
+    return r;
+  });
+}
+
+// ---------------------------------------------------------------- pointer suite (MQ-R2, T067 R9)
+
+/** Input devices' sources and the readings Chromium's own Java rule gives them (packages/parity parity:pointer-vectors). */
+export const POINTER_VECTORS = join(RT_VECTORS_DIR, 'pointer/cases.json');
+
+/**
+ * The pointer suite: one library-mode line per set of input devices, each device its InputDevice.getSources(). The TypeScript
+ * harness's answers are the expected results; Swift and Kotlin must equal them, and packages/parity pointer-vectors.test.ts proves
+ * the TypeScript port equals the answers of Chromium's Java rule (TouchDevice.availablePointerAndHoverTypes) recorded beside them.
+ */
+export function pointerCases(): string[] {
+  const v = JSON.parse(readFileSync(POINTER_VECTORS, 'utf8')) as { schema: string; cases: { sources: readonly string[] }[] };
+  if (v.schema !== 'dragon-pointer-vectors/1') throw new Error(`${POINTER_VECTORS}: schema ${v.schema}; run pnpm run parity:pointer-vectors`);
+  const out = v.cases.map((c) => JSON.stringify(['rt-pointer', c.sources]));
+  if (out.length === 0) throw new Error('the pointer suite has no cases');
+  return out;
+}
+
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
   const vLines = vectors.map((v) => v.line);
@@ -677,6 +722,8 @@ export function buildCorpus(): Corpus {
   const hit = hitCases();
   const animator = animatorCases();
   const interaction = interactionCases();
+  const band = bandCases();
+  const pointer = pointerCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -690,6 +737,10 @@ export function buildCorpus(): Corpus {
     { name: 'animator', mode: 'library', lines: animator, expected: animatorExpected(animator) },
     // SELD-R2: the interaction runtime over synthetic tables and event scripts, after animator.
     { name: 'interaction', mode: 'library', lines: interaction, expected: interactionExpected(interaction) },
+    // MQ-R1: the @media band lookup over every media fixture's band table, after interaction.
+    { name: 'band', mode: 'library', lines: band, expected: bandExpected(band) },
+    // MQ-R2: the Android pointer and hover readings over every source combination, after band.
+    { name: 'pointer', mode: 'library', lines: pointer, expected: bandExpected(pointer) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

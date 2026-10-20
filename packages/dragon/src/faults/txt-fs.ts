@@ -7,6 +7,8 @@ export type TxtFsFaults = {
   readonly fontSizePercentOfRoot: boolean;
   /** An author font-size Chrome clamps to its minimum logical font size (a percentage under a keyword size) is accepted. */
   readonly keywordMinimumUnchecked: boolean;
+  /** CALC-2: a percentage in a font-size or line-height calculation is taken of the root's font-size. */
+  readonly calcPercentOfRoot: boolean;
 };
 
-export const TXT_FS_FAULTS: TxtFsFaults = { absoluteSizeSpecTable: false, fontSizePercentOfRoot: false, keywordMinimumUnchecked: false };
+export const TXT_FS_FAULTS: TxtFsFaults = { absoluteSizeSpecTable: false, fontSizePercentOfRoot: false, keywordMinimumUnchecked: false, calcPercentOfRoot: false };

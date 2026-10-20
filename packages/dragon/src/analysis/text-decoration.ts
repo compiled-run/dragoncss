@@ -17,11 +17,11 @@ import type { UaDataset } from '../ua/datasets.ts';
 import type { ResolvedValue } from './computed.ts';
 import { parseValueText, textFontOfProps, valueToString } from './computed.ts';
 import type { LinkedElement } from './link.ts';
+import { isAnyLink } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { caseByAssignment, internalRecord } from '../project.ts';
 
-/** An a element with an href is a hyperlink (HTML §4.6.1): :any-link matches it, and :visited never does in Dragon. */
-export const isAnyLink = (el: LinkedElement): boolean => el.tag === 'a' && el.attributes.has('href');
+export { isAnyLink } from './match.ts';
 
 /**
  * html.css:1501-1505: a:-webkit-any-link { color: -webkit-link; text-decoration: underline }. Each longhand no author declaration

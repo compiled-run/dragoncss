@@ -589,7 +589,7 @@ export type PercentRefusal = { readonly reason: string; readonly fix: string };
 export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal } | { readonly type: 'number' };
 
 const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'font-weight', 'stroke-miterlimit']);
-const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height', 'font']);
+const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font']);
 /**
  * Border, outline and column-rule widths are a <line-width>, which has no percentage (css-backgrounds-3 §3.3, css-ui-4 §3.2,
  * css-multicol-1 §4.2), so a calculation with one is invalid and Chrome drops the declaration: Chrome 145.0.7632.6 gives
@@ -663,8 +663,9 @@ export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 // font-feature-settings and font-variation-settings: a setting's value is an <integer> or a <number> (css-fonts-4 §6.12, §7.2).
+// orphans and widows: Blink ConsumePositiveInteger takes a calculation that resolves to a number (properties/fragmentation.ts).
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber, as StrokeMiterlimit::ParseSingleValue does; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set']);
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set', 'orphans', 'widows']);
 // rotate (css-transforms-2 §4): its axis numbers are never a math function Dragon keeps (an axis is refused), so one resolves to the angle.
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style', 'rotate']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
@@ -676,8 +677,10 @@ const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 // tab-size is <number> | <length> (css-text-3 §4.2); its parser (properties/tab-size.ts) refuses every calculation.
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom', 'scale', 'tab-size']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
- * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), and the table spacings (CSS2 §17.6.1 border-spacing). */
-const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective', 'border-spacing', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing']);
+ * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), the table spacings (CSS2 §17.6.1
+ * border-spacing), and every scroll-margin property (css-scroll-snap-1 §6, Blink ScrollMargin* ConsumeLength). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective', 'border-spacing', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing',
+  ...['', '-top', '-right', '-bottom', '-left', '-inline', '-block', '-inline-start', '-inline-end', '-block-start', '-block-end'].map((s) => `scroll-margin${s}`)]);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
@@ -1220,6 +1223,37 @@ function lowerPlain(n: MathNode, fonts: MathFonts, faults: MathFaults): CalcExpr
 /** A math function in a length property, for the engine. */
 export function lowerLengthCalc(n: MathNode, fonts: MathFonts, range: LengthCalc['range'], faults: MathFaults = NO_MATH_FAULTS): LengthCalc {
   return { kind: 'calc', expr: lowerMathNode(n, fonts, faults), range };
+}
+
+/** Whether a calculation's type reduces to a percentage alone (calc(50%), max(50%, 40%)): Blink's CSSPrimitiveValue::IsPercentage. */
+export function isPercentMath(n: MathNode): boolean {
+  return (isLit(n) ? unitCategory(n.unit) : n.category) === 'percent';
+}
+
+/** The px each em, rem and % of a calculation folded at build time reads (foldLength). */
+export type FoldBases = { readonly em: number; readonly rem: number; readonly percent: number };
+
+/** The units a calculation that is folded at build time may hold: numbers, %, em, rem and the absolute lengths. */
+export function foldableUnits(n: MathNode): boolean {
+  if (!isLit(n)) return n.args.every(foldableUnits);
+  return n.unit === '' || n.unit === '%' || n.unit === 'em' || n.unit === 'rem' || pxPer(n.unit) !== null;
+}
+
+/**
+ * A length calculation of foldable units (foldableUnits) folded to px in double: an em or rem leaf is value times its font size, a
+ * percentage that share of bases.percent (css-values-4 §10.10, the font-size and line-height cases).
+ */
+export function foldLength(n: MathNode, bases: FoldBases): number {
+  if (isLit(n)) {
+    if (n.unit === '') return n.value;
+    if (n.unit === '%') return (n.value * bases.percent) / 100;
+    if (n.unit === 'em') return n.value * bases.em;
+    if (n.unit === 'rem') return n.value * bases.rem;
+    const k = pxPer(n.unit);
+    if (k === null) throw new Error(`${n.unit} is not a foldable unit`);
+    return n.value * k;
+  }
+  return evaluateOperator(n.args.map((a) => foldLength(a, bases)), n.op);
 }
 
 /** A constant number calculation, folded in double (Blink CSSMathFunctionValue::ComputeNumber). */

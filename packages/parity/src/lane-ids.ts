@@ -10,4 +10,6 @@ export const HIT_LANE = 'device-hit';
 export const ANIM_LANE = 'device-anim';
 /** SELD-R2's device lane (T064 R14): the interaction scripts' traces against the TS interaction runtime's. */
 export const TRACE_LANE = 'device-traces';
-export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE | typeof TRACE_LANE;
+/** MQ-R1 (T067 R7 (c)): one real rotation per device (device-env.ts). */
+export const ENV_LANE = 'device-env';
+export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE | typeof TRACE_LANE | typeof ENV_LANE;

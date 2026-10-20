@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 16px; }
+ul { margin: 0; padding-inline-start: 50px; width: 300px; }
+.sq { list-style-type: square; }
+.p5 { padding-top: 5px; }
+.pad10 { padding-top: 10px; }
+.pad3 { padding-top: 3px; }
+.big { font-size: 32px; }
+.small { font-size: 10px; }
+.lh { line-height: 40px; }
+.h10 { height: 10px; }
+.h4 { height: 4px; }
+.bl { border-left: 7px solid; border-right: 7px solid; padding-inline-start: 3px; }
+.fl { display: flex; padding-top: 5px; }
+.s24 { font-size: 24px; }
+.ib { display: inline-block; padding-top: 7px; font-size: 10px; }
+.row { display: flex; }
+</style>
+</head>
+<body data-dragon-id="body">
+<ul data-dragon-id="text"><li data-dragon-id="t1">XX</li><li data-dragon-id="t2" class="sq">X X</li></ul>
+<ul data-dragon-id="nested"><li data-dragon-id="n1"><div data-dragon-id="n1a" class="pad10"><div data-dragon-id="n1b" class="pad3">XX</div></div></li></ul>
+<ul data-dragon-id="flexchild"><li data-dragon-id="f1"><div data-dragon-id="f1a" class="fl"><span data-dragon-id="f1s" class="s24">Q</span></div></li></ul>
+<ul data-dragon-id="ibchild"><li data-dragon-id="i1"><span data-dragon-id="i1s" class="ib">Q<br data-dragon-id="i1br">R</span></li></ul>
+<ul data-dragon-id="lineheight" class="lh"><li data-dragon-id="l1">C</li></ul>
+<ul data-dragon-id="push" class="big"><li data-dragon-id="p1"><span data-dragon-id="p1s" class="small">C</span></li><li data-dragon-id="p2"><div data-dragon-id="p2d" class="small">E</div></li></ul>
+<ul data-dragon-id="empty"><li data-dragon-id="e1"></li><li data-dragon-id="e2" class="p5"></li></ul>
+<ul data-dragon-id="nolines"><li data-dragon-id="nl1"><div data-dragon-id="nl1d" class="h10"></div></li><li data-dragon-id="nl2" class="p5"><div data-dragon-id="nl2d" class="h4"></div></li></ul>
+<ul data-dragon-id="border"><li data-dragon-id="b1" class="bl">C</li></ul>
+<ul data-dragon-id="flexlist" class="row"><li data-dragon-id="fl1">XX</li><li data-dragon-id="fl2" class="sq">X</li></ul>
+</body>
+</html>

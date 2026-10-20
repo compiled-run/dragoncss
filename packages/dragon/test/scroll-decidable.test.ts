@@ -25,7 +25,7 @@ const AHEM: FontSpec = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', 
 const px = (value: number) => ({ kind: 'px', value }) as const;
 const pct = (value: number) => ({ kind: 'percent', value }) as const;
 const box = (id: string, style: Partial<LayoutStyle>, children: Child[] = []): LayoutBox => ({
-  kind: 'box', id, boxType: 'element', style: { ...DIV, ...style }, children,
+  kind: 'box', id, boxType: 'element', style: { ...DIV, ...style }, marker: null, children,
   strut: children.some((c) => c.kind === 'text' || c.kind === 'inline' || c.kind === 'br') ? { font: AHEM, lineHeight: { kind: 'normal' } } : null,
 });
 const span = (id: string, children: InlineChild[]): InlineBox => ({ kind: 'inline', id, style: { ...DIV, display: 'inline' }, font: AHEM, lineHeight: { kind: 'normal' }, children });

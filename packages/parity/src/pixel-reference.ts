@@ -308,7 +308,8 @@ export function glyphShears(p: NativeProgram): ReadonlyMap<string, number> {
 export function shearedBox(g: GlyphBox, baseline: number, k: number): GlyphBox {
   const lo = k * (baseline - g.bottom);
   const hi = k * (baseline - g.top);
-  return { left: g.left + Math.min(lo, hi), right: g.right + Math.max(lo, hi), top: g.top, bottom: g.bottom, slant: { k, baseline, left: g.left, right: g.right } };
+  const box: GlyphBox = { left: g.left + Math.min(lo, hi), right: g.right + Math.max(lo, hi), top: g.top, bottom: g.bottom, slant: { k, baseline, left: g.left, right: g.right } };
+  return g.inner === undefined ? box : { ...box, inner: shearedBox(g.inner, baseline, k) };
 }
 
 /** A glyph line with its baseline in device px. */
@@ -335,6 +336,12 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
     const stroke = ((strokes.get(t.id) ?? 0) * dpr) / 2;
     // Half the fake-bold stroke at a size: how far the stroked outline reaches past the upright one.
     const grow = (at: number): number => (bold === undefined ? 0 : syntheticBoldStroke(at, bold.keys, bold.values) / 2) + stroke;
+    // A glyph's ink box: its outline grown by h, and with a text stroke the ring's inner edge, 2 * stroke inside it (samples.ts GlyphBox).
+    const ink = (left: number, right: number, top: number, bottom: number, h: number): GlyphBox => {
+      const box = { left: left - h, right: right + h, top: top - h, bottom: bottom + h };
+      const d = h - 2 * stroke;
+      return stroke === 0 ? box : { ...box, inner: { left: left - d, right: right + d, top: top - d, bottom: bottom + d } };
+    };
     const metrics = m.metrics(t.textFont);
     for (const [j, line] of t.lines.entries()) {
       const baseline = line.snapped.top + metrics.ascent / 64;
@@ -366,7 +373,7 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
         const s = small ? at : size;
         const x = line.rect.x / 64 + (shaped.xs[n] as number) + (line.shifts.length === 0 ? 0 : (line.shifts[n] as number));
         const h = grow(s);
-        if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * s) / upem - h, right: x + (b.xMax * s) / upem + h, top: baseline - (b.yMax * s) / upem - h, bottom: baseline - (b.yMin * s) / upem + h });
+        if (b !== null && b !== undefined) glyphs.push(ink(x + (b.xMin * s) / upem, x + (b.xMax * s) / upem, baseline - (b.yMax * s) / upem, baseline - (b.yMin * s) / upem, h));
       }
       // TXT2-f: the ellipsis glyphs after the painted text, in the line's font, on the same baseline.
       const e = line.ellipsis;
@@ -379,7 +386,7 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
           const b = boxes.get(cp);
           const x = e.x / 64 + (eShaped.xs[n] as number);
           const h = grow(eSize);
-          if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * eSize) / upem - h, right: x + (b.xMax * eSize) / upem + h, top: baseline - (b.yMax * eSize) / upem - h, bottom: baseline - (b.yMin * eSize) / upem + h });
+          if (b !== null && b !== undefined) glyphs.push(ink(x + (b.xMin * eSize) / upem, x + (b.xMax * eSize) / upem, baseline - (b.yMax * eSize) / upem, baseline - (b.yMin * eSize) / upem, h));
         }
       }
       out.push({ id: `${t.id}:line${j}`, baseline, glyphs });

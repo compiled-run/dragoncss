@@ -1,7 +1,8 @@
 // Gradient background layers (BG2, notes/T074-bg2-spec.md): Dragon-owned paint. A box with at least one gradient layer gets one
 // write holding its background colour, the colour's clip and every gradient layer (geometry and gradient, currentcolor resolved,
 // each linear slope folded from the measured libm table, R3), top first, and the origin of the composited layer it rasters in
-// (R4); the device rasterises them with the translated paint-gradient.ts at every layout. Nothing on the device parses CSS.
+// (R4); the device rasterises them with the translated paint-gradient.ts at every layout. Nothing on the device parses CSS. A box
+// whose one layer is a url() image gets a background-image write instead (BG2-u, bg-image.ts).
 import type { BoxItem, GradientSpec, LayerGeometrySpec, Obscures } from '../../analysis/paint-values/gradient.ts';
 import { bleedAvoidanceOf, compositesSubtree, linearSlope, obscuresOf, resolvedLayers } from '../../analysis/paint-values/gradient.ts';
 import type { ResolvedValue } from '../../analysis/resolve.ts';
@@ -9,6 +10,8 @@ import type { Rgba8 } from '../../css/color.ts';
 import type { ColorLonghand, Longhand } from '../../css/properties.ts';
 import { SIDES } from '../../css/properties.ts';
 import { usedColors } from './colors.ts';
+import type { BackgroundImageWrite } from './bg-image.ts';
+import { lowerUrlLayer } from './bg-image.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
@@ -43,18 +46,30 @@ const repeat = (r: string, id: string): 'repeat' | 'no-repeat' => {
   throw new ProgramError(`${id}: background-repeat ${r} reached the native lowering, which refuses it (BG2-t)`);
 };
 
-export const GRADIENT_LOWERING: PaintLowering<GradientWrite> = {
+const IMAGE_TILES = 'the PNG decoded once at build (sRGB); after every layout the tile is placed in its background-origin box at its natural size times the device scale, by its px or % position (a no-repeat axis at a whole device px), and';
+
+export const GRADIENT_LOWERING: PaintLowering<GradientWrite | BackgroundImageWrite> = {
   name: 'gradient',
   vocabulary: {
-    uikit: { 'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel CGImage at every layout, drawn 1:1 with no interpolation in the background-layers stage, clipped to the rounded box' } },
-    'android-views': { 'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel Bitmap (copyPixelsFromBuffer) at every layout, drawn 1:1 with a null Paint in the background-layers stage, clipped to the rounded box' } },
+    uikit: {
+      'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel CGImage at every layout, drawn 1:1 with no interpolation in the background-layers stage, clipped to the rounded box' },
+      'background-image': { key: 'dragonBackgroundImage', technique: 'dragon-owned-paint', detail: `DragonBoxView CGImage: ${IMAGE_TILES} drawn with UIImage.draw(in:) once per tile that meets the background-clip box, without antialiasing, in the background-layers stage, clipped to that box and the rounded border box` },
+    },
+    'android-views': {
+      'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel Bitmap (copyPixelsFromBuffer) at every layout, drawn 1:1 with a null Paint in the background-layers stage, clipped to the rounded box' },
+      'background-image': { key: 'dragonBackgroundImage', technique: 'dragon-owned-paint', detail: `DragonBoxView Bitmap: ${IMAGE_TILES} drawn as a BitmapShader (REPEAT on a repeating axis, CLAMP on the other, Paint(FILTER_BITMAP_FLAG)) over the background-clip box, narrowed to the tile on a no-repeat axis, in the background-layers stage, clipped to the rounded border box` },
+    },
   },
-  css: { 'background-layers': ['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip'] },
-  lower: ({ el }) => {
+  css: {
+    'background-layers': ['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip'],
+    'background-image': ['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip'],
+  },
+  lower: ({ el, images, transformMoves }) => {
     if (el === null) return [];
     const layers = resolvedLayers(el);
-    if (!layers.some((l) => l.image.kind === 'gradient')) return [];
     const id = el.element.address;
+    if (layers.some((l) => l.image.kind === 'url')) return [lowerUrlLayer(id, layers, images, transformMoves)];
+    if (!layers.some((l) => l.image.kind === 'gradient')) return [];
     if (layers.some((l) => l.clipsToText === true)) throw new ProgramError(`${id}: a gradient box clips a layer to text, which every target refuses (background-clip-text.ts)`);
     const colors = usedColors(el);
     const lowered: LoweredLayer[] = [];

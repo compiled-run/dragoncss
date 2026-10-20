@@ -7,6 +7,7 @@ import { BORDER_IMAGE_SHORTHANDS } from './border-image.ts';
 import { BOX_SHORTHANDS } from './box.ts';
 import { FLEX_SHORTHANDS } from './flex.ts';
 import { FONT_VARIANT_SHORTHANDS } from './font-variant.ts';
+import { FRAGMENTATION_SHORTHANDS } from './fragmentation.ts';
 import { GRID_SHORTHANDS } from './grid.ts';
 import { INITIAL_ONLY_SHORTHANDS } from './initial-only.ts';
 import { LISTS_SHORTHANDS } from './lists.ts';
@@ -15,6 +16,7 @@ import { MASK_SHORTHANDS } from './mask.ts';
 import { OVERFLOW_SHORTHANDS } from './overflow.ts';
 import { OUTLINE_SHORTHANDS } from './outline.ts';
 import { RADIUS_SHORTHANDS } from './radius.ts';
+import { SCROLL_SNAP_SHORTHANDS } from './scroll-snap.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { TABLE_SHORTHANDS } from './table.ts';
 import { TEXT_SHORTHANDS } from './text.ts';
@@ -49,7 +51,9 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...MASK_SHORTHANDS,
   ...BORDER_IMAGE_SHORTHANDS,
   ...INITIAL_ONLY_SHORTHANDS,
+  ...SCROLL_SNAP_SHORTHANDS,
   ...TABLE_SHORTHANDS,
+  ...FRAGMENTATION_SHORTHANDS,
 };
 
 export function shorthandHandler(property: Shorthand): ShorthandHandler {

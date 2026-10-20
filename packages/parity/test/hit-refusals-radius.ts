@@ -7,5 +7,7 @@ export const RADIUS_OUT: readonly string[] = ['radius-basic', 'radius-basic-rtl'
   // PNT1 outline's rounded fixture, refused for its radius.
   'outline-rounded', 'outline-rounded-rtl',
   // BG2 gradients' rounded fixtures, refused for their radius.
-  'gradient-rounded', 'gradient-rounded-rtl', 'gradient-north-star'];
+  'gradient-rounded', 'gradient-rounded-rtl', 'gradient-north-star',
+  // #462's overflow-text-cards, refused for its rounded cards (r1, r2, g1, g2).
+  'overflow-text-cards', 'overflow-text-cards-rtl'];
 export const RADIUS_REASON = /^border-radius on .+: hit testing through rounded corners is not modelled yet \(PNT1\)$/;

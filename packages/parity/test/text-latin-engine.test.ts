@@ -70,13 +70,13 @@ const span = (id: string, child: TextLeaf): InlineBox => ({ kind: 'inline', id, 
 /** A width px block of inline content whose first child is a text leaf in the block's font, in a 2000x300 viewport; validated. */
 function inputOf(width: number, children: readonly InlineChild[]): LayoutInput {
   const first = children[0] as TextLeaf;
-  return pageOf([{ kind: 'box', id: 'p', boxType: 'element', style: { ...style, width: { kind: 'px', value: width } }, strut: { font: first.font, lineHeight: first.lineHeight }, children: [...children] }]);
+  return pageOf([{ kind: 'box', id: 'p', boxType: 'element', style: { ...style, width: { kind: 'px', value: width } }, strut: { font: first.font, lineHeight: first.lineHeight }, marker: null, children: [...children] }]);
 }
 
 /** html > body > the given boxes, in a 2000x300 viewport at a device pixel ratio; validated. */
 function pageOf(boxes: readonly LayoutBox[], devicePixelRatio = 1): LayoutInput {
-  const body: LayoutBox = { kind: 'box', id: 'body', boxType: 'element', style, strut: null, children: [...boxes] };
-  const html: LayoutBox = { kind: 'box', id: 'html', boxType: 'element', style, strut: null, children: [body] };
+  const body: LayoutBox = { kind: 'box', id: 'body', boxType: 'element', style, strut: null, marker: null, children: [...boxes] };
+  const html: LayoutBox = { kind: 'box', id: 'html', boxType: 'element', style, strut: null, marker: null, children: [body] };
   const viewport = { width: 2000, height: 300 };
   return validated({ viewport, devicePixelRatio, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root: html });
 }
@@ -257,15 +257,15 @@ describe('TXT1a-1 phase B: a face the measurer does not hold is refused with tex
   const ahemSpan = (id: string, child: TextLeaf): InlineBox => span(id, child);
   // Every text leaf is Ahem, so measure() never sees the face; only metrics() or lengths() would.
   const entries: ReadonlyArray<readonly [string, LayoutInput, string]> = [
-    ['the strut', pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, children: [ahemSpan('s', ahem('t'))] }]), 'p'],
+    ['the strut', pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, marker: null, children: [ahemSpan('s', ahem('t'))] }]), 'p'],
     [
       'an inline box',
-      pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: fontOf('Ahem', 16), lineHeight: { kind: 'normal' } }, children: [ahem('t'), { kind: 'inline', id: 's', style: { ...style, display: 'inline' }, font: latoFont, lineHeight: { kind: 'normal' }, children: [ahemSpan('k', ahem('u'))] }] }]),
+      pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: fontOf('Ahem', 16), lineHeight: { kind: 'normal' } }, marker: null, children: [ahem('t'), { kind: 'inline', id: 's', style: { ...style, display: 'inline' }, font: latoFont, lineHeight: { kind: 'normal' }, children: [ahemSpan('k', ahem('u'))] }] }]),
       's',
     ],
-    ...(['ex', 'ch'] as const).map((metric) => [`${metric} in a width`, pageOf([{ kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 2, metric, font: latoFont }, range: 'non-negative' } }, strut: null, children: [] }]), 'q'] as const),
-    ['lh with line-height normal in a width', pageOf([{ kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'lh', value: 1, font: latoFont, lineHeight: { kind: 'normal' } }, range: 'non-negative' } }, strut: null, children: [] }]), 'q'],
-    ['the strut at DPR 2 (the environment pass)', pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, children: [ahemSpan('s', ahem('t'))] }], 2), 'p'],
+    ...(['ex', 'ch'] as const).map((metric) => [`${metric} in a width`, pageOf([{ kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 2, metric, font: latoFont }, range: 'non-negative' } }, strut: null, marker: null, children: [] }]), 'q'] as const),
+    ['lh with line-height normal in a width', pageOf([{ kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'lh', value: 1, font: latoFont, lineHeight: { kind: 'normal' } }, range: 'non-negative' } }, strut: null, marker: null, children: [] }]), 'q'],
+    ['the strut at DPR 2 (the environment pass)', pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, marker: null, children: [ahemSpan('s', ahem('t'))] }], 2), 'p'],
   ];
   const refusal = (r: LayoutResult): unknown => (r.kind === 'ok' ? 'ok' : [r.unsupported.code, r.unsupported.nodeId]);
   const ahemOnly = measurerFor(REFERENCE_PLATFORM);
@@ -372,9 +372,9 @@ describe('TXT1a-1 phase B: post-layout passes resolve a real-font input with the
   const latoFont = fontOf(latoId, 16);
   // ex and lh of a real face in widths, beside real-font text: the layout reads them through the shaped measurer.
   const input = pageOf([
-    { kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 2, metric: 'ex', font: latoFont }, range: 'non-negative' } }, strut: null, children: [] },
-    { kind: 'box', id: 'r', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'lh', value: 3, font: latoFont, lineHeight: { kind: 'normal' } }, range: 'non-negative' } }, strut: null, children: [] },
-    { kind: 'box', id: 'p', boxType: 'element', style: { ...style, overflowX: 'hidden', overflowY: 'hidden' }, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, children: [leaf('t', 'Real text', latoId, 16)] },
+    { kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 2, metric: 'ex', font: latoFont }, range: 'non-negative' } }, strut: null, marker: null, children: [] },
+    { kind: 'box', id: 'r', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'lh', value: 3, font: latoFont, lineHeight: { kind: 'normal' } }, range: 'non-negative' } }, strut: null, marker: null, children: [] },
+    { kind: 'box', id: 'p', boxType: 'element', style: { ...style, overflowX: 'hidden', overflowY: 'hidden' }, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, marker: null, children: [leaf('t', 'Real text', latoId, 16)] },
   ]);
   const shaped = (): ReturnType<typeof referenceShapedMeasurer> => referenceShapedMeasurer(NO_ENGINE_FAULTS, [lato]);
 
@@ -403,7 +403,7 @@ describe('TXT1a-1 phase B: post-layout passes resolve a real-font input with the
 
   it('engineTextLines (the break check) resolves a real face\'s ex with the caller\'s measurer, as the layout does', () => {
     // Real-font text in a box 12ex of Lato wide: resolving the environment with Ahem refused the face (text-glyph) before.
-    const narrow = pageOf([{ kind: 'box', id: 'w', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 12, metric: 'ex', font: latoFont }, range: 'non-negative' } }, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, children: [leaf('t', 'Real text wraps in a narrow box', latoId, 16)] }], 2);
+    const narrow = pageOf([{ kind: 'box', id: 'w', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 12, metric: 'ex', font: latoFont }, range: 'non-negative' } }, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, marker: null, children: [leaf('t', 'Real text wraps in a narrow box', latoId, 16)] }], 2);
     const r = layout(narrow, shaped());
     if (r.kind !== 'ok') throw new Error(r.unsupported.detail);
     const texts = engineTextLines(narrow, shaped());

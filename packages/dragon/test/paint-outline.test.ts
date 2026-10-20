@@ -146,11 +146,9 @@ describe('outline: the native targets draw every style but auto, the side painte
       const ok = compile(`.a { height: 10px; ${css}; }`, targets);
       expect(errors(ok), css).toEqual([]);
     }
-    // display: contents generates no box, so even a dashed outline on it paints nothing: no outline refusal (the native layout
-    // lowering refuses display: contents on its own).
+    // display: contents generates no box, so even a dashed outline on it paints nothing: no outline refusal.
     const contents = errors(compile('.a { display: contents; outline: 2px dashed red; }', targets));
-    expect(contents.filter((d) => d.message.includes('outline'))).toEqual([]);
-    expect(contents.map((d) => d.code)).toEqual(['DRAGON_LOWERING_FAILED']);
+    expect(contents).toEqual([]);
   });
   it("an outline inside an overflow clip or scroller is refused on ios, at the outline, naming the clip; the viewport's propagated overflow does not count", () => {
     for (const overflow of ['hidden', 'clip', 'auto']) {

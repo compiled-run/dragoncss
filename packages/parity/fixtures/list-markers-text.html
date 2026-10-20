@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 16px; }
+ol, ul { margin: 0; padding-inline-start: 90px; width: 300px; }
+.la { list-style-type: lower-alpha; }
+.ur { list-style-type: upper-roman; }
+.str { list-style-type: '>> '; }
+.big { font-size: 32px; padding-inline-start: 100px; }
+.small { font-size: 10px; }
+.lh { line-height: 30px; }
+.tight { line-height: 8px; }
+.p5 { padding-top: 5px; }
+.pad3 { padding-top: 3px; }
+.h10 { height: 10px; }
+.c { color: rgb(200, 30, 60); }
+</style>
+</head>
+<body data-dragon-id="body">
+<ol data-dragon-id="dec"><li data-dragon-id="d1">XX</li><li data-dragon-id="d2">X X</li><li data-dragon-id="d3" class="c">X</li></ol>
+<ol data-dragon-id="alpha" class="la"><li data-dragon-id="a1">XX</li><li data-dragon-id="a2">X</li></ol>
+<ol data-dragon-id="roman" class="ur" start="3"><li data-dragon-id="r1">X</li></ol>
+<ul data-dragon-id="string" class="str"><li data-dragon-id="s1">X</li></ul>
+<ol data-dragon-id="mixed"><li data-dragon-id="m1" class="ur">X</li><li data-dragon-id="m2" class="la">X</li></ol>
+<ol data-dragon-id="nested"><li data-dragon-id="n1"><div data-dragon-id="n1a" class="pad3">XX</div></li></ol>
+<ol data-dragon-id="lineheight" class="lh"><li data-dragon-id="l1">C</li></ol>
+<ol data-dragon-id="tightlh" class="tight"><li data-dragon-id="tl1">C</li></ol>
+<ol data-dragon-id="push" class="big"><li data-dragon-id="p1"><span data-dragon-id="p1s" class="small">C</span></li></ol>
+<ol data-dragon-id="empty"><li data-dragon-id="e1"></li><li data-dragon-id="e2" class="p5"></li></ol>
+<ol data-dragon-id="nolines"><li data-dragon-id="nl1"><div data-dragon-id="nl1d" class="h10"></div></li></ol>
+</body>
+</html>

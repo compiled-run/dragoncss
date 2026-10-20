@@ -27,6 +27,7 @@ import { FONT_FEATURES_ANIMATION } from './animation-kinds/font-features.ts';
 import { FONT_STRETCH_ANIMATION } from './animation-kinds/font-stretch.ts';
 import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
+import { FRAGMENTATION_ANIMATION } from './animation-kinds/fragmentation.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { HYPHENS_ANIMATION } from './animation-kinds/hyphens.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
@@ -95,6 +96,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_STRETCH_ANIMATION,
   ...FONT_TUNING_ANIMATION,
   ...FONT_VARIANT_ANIMATION,
+  ...FRAGMENTATION_ANIMATION,
   ...GRID_ANIMATION,
   ...HYPHENS_ANIMATION,
   ...INLINE_ANIMATION,
