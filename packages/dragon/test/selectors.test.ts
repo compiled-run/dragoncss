@@ -85,6 +85,7 @@ describe('precise refusals', () => {
     expect(web('a:link { color: red; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
     expect(web('a:visited { border: 1px solid red; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
     expect(web(':is(a:visited) { --c: 1; background-color: var(--x); }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
+    expect(web('a:visited { -webkit-text-fill-color: red; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
     expect(web('a:not(:link) { outline-color: red; }')).toEqual(['DRAGON_UNSUPPORTED_SELECTOR web']);
     expect(web('a:any-link { color: red; }')).toEqual([]);
     expect(web('a:link { font-size: 12px; }')).toEqual([]);

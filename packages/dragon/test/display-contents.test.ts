@@ -59,4 +59,28 @@ describe('display: contents', () => {
     const c = project.compile(inputFor(CSS, (r) => [el(r, 'c', 'div', [], [el(r, 'i', 'img', ['ct'])])]));
     expect(c.diagnostics.filter((d) => d.message.startsWith('display: contents')).map((d) => `${d.code} ${String(d.target)}`)).toEqual(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
   });
+  // The landing review's repros: text in a contents element whose line-shaping values differ from its layout parent's.
+  const compile = (css: string, tree: (r: SourceRef) => TreeNode[]) => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(CSS + css, tree));
+  const contentsText = (c: ReturnType<typeof compile>): string[] => c.diagnostics.filter((d) => d.message.includes('holds text whose')).map((d) => `${d.code} ${String(d.target)}`);
+  it('holding text in another line-height, font or white-space than its layout parent is refused on native, not on the web', () => {
+    for (const css of ['.ct { line-height: 40px; }', '.ct { font-size: 30px; }', '.ct { white-space: pre; }', '.ct { text-align: right; }', '.ct { direction: rtl; }']) {
+      const c = compile(css, (r) => [el(r, 'c', 'div', [], [text(r, 't0', 'x '), el(r, 's', 'span', ['ct'], [text(r, 't1', 'y  z')]), text(r, 't2', ' w')])]);
+      expect(contentsText(c), css).toEqual(['DRAGON_UNSUPPORTED_VALUE ios']);
+      expect(iosLayoutProjection(c, ENV, []).kind, css).toBe('blocked');
+    }
+  });
+  it('holding only elements, or text in its layout parent\'s values, is not refused', () => {
+    expect(contentsText(compile('.ct { line-height: 40px; }', (r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', ['ct'], [el(r, 'b', 'b', [], [text(r, 't', 'y')])])])]))).toEqual([]);
+    expect(contentsText(compile('.ct { color: red; }', (r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', ['ct'], [text(r, 't', 'y')])])]))).toEqual([]);
+  });
+  it('compares against the nearest ancestor with a box, through nested contents elements', () => {
+    expect(contentsText(compile('.lh { line-height: 40px; }', (r) => [el(r, 'c', 'div', ['lh'], [el(r, 'o', 'span', ['ct'], [el(r, 's', 'span', ['ct'], [text(r, 't', 'y')])])])]))).toEqual([]);
+  });
+  it('a block in an inline box through a contents element is refused like one without it', () => {
+    const c = compile('', (r) => [el(r, 'c', 'div', [], [el(r, 'i', 'span', [], [text(r, 't', 'a'), el(r, 'k', 'div', ['ct'], [el(r, 'b', 'div', [], [text(r, 'u', 'b')])])])])]);
+    const plain = compile('', (r) => [el(r, 'c', 'div', [], [el(r, 'i', 'span', [], [text(r, 't', 'a'), el(r, 'b', 'div', [], [text(r, 'u', 'b')])])])]);
+    const codes = (x: typeof c): string[] => x.diagnostics.filter((d) => d.message.includes('block-in-inline') || d.message.includes('block-level')).map((d) => `${d.code} ${String(d.target)}`);
+    expect(codes(plain).length).toBeGreaterThan(0);
+    expect(codes(c)).toEqual(codes(plain));
+  });
 });

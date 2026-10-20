@@ -195,6 +195,10 @@ function checkPercentRelative(el: ResolvedElement, where: string | null, targets
 
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
 const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
+/** css-display-3 §2.5: a display: contents element generates no box; its children take its place in its parent's. */
+const isContents = (el: ResolvedElement): boolean => displayKeyword(el) === 'contents';
+/** The children that take part in el's box: el's children, with each display: contents child replaced by its own (recursively). */
+const boxKids = (el: ResolvedElement): (ResolvedElement | ResolvedText)[] => el.children.flatMap((c) => (c.kind === 'element' && isContents(c) ? boxKids(c) : [c]));
 /** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box (INL2a, G-INL). */
 const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex' || displayKeyword(el) === 'inline-grid';
 
@@ -213,7 +217,7 @@ type IfcItem = { readonly kind: 'text'; readonly text: ResolvedText } | { readon
 function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElement, box: ResolvedElement) => void): IfcItem[][] {
   const runs: IfcItem[][] = [[]];
   const flatten = (box: ResolvedElement, out: IfcItem[]): void => {
-    for (const c of box.children) {
+    for (const c of boxKids(box)) {
       if (c.kind === 'text') out.push({ kind: 'text', text: c });
       else if (displayKeyword(c) === 'none') continue;
       else if (isAtomic(c)) {
@@ -228,7 +232,7 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
       }
     }
   };
-  for (const c of el.children) {
+  for (const c of boxKids(el)) {
     const run = runs[runs.length - 1] as IfcItem[];
     if (c.kind === 'text') run.push({ kind: 'text', text: c });
     else if (displayKeyword(c) === 'none') continue;
@@ -248,7 +252,7 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
 // U+200B, and U+200B may not be in the white space that ends a paragraph (at a <br>, bidi class B, or at the end, L1); anything else
 // would be reordered, and it is refused for every target. The text of an inline box belongs to its block container's context.
 function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (isInlineBox(el) || keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
+  if (isInlineBox(el) || isContents(el) || keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
   const report = (t: ResolvedText, message: string): void => {
     const origin = t.node.node.origin;
     const id = `${t.node.address}|${JSON.stringify(origin)}`;
@@ -313,11 +317,42 @@ function checkRtlAtomics(el: ResolvedElement, run: readonly IfcItem[], diagnosti
   }
 }
 
+/**
+ * The inherited values that shape the lines a text lays out on: its font and strut, and how its block container aligns, breaks and
+ * spaces it. Blink wraps the text of a display: contents element in an anonymous inline box in the element's style, whose strut the
+ * line takes (LayoutObjectFactory; probed: line-height: 40px on the contents element makes the line 40px tall).
+ */
+const LINE_SHAPING: readonly Longhand[] = ['font-family', 'font-size', 'font-weight', 'font-style', 'font-stretch', 'line-height', 'text-align', 'direction', 'white-space-collapse', 'text-wrap-mode', 'word-break', 'overflow-wrap', 'letter-spacing', 'word-spacing', 'text-transform'];
+
+/**
+ * css-display-3 §2.5: the native lowering lays the text of a display: contents element out as its layout parent's own, which matches
+ * Chrome only while the element's line-shaping values are its layout parent's (the nearest ancestor with a box). Otherwise it is
+ * refused on the native targets; the web keeps display: contents, which Chrome lays out itself.
+ */
+function checkContentsText(el: ResolvedElement, layoutParent: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (!isContents(el) || layoutParent === null) return;
+  if (!el.children.some((c) => c.kind === 'text')) return;
+  const differs = LINE_SHAPING.find((p) => valueToString((el.props.get(p) as ResolvedValue).value) !== valueToString((layoutParent.props.get(p) as ResolvedValue).value));
+  if (differs === undefined) return;
+  for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+    const id = `${t}|contents-text|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: el.element.node.origin,
+      target: t,
+      message: `display: contents on ${el.element.address} holds text whose ${differs} (${valueToString((el.props.get(differs) as ResolvedValue).value)}) differs from its layout parent ${layoutParent.element.address}'s (${valueToString((layoutParent.props.get(differs) as ResolvedValue).value)}): Chrome lays that text out in an anonymous inline box in ${el.element.address}'s style, which the native targets do not build yet`,
+      manual: `Wrap the text of ${el.element.address} in a span, or set ${differs} on ${layoutParent.element.address} instead.`,
+      basis: 'computed-value',
+    }));
+  }
+}
+
 // CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
 // element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
 // and runs with different text-wrap-mode in one formatting context.
 function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
-  if (isInlineBox(el)) return;
+  if (isInlineBox(el) || isContents(el)) return;
   const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
   const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string): void => {
     for (const t of on) {
@@ -422,11 +457,11 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
 // text-overflow: ellipsis, and atomic inlines.
 function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const value = el.props.get('text-indent') as ResolvedValue;
-  if (isInlineBox(el) || isZeroLength(value.value)) return;
+  if (isInlineBox(el) || isContents(el) || isZeroLength(value.value)) return;
   const runs = inlineContexts(el, () => {});
   if (runs.length === 0) return;
   const at = `text-indent: ${valueToString(value.value)} on ${el.element.address}`;
-  const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c) && !isAtomic(c));
+  const blockChild = boxKids(el).find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c) && !isAtomic(c));
   const display = displayKeyword(el);
   const texts = runs.flat().filter((it): it is { readonly kind: 'text'; readonly text: ResolvedText } => it.kind === 'text');
   let beside = '';
@@ -472,7 +507,7 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
  * container) that clips its overflow and is not the element whose overflow the viewport takes.
  */
 function truncatesOwnLines(el: ResolvedElement, propagated: ResolvedElement | null): boolean {
-  if (el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
+  if (el === propagated || isInlineBox(el) || isContents(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
   return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible');
 }
 
@@ -512,7 +547,7 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
   if (runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))) {
     refuse(targets, 'white-space', `${at} truncates text whose white space is preserved, which Dragon does not lay out yet`, `Remove the white-space declaration (keep nowrap) from ${el.element.address} and its text, or remove text-overflow: ellipsis.`);
   }
-  const blockChild = el.children.find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c));
+  const blockChild = boxKids(el).find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c));
   if (blockChild !== undefined) {
     refuse(targets, 'anonymous-block', `${at} holds text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, whose anonymous block lines Chrome truncates and Dragon does not`, `Wrap the text of ${el.element.address} in its own block, and give that block the text-overflow.`);
   }
@@ -1063,7 +1098,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[]): void => {
+  // layoutParent: the nearest ancestor that is not display: contents (the one whose box el's boxes sit in), or null for the root.
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null): void => {
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1094,6 +1130,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     // The overscroll, scroll-snap, containment and container-query families, initial values only (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     if (!here) checkBidi(el, diagnostics, reported);
+    if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
@@ -1117,9 +1154,10 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkGeneratedContent(el, targets, diagnostics, reported);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners);
+    const boxParent = isContents(el) ? layoutParent : el;
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent);
   };
-  walk(root, false, 'viewport', []);
+  walk(root, false, 'viewport', [], null);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

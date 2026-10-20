@@ -188,7 +188,7 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
 const VISITED_COLORS: ReadonlySet<string> = new Set([
   'color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'border-block-start-color',
   'border-block-end-color', 'border-inline-start-color', 'border-inline-end-color', 'caret-color', 'column-rule-color', 'fill', 'outline-color',
-  'stroke', 'text-decoration-color', 'text-emphasis-color',
+  'stroke', 'text-decoration-color', 'text-emphasis-color', '-webkit-text-fill-color', '-webkit-text-stroke-color',
 ]);
 
 /**
