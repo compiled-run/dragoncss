@@ -9,8 +9,8 @@
 // So are the mask longhands, written only where one is not initial (of those MASK-CLIP accepts, only -webkit-mask-composite: source-over),
 // and so are the border image longhands (MISC-PAINT likewise), and appearance, written only where it is not none (no Chrome UA rule
 // sets it on a supported tag), and caret-color and accent-color, written on every element of a case where any element's is not auto
-// (FORM-b), and translate, rotate and scale (PNT2), written only where one is not none. -webkit-user-modify is never written: Dragon
-// accepts only its initial read-only, which no Chrome UA rule on a supported tag changes (TOUCH).
+// (FORM-b). -webkit-user-modify is never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag
+// changes (TOUCH).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
 // colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
@@ -23,7 +23,6 @@ import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';
 import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';
 import { isInitialMask, MASK_LONGHANDS, maskDeclarationName } from '../css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';
-import { INDIVIDUAL_TRANSFORMS } from '../css/properties/transform.ts';
 import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
@@ -294,12 +293,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
       const appearance = resolutions.some(writesAppearance);
-      // PNT2: translate, rotate and scale are written for every resolution of the element or none.
-      const individual = resolutions.some((r) => INDIVIDUAL_TRANSFORMS.some((p) => {
-        const v = (r.props.get(p) as ResolvedValue).value;
-        return !(v.kind === 'keyword' && v.value === 'none');
-      }));
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && (individual || !(INDIVIDUAL_TRANSFORMS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify').map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null && withAnimations) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).

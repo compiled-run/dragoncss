@@ -110,7 +110,7 @@ describe('translate, rotate and scale: the registry and the parse', () => {
 });
 
 describe('translate, rotate and scale: the computed values and the web output', () => {
-  it('compute translate lengths in px and write each where one is not none, else none of them', () => {
+  it('compute translate lengths in px and write all three on every element, none where unset (transform-individual.test.ts)', () => {
     const r = compile('.a { font-size: 20px; translate: 1em 2rem; rotate: 0.25turn; scale: 150% 2; }');
     expect(errors(r)).toEqual([]);
     expect(webRule(r)).toContain('translate: 20px 32px;');
@@ -119,7 +119,7 @@ describe('translate, rotate and scale: the computed values and the web output', 
     const s = compile('.a { rotate: 10deg; }');
     expect(webRule(s)).toContain('translate: none;');
     expect(webRule(s)).toContain('scale: none;');
-    expect(webRule(compile(''))).not.toMatch(/(^|[^-])(translate|rotate|scale):/m);
+    expect(webRule(compile(''))).toMatch(/translate: none;\n\s*rotate: none;\n\s*scale: none;/);
   });
 
   it('write a declaration through var() after substitution through the same rules', () => {
