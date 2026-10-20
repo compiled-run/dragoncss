@@ -11,6 +11,8 @@ import type { EmitCase } from 'dragon';
 import { emitCases, hostSources, unbundledFaces } from '../src/native-host.ts';
 import { androidNdk, REAL_FACE_PROBE_TEXT, SHIM_ANDROID_ABIS, SHIM_FACE_DIRS, SHIM_NDK, SHIM_ZIG, shimFaces, shimProbe, shimSources, shimToken } from '../src/native-shim.ts';
 import { repoPath } from '../src/paths.ts';
+import { stateEmits } from '../src/state-cases.ts';
+import { animEmits } from '../src/anim-samples.ts';
 import { fontDataOf, vendoredFaceIds } from '../src/text-shaper-host.ts';
 
 const STRIDE = 7;
@@ -48,7 +50,7 @@ describe('the bundled faces', () => {
     expect(kotlin).toContain(`const val DRAGON_FACE_DIRECTORY = "${SHIM_FACE_DIRS.android}"`);
   });
   it('cover every face a device case draws, and a face no app bundles is named', () => {
-    for (const t of ['ios', 'android'] as const) expect(unbundledFaces(emitCases(t)), t).toEqual([]);
+    for (const t of ['ios', 'android'] as const) expect(unbundledFaces([...emitCases(t), ...stateEmits(t), ...animEmits(t)]), t).toEqual([]);
     const c = emitCases('ios').find((x) => x.program.nodes.some((n) => n.writes.some((w) => w.kind === 'font'))) as EmitCase;
     const other = JSON.parse(JSON.stringify(c).replace(/"family":"[^"]*"/, '"family":"sha256:00"')) as EmitCase;
     expect(unbundledFaces([other])).toEqual([`${c.id}: sha256:00`]);

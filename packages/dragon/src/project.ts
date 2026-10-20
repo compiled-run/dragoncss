@@ -1440,9 +1440,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       for (const c of lowerings) {
         try {
           // On by default (InternalOptions.nativeRealFaces); turned off, every non-Ahem face is refused natively; an element's own
-          // font (its strut) counts, not only its text.
-          const real = options.nativeRealFaces ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
-          const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse with nativeRealFaces off';
+          // font (its strut) counts, not only its text. A compile given the lanes verdict (a user's, whose output can be ready) refuses
+          // them too: a ready output's support files bundle no faces and no shim, so its app could not draw them.
+          const userOutput = options.nativeLanes !== null;
+          const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
+          const refused = options.nativeRealFaces && !userOutput ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until a ready output ships the bundled faces and the shim';
           const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine

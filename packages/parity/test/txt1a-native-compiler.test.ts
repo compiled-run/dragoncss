@@ -17,6 +17,9 @@ import { ENVIRONMENT } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
+/** A lanes verdict with every lane passing, so a compile given it can make a ready native output. */
+const PASSING = { recorded: true, stale: [], notPassing: [] } as const;
+
 const LATO = 'sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251';
 
 const inputOf = (id: string): FrontEndResult => withFontMapAssets(fixtureInput(layout(id, ['ltr'], 'ahem')), FONT_REFERENCE_MAP);
@@ -59,6 +62,18 @@ describe('TXT1a-2 phase C: native lowering of real bundled faces', () => {
     if (engine.kind !== 'ready') throw new Error(engine.reason);
     expect([...families(engine.input.root)].sort()).toEqual([LATO]);
     expect(c.digest).not.toBe(compile(inputOf('text-latin-lato')).digest);
+  });
+
+  it('refuses Lato natively in a compile given the lanes verdict (a user output, which ships no faces or shim)', () => {
+    const project = dragon.createProjectWith(
+      { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, fonts: FONT_REFERENCE_MAP },
+      { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport, nativeLanes: { ios: PASSING, android: PASSING } },
+    );
+    const c = project.compile(inputOf('text-latin-lato'));
+    const errors = nativeErrors(c);
+    expect(new Set(errors.map((d) => `${d.target} ${d.code}`))).toEqual(new Set(['ios DRAGON_UNSUPPORTED_FONT', 'android DRAGON_UNSUPPORTED_FONT']));
+    expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);
+    expect(project.compile(inputOf('text-ahem-single-line')).outputs.ios.kind).toBe('ready');
   });
 
   it('lowers Lato for ios and android with the face id, with no font refusal and the engine projection equal to the native one', () => {

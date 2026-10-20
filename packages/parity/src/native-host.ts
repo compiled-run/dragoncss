@@ -119,10 +119,10 @@ export function referenceMeasurer(): TextMeasurer {
 }
 
 /**
- * Every face a case's program measures or draws text in that the apps do not bundle (shimFaces), as "<case>: <face>": the font writes
- * and every font spec of the layout tree (text leaves, struts), which the device measures.
+ * Every face a program measures or draws text in that the apps do not bundle (shimFaces), as "<case>: <face>": every font spec in it
+ * (font writes, the layout tree's text leaves and struts, a state or frame program's), each of which the device reads.
  */
-export function unbundledFaces(cases: readonly EmitCase[], bundled: readonly ShimFace[] = shimFaces()): string[] {
+export function unbundledFaces(cases: readonly { readonly id: string; readonly program: unknown }[], bundled: readonly ShimFace[] = shimFaces()): string[] {
   const ids = new Set(bundled.map((f) => f.id));
   const out = new Set<string>();
   const visit = (id: string, v: unknown): void => {
@@ -140,10 +140,7 @@ export function unbundledFaces(cases: readonly EmitCase[], bundled: readonly Shi
       visit(id, x);
     }
   };
-  for (const c of cases) {
-    for (const n of c.program.nodes) for (const w of n.writes) if (w.kind === 'font' && !ids.has(w.font.family)) out.add(`${c.id}: ${w.font.family}`);
-    visit(c.id, c.program.root);
-  }
+  for (const c of cases) visit(c.id, c.program);
   return [...out];
 }
 
@@ -794,7 +791,7 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   const backend = BACKEND_OF[target];
   const cases = emitCases(target);
   // TXT1a-2 phase R: the apps draw only the faces they bundle; a case naming another would stop on the device.
-  const unbundled = unbundledFaces(cases);
+  const unbundled = unbundledFaces([...cases, ...stateEmits(target), ...animEmits(target)]);
   if (unbundled.length > 0) throw new Error(`the ${target} app bundles no face for ${unbundled.slice(0, 10).join('; ')}`);
   const files: GeneratedFile[] = [];
   if (target === 'ios') {

@@ -326,6 +326,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   it('gives every FIXTURES case native lowers the native projection as its engine projection, at every DPR', () => {
     let compared = 0;
     let engineOnly = 0;
+    const blocked: string[] = [];
     for (const { spec, cases } of layoutCases()) {
       const byDirection = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
       for (const c of cases) {
@@ -339,7 +340,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
           const native = dragon.nativeLayoutProjection(compiled, env, c.assignment);
           if (native.kind === 'blocked') {
             engineOnly++;
-            console.log(`${c.id} at DPR ${dpr} is engine only: ${native.reason}`);
+            blocked.push(`${c.id} at DPR ${dpr}: ${native.reason}`);
             continue;
           }
           expect(dragon.engineLayoutProjection(compiled, env, c.assignment), `${c.id} at DPR ${dpr}`).toEqual(native);
@@ -348,6 +349,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
       }
     }
     // Since TXT1a-2 phase R every case lowers natively, the real-face ones too (no case is engine only).
+    expect(blocked).toEqual([]);
     expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + NEW_IDS.length + TAG_IDS.length + AHEM_ADDED.length + WHITE_SPACE_AHEM_IDS.length + LATER_NATIVE_IDS.length + LATER_SHAPED_IDS.length) * 4, 0]);
   });
 
