@@ -309,7 +309,8 @@ public final class DragonGlyphLayer: CALayer {
 }
 
 /// A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); Core Text
-/// only rasterises (CTFontDrawGlyphs). The text is exposed to accessibility through accessibilityLabel.
+/// only rasterises (CTFontDrawGlyphs). The text is exposed to accessibility one line at a time (P6b): an element per line, named as
+/// Chrome's InlineTextBox and framed on its fragment.
 public final class DragonTextView: UIView, DragonNodeView {
   public let dragonId: String
   public let dragonKind: String
@@ -334,8 +335,7 @@ public final class DragonTextView: UIView, DragonNodeView {
     isOpaque = false
     backgroundColor = nil
     clipsToBounds = false
-    isAccessibilityElement = true
-    accessibilityTraits = .staticText
+    isAccessibilityElement = false
     glyphLayer.owner = self
     glyphLayer.isOpaque = false
     layer.addSublayer(glyphLayer)
@@ -348,7 +348,23 @@ public final class DragonTextView: UIView, DragonNodeView {
     dragonFamily = family
     dragonColor = color
     dragonTextColor = dragonUIColor(color)
-    accessibilityLabel = text
+  }
+
+  /// P6b: the accessibility elements, one per line in order, from dragonSetAccessibleLines.
+  public private(set) var dragonAccessibleLines: [UIAccessibilityElement] = []
+
+  /// P6b: each line's name (its code points, with the collapsible space it hangs at the line's end, as Chrome's InlineTextBox names
+  /// it) and frame (its fragment, in device px from the view's top-left) as a static text element in the view's space.
+  public func dragonSetAccessibleLines(names: [String], rects: [[Double]], scale: Double) {
+    let s = CGFloat(scale)
+    dragonAccessibleLines = zip(names, rects).map { name, r in
+      let e = UIAccessibilityElement(accessibilityContainer: self)
+      e.accessibilityLabel = name
+      e.accessibilityTraits = .staticText
+      e.accessibilityFrameInContainerSpace = CGRect(x: CGFloat(r[0]) / s, y: CGFloat(r[1]) / s, width: CGFloat(r[2]) / s, height: CGFloat(r[3]) / s)
+      return e
+    }
+    accessibilityElements = dragonAccessibleLines
   }
 
   /// The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's.
@@ -864,6 +880,9 @@ public final class DragonTree {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       let size = try units_platformFontSize(leaves[li].font.size)
       var specs: [DragonLineSpec] = []
+      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left.
+      var axNames: [String] = []
+      var axRects: [[Double]] = []
       // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
       // points and glyph pens in zoomed px from the root.
       var geometry: [[Double]] = []
@@ -953,6 +972,8 @@ public final class DragonTree {
           let shown = Array(scalars[Int(piece.start)..<Int(paintEnd)])
           // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
           if painted {
+            axNames.append(scalars[Int(piece.start)..<Int(piece.end)].map { String($0) }.joined())
+            axRects.append([a.x / lu - e[0], a.y / lu - e[1], a.width / lu, a.height / lu])
             geometry.append([a.x / lu, width / lu, a.y / lu])
             geometryCps.append(shown.map { Double($0.value) })
             geometryPens.append(run.xs.map { $0 + e[0] })
@@ -964,6 +985,7 @@ public final class DragonTree {
       if specs.count != pieces.count { fatalError("dragon: \(id): the engine's breaks give \(specs.count) lines, its layout \(pieces.count)") }
       textMetrics[id] = viewMetrics
       tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(size / s)), lines: specs, scale: s)
+      tv.dragonSetAccessibleLines(names: axNames, rects: axRects, scale: s)
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       if let cv = views[pId] as? DragonBoxView, let strut = p.strut, let m = viewMetrics {
@@ -1244,9 +1266,14 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
+import android.os.Bundle
 import android.text.TextPaint
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityNodeProvider
 import dev.dragon.dump.DumpJson
 
 class DragonRGBA8(val r: Int, val g: Int, val b: Int, val a: Int)
@@ -1359,7 +1386,8 @@ const val DRAGON_SINGLE_RUN_BASELINE_PLANT = 0.0
 
 /**
  * A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); the platform only
- * rasterises, with Canvas.drawGlyphs (API 31, the Android floor). The text is exposed to accessibility through contentDescription.
+ * rasterises, with Canvas.drawGlyphs (API 31, the Android floor). The text is exposed to accessibility one line at a time (P6b): a
+ * virtual child per line, named as Chrome's InlineTextBox and framed on its fragment.
  */
 class DragonTextView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : View(ctx), DragonNodeView {
   val dragonFrame = IntArray(4)
@@ -1386,7 +1414,115 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     dragonText = text
     dragonFamily = family
     dragonColor = color
-    contentDescription = text
+  }
+
+  /** P6b: each line's accessible name and its rect in device px from the view's top-left, from dragonSetAccessibleLines. */
+  var dragonAccessibleNames: List<String> = emptyList()
+    private set
+  var dragonAccessibleRects: List<DoubleArray> = emptyList()
+    private set
+  /** The line holding accessibility focus, or -1. */
+  private var dragonAccessibleFocus = -1
+
+  /**
+   * P6b: each line's name (its code points, with the collapsible space it hangs at the line's end, as Chrome's InlineTextBox names
+   * it) and frame (its fragment, in device px from the view's top-left), each a virtual child of the view's node provider.
+   */
+  fun dragonSetAccessibleLines(names: List<String>, rects: List<DoubleArray>) {
+    dragonAccessibleNames = names
+    dragonAccessibleRects = rects
+    dragonAccessibleFocus = -1
+    importantForAccessibility = if (names.isEmpty()) View.IMPORTANT_FOR_ACCESSIBILITY_NO else View.IMPORTANT_FOR_ACCESSIBILITY_YES
+  }
+
+  /** A line's frame on whole px, covering its fragment. */
+  private fun dragonLineBounds(k: Int): Rect {
+    val r = dragonAccessibleRects[k]
+    return Rect(Math.floor(r[0]).toInt(), Math.floor(r[1]).toInt(), Math.ceil(r[0] + r[2]).toInt(), Math.ceil(r[1] + r[3]).toInt())
+  }
+
+  /** The line at a point in px from the view's top-left, or -1. */
+  private fun dragonLineAt(x: Float, y: Float): Int {
+    for (k in dragonAccessibleRects.indices) {
+      val r = dragonAccessibleRects[k]
+      if (x >= r[0] && x < r[0] + r[2] && y >= r[1] && y < r[1] + r[3]) return k
+    }
+    return -1
+  }
+
+  private fun dragonLineEvent(k: Int, type: Int) {
+    val p = parent ?: return
+    val ev = AccessibilityEvent(type)
+    ev.packageName = context.packageName
+    ev.className = "android.widget.TextView"
+    ev.setSource(this, k)
+    ev.text.add(dragonAccessibleNames[k])
+    p.requestSendAccessibilityEvent(this, ev)
+  }
+
+  private val dragonLineProvider = object : AccessibilityNodeProvider() {
+    override fun createAccessibilityNodeInfo(virtualViewId: Int): AccessibilityNodeInfo? {
+      val host = this@DragonTextView
+      if (virtualViewId == View.NO_ID) {
+        val info = AccessibilityNodeInfo(host)
+        host.onInitializeAccessibilityNodeInfo(info)
+        for (k in dragonAccessibleNames.indices) info.addChild(host, k)
+        return info
+      }
+      if (virtualViewId < 0 || virtualViewId >= dragonAccessibleNames.size) return null
+      val info = AccessibilityNodeInfo(host, virtualViewId)
+      info.setParent(host)
+      info.packageName = host.context.packageName
+      info.className = "android.widget.TextView"
+      info.text = dragonAccessibleNames[virtualViewId]
+      val b = dragonLineBounds(virtualViewId)
+      @Suppress("DEPRECATION")
+      info.setBoundsInParent(b)
+      val at = IntArray(2)
+      host.getLocationOnScreen(at)
+      b.offset(at[0], at[1])
+      info.setBoundsInScreen(b)
+      info.isVisibleToUser = host.isShown
+      info.isEnabled = true
+      val focused = dragonAccessibleFocus == virtualViewId
+      info.isAccessibilityFocused = focused
+      info.addAction(if (focused) AccessibilityNodeInfo.AccessibilityAction.ACTION_CLEAR_ACCESSIBILITY_FOCUS else AccessibilityNodeInfo.AccessibilityAction.ACTION_ACCESSIBILITY_FOCUS)
+      return info
+    }
+
+    override fun performAction(virtualViewId: Int, action: Int, arguments: Bundle?): Boolean {
+      val host = this@DragonTextView
+      if (virtualViewId == View.NO_ID) return host.performAccessibilityAction(action, arguments)
+      if (virtualViewId < 0 || virtualViewId >= dragonAccessibleNames.size) return false
+      when (action) {
+        AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS -> {
+          if (dragonAccessibleFocus == virtualViewId) return false
+          val was = dragonAccessibleFocus
+          dragonAccessibleFocus = virtualViewId
+          if (was >= 0) dragonLineEvent(was, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED)
+          dragonLineEvent(virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED)
+          return true
+        }
+        AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS -> {
+          if (dragonAccessibleFocus != virtualViewId) return false
+          dragonAccessibleFocus = -1
+          dragonLineEvent(virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED)
+          return true
+        }
+      }
+      return false
+    }
+  }
+
+  override fun getAccessibilityNodeProvider(): AccessibilityNodeProvider? = if (dragonAccessibleNames.isEmpty()) null else dragonLineProvider
+
+  /** Explore by touch: a hover over a line announces that line. */
+  override fun dispatchHoverEvent(event: MotionEvent): Boolean {
+    if (dragonAccessibleNames.isEmpty()) return super.dispatchHoverEvent(event)
+    val k = dragonLineAt(event.x, event.y)
+    if (k < 0) return super.dispatchHoverEvent(event)
+    if (event.action == MotionEvent.ACTION_HOVER_ENTER || event.action == MotionEvent.ACTION_HOVER_MOVE) dragonLineEvent(k, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER)
+    return true
   }
 
   /** The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's. */
@@ -1930,6 +2066,9 @@ class DragonTree(val context: Context) {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       val size = units_platformFontSize(leaves[li].font.size)
       val specs = ArrayList<DragonLineSpec>()
+      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left.
+      val axNames = ArrayList<String>()
+      val axRects = ArrayList<DoubleArray>()
       // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
       // points and glyph pens in zoomed px from the root.
       val geometry = ArrayList<DoubleArray>()
@@ -2020,6 +2159,8 @@ class DragonTree(val context: Context) {
           }
           // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
           if (painted) {
+            axNames.add(leafText.substring(from, utf16(piece.end.toInt())))
+            axRects.add(doubleArrayOf(a.x / lu - e[0], a.y / lu - e[1], a.width / lu, a.height / lu))
             geometry.add(doubleArrayOf(a.x / lu, width / lu, a.y / lu))
             geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
             geometryPens.add(DoubleArray(run.second.size) { run.second[it] + e[0] })
@@ -2031,6 +2172,7 @@ class DragonTree(val context: Context) {
       val vm = viewMetrics
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
       tv.dragonConfigure(bridge, size.toFloat(), specs)
+      tv.dragonSetAccessibleLines(axNames, axRects)
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       val cv = views[pId] as? DragonBoxView
