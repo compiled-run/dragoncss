@@ -7,8 +7,9 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { launchChrome } from '../chrome.ts';
+import { zoomGuard } from '../dpr.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
-import { captureHits, expectedHitDir, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../hit-capture.ts';
+import { captureHits, captureHitsAt, expectedHitDir, expectedHitDprDir, expectedHitDprPath, HIT_DPR_CAPTURES, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../hit-capture.ts';
 import { repoPath } from '../paths.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
 
@@ -56,4 +57,29 @@ try {
 } finally {
   await browser.close();
 }
-console.log(`parity:hit-capture: ${cases.length} cases (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit`);
+// The DPR captures (HIT_DPR_CAPTURES): one launch per DPR at that forced device scale factor, behind the zoom guard.
+const byId = new Map(cases.map((n) => [n.case.id, n]));
+for (const f of readdirSync(dir, { withFileTypes: true })) {
+  if (f.isDirectory() && /^dpr-/.test(f.name) && !HIT_DPR_CAPTURES.some((d) => `dpr-${d.dpr}` === f.name)) rmSync(`${dir}/${f.name}`, { recursive: true });
+}
+for (const { dpr, ids } of HIT_DPR_CAPTURES) {
+  const own = ids.map((id) => {
+    const n = byId.get(id);
+    if (n === undefined) throw new Error(`HIT_DPR_CAPTURES names ${id} at DPR ${dpr}, which is not a hit case`);
+    return n;
+  });
+  const at = expectedHitDprDir(dpr);
+  rmSync(at, { recursive: true, force: true });
+  mkdirSync(at, { recursive: true });
+  const b = await launchChrome(dpr);
+  try {
+    await zoomGuard(b, dpr);
+    for (const c of await inOrder(own, CHROME_PAGES, (n) => captureHitsAt(b, n, dpr))) {
+      points += c.points;
+      writeFileSync(expectedHitDprPath(c.case, dpr), hitCaptureJson(c));
+    }
+  } finally {
+    await b.close();
+  }
+}
+console.log(`parity:hit-capture: ${cases.length} cases and ${HIT_DPR_CAPTURES.reduce((k, d) => k + d.ids.length, 0)} DPR captures (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit`);

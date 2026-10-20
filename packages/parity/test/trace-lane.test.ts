@@ -74,7 +74,8 @@ describe('device-traces, host side (SELD-R2 PR 4)', () => {
 
   it('hit tests the reference at the record\'s DPR: a point on a fractional device px edge hits as the device machine does', () => {
     // interaction-combo's point (2, 30) is on c's bottom edge; at 2.625 that is 78.75 device px, inside c's text rect snapped to
-    // device px (53 to 79), so the hit is c (table index 4) where DPR 1 gives d (5). The Android device recorded exactly this.
+    // device px (53 to 79), so the hit is c (table index 4) where DPR 1 gives d (5). The Android device recorded exactly this, and Chrome
+    // at --force-device-scale-factor=2.625 names c there too (expected-hit/dpr-2.625, hit-report.test.ts).
     for (const id of ['interaction-combo~trace', 'interaction-combo-rtl~trace']) {
       const one = traceReference(id, 1);
       const frac = traceReference(id, 2.625);

@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitRefusal, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
+import { capturedIds, caseHitTable, committedHits, committedHitsAt, compareHits, compareHitsAt, gridSha256, HIT_DPR_CAPTURES, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitGridAt, hitRefusal, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
@@ -89,6 +89,47 @@ describe('the host hit lane', () => {
     }
     expect(mismatches).toEqual([]);
     expect(points).toBeGreaterThan(600000);
+  });
+});
+
+describe('the host hit lane at a fractional device DPR', () => {
+  // Chrome at --force-device-scale-factor=2.625 lays out in device px and snaps text rects there, as rt-hit.ts does at that DPR: the
+  // device-hit lane's expectedHitRuns and the device-traces reference hit test with that model, so it must name Chrome's element too.
+  it('names Chrome\'s element at every point of every DPR capture, on the grid its table derives at that DPR', () => {
+    const byId = new Map(cases.map((n) => [n.case.id, n]));
+    expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
+    for (const { dpr, ids } of HIT_DPR_CAPTURES) {
+      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl']);
+      const mismatches: string[] = [];
+      for (const id of ids) {
+        const n = byId.get(id);
+        if (n === undefined) throw new Error(`${id} is not a hit case`);
+        const c = committedHitsAt(id, dpr);
+        const grid = hitGridAt(caseHitTable(n, undefined, dpr), n.case.environment.viewport, dpr);
+        expect([id, c.dpr, c.points, c.gridSha256]).toEqual([id, dpr, grid.length, gridSha256(grid)]);
+        const r = compareHitsAt(n, c, dpr);
+        expect(r.stale, id).toBe(false);
+        for (const m of r.mismatches.slice(0, 3)) mismatches.push(`${m.case} (${m.x / (dpr * 64)}, ${m.y / (dpr * 64)}): Chrome ${m.chrome}, Dragon ${m.dragon}`);
+        // The device-traces step (2, 30) is on c's bottom edge, y 30, over d: c's text rect snapped to device px (53
+        // to 79) holds the band from 78.75 to 79 device px at 2.625, so Chrome names c there, where DPR 1 names d.
+        const w = n.case.environment.viewport.width;
+        // c's 10 px X, snapped to device px: 0 to 26 at 2.625 (390 to 400 in rtl: 1024 to 1050).
+        const [x0, x1] = id.endsWith('-rtl') ? [Math.round((w - 10) * dpr) * 64, Math.round(w * dpr) * 64] : [0, Math.round(10 * dpr) * 64];
+        const chrome = capturedIds(c);
+        const [y0, y1] = [30 * dpr * 64, Math.ceil(30 * dpr) * 64];
+        const row = grid.flatMap(([gx, gy], i) => (gy >= y0 && gy < y1 && gx >= x0 && gx < x1 ? [[gx, gy, chrome[i]]] : []));
+        expect(row.length, id).toBeGreaterThan(1);
+        expect(row.filter(([, , h]) => h !== 'c'), id).toEqual([]);
+      }
+      expect(mismatches).toEqual([]);
+    }
+  });
+
+  it('refuses a DPR capture compared at another DPR, and a DPR-1 capture read as a DPR one', () => {
+    const n = cases.find((x) => x.case.id === 'interaction-combo');
+    if (n === undefined) throw new Error('no interaction-combo hit case');
+    expect(() => compareHitsAt(n, committedHits('interaction-combo'), 2.625)).toThrow(/a capture at DPR 1 compared at DPR 2.625/);
+    expect(() => compareHitsAt(n, committedHitsAt('interaction-combo', 2.625), 1)).toThrow(/a capture at DPR 2.625 compared at DPR 1/);
   });
 });
 

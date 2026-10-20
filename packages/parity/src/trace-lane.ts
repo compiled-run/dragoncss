@@ -5,7 +5,7 @@
 // must equal line for line at every DPR. The steps are derived once, on the uikit program, since the partition, its element
 // addresses and the hit test's engine input are the same for both backends; each backend's script runs its own program. The
 // reference hit tests at the record's DPR, as the device machine does: a step point on a fractional device px edge (2.625) can
-// hit another element than at DPR 1, as Chrome's hit test at that device scale factor does (the device-hit lane's expectation).
+// hit another element than at DPR 1, as Chrome's hit test at that forced device scale factor does (hit-capture.ts HIT_DPR_CAPTURES).
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { InteractionFaults } from '@dragon/layout';

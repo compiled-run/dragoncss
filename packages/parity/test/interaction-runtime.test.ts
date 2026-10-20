@@ -32,7 +32,7 @@ describe('interaction runtime, host check (SELD-R2 PR 3)', () => {
       const backend = BACKEND_OF.ios;
       const inputs = levelInputs(g, backend);
       const ip = interactionProgramOf(g, backend, inputs);
-      const rt = new InteractionRuntime(ip, groupHit(g, inputs));
+      const rt = new InteractionRuntime(ip, groupHit(g, inputs, 1));
       let events: [number, number, number, number][] = [];
       rt.onInteractionChange = (fromApp, from, toApp, to) => events.push([fromApp, from, toApp, to]);
       for (const s of deriveTrace(g, ip, inputs, backend)) {
