@@ -6,7 +6,7 @@
 // refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing,
 // css_parsing_utils.cc ConsumePerspective), and -webkit-perspective a unitless length (longhands_custom.cc
 // Perspective::ParseSingleValue). The other aliases Chrome parses with UseAliasParsing (-webkit-background-origin,
-// -webkit-background-size) wait for their property's lane, -webkit-appearance is the appearance family's (aliases/appearance.ts), the
+// -webkit-background-size) are rewritten into the standard value (legacyAliasValue), -webkit-appearance is the appearance family's (aliases/appearance.ts), the
 // -webkit-mask-* aliases are the mask family's (aliases/mask.ts),
 // -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
 // family's own shorthand (properties/radius.ts), -webkit-border-image the border image family's (properties/border-image.ts),
@@ -19,7 +19,8 @@ import type { AnimLonghand } from './properties/animation.ts';
 import { isAnimationProperty } from './properties/animation.ts';
 import { ANIMATION_ALIASES } from './aliases/animation.ts';
 import { APPEARANCE_ALIASES } from './aliases/appearance.ts';
-import { BACKGROUND_LAYERS_ALIASES } from './aliases/background-layers.ts';
+import { BACKGROUND_LAYERS_ALIASES, legacyBackgroundValue } from './aliases/background-layers.ts';
+import type { CssNode } from 'css-tree';
 import { BOX_ALIASES } from './aliases/box.ts';
 import { EFFECTS_ALIASES } from './aliases/effects.ts';
 import { FILTER_ALIASES } from './aliases/filter.ts';
@@ -78,4 +79,9 @@ export function legacyAliasRefusal(alias: string, source: string): string | null
   if (alias === '-webkit-perspective') return PLAIN_PERSPECTIVE.test(source) ? null : 'Chrome parses -webkit-perspective with legacy rules (a unitless length), and Dragon parses only perspective';
   if (alias !== '-webkit-transform' || !/perspective|var\(|env\(|\\/i.test(source)) return null;
   return 'Chrome parses -webkit-transform with legacy rules (a unitless perspective() length), and Dragon parses only transform';
+}
+
+/** The value node an alias declaration stands for under its property, its own when the two parse alike, or a refusal. */
+export function legacyAliasValue(alias: string, value: CssNode, source: string): CssNode | { readonly refusal: string } {
+  return legacyBackgroundValue(alias, value, source) ?? value;
 }
