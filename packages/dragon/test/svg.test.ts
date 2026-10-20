@@ -569,6 +569,24 @@ describe('the svg model in a compile', () => {
       expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => x.nonScalingStroke) : null, backend).toEqual([false, true, true, false]);
     }
   });
+  it('SVG-inert: clip-rule and marker none compile on every target and change no native write; a marker url refuses everywhere, on the svg and each shape that inherits it', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'p', 'path', [['d', 'M0 0 H4 V4 Z'], ['clip-rule', 'evenodd'], ['marker-mid', 'none']]), shape(o, 'c', 'circle', [['r', '4']])];
+    const program = (css: string) => {
+      const c = compile(svgTree(css, shapes), false);
+      expect(errors(c), css).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      return JSON.stringify(p.programs.uikit.nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes'));
+    };
+    expect(program('svg { clip-rule: evenodd; marker-start: none; } circle { clip-rule: EVENODD; marker-end: none; }')).toBe(program(''));
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
+    const all = (m: string) => ['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${m}`);
+    expect(refused('circle { marker-end: url(#m); }')).toEqual(all('marker-end: url(#m) on <circle> c is unsupported: <marker> elements are not built yet (package SVG-b)'));
+    expect(refused('svg { marker-start: url(#m); }')).toEqual([...all('marker-start: url(#m) on <circle> c is unsupported: <marker> elements are not built yet (package SVG-b)'), ...all('marker-start: url(#m) on <path> p is unsupported: <marker> elements are not built yet (package SVG-b)'), ...all('marker-start: url(#m) on <svg> s is unsupported: <marker> elements are not built yet (package SVG-b)')].sort());
+    expect(svgAttributeRefusal('path', 'marker-end', 'url(#m)')).toContain('SVG-b');
+    expect(svgAttributeRefusal('path', 'clip-rule', 'bogus')).not.toBeNull();
+    expect(svgAttributeRefusal('rect', 'clip-rule', 'evenodd')).toBeNull();
+  });
   it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect, and a negative attribute; a negative in CSS is invalid', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];
     const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();

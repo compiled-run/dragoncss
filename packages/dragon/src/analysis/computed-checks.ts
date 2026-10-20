@@ -38,6 +38,10 @@ import { TXT_W_FAULTS } from '../faults/txt-w.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
 import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
 import { checkTransformExtra } from './transform-extra.ts';
+import { checkZoom } from './zoom.ts';
+import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
+import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
+import { checkScrollContainment } from './scroll-containment.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
 import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
@@ -58,7 +62,7 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { environmentOf, valueToString } from './resolve.ts';
+import { environmentOf, generatedPseudoOf, refusedGenerationOf, valueToString } from './resolve.ts';
 import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
@@ -66,7 +70,7 @@ import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
 import { checkLineClamp, lineClampOf } from './line-clamp.ts';
 import { checkResize } from './resize.ts';
-import { checkTouchAction } from './touch-action.ts';
+import { checkTouchAction, nativePanner, type NativePanner } from './touch-action.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
 /** css-text-3 §8.1: whether a computed word-spacing adds space, anything but normal and 0px. */
@@ -579,8 +583,8 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
     refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
-      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination`
-      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
+      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)`
+      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
   }
 }
 
@@ -892,6 +896,12 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     const why = svgPaintRefusal(p, v.value);
     if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} a colour or none.`);
   }
+  // SVG-inert: a shape draws no marker, so only marker none compiles; markers are inherited, so the shape's own value is checked.
+  for (const p of ['marker-start', 'marker-mid', 'marker-end'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const why = svgPaintRefusal(p, v.value);
+    if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} none.`);
+  }
   const sw = el.props.get('stroke-width') as ResolvedValue;
   for (const p of ['stroke-width', 'stroke-dasharray', 'stroke-dashoffset'] as const) {
     const v = el.props.get(p) as ResolvedValue;
@@ -999,10 +1009,11 @@ function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics:
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
+  // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[]): void => {
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1010,6 +1021,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
+      checkZoom(el, targets, diagnostics, reported);
+      checkScrollContainment(el, targets, diagnostics, reported, faults);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
@@ -1019,11 +1032,17 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-    if (!here) checkTouchAction(el, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    const self = nativePanner(el, propagated);
+    const panners = self === null ? around : [...around, self];
+    if (!here) checkTouchAction(el, panners, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkAppearance(el, targets, diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
+    checkZoom(el, targets, diagnostics, reported);
+    // The overscroll, scroll-snap, containment and container-query families, initial values only (analysis/scroll-containment.ts).
+    checkScrollContainment(el, targets, diagnostics, reported, faults);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
@@ -1045,11 +1064,12 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkBorderImage(el, targets, diagnostics, reported, faults);
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
+    checkGeneratedContent(el, targets, diagnostics, reported);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners);
   };
-  walk(root, false, 'viewport');
+  walk(root, false, 'viewport', []);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
@@ -1062,6 +1082,41 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkTextShadows(root, targets, diagnostics, reported, realFaceAt, faults);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
   checkTextTransform(root, targets, diagnostics, reported);
+}
+
+const GENERATED_DISPLAY_OWNER: readonly (readonly [RegExp, string])[] = [
+  [/list-item/, 'the ::marker package GEN-d6'],
+  [/^table|^inline-table$/, 'the table package TBL'],
+  [/^contents$/, 'the generated-content package GEN-d'],
+  [/^ruby/, 'the generated-content package GEN-d'],
+];
+
+// GEN-a (notes/T151-gen-spec.md R4, R6, R8): the ::before and ::after boxes resolve.ts refused on their host (a replaced element, a
+// form control or the root), a generated box whose display is a list item, a table part, contents or ruby, and a direction declared
+// on a generated box, which takes its host's direction. Each is refused on every target at the declaration.
+function checkGeneratedContent(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (v: ResolvedValue, at: string, what: string, message: string, manual: string): void => {
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|gen-${what}|${JSON.stringify(origin)}|${at}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  for (const r of refusedGenerationOf(el)) {
+    const at = `${el.element.address}::${r.pseudo}`;
+    refuse(r.content, at, 'host', `content: ${valueToString(r.content.value)} on ${at} is not supported yet: ${r.reason}`, `Remove the ::${r.pseudo} rule's content for <${el.element.tag}> ${el.element.address}, or put the content in a real element beside it.`);
+  }
+  const info = generatedPseudoOf(el);
+  if (info === undefined) return;
+  const at = el.element.address;
+  const display = el.props.get('display') as ResolvedValue;
+  const shown = valueToString(display.value);
+  const owner = GENERATED_DISPLAY_OWNER.find(([re]) => re.test(shown));
+  if (owner !== undefined) refuse(display, at, 'display', `display: ${shown} on ${at} is not supported yet on a generated box (${owner[1]})`, `Give ${at} display: inline or block.`);
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (direction.origin === 'author') refuse(direction, at, 'direction', `direction on ${at} is not supported: a generated box takes its host ${info.host.element.address}'s direction (notes/T151-gen-spec.md R6)`, `Set direction on ${info.host.element.address} instead.`);
 }
 
 // TXT-FONTFEAT (css-fonts-4 §2.4): font-stretch selects a face by width and is never synthesized, so it leaves Chrome's glyphs alone
@@ -1085,6 +1140,32 @@ function checkFontStretch(el: ResolvedElement, targets: readonly string[], diagn
         basis: 'computed-value',
       }));
     }
+  }
+}
+
+// FORM-a (css-ui-4 §7.1): Chrome 145 adjusts the display of a box whose appearance is not none before it looks at the element's type
+// (StyleAdjuster::AdjustStyleForHTMLElement): inline and inline-table become inline-block, list-item and table become block, and
+// every other display is kept. Dragon does not model the adjustment, so a non-none appearance on a box of those four displays is
+// refused for every target; on any other display appearance changes nothing Dragon lays out or paints.
+const APPEARANCE_ADJUSTED: { readonly [display: string]: string } = { inline: 'inline-block', 'inline-table': 'inline-block', 'list-item': 'block', table: 'block' };
+function checkAppearance(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const v = el.props.get('appearance') as ResolvedValue;
+  const k = keywordOf(v);
+  if (k === '' || k === 'none') return;
+  const display = keywordOf(el.props.get('display') as ResolvedValue);
+  const adjusted = APPEARANCE_ADJUSTED[display];
+  if (adjusted === undefined) return;
+  const id = `appearance|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan),
+      target: t,
+      message: `${el.element.address} has appearance ${k} on display ${display}, which Chrome turns into display ${adjusted}; Dragon does not model that adjustment (FORM-a)`,
+      manual: `Set appearance: none on ${el.element.address}, or give it display: ${adjusted}.`,
+      basis: 'computed-value',
+    }));
   }
 }
 

@@ -32,13 +32,15 @@ describe('element keys (ELB-2)', () => {
     expect(light.elementKeyDeclared.img.ltr).toEqual({ 'overflow-x': 'clip', 'overflow-y': 'clip' });
   });
   it('list the UA-set properties no longhand models, and the forced longhands', () => {
-    expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ appearance: 'auto', cursor: 'default' });
-    expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ appearance: 'auto', cursor: 'text' });
+    expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ cursor: 'default' });
+    expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ cursor: 'text' });
     expect(light.userAgentUnmodelled['a[href]']?.ltr).toMatchObject({ cursor: 'pointer', 'text-decoration-line': 'underline' });
     // GEN-b (T151 R13): list-style-type is a longhand now, so ol's decimal is a declared UA value, no longer unmodelled.
     expect(light.userAgentUnmodelled['ol']?.ltr).toEqual({ 'unicode-bidi': 'isolate' });
     expect(light.userAgentDeclared['ol']?.ltr).toMatchObject({ 'list-style-type': 'decimal' });
     expect(light.userAgentUnmodelled['span']).toEqual({ ltr: {}, rtl: {} });
+    // FORM-a: appearance is a declared longhand, kept off the reference element, so Chrome's form-control adjustment still shows
+    // as a forced display: inline-block.
     expect(light.userAgentForced['input']?.ltr).toEqual({ display: 'inline-block', 'overflow-x': 'clip', 'overflow-y': 'clip' });
     expect(light.userAgentForced['button']?.ltr).toEqual({ display: 'inline-block' });
     // TDEC-a: a[href]'s text-decoration-line is a longhand now, applied from the capture by datasets.ts anyLink.

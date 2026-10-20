@@ -34,6 +34,20 @@ describe('lanes-merge', () => {
     expect(parsed(mergeLanesFile(base, ours, base)).targets[0]!.lanes[1]!.evidence).toEqual({ laneCode: 'new' });
     expect(parsed(mergeLanesFile(base, ours, ours)).targets[0]!.lanes[1]!.evidence).toEqual({ laneCode: 'new' });
   });
+  it('takes the constants from the side that changed them, so they describe the device records they came with', () => {
+    const withRules = (f: string, rules: string[]): string => `${JSON.stringify({ ...JSON.parse(f), sampleRules: rules, tolerances: { gateDevicePx: 1 } }, null, 2)}\n`;
+    const old = ['interior'];
+    const added = ['interior', 'text-shadow'];
+    const b = withRules(base, old);
+    // A lane branch (ours, unchanged rules) merges master, whose device run was judged by an added rule.
+    const master = withRules(file(rec('device-frames', 'device', 'pass', 'new'), host, [{ dpr: 2 }]), added);
+    const m = JSON.parse(mergeLanesFile(b, withRules(base, old), master)) as { sampleRules: string[]; targets: { lanes: Rec[] }[] };
+    expect(m.sampleRules).toEqual(added);
+    expect(m.targets[0]!.lanes[1]!.evidence).toEqual({ laneCode: 'new' });
+    // Ours changed them (alone, or both differently): ours stays.
+    expect((JSON.parse(mergeLanesFile(b, withRules(base, added), b)) as { sampleRules: string[] }).sampleRules).toEqual(added);
+    expect((JSON.parse(mergeLanesFile(b, withRules(base, added), withRules(base, ['edge']))) as { sampleRules: string[] }).sampleRules).toEqual(added);
+  });
   it('refuses two different device runs, a missing base and a malformed side', () => {
     const ours = file(rec('device-frames', 'device', 'pass', 'a'), host);
     const theirs = file(rec('device-frames', 'device', 'pass', 'b'), host);

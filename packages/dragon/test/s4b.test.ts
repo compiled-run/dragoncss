@@ -10,6 +10,10 @@ import { applyFix, CATALOGUE, compiledFeatures, createProjectWith, iosLayoutProj
 import { initialValue } from '../src/analysis/resolve.ts';
 import { computed, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
+import { CONTAINER_QUERY_INITIAL } from '../src/css/properties/container-query.ts';
+import { CONTAINMENT_INITIAL } from '../src/css/properties/containment.ts';
+import { OVERSCROLL_INITIAL } from '../src/css/properties/overscroll.ts';
+import { SCROLL_SNAP_INITIAL } from '../src/css/properties/scroll-snap.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 import { floorProblems } from './floor.ts';
 
@@ -75,7 +79,7 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // SVG-paint-order: two paint orders.
       'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
       'stroke-linecap': ['round', 'square'], 'stroke-linejoin': ['bevel', 'round'], 'stroke-miterlimit': ['1', '10'], 'fill-rule': ['evenodd', 'nonzero'], 'stroke-dasharray': ['2 3', 'none'], 'stroke-dashoffset': ['4px', '-2'],
-      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'], 'rx': ['2px', 'auto'], 'ry': ['auto', '1'], 'vector-effect': ['non-scaling-stroke', 'none'],
+      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'], 'rx': ['2px', 'auto'], 'ry': ['auto', '1'], 'vector-effect': ['non-scaling-stroke', 'none'], 'clip-rule': ['evenodd', 'nonzero'], 'marker-start': ['none', 'none'], 'marker-mid': ['none', 'none'], 'marker-end': ['none', 'none'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.
       'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
       'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
@@ -93,7 +97,10 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // MISC-PAINT: the border image longhands, which accept their initial values alone, at those values in two spellings.
       'border-image-source': ['none', 'NONE'], 'border-image-slice': ['100%', '100.0%'], 'border-image-width': ['1', '1.0'], 'border-image-outset': ['0', '0.0'],
       'border-image-repeat': ['stretch', 'STRETCH'],
-      perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'] };
+      perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
+      // The overscroll, scroll-snap, containment and container-query longhands, which accept their initial values alone, at those
+      // values in two spellings.
+      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])) };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
