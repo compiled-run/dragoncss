@@ -18,7 +18,7 @@ public final class UnsupportedSignal: JsError {
   public let unsupported: LayoutUnsupported
   public init(_ unsupported: LayoutUnsupported) throws {
     self.unsupported = unsupported
-    super.init(message: jsConcat(unsupported.code, S.s19, unsupported.nodeId, S.s3, unsupported.specSection, S.s147, unsupported.detail))
+    super.init(message: jsConcat(unsupported.code, S.s19, unsupported.nodeId, S.s3, unsupported.specSection, S.s151, unsupported.detail))
   }
 }
 

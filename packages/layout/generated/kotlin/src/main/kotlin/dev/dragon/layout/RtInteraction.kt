@@ -76,11 +76,11 @@ fun rtInteraction_checkInteractionTables(t: InteractionTables, states: Double): 
   val lengths: JsArray<Double> = jsArrayOf<Double>(jsLength(t.focusable), jsLength(t.touchConsumesTap), jsLength(t.keyboardInput), jsLength(t.chainOf), jsLength(t.activeChainOf), jsLength(t.pointerFocusOf), jsLength(t.keyboardFocusOf), jsLength(t.forcedHoverOf), jsLength(t.forcedActiveOf), jsLength(t.forcedFocusOf), jsLength(t.forcedFocusVisibleOf))
   // ts: packages/layout/src/rt-interaction.ts:120
   run {
-    val _a264 = lengths
-    var _i264 = 0
-    while (_i264 < _a264.size) {
-      val l: Double = _a264[_i264]
-      _i264++
+    val _a269 = lengths
+    var _i269 = 0
+    while (_i269 < _a269.size) {
+      val l: Double = _a269[_i269]
+      _i269++
       // ts: packages/layout/src/rt-interaction.ts:120
       if ((l != n)) {
         throw InteractionError(("a table has " + jsNumberToString(l) + " entries for " + jsNumberToString(n) + " elements"))

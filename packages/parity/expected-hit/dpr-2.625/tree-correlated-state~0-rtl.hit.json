@@ -1,0 +1,20 @@
+{
+  "case": "tree-correlated-state#0-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2.625,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 177,
+  "gridSha256": "c1bc50ee61ae3e6e63abc067a5787d7cae1f1a7eea988f26ed106d5c56485805",
+  "ids": [
+    "body",
+    "html",
+    "t/root",
+    "t/track"
+  ],
+  "runs": [[0,4],[2,28],[3,6],[2,5],[3,6],[2,5],[3,6],[2,5],[3,6],[2,5],[3,6],[2,5],[3,6],[2,36],[0,4],[2,4],[0,4],[2,4],[0,4],[2,4],[1,24]]
+}

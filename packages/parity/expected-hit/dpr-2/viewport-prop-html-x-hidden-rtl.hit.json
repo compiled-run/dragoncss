@@ -1,0 +1,19 @@
+{
+  "case": "viewport-prop-html-x-hidden-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 56,
+  "gridSha256": "40da786a80f51dddb7f031d4bd02fa2b6d9c59d7d6d8f4fb6093cb92ea653afb",
+  "ids": [
+    "a",
+    "body",
+    "html"
+  ],
+  "runs": [[1,4],[0,4],[1,4],[0,4],[1,4],[0,4],[1,4],[0,4],[2,24]]
+}
