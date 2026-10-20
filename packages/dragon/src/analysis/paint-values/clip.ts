@@ -11,13 +11,7 @@
 // under an ancestor's clip bounds that leave nothing (ViewGroup.getChildVisibleRect), so TalkBack skips it. Only text views are
 // accessibility elements natively (native-support.ts), so a subtree without text loses nothing there. An em or rem edge whose font
 // size has no build-time value is refused for that.
-// overflow (css-overflow-3 §3): a box that clips its overflow hosts its children in a native clip view over its padding box
-// (lower/paint/clip.ts). A clip view that leaves a text view no visible pixel drops it from the native accessibility tree as
-// above (Android's getChildVisibleRect is empty), while Chrome keeps clipped text in its tree. Refused on the native targets, by
-// a rule decided from computed values alone: text in a clip box whose width, height, max-width, max-height or flex-basis (without
-// flex-grow) is zero or not a plain length; text under a non-zero text-indent anywhere from the
-// clip box down; and text under a box between them that is shifted out of flow: absolutely or fixed positioned, offset by
-// relative or sticky insets, transformed, or given a negative margin.
+// overflow and background-clip: text: the text a native padding-box clip view could hide is refused in clip-view-text.ts.
 // clip-path (css-masking-1 §6.1): an inset() edge computes to px (em and rem as above), a percentage stays a percentage of the
 // border box's width or height. Chrome clips the box's own paint and every descendant, positioned ones included, to the inset rect.
 // Natively Dragon clips the box view and the views inside it to that rect after layout. Refused on the native targets: the root and
@@ -32,13 +26,12 @@ import type { ClipEdges } from '../../css/properties/clip-rect.ts';
 import { appliedClipEdges, clipEdgesOf, clipHidesBox, clipRectValue } from '../../css/properties/clip-rect.ts';
 import { zIndexOf } from '../../css/properties/effects.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
-import { SIDES } from '../../css/properties.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx } from '../../css/units.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
-import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { valueToString } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { checkClipViewText } from './clip-view-text.ts';
 import { paintedOutlineStyle } from './outline.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
@@ -133,123 +126,6 @@ const checkClip: PaintCheck = (el, targets, diagnostics, reported) => {
   }
 };
 
-const isZero = (v: ResolvedValue['value'] | undefined): boolean => v !== undefined && (v.kind === 'length' || v.kind === 'percentage') && v.value === 0;
-/** A size that can be zero at layout: a zero length or percentage, or a value with no build-time number (calc(), min(), ...). */
-const mayBeZero = (v: ResolvedValue['value'] | undefined): boolean => v !== undefined && v.kind !== 'keyword' && (isZero(v) || (v.kind !== 'length' && v.kind !== 'percentage'));
-const valueOf = (el: ResolvedElement, p: Longhand): ResolvedValue['value'] | undefined => el.props.get(p)?.value;
-
-/** The size of a box that can be zero at layout (such as "height 0px"), or null. */
-function zeroSizeOf(el: ResolvedElement): string | null {
-  for (const p of ['width', 'height', 'max-width', 'max-height'] as const) {
-    const v = valueOf(el, p);
-    if (mayBeZero(v)) return `${p} ${valueToString(v as ResolvedValue['value'])}`;
-  }
-  // Judged in any parent: flex-basis applies only to a flex item, and its initial value is auto.
-  const grow = valueOf(el, 'flex-grow');
-  if (mayBeZero(valueOf(el, 'flex-basis')) && !(grow?.kind === 'number' && grow.value > 0)) {
-    return `flex-basis ${valueToString(valueOf(el, 'flex-basis') as ResolvedValue['value'])} without flex-grow`;
-  }
-  return null;
-}
-
-/** Why a box can carry the text inside it out of its clip box's padding box, or null; inner is false for the clip box itself. */
-function shiftOf(e: ResolvedElement, inner: boolean): string | null {
-  const indent = valueOf(e, 'text-indent');
-  if (indent !== undefined && !isZero(indent)) return `${inner ? e.element.address : 'it'} has text-indent ${valueToString(indent)}, which can move a line out of the clip`;
-  if (!inner) return null;
-  const at = e.element.address;
-  const position = keywordOf(e, 'position');
-  if (position === 'absolute' || position === 'fixed') return `${at} is position: ${position}, which can place it outside the clip`;
-  if ((position === 'relative' || position === 'sticky') && SIDES.some((s) => { const v = valueOf(e, s); return v !== undefined && !(v.kind === 'keyword' && v.value === 'auto') && !isZero(v); })) return `${at} is offset by its ${position} insets, which can move it outside the clip`;
-  const transform = valueOf(e, 'transform');
-  if (transform !== undefined && !(transform.kind === 'keyword' && transform.value === 'none')) return `${at} has transform ${valueToString(transform)}, which can move it outside the clip`;
-  for (const s of SIDES) {
-    const v = valueOf(e, `margin-${s}`);
-    if (v !== undefined && !(v.kind === 'keyword' && v.value === 'auto') && !((v.kind === 'length' || v.kind === 'percentage') && v.value >= 0)) return `${at} has margin-${s} ${valueToString(v)}, which can move it outside the clip`;
-  }
-  return null;
-}
-
-/**
- * Why a native clip view over the padding box of el could clip text inside it out of sight, or null: the first text in preorder and
- * the reason.
- */
-export function clipViewHidesText(el: ResolvedElement): { readonly text: string; readonly why: string } | null {
-  const first = textInside(el);
-  if (first === null) return null;
-  const zero = zeroSizeOf(el);
-  if (zero !== null) return { text: first, why: `its ${zero} can leave its padding box no area` };
-  const visit = (e: ResolvedElement, inner: boolean, shifted: string | null): { readonly text: string; readonly why: string } | null => {
-    if (keywordOf(e, 'display') === 'none') return null;
-    const why = shifted ?? shiftOf(e, inner);
-    for (const c of e.children) {
-      const found = c.kind === 'text' ? (why === null ? null : { text: c.node.address, why }) : visit(c, true, why);
-      if (found !== null) return found;
-    }
-    return null;
-  };
-  return visit(el, false, null);
-}
-
-/**
- * The longhand that makes lower/paint/clip.ts host a clip view over the padding box of el, and how a message names it, or null.
- * propagated is the element whose overflow the viewport takes, which hosts none. A new cause of a padding-box clip view adds its
- * line here, so the text refusal below covers it.
- */
-export function clipViewCause(el: ResolvedElement, propagated: ResolvedElement | null): { readonly property: Longhand; readonly cause: string } | null {
-  const [x, y] = [keywordOf(el, 'overflow-x'), keywordOf(el, 'overflow-y')];
-  if (el !== propagated && (x !== 'visible' || y !== 'visible')) return { property: el.props.get('overflow-x')?.declaration ? 'overflow-x' : 'overflow-y', cause: `overflow: ${x === y ? x : `${x} ${y}`}` };
-  return null;
-}
-
-/**
- * Refuses, on each native target, a clip view over the padding box of el (clipViewCause) that could clip text inside it out of
- * sight; why, when given, is the fact found above el (an ancestor whose size can be zero), else clipViewHidesText decides.
- */
-function refuseClipViewText(el: ResolvedElement, propagated: ResolvedElement | null, why: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const host = clipViewCause(el, propagated);
-  if (host === null) return;
-  const first = why === null ? null : textInside(el);
-  const hidden = why === null ? clipViewHidesText(el) : first === null ? null : { text: first, why };
-  if (hidden === null) return;
-  const at = el.element.address;
-  const declared = el.props.get(host.property)?.declaration ?? null;
-  const origin = declared === null ? el.element.node.origin : authored(declared.valueSpan);
-  for (const t of targets) {
-    if (t === 'web') continue;
-    const id = `${t}|clip-view-text|${at}`;
-    if (reported.has(id)) continue;
-    reported.add(id);
-    const message = `${at} has ${host.cause}, which ${t} draws as a clip view over its padding box, but ${hidden.why}; its text ${hidden.text} could be clipped out of sight, which Chrome keeps in its accessibility tree and screen readers read, while ${t} would drop it (${CLIP_VIEW_A11Y_DROP[t] ?? 'a fully clipped view leaves the native accessibility tree'})`;
-    const manual = `Keep the text of ${at} inside its padding box with build-time sizes (no zero or computed size on it or an ancestor, no text-indent, offset, transform or negative margin), or clip a box without text.`;
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
-  }
-}
-
-/** The native refusals of text a padding-box clip view could hide: el's own clip view, and every one inside el when el's size can be zero. */
-const checkClipViewText: PaintCheck = (el, targets, diagnostics, reported, propagated) => {
-  if (!targets.some((t) => t !== 'web')) return;
-  refuseClipViewText(el, propagated, null, targets, diagnostics, reported);
-  const zero = zeroSizeOf(el);
-  if (zero === null) return;
-  // A box sized from a zero-size ancestor (an auto or percentage width, a percentage or stretched height) can be zero-size too.
-  const why = `its ancestor ${el.element.address} has ${zero}, which can leave it no area too`;
-  const visit = (e: ResolvedElement): void => {
-    if (keywordOf(e, 'display') === 'none') return;
-    for (const c of e.children) {
-      if (c.kind !== 'element') continue;
-      refuseClipViewText(c, propagated, why, targets, diagnostics, reported);
-      visit(c);
-    }
-  };
-  visit(el);
-};
-
-const CLIP_VIEW_A11Y_DROP: { readonly [t: string]: string } = {
-  ios: 'VoiceOver is not proven to read a view its clipping ancestor shows no pixel of',
-  android: 'View.isVisibleToUser is false when ViewGroup.getChildVisibleRect leaves it nothing, so TalkBack skips it',
-};
-
 /** The inset() edges with em and rem computed to px against the element's font sizes; null while one has no build-time base. */
 function computeInsets(edges: InsetEdges, ctx: PaintValueContext): InsetEdges | null {
   const out = edges.map((e) => {
@@ -329,6 +205,7 @@ export const CLIP_VALUES: PaintValues = {
   },
   check: (el, targets, diagnostics, reported, propagated) => {
     checkClip(el, targets, diagnostics, reported, propagated);
+    // Judged at the parent, which decides a clip box's flex-basis and stretch.
     checkClipViewText(el, targets, diagnostics, reported, propagated);
     checkClipPath(el, targets, diagnostics, reported, propagated);
   },
