@@ -240,7 +240,7 @@ export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.jso
  * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
  * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-|fragmentation-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -376,6 +376,12 @@ const JSON_BG2 = new RegExp(BG2_LONGHANDS.map(([k, v]) => `,\\n[ ]*"${k}": "${v}
 const CSS_BG2 = new RegExp(BG2_LONGHANDS.map(([k, v]) => `^[ ]*${k}: ${v};\\n`).join(''), 'gm');
 
 /**
+ * The fragmentation longhands (css-break-3), also added after the identity base, at their initial values only: web output writes
+ * them only where a case sets them, so only captures carry them. Any other value stays in the text.
+ */
+const JSON_FRAGMENTATION = /,\n[ ]*"(?:break-before": "auto|break-after": "auto|break-inside": "auto|orphans": "2|widows": "2)"/g;
+
+/**
  * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and PNT1's, GEN-b's, BG2's and SVG-a1's neutral longhands) removed: the computed
  * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
  * is masked, since every compilation digest moves with the compiler input.
@@ -385,7 +391,7 @@ export function withoutPointerEvents(path: string, text: string): string {
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
     const stripped = withoutCaretColor(withoutTextColors(text)).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_ACCENT, '').replace(genB, '').replace(SVG_JSON, '');
-    return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
+    return (BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '')).replace(JSON_FRAGMENTATION, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');

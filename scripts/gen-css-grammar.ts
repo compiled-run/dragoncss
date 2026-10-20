@@ -14,6 +14,7 @@ import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/trans
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 import { MASK_LONGHANDS, MASK_SHORTHANDS } from '../packages/dragon/src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS, BORDER_IMAGE_SHORTHANDS } from '../packages/dragon/src/css/properties/border-image.ts';
+import { FRAGMENTATION_LONGHANDS, FRAGMENTATION_SHORTHANDS } from '../packages/dragon/src/css/properties/fragmentation.ts';
 import { OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS } from '../packages/dragon/src/css/properties/overscroll.ts';
 import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../packages/dragon/src/css/properties/scroll-snap.ts';
 import { CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS } from '../packages/dragon/src/css/properties/containment.ts';
@@ -165,6 +166,8 @@ const SUBSET = [
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
   // color-scheme (css-color-adjust-1 §2.1), after the counters family, as LONGHANDS registers it.
   'color-scheme',
+  // css-break-3: the break properties, orphans and widows, then the legacy break shorthands, after the counters, as LONGHANDS registers them.
+  ...FRAGMENTATION_LONGHANDS, ...FRAGMENTATION_SHORTHANDS,
 ] as const;
 
 /**
@@ -326,6 +329,10 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'counter-increment': '[ <custom-ident> <integer>? ]+ | none',
   'counter-set': '[ <custom-ident> <integer>? ]+ | none',
   quotes: 'auto | none | [ <string> <string> ]+',
+  // Chrome 145 parses the break properties and their legacy shorthands as fewer keywords than css-break-3 lists (no always, all or
+  // region values), and orphans and widows as a positive integer with calc() rounded (properties/fragmentation.ts), so the grammar
+  // takes any value and the parser decides. Pinned by packages/parity/test/fragmentation-parse.test.ts.
+  ...Object.fromEntries([...FRAGMENTATION_LONGHANDS, ...FRAGMENTATION_SHORTHANDS].map((p) => [p, '<any-value>'])),
 };
 
 /**

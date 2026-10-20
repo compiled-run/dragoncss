@@ -7,6 +7,7 @@ import { BORDER_IMAGE_SHORTHANDS } from './border-image.ts';
 import { BOX_SHORTHANDS } from './box.ts';
 import { FLEX_SHORTHANDS } from './flex.ts';
 import { FONT_VARIANT_SHORTHANDS } from './font-variant.ts';
+import { FRAGMENTATION_SHORTHANDS } from './fragmentation.ts';
 import { GRID_SHORTHANDS } from './grid.ts';
 import { INITIAL_ONLY_SHORTHANDS } from './initial-only.ts';
 import { LISTS_SHORTHANDS } from './lists.ts';
@@ -52,6 +53,7 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...INITIAL_ONLY_SHORTHANDS,
   ...SCROLL_SNAP_SHORTHANDS,
   ...TABLE_SHORTHANDS,
+  ...FRAGMENTATION_SHORTHANDS,
 };
 
 export function shorthandHandler(property: Shorthand): ShorthandHandler {
