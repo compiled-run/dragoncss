@@ -183,7 +183,9 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
     }
     if (asciiLower(decodeName(String(d['property']))) === 'scrollbar-color') {
       const v = asciiLower(generate(d['value'] as CssNode)).trim();
-      if (v !== 'inherit' && v !== 'unset') scrollbarColor = ['auto', 'initial', 'revert', 'revert-layer'].includes(v) ? 'auto' : 'set';
+      // Anything but a keyword or two colours is invalid, so Chrome drops it (an unsupported colour still counts as set).
+      const words = list(d['value'] as CssNode, 'children').filter((n) => n.type !== 'WhiteSpace').length;
+      if (v !== 'inherit' && v !== 'unset' && (words === 2 || ['auto', 'initial', 'revert', 'revert-layer'].includes(v))) scrollbarColor = ['auto', 'initial', 'revert', 'revert-layer'].includes(v) ? 'auto' : 'set';
     }
     const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);

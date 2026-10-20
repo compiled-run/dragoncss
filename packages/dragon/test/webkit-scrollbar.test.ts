@@ -65,6 +65,7 @@ describe('::-webkit-scrollbar rules that hide the scrollbar', () => {
     expect(errors(c).filter((e) => e.includes('::-webkit-scrollbar'))).toEqual([]);
     expect(c.targets.ios).toBe('checked');
     expect(indicators(c, 'a')).toEqual([false, false]);
+    for (const invalid of ['red', 'none']) expect(indicators(compile(`.a { overflow: auto; } body { scrollbar-color: ${invalid}; } .a::-webkit-scrollbar { display: none; }`), 'a')).toEqual([true, true]);
     const auto = compile('.a { overflow: auto; } body { scrollbar-color: auto; } .a::-webkit-scrollbar { display: none; }');
     expect(errors(auto).filter((e) => e.includes('::-webkit-scrollbar'))).toEqual([]);
     expect(indicators(auto, 'a')).toEqual([true, true]);
@@ -74,6 +75,17 @@ describe('::-webkit-scrollbar rules that hide the scrollbar', () => {
     for (const css of [
       '.a { overflow: hidden; } @media (min-width: 600px) { .a { overflow-y: auto; } } .a::-webkit-scrollbar { width: 0; }',
       '.a { overflow: auto; scrollbar-width: none; } @media (min-width: 600px) { .a { scrollbar-width: auto; } } .a::-webkit-scrollbar { display: none; }',
+    ]) {
+      const c = compile(css);
+      expect(errors(c).filter((e) => e.includes('::-webkit-scrollbar'))).toEqual([]);
+      expect(webCss(c)).toMatch(/::-webkit-scrollbar \{\\n {2}display: none;\\n\}/);
+    }
+  });
+
+  it('are written outside interaction states when they hide the scrollbar in any state', () => {
+    for (const css of [
+      '.a { overflow: hidden; } .a:hover { overflow: hidden auto; } .a::-webkit-scrollbar { width: 0; }',
+      '.a { overflow: auto; scrollbar-width: thin; } .a:hover { scrollbar-width: auto; } .a::-webkit-scrollbar { display: none; }',
     ]) {
       const c = compile(css);
       expect(errors(c).filter((e) => e.includes('::-webkit-scrollbar'))).toEqual([]);

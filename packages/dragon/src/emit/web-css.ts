@@ -321,9 +321,10 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const generated = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && isGeneratedElement(ch));
       const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false))];
       // NA-NATIVE: ::-webkit-scrollbar rules that hide the element's scrollbars are written as the one rule that does (webkit-scrollbar.ts),
-      // outside @media when they hide them in any band: in a band where they do not, the element scrolls on no axis they leave
-      // shown (that band refuses them otherwise), or a scrollbar-width other than auto makes Chrome ignore the rule there.
-      if ([el, ...inBands.map((m) => m.get(el.element.address))].some((r) => r !== undefined && webkitScrollbarHidden(r))) parts.push({ suffix: '::-webkit-scrollbar', decls: ['  display: none;'], diffs: inBands.map(() => []), own: [] });
+      // outside @media and interaction states when they hide them in any band or state: where they do not, the element scrolls on no
+      // axis they leave shown (that resolution refuses them otherwise), or a scrollbar-width other than auto makes Chrome ignore the rule.
+      const at = (m: ReadonlyMap<string, ResolvedElement>): ResolvedElement | undefined => m.get(el.element.address);
+      if ([el, ...inBands.map(at), ...states.flat().map((st) => at(st.at))].some((r) => r !== undefined && webkitScrollbarHidden(r))) parts.push({ suffix: '::-webkit-scrollbar', decls: ['  display: none;'], diffs: inBands.map(() => []), own: [] });
       const keyOf = (pt: Part): string => `${pt.suffix}\u0000${pt.decls.join('\n')}${pt.diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(pt.diffs)}` : ''}${pt.own.length > 0 ? `\u0001${JSON.stringify(pt.own)}` : ''}`;
       const variant = `${el.element.address}${parts.map(keyOf).join('\u0002')}`;
       let cls = variants.get(variant);
