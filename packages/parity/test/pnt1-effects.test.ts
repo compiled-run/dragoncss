@@ -330,6 +330,8 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
         if (spec.id === 'opacity-fold') {
           expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'opacity')).map((n) => n.id)).toEqual([]);
           expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-color' && w.color.alpha > 0 && w.color.alpha < 255)).map((n) => n.id)).toEqual(['of-a', 'of-b', 'of-d', 'of-e', 'of-h', 'of-j']);
+          // Every one sits in a row of leaves in a column of rows, so its backdrop is provably the stage's and rows' colours alone.
+          expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-color' && w.folded === true)).map((n) => n.id)).toEqual(['of-a', 'of-b', 'of-d', 'of-e', 'of-h', 'of-j']);
         } else if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
         if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
       });
@@ -432,6 +434,9 @@ describe('PNT1 opacity: fractions are proven on web only', () => {
       for (const d of errs) expect([d.target, d.message], c.id).toEqual(['ios', expect.stringMatching(/^ow-[a-z]+ has opacity [0-9.]+; ios composites a translucent view with its own rounding/)]);
       const r = nativePrograms(lanes, c.assignment);
       if (r.kind !== 'ready') throw new Error(r.reason);
+      // ow-fold and ow-pct fold, but row2's ow-text holds text, whose glyphs no layout-free proof keeps out of row1, so neither has a
+      // provable backdrop and both keep the platform blend of the translucent colour.
+      expect(r.programs.uikit.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-color' && w.folded === true)).map((n) => n.id), c.id).toEqual([]);
       for (const dpr of DPRS) {
         const all = casePoints(r.programs.uikit, c.environment.viewport, dpr);
         const kept = devicePoints(r.programs.uikit, c.environment.viewport, dpr);
