@@ -1,10 +1,11 @@
 // MEDIA-EL: the natural size of an MP4 (ISO/IEC 14496-12) holding one H.264 video track, as Chrome 145 reads it. Chrome takes the
 // size from the sample entry's width and height (stsd), not the tkhd's, scales the width by the pixel aspect ratio and turns it by
 // the track matrix (Chrome 145 probes, MEDIA-EL: a 64x48 stream whose tkhd says 100x30 is 64x48, one whose stsd says 100x30 is
-// 100x30; pasp 3:2 makes 64x48 96x48; a 90-degree matrix makes it 48x64). The platform decoders size a frame from the stream's
-// sequence parameter set (ITU-T H.264 §7.3.2.1.1: the macroblock counts less the frame cropping), so Dragon requires the two to
-// agree. It draws only what every target plays the same: progressive 8-bit 4:2:0 H.264 Baseline, Main or High with square pixels
-// and an identity matrix; anything else is a refusal naming what differs.
+// 100x30; pasp 3:2 makes 64x48 96x48; a 90-degree matrix, in the tkhd or the mvhd, makes it 48x64). The platform decoders size a
+// frame from the stream's sequence parameter set (ITU-T H.264 §7.3.2.1.1: the macroblock counts less the frame cropping), so Dragon
+// requires the two to agree. It draws only what every target plays the same: progressive 8-bit 4:2:0 H.264 Baseline, Main or High
+// in an avc1 entry (its one SPS out of band) with square pixels, no clean aperture and identity movie and track matrices; anything
+// else is a refusal naming what differs.
 
 export type Mp4Facts = { readonly width: number; readonly height: number; readonly profile: number };
 
@@ -156,21 +157,22 @@ export function parseSps(nal: Uint8Array): SpsFacts {
   if (r.bit() === 1 && r.bit() === 1) {
     // Annex E.2.1, Table E-1: aspect_ratio_idc, 255 for an explicit sar_width and sar_height.
     const idc = r.bits(8);
-    sar = idc === 255 ? [r.bits(16), r.bits(16)] : (SAR_TABLE[idc] ?? [0, 0]);
+    sar = idc === 255 ? [r.bits(16), r.bits(16)] : (SAR_TABLE[idc] ?? null);
+    if (sar === null) throw new RangeError(`its aspect_ratio_idc ${idc} is reserved`);
   }
   return { profile, width, height, chromaFormat, bitDepth, progressive: frameMbsOnly === 1, sar };
 }
 
-/** H.264 Table E-1 sample aspect ratios by aspect_ratio_idc; 0 is unspecified. */
+/** H.264 Table E-1 sample aspect ratios by aspect_ratio_idc; 0 is unspecified, and 17 to 254 are reserved (read as null). */
 const SAR_TABLE: { readonly [idc: number]: readonly [number, number] } = {
   0: [0, 0], 1: [1, 1], 2: [12, 11], 3: [10, 11], 4: [16, 11], 5: [40, 33], 6: [24, 11], 7: [20, 11], 8: [32, 11], 9: [80, 33],
   10: [18, 11], 11: [15, 11], 12: [64, 33], 13: [160, 99], 14: [4, 3], 15: [3, 2], 16: [2, 1],
 };
 
-/** An unspecified (0:0) or square sample aspect ratio. */
-const square = (sar: readonly [number, number] | null): boolean => sar === null || (sar[0] === 0 && sar[1] === 0) || (sar[0] !== 0 && sar[0] === sar[1]);
+/** A square sample aspect ratio: none given, aspect_ratio_idc 0 (unspecified, Table E-1) or n:n with n > 0. */
+const squareSar = (sar: readonly [number, number] | null): boolean => sar === null || (sar[0] === 0 && sar[1] === 0) || (sar[0] !== 0 && sar[0] === sar[1]);
 
-/** tkhd's unity matrix (ISO/IEC 14496-12 §8.3.2.3): no rotation, mirror or scale. */
+/** The unity matrix of mvhd and tkhd (ISO/IEC 14496-12 §8.2.2.3, §8.3.2.3): no rotation, mirror or scale. */
 const IDENTITY = [0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000];
 
 function videoTracks(b: Uint8Array, moov: Box): { readonly tkhd: Box; readonly stsd: Box }[] | null {
@@ -204,6 +206,14 @@ function trackMatrix(b: Uint8Array, tkhd: Box): number[] | null {
   return Array.from({ length: 9 }, (_, i) => u32(b, at + 4 * i));
 }
 
+/** The mvhd matrix (§8.2.2): after version and flags, two times, the timescale and the duration, rate, volume and 10 reserved bytes. */
+function movieMatrix(b: Uint8Array, mvhd: Box): number[] | null {
+  const version = b[mvhd.body];
+  const at = mvhd.body + 4 + (version === 1 ? 8 + 8 + 4 + 8 : 4 + 4 + 4 + 4) + 4 + 2 + 2 + 8;
+  if (at + 36 > mvhd.end) return null;
+  return Array.from({ length: 9 }, (_, i) => u32(b, at + 4 * i));
+}
+
 /** The natural size Chrome 145 gives an MP4's video, or why Dragon does not draw it. */
 export function parseMp4(b: Uint8Array): Mp4Parse {
   const top = boxes(b, 0, b.length);
@@ -214,6 +224,11 @@ export function parseMp4(b: Uint8Array): Mp4Parse {
   if (tracks === null) return { ok: false, reason: 'the MP4 has a malformed track' };
   if (tracks.length !== 1) return { ok: false, reason: `the MP4 has ${tracks.length} video tracks; Dragon draws a video with exactly one` };
   const { tkhd, stsd } = tracks[0] as { tkhd: Box; stsd: Box };
+  // Chrome 145 turns the picture by the movie matrix times the track matrix (a 90-degree mvhd matrix makes 64x48 48x64).
+  const mvhd = childrenOf(b, moov)?.find((k) => k.type === 'mvhd');
+  const movie = mvhd === undefined ? null : movieMatrix(b, mvhd);
+  if (movie === null) return { ok: false, reason: 'the MP4 has no well-formed mvhd box' };
+  if (!movie.every((v, i) => v === IDENTITY[i])) return { ok: false, reason: 'its movie has a rotation or scale matrix (mvhd), which Dragon does not apply yet' };
   const matrix = trackMatrix(b, tkhd);
   if (matrix === null) return { ok: false, reason: 'the MP4 has a malformed tkhd box' };
   if (!matrix.every((v, i) => v === IDENTITY[i])) return { ok: false, reason: 'its video track has a rotation or scale matrix, which Dragon does not apply yet' };
@@ -221,13 +236,18 @@ export function parseMp4(b: Uint8Array): Mp4Parse {
   const entries = childrenOf(b, stsd, 8);
   if (entries === null || entries.length !== 1) return { ok: false, reason: 'its video track does not have exactly one sample description' };
   const entry = entries[0] as Box;
-  if (entry.type !== 'avc1' && entry.type !== 'avc3') return { ok: false, reason: `its video is ${JSON.stringify(entry.type)}; Dragon draws H.264 (avc1, avc3) only, which every target decodes` };
+  // avc3 may carry its parameter sets in band, where they can change the frame size the avcC box gives.
+  if (entry.type === 'avc3') return { ok: false, reason: 'its H.264 sample entry is avc3, whose parameter sets may come in band; Dragon reads avc1, whose one SPS is in its avcC box' };
+  if (entry.type !== 'avc1') return { ok: false, reason: `its video is ${JSON.stringify(entry.type)}; Dragon draws H.264 (avc1) only, which every target decodes` };
   // VisualSampleEntry (§12.1.3): 78 bytes of fields before its boxes.
   const kids = childrenOf(b, entry, 78);
   const avcc = kids?.find((k) => k.type === 'avcC');
   if (kids === null || avcc === undefined) return { ok: false, reason: 'its H.264 sample entry has no avcC box' };
+  // pasp (§12.1.4.1) must be n:n with n > 0; 0:0 is not a ratio, whatever a player makes of it.
   const pasp = kids.find((k) => k.type === 'pasp');
-  if (pasp !== undefined && (pasp.end - pasp.body < 8 || !square([u32(b, pasp.body), u32(b, pasp.body + 4)]))) return { ok: false, reason: 'its pixels are not square (pasp), which Dragon does not scale yet' };
+  if (pasp !== undefined && (pasp.end - pasp.body < 8 || u32(b, pasp.body) === 0 || u32(b, pasp.body) !== u32(b, pasp.body + 4))) return { ok: false, reason: 'its pixels are not square (pasp), which Dragon does not scale yet' };
+  // clap (§12.1.4): AVFoundation crops the picture to the clean aperture, which Chrome 145 does not.
+  if (kids.some((k) => k.type === 'clap')) return { ok: false, reason: 'its sample entry has a clean aperture (clap), which not every target applies' };
   // AVCDecoderConfigurationRecord (ISO/IEC 14496-15 §5.3.3.1): four bytes, the length size, then the count of SPS units.
   if (avcc.end - avcc.body < 8) return { ok: false, reason: 'its avcC box is truncated' };
   const spsCount = (b[avcc.body + 5] as number) & 0x1f;
@@ -243,7 +263,7 @@ export function parseMp4(b: Uint8Array): Mp4Parse {
   if (!DRAWN_PROFILES.has(sps.profile)) return { ok: false, reason: `its H.264 profile_idc is ${sps.profile}; Dragon draws Baseline, Main and High (66, 77, 100), which every target decodes` };
   if (sps.chromaFormat !== 1 || sps.bitDepth !== 8) return { ok: false, reason: 'its video is not 8-bit 4:2:0, which not every target decodes' };
   if (!sps.progressive) return { ok: false, reason: 'its video is interlaced, which Dragon does not draw' };
-  if (!square(sps.sar)) return { ok: false, reason: 'its pixels are not square (the stream\'s sample aspect ratio), which Dragon does not scale yet' };
+  if (!squareSar(sps.sar)) return { ok: false, reason: 'its pixels are not square (the stream\'s sample aspect ratio), which Dragon does not scale yet' };
   if (sps.width <= 0 || sps.height <= 0) return { ok: false, reason: 'its video crops to nothing' };
   // VisualSampleEntry (§12.1.3): six reserved bytes, data_reference_index, 16 bytes of pre_defined and reserved, width, height.
   const width = u16(b, entry.body + 6 + 2 + 16);

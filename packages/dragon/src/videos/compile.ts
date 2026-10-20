@@ -1,6 +1,9 @@
 // MEDIA-EL: the videos of one compilation. A <video> with a src Chrome loads (any preload but none) is sized by its stream's natural
 // size, so Dragon reads the bytes at build time: the src must be a data:video/mp4 URL that videos/mp4.ts accepts. A video without
 // a src, or with preload none, never loads its metadata without playback and keeps the default object size (300x150).
+// On iOS and Android a video with a stream is refused for now: Chrome paints the stream's first frame, and no lane yet proves that
+// AVPlayerLayer or a MediaPlayer's TextureView shows it (the lanes mask the drawn rect and never open the stream). The player the
+// lowering mounts (lower/paint/foreign-view.ts) waits for that proof (MEDIA-EL slice 2); web and videos without a stream are not refused.
 import type { ResolvedElement } from '../analysis/resolve.ts';
 import { diagnostic } from '../diagnostics/catalogue.ts';
 import { parseDataUrl } from '../images/manifest.ts';
@@ -59,8 +62,14 @@ function srcOrigin(el: ResolvedElement): Origin {
   return a === undefined ? el.element.node.origin : a.origin;
 }
 
-/** Reads the src of every video of the cases that Chrome loads, pushing one DRAGON_UNSUPPORTED_ATTRIBUTE per element and problem. */
-export function compileVideos(roots: readonly ResolvedElement[], diagnostics: Diagnostic[]): CompiledVideos {
+/** Why a native target does not draw a video stream yet. */
+export const NATIVE_FRAME_UNPROVEN = 'no lane proves yet that the platform player shows the first frame Chrome paints (MEDIA-EL slice 2)';
+
+/**
+ * Reads the src of every video of the cases that Chrome loads, pushing one DRAGON_UNSUPPORTED_ATTRIBUTE per element and problem,
+ * and for a src it reads, one per native target (NATIVE_FRAME_UNPROVEN).
+ */
+export function compileVideos(roots: readonly ResolvedElement[], nativeTargets: readonly ('ios' | 'android')[], diagnostics: Diagnostic[]): CompiledVideos {
   const naturals = new Map<string, NaturalSize>();
   const bytes = new Map<string, Uint8Array>();
   const reported = new Set<string>();
@@ -68,14 +77,24 @@ export function compileVideos(roots: readonly ResolvedElement[], diagnostics: Di
     if (!videoLoads(el)) continue;
     const src = el.element.attributes.get('src') as string;
     const read = readVideoSource(src);
+    const id = `${el.element.address}|${src}`;
+    const first = !reported.has(id);
+    reported.add(id);
     if (read.ok) {
       naturals.set(src, read.natural);
       bytes.set(src, read.bytes);
+      if (!first) continue;
+      for (const target of nativeTargets) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', {
+          origin: srcOrigin(el),
+          target,
+          message: `attribute src on ${el.element.address} is not supported on ${target}: ${NATIVE_FRAME_UNPROVEN}`,
+          manual: 'For iOS and Android, leave the video without a src or give it preload="none"; Chrome then paints nothing in its box.',
+        }));
+      }
       continue;
     }
-    const id = `${el.element.address}|${src}`;
-    if (reported.has(id)) continue;
-    reported.add(id);
+    if (!first) continue;
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: srcOrigin(el), message: `attribute src on ${el.element.address} is not supported: ${read.reason}`, manual: read.manual }));
   }
   return { naturals, bytes };

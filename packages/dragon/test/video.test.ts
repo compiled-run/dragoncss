@@ -1,16 +1,16 @@
 // MEDIA-EL: <video> on web, iOS and Android. The natural size Chrome 145 reads from an MP4's H.264 stream (videos/mp4.ts), the src
-// rules (videos/compile.ts), the attribute and hint rules, and the lowering and emission of the platform player. The streams are
-// the replaced-video fixture's (ffmpeg 6.1 libx264, one frame): a 64x48 Baseline stream and a 66x50 High stream whose SPS crops
-// 80x64 macroblocks; the parity fixture replaced-video proves the sizes against Chrome 145.
+// rules (videos/compile.ts, iOS and Android refusing a stream until a lane proves its first frame), the attribute and hint rules,
+// and the emission of the platform player. The streams (ffmpeg 6.1 libx264, one frame) are a 64x48 Baseline stream and a 66x50 High
+// stream whose SPS crops 80x64 macroblocks; Chrome 145 gives them those sizes, and the patched ones the sizes the cases name.
 import { describe, expect, it } from 'vitest';
 import { presentationalHints } from '../src/analysis/elements/replaced.ts';
 import { attributeRefusal } from '../src/attributes.ts';
 import { streamLit } from '../src/emit/paint/foreign-view.ts';
 import { emitNativeSupport } from '../src/emit/native-support.ts';
 import type { ElementNode } from '../src/internal.ts';
-import { createProjectWith, emitAndroidViewsCases, emitUikitCases, nativePrograms, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, nativePrograms, NO_FAULTS } from '../src/internal.ts';
 import { parseMp4, parseSps } from '../src/videos/mp4.ts';
-import { readVideoSource } from '../src/videos/compile.ts';
+import { NATIVE_FRAME_UNPROVEN, readVideoSource } from '../src/videos/compile.ts';
 import { always, div, inputFor } from './helpers.ts';
 
 const B64_64X48 = [
@@ -143,11 +143,27 @@ describe('MEDIA-EL: an MP4 natural size as Chrome 145 reads it', () => {
     });
     expect(parseMp4(rotated)).toEqual({ ok: false, reason: 'its video track has a rotation or scale matrix, which Dragon does not apply yet' });
     const hevc = patched(B64_64X48, (b) => b.set([0x68, 0x76, 0x63, 0x31], entryAt(b)));
-    expect(parseMp4(hevc)).toMatchObject({ ok: false, reason: 'its video is "hvc1"; Dragon draws H.264 (avc1, avc3) only, which every target decodes' });
+    expect(parseMp4(hevc)).toMatchObject({ ok: false, reason: 'its video is "hvc1"; Dragon draws H.264 (avc1) only, which every target decodes' });
     expect(parseMp4(new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0]))).toMatchObject({ ok: false, reason: expect.stringContaining('not an MP4') });
     // hdlr: version and flags, pre_defined, then handler_type ('vide' to 'soun').
     const audio = patched(B64_64X48, (b) => b.set([0x73, 0x6f, 0x75, 0x6e], at(b, 'hdlr') + 12));
     expect(parseMp4(audio)).toMatchObject({ ok: false, reason: 'the MP4 has 0 video tracks; Dragon draws a video with exactly one' });
+  });
+
+  it('refuses a rotated movie, in-band parameter sets, a clean aperture and a 0:0 pasp (Chrome 145: a 90-degree mvhd makes 64x48 48x64)', () => {
+    const movie = patched(B64_64X48, (b, v) => {
+      // mvhd v0: after its fourcc, version and flags, two times, timescale, duration, rate, volume and 10 reserved bytes.
+      const o = at(b, 'mvhd') + 4 + 4 + 16 + 4 + 2 + 2 + 8;
+      [0, 0x10000, 0, -0x10000 >>> 0, 0, 0, 0, 0, 0x40000000].forEach((x, i) => v.setUint32(o + 4 * i, x));
+    });
+    expect(parseMp4(movie)).toEqual({ ok: false, reason: 'its movie has a rotation or scale matrix (mvhd), which Dragon does not apply yet' });
+    const avc3 = patched(B64_64X48, (b) => b.set([0x61, 0x76, 0x63, 0x33], entryAt(b)));
+    expect(parseMp4(avc3)).toEqual({ ok: false, reason: 'its H.264 sample entry is avc3, whose parameter sets may come in band; Dragon reads avc1, whose one SPS is in its avcC box' });
+    // The sample entry's btrt box renamed clap: AVFoundation would crop to it.
+    const clap = patched(B64_64X48, (b) => b.set([0x63, 0x6c, 0x61, 0x70], at(b, 'btrt')));
+    expect(parseMp4(clap)).toEqual({ ok: false, reason: 'its sample entry has a clean aperture (clap), which not every target applies' });
+    const zero = patched(B64_64X48, (b) => b.fill(0, at(b, 'pasp') + 4, at(b, 'pasp') + 12));
+    expect(parseMp4(zero)).toEqual({ ok: false, reason: 'its pixels are not square (pasp), which Dragon does not scale yet' });
   });
 
   it('parses the SPS size: macroblocks less the 4:2:0 crop units, field pairs, scaling lists and the VUI aspect ratio', () => {
@@ -159,6 +175,9 @@ describe('MEDIA-EL: an MP4 natural size as Chrome 145 reads it', () => {
     expect(parseSps(sps({ profile: 66, mbs: [4, 3], sar: 1 })).sar).toEqual([1, 1]);
     expect(parseSps(sps({ profile: 66, mbs: [4, 3], sar: 16 })).sar).toEqual([2, 1]);
     expect(parseSps(sps({ profile: 66, mbs: [4, 3], sar: [3, 2] })).sar).toEqual([3, 2]);
+    expect(parseSps(sps({ profile: 66, mbs: [4, 3], sar: 0 })).sar).toEqual([0, 0]);
+    // Table E-1: 17 to 254 are reserved, so no sample aspect ratio is known.
+    for (const idc of [17, 254]) expect(() => parseSps(sps({ profile: 66, mbs: [4, 3], sar: idc })), String(idc)).toThrow(`its aspect_ratio_idc ${idc} is reserved`);
   });
 });
 
@@ -202,14 +221,14 @@ describe('MEDIA-EL: the platform player', () => {
     return p.programs;
   };
 
-  it('lowers a stream to a video-view write with its bytes and natural size, and emits dragonSetVideoView with them', () => {
-    const p = programs({ src: SRC_64 });
-    for (const b of ['uikit', 'android-views'] as const) {
-      expect(p[b].nodes.find((n) => n.id === 'v')?.writes.find((w) => w.kind === 'video-view'), b).toEqual({ kind: 'video-view', data: B64_64X48, width: 64, height: 48, key: 'dragonVideoView', technique: 'native-property', detail: expect.any(String), css: ['object-fit', 'object-position'] });
-    }
-    const one = { id: 'video', fixture: 'video', direction: 'ltr' as const, compilerDigest: 'd', viewport: { width: 400, height: 300 }, expectedDigests: [] };
-    expect(emitUikitCases([{ ...one, program: p.uikit }]).map((f) => f.text).join('\n')).toMatch(new RegExp(`dragonSetVideoView\\(v\\d+, "${B64_64X48.replace(/[+/]/g, '\\$&')}"\\)`));
-    expect(emitAndroidViewsCases([{ ...one, program: p['android-views'] }]).map((f) => f.text).join('\n')).toMatch(new RegExp(`dragonSetVideoView\\(v\\d+, "${B64_64X48.replace(/[+/]/g, '\\$&')}"\\)`));
+  it('refuses a stream on iOS and Android until a lane proves the first frame, and keeps web ready', () => {
+    const c = compile({ src: SRC_64 });
+    expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => [d.code, d.target, d.message])).toEqual(['ios', 'android'].map((t) => [
+      'DRAGON_UNSUPPORTED_ATTRIBUTE', t, `attribute src on v is not supported on ${t}: ${NATIVE_FRAME_UNPROVEN}`,
+    ]));
+    expect(c.outputs.web.kind).toBe('ready');
+    expect(c.outputs.ios.kind).toBe('blocked');
+    expect(c.outputs.android.kind).toBe('blocked');
   });
 
   it('gives a video without a stream no player: no src, or preload none (ASCII case-insensitive) with any src', () => {

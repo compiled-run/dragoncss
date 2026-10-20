@@ -2,8 +2,9 @@
 // elements (natural size, ratio, the 300x150 default object size, min and max, width and height presentational hints) in both
 // directions, with object-fit and object-position as computed values and as drawn (the fit grid, inside the viewport). The
 // images are 8-bit sRGB PNG data: URLs with four flat quadrants; iframes load nothing. The rejects name what REPL-a refuses.
-// MEDIA-EL: videos as block-level boxes and flex items, sized by their H.264 data: streams (one with SPS frame cropping), letterboxed,
-// covered and positioned, with the default object size for no src and for preload none; the rejects name what MEDIA-EL refuses.
+// MEDIA-EL: videos without a stream (no src, or preload none) as block-level boxes and flex items at the default object size, with
+// width and height hints, padding, a border and max-width; the rejects name what MEDIA-EL refuses. A video with a stream is refused
+// on iOS and Android until a lane proves its first frame (videos/compile.ts), so no layout fixture holds one yet.
 import { readFileSync } from 'node:fs';
 import type { FixtureSpec } from '../fixtures.ts';
 import { repoPath } from '../paths.ts';
@@ -40,6 +41,8 @@ export const REPLACED: readonly FixtureSpec[] = [
   reject('reject-video-remote', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-remote', 'video'), 'attribute src on a is not supported: its src https://example.com/a.mp4 is not a data: URL'),
   reject('reject-video-webm', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-webm', 'video'), 'attribute src on a is not supported: its src is a data: URL of type video/webm'),
   reject('reject-video-rotated', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-rotated', 'video'), 'attribute src on a is not supported: its src does not compile: its video track has a rotation'),
+  // Chrome 145 turns a stream by its movie matrix too: this 64x48 stream with a 90-degree mvhd lays out at 48x64.
+  reject('reject-video-movie-rotated', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-movie-rotated', 'video'), 'attribute src on a is not supported: its src does not compile: its movie has a rotation'),
   reject('reject-video-controls', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-controls', 'video'), 'attribute controls on a is not supported'),
   reject('reject-video-poster', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-poster', 'video'), 'attribute poster on a is not supported'),
 ];

@@ -5,7 +5,8 @@
 // MEDIA-EL: a video Chrome loads is a platform player (AVPlayerLayer, a TextureView a MediaPlayer renders into) over the engine's
 // destination rect, clipped to the content box as Chrome clips it; the part of the box its stream does not cover stays
 // transparent, as in Chrome. The lowering embeds the MP4 bytes the build read (videos/compile.ts) and its natural size. A video
-// without a stream (no src, or preload none) has no player: Chrome paints nothing in its box.
+// without a stream (no src, or preload none) has no player: Chrome paints nothing in its box. Until a lane proves the player's
+// first frame (MEDIA-EL slice 2), iOS and Android refuse a video with a stream (videos/compile.ts), so no build lowers one yet.
 import { iframeSrcUrl } from '../../analysis/elements/replaced.ts';
 import { base64Encode } from '../../images/compile.ts';
 import { videoLoads } from '../../videos/compile.ts';

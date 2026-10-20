@@ -100,15 +100,27 @@ export function injectHarness(html: string, env: PageEnvironment): string {
 
 /**
  * MEDIA-EL: resolves once every video that loads its stream (a src, and preload not none) has its first frame
- * (HAVE_CURRENT_DATA) or has failed, so Chrome has laid it out at its stream's natural size and painted the frame; it runs in the
- * page, so it closes over nothing.
+ * (HAVE_CURRENT_DATA) or has failed, so Chrome has laid it out at its stream's natural size and painted the frame, and rejects
+ * naming the videos still loading after 10 s; it runs in the page, so it closes over nothing.
  */
 export async function videosReady(): Promise<void> {
   const loading = [...document.querySelectorAll('video')].filter((v) => v.getAttribute('src') !== null && (v.getAttribute('preload') ?? '').toLowerCase() !== 'none');
-  await Promise.all(loading.map((v) => (v.readyState >= 2 || v.error !== null ? null : new Promise<void>((r) => {
+  const ready = Promise.all(loading.map((v) => (v.readyState >= 2 || v.error !== null ? null : new Promise<void>((r) => {
     v.addEventListener('loadeddata', () => r(), { once: true });
     v.addEventListener('error', () => r(), { once: true });
   }))));
+  let timer = 0;
+  const late = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => {
+      const ids = loading.filter((v) => v.readyState < 2 && v.error === null).map((v) => v.getAttribute('data-dragon-id') ?? v.outerHTML.slice(0, 40));
+      reject(new Error(`videos still loading after 10 s: ${ids.join(', ')}`));
+    }, 10_000);
+  });
+  try {
+    await Promise.race([ready, late]);
+  } finally {
+    window.clearTimeout(timer);
+  }
 }
 
 /** Opens a page in the case environment, loads the HTML with the harness style injected, and waits for fonts, videos and two frames. */
