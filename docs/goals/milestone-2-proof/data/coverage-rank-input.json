@@ -250,6 +250,7 @@
     "text-anchor": { "values": ["middle"] },
     "dominant-baseline": { "values": ["central"] },
     "alignment-baseline": { "values": ["middle"] },
+    "d": { "values": ["path(\"M0 0 H10 V10 Z\")", "none"] },
     "fill-opacity": { "values": ["0.5"] },
     "stroke-opacity": { "values": ["0.5"] },
     "content": { "values": ["\"\"", "\"x\"", "none"] },

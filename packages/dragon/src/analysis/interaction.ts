@@ -519,6 +519,7 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['text-anchor', all],
   ['dominant-baseline', all],
   ['alignment-baseline', all],
+  ['d', all],
   // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
   ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
   ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
