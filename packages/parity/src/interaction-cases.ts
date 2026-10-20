@@ -59,16 +59,20 @@ export function interactionProgramOf(g: InteractionGroup, backend: NativeBackend
   return deriveInteractionProgram(sp, inputs);
 }
 
-/** The hit test of a group's live program at DPR 1: rt-hit over the program's engine input, with the (app, state)'s hit facts. */
-export function groupHit(g: InteractionGroup, inputs: readonly InteractionLevelInput[]): (program: NativeProgram, app: number, state: number, x: number, y: number) => string | null {
+/**
+ * The hit test of a group's live program at a DPR (1, the Chrome captures' ratio, by default): rt-hit over the program's engine input
+ * laid out at that DPR, with the (app, state)'s hit facts, at the point (CSS px) in that DPR's device px, as the device machine hits.
+ */
+export function groupHit(g: InteractionGroup, inputs: readonly InteractionLevelInput[], dpr = 1): (program: NativeProgram, app: number, state: number, x: number, y: number) => string | null {
+  if (!Number.isFinite(dpr) || dpr <= 0) throw new Error(`${g.id}: the hit test's DPR ${dpr} is not a positive number`);
   return (program, app, state, x, y) => {
     const n = g.cases[app] as NativeCase;
     const key = state < 0 ? null : (inputs[app] as InteractionLevelInput).partition.states[state]?.key;
     if (key === undefined) throw new Error(`${n.case.id}: no interaction state ${state}`);
     const facts = hitFacts(n.compiled, n.case.assignment, key);
     if (facts === null) throw new Error(`${n.case.id}: no hit facts for interaction state ${state}`);
-    const t = programHitTable(program, facts, n.case.environment.viewport, 1);
-    const id = t.ids[hitAt(prepareHit(t.nodes, { ignorePointerEventsNone: false, reversedOrder: false }), x * LU, y * LU)] as string;
+    const t = programHitTable(program, facts, n.case.environment.viewport, dpr);
+    const id = t.ids[hitAt(prepareHit(t.nodes, { ignorePointerEventsNone: false, reversedOrder: false }), x * (dpr * LU), y * (dpr * LU))] as string;
     // The view hit returns the document element when nothing else is hit; the hit names element addresses only.
     return (inputs[app] as InteractionLevelInput).partition.elements.some((e) => e.address === id) ? id : null;
   };

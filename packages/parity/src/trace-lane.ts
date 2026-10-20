@@ -3,7 +3,9 @@
 // step after every step. The device runs it on the generated DragonInteractionMachine and writes one record line per trace step to
 // <script>@<scale>.trace; the TS reference (interaction-runtime.ts InteractionRuntime) gives the expected lines, which the device
 // must equal line for line at every DPR. The steps are derived once, on the uikit program, since the partition, its element
-// addresses and the hit test's engine input are the same for both backends; each backend's script runs its own program.
+// addresses and the hit test's engine input are the same for both backends; each backend's script runs its own program. The
+// reference hit tests at the record's DPR, as the device machine does: a step point on a fractional device px edge (2.625) can
+// hit another element than at DPR 1, as Chrome's hit test at that device scale factor does (the device-hit lane's expectation).
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { InteractionFaults } from '@dragon/layout';
@@ -89,13 +91,13 @@ function lineOf(ip: InteractionProgram, index: number, s: InteractionSnapshot): 
 }
 
 /**
- * Runs a script on the TS reference for a backend: the expected record lines (one after every step) and the script's device steps
- * (force names the table index of the app assignment it runs in). faults plants the reference runtime.
+ * Runs a script on the TS reference for a backend at a DPR: the expected record lines (one after every step) and the script's device
+ * steps (force names the table index of the app assignment it runs in), which no DPR changes. faults plants the reference runtime.
  */
-function runScript(id: string, backend: NativeBackend, faults: InteractionFaults): { readonly lines: string[]; readonly steps: InteractionScriptStep[] } {
+function runScript(id: string, backend: NativeBackend, faults: InteractionFaults, dpr: number): { readonly lines: string[]; readonly steps: InteractionScriptStep[] } {
   const d = scriptOf(id);
   const { inputs, ip } = programOf(d.group, backend);
-  const rt = new InteractionRuntime(ip, groupHit(d.group, inputs), faults);
+  const rt = new InteractionRuntime(ip, groupHit(d.group, inputs, dpr), faults);
   const lines: string[] = [];
   const steps: InteractionScriptStep[] = [];
   for (const s of d.steps) {
@@ -114,19 +116,20 @@ function runScript(id: string, backend: NativeBackend, faults: InteractionFaults
 
 const references = new Map<string, string[]>();
 
-/** The expected record lines of a script: the TS reference over the uikit program (traceReferenceFor gives a target's own). */
-export function traceReference(scriptId: string): string[] {
-  let r = references.get(scriptId);
+/** The expected record lines of a script at a device DPR: the TS reference over the uikit program (traceReferenceFor gives a target's own). */
+export function traceReference(scriptId: string, dpr: number): string[] {
+  const key = `${scriptId}@${dpr}`;
+  let r = references.get(key);
   if (r === undefined) {
-    r = runScript(scriptId, 'uikit', rtInteraction.NO_INTERACTION_FAULTS).lines;
-    references.set(scriptId, r);
+    r = runScript(scriptId, 'uikit', rtInteraction.NO_INTERACTION_FAULTS, dpr).lines;
+    references.set(key, r);
   }
   return r;
 }
 
-/** The record lines of a script on a target's own program, with the reference runtime planted by faults. */
-export function traceReferenceFor(scriptId: string, target: NativeTarget, faults: InteractionFaults = rtInteraction.NO_INTERACTION_FAULTS): string[] {
-  return runScript(scriptId, BACKEND_OF[target], faults).lines;
+/** The record lines of a script at a DPR on a target's own program, with the reference runtime planted by faults. */
+export function traceReferenceFor(scriptId: string, target: NativeTarget, dpr: number, faults: InteractionFaults = rtInteraction.NO_INTERACTION_FAULTS): string[] {
+  return runScript(scriptId, BACKEND_OF[target], faults, dpr).lines;
 }
 
 /** Every interaction program of a target with its device-traces script and the hit facts of every (app, state). */
@@ -148,7 +151,7 @@ export function traceEmits(target: NativeTarget): InteractionEmit[] {
       viewport: first.case.environment.viewport,
       program: ip,
       facts,
-      scripts: [{ id: d.id, steps: runScript(d.id, backend, rtInteraction.NO_INTERACTION_FAULTS).steps }],
+      scripts: [{ id: d.id, steps: runScript(d.id, backend, rtInteraction.NO_INTERACTION_FAULTS, 1).steps }],
     };
   });
 }
@@ -159,7 +162,7 @@ export function deviceTraceSources(target: NativeTarget, faults: InteractionFaul
 }
 
 /**
- * device-traces at one scale: every script's record in dir against its reference, line for line. A missing or unreadable record, a
+ * device-traces at one scale: every script's record in dir against its reference at that scale, line for line. A missing or unreadable record, a
  * malformed line, a line count that differs or any differing line fails the script; details name the first difference.
  */
 export function evaluateTraces(dir: string, scale: number): { passed: number; failed: number; details: string[] } {
@@ -167,7 +170,7 @@ export function evaluateTraces(dir: string, scale: number): { passed: number; fa
   let failed = 0;
   const details: string[] = [];
   for (const id of traceScriptIds()) {
-    const problem = compareTrace(traceFile(dir, id, scale), traceReference(id), scriptOf(id).steps.map((x) => x.kind));
+    const problem = compareTrace(traceFile(dir, id, scale), traceReference(id, scale), scriptOf(id).steps.map((x) => x.kind));
     if (problem === null) passed++;
     else {
       failed++;
