@@ -289,6 +289,8 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['font-variant-east-asian', 'normal'], ['font-variant-position', 'normal'], ['font-variant-emoji', 'normal'], ['font-kerning', 'auto'],
   ['font-optical-sizing', 'auto'], ['font-language-override', 'normal'], ['font-stretch', '100%'], ['font-feature-settings', 'normal'],
   ['font-variation-settings', 'normal'], ['-webkit-text-stroke-width', '0px'],
+  // Batch 3: TXT2-lb's line-break, text-wrap-style, TXT2-tal's text-align-last, hyphens and tab-size.
+  ['line-break', 'auto'], ['text-wrap-style', 'auto'], ['text-align-last', 'auto'], ['hyphens', 'manual'], ['tab-size', '8'],
 ];
 /** The paint, transform and mask longhands added after the base, at their initial values (filter none, mask-image none and the like). */
 const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
@@ -296,6 +298,10 @@ const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['clip', 'auto'], ['clip-path', 'none'], ['mask-image', 'none'], ['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%'],
   ['mask-size', 'auto'], ['mask-repeat', 'repeat'], ['mask-origin', 'border-box'], ['mask-clip', 'border-box'], ['mask-composite', 'add'],
   ['mask-mode', 'match-source'],
+  // Batch 3: #446's translate, rotate and scale, #459's background-blend-mode, #445's scrollbar longhands, #449's isolation,
+  // #458's box-decoration-break and #455's color-scheme.
+  ['translate', 'none'], ['rotate', 'none'], ['scale', 'none'], ['background-blend-mode', 'normal'], ['scrollbar-width', 'auto'],
+  ['scrollbar-gutter', 'auto'], ['isolation', 'auto'], ['box-decoration-break', 'slice'], ['color-scheme', 'normal'],
 ];
 const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
 const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');

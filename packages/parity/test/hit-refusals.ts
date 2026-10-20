@@ -37,6 +37,8 @@ export const INLINE_OUT: readonly string[] = [
   'touch-action-values', 'touch-action-values-rtl',
   // TXT-FX's text-fill-stroke-colors holds an inline box (sp, a fill on an inline span).
   'text-fill-stroke-colors', 'text-fill-stroke-colors-rtl',
+  // LEGACY-BOX's box-decoration-initial (#458) holds inline boxes (s2s, a slice across lines) and COLOR-SCHEME's color-scheme-plain (#455) inline boxes (s1e, s3a).
+  'box-decoration-initial', 'box-decoration-initial-rtl', 'color-scheme-plain', 'color-scheme-plain-rtl',
   // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];
