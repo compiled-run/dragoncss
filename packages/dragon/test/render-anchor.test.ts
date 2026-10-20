@@ -86,14 +86,27 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     expect(parsed('position-try: normal --a, flip-inline')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?--a , flip-inline']);
     expect(parsed('position-try: most-height none')).toEqual(['position-try-order: ?most-height', 'position-try-fallbacks: none']);
     expect(parsed('position-try: none normal')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?none normal']);
-    expect(parsed('position-try: normal')).toEqual(['position-try-order: ?normal', 'position-try-fallbacks: ?normal']);
+    // An order with no fallbacks is dropped, as Chrome 145 drops it.
+    expect(parsed('position-try: normal')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    expect(parsed('position-try: most-width')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('position-anchor: auto')).toEqual(['position-anchor: ?auto']);
     expect(parsed('anchor-name: --a')).toEqual(['anchor-name: ?--a']);
     expect(parsed('stop-opacity: 1')).toEqual(['stop-opacity: 1']);
     expect(parsed('stop-opacity: 0.5')).toEqual(['stop-opacity: ?0.5']);
-    expect(parsed('stop-opacity: 100%')).toEqual(['stop-opacity: ?100%']);
+    // Chrome clamps stop-opacity and flood-opacity to [0, 1]: from 1 or 100% up, and a calc() that reaches 1, compute to the initial 1.
+    expect(parsed('stop-opacity: 100%')).toEqual(['stop-opacity: 1']);
+    expect(parsed('stop-opacity: calc(1)')).toEqual(['stop-opacity: 1']);
+    expect(parsed('flood-opacity: calc(0.5 + 0.5)')).toEqual(['flood-opacity: 1']);
+    expect(parsed('flood-opacity: 150%')).toEqual(['flood-opacity: 1']);
+    expect(parsed('stop-opacity: 2')).toEqual(['stop-opacity: 1']);
+    expect(parsed('stop-opacity: 99%')).toEqual(['stop-opacity: ?99%']);
+    expect(parsed('flood-opacity: calc(0.5)')).toEqual(['flood-opacity: ?calc(0.5)']);
+    expect(parsed('stop-opacity: none')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('baseline-shift: 0')).toEqual(['baseline-shift: 0px']);
     expect(parsed('baseline-shift: sub')).toEqual(['baseline-shift: ?sub']);
+    // baseline, a zero length in any unit and a zero length calculation compute to 0px; a zero percentage computes to 0%.
+    for (const v of ['baseline', 'BASELINE', '0em', '0vw', 'calc(0px)', 'calc(1px - 1px)', 'calc(0em)', 'calc(2em - 2em)']) expect(parsed(`baseline-shift: ${v}`), v).toEqual(['baseline-shift: 0px']);
+    for (const v of ['0%', 'calc(0%)', 'calc(0px + 0%)', 'calc(1em - 10px)', 'calc(1px)']) expect(parsed(`baseline-shift: ${v}`)[0], v).toMatch(/^baseline-shift: \?/);
     expect(parsed('shape-rendering: crispEdges')).toEqual(['shape-rendering: ?crispEdges']);
     // Values webref lists though Chrome drops them are kept and refused, never dropped.
     expect(parsed('position-visibility: anchor-visible')).toEqual(['position-visibility: ?anchor-visible']);

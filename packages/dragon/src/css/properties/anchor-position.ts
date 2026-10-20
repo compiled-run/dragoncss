@@ -42,8 +42,8 @@ const TRY_ORDERS: readonly string[] = ['normal', 'most-width', 'most-height', 'm
 /**
  * position-try: <'position-try-order'>? <'position-try-fallbacks'>. A leading try-order keyword is position-try-order and the rest
  * position-try-fallbacks; without one, the order is normal and the whole value is the fallbacks, as Chrome 145 expands it. Each
- * longhand takes its initial value when its part spells it, and keeps its part as written otherwise. A value with no fallbacks is
- * kept whole on both and refused.
+ * longhand takes its initial value when its part spells it, and keeps its part as written otherwise. A value with no fallbacks
+ * (normal, most-width) is invalid, as Chrome 145 drops it.
  */
 export function parsePositionTry(tokens: readonly CssNode[], _base: Span): ParsedValue {
   if (tokens.length === 0) return { kind: 'invalid', reason: 'position-try needs a value' };
@@ -55,7 +55,9 @@ export function parsePositionTry(tokens: readonly CssNode[], _base: Span): Parse
     if (ts.length === 0 && p === 'position-try-order') return ANCHOR_POSITION_INITIAL[p];
     return ts.length === 1 && spellsInitial(ANCHOR_POSITION_INITIAL[p], ts[0]) ? ANCHOR_POSITION_INITIAL[p] : nonInitial(ts);
   };
-  const values = fallbacks.length === 0 ? [nonInitial(tokens), nonInitial(tokens)] : [part('position-try-order', order), part('position-try-fallbacks', fallbacks)];
+  // [<position-try-order>]? <position-try-fallbacks>: an order alone (normal, most-width) has no fallbacks, and Chrome 145 drops it.
+  if (fallbacks.length === 0) return { kind: 'invalid', reason: 'position-try needs its fallbacks after an order keyword' };
+  const values = [part('position-try-order', order), part('position-try-fallbacks', fallbacks)];
   return {
     kind: 'ok',
     longhands: (['position-try-order', 'position-try-fallbacks'] as const).map((p, i) => ({ property: p, value: values[i] as CssValue, explicit: true })),
