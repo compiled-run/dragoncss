@@ -1462,9 +1462,10 @@ function lengthDoubleOf(e: CalcExpr): number | null {
  * computed one): without a percentage, its px value computed in double (CSSPrimitiveValue::ConvertToLength, Length::Fixed); with
  * one, the CalculationValue rebuilt as a math function (CSSMathExpressionNode::Create), percentage before pixels. em and rem take
  * the element's font sizes. Null when the text is not such a calculation or reads a viewport unit or env(), whose px only the
- * browser knows: Dragon's web CSS keeps those as written.
+ * browser knows: Dragon's web CSS keeps those as written. range non-negative clamps a px result to 0; a calculation with a
+ * percentage keeps its text, and the engine clamps its value (LengthCalc range).
  */
-export function computedLengthMathText(text: string, fonts: MathFonts, fmt: NumberFormat): string | null {
+export function computedLengthMathText(text: string, fonts: MathFonts, fmt: NumberFormat, range: 'all' | 'non-negative' = 'all'): string | null {
   const parsed = parseMath(text, { type: 'length', percent: true });
   if (!parsed.ok || mathHasEnv(parsed.node) || viewportIn(parsed.node)) return null;
   const expr = lowerMathNode(parsed.node, fonts);
@@ -1472,7 +1473,8 @@ export function computedLengthMathText(text: string, fonts: MathFonts, fmt: Numb
   if (leaves === null) return null;
   if (leaves.kind === 'pixels-and-percent' && !leaves.explicitPercent) {
     const px = lengthDoubleOf(expr);
-    return px === null ? null : `${fmt(px)}px`;
+    // A non-negative context (a grid <track-breadth>, kNonNegative in Blink's parser) clamps the px value, writing -0 as 0.
+    return px === null ? null : `${fmt(range === 'non-negative' ? Math.max(0, px) : px)}px`;
   }
   return serializeMath(computedMathNode(leaves), fmt);
 }

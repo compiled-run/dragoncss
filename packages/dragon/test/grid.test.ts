@@ -315,6 +315,12 @@ describe('grid family: computed values', () => {
     expect(valueAt(root, [0, 0], 'grid-template-columns')).toBe('20px minmax(16px, 1fr) 96px');
     expect(valueAt(root, [0, 0], 'grid-auto-rows')).toBe('30px');
   });
+  it('a negative px calculation in a track size computes to 0px, as Blink parses <track-breadth> non-negative; one with a percentage keeps its text', () => {
+    const css = '.g { font-size: 10px; grid-template-columns: calc(-10px) minmax(calc(5px - 10px), 1fr) fit-content(calc(-5px)) repeat(2, calc(10px - 20px)) calc(5% - 10px); grid-template-rows: repeat(auto-fill, calc(5px - 10px)) min(-10px, 5px) calc(1em - 30px); }';
+    const root = resolve(css, el('html', 'html', [], [el('body', 'body', [], [el('g', 'div', ['g'])])]));
+    expect(valueAt(root, [0, 0], 'grid-template-columns')).toBe('0px minmax(0px, 1fr) fit-content(0px) repeat(2, 0px) calc(5% - 10px)');
+    expect(valueAt(root, [0, 0], 'grid-template-rows')).toBe('repeat(auto-fill, 0px) 0px 0px');
+  });
   it('justify-items legacy computes to the parent\'s legacy position, and to normal otherwise (css-align-3 §6.2)', () => {
     const tree = el('html', 'html', [], [el('body', 'body', [], [el('p', 'div', ['p'], [el('c', 'div', [], [el('g', 'div', [])]), el('n', 'div', ['n'])])])]);
     const root = resolve('.p { justify-items: legacy right; } .n { justify-items: legacy; }', tree);

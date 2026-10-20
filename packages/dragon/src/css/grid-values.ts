@@ -141,7 +141,8 @@ const clampCount = (count: number, tracks: number): number => {
 /**
  * css-values-4 §6: the lengths of a track-list value computed to px (em against the element's computed font-size, rem against the
  * root's, absolute units by their ratio); fr, % and px stay as written. A math function takes Chrome's computed form: one px length
- * when it holds no percentage, else its leaves folded to a percentage and a px sum (math.ts computedLengthMathText).
+ * when it holds no percentage, clamped to 0 (a <track-breadth> is non-negative), else its leaves folded to a percentage and a px sum
+ * (math.ts computedLengthMathText).
  */
 export function absolutizeGridText(text: string, fonts: FontBases): string {
   const node = parse(text, { context: 'value' });
@@ -149,7 +150,7 @@ export function absolutizeGridText(text: string, fonts: FontBases): string {
     if (unit === CANONICAL_LENGTH_UNIT || unitEntry(unit) === null) return `${cssNumber(value)}${unit}`;
     const px = lengthToPx(Number(value), unit, fonts);
     return px === null ? `${cssNumber(value)}${unit}` : `${cssNumber(String(px))}${CANONICAL_LENGTH_UNIT}`;
-  }, (n) => computedLengthMathText(generate(n), fonts, (x) => cssNumber(String(x))));
+  }, (n) => computedLengthMathText(generate(n), fonts, (x) => cssNumber(String(x)), 'non-negative'));
 }
 
 // ---- Refusals ------------------------------------------------------------------------------------------------------------
