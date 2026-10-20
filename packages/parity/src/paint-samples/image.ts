@@ -5,6 +5,11 @@
 // across each side of the destination rect that lies inside the content box (compared by position, as every edge rule is).
 // Non-flat content is not compared. A rounded img's image is clipped to its padding-edge curve: image points and scanlines keep
 // clear inside it, and a base point clear outside it shows what is under the image. No allowance is introduced.
+// image-rendering: pixelated (image-flat points named nearest-<n>): Chrome 145 and both native stages sample a pixelated image
+// nearest-neighbour, the texel under each device pixel's centre (Skia kNearest, CoreGraphics interpolationQuality .none, Android an
+// unfiltered Paint), so such a pixel is also determinate where its centre keeps IMAGE_NEAREST_CLEAR_DEVICE_PX from every texel
+// boundary. Chrome maps the texels from the unsnapped destination and Dragon from the snapped one, at most 0.5 device px apart.
+// The nearest points sit a quarter of a texel inside its corners, where a filtered draw would blend the neighbours in.
 import { viewBoxTransform } from '@dragon/layout';
 import type { RgbaImage } from '../native-compare.ts';
 import { ALONG_POSITIONS, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
@@ -16,6 +21,31 @@ import type { PaintSampleContext, PaintSamples } from './types.ts';
 
 /** Source px beyond ceil(1 / scale) that must be uniform around a sampled pixel (R8). */
 export const IMAGE_FLAT_MARGIN_SOURCE_PX = 2;
+
+/**
+ * Device px a pixelated image's pixel centre keeps from every texel boundary of the snapped destination: the 0.5 device px between
+ * Chrome's unsnapped mapping and Dragon's snapped one, and a quarter pixel for each platform's sample position rounding. A centre
+ * on a boundary is a tie, which Chrome 145 breaks towards the lower texel.
+ */
+export const IMAGE_NEAREST_CLEAR_DEVICE_PX = 0.75;
+
+/** The texels per axis an image's nearest points cover at most (every k-th texel past that). */
+const IMAGE_NEAREST_TEXELS = 8;
+
+/** Whether a pixelated image's device pixel centre keeps IMAGE_NEAREST_CLEAR_DEVICE_PX from every texel boundary, so it shows one texel. */
+export function nearestAt(b: ReplacedSamplesBox, x: number, y: number): boolean {
+  const img = b.image;
+  if (!b.pixelated || img === null) return false;
+  const dest = b.paint.dest;
+  const clear = (c: number, origin: number, extent: number, texels: number): boolean => {
+    const step = extent / texels;
+    const t = (c - origin) / step;
+    if (t < 0 || t >= texels) return false;
+    const k = Math.floor(t);
+    return (t - k) * step >= IMAGE_NEAREST_CLEAR_DEVICE_PX && (k + 1 - t) * step >= IMAGE_NEAREST_CLEAR_DEVICE_PX;
+  };
+  return clear(x + 0.5, dest.x, dest.width, img.width) && clear(y + 0.5, dest.y, dest.height, img.height);
+}
 
 /** Whether the device pixel [x, x + 1) x [y, y + 1) shows uniform source content: inside the drawn part, under no later box. */
 export function flatAt(b: ReplacedSamplesBox, x: number, y: number): boolean {
@@ -55,6 +85,7 @@ function flatWithin(b: ReplacedSamplesBox, x: number, y: number, clampToImage: b
   if (!clearOfCurve(b, x, y)) return false;
   // An image-flat point shows only the image: a later box, even a transparent one, may paint over it.
   if (underNoLaterBox && b.later.some((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) return false;
+  if (nearestAt(b, x, y)) return true;
   const dest = b.paint.dest;
   const sx = ((x + 0.5 - dest.x) * img.width) / dest.width;
   const sy = ((y + 0.5 - dest.y) * img.height) / dest.height;
@@ -139,6 +170,29 @@ export function imagePointsOf(boxes: ReadonlyMap<string, ReplacedSamplesBox>, si
         if (x < 0 || y < 0 || x >= size.width || y >= size.height || seen.has(`${x},${y}`) || !flatAt(b, x, y)) continue;
         seen.add(`${x},${y}`);
         out.push({ x, y, rule: `image-flat:${id}:${k++}` });
+      }
+    }
+    // image-flat nearest points: for a pixelated image, the pixel a quarter texel inside each corner of every sampled texel, kept where it shows
+    // one texel and no flat point took it.
+    if (b.pixelated) {
+      const img = b.image;
+      const dest = b.paint.dest;
+      const sx = dest.width / img.width;
+      const sy = dest.height / img.height;
+      const strideX = Math.ceil(img.width / IMAGE_NEAREST_TEXELS);
+      const strideY = Math.ceil(img.height / IMAGE_NEAREST_TEXELS);
+      let n = 0;
+      for (let ty = 0; ty < img.height; ty += strideY) {
+        for (let tx = 0; tx < img.width; tx += strideX) {
+          for (const [fx, fy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]] as const) {
+            const x = Math.floor(dest.x + (tx + fx) * sx);
+            const y = Math.floor(dest.y + (ty + fy) * sy);
+            if (x < d.x + inset || x + 1 > d.x + d.width - inset || y < d.y + inset || y + 1 > d.y + d.height - inset) continue;
+            if (x < 0 || y < 0 || x >= size.width || y >= size.height || seen.has(`${x},${y}`) || !flatAt(b, x, y)) continue;
+            seen.add(`${x},${y}`);
+            out.push({ x, y, rule: `image-flat:${id}:nearest-${n++}` });
+          }
+        }
       }
     }
     // edge: across each side of the destination rect that is inside the content box with room on both sides.

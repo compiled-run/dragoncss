@@ -1,5 +1,5 @@
 // The value parsers of the families Dragon accepts at their initial values alone (overscroll.ts, scroll-snap.ts, containment.ts,
-// container-query.ts, image-rendering.ts, anchor-position.ts, svg-extra.ts). A value that spells the initial value parses to it; any other value is kept as written and refused where it
+// container-query.ts, anchor-position.ts, svg-extra.ts, view-transition.ts, animation-extra.ts). A value that spells the initial value parses to it; any other value is kept as written and refused where it
 // applies (analysis/scroll-containment.ts). Their grammar takes any value (scripts/gen-css-grammar.ts), so Dragon never drops a
 // declaration Chrome keeps; packages/parity/test/scroll-containment-parse.test.ts pins the accepted spellings against Chrome 145.
 import type { CssNode } from 'css-tree';
@@ -47,6 +47,19 @@ export function initialOnlyLonghand(property: Longhand, initial: CssValue): Init
     if (tokens.length === 0) return { kind: 'invalid', reason: `${property} needs a value` };
     const value = tokens.length === 1 && spellsInitial(initial, tokens[0]) ? initial : nonInitial(tokens);
     return { kind: 'ok', longhands: [{ property, value, explicit: true }] };
+  };
+}
+
+/**
+ * A one-keyword longhand: one of Chrome 145's keywords for it, in any ASCII case, is its initial value or kept as written; any other
+ * value is invalid, as Chrome drops it (packages/parity/test/render-anchor-parse.test.ts pins each keyword list against Chrome).
+ */
+export function keywordLonghand(property: Longhand, initial: CssValue, keywords: readonly string[]): InitialOnlyParser {
+  return (tokens) => {
+    const t = tokens[0];
+    const k = tokens.length === 1 && t !== undefined && t.type === 'Identifier' ? asciiLower(String(t['name'])) : null;
+    if (k === null || !keywords.includes(k)) return { kind: 'invalid', reason: `${property} takes ${keywords.join(', ')} (Chrome 145 drops any other value)` };
+    return { kind: 'ok', longhands: [{ property, value: spellsInitial(initial, t) ? initial : nonInitial(tokens), explicit: true }] };
   };
 }
 

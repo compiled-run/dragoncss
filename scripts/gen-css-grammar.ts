@@ -45,8 +45,8 @@ const INITIAL_ONLY_PROPERTIES = [
 ];
 
 /**
- * The image-rendering, anchor-position, svg-extra, view-transition and animation-extra families, accepted at their initial values
- * alone, after color-scheme.
+ * The image-rendering family (its parser keeps Chrome 145's three keywords), and the anchor-position, svg-extra, view-transition and
+ * animation-extra families, accepted at their initial values alone, after color-scheme.
  */
 const INITIAL_ONLY_TAIL = [...IMAGE_RENDERING_LONGHANDS, ...ANCHOR_POSITION_LONGHANDS, ...ANCHOR_POSITION_SHORTHANDS, ...SVG_EXTRA_LONGHANDS, ...VIEW_TRANSITION_LONGHANDS, ...ANIMATION_EXTRA_LONGHANDS];
 
@@ -232,7 +232,8 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
   // The image-rendering, anchor-position, svg-extra, view-transition and animation-extra families, the same way
-  // (analysis/scroll-containment.ts). webref has no stop-opacity syntax and no color-rendering or buffered-rendering, which Chrome
+  // (analysis/scroll-containment.ts); image-rendering's parser keeps auto, -webkit-optimize-contrast and pixelated and drops the rest,
+  // as Chrome 145 does (properties/image-rendering.ts). webref has no stop-opacity syntax and no color-rendering or buffered-rendering, which Chrome
   // 145 parses. Pinned against Chrome by packages/parity/test/render-anchor-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_TAIL.map((p) => [p, '<any-value>'])),
   // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts

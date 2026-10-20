@@ -1,14 +1,16 @@
 // REPL-a Phase B (R6) and SVG-a2 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): replaced content is Dragon-owned paint. An
 // inline <svg> lowers to its viewBox and shapes (svg-shapes), which the device fills and strokes as paths over the content box. An
 // image is drawn as before. The lowering embeds the image bytes (an 8-bit sRGB PNG the build
-// read, images/compile.ts) with its natural size and object-fit; the device decodes them once when the view is built and draws
-// the bitmap into the engine's destination rect, clipped to the content box (layout paint.ts replacedPaint). UIImageView
-// contentMode and ImageView ScaleType are not used: neither expresses object-position.
+// read, images/compile.ts) with its natural size, its object-fit and whether its image-rendering is pixelated; the device decodes
+// them once when the view is built and draws the bitmap into the engine's destination rect, clipped to the content box (layout
+// paint.ts replacedPaint), filtered, or nearest-neighbour when pixelated. UIImageView contentMode and ImageView ScaleType are not
+// used: neither expresses object-position.
 import type { ObjectFit } from '@dragon/layout';
 import { svgPaintAlpha, type Rgba8 } from '../../css/color.ts';
 import { svgSceneOf, svgShapeEmpty } from '../../analysis/elements/svg.ts';
 import type { SvgFillRule, SvgLineCap, SvgLineJoin, SvgPaint, SvgShapeScene } from '../../analysis/elements/svg.ts';
 import { base64Encode } from '../../images/compile.ts';
+import { isPixelated } from '../../css/properties/image-rendering.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
@@ -25,6 +27,8 @@ export type ImageWrite = {
    * run time, whose change would not redraw the img and would leave a layer resampled under the new matrix.
    */
   readonly layer: boolean;
+  /** image-rendering: pixelated, which samples the image nearest-neighbour (Chrome 145 picks the texel under each pixel's centre). */
+  readonly pixelated: boolean;
 };
 
 /**
@@ -108,21 +112,21 @@ export function svgShapePath(s: SvgShapeScene): number[] {
 
 const SVG_PAINT = 'each shape filled (its fill-rule) and stroked (its stroke-linecap, stroke-linejoin, stroke-miterlimit and dash pattern) in its paint, in its paint-order, at its vector-effect, antialiased, through the viewBox transform of the snapped content box, clipped to it (the UA overflow: hidden)';
 
-const IMAGE_PAINT = 'the PNG decoded once at build (sRGB, unpremultiplied source); drawn into the engine destination rect snapped to device px, clipped to the snapped content box';
+const IMAGE_PAINT = 'the PNG decoded once at build (sRGB, unpremultiplied source); drawn into the engine destination rect snapped to device px, clipped to the snapped content box, filtered, or nearest-neighbour under image-rendering: pixelated';
 
 export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
   name: 'image',
   vocabulary: {
     uikit: {
-      'replaced-image': { key: 'dragonImage', technique: 'dragon-owned-paint', detail: `DragonBoxView CGImage drawn with UIImage.draw(in:) in the box layer: ${IMAGE_PAINT}; the destination rect in points` },
+      'replaced-image': { key: 'dragonImage', technique: 'dragon-owned-paint', detail: `DragonBoxView CGImage drawn with UIImage.draw(in:) in the box layer (interpolationQuality .high, .none when pixelated): ${IMAGE_PAINT}; the destination rect in points` },
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView CGPaths filled and stroked with CGContext in the box layer: ${SVG_PAINT}` },
     },
     'android-views': {
-      'replaced-image': { key: 'dragonImage', technique: 'dragon-owned-paint', detail: `DragonBoxView Bitmap drawn with Canvas.drawBitmap(src, dst, Paint(FILTER_BITMAP_FLAG)): ${IMAGE_PAINT}; the destination rect in device px` },
+      'replaced-image': { key: 'dragonImage', technique: 'dragon-owned-paint', detail: `DragonBoxView Bitmap drawn with Canvas.drawBitmap(src, dst, Paint(FILTER_BITMAP_FLAG), unfiltered when pixelated): ${IMAGE_PAINT}; the destination rect in device px` },
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView android.graphics.Paths drawn with Canvas.drawPath (Paint FILL and STROKE): ${SVG_PAINT}` },
     },
   },
-  css: { 'replaced-image': ['object-fit', 'object-position'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect'] },
+  css: { 'replaced-image': ['object-fit', 'object-position', 'image-rendering'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect'] },
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
@@ -137,6 +141,6 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
     const src = el.element.attributes.get('src');
     const bytes = src === undefined ? undefined : images.get(src);
     if (bytes === undefined) throw new ProgramError(`${box.id}: no image bytes for its src`);
-    return [{ kind: 'replaced-image', data: base64Encode(bytes), width: box.natural.width, height: box.natural.height, fit: box.objectFit, layer: !transformMoves }];
+    return [{ kind: 'replaced-image', data: base64Encode(bytes), width: box.natural.width, height: box.natural.height, fit: box.objectFit, layer: !transformMoves, pixelated: isPixelated(el.props.get('image-rendering')?.value) }];
   },
 };

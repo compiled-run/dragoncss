@@ -669,12 +669,12 @@ const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink',
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style', 'rotate']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
-/** opacity, fill-opacity, stroke-opacity and scale are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4, css-transforms-2 §4); Chrome resolves a calculation in them as a number or a percentage. */
+/** opacity, fill-opacity, stroke-opacity, stop-opacity, flood-opacity and scale are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4, css-transforms-2 §4, SVG 2 §13.3.3, filter-effects-1 §9.2); Chrome resolves a calculation in them as a number or a percentage. */
 // stroke-width, stroke-dasharray and stroke-dashoffset take a unitless number too (SVG's quirk, Chrome StrokeWidth,
 // StrokeDasharray and StrokeDashoffset ::ParseSingleValue in SVG attribute mode), and so do the geometry properties cx, cy, r, x
 // and y and the corner radii rx and ry (ConsumeSVGGeometryPropertyLength parses them in SVG attribute mode).
 // tab-size is <number> | <length> (css-text-3 §4.2); its parser (properties/tab-size.ts) refuses every calculation.
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom', 'scale', 'tab-size']);
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stop-opacity', 'flood-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom', 'scale', 'tab-size']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
  * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), and the table spacings (CSS2 §17.6.1 border-spacing). */
 const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective', 'border-spacing', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing']);
@@ -1227,6 +1227,12 @@ export function foldNumber(n: MathNode): number {
   if (isLit(n)) return n.value;
   const values = n.args.map(foldNumber);
   return evaluateOperator(values, n.op);
+}
+
+/** A calculation's value with each literal scaled by its unit's factor ('' for a number, '%' for a percentage, else the unit). */
+export function foldScaled(n: MathNode, scale: (unit: string) => number): number {
+  if (isLit(n)) return n.value * scale(n.unit);
+  return evaluateOperator(n.args.map((a) => foldScaled(a, scale)), n.op);
 }
 
 // ---------------------------------------------------------------- serialization (css-values-4 §10.12, Blink CustomCSSText)

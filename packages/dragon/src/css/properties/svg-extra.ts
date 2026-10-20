@@ -6,11 +6,21 @@
 // the colour hints are inherited. None changes an HTML box or a shape Dragon draws at its initial value: Dragon draws no gradient,
 // filter, mask or SVG text, and draws its shapes antialiased in sRGB, as auto and srgb ask. So it accepts the initial values alone
 // and refuses every other value (analysis/scroll-containment.ts); shape-rendering: crispEdges would change how a shape is drawn.
-// Rows are proven by the computed value, as no layout lane reads them.
+// Rows are proven by the computed value, as no layout lane reads them. A spelling Chrome 145 computes to the initial value is that
+// value: stop-opacity and flood-opacity from 1 or 100% up (Chrome clamps them to [0, 1]), and baseline-shift: baseline or a zero
+// length or zero length calculation (0em, calc(1px - 1px)). A keyword-only longhand takes Chrome's keywords alone, and drops any
+// other value as Chrome does; packages/parity/test/render-anchor-parse.test.ts pins each against Chrome.
+import type { CssNode } from 'css-tree';
+import { generate } from 'css-tree';
+import { asciiLower } from '../escapes.ts';
+import { BLINK_MATH_FUNCTIONS, foldScaled, parseMath } from '../math.ts';
+import type { MathNode } from '../math.ts';
 import type { PropertyAspect } from '../properties.ts';
+import { unitEntry } from '../units.ts';
 import type { CssValue } from '../values.ts';
+import { numberCalc } from './effects.ts';
 import type { InitialOnlyParser } from './initial-only.ts';
-import { initialOnlyLonghand, kwInitial, numInitial, ZERO_LENGTH } from './initial-only.ts';
+import { keywordLonghand, kwInitial, nonInitial, numInitial, ZERO_LENGTH } from './initial-only.ts';
 
 export const SVG_EXTRA_LONGHANDS = ['stop-opacity', 'flood-opacity', 'mask-type', 'text-anchor', 'dominant-baseline', 'alignment-baseline', 'baseline-shift', 'shape-rendering', 'color-interpolation', 'color-interpolation-filters', 'color-rendering', 'buffered-rendering'] as const;
 export const SVG_EXTRA_SHORTHANDS = [] as const;
@@ -39,4 +49,68 @@ export const SVG_EXTRA_INITIAL: { readonly [P in SvgExtraLonghand]: CssValue } =
   'buffered-rendering': kwInitial('auto'),
 };
 
-export const SVG_EXTRA_VALUE_PARSERS = Object.fromEntries(SVG_EXTRA_LONGHANDS.map((p) => [p, initialOnlyLonghand(p, SVG_EXTRA_INITIAL[p])])) as { readonly [P in SvgExtraLonghand]: InitialOnlyParser };
+/**
+ * stop-opacity and flood-opacity are one <number> or <percentage>, or a calc() of numbers (SVG 2 §13.3.3, filter-effects-1 §9.2), as
+ * opacity is (effects.ts parseOpacityValue); Chrome clamps the computed value to [0, 1], so from 1 or 100% up it is the initial 1.
+ */
+function opacityLonghand(property: 'stop-opacity' | 'flood-opacity'): InitialOnlyParser {
+  return (tokens, base) => {
+    const t = tokens[0];
+    if (tokens.length !== 1 || t === undefined) return { kind: 'invalid', reason: `${property} is one number or percentage` };
+    let v: number;
+    if (t.type === 'Number') v = Number(t['value']);
+    else if (t.type === 'Percentage') v = Number(t['value']) / 100;
+    else {
+      const calc = numberCalc(property, t, base, `Write ${property} as a number or a percentage, or a calc() of numbers.`);
+      if (calc === null) return { kind: 'invalid', reason: `${property} is one number or percentage` };
+      if (!('value' in calc)) return calc;
+      v = calc.value;
+    }
+    return { kind: 'ok', longhands: [{ property, value: v >= 1 ? SVG_EXTRA_INITIAL[property] : nonInitial(tokens), explicit: true }] };
+  };
+}
+
+/** Whether a calculation is a zero length whatever the font and viewport: no percentage, and zero under two unrelated unit scales. */
+function zeroLengthCalc(t: CssNode): boolean {
+  if (t.type !== 'Function' || !BLINK_MATH_FUNCTIONS.has(asciiLower(String(t['name'])))) return false;
+  const parsed = parseMath(generate(t), { type: 'length', percent: true });
+  if (!parsed.ok) return false;
+  const percent = (n: MathNode): boolean => (n.t === 'lit' ? n.unit === '%' : n.args.some(percent));
+  if (percent(parsed.node)) return false;
+  const scale = (salt: number) => (unit: string): number => (unit === 'px' || unit === '' ? 1 : 1 + [...unit].reduce((h, c) => (h * 31 + c.charCodeAt(0) * salt) % 9973, 7) / 997);
+  return foldScaled(parsed.node, scale(3)) === 0 && foldScaled(parsed.node, scale(11)) === 0;
+}
+
+/**
+ * baseline-shift: baseline, a zero number or length in any registered unit (0em computes to 0px) and a zero length calculation
+ * compute to the initial 0px in Chrome 145; a zero percentage computes to 0%, which is kept and refused, as is any other value.
+ */
+const parseBaselineShift: InitialOnlyParser = (tokens) => {
+  const t = tokens[0];
+  if (t === undefined) return { kind: 'invalid', reason: 'baseline-shift needs a value' };
+  // Chrome 145 parses three keywords (baseline, sub, super) and drops any other, as css-inline-3's top, center and bottom.
+  if (tokens.length === 1 && t.type === 'Identifier' && !['baseline', 'sub', 'super'].includes(asciiLower(String(t['name'])))) return { kind: 'invalid', reason: 'baseline-shift takes baseline, sub, super, a length or a percentage (Chrome 145 drops any other keyword)' };
+  const zero = tokens.length === 1 && ((t.type === 'Identifier' && asciiLower(String(t['name'])) === 'baseline') || (t.type === 'Number' && Number(t['value']) === 0)
+    || (t.type === 'Dimension' && Number(t['value']) === 0 && unitEntry(asciiLower(String(t['unit']))) !== null) || zeroLengthCalc(t));
+  return { kind: 'ok', longhands: [{ property: 'baseline-shift', value: zero ? ZERO_LENGTH : nonInitial(tokens), explicit: true }] };
+};
+
+/** The keywords Chrome 145 parses for each keyword-only longhand (css_properties.json5), lowercase. */
+const SVG_EXTRA_KEYWORDS = {
+  'mask-type': ['luminance', 'alpha'],
+  'text-anchor': ['start', 'middle', 'end'],
+  'dominant-baseline': ['auto', 'alphabetic', 'ideographic', 'middle', 'central', 'mathematical', 'hanging', 'text-after-edge', 'text-before-edge', 'use-script', 'no-change', 'reset-size'],
+  'alignment-baseline': ['auto', 'baseline', 'alphabetic', 'ideographic', 'middle', 'central', 'mathematical', 'hanging', 'text-after-edge', 'text-before-edge', 'before-edge', 'after-edge'],
+  'shape-rendering': ['auto', 'optimizespeed', 'crispedges', 'geometricprecision'],
+  'color-interpolation': ['auto', 'srgb', 'linearrgb'],
+  'color-interpolation-filters': ['auto', 'srgb', 'linearrgb'],
+  'color-rendering': ['auto', 'optimizespeed', 'optimizequality'],
+  'buffered-rendering': ['auto', 'static', 'dynamic'],
+} as const;
+
+export const SVG_EXTRA_VALUE_PARSERS = {
+  ...Object.fromEntries(Object.entries(SVG_EXTRA_KEYWORDS).map(([p, ks]) => [p, keywordLonghand(p as SvgExtraLonghand, SVG_EXTRA_INITIAL[p as SvgExtraLonghand], ks)])),
+  'stop-opacity': opacityLonghand('stop-opacity'),
+  'flood-opacity': opacityLonghand('flood-opacity'),
+  'baseline-shift': parseBaselineShift,
+} as { readonly [P in SvgExtraLonghand]: InitialOnlyParser };

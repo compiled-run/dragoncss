@@ -1,7 +1,8 @@
-// The image-rendering, anchor-position, svg-extra, view-transition and animation-extra families are accepted at their initial values alone, on every target; every
+// The anchor-position, svg-extra, view-transition and animation-extra families are accepted at their initial values alone, on every target; every
 // other value is kept (the grammar takes any value, so Dragon never drops what Chrome keeps) and refused where it applies. The Chrome
 // cases are render-anchor-initial, svg-extra-initial and the reject-* cases of fixture-groups/scroll-containment.ts
-// (packages/parity/fixtures); packages/parity/test/render-anchor-parse.test.ts pins the parse against Chrome 145.
+// (packages/parity/fixtures); packages/parity/test/render-anchor-parse.test.ts pins the parse against Chrome 145. image-rendering registers
+// with them, and its values are image-rendering.test.ts's.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -77,8 +78,6 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
   });
 
   it('parse an initial spelling to the initial values, and keep every other value as written', () => {
-    expect(parsed('image-rendering: Auto')).toEqual(['image-rendering: auto']);
-    expect(parsed('image-rendering: pixelated')).toEqual(['image-rendering: ?pixelated']);
     expect(parsed('position-try: none')).toEqual(['position-try-order: normal', 'position-try-fallbacks: none']);
     expect(parsed('position-try: normal none')).toEqual(['position-try-order: normal', 'position-try-fallbacks: none']);
     // A leading try-order keyword is the order, and the rest the fallbacks, as Chrome 145 expands it.
@@ -87,18 +86,30 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     expect(parsed('position-try: normal --a, flip-inline')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?--a , flip-inline']);
     expect(parsed('position-try: most-height none')).toEqual(['position-try-order: ?most-height', 'position-try-fallbacks: none']);
     expect(parsed('position-try: none normal')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?none normal']);
-    expect(parsed('position-try: normal')).toEqual(['position-try-order: ?normal', 'position-try-fallbacks: ?normal']);
+    // An order with no fallbacks is dropped, as Chrome 145 drops it.
+    expect(parsed('position-try: normal')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    expect(parsed('position-try: most-width')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('position-anchor: auto')).toEqual(['position-anchor: ?auto']);
     expect(parsed('anchor-name: --a')).toEqual(['anchor-name: ?--a']);
     expect(parsed('stop-opacity: 1')).toEqual(['stop-opacity: 1']);
     expect(parsed('stop-opacity: 0.5')).toEqual(['stop-opacity: ?0.5']);
-    expect(parsed('stop-opacity: 100%')).toEqual(['stop-opacity: ?100%']);
+    // Chrome clamps stop-opacity and flood-opacity to [0, 1]: from 1 or 100% up, and a calc() that reaches 1, compute to the initial 1.
+    expect(parsed('stop-opacity: 100%')).toEqual(['stop-opacity: 1']);
+    expect(parsed('stop-opacity: calc(1)')).toEqual(['stop-opacity: 1']);
+    expect(parsed('flood-opacity: calc(0.5 + 0.5)')).toEqual(['flood-opacity: 1']);
+    expect(parsed('flood-opacity: 150%')).toEqual(['flood-opacity: 1']);
+    expect(parsed('stop-opacity: 2')).toEqual(['stop-opacity: 1']);
+    expect(parsed('stop-opacity: 99%')).toEqual(['stop-opacity: ?99%']);
+    expect(parsed('flood-opacity: calc(0.5)')).toEqual(['flood-opacity: ?calc(0.5)']);
+    expect(parsed('stop-opacity: none')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('baseline-shift: 0')).toEqual(['baseline-shift: 0px']);
     expect(parsed('baseline-shift: sub')).toEqual(['baseline-shift: ?sub']);
+    // baseline, a zero length in any unit and a zero length calculation compute to 0px; a zero percentage computes to 0%.
+    for (const v of ['baseline', 'BASELINE', '0em', '0vw', 'calc(0px)', 'calc(1px - 1px)', 'calc(0em)', 'calc(2em - 2em)']) expect(parsed(`baseline-shift: ${v}`), v).toEqual(['baseline-shift: 0px']);
+    for (const v of ['0%', 'calc(0%)', 'calc(0px + 0%)', 'calc(1em - 10px)', 'calc(1px)']) expect(parsed(`baseline-shift: ${v}`)[0], v).toMatch(/^baseline-shift: \?/);
     expect(parsed('shape-rendering: crispEdges')).toEqual(['shape-rendering: ?crispEdges']);
     // Values webref lists though Chrome drops them are kept and refused, never dropped.
     expect(parsed('position-visibility: anchor-visible')).toEqual(['position-visibility: ?anchor-visible']);
-    expect(parsed('image-rendering: smooth')).toEqual(['image-rendering: ?smooth']);
     expect(parsed('view-transition-name: auto')).toEqual(['view-transition-name: ?auto']);
     expect(parsed('timeline-scope: all')).toEqual(['timeline-scope: ?all']);
     expect(parsed('interpolate-size: Numeric-Only')).toEqual(['interpolate-size: numeric-only']);
@@ -113,7 +124,7 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
   });
 
   it('refuse every other value on every target, once per element and family, computed', () => {
-    for (const d of ['image-rendering: pixelated', 'image-rendering: crisp-edges', 'image-rendering: -webkit-optimize-contrast', 'anchor-name: --a', 'anchor-scope: all', 'position-anchor: auto',
+    for (const d of ['anchor-name: --a', 'anchor-scope: all', 'position-anchor: auto',
       'position-area: top', 'position-try: flip-block', 'position-try-order: most-width', 'position-try-fallbacks: --a', 'position-visibility: always', 'stop-opacity: 0.5', 'flood-opacity: 0',
       'mask-type: alpha', 'text-anchor: middle', 'dominant-baseline: middle', 'alignment-baseline: baseline', 'baseline-shift: 2px', 'shape-rendering: crispEdges', 'color-interpolation: linearRGB',
       'color-interpolation-filters: sRGB', 'color-rendering: optimizeSpeed', 'buffered-rendering: static', 'view-transition-name: card', 'view-transition-class: a b', 'view-transition-group: contain',
@@ -128,13 +139,13 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     };
     expect(at('position-try: flip-block')).toEqual(['position-try-fallbacks: flip-block on <div> a']);
     expect(at('position-try: most-width --a')).toEqual(['position-try-order: most-width on <div> a']);
-    expect(errorsAt('image-rendering: pixelated; anchor-name: --a; text-anchor: end')).toEqual(Array(5).fill(REFUSED).flat().sort());
+    expect(errorsAt('anchor-name: --a; text-anchor: end; interpolate-size: allow-keywords')).toEqual(Array(5).fill(REFUSED).flat().sort());
     expect(errorsAt('--r: --a; anchor-name: var(--r)')).toEqual(REFUSED);
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { image-rendering: pixelated; }';
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { anchor-name: --a; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
     const errors = c.diagnostics.filter((x) => x.severity === 'error');
     expect(errors).toHaveLength(3);
-    for (const d of errors) expect(d.message).toMatch(/^image-rendering: pixelated on <div> a is unsupported: Dragon scales images only as image-rendering: auto does; only auto is accepted$/);
+    for (const d of errors) expect(d.message).toMatch(/^anchor-name: --a on <div> a is unsupported: Dragon implements no anchor positioning yet; only none is accepted$/);
   });
 
   it('accept the UA view-transition-name: root on the root, and refuse an author one', () => {
@@ -153,18 +164,17 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
       const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]));
       return [...new Set(c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0] as string))].sort();
     };
-    expect(at('.s { image-rendering: pixelated; }')).toEqual(['image-rendering: pixelated on <div> a', 'image-rendering: pixelated on <div> b']);
+    expect(at('.s { dominant-baseline: middle; }')).toEqual(['dominant-baseline: middle on <div> a', 'dominant-baseline: middle on <div> b']);
     expect(at('.s { text-anchor: middle; }')).toEqual(['text-anchor: middle on <div> a', 'text-anchor: middle on <div> b']);
     expect(at('.s { anchor-name: --a; }')).toEqual(['anchor-name: --a on <div> a']);
   });
 
   it('plant each family\'s fault: its non-initial value compiles, and only its own', () => {
-    expect(errorsAt('image-rendering: pixelated', { ...NO_FAULTS, imageRenderingAccepted: true })).toEqual([]);
     expect(errorsAt('position-area: top', { ...NO_FAULTS, anchorPositionAccepted: true })).toEqual([]);
     expect(errorsAt('shape-rendering: crispEdges', { ...NO_FAULTS, svgExtraAccepted: true })).toEqual([]);
     expect(errorsAt('view-transition-name: card', { ...NO_FAULTS, viewTransitionAccepted: true })).toEqual([]);
     expect(errorsAt('timeline-scope: --t', { ...NO_FAULTS, animationExtraAccepted: true })).toEqual([]);
     expect(errorsAt('interpolate-size: allow-keywords', { ...NO_FAULTS, viewTransitionAccepted: true })).toEqual([...REFUSED, ...REFUSED].sort());
-    expect(errorsAt('anchor-name: --a', { ...NO_FAULTS, imageRenderingAccepted: true, svgExtraAccepted: true })).toEqual(REFUSED);
+    expect(errorsAt('anchor-name: --a', { ...NO_FAULTS, viewTransitionAccepted: true, svgExtraAccepted: true })).toEqual(REFUSED);
   });
 });

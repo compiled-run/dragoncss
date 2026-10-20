@@ -1,5 +1,5 @@
 // The families Dragon accepts at their initial values alone (css/properties/initial-only.ts): overscroll, scroll-snap, containment,
-// container-query, image-rendering, anchor-position, svg-extra, view-transition and animation-extra. Any other computed value is refused on
+// container-query, anchor-position, svg-extra, view-transition and animation-extra. Any other computed value is refused on
 // every target, once per element and family. The values are checked computed, so one that arrives through var() or inherit is
 // refused too.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
@@ -8,7 +8,6 @@ import type { Longhand } from '../css/properties.ts';
 import { CONTAINER_QUERY_INITIAL, CONTAINER_QUERY_LONGHANDS } from '../css/properties/container-query.ts';
 import { CONTAINMENT_INITIAL, CONTAINMENT_LONGHANDS } from '../css/properties/containment.ts';
 import { ANCHOR_POSITION_INITIAL, ANCHOR_POSITION_LONGHANDS } from '../css/properties/anchor-position.ts';
-import { IMAGE_RENDERING_INITIAL, IMAGE_RENDERING_LONGHANDS } from '../css/properties/image-rendering.ts';
 import { SVG_EXTRA_INITIAL, SVG_EXTRA_LONGHANDS } from '../css/properties/svg-extra.ts';
 import { VIEW_TRANSITION_INITIAL, VIEW_TRANSITION_LONGHANDS } from '../css/properties/view-transition.ts';
 import { ANIMATION_EXTRA_INITIAL, ANIMATION_EXTRA_LONGHANDS } from '../css/properties/animation-extra.ts';
@@ -59,8 +58,6 @@ const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINME
 // css-conditional-5: a container-type other than normal applies size containment, and a container-name only names a query container.
 const CONTAINER_QUERY: InitialOnlyFamily = { id: 'container-query', longhands: CONTAINER_QUERY_LONGHANDS, initial: CONTAINER_QUERY_INITIAL, reason: 'Dragon implements no container queries or the containment they apply yet' };
 
-// css-images-3 §5.3: every target scales an image as auto does; pixelated, crisp-edges and the rest ask for other scaling.
-const IMAGE_RENDERING: InitialOnlyFamily = { id: 'image-rendering', longhands: IMAGE_RENDERING_LONGHANDS, initial: IMAGE_RENDERING_INITIAL, reason: 'Dragon scales images only as image-rendering: auto does' };
 // css-anchor-position-1: an anchor name or scope only names anchors, and the position longhands move or hide an anchored box.
 const ANCHOR_POSITION: InitialOnlyFamily = { id: 'anchor-position', longhands: ANCHOR_POSITION_LONGHANDS, initial: ANCHOR_POSITION_INITIAL, reason: 'Dragon implements no anchor positioning yet' };
 // SVG 2, css-masking-1: gradient stops, filter floods, masks and SVG text, which Dragon does not build, and the rendering hints,
@@ -79,7 +76,6 @@ export function checkScrollContainment(el: ResolvedElement, targets: readonly st
   if (!faults.scrollSnapAccepted) refuseNonInitial(el, targets, diagnostics, reported, SCROLL_SNAP);
   if (!faults.containmentAccepted) refuseNonInitial(el, targets, diagnostics, reported, CONTAINMENT);
   if (!faults.containerQueryAccepted) refuseNonInitial(el, targets, diagnostics, reported, CONTAINER_QUERY);
-  if (!faults.imageRenderingAccepted) refuseNonInitial(el, targets, diagnostics, reported, IMAGE_RENDERING);
   if (!faults.anchorPositionAccepted) refuseNonInitial(el, targets, diagnostics, reported, ANCHOR_POSITION);
   if (!faults.svgExtraAccepted) refuseNonInitial(el, targets, diagnostics, reported, SVG_EXTRA);
   if (!faults.viewTransitionAccepted) refuseNonInitial(el, targets, diagnostics, reported, VIEW_TRANSITION);

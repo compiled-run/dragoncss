@@ -1,6 +1,5 @@
-// The overscroll, scroll-snap, containment, container-query, image-rendering, anchor-position, svg-extra, view-transition and
-// animation-extra families; Dragon
-// accepts their initial values alone.
+// The overscroll, scroll-snap, containment, container-query, anchor-position, svg-extra, view-transition and animation-extra
+// families, which Dragon accepts at their initial values alone, and image-rendering: pixelated over an image layer.
 
 export type ScrollContainmentFaults = {
   /** An overscroll-behavior or overflow-anchor longhand other than auto is accepted, though no target implements it. */
@@ -11,7 +10,7 @@ export type ScrollContainmentFaults = {
   readonly containmentAccepted: boolean;
   /** A container-type or container-name other than its initial value is accepted, though no target has container queries. */
   readonly containerQueryAccepted: boolean;
-  /** An image-rendering other than auto is accepted, though no target draws an image other than smoothly. */
+  /** image-rendering: pixelated is accepted on iOS and Android over an image layer they draw smoothly (analysis/image-rendering.ts). */
   readonly imageRenderingAccepted: boolean;
   /** An anchor positioning longhand other than its initial value is accepted, though no target anchors a box. */
   readonly anchorPositionAccepted: boolean;
