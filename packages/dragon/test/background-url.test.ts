@@ -36,13 +36,14 @@ const withAsset = (input: FrontEndResult): FrontEndResult => ({
 /** The input with its stylesheet moved to a source of its own (a linked stylesheet), whose base is not the document's. */
 function external(input: FrontEndResult): FrontEndResult {
   const doc = input.snapshot.sources[0];
-  const style = input.tree.styles[0];
-  if (doc === undefined || style === undefined) throw new Error('no source');
+  const tree = input.tree;
+  const style = tree?.styles[0];
+  if (doc === undefined || tree === null || style === undefined) throw new Error('no source');
   const ref: SourceRef = { uri: 'dragon-source://test/theme.css', revision: 'r1', hash: doc.ref.hash };
   return {
     ...input,
     snapshot: { ...input.snapshot, sources: [doc, { ref, text: doc.text, displayPath: 'theme.css' }] },
-    tree: { ...input.tree, styles: [{ ...style, css: { ...style.css, source: ref } }] },
+    tree: { ...tree, styles: [{ ...style, css: { ...style.css, source: ref } }] },
   };
 }
 const compile = (css: string, o: Options = {}) => compileInput(withAsset(inputFor(BASE + css, tree)), o);
