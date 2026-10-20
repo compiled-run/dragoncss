@@ -15,6 +15,8 @@ import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import { compareZoomedLayout } from './compare.ts';
+import type { RgbaImage } from './native-compare.ts';
+import { decodePng, rasterSize } from './pixel-reference.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix, environmentsOf, FIXTURES } from './fixtures.ts';
 import type { ResizeScript, ResizeStep, Size } from './fixture-groups/media-runtime.ts';
@@ -208,7 +210,7 @@ function pageStep(s: PageStep): CapturedNode[] {
 }
 
 /** The HTML of an assignment in the authored or the compiled web rendering. */
-function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compiled'): string {
+export function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compiled'): string {
   const p = caseOf(c, a);
   if (r === 'authored') return p.authoredHtml;
   const classOf = webClassMap(c.webCompiled, a);
@@ -216,8 +218,11 @@ function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compiled'): st
   return p.compiledHtml(c.webCss, classOf);
 }
 
-/** Captures one resize case at one DPR in one rendering; the browser must be launched at that DPR (chrome.ts launchChrome). */
-export async function captureResize(browser: Browser, c: ResizeCase, dpr: number, r: 'authored' | 'compiled' = 'authored'): Promise<ResizeCapture> {
+/**
+ * Captures one resize case at one DPR in one rendering; the browser must be launched at that DPR (chrome.ts launchChrome). shot,
+ * when given, takes Chrome's pixels after the start and every step (Page.captureScreenshot, the pixel lane's capture).
+ */
+export async function captureResize(browser: Browser, c: ResizeCase, dpr: number, r: 'authored' | 'compiled' = 'authored', shot: ((step: number, png: Buffer) => void) | null = null): Promise<ResizeCapture> {
   const points = scriptPoints(c);
   const first = points[0] as ScriptPoint;
   const page = await openPage(browser, rendering(c, first.assignment, r), { viewport: first.size, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' });
@@ -229,6 +234,34 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
       const inner = await page.evaluate(() => [window.innerWidth, window.innerHeight]);
       if (inner[0] !== size.width || inner[1] !== size.height) throw new Error(`${c.id} DPR ${dpr}: the viewport is ${inner.join('x')}, the script's ${size.width}x${size.height}`);
       samples.push({ size, nodes: await page.evaluate(pageStep, { kind: 'dump', props } as PageStep) });
+      if (shot !== null) {
+        // A resize can leave raster tiles Chrome does not repaint (a box edge of the previous size stays in about half the runs of
+        // mqr-music-shape step 1 at DPR 2), so the pixels are taken after one whole-document repaint: the root hidden for a frame and
+        // its style attribute restored exactly. Layout is untouched (visibility), and the samples above are taken before it.
+        await page.evaluate(() => {
+          const e = document.documentElement;
+          (window as unknown as { dragonRootStyle: string | null }).dragonRootStyle = e.getAttribute('style');
+          e.style.setProperty('visibility', 'hidden');
+        });
+        await settle();
+        await page.evaluate(() => {
+          const e = document.documentElement;
+          const was = (window as unknown as { dragonRootStyle: string | null }).dragonRootStyle;
+          if (was === null) e.removeAttribute('style');
+          else e.setAttribute('style', was);
+        });
+        await settle();
+        const cdp = await page.context().newCDPSession(page);
+        try {
+          const png = Buffer.from(((await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string }).data, 'base64');
+          const img = decodePng(png);
+          const want = rasterSize(size, dpr);
+          if (img.width !== want.width || img.height !== want.height) throw new Error(`${c.id} DPR ${dpr} step ${samples.length - 1}: Chrome captured ${img.width}x${img.height}, the raster rule is ${want.width}x${want.height}`);
+          shot(samples.length - 1, png);
+        } finally {
+          await cdp.detach();
+        }
+      }
     };
     await dump(first.size);
     for (let i = 0; i < c.script.steps.length; i++) {
@@ -253,6 +286,19 @@ export function resizeCaptureJson(c: ResizeCapture): string {
 
 export const expectedResizeDir = (): string => repoPath('packages/parity/expected-resize');
 export const resizeCapturePath = (caseId: string, r: 'authored' | 'compiled', dpr: number): string => `${expectedResizeDir()}/${caseId}/${r}-dpr${dpr}.json`;
+/** Chrome's pixels after step k of a resize case at a device DPR (the start is step 0), for the device-pixels lane. */
+export const resizePixelsPath = (caseId: string, dpr: number, step: number): string => `${expectedResizeDir()}/${caseId}/pixels-dpr${dpr}/step${step}.png`;
+
+const resizePngs = new Map<string, RgbaImage | null>();
+/** The committed Chrome pixels of a resize step, or null when there are none. */
+export function committedResizePixels(caseId: string, dpr: number, step: number): RgbaImage | null {
+  const path = resizePixelsPath(caseId, dpr, step);
+  const hit = resizePngs.get(path);
+  if (hit !== undefined) return hit;
+  const img = existsSync(path) ? decodePng(readFileSync(path)) : null;
+  resizePngs.set(path, img);
+  return img;
+}
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isSize = (v: unknown): v is Size => isObject(v) && typeof v['width'] === 'number' && typeof v['height'] === 'number';

@@ -6,7 +6,8 @@ import { dirname, join } from 'node:path';
 import { launchChrome } from '../chrome.ts';
 import { zoomGuard } from '../dpr.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
-import { captureResize, expectedResizeDir, RESIZE_DPRS, resizeCaptureJson, resizeCapturePath, resizeCases } from '../resize-capture.ts';
+import { captureResize, expectedResizeDir, RESIZE_DPRS, resizeCaptureJson, resizeCapturePath, resizeCases, resizePixelsPath } from '../resize-capture.ts';
+import { requireSoftwareRaster } from '../pixel-reference.ts';
 
 requireReferencePlatform(hostPlatform());
 const dir = expectedResizeDir();
@@ -14,15 +15,32 @@ mkdirSync(dir, { recursive: true });
 const cases = resizeCases();
 const ids = new Set(cases.map((c) => c.id));
 for (const d of readdirSync(dir)) if (!ids.has(d)) rmSync(join(dir, d), { recursive: true });
+// Each case's pixels are rewritten whole, so a step a script no longer has leaves no stale PNG behind.
+for (const d of readdirSync(dir)) for (const p of readdirSync(join(dir, d))) if (p.startsWith('pixels-dpr')) rmSync(join(dir, d, p), { recursive: true });
 let samples = 0;
 for (const dpr of RESIZE_DPRS) {
   const browser = await launchChrome(dpr);
   try {
     // The launch must lay out at the DPR, not only report it (dpr.ts zoomGuard); DPR 1 has no guard value and needs none.
     if (dpr !== 1) await zoomGuard(browser, dpr);
+    // MQ-R1 PR 2: at the device DPRs, Chrome's pixels after every step, on the software raster path as the pixel lane requires.
+    const pixels = dpr !== 1;
+    if (pixels) await requireSoftwareRaster(async () => {
+      const cdp = await browser.newBrowserCDPSession();
+      try {
+        return await cdp.send('SystemInfo.getInfo');
+      } finally {
+        await cdp.detach();
+      }
+    });
     for (const c of cases) {
       for (const r of dpr === 1 ? (['authored', 'compiled'] as const) : (['authored'] as const)) {
-        const cap = await captureResize(browser, c, dpr, r);
+        const shot = pixels && r === 'authored' ? (step: number, png: Buffer): void => {
+          const path = resizePixelsPath(c.id, dpr, step);
+          mkdirSync(dirname(path), { recursive: true });
+          writeFileSync(path, png);
+        } : null;
+        const cap = await captureResize(browser, c, dpr, r, shot);
         const path = resizeCapturePath(c.id, r, dpr);
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, resizeCaptureJson(cap));

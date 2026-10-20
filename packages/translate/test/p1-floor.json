@@ -8,7 +8,8 @@
       "rt",
       "hit",
       "animator",
-      "interaction"
+      "interaction",
+      "band"
     ],
     "counts": {
       "vectors": 258,
@@ -16,9 +17,10 @@
       "engine": 20258,
       "library": 22000,
       "rt": 55362,
-      "hit": 2244,
+      "hit": 2272,
       "animator": 18,
-      "interaction": 21
+      "interaction": 21,
+      "band": 20
     }
   },
   "rt-records": {

@@ -36,13 +36,15 @@ import { animSamples } from './anim-samples.ts';
 import { frameScript, pixelSamples } from './anim-cases.ts';
 import { committedFrameBreaks, committedFramePixels, committedFrames, framePixelSamples } from './frame-capture.ts';
 import { evaluateTraces, traceScriptIds } from './trace-lane.ts';
+import { resizeScriptCases } from './resize-scripts.ts';
+import { ENV_IDS, envOracleBrowser, evaluateEnv } from './device-env.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, devicePoints, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { DeviceCheckLane, DeviceLaneId } from './lane-ids.ts';
-export { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE };
+export { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE };
 export type { DeviceCheckLane, DeviceLaneId };
 
 export type FailureKind =
@@ -51,7 +53,8 @@ export type FailureKind =
   | 'blank-capture'
   | 'hit-missing' | 'hit-mismatch'
   | 'frame-reference'
-  | 'trace-missing' | 'trace-mismatch' | 'motion-mismatch';
+  | 'trace-missing' | 'trace-mismatch' | 'motion-mismatch'
+  | 'environment';
 
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
@@ -100,6 +103,10 @@ export type CaseReference = {
   readonly pixels: RgbaImage | null;
   /** False where the lane compares no pixels (a device-anim sample outside the R18 pixel subset); absent means compared. */
   readonly pixelsCompared?: boolean;
+  /** MQ-R1: why a case has no break check (a resize step: no break capture is taken; its line boxes are compared), else absent. */
+  readonly breaksNotCompared?: string;
+  /** MQ-R1: the environment record a state mount's dump must carry (a resize step), else absent (the record is null). */
+  readonly environment?: { readonly rootPx: readonly number[]; readonly media: readonly number[]; readonly band: number };
 };
 
 export function caseReference(target: NativeTarget, n: CheckedCase, dpr: number): CaseReference {
@@ -175,11 +182,20 @@ export function evaluateCase(target: NativeTarget, n: CheckedCase, dpr: number, 
     const got = dump.nodes.find((y) => y.id === x.id)?.native ?? 'missing';
     if (got !== x.native) fail('device-applied', 'native-class', `${x.id}: native ${got}, expected ${x.native}`, x.id);
   }
+  // MQ-R1 (T067 R6): a resize step's root view reports the size it was given, Chrome's media size of it and the partition's band.
+  if (ref.environment !== undefined) {
+    const e = dump.environment;
+    const want = ref.environment;
+    if (e === null) fail('device-applied', 'environment', 'the dump has no environment record');
+    else if (e.dpr !== dpr || e.band !== want.band || e.rootPx.some((v, i) => v !== want.rootPx[i]) || e.media.some((v, i) => v !== want.media[i])) fail('device-applied', 'environment', `environment root ${e.rootPx.join('x')} px, media ${e.media.join('x')}, band ${e.band} at scale ${e.dpr}; expected root ${want.rootPx.join('x')} px, media ${want.media.join('x')}, band ${want.band} at ${dpr}`);
+  }
   const digest = expectedDigest(ref.expected);
   if (dump.case.expectedDigest !== digest) fail('device-applied', 'expected-digest', `expectedDigest ${dump.case.expectedDigest}, the expected dump's ${digest}`);
 
   // The break check: the dump against the break vector, and the break vector against Chrome's breaks.
-  if (ref.breaks === null || ref.chromeBreaks === null) fail('device-lines', BREAK_MISMATCH, `no ${ref.breaks === null ? 'break vector (pnpm run layout:break-vectors)' : 'Chrome break capture (pnpm run parity:break-capture)'}`);
+  if (ref.breaksNotCompared !== undefined) {
+    // A reference that names why it has no break capture skips only the break check; the line boxes were compared above.
+  } else if (ref.breaks === null || ref.chromeBreaks === null) fail('device-lines', BREAK_MISMATCH, `no ${ref.breaks === null ? 'break vector (pnpm run layout:break-vectors)' : 'Chrome break capture (pnpm run parity:break-capture)'}`);
   else {
     const mine = checkDumpBreaks(dump, ref.breaks);
     const chrome = compareVectorWithChrome(ref.breaks, ref.chromeBreaks, leafTexts(programOf(n, target).root));
@@ -446,6 +462,8 @@ export type DeviceOutcome = {
   readonly anim?: DeviceSet | null;
   /** SELD-R2: the interaction scripts' trace set (device-traces); absent before it. */
   readonly traces?: DeviceSet | null;
+  /** MQ-R1: the rotation's set (device-env); absent before it. */
+  readonly env?: DeviceSet | null;
   readonly trust: { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] } | null;
   readonly vectors: (HostRun & { readonly device: string }) | null;
   readonly blocked: string | null;
@@ -505,6 +523,7 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
   const hits: DeviceSet[] = [];
   const anims: DeviceSet[] = [];
   const traces: DeviceSet[] = [];
+  const env: DeviceSet[] = [];
   const trust: { device: string; dpr: number; rows: readonly TrustRow[] }[] = [];
   const blocked: string[] = [];
   let vectors: (HostRun & { device: string }) | null = null;
@@ -515,18 +534,19 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
     if (o.hits !== undefined && o.hits !== null) hits.push(o.hits);
     if (o.anim !== undefined && o.anim !== null) anims.push(o.anim);
     if (o.traces !== undefined && o.traces !== null) traces.push(o.traces);
+    if (o.env !== undefined && o.env !== null) env.push(o.env);
     if (o.trust !== null) trust.push(o.trust);
     if (o.vectors !== null) {
       if (vectors !== null) throw new Error(`two devices ran the vectors lane (${vectors.device}, ${o.vectors.device})`);
       vectors = o.vectors;
     }
   }
-  return { vectors, sets, states, hits, anims, traces, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
+  return { vectors, sets, states, hits, anims, traces, env, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
 }
 
 /** Every failure of a target's run, the SELD-R1b lanes', device-anim's and device-traces' too (the list written to out/device-failures-<target>.json). */
 export function allRunFailures(d: DeviceRun): LaneFailure[] {
-  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? []), ...(d.anims ?? []), ...(d.traces ?? [])].flatMap((s) => s.failures);
+  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? []), ...(d.anims ?? []), ...(d.traces ?? []), ...(d.env ?? [])].flatMap((s) => s.failures);
 }
 
 /** The text of out/device-failures-<target>.json for a target's run. */
@@ -534,8 +554,11 @@ export const deviceFailuresText = (d: DeviceRun): string => `${JSON.stringify(al
 
 // ---------------------------------------------------------------- device-states and device-hit (SELD-R1b)
 
-/** A case script as a layout case for the device checks: the end assignment's case under the script's id. */
-export type ScriptCase = { readonly script: NativeCase; readonly end: NativeCase };
+/**
+ * A case script as a layout case for the device checks: the end assignment's case under the script's id. MQ-R1: a resize prefix
+ * script names its own reference (resize-scripts.ts), at the size it ends at.
+ */
+export type ScriptCase = { readonly script: NativeCase; readonly end: NativeCase; readonly reference?: (dpr: number) => CaseReference };
 
 /** Every case script of a target, in state program order (state-cases.ts stateEmits), each with its end assignment's case. */
 export function scriptCases(target: NativeTarget): ScriptCase[] {
@@ -551,11 +574,12 @@ export function scriptCases(target: NativeTarget): ScriptCase[] {
       if (end === undefined) throw new Error(`${s.id}: no end case ${s.ends}`);
       return { script: { ...end, case: { ...end.case, id: s.id } }, end };
     });
-  });
+  }).concat(resizeScriptCases(target));
 }
 
 /** The device checks of a case script: the end assignment's references, with the expected dump under the script's id. */
 export function scriptReference(target: NativeTarget, s: ScriptCase, dpr: number): CaseReference {
+  if (s.reference !== undefined) return s.reference(dpr);
   const ref = caseReference(target, s.end, dpr);
   // The end assignment's Chrome capture is the script's Chrome reference, so it is named for the script.
   return { ...ref, chrome: { ...ref.chrome, fixture: s.script.case.id }, expected: expectedDump(s.end.programs[BACKEND_OF[target]], s.script.case.id, s.end.case.environment.viewport, dpr, expectedEngine()) };
@@ -755,7 +779,7 @@ export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOu
 
 /**
  * The parts of one device's run a CI job can run alone (device-ci.ts one --parts), each on its own booted device: cases (the batch
- * launch and its checks, device-hit, device-states, device-traces and capture trust), anim (the frame samples, device-anim) and
+ * launch and its checks, device-hit, device-states, device-env, device-traces and capture trust), anim (the frame samples, device-anim) and
  * vectors (layout-vectors-device, on the vectors device only). A run of every part is the whole run.
  */
 export const DEVICE_PARTS = ['cases', 'anim', 'vectors'] as const;
@@ -800,6 +824,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     let set: DeviceSet | null = null;
     let hits: DeviceSet | null = null;
     let states: DeviceSet | null = null;
+    let env: DeviceSet | null = null;
     if (parts.has('cases')) {
       const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: devicePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
       const outDir = join(nativeOut(t.target), 'lanes', spec.name);
@@ -827,6 +852,18 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
       states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
       log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);
+      // MQ-R1 device-env: one launch runs the rotation's three phases, judged against the engine and Chrome's band oracle.
+      const envDir = join(nativeOut(t.target), 'lanes', `${spec.name}-env`);
+      const v0 = Date.now();
+      const er = await runApp(h, artifact, { runFile: runFileText(ENV_IDS.map((id) => ({ id, points: [] })), false), caseCount: ENV_IDS.length, outDir: envDir });
+      const envExtra: LaneFailure[] = er.error === null ? [] : [{ lane: ENV_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the rotation: ${er.error}` }];
+      const oracle = await envOracleBrowser(dpr);
+      try {
+        env = await evaluateEnv(t.target, dpr, envDir, rec, oracle, envExtra);
+      } finally {
+        await oracle.close();
+      }
+      log(`${spec.name}: device-env ${env.dumps}/${env.cases} dumps in ${((Date.now() - v0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(env.failures))}`);
     }
     let animSet: DeviceSet | null = null;
     if (parts.has('anim')) {
@@ -879,7 +916,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       vectors = await runDeviceVectors(h, t, host);
       log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
     }
-    return { device: spec.name, set, states, hits, anim: animSet, traces, trust, vectors, blocked: null };
+    return { device: spec.name, set, states, hits, anim: animSet, traces, env, trust, vectors, blocked: null };
   };
   const stop = source.release;
   if (stop === null) return work();

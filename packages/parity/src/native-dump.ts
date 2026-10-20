@@ -1,4 +1,4 @@
-// dragon.native-dump/1 (docs/research/native-strategy.md 3.2; notes/T002-device-lanes.md 1.2): one data description of every
+// dragon.native-dump/2 (docs/research/native-strategy.md 3.2; notes/T002-device-lanes.md 1.2): one data description of every
 // field, its type, whether it is required and when it may be null. The TS types are inferred from it and the validator walks it,
 // so neither can drift from it; P4 emits the Swift and Kotlin encoders from the same description.
 
@@ -38,8 +38,11 @@ const DEVICE_EDGES = obj([field('left', int, 'device px'), field('top', int, 'de
 export const DUMP_LANES = ['ios-sim', 'android-emu', 'ts-reference'] as const;
 export const REFERENCE_LANE = 'ts-reference';
 
+/** The schema id. /2 (MQ-R1, notes/T067 R6) adds the environment record; every /1 field is unchanged. */
+export const NATIVE_DUMP_SCHEMA_ID = 'dragon.native-dump/2';
+
 export const NATIVE_DUMP_SCHEMA = obj([
-  field('schema', { kind: 'const', value: 'dragon.native-dump/1' }, 'the schema id'),
+  field('schema', { kind: 'const', value: NATIVE_DUMP_SCHEMA_ID }, 'the schema id'),
   field('lane', { kind: 'enum', values: DUMP_LANES }, 'the lane that wrote the dump'),
   field('case', obj([
     field('id', id, 'the parity case id; joins the Chrome capture of the same case and DPR'),
@@ -90,6 +93,12 @@ export const NATIVE_DUMP_SCHEMA = obj([
     ])), 'the generated sample points (samples.ts), read from the capture'),
   ]), 'numeric paint evidence', 'reference-lane'),
   orNull('timing', obj([field('settleMs', num, 'ms'), field('dumpMs', num, 'ms')]), 'informational; never compared', 'reference-lane'),
+  orNull('environment', obj([
+    field('rootPx', arr(num, 2), 'the Dragon root view\'s size in whole device px, as it observed it'),
+    field('dpr', num, 'the scale the root view\'s px are read at'),
+    field('media', arr(num, 2), 'the media width and height @media is evaluated against: fround of the px at the scale (T067 R3)'),
+    field('band', { kind: 'integer', min: 0, max: null }, 'the @media band the state program is in (0 without @media)'),
+  ]), 'MQ-R1 (T067 R6): the environment of a state mount; null for a layout case, which has no Dragon root view of its own', 'always'),
 ]);
 
 // ---------------------------------------------------------------- types inferred from the description
@@ -188,7 +197,7 @@ export function validateNativeDump(value: unknown): DumpValidation {
           }
           check(x, f.type, p);
         }
-        for (const k of Object.keys(o)) if (!t.fields.some((f) => f.name === k)) err(path === '' ? k : `${path}.${k}`, 'extra-key', `${k} is not in dragon.native-dump/1`);
+        for (const k of Object.keys(o)) if (!t.fields.some((f) => f.name === k)) err(path === '' ? k : `${path}.${k}`, 'extra-key', `${k} is not in ${NATIVE_DUMP_SCHEMA_ID}`);
         return;
       }
     }
