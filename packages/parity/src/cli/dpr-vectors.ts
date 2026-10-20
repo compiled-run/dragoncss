@@ -8,16 +8,11 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { isShapedInput, textLatinVector, textLatinVectorDir, textLatinVectorPath, textLatinVectorText } from '../text-latin-run.ts';
 import { DPRS, dprSnapDir, dprSnapPath, dprVectorDir, dprVectorPath, dprVectorText, EXTRA_DPRS, layoutCases, runDprLane, snapVectorText } from '../dpr.ts';
-import { enforcedCompile } from '../pipeline.ts';
+import { profilePendingCaseIds } from '../profile-pending.ts';
 
-// A case whose enforced iOS compile is refused only by support-profile rows waits on the rows the host round derives (regen-on-ci
-// runs the Chrome steps, then lanes-host, then the Chrome steps again): it writes no vector this round, and the next round, with
-// the rows promoted, writes it. Any other refusal or a failing case still stops the run.
-const PROFILE_ONLY = /is unsupported \(support profile /;
-const pending = new Set(layoutCases().flatMap((f) => f.cases.filter((c) => {
-  const errors = enforcedCompile(f.spec, c.environment.direction).diagnostics.filter((d) => d.severity === 'error' && d.target === 'ios');
-  return errors.length > 0 && errors.every((d) => PROFILE_ONLY.test(d.message));
-}).map((c) => c.id)));
+// A case waiting on its iOS support-profile rows (profile-pending.ts) writes no vector this round; any other refusal or a failing
+// case still stops the run.
+const pending = profilePendingCaseIds();
 for (const id of pending) console.log(`layout:dpr-vectors: ${id} waits on its iOS support-profile rows; no DPR vector this round`);
 const lane = runDprLane().map((s) => ({ ...s, outcomes: s.outcomes.filter((o) => !pending.has(o.id)) }));
 const problems: string[] = [];

@@ -19,6 +19,7 @@ import { committedPixelManifestProblems } from './pixel-reference.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { enforcedCompile } from './pipeline.ts';
+import { profilePendingCaseIds } from './profile-pending.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
@@ -123,9 +124,21 @@ function checkManifests(problems: string[]): void {
   // The software-raster precondition (P6a): the Chrome pixels the pixel lane compares were captured on the CPU raster path.
   for (const p of committedPixelManifestProblems()) problems.push(p);
   if (JSON.stringify(x.dprSets) !== JSON.stringify(DPRS)) problems.push(`corpus-dpr.json dprSets ${JSON.stringify(x.dprSets)} is not DPRS ${JSON.stringify(DPRS)}`);
-  for (const s of declaredSuites(declaredLane('ios', 'layout-vectors-host'))) {
+  // A case waiting on its iOS support-profile rows has no vector this round (profile-pending.ts), so the manifests count it out.
+  const lane = declaredLane('ios', 'layout-vectors-host');
+  const pending = profilePendingCaseIds();
+  const m1Set = new Set(m1);
+  const pendingTop = lane.sets.filter((s) => s.role === 'top-level').flatMap((s) => s.ids).filter((id) => pending.has(id));
+  const out: Readonly<Record<string, number>> = {
+    vectors: pendingTop.filter((id) => m1Set.has(id)).length,
+    'vectors-m2': pendingTop.filter((id) => !m1Set.has(id)).length,
+    'vectors-dpr': lane.sets.filter((s) => s.role !== 'top-level').flatMap((s) => s.ids).filter((id) => pending.has(id)).length,
+    'engine-dpr': vectorCaseIds().filter((id) => pending.has(id)).length * x.dprSets.length,
+  };
+  for (const s of declaredSuites(lane)) {
     const m = (s.corpus === 'p1' ? p1 : x).cases[s.suite];
-    if (m !== s.cases) problems.push(`${s.corpus === 'p1' ? 'corpus.json' : 'corpus-dpr.json'} declares ${m ?? 'no'} ${s.suite} cases; derived ${s.cases}`);
+    const derived = s.cases - (out[s.suite] ?? 0);
+    if (m !== derived) problems.push(`${s.corpus === 'p1' ? 'corpus.json' : 'corpus-dpr.json'} declares ${m ?? 'no'} ${s.suite} cases; derived ${derived}${derived === s.cases ? '' : ` (${s.cases} less ${s.cases - derived} waiting on support-profile rows)`}`);
   }
 }
 
