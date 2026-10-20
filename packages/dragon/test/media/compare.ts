@@ -92,14 +92,16 @@ export function compareCapture(capture: Capture, faults: MediaFaults): Compariso
 }
 
 /** The readings of a captured device (M7): a desktop page has a mouse, a touch or mobile page a touch screen alone. */
-export function deviceOf([dpr, kind, reducedMotion]: EnvDevice): MediaDevice {
-  return { ...(kind === 'desktop' ? DESKTOP_DEVICE : TOUCH_DEVICE), dpr, reducedMotion };
+export function deviceOf([dpr, kind, reducedMotion, colorScheme]: EnvDevice): MediaDevice {
+  // A capture from before MQ-R2's colour scheme has no fourth element: it must be recaptured, never read as light.
+  if (colorScheme !== 'light' && colorScheme !== 'dark') throw new Error(`captured device ${JSON.stringify([dpr, kind, reducedMotion, colorScheme])} has no colour scheme; rerun scripts/capture-media-data.ts`);
+  return { ...(kind === 'desktop' ? DESKTOP_DEVICE : TOUCH_DEVICE), dpr, reducedMotion, colorScheme };
 }
 
 /** MQ-R2: every environment row and band on every captured device. */
 function compareEnvironment(capture: Capture, faults: MediaFaults, expect: (ok: boolean, m: Mismatch) => void, refused: string[]): void {
   const { devices } = capture.environment;
-  const label = (d: EnvDevice): string => `${d[1]} DPR ${d[0]} ${d[2]}`;
+  const label = (d: EnvDevice): string => `${d[1]} DPR ${d[0]} ${d[2]} ${d[3]}`;
   const bitsOf = (subject: string, matches: string): string => {
     if (matches.length !== devices.length || /[^01]/.test(matches)) throw new Error(`${subject}: ${matches.length} match bits for ${devices.length} devices`);
     return matches;

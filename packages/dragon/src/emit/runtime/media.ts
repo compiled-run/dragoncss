@@ -7,7 +7,9 @@
 // touch screen that cannot hover (an iPad adds a fine, hovering pointer to any-pointer and any-hover while a GCMouse is connected)
 // and UIAccessibility's reduce-motion setting; on Android the translated port of Chromium's TouchDevice rule over every input
 // device's sources (rtBand_androidPointerReadings) and Chromium's AccessibilityState.prefersReducedMotion
-// (ANIMATOR_DURATION_SCALE == 0). A DragonReadingsObserver calls back when any of them changes.
+// (ANIMATOR_DURATION_SCALE == 0). A DragonReadingsObserver calls back when any of them changes. The colour scheme is the root
+// view's: its trait collection's userInterfaceStyle on iOS (traitCollectionDidChange), its configuration's night bit on Android
+// (onConfigurationChanged, the activity handling uiMode itself); the media root calls back when it changes.
 import type { rtBand } from '@dragon/layout';
 import type { NativeBackend } from '../../lower/native-program.ts';
 import type { GeneratedFile } from '../../types.ts';
@@ -48,6 +50,12 @@ public final class DragonMediaRoot: UIView {
     sizePx = (w, h)
     onSize?(w, h, Double(bounds.width), Double(bounds.height))
   }
+  /// MQ-R2: called when the root's interface style (light or dark) changes.
+  public var onStyle: (() -> Void)?
+  override public func traitCollectionDidChange(_ previous: UITraitCollection?) {
+    super.traitCollectionDidChange(previous)
+    if previous?.userInterfaceStyle != traitCollection.userInterfaceStyle { onStyle?() }
+  }
 }
 
 /// MQ-R2 (T067 R9): the device readings the device features answer from, beside the scale.
@@ -58,29 +66,37 @@ public struct DragonReadings: Equatable {
   public var anyFine: Bool
   public var anyHover: Bool
   public var reducedMotion: Bool
-  /// Headless Chrome's desktop page: a mouse, no motion preference (a machine's readings until its mount reads the platform's).
-  public static let desktop = DragonReadings(pointer: "fine", hover: true, anyCoarse: false, anyFine: true, anyHover: true, reducedMotion: false)
-  /// The pointer readings of a touch screen alone (touch) or a desktop mouse, the motion setting kept.
+  public var darkScheme: Bool
+  /// Headless Chrome's desktop page: a mouse, no motion preference, the light scheme (a machine's readings until its mount reads
+  /// the platform's).
+  public static let desktop = DragonReadings(pointer: "fine", hover: true, anyCoarse: false, anyFine: true, anyHover: true, reducedMotion: false, darkScheme: false)
+  /// The pointer readings of a touch screen alone (touch) or a desktop mouse, the motion and colour-scheme settings kept.
   public func pointing(touch: Bool) -> DragonReadings {
-    return DragonReadings(pointer: touch ? "coarse" : "fine", hover: !touch, anyCoarse: touch, anyFine: !touch, anyHover: !touch, reducedMotion: reducedMotion)
+    return DragonReadings(pointer: touch ? "coarse" : "fine", hover: !touch, anyCoarse: touch, anyFine: !touch, anyHover: !touch, reducedMotion: reducedMotion, darkScheme: darkScheme)
   }
-  /// Every pointer and hover reading from env(2, bits) (emit/runtime/state.ts pointerBits), the motion setting kept.
+  /// Every pointer and hover reading from env(2, bits) (emit/runtime/state.ts pointerBits), the motion and colour-scheme settings kept.
   public func pointers(_ bits: Int) -> DragonReadings {
     let pointer = ["none", "coarse", "fine"][bits & 3]
-    return DragonReadings(pointer: pointer, hover: bits & 4 != 0, anyCoarse: bits & 8 != 0, anyFine: bits & 16 != 0, anyHover: bits & 32 != 0, reducedMotion: reducedMotion)
+    return DragonReadings(pointer: pointer, hover: bits & 4 != 0, anyCoarse: bits & 8 != 0, anyFine: bits & 16 != 0, anyHover: bits & 32 != 0, reducedMotion: reducedMotion, darkScheme: darkScheme)
   }
-  /// The reduced-motion setting, the pointer readings kept.
+  /// The reduced-motion setting, the other readings kept.
   public func motion(reduce: Bool) -> DragonReadings {
     var r = self
     r.reducedMotion = reduce
     return r
   }
+  /// The colour-scheme setting, the other readings kept.
+  public func scheme(dark: Bool) -> DragonReadings {
+    var r = self
+    r.darkScheme = dark
+    return r
+  }
   /// The platform's readings: a touch screen that cannot hover, which an iPad's connected mouse or trackpad (GCMouse) adds a fine,
   /// hovering pointer to for any-pointer and any-hover (the primary pointer stays the touch screen); reduced motion is the setting
-  /// every iOS browser reports.
-  public static func platform() -> DragonReadings {
+  /// every iOS browser reports; the colour scheme is the root view's interface style.
+  public static func platform(_ root: UIView) -> DragonReadings {
     let mouse = UIDevice.current.userInterfaceIdiom == .pad && !GCMouse.mice().isEmpty
-    return DragonReadings(pointer: "coarse", hover: false, anyCoarse: true, anyFine: mouse, anyHover: mouse, reducedMotion: dragonReduceMotion())
+    return DragonReadings(pointer: "coarse", hover: false, anyCoarse: true, anyFine: mouse, anyHover: mouse, reducedMotion: dragonReduceMotion(), darkScheme: dragonDarkScheme(root))
   }
   /// The platform inputs the readings come from, for the dump: [1 on an iPad else 0, the connected GCMouse count].
   public static func platformInputs() -> [Double] {
@@ -90,6 +106,9 @@ public struct DragonReadings: Equatable {
 
 /// The user's reduce-motion setting.
 public func dragonReduceMotion() -> Bool { return UIAccessibility.isReduceMotionEnabled }
+
+/// The colour scheme a view is drawn in: .dark is dark, and everything else (.light, .unspecified) light.
+public func dragonDarkScheme(_ view: UIView) -> Bool { return view.traitCollection.userInterfaceStyle == .dark }
 
 /// Observes the platform readings (the reduce-motion setting, mice connecting and disconnecting) and calls back on the main queue.
 public final class DragonReadingsObserver {
@@ -105,7 +124,7 @@ public final class DragonReadingsObserver {
 /// The band of a root size on a device: the translated band lookup over the binding's table; a truth vector no band has is fatal, never guessed.
 public func dragonBandAt(_ binding: DragonBandBinding, _ widthPx: Double, _ heightPx: Double, _ scale: Double, _ r: DragonReadings) -> Int {
   do {
-    let env = BandEnvironment(scale, JsString(r.pointer), r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion)
+    let env = BandEnvironment(scale, JsString(r.pointer), r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion, r.darkScheme)
     return Int(try rtBand_bandAtPx(binding.table, widthPx, heightPx, env, BandFaults(false, false)))
   } catch {
     fatalError("dragon: the band lookup failed at \(widthPx) x \(heightPx) px, scale \(scale): \(error)")
@@ -119,6 +138,7 @@ function kotlinText(): string {
   return String.raw`package dev.dragon.views
 
 import android.content.Context
+import android.content.res.Configuration
 import android.database.ContentObserver
 import android.hardware.input.InputManager
 import android.os.Handler
@@ -158,6 +178,12 @@ class DragonMediaRoot(context: Context) : FrameLayout(context) {
     heightPx = h.toDouble()
     onSize?.invoke(widthPx, heightPx)
   }
+  /** MQ-R2: called with the new configuration when the system changes it in place (the activity handles uiMode itself). */
+  var onConfiguration: ((Configuration) -> Unit)? = null
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    onConfiguration?.invoke(newConfig)
+  }
   /**
    * A size change the system lays out (a rotation) reaches onSize inside this view's layout, after the measure pass: the tree root
    * that onSize renders was never measured and would be laid out 0x0. Every child with a fixed size is measured to it first.
@@ -175,22 +201,27 @@ class DragonMediaRoot(context: Context) : FrameLayout(context) {
 }
 
 /** MQ-R2 (T067 R9): the device readings the device features answer from, beside the scale. */
-data class DragonReadings(val pointer: String, val hover: Boolean, val anyCoarse: Boolean, val anyFine: Boolean, val anyHover: Boolean, val reducedMotion: Boolean) {
-  /** The pointer readings of a touch screen alone (touch) or a desktop mouse, the motion setting kept. */
-  fun pointing(touch: Boolean): DragonReadings = DragonReadings(if (touch) "coarse" else "fine", !touch, touch, !touch, !touch, reducedMotion)
-  /** The reduced-motion setting, the pointer readings kept. */
+data class DragonReadings(val pointer: String, val hover: Boolean, val anyCoarse: Boolean, val anyFine: Boolean, val anyHover: Boolean, val reducedMotion: Boolean, val darkScheme: Boolean) {
+  /** The pointer readings of a touch screen alone (touch) or a desktop mouse, the motion and colour-scheme settings kept. */
+  fun pointing(touch: Boolean): DragonReadings = DragonReadings(if (touch) "coarse" else "fine", !touch, touch, !touch, !touch, reducedMotion, darkScheme)
+  /** The reduced-motion setting, the other readings kept. */
   fun motion(reduce: Boolean): DragonReadings = copy(reducedMotion = reduce)
-  /** Every pointer and hover reading from env(2, bits) (emit/runtime/state.ts pointerBits), the motion setting kept. */
-  fun pointers(bits: Int): DragonReadings = DragonReadings(arrayOf("none", "coarse", "fine")[bits and 3], (bits and 4) != 0, (bits and 8) != 0, (bits and 16) != 0, (bits and 32) != 0, reducedMotion)
+  /** The colour-scheme setting, the other readings kept. */
+  fun scheme(dark: Boolean): DragonReadings = copy(darkScheme = dark)
+  /** Every pointer and hover reading from env(2, bits) (emit/runtime/state.ts pointerBits), the motion and colour-scheme settings kept. */
+  fun pointers(bits: Int): DragonReadings = DragonReadings(arrayOf("none", "coarse", "fine")[bits and 3], (bits and 4) != 0, (bits and 8) != 0, (bits and 16) != 0, (bits and 32) != 0, reducedMotion, darkScheme)
 
   companion object {
-    /** Headless Chrome's desktop page: a mouse, no motion preference (a machine's readings until its mount reads the platform's). */
-    val DESKTOP = DragonReadings("fine", true, false, true, true, false)
+    /** Headless Chrome's desktop page: a mouse, no motion preference, the light scheme (a machine's readings until its mount reads the platform's). */
+    val DESKTOP = DragonReadings("fine", true, false, true, true, false, false)
 
-    /** The platform's readings: the port of Chromium's pointer rule over every input device, and the reduced-motion setting. */
-    fun platform(context: Context): DragonReadings {
+    /**
+     * The platform's readings: the port of Chromium's pointer rule over every input device, the reduced-motion setting, and the
+     * colour scheme of a configuration (the context's own unless the system just handed the root a new one).
+     */
+    fun platform(context: Context, config: Configuration = context.resources.configuration): DragonReadings {
       val p = rtBand_androidPointerReadings(jsArrayOf(*platformInputs().toTypedArray()), BandFaults(false, false))
-      return DragonReadings(p.pointer, p.hover, p.anyCoarse, p.anyFine, p.anyHover, dragonReduceMotion(context))
+      return DragonReadings(p.pointer, p.hover, p.anyCoarse, p.anyFine, p.anyHover, dragonReduceMotion(context), dragonDarkScheme(context, config))
     }
 
     /** Every input device's getSources() (TouchDevice.availablePointerAndHoverTypes skips a device it cannot read). */
@@ -206,6 +237,10 @@ data class DragonReadings(val pointer: String, val hover: Boolean, val anyCoarse
 
 /** Chromium's AccessibilityState.prefersReducedMotion: animations are off (ANIMATOR_DURATION_SCALE is 0; its default is 1). */
 fun dragonReduceMotion(context: Context): Boolean = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+
+/** The night bit of a configuration (what the system's dark theme sets); context is the one the configuration belongs to. */
+@Suppress("UNUSED_PARAMETER")
+fun dragonDarkScheme(context: Context, config: Configuration): Boolean = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
 /** Observes the platform readings (the animator duration scale, input devices added, removed or changed) and calls back on the main looper. */
 class DragonReadingsObserver(private val context: Context, private val notify: () -> Unit) : InputManager.InputDeviceListener {
@@ -234,16 +269,19 @@ class DragonReadingsObserver(private val context: Context, private val notify: (
 
 /** The band of a root size on a device: the translated band lookup over the binding's table; a truth vector no band has throws, never guessed. */
 fun dragonBandAt(binding: DragonBandBinding, widthPx: Double, heightPx: Double, scale: Double, r: DragonReadings): Int =
-  rtBand_bandAtPx(binding.table, widthPx, heightPx, BandEnvironment(scale, r.pointer, r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion), BandFaults(false, false)).toInt()
+  rtBand_bandAtPx(binding.table, widthPx, heightPx, BandEnvironment(scale, r.pointer, r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion, r.darkScheme), BandFaults(false, false)).toInt()
 `;
 }
 
 /**
- * MQ-R2's support plant (T067 R9): the reduced-motion reading takes another setting, Android's transition animation scale
- * (TRANSITION_ANIMATION_SCALE) instead of the animator duration scale Chromium reads, and iOS's reduce-transparency setting.
- * device-env's motion phase on Android catches it (only the animator duration scale changes there).
+ * MQ-R2's support plants (T067 R9). reduced-motion-transition-scale: the reduced-motion reading takes another setting, Android's
+ * transition animation scale (TRANSITION_ANIMATION_SCALE) instead of the animator duration scale Chromium reads, and iOS's
+ * reduce-transparency setting; device-env's motion phase on Android catches it (only the animator duration scale changes there).
+ * color-scheme-app-override (colorSchemeFromAppOverride): the colour scheme is the app's own choice instead of the system's, the
+ * root view's overrideUserInterfaceStyle on iOS and the activity theme's isLightTheme on Android (the host's is light); device-env's
+ * scheme phase catches it on both (the system turns dark there, the app's choice does not).
  */
-export type MediaPlantName = 'reduced-motion-transition-scale';
+export type MediaPlantName = 'reduced-motion-transition-scale' | 'color-scheme-app-override';
 
 // A function, not a constant: emit/native-support.ts reads it while this module may still be initialising (import cycle).
 export function mediaPlants(): readonly { readonly name: MediaPlantName; readonly replace: { readonly [B in NativeBackend]: readonly [string, string] } }[] {
@@ -253,6 +291,16 @@ export function mediaPlants(): readonly { readonly name: MediaPlantName; readonl
       replace: {
         uikit: ['public func dragonReduceMotion() -> Bool { return UIAccessibility.isReduceMotionEnabled }', 'public func dragonReduceMotion() -> Bool { return UIAccessibility.isReduceTransparencyEnabled }'],
         'android-views': ['Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f', 'Settings.Global.TRANSITION_ANIMATION_SCALE, 1f) == 0f'],
+      },
+    },
+    {
+      name: 'color-scheme-app-override',
+      replace: {
+        uikit: ['return view.traitCollection.userInterfaceStyle == .dark }', 'return view.overrideUserInterfaceStyle == .dark }'],
+        'android-views': [
+          '(config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES',
+          'context.obtainStyledAttributes(intArrayOf(android.R.attr.isLightTheme)).let { a -> val light = a.getBoolean(0, true); a.recycle(); !light }',
+        ],
       },
     },
   ];

@@ -255,7 +255,7 @@ func dragonRun(window: UIWindow, host: UIView) {
 func dragonEnvironment(_ mount: DragonStateMount, scale: Double) -> DumpEnvironment {
   let px = mount.media.sizePx
   let r = mount.machine.readings
-  let readings = DumpEnvironmentReadings(pointer: r.pointer, hover: r.hover ? "hover" : "none", anyPointer: (r.anyCoarse ? ["coarse"] : []) + (r.anyFine ? ["fine"] : []), anyHover: r.anyHover ? "hover" : "none", reducedMotion: r.reducedMotion ? "reduce" : "no-preference", source: mount.injected ? "injected" : "platform", inputs: DragonReadings.platformInputs())
+  let readings = DumpEnvironmentReadings(pointer: r.pointer, hover: r.hover ? "hover" : "none", anyPointer: (r.anyCoarse ? ["coarse"] : []) + (r.anyFine ? ["fine"] : []), anyHover: r.anyHover ? "hover" : "none", reducedMotion: r.reducedMotion ? "reduce" : "no-preference", colorScheme: r.darkScheme ? "dark" : "light", source: mount.injected ? "injected" : "platform", inputs: DragonReadings.platformInputs())
   return DumpEnvironment(rootPx: [px.0, px.1], dpr: scale, media: [try! rtBand_mediaSize(px.0, scale), try! rtBand_mediaSize(px.1, scale)], band: Double(mount.machine.bandIndex), readings: readings)
 }
 
@@ -363,7 +363,7 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   wait()
 }
 
-/// MQ-R1 device-env: the fill-the-stage mount kept across the portrait, landscape, back and (MQ-R2) motion phases.
+/// MQ-R1 device-env: the fill-the-stage mount kept across the portrait, landscape, back and (MQ-R2) motion and scheme phases.
 var dragonEnvMount: DragonStateMount? = nil
 
 /// One env phase (T067 R7 (c)): portrait builds the mount, its root pinned to the host's safe area so it fills the stage at any
@@ -377,17 +377,20 @@ func dragonEnvCase(_ k: Int, id: String, run: DragonRun, out: String, stage: UIV
   let landscape = phase == "landscape"
   guard let host = stage.superview, let window = host.window, let scene = window.windowScene else { fatalError("dragon host: \(id): no window scene") }
   let t0 = CACurrentMediaTime()
-  if phase == "motion" || phase == "motion-back" {
-    // MQ-R2 (T067 R9): the host turns the OS's Reduce Motion on or off while the app holds; the mount's observer moves the band.
+  if phase == "motion" || phase == "motion-back" || phase == "scheme" || phase == "scheme-back" {
+    // MQ-R2 (T067 R9): the host turns the OS's Reduce Motion, or its dark appearance, on or off while the app holds; the mount's
+    // observer (the root's trait change for the appearance) moves the band.
     guard let mount = dragonEnvMount else { fatalError("dragon host: \(id) without its portrait phase") }
-    let reduce = phase == "motion"
+    let motion = phase.hasPrefix("motion")
+    let on = phase == "motion" || phase == "scheme"
     dragonWrite(out + "/hold-" + id, "ok")
     var released = 0
     func poll() {
       // Once released, the phase dumps when the readings follow the setting, or after 5 s if they never do (the lane then fails
       // the readings, as it must for a reading that misses the OS setting).
       if FileManager.default.fileExists(atPath: out + "/release-" + id) { released += 1 }
-      if released == 0 || (mount.machine.readings.reducedMotion != reduce && released < 100) {
+      let followed = (motion ? mount.machine.readings.reducedMotion : mount.machine.readings.darkScheme) == on
+      if released == 0 || (!followed && released < 100) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { poll() }
         return
       }
@@ -434,7 +437,7 @@ func dragonEnvCase(_ k: Int, id: String, run: DragonRun, out: String, stage: UIV
   settle()
 }
 
-/// Dumps an env phase with the environment the root observed, then runs the next case; the last phase (motion-back) unmounts.
+/// Dumps an env phase with the environment the root observed, then runs the next case; the last phase (scheme-back) unmounts.
 func dragonEnvDump(_ k: Int, id: String, phase: String, mount: DragonStateMount, script: DragonStateScript, t0: CFTimeInterval, run: DragonRun, out: String, stage: UIView, scale: Double, device: DumpDevice, bridge: DragonBridge) {
   let tree = mount.tree
   tree.root.layoutIfNeeded()
@@ -448,7 +451,7 @@ func dragonEnvDump(_ k: Int, id: String, phase: String, mount: DragonStateMount,
   let environment = dragonEnvironment(mount, scale: scale)
   let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000), environment: environment)
   dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
-  if phase == "motion-back" {
+  if phase == "scheme-back" {
     mount.media.removeFromSuperview()
     stage.isHidden = false
     dragonEnvMount = nil
@@ -616,10 +619,12 @@ class DragonActivity : Activity() {
       mount.media.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
       script.run(mount)
       envMount = mount
-    } else if (phase == "motion" || phase == "motion-back") {
-      // MQ-R2 (T067 R9): the host sets the OS's animator duration scale while the app holds; the mount's observer moves the band.
+    } else if (phase == "motion" || phase == "motion-back" || phase == "scheme" || phase == "scheme-back") {
+      // MQ-R2 (T067 R9): the host sets the OS's animator duration scale, or its night mode, while the app holds; the mount's
+      // observer (the root's onConfigurationChanged for the night mode, uiMode being in configChanges) moves the band.
       val m = envMount ?: throw IllegalStateException("dragon host: " + id + " without its portrait phase")
-      val reduce = phase == "motion"
+      val motion = phase.startsWith("motion")
+      val on = phase == "motion" || phase == "scheme"
       File(out, "hold-" + id).writeText("ok")
       val release = File(out, "release-" + id)
       var released = 0
@@ -628,7 +633,8 @@ class DragonActivity : Activity() {
           // Once released, the phase dumps when the readings follow the setting, or after 5 s if they never do (the lane then fails
           // the readings, as it must for a reading that misses the OS setting).
           if (release.exists()) released++
-          val settled = m.machine.readings.reducedMotion == reduce && !m.media.isLayoutRequested && !frame.isLayoutRequested
+          val followed = (if (motion) m.machine.readings.reducedMotion else m.machine.readings.darkScheme) == on
+          val settled = followed && !m.media.isLayoutRequested && !frame.isLayoutRequested
           if (released == 0 || (!settled && released < 100)) {
             main.postDelayed(this, 50)
             return
@@ -687,7 +693,7 @@ class DragonActivity : Activity() {
   private fun dragonEnvironment(mount: DragonStateMount, scale: Double): DumpEnvironment {
     val m = mount.media
     val r = mount.machine.readings
-    val readings = DumpEnvironmentReadings(r.pointer, if (r.hover) "hover" else "none", (if (r.anyCoarse) listOf("coarse") else emptyList()) + (if (r.anyFine) listOf("fine") else emptyList()), if (r.anyHover) "hover" else "none", if (r.reducedMotion) "reduce" else "no-preference", if (mount.injected) "injected" else "platform", DragonReadings.platformInputs())
+    val readings = DumpEnvironmentReadings(r.pointer, if (r.hover) "hover" else "none", (if (r.anyCoarse) listOf("coarse") else emptyList()) + (if (r.anyFine) listOf("fine") else emptyList()), if (r.anyHover) "hover" else "none", if (r.reducedMotion) "reduce" else "no-preference", if (r.darkScheme) "dark" else "light", if (mount.injected) "injected" else "platform", DragonReadings.platformInputs())
     return DumpEnvironment(listOf(m.widthPx, m.heightPx), scale, listOf(dev.dragon.layout.rtBand_mediaSize(m.widthPx, scale), dev.dragon.layout.rtBand_mediaSize(m.heightPx, scale)), mount.machine.bandIndex.toDouble(), readings)
   }
 
@@ -729,7 +735,7 @@ class DragonActivity : Activity() {
       t0 = SystemClock.elapsedRealtimeNanos()
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
-      if (envPhase == "motion-back") {
+      if (envPhase == "scheme-back") {
         mounted = mount
         envMount = null
       }
@@ -971,7 +977,7 @@ function androidManifest(): string {
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="${HOST_BUNDLE}" android:versionCode="1" android:versionName="1.0">
   <uses-sdk android:minSdkVersion="${NATIVE_CONFIG.android.minSdk}" android:targetSdkVersion="${ANDROID_TARGET_SDK}" />
   <application android:label="Dragon host" android:hasCode="true" android:allowBackup="false">
-    <activity android:name=".DragonActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:screenOrientation="unspecified" android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout">
+    <activity android:name=".DragonActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:screenOrientation="unspecified" android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|uiMode">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />

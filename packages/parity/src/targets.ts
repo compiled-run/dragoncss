@@ -140,10 +140,10 @@ export function corpusSuites(): readonly CorpusSuite[] {
  * MQ-R1 device-env (device-env.ts): the rotation's three phases of the fill-the-stage fixture, in the order one launch runs them.
  * MQ-R2 (T067 R9): then two more on both platforms, the OS's reduced-motion setting turned on and back off while the app holds
  * (Android's animator duration scale over adb; iOS's Reduce Motion, the simulator's com.apple.Accessibility default and its
- * change notification).
+ * change notification), and two with the OS's dark appearance (Android's night mode, cmd uimode night; iOS's simctl ui appearance).
  */
 export function envCaseIds(_target: NativeTarget): readonly string[] {
-  return ['portrait', 'landscape', 'back', 'motion', 'motion-back'].map((p) => `mqr-rotate~env~${p}`);
+  return ['portrait', 'landscape', 'back', 'motion', 'motion-back', 'scheme', 'scheme-back'].map((p) => `mqr-rotate~env~${p}`);
 }
 
 export function resizeScriptIds(): readonly string[] {

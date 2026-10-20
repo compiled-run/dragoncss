@@ -2181,7 +2181,8 @@ const header = (comment: string, what: string): string => `${comment} GENERATED 
 
 /**
  * Raster plants of the support code: glyph-offset-1 draws every glyph 1 device px right of the engine's position (P5), and
- * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs, and MQ-R2 its reduced-motion reading plant.
+ * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs, and MQ-R2 its reduced-motion and colour-scheme
+ * reading plants.
  */
 export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName | MediaPlantName | 'single-run-baseline';
 
@@ -2200,7 +2201,7 @@ const PLANT_REPLACEMENTS: readonly PlantReplacement[] = [
   glyphPlant('glyph-offset-y-1', 'public let dragonGlyphPlantYDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = '),
   ...(paintPlants() as readonly PlantReplacement[]),
   glyphPlant('single-run-baseline', 'public let dragonSingleRunBaselinePlant: Double = ', 'const val DRAGON_SINGLE_RUN_BASELINE_PLANT = '),
-  // MQ-R2: the media runtime's reading plant.
+  // MQ-R2: the media runtime's reading plants.
   ...mediaPlants(),
 ];
 

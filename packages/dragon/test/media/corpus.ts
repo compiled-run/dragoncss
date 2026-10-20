@@ -28,7 +28,7 @@ export type Corpus = {
     readonly queries: readonly string[];
     readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[] }[];
   };
-  /** MQ-R2: rows captured on each listed device (DPR, page kind, reduced motion). */
+  /** MQ-R2: rows captured on each listed device (DPR, page kind, reduced motion, colour scheme). */
   readonly environment: {
     readonly viewport: Viewport;
     readonly devices: readonly EnvDevice[];
@@ -38,8 +38,11 @@ export type Corpus = {
   };
 };
 
-/** A captured device: its DPR, a desktop (mouse), touch (hasTouch) or mobile (isMobile and hasTouch) page, and reduced motion. */
-export type EnvDevice = readonly [number, 'desktop' | 'touch' | 'mobile', 'no-preference' | 'reduce'];
+/**
+ * A captured device: its DPR, a desktop (mouse), touch (hasTouch) or mobile (isMobile and hasTouch) page, reduced motion and the
+ * colour scheme (both emulated).
+ */
+export type EnvDevice = readonly [number, 'desktop' | 'touch' | 'mobile', 'no-preference' | 'reduce', 'light' | 'dark'];
 
 type Row = { readonly mediaText: string; readonly matches: string };
 

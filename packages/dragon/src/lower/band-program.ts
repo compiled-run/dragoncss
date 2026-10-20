@@ -52,7 +52,8 @@ export function bandAtom(f: MediaFeature): rtBand.BandAtom {
   const where = serialiseFeature(f);
   if (f.refused !== null) throw new BandProgramError(`${where} is refused, so it has no atom`);
   if (DEVICE_FEATURES.has(f.base) && f.base !== 'resolution' && f.base !== '-webkit-device-pixel-ratio') {
-    // A discrete device feature: its keyword, or 'any' for the boolean form (true unless the reading is none or no-preference).
+    // A discrete device feature: its keyword, or 'any' for the boolean form (true unless the reading is none or no-preference;
+    // always true for prefers-color-scheme).
     const feature = f.base as rtBand.BandFeature;
     if (f.form === 'boolean') return { feature, comparisons: [], keyword: 'any' };
     const v = f.value;
@@ -81,7 +82,7 @@ export function bandAtom(f: MediaFeature): rtBand.BandAtom {
 
 /** MQ-R2: the device readings as the runtime's band lookup takes them (rt-band.ts BandEnvironment). */
 export function bandEnvironmentOf(d: MediaDevice): rtBand.BandEnvironment {
-  return { dpr: d.dpr, pointer: d.pointer, hover: d.hover === 'hover', anyCoarse: d.anyPointer.includes('coarse'), anyFine: d.anyPointer.includes('fine'), anyHover: d.anyHover === 'hover', reducedMotion: d.reducedMotion === 'reduce' };
+  return { dpr: d.dpr, pointer: d.pointer, hover: d.hover === 'hover', anyCoarse: d.anyPointer.includes('coarse'), anyFine: d.anyPointer.includes('fine'), anyHover: d.anyHover === 'hover', reducedMotion: d.reducedMotion === 'reduce', darkScheme: d.colorScheme === 'dark' };
 }
 
 /** The band table of a partition: its atoms in atom order and every band's truth vector in band order. */

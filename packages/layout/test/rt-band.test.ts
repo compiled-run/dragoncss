@@ -6,8 +6,8 @@ import { rtBand } from '../src/index.ts';
 const { atomHolds, bandAtPx, bandIndex, BandError, compareMedia, mediaSize, NO_BAND_FAULTS, truthVector } = rtBand;
 type Atom = rtBand.BandAtom;
 const EXCLUSIVE: rtBand.BandFaults = { bandBoundaryExclusive: true, primaryPointerFineFirst: false };
-/** Headless Chrome's desktop page at DPR 1: a mouse, no motion preference (MQ-R2). */
-const DESK: rtBand.BandEnvironment = { dpr: 1, pointer: 'fine', hover: true, anyCoarse: false, anyFine: true, anyHover: true, reducedMotion: false };
+/** Headless Chrome's desktop page at DPR 1: a mouse, no motion preference, the light scheme (MQ-R2). */
+const DESK: rtBand.BandEnvironment = { dpr: 1, pointer: 'fine', hover: true, anyCoarse: false, anyFine: true, anyHover: true, reducedMotion: false, darkScheme: false };
 
 const px = (op: rtBand.BandOp, value: number, feature: 'width' | 'height' = 'width'): Atom => ({ feature, comparisons: [{ op, value, num: 0, den: 0 }], keyword: 'none' });
 const ratio = (op: rtBand.BandOp, num: number, den: number): Atom => ({ feature: 'aspect-ratio', comparisons: [{ op, value: 0, num, den }], keyword: 'none' });
@@ -106,6 +106,15 @@ describe('the device atoms (MQ-R2, R9)', () => {
     expect([at(kw('hover', 'hover'), touch), at(kw('hover', 'none'), touch), at(kw('hover', 'any'), DESK)]).toEqual([false, true, true]);
     expect([at(kw('any-pointer', 'fine'), { anyCoarse: true, anyFine: true }), at(kw('any-pointer', 'none'), { anyCoarse: false, anyFine: false }), at(kw('any-pointer', 'any'), touch)]).toEqual([true, true, true]);
     expect([at(kw('any-hover', 'none'), touch), at(kw('prefers-reduced-motion', 'reduce'), { reducedMotion: true }), at(kw('prefers-reduced-motion', 'any'), DESK), at(kw('prefers-reduced-motion', 'no-preference'), DESK)]).toEqual([true, true, false, true]);
+  });
+  it('answer prefers-color-scheme from the dark bit, its boolean form in either scheme (PrefersColorSchemeMediaFeatureEval, measured)', () => {
+    const kw = (keyword: rtBand.BandKeyword): Atom => ({ feature: 'prefers-color-scheme', comparisons: [], keyword });
+    expect([at(kw('dark'), DESK), at(kw('light'), DESK), at(kw('any'), DESK)]).toEqual([false, true, true]);
+    expect([at(kw('dark'), { darkScheme: true }), at(kw('light'), { darkScheme: true }), at(kw('any'), { darkScheme: true })]).toEqual([true, false, true]);
+  });
+  it('move the band with the colour scheme alone, at the same root px', () => {
+    const table: rtBand.BandTable = { atoms: [{ feature: 'prefers-color-scheme', comparisons: [], keyword: 'dark' }], bands: [[false], [true]] };
+    expect([false, true].map((darkScheme) => bandAtPx(table, 400, 300, { ...DESK, darkScheme }, NO_BAND_FAULTS))).toEqual([0, 1]);
   });
   it('take the band\'s scale from the readings, so the same root px at another scale can take another band', () => {
     const table: rtBand.BandTable = { atoms: [res('ge', 2)], bands: [[true], [false]] };

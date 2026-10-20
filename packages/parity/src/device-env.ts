@@ -9,7 +9,8 @@
 // (Android: Dragon's port of Chromium's TouchDevice rule over every input device's sources; iOS: a touch screen, and an iPad's
 // mice), and two more phases turn the OS's reduced-motion setting on and off again while the app holds (Android's animator duration
 // scale through adb; iOS's Reduce Motion, the simulator's accessibility default and its notification): the band must follow it, with
-// the state kept. The band oracle emulates the readings.
+// the state kept. Two more do the same with the OS's dark appearance (Android's night mode, adb shell cmd uimode night; iOS's
+// appearance, xcrun simctl ui appearance). The band oracle emulates the readings.
 import { createHash } from 'node:crypto';
 import type { Browser } from 'playwright';
 import { rtBand } from '@dragon/layout';
@@ -31,13 +32,19 @@ import { envCaseIds } from './targets.ts';
 
 export const ENV_FIXTURE = 'mqr-rotate';
 export const ENV_SCRIPT = `${ENV_FIXTURE}~env`;
-export type EnvPhase = 'portrait' | 'landscape' | 'back' | 'motion' | 'motion-back';
+export type EnvPhase = 'portrait' | 'landscape' | 'back' | 'motion' | 'motion-back' | 'scheme' | 'scheme-back';
 /** The env case ids of a target, in the order one launch runs them (targets.ts declares the lane with them). */
 export const envIds = (target: NativeTarget): readonly string[] => envCaseIds(target);
 /** The phase the app holds in, for the host to set the OS's animator duration scale (0 turns reduced motion on), or null. */
 export function motionScaleOf(id: string): number | null {
   if (id.endsWith('~env~motion')) return 0;
   if (id.endsWith('~env~motion-back')) return 1;
+  return null;
+}
+/** The phase the app holds in, for the host to set the OS's dark appearance (dark turns it on), or null. */
+export function schemeOf(id: string): 'light' | 'dark' | null {
+  if (id.endsWith('~env~scheme')) return 'dark';
+  if (id.endsWith('~env~scheme-back')) return 'light';
   return null;
 }
 /** The setter the env script runs before the first dump; the state must survive both rotations (R6). */
@@ -82,8 +89,8 @@ function nativeInitial(c: Compiled<'ios' | 'android'>): Assignment {
 
 /** The band Chrome matches for a root of whole device px at a DPR: every band condition in an iframe of exactly those px (M1, M4). */
 export async function bandOracle(browser: Browser, conditions: readonly string[], widthPx: number, heightPx: number, dpr: number, readings: EnvReadings = DESKTOP_READINGS): Promise<number[]> {
-  // MQ-R2: the readings as Chrome can emulate them: a touch screen alone (hasTouch) or a mouse, and reduced motion.
-  const context = await browser.newContext({ viewport: { width: 2400, height: 2400 }, deviceScaleFactor: dpr, hasTouch: readings.pointer === 'coarse', reducedMotion: readings.reducedMotion });
+  // MQ-R2: the readings as Chrome can emulate them: a touch screen alone (hasTouch) or a mouse, reduced motion and the colour scheme.
+  const context = await browser.newContext({ viewport: { width: 2400, height: 2400 }, deviceScaleFactor: dpr, hasTouch: readings.pointer === 'coarse', reducedMotion: readings.reducedMotion, colorScheme: readings.colorScheme });
   try {
     const page = await context.newPage();
     await page.setContent(`<!DOCTYPE html><html><body style="margin:0"><iframe style="border:0;display:block;width:${widthPx / dpr}px;height:${heightPx / dpr}px" srcdoc="<!DOCTYPE html><html><body></body></html>"></iframe></body></html>`);
@@ -103,23 +110,24 @@ export type EnvOutcome = DeviceSet;
 
 /** The readings of a dump's environment record. */
 type EnvReadings = NonNullable<NativeDump['environment']>['readings'];
-const DESKTOP_READINGS: EnvReadings = { pointer: 'fine', hover: 'hover', anyPointer: ['fine'], anyHover: 'hover', reducedMotion: 'no-preference', source: 'platform', inputs: [] };
+const DESKTOP_READINGS: EnvReadings = { pointer: 'fine', hover: 'hover', anyPointer: ['fine'], anyHover: 'hover', reducedMotion: 'no-preference', colorScheme: 'light', source: 'platform', inputs: [] };
 
-/** The readings the platform rule gives the inputs a dump recorded (R9), with the motion setting the phase sets. */
-export function platformReadings(target: NativeTarget, inputs: readonly number[], reduced: boolean): Omit<EnvReadings, 'source' | 'inputs'> {
+/** The readings the platform rule gives the inputs a dump recorded (R9), with the motion and colour-scheme settings the phase sets. */
+export function platformReadings(target: NativeTarget, inputs: readonly number[], reduced: boolean, dark: boolean = false): Omit<EnvReadings, 'source' | 'inputs'> {
   const motion = reduced ? 'reduce' : 'no-preference';
+  const colorScheme = dark ? 'dark' : 'light';
   if (target === 'android') {
     const r = rtBand.androidPointerReadings(inputs, rtBand.NO_BAND_FAULTS);
-    return { pointer: r.pointer as EnvReadings['pointer'], hover: r.hover ? 'hover' : 'none', anyPointer: [...(r.anyCoarse ? ['coarse' as const] : []), ...(r.anyFine ? ['fine' as const] : [])], anyHover: r.anyHover ? 'hover' : 'none', reducedMotion: motion };
+    return { pointer: r.pointer as EnvReadings['pointer'], hover: r.hover ? 'hover' : 'none', anyPointer: [...(r.anyCoarse ? ['coarse' as const] : []), ...(r.anyFine ? ['fine' as const] : [])], anyHover: r.anyHover ? 'hover' : 'none', reducedMotion: motion, colorScheme };
   }
   // iOS: [1 on an iPad, the GCMouse count]: a touch screen, and an iPad's mouse adds a fine pointer that hovers to any-*.
   const mouse = inputs[0] === 1 && (inputs[1] ?? 0) > 0;
-  return { pointer: 'coarse', hover: 'none', anyPointer: mouse ? ['coarse', 'fine'] : ['coarse'], anyHover: mouse ? 'hover' : 'none', reducedMotion: motion };
+  return { pointer: 'coarse', hover: 'none', anyPointer: mouse ? ['coarse', 'fine'] : ['coarse'], anyHover: mouse ? 'hover' : 'none', reducedMotion: motion, colorScheme };
 }
 
 /** The band lookup's environment of recorded readings at a scale. */
 export function bandEnvironmentOfReadings(r: Omit<EnvReadings, 'source' | 'inputs'>, dpr: number): rtBand.BandEnvironment {
-  return { dpr, pointer: r.pointer, hover: r.hover === 'hover', anyCoarse: r.anyPointer.includes('coarse'), anyFine: r.anyPointer.includes('fine'), anyHover: r.anyHover === 'hover', reducedMotion: r.reducedMotion === 'reduce' };
+  return { dpr, pointer: r.pointer, hover: r.hover === 'hover', anyCoarse: r.anyPointer.includes('coarse'), anyFine: r.anyPointer.includes('fine'), anyHover: r.anyHover === 'hover', reducedMotion: r.reducedMotion === 'reduce', darkScheme: r.colorScheme === 'dark' };
 }
 
 /**
@@ -173,14 +181,15 @@ export async function evaluateEnv(target: NativeTarget, dpr: number, dir: string
     if (e.media[0] !== media[0] || e.media[1] !== media[1]) fail('environment', `media ${e.media.join('x')}, the media size of ${wPx}x${hPx} px is ${media.join('x')}`);
     const viewport = dump.case.viewport;
     if (Math.abs(viewport.width * dpr - wPx) > 1e-9 || Math.abs(viewport.height * dpr - hPx) > 1e-9) fail('environment', `viewport ${viewport.width}x${viewport.height} css px is not the root's ${wPx}x${hPx} px at ${dpr}`);
-    // MQ-R2: the platform's readings, as the platform rule gives the inputs the dump recorded; reduced motion only in the motion phase.
-    const want = platformReadings(target, e.readings.inputs, phase === 'motion');
-    const got = { pointer: e.readings.pointer, hover: e.readings.hover, anyPointer: e.readings.anyPointer, anyHover: e.readings.anyHover, reducedMotion: e.readings.reducedMotion };
+    // MQ-R2: the platform's readings, as the platform rule gives the inputs the dump recorded; reduced motion only in the motion
+    // phase, and the dark scheme only in the scheme phase.
+    const want = platformReadings(target, e.readings.inputs, phase === 'motion', phase === 'scheme');
+    const got = { pointer: e.readings.pointer, hover: e.readings.hover, anyPointer: e.readings.anyPointer, anyHover: e.readings.anyHover, reducedMotion: e.readings.reducedMotion, colorScheme: e.readings.colorScheme };
     if (e.readings.source !== 'platform' || JSON.stringify(got) !== JSON.stringify(want)) fail('environment', `readings ${JSON.stringify(e.readings)}; the platform rule gives ${JSON.stringify(want)} for inputs ${JSON.stringify(e.readings.inputs)}`);
     // The band: the device's, the band lookup's, MQ-R0's partition's and Chrome's must be one band.
     const env = bandEnvironmentOfReadings(got, dpr);
     const lookup = rtBand.bandAtPx(bands.table, wPx, hPx, env, rtBand.NO_BAND_FAULTS);
-    const partition = nativeBandOfViewport(c, { width: media[0] as number, height: media[1] as number }, { dpr, pointer: got.pointer, anyPointer: got.anyPointer, hover: got.hover, anyHover: got.anyHover, reducedMotion: got.reducedMotion });
+    const partition = nativeBandOfViewport(c, { width: media[0] as number, height: media[1] as number }, { dpr, pointer: got.pointer, anyPointer: got.anyPointer, hover: got.hover, anyHover: got.anyHover, reducedMotion: got.reducedMotion, colorScheme: got.colorScheme });
     if (e.band !== lookup || partition !== lookup) fail('environment', `band ${e.band}; the band lookup gives ${lookup}, the partition ${partition}`);
     if (browser !== null) {
       const chrome = await bandOracle(browser, bands.conditions, wPx, hPx, dpr, e.readings);
@@ -197,7 +206,7 @@ export async function evaluateEnv(target: NativeTarget, dpr: number, dir: string
     const expected = expectedDump(program, id, viewport, dpr, expectedEngine());
     for (const x of checkApplied(dump, new Map(expected.nodes.map((n) => [n.id, n.applied]))).problems) fail('applied', x, x.split(':')[0] ?? null);
   }
-  // Back to portrait (and through the motion phases): the root is the size it started at.
+  // Back to portrait (and through the motion and scheme phases): the root is the size it started at.
   const first = roots.get(ids[0] as string);
   for (const at of ids.slice(1)) {
     const r = roots.get(at);

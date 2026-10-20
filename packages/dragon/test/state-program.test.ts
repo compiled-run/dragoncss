@@ -209,10 +209,32 @@ describe('the generated runtime', () => {
     expect(emitStatePrograms('android-views', [{ ...emit, scripts: [script] }]).map((f) => f.text).join('\n')).toContain(`DragonScriptStep.Env(2, ${pointerBits(value)})`);
     const sw = emitNativeSupport('uikit', null).map((f) => f.text).join('\n');
     expect(sw).toContain(': m.machine.readings.pointers(v))');
-    expect(sw).toContain('return DragonReadings(pointer: pointer, hover: bits & 4 != 0, anyCoarse: bits & 8 != 0, anyFine: bits & 16 != 0, anyHover: bits & 32 != 0, reducedMotion: reducedMotion)');
+    expect(sw).toContain('return DragonReadings(pointer: pointer, hover: bits & 4 != 0, anyCoarse: bits & 8 != 0, anyFine: bits & 16 != 0, anyHover: bits & 32 != 0, reducedMotion: reducedMotion, darkScheme: darkScheme)');
     const kt = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
     expect(kt).toContain('else m.machine.readings.pointers(s.v))');
-    expect(kt).toContain('(bits and 4) != 0, (bits and 8) != 0, (bits and 16) != 0, (bits and 32) != 0, reducedMotion)');
+    expect(kt).toContain('(bits and 4) != 0, (bits and 8) != 0, (bits and 16) != 0, (bits and 32) != 0, reducedMotion, darkScheme)');
+  });
+
+  it('MQ-R2: a motion env step is env(1, v) and a scheme step env(3, v), and both runtimes inject them, reading the scheme from the root view', () => {
+    const steps = (value: 'light' | 'dark') => [{ kind: 'env', reading: 'motion', value: 'reduce' } as const, { kind: 'env', reading: 'scheme', value } as const, { kind: 'dump' } as const];
+    const text = (backend: 'uikit' | 'android-views', value: 'light' | 'dark') => emitStatePrograms(backend, [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: steps(value) }] }]).map((f) => f.text).join('\n');
+    expect(text('uikit', 'dark')).toContain('.env(1, 1), .env(3, 1), .dump');
+    expect(text('uikit', 'light')).toContain('.env(1, 1), .env(3, 0), .dump');
+    expect(text('android-views', 'dark')).toContain('DragonScriptStep.Env(1, 1), DragonScriptStep.Env(3, 1), DragonScriptStep.Dump');
+    const sw = emitNativeSupport('uikit', null).map((f) => f.text).join('\n');
+    expect(sw).toContain(': reading == 3 ? m.machine.readings.scheme(dark: v == 1) :');
+    // iOS: the root view's trait collection, .dark alone dark, observed through traitCollectionDidChange; the mount's readings start there.
+    expect(sw).toContain('public func dragonDarkScheme(_ view: UIView) -> Bool { return view.traitCollection.userInterfaceStyle == .dark }');
+    expect(sw).toContain('if previous?.userInterfaceStyle != traitCollection.userInterfaceStyle { onStyle?() }');
+    expect(sw).toContain('machine.readings = DragonReadings.platform(media)');
+    expect(sw).toContain('BandEnvironment(scale, JsString(r.pointer), r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion, r.darkScheme)');
+    const kt = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
+    expect(kt).toContain('else if (s.reading == 3) m.machine.readings.scheme(s.v == 1)');
+    // Android: the configuration's night bit, observed through onConfigurationChanged (the host handles uiMode itself).
+    expect(kt).toContain('(config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES');
+    expect(kt).toContain('override fun onConfigurationChanged(newConfig: Configuration) {');
+    expect(kt).toContain('if (!injected) machine.setReadings(DragonReadings.platform(stage.context, c))');
+    expect(kt).toContain('BandEnvironment(scale, r.pointer, r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion, r.darkScheme)');
   });
 
   it('emits an animated program with viewport-relative lengths and resize steps: a size change restyles the animator', () => {

@@ -57,9 +57,10 @@ export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-
 export const PLANT_CASE = 'tree-projected-text#1';
 /** The glyph plants (T093), judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
 export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
-/** MQ-R2's reading plant: run by parity:device-mqr --plant on device-env, not by native:devices. */
-export type MediaPlant = 'reduced-motion-transition-scale';
-export const isMediaPlant = (p: SupportPlant): p is MediaPlant => p === 'reduced-motion-transition-scale';
+/** MQ-R2's reading plants: run by parity:device-mqr --plant on device-env, not by native:devices. */
+export type MediaPlant = 'reduced-motion-transition-scale' | 'color-scheme-app-override';
+export const MEDIA_PLANTS: readonly MediaPlant[] = ['reduced-motion-transition-scale', 'color-scheme-app-override'];
+export const isMediaPlant = (p: SupportPlant): p is MediaPlant => (MEDIA_PLANTS as readonly string[]).includes(p);
 /** The INL1a line plant, judged against the clean run on LINE_PLANT_CASE (judgeLinePlant). */
 export type LinePlant = 'single-run-baseline';
 /** The paint plants: every support plant that is neither a glyph plant, the line plant nor a media plant. */
@@ -1454,6 +1455,19 @@ export function setReducedMotion(h: DeviceHandle, on: boolean): void {
 export function restoreMatrixMotion(h: DeviceHandle): void {
   if ('serial' in h) setAnimatorDurationScale(h, 0);
   else setReducedMotion(h, false);
+}
+
+/**
+ * MQ-R2 (T067 R9): turns the OS's dark appearance on or off: Android's night mode (cmd uimode night, which changes uiMode in the
+ * activity's configuration in place, configChanges holding uiMode), iOS's appearance (simctl ui appearance, which changes every
+ * window's trait collection). A failed call throws, so a setting the device did not take is never mistaken for one it did.
+ */
+export function setColorScheme(h: DeviceHandle, dark: boolean): void {
+  if ('serial' in h) {
+    adb(h, ['shell', 'cmd', 'uimode', 'night', dark ? 'yes' : 'no']);
+    return;
+  }
+  exec('xcrun', ['simctl', 'ui', h.udid, 'appearance', dark ? 'dark' : 'light']);
 }
 
 /**
