@@ -13,7 +13,7 @@ import type { TextTransform } from 'dragon';
 import { applyTextTransform, NO_FAULTS } from 'dragon';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
-import { breakLineGroups } from './native-dump.ts';
+import { breakLineGroups } from './dump-line-groups.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { captureGeneratedTexts, pseudoId } from './pseudo-capture.ts';
