@@ -2,9 +2,11 @@
 // opacity: the values the native targets draw, 0 and 1, on boxes that would fold (a background alone) and that would composite as a
 // layer (a background with a child, text, a border, a nested group, text alone), with percentages, a clamped 1.5 and -2, and the
 // cascade (inherit, var(), calc(), a negative value, 500%, initial, and the -webkit-opacity alias alone and in both orders with
-// opacity). A fractional opacity is refused natively (platform compositing
-// rounds unlike Skia; package PNT1-opacity-b), and every layout fixture compiles natively, so none is here; the host paint model
-// still pins Chrome's fractional composite bytes (pnt1-effects.test). Every group sits clear of the cc raster tile seams at DPR 2, 3
+// opacity). A fractional opacity on a group of more than one opaque fill is refused natively (platform compositing rounds unlike
+// Skia; package PNT1-opacity-b), and every layout fixture compiles natively, so none is here; the host paint model still pins
+// Chrome's fractional composite bytes (pnt1-effects.test). opacity-fold holds fractions native draws: groups of one opaque fill,
+// which Chrome folds into the fill (0.3, 45%, calc(1 / 3), 0.5 over a light row, 0.00196 at a byte's rounding edge, 0.999 (byte 255),
+// 0.7 white, an empty 0.4 that paints nothing and 0.62549 with a zero-width border). Every group sits clear of the cc raster tile seams at DPR 2, 3
 // and 2.625 in both directions (x in 16-48, 64-96 or 104-136 css px, y below 168). opacity-web holds the fractional cases (0.3,
 // 45%, an inherited 0.5, translucent groups with a child, text and a border): the lanes compile it on native as a lane-only case
 // (project.ts), so it proves web rows only, and the device pixel lanes skip what its groups paint (pixel-reference.ts devicePoints).
@@ -35,6 +37,7 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-basic'),
   both('opacity-cascade'),
   both('opacity-web'),
+  both('opacity-fold'),
   reject('opacity-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(50% + 10%)', 'opacity: calc(50% + 10%) is unsupported:'),
   both('stacking-basic'),
   both('stacking-context'),
