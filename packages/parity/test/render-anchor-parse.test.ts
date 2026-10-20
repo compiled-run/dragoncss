@@ -108,4 +108,30 @@ describe('image-rendering, anchor positioning and svg-extra: Chrome 145 parsing'
     expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThan(100);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
   }, 120_000);
+
+  it('position-try puts each part of a value Chrome keeps in the longhand Chrome does, so a refusal names it', async () => {
+    const values = ['flip-block', 'most-width --a', 'normal --a, flip-inline', 'most-height none', 'most-block-size flip-start, top', '--a'];
+    /** Dragon's position-try-order and position-try-fallbacks as written, commas without the space before them. */
+    const dragon = values.map((v) => {
+      const css = `.a { position-try: ${v}; }`;
+      const rules = parseStylesheet(css, { source: SOURCE, start: 0, end: css.length }, { id: 's', owner: 'doc', scope: 'document' }, 0, []);
+      return (rules[0]?.declarations[0]?.longhands ?? []).map((l) => valueToString(l.value).replace(/ ,/g, ',')).join(' | ');
+    });
+    const { launchChrome } = (await import(new URL('../src/chrome.ts', import.meta.url).href)) as { launchChrome: () => Promise<{ newPage(): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown> }>; close(): Promise<void> }> };
+    const browser = await launchChrome();
+    let chrome: string[];
+    try {
+      const page = await browser.newPage();
+      await page.setContent('<!DOCTYPE html><div id="a"></div>');
+      chrome = (await page.evaluate(`(${JSON.stringify(values)}).map((v) => {
+        const a = document.getElementById('a');
+        a.removeAttribute('style');
+        a.style.setProperty('position-try', v);
+        return a.style.getPropertyValue('position-try-order') + ' | ' + a.style.getPropertyValue('position-try-fallbacks');
+      })`)) as string[];
+    } finally {
+      await browser.close();
+    }
+    expect(dragon).toEqual(chrome);
+  }, 120_000);
 });

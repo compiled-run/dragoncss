@@ -78,8 +78,13 @@ describe('the image-rendering, anchor-position and svg-extra families', () => {
     expect(parsed('image-rendering: pixelated')).toEqual(['image-rendering: ?pixelated']);
     expect(parsed('position-try: none')).toEqual(['position-try-order: normal', 'position-try-fallbacks: none']);
     expect(parsed('position-try: normal none')).toEqual(['position-try-order: normal', 'position-try-fallbacks: none']);
-    expect(parsed('position-try: most-width --a')).toEqual(['position-try-order: ?most-width --a', 'position-try-fallbacks: ?most-width --a']);
-    expect(parsed('position-try: none normal')).toEqual(['position-try-order: ?none normal', 'position-try-fallbacks: ?none normal']);
+    // A leading try-order keyword is the order, and the rest the fallbacks, as Chrome 145 expands it.
+    expect(parsed('position-try: most-width --a')).toEqual(['position-try-order: ?most-width', 'position-try-fallbacks: ?--a']);
+    expect(parsed('position-try: flip-block')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?flip-block']);
+    expect(parsed('position-try: normal --a, flip-inline')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?--a , flip-inline']);
+    expect(parsed('position-try: most-height none')).toEqual(['position-try-order: ?most-height', 'position-try-fallbacks: none']);
+    expect(parsed('position-try: none normal')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?none normal']);
+    expect(parsed('position-try: normal')).toEqual(['position-try-order: ?normal', 'position-try-fallbacks: ?normal']);
     expect(parsed('position-anchor: auto')).toEqual(['position-anchor: ?auto']);
     expect(parsed('anchor-name: --a')).toEqual(['anchor-name: ?--a']);
     expect(parsed('stop-opacity: 1')).toEqual(['stop-opacity: 1']);
@@ -110,6 +115,12 @@ describe('the image-rendering, anchor-position and svg-extra families', () => {
       expect(errorsAt(d), d).toEqual(INHERITED.has(d.split(':')[0] as never) ? [...REFUSED, ...REFUSED].sort() : REFUSED);
     }
     expect(errorsAt('anchor-name: --a; position-area: top')).toEqual(REFUSED);
+    const at = (decl: string): string[] => {
+      const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } .s { ${decl}; }`, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
+      return [...new Set(c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0] as string))];
+    };
+    expect(at('position-try: flip-block')).toEqual(['position-try-fallbacks: flip-block on <div> a']);
+    expect(at('position-try: most-width --a')).toEqual(['position-try-order: most-width on <div> a']);
     expect(errorsAt('image-rendering: pixelated; anchor-name: --a; text-anchor: end')).toEqual(Array(5).fill(REFUSED).flat().sort());
     expect(errorsAt('--r: --a; anchor-name: var(--r)')).toEqual(REFUSED);
     const css = 'body { font-family: Ahem; font-size: 10px; } .s { image-rendering: pixelated; }';

@@ -11,6 +11,7 @@ import type { PropertyAspect } from '../properties.ts';
 import type { ParsedValue } from '../stylesheet.ts';
 import type { CssValue } from '../values.ts';
 import type { InitialOnlyParser } from './initial-only.ts';
+import { asciiLower } from '../escapes.ts';
 import { initialOnlyLonghand, kwInitial, nonInitial, spellsInitial } from './initial-only.ts';
 
 export const ANCHOR_POSITION_LONGHANDS = ['anchor-name', 'anchor-scope', 'position-anchor', 'position-area', 'position-try-order', 'position-try-fallbacks', 'position-visibility'] as const;
@@ -35,17 +36,29 @@ export const ANCHOR_POSITION_INITIAL: { readonly [P in AnchorPositionLonghand]: 
   'position-visibility': kwInitial('anchors-visible'),
 };
 
+/** The <try-size> keywords that open a position-try value as its position-try-order (css-anchor-position-1 §5.3). */
+const TRY_ORDERS: readonly string[] = ['normal', 'most-width', 'most-height', 'most-block-size', 'most-inline-size'];
+
 /**
- * position-try: <'position-try-order'>? <'position-try-fallbacks'>. none, or normal none, sets both longhands to their initial
- * values; any other value is kept on both and refused.
+ * position-try: <'position-try-order'>? <'position-try-fallbacks'>. A leading try-order keyword is position-try-order and the rest
+ * position-try-fallbacks; without one, the order is normal and the whole value is the fallbacks, as Chrome 145 expands it. Each
+ * longhand takes its initial value when its part spells it, and keeps its part as written otherwise. A value with no fallbacks is
+ * kept whole on both and refused.
  */
 export function parsePositionTry(tokens: readonly CssNode[], _base: Span): ParsedValue {
   if (tokens.length === 0) return { kind: 'invalid', reason: 'position-try needs a value' };
-  const fallbacks = ANCHOR_POSITION_INITIAL['position-try-fallbacks'];
-  const initial = (tokens.length === 1 && spellsInitial(fallbacks, tokens[0])) || (tokens.length === 2 && spellsInitial(ANCHOR_POSITION_INITIAL['position-try-order'], tokens[0]) && spellsInitial(fallbacks, tokens[1]));
+  const first = tokens[0] as CssNode;
+  const ordered = first.type === 'Identifier' && TRY_ORDERS.includes(asciiLower(String(first['name'])));
+  const order = ordered ? [first] : [];
+  const fallbacks = ordered ? tokens.slice(1) : tokens;
+  const part = (p: 'position-try-order' | 'position-try-fallbacks', ts: readonly CssNode[]): CssValue => {
+    if (ts.length === 0 && p === 'position-try-order') return ANCHOR_POSITION_INITIAL[p];
+    return ts.length === 1 && spellsInitial(ANCHOR_POSITION_INITIAL[p], ts[0]) ? ANCHOR_POSITION_INITIAL[p] : nonInitial(ts);
+  };
+  const values = fallbacks.length === 0 ? [nonInitial(tokens), nonInitial(tokens)] : [part('position-try-order', order), part('position-try-fallbacks', fallbacks)];
   return {
     kind: 'ok',
-    longhands: (['position-try-order', 'position-try-fallbacks'] as const).map((p) => ({ property: p, value: initial ? ANCHOR_POSITION_INITIAL[p] : nonInitial(tokens), explicit: true })),
+    longhands: (['position-try-order', 'position-try-fallbacks'] as const).map((p, i) => ({ property: p, value: values[i] as CssValue, explicit: true })),
   };
 }
 
