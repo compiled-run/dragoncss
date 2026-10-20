@@ -4,7 +4,7 @@
 // package P6c (T077) to build selection.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, selectFacts } from '../src/internal.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
 import { SELECTION_LONGHANDS } from '../src/css/properties/selection.ts';
@@ -120,5 +120,17 @@ describe('user-select: native compiles none and the values that change nothing (
   it('a value that loses the cascade to none compiles; the -webkit- alias that wins is refused', () => {
     expect(errors(compile('.a { user-select: text; } .a { user-select: none; }', NATIVE))).toEqual([]);
     expect(errors(compile('.a { user-select: none; -webkit-user-select: all; }', NATIVE)).map((d) => d.target)).toEqual(['ios', 'android']);
+  });
+});
+
+describe('user-select: selection facts (T154 slice 2b)', () => {
+  it('lists the body, the paragraphs and every element whose used value is none, auto under none included, in tree order', () => {
+    const input = inputFor('.n { user-select: none; } .t { user-select: text; }', (r) => [
+      { ...div(r, 'p1', [], [text(r, 't1', 'XX')]), tag: 'p' },
+      div(r, 'a', ['n'], [div(r, 'b', [], [text(r, 't2', 'XX')]), { ...div(r, 'p2', [], [text(r, 't3', 'XX')]), tag: 'p' }]),
+      div(r, 'c', ['t'], [div(r, 'd', ['n'], [div(r, 'e', [], [])])]),
+    ]);
+    const c = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    expect(selectFacts(c, [])).toEqual({ body: 'body', paragraphs: ['p1', 'p2'], unselectable: ['a', 'b', 'p2', 'd', 'e'] });
   });
 });

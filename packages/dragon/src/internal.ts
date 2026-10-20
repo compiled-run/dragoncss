@@ -394,6 +394,30 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
   return out;
 }
 
+// T154 slice 2b: the selection facts of one case (packages/layout/src/rt-select.ts SelectFacts), which the selection model needs
+// beside the laid-out engine input: the body (Blink emits no newline for it), the paragraphs (which add a second newline when left)
+// and every element whose used user-select is none (css-ui-4 §6.1: auto resolves to none under a none parent).
+
+/** The body's address, the p elements' and the used-none elements', in tree order; null without a resolved case. */
+export function selectFacts(compiled: object, assignment: Assignment, state: string | null = null): { readonly body: string; readonly paragraphs: readonly string[]; readonly unselectable: readonly string[] } | null {
+  const c = caseOf(compiled, assignment, state);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  let body = '';
+  const paragraphs: string[] = [];
+  const unselectable: string[] = [];
+  const walk = (el: ResolvedElement, parentNone: boolean): void => {
+    const v = el.props.get('user-select');
+    if (v === undefined || v.value.kind !== 'keyword') throw new Error(`${el.element.address}: user-select did not compute to a keyword`);
+    const none = v.value.value === 'none' || (v.value.value === 'auto' && parentNone);
+    if (none) unselectable.push(el.element.address);
+    if (el.element.tag === 'body' && body === '') body = el.element.address;
+    if (el.element.tag === 'p') paragraphs.push(el.element.address);
+    for (const ch of el.children) if (ch.kind === 'element') walk(ch, none);
+  };
+  walk(c.resolved, false);
+  return { body, paragraphs, unselectable };
+}
+
 // GEN-c (T151 R14): the compile-time ordinal and marker text of every list item in one case (analysis/markers.ts).
 export type { ListItemMarker, MarkerType } from './analysis/markers.ts';
 import { listItemMarkers } from './analysis/markers.ts';
