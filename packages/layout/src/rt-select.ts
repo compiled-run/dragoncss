@@ -10,6 +10,8 @@
 //   one in a block with no text is that block's own position.
 // - On a line, a point on or before a glyph's midpoint is the caret before the glyph, past it the caret after; a point past the
 //   line's last visible glyph is the caret before the line's hanging space.
+// - user-select none (css-ui-4 §6.1): a press on an element whose used value is none starts no selection; a caret that lands in
+//   such a subtree moves to the first selectable caret after it, else the last one before it, in either drag direction.
 // The selected text is ported from third_party/blink/renderer/core/editing/iterators/text_iterator.cc (Chromium BSD) over the
 // block elements and text nodes the table holds: TextIteratorAlgorithm::Advance's depth-first walk, which exits a parent only as
 // it climbs out of its last child, RepresentNodeOffsetZero and ShouldRepresentNodeOffsetZero (a newline entering a block), ExitNode
@@ -18,8 +20,8 @@
 //
 // Not modelled yet, and refused by name (selectionRefusal): what the hit table refuses (inline boxes, <br>, atomic inlines,
 // line-clamp), flex, grid and positioned boxes, replaced elements, rtl, justified and truncated lines, preserved white space,
-// percentage padding, and any face but Ahem (a real face needs grapheme clusters and ligature carets). user-select is the
-// caller's: the table holds the text whose used user-select is text.
+// percentage padding, and any face but Ahem (a real face needs grapheme clusters and ligature carets). The compiler gives the
+// elements whose used user-select is none (SelectFacts); text, and none below it, is all native compiles (slice 1).
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { hasPercent, resolveBorder, resolvePadding } from './box.ts';
@@ -44,8 +46,11 @@ export class SelectError extends Error {
   }
 }
 
-/** What the compiler knows of the elements that layout does not: the body's id and the ids of the p elements. */
-export type SelectFacts = { readonly body: string; readonly paragraphs: readonly string[] };
+/**
+ * What the compiler knows of the elements that layout does not: the body's id, the ids of the p elements, and the ids of the
+ * elements whose used user-select is none (css-ui-4 §6.1; on native, everything under such an element is none too).
+ */
+export type SelectFacts = { readonly body: string; readonly paragraphs: readonly string[]; readonly unselectable: readonly string[] };
 
 /**
  * A DOM node the selected text walks, in tree order: a block element or a text node. A text node's text is its leaf's, after
@@ -61,6 +66,8 @@ export type SelectNode = {
   /** A block other than the body: entering and leaving it emit newlines. */
   readonly block: boolean;
   readonly paragraph: boolean;
+  /** Its used user-select (a text node's is its parent's) is not none. */
+  readonly selectable: boolean;
   readonly text: string;
   readonly from: number;
   readonly to: number;
@@ -70,6 +77,8 @@ export type SelectNode = {
 export type SelectBlock = {
   /** The element's node; -1 for an anonymous box. */
   readonly node: number;
+  readonly left: number;
+  readonly right: number;
   readonly top: number;
   readonly bottom: number;
   /** The block children, in tree order; empty for a block of lines or an empty block. */
@@ -112,6 +121,7 @@ type NodeDraft = {
   end: number;
   readonly block: boolean;
   readonly paragraph: boolean;
+  readonly selectable: boolean;
   readonly text: string;
   from: number;
   to: number;
@@ -119,7 +129,7 @@ type NodeDraft = {
 };
 
 /** A block while the walk builds it: its children and lines are learnt after it is pushed, so the root stays blocks[0]. */
-type BlockDraft = { readonly node: number; readonly top: number; readonly bottom: number; children: number[]; firstLine: number; lastLine: number };
+type BlockDraft = { readonly node: number; readonly left: number; readonly right: number; readonly top: number; readonly bottom: number; children: number[]; firstLine: number; lastLine: number };
 
 type SelectState = {
   readonly nodes: NodeDraft[];
@@ -148,9 +158,18 @@ function indexZoomed(m: Map<string, LayoutBox>, b: LayoutBox): void {
   for (const c of b.children) if (c.kind === 'box') indexZoomed(m, c);
 }
 
-function isParagraph(s: SelectState, id: string): boolean {
-  for (const p of s.facts.paragraphs) if (p === id) return true;
+function listed(ids: readonly string[], id: string): boolean {
+  for (const p of ids) if (p === id) return true;
   return false;
+}
+
+/** Whether a node under parent is selectable; an element listed selectable under an unselectable parent is refused (slice 1). */
+function selectableUnder(s: SelectState, parent: number, id: string, element: boolean): boolean {
+  const inherited = parent < 0 || (s.nodes[parent] as NodeDraft).selectable;
+  if (!element) return inherited;
+  const own = !listed(s.facts.unselectable, id);
+  if (own && !inherited) throw new SelectError(`${id} is selectable under an element whose used user-select is none, which native refuses`);
+  return own;
 }
 
 /** The carets of a piece: its x, then after each code point the measured width of the leaf's text from the piece start (R4). */
@@ -179,7 +198,7 @@ function lineBlock(s: SelectState, b: LayoutBox, parent: number): void {
   for (const c of zb.children) {
     if (c.kind !== 'text') continue;
     zLeaves.push(c);
-    s.nodes.push({ kind: 'text', id: c.id, parent, end: s.nodes.length + 1, block: false, paragraph: false, text: c.text, from: -1, to: -1, pieces: 0 });
+    s.nodes.push({ kind: 'text', id: c.id, parent, end: s.nodes.length + 1, block: false, paragraph: false, selectable: selectableUnder(s, parent, c.id, false), text: c.text, from: -1, to: -1, pieces: 0 });
   }
   for (const line of placeLines(s.ctx, zb, width)) {
     const pieces: SelectPiece[] = [];
@@ -209,12 +228,12 @@ function blockOf(s: SelectState, b: LayoutBox, parent: number): number {
   let node = -1;
   if (b.boxType === 'element') {
     node = s.nodes.length;
-    s.nodes.push({ kind: 'element', id: b.id, parent, end: -1, block: b.id !== s.facts.body, paragraph: isParagraph(s, b.id), text: '', from: 0, to: 0, pieces: 0 });
+    s.nodes.push({ kind: 'element', id: b.id, parent, end: -1, block: b.id !== s.facts.body, paragraph: listed(s.facts.paragraphs, b.id), selectable: selectableUnder(s, parent, b.id, true), text: '', from: 0, to: 0, pieces: 0 });
   }
   const within = node >= 0 ? node : parent;
   const index = s.blocks.length;
   const r = rectOf(s, b.id);
-  const blk: BlockDraft = { node, top: r.y, bottom: add(r.y, r.height), children: [], firstLine: -1, lastLine: -1 };
+  const blk: BlockDraft = { node, left: r.x, right: add(r.x, r.width), top: r.y, bottom: add(r.y, r.height), children: [], firstLine: -1, lastLine: -1 };
   s.blocks.push(blk);
   let leaves = false;
   for (const c of b.children) if (c.kind === 'text') leaves = true;
@@ -275,9 +294,9 @@ export function selectionTableOf(input: LayoutInput, measurer: TextMeasurer, fac
   const s: SelectState = { nodes: [], blocks: [], lines: [], abs: absoluteRects(out.boxes), zoomed: zmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, facts };
   blockOf(s, input.root, -1);
   const nodes: SelectNode[] = [];
-  for (const n of s.nodes) nodes.push({ kind: n.kind, id: n.id, parent: n.parent, end: n.end, block: n.block, paragraph: n.paragraph, text: n.text, from: n.from, to: n.to });
+  for (const n of s.nodes) nodes.push({ kind: n.kind, id: n.id, parent: n.parent, end: n.end, block: n.block, paragraph: n.paragraph, selectable: n.selectable, text: n.text, from: n.from, to: n.to });
   const blocks: SelectBlock[] = [];
-  for (const b of s.blocks) blocks.push({ node: b.node, top: b.top, bottom: b.bottom, children: b.children, firstLine: b.firstLine, lastLine: b.lastLine });
+  for (const b of s.blocks) blocks.push({ node: b.node, left: b.left, right: b.right, top: b.top, bottom: b.bottom, children: b.children, firstLine: b.firstLine, lastLine: b.lastLine });
   return { nodes, blocks, lines: s.lines };
 }
 
@@ -335,9 +354,77 @@ export function caretAt(t: SelectTable, x: number, y: number): Caret | null {
   }
 }
 
-/** The caret of a point in CSS px, floored to LU as Chrome floors a hit point. */
-export function caretAtPx(t: SelectTable, x: number, y: number): Caret | null {
-  return caretAt(t, floorOf(x * LU_PX), floorOf(y * LU_PX));
+/** The first selectable caret at or after node i: a text node's first shown code point, or an empty block's own position. */
+function selectableFrom(t: SelectTable, i: number): Caret | null {
+  for (let k = i; k < t.nodes.length; k++) {
+    const n = t.nodes[k] as SelectNode;
+    if (!n.selectable) continue;
+    if (n.kind === 'text') return { node: k, offset: n.from };
+    if (n.end === k + 1) return { node: k, offset: 0 };
+  }
+  return null;
+}
+
+/** The last selectable caret before node i: a text node's last shown code point's end, or an empty block's own position. */
+function selectableBefore(t: SelectTable, i: number): Caret | null {
+  for (let k = i - 1; k >= 0; k--) {
+    const n = t.nodes[k] as SelectNode;
+    if (!n.selectable) continue;
+    if (n.kind === 'text') return { node: k, offset: n.to };
+    if (n.end === k + 1) return { node: k, offset: 0 };
+  }
+  return null;
+}
+
+/** The element a point in LU hits: the deepest block whose border box holds it (in normal flow no two siblings overlap), or the root. */
+function hitElement(t: SelectTable, x: number, y: number): number {
+  let b = 0;
+  let node = (t.blocks[0] as SelectBlock).node;
+  for (;;) {
+    let next = -1;
+    for (const c of (t.blocks[b] as SelectBlock).children) {
+      const k = t.blocks[c] as SelectBlock;
+      if (x >= k.left && x < k.right && y >= k.top && y < k.bottom) next = c;
+    }
+    if (next < 0) return node;
+    b = next;
+    const k = t.blocks[b] as SelectBlock;
+    if (k.node >= 0) node = k.node;
+  }
+}
+
+/**
+ * The focus a drag to a point in LU moves to: its caret, or, in a subtree whose used user-select is none, the first selectable
+ * caret after that subtree, else the last one before it (measured: Chrome picks the one after in either drag direction).
+ */
+export function focusAt(t: SelectTable, x: number, y: number): Caret | null {
+  const c = caretAt(t, x, y);
+  if (c === null || (t.nodes[c.node] as SelectNode).selectable) return c;
+  let top = c.node;
+  let p = (t.nodes[top] as SelectNode).parent;
+  while (p >= 0 && !(t.nodes[p] as SelectNode).selectable) {
+    top = p;
+    p = (t.nodes[p] as SelectNode).parent;
+  }
+  const after = selectableFrom(t, (t.nodes[top] as SelectNode).end);
+  if (after !== null) return after;
+  return selectableBefore(t, top);
+}
+
+/**
+ * The anchor a press at a point in LU places: null when the element it hits has used user-select none, where Chrome's mouse down
+ * starts no selection; else the caret a drag there would focus (a press beside unselectable text can still land after it).
+ */
+export function anchorAt(t: SelectTable, x: number, y: number): Caret | null {
+  if (t.blocks.length === 0) return null;
+  const hit = hitElement(t, x, y);
+  if (hit >= 0 && !(t.nodes[hit] as SelectNode).selectable) return null;
+  return focusAt(t, x, y);
+}
+
+/** A point in CSS px floored to LU, as Chrome floors a hit point. */
+export function pxToLu(v: number): number {
+  return floorOf(v * LU_PX);
 }
 
 /** The rect native draws a text caret or handle at: the first piece of its node that holds its offset. */
@@ -406,7 +493,9 @@ export function selectedText(t: SelectTable, anchor: Caret, focus: Caret): strin
   let i = s.node;
   for (;;) {
     const n = t.nodes[i] as SelectNode;
-    if (n.kind === 'element') {
+    if (!n.selectable) {
+      // TextIterator skips what cannot be selected (SkipsUnselectableContent); its exits still run.
+    } else if (n.kind === 'element') {
       enter(t, w, s, i);
       // A range that ends at offset 0 of an element represents its position, not its content.
       if (i === e.node) return w.out;

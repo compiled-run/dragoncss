@@ -1,12 +1,12 @@
 // T154 slice 2a (notes/T154-user-select-spec.md): the selection model (packages/layout/src/rt-select.ts) against Chrome 145. For
 // each document Chrome clicks every point of a grid and reads the caret its selection collapses to, with that caret's rect, and
-// drags from a few anchors to sampled points and reads Selection.toString; the model, built from the engine's layout of the same
+// drags from a few anchors to sampled points and reads Selection.toString and the focus; the model, built from the engine's layout of the same
 // document compiled for native, must place every caret, rect and selected string where Chrome does.
 import { describe, expect, it } from 'vitest';
 import type { Page } from 'playwright';
 import { createProjectWith, nativePrograms, NO_FAULTS, programInput } from 'dragon';
 import type { Caret, SelectTable } from '../../layout/src/rt-select.ts';
-import { caretAtPx, caretRect, selectedText, selectionRefusal, selectionTableOf } from '../../layout/src/rt-select.ts';
+import { anchorAt, caretRect, focusAt, pxToLu, selectedText, selectionRefusal, selectionTableOf } from '../../layout/src/rt-select.ts';
 import { launchChrome, openPage } from '../src/chrome.ts';
 import { fixtureToInput } from '../src/fixture-reader.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
@@ -14,7 +14,7 @@ import { referenceMeasurer } from '../src/native-host.ts';
 
 const BASE = 'body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 20px; } div, p { width: 60px; margin: 0; }';
 
-type Doc = { readonly id: string; readonly css: string; readonly body: string; readonly paragraphs: readonly string[] };
+type Doc = { readonly id: string; readonly css: string; readonly body: string; readonly paragraphs: readonly string[]; readonly unselectable?: readonly string[] };
 
 // Text holds no doubled spaces, so a DOM text offset is the leaf's offset after white-space phase I.
 const DOCS: readonly Doc[] = [
@@ -41,6 +41,14 @@ const DOCS: readonly Doc[] = [
     body: '<div data-dragon-id="a" class="a">AAA AA</div><div data-dragon-id="b" class="b">BB B</div><div data-dragon-id="c" class="c">CCCC CC</div><div data-dragon-id="d" class="d">DDD DD</div>',
     paragraphs: [],
   },
+  // user-select: none: a press there starts nothing, and a drag into it selects to the next selectable text, or the last when none follows.
+  {
+    id: 'none',
+    css: '.n { user-select: none; }',
+    body: '<div data-dragon-id="a">AAAA AAAA</div><div data-dragon-id="b" class="n">BBBB BBBB<div data-dragon-id="c" class="n">CC</div></div><div data-dragon-id="d">DD DD</div><div data-dragon-id="e" class="n">EEEE</div>',
+    paragraphs: [],
+    unselectable: ['b', 'c', 'e'],
+  },
 ];
 
 const htmlOf = (d: Doc): string => `<!DOCTYPE html><html data-dragon-id="html"><head><style>${BASE} ${d.css}</style></head><body data-dragon-id="body">${d.body}</body></html>`;
@@ -57,7 +65,7 @@ function tableOf(d: Doc): SelectTable {
   if (p.kind !== 'ready') throw new Error(`${d.id}: no native programs: ${p.reason}`);
   const input = programInput(p.programs.uikit, ENVIRONMENT.viewport, 1);
   expect(selectionRefusal(input), d.id).toBeNull();
-  return selectionTableOf(input, referenceMeasurer(), { body: 'body', paragraphs: d.paragraphs });
+  return selectionTableOf(input, referenceMeasurer(), { body: 'body', paragraphs: d.paragraphs, unselectable: d.unselectable ?? [] });
 }
 
 /** A caret as the test compares it: the leaf (its element and text-node index) and offset, and its rect in px. */
@@ -169,7 +177,7 @@ describe('selection model (T154 slice 2a): carets, caret rects and selected text
           for (const x of XS) {
             const seen = await drag(page, x, y, x, y);
             clicks++;
-            const want = modelCaret(t, caretAtPx(t, x, y));
+            const want = modelCaret(t, anchorAt(t, pxToLu(x), pxToLu(y)));
             const got = seen === null || seen.focus === null ? null : leafOffset(t, seen.focus);
             if (!sameCaret(got, want, inexact)) problems.push(`${d.id} click ${x},${y}: Chrome ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
           }
@@ -182,11 +190,14 @@ describe('selection model (T154 slice 2a): carets, caret rects and selected text
               const y = ys[i] as number;
               const seen = await drag(page, ax, ay, x, y);
               drags++;
-              const a = caretAtPx(t, ax, ay);
-              const f = caretAtPx(t, x, y);
+              const a = anchorAt(t, pxToLu(ax), pxToLu(ay));
+              const f = focusAt(t, pxToLu(x), pxToLu(y));
               const want = a === null || f === null ? '' : selectedText(t, a, f);
               const got = seen === null ? '' : seen.text;
               if (got !== want) problems.push(`${d.id} drag ${ax},${ay} to ${x},${y}: Chrome selects ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
+              const focus = seen === null || seen.focus === null ? null : leafOffset(t, seen.focus);
+              const wantFocus = a === null ? null : modelCaret(t, f);
+              if (!sameCaret(focus, wantFocus, inexact)) problems.push(`${d.id} drag ${ax},${ay} to ${x},${y}: Chrome's focus ${JSON.stringify(focus)}, model ${JSON.stringify(wantFocus)}`);
             }
           }
         }
