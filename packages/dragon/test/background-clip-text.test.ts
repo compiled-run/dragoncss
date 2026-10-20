@@ -243,7 +243,6 @@ describe('background-clip: text: ink past the box (landing review, finding 1)', 
     [`.a { ${fill} }`, (r: SourceRef): TreeNode[] => [div(r, 'a', ['a'], [text(r, 'a-t', 'XX XX XX XX XX')])]],
     [`.a { ${fill} font-size: 30px; }`, tree],
     [`.a { ${fill} line-height: 2px; height: 2px; }`, tree],
-    [`.a { ${fill} text-indent: -30px; }`, tree],
   ] as const) {
     it(`${css} compiles, and a's text is hosted in a clip view over its box`, () => {
       const c = compile(css, body);
@@ -257,6 +256,12 @@ describe('background-clip: text: ink past the box (landing review, finding 1)', 
       }
     });
   }
+  it('text-indent: -30px moves the text wholly out of the clip view, so the native targets refuse it (clip-view-text.ts)', () => {
+    const errs = errors(compile(`.a { ${fill} text-indent: -30px; }`));
+    expect(errs.map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    for (const d of errs) expect(d.message).toMatch(/^a has background-clip: text, which (ios|android) draws as a clip view over its padding box, but the text starts -30px from its content box's start \(text-indent -30px included\) and ends before its padding box's start; its text a:text0 could be clipped out of sight/);
+    expectCatalogued(errs);
+  });
   it('an inert text clip and a losing one host no clip view', () => {
     for (const css of ['.a { background-clip: text; white-space: nowrap; }', `.a { ${fill} background-clip: border-box; color: red; }`]) {
       for (const prog of programsOf(compile(css))) expect(prog.nodes.find((n) => n.id === 'a')?.clips, css).toBe(false);

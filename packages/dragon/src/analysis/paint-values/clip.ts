@@ -11,6 +11,7 @@
 // under an ancestor's clip bounds that leave nothing (ViewGroup.getChildVisibleRect), so TalkBack skips it. Only text views are
 // accessibility elements natively (native-support.ts), so a subtree without text loses nothing there. An em or rem edge whose font
 // size has no build-time value is refused for that.
+// overflow and background-clip: text: the text a native padding-box clip view could hide is refused in clip-view-text.ts.
 // clip-path (css-masking-1 §6.1): an inset() edge computes to px (em and rem as above), a percentage stays a percentage of the
 // border box's width or height. Chrome clips the box's own paint and every descendant, positioned ones included, to the inset rect.
 // Natively Dragon clips the box view and the views inside it to that rect after layout. Refused on the native targets: the root and
@@ -30,6 +31,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { valueToString } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { checkClipViewText } from './clip-view-text.ts';
 import { paintedOutlineStyle } from './outline.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
@@ -203,6 +205,8 @@ export const CLIP_VALUES: PaintValues = {
   },
   check: (el, targets, diagnostics, reported, propagated) => {
     checkClip(el, targets, diagnostics, reported, propagated);
+    // Judged at the parent, which decides a clip box's flex-basis and stretch.
+    checkClipViewText(el, targets, diagnostics, reported, propagated);
     checkClipPath(el, targets, diagnostics, reported, propagated);
   },
 };
