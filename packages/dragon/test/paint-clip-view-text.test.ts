@@ -85,8 +85,9 @@ describe('clip view over text: a padding box with no area', () => {
 
 describe('clip view over text: text past the padding box\'s end', () => {
   it('refuses an image-replacement indent wider than any screen, and an indent of 100% or of the px width', () => {
-    expectRefused('.a { overflow: hidden; text-indent: 9999px; }', one, 'a', 'a:text0', /the text starts at least 9999px from its content box's start \(text-indent 9999px included\), at or past its padding box's end \(wider than any screen, 4096px\)/);
-    expectRefused('.a { overflow: hidden; text-indent: 100%; white-space: nowrap; }', one, 'a', 'a:text0', /it has text-indent 100%, which starts the text at its content box's end/);
+    expectRefused('.a { overflow: hidden; text-indent: 9999px; }', one, 'a', 'a:text0', /the text starts at least 9999px from its content box's start \(text-indent 9999px included\), at or past its padding box's end \(100px\)/);
+    expectRefused('.p { width: auto; } .a { overflow: hidden; text-indent: 9999px; }', one, 'a', 'a:text0', /at least 9999px .*, at or past its padding box's end \(4096px\)/);
+    expectRefused('.a { overflow: hidden; text-indent: 100%; white-space: nowrap; }', one, 'a', 'a:text0', /the text starts at least 100% of its width from its content box's start \(text-indent 100% of its width included\), at or past its padding box's end \(100px\)/);
     expectRefused('.a { overflow: hidden; width: 50px; text-indent: 60px; }', one, 'a', 'a:text0', /at least 60px .* \(50px\)/);
     expectRefused('.a { overflow: hidden; } .b { margin-left: 9999px; }', deep, 'a', 'b:text0', /at least 9999px/);
     expectRefused('.a { overflow: hidden; } .b { padding-left: 5000px; }', deep, 'a', 'b:text0', /at least 5000px/);
@@ -102,7 +103,7 @@ describe('clip view over text: text past the padding box\'s end', () => {
     expectRefused('.a { overflow: hidden; height: 10px; } .b { margin-top: 50px; }', deep, 'a', 'b:text0', /at least 50px below/);
     expectRefused('.a { overflow: hidden; max-height: 20px; } .b { padding-top: 20px; }', deep, 'a', 'b:text0', /at least 20px below .* \(20px\)/);
     expectRefused('.a { overflow: hidden; height: 10px; } .b { position: relative; top: 12px; }', deep, 'a', 'b:text0', /at least 12px below/);
-    expectRefused('.a { overflow: hidden; } .b { transform: translateY(9999px); }', deep, 'a', 'b:text0', /taller than any screen/);
+    expectRefused('.a { overflow: hidden; height: 100px; } .b { transform: translateY(100px); }', deep, 'a', 'b:text0', /at least 100px below .* \(100px\)/);
   });
   it('compiles cards and lists whose text may fit: auto or flex sizes, and px sizes the bound stays under', () => {
     for (const [css, body] of [
@@ -139,8 +140,10 @@ describe('clip view over text: text before the padding box\'s start', () => {
       '.a { overflow: hidden; } .b { transform: scale(1); }',
       '.a { overflow: hidden; } .b { transform: rotate(45deg) translateX(-200px); }',
       '.a { overflow: hidden; position: relative; } .b { position: absolute; top: 0; left: 0; }',
-      '.a { overflow: hidden; } .b { letter-spacing: 2px; position: relative; left: -100px; }',
+      '.a { overflow: hidden; } .b { letter-spacing: 2px; position: relative; left: -20px; }',
     ]) expectCompiles(css, deep);
+    // Two Ahem glyphs 10px wide plus 2px letter-spacing each end 24px after their start.
+    expectRefused('.a { overflow: hidden; } .b { letter-spacing: 2px; position: relative; left: -24px; }', deep, 'a', 'b:text0', /starts -24px/);
   });
 });
 
@@ -171,5 +174,107 @@ describe('clip view over text: what is not judged', () => {
     expect(errs.map((d) => d.target).sort()).toEqual(['android', 'ios']);
     expect(errs[0]?.message).toMatch(/^a has overflow: auto hidden, /);
     expect(errs[0]?.origin).toMatchObject({ kind: 'authored' });
+  });
+});
+
+// Round 3 of the landing review: auto sizes are unbounded, a first line's indent reaches its inline descendants, percentages of the
+// clip box's width are decided, collapsible whitespace is no text, and the low findings.
+const page: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [...[1, 2, 3, 4, 5].map((n) => div(r, `s${n}`, ['s'])), div(r, 'f', ['f'], [text(r, 'f-t', 'Footer')])])])];
+const logo: Body = (r) => [div(r, 'p', ['p'], [tag(r, 'h1', 'a', [tag(r, 'a', 'l', [text(r, 'l-t', 'Brand')])])])];
+const span: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [tag(r, 'span', 's', [text(r, 's-t', 'Label')])])])];
+const nav: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'w1', '\n  '), div(r, 'i1', ['i'], [text(r, 'i1-t', 'One')]), text(r, 'w2', '\n  '), div(r, 'i2', ['i'], [text(r, 'i2-t', 'Two')]), text(r, 'w3', '\n')])])];
+const phrase: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'Hello there world')])])];
+const contents: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'c', ['c'], [div(r, 'd', ['d'])]), div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])];
+
+describe('clip view over text: auto sizes bound nothing', () => {
+  it('compiles a tall page under an auto-height clip, and a % height of an auto-height parent', () => {
+    expectCompiles('.a { overflow: hidden; } .s { height: 900px; }', page);
+    expectCompiles('.a { overflow: hidden; } .b { transform: translateY(9999px); }', deep);
+    expectCompiles('.a { overflow: hidden; height: 50%; } .c { height: 100px; }', tall);
+    expectCompiles('.a { overflow: hidden; max-height: 50vh; } .s { height: 900px; }', page);
+    // A % height of a px-height parent is decided.
+    expectRefused('.p { height: 100px; } .a { overflow: hidden; height: 50%; } .c { height: 100px; }', tall, 'a', 'b:text0', /at least 100px below .* \(50px\)/);
+    expectRefused('.a { overflow: hidden; height: 400px; } .s { height: 900px; }', page, 'a', 'f:text0', /at least 4500px below .* \(400px\)/);
+  });
+  it('compiles an auto width its content can widen: shrink-to-fit, a flex row item, a grid item', () => {
+    for (const css of [
+      '.p { display: inline-block; width: auto; } .a { overflow: hidden; text-indent: 200px; }',
+      '.a { overflow: hidden; float: left; text-indent: 200px; }',
+      '.a { overflow: hidden; position: absolute; text-indent: 200px; }',
+      '.p { display: grid; } .a { overflow: hidden; text-indent: 200px; }',
+      '.p { display: flex; width: auto; } .a { overflow: hidden; text-indent: 200px; }',
+    ]) expectCompiles(css, one);
+    // A block's auto width is its containing block's, less its margins.
+    expectRefused('.a { overflow: hidden; margin-right: 40px; text-indent: 60px; }', one, 'a', 'a:text0', /at least 60px .* \(60px\)/);
+    expectRefused('.p { width: 50%; } .a { overflow: hidden; text-indent: 2100px; }', one, 'a', 'a:text0', /at least 2100px .* \(2048px\)/);
+  });
+});
+
+describe('clip view over text: the first line\'s indent reaches its inline descendants', () => {
+  it('refuses an h1 > a logo, a div > span and a nowrap +9999px > a', () => {
+    expectRefused('.a { overflow: hidden; text-indent: -9999px; }', logo, 'a', 'l:text0', /starts -9999px from its content box's start \(text-indent -9999px included\)/);
+    expectRefused('.a { overflow: hidden; text-indent: -9999px; }', span, 'a', 's:text0', /starts -9999px/);
+    expectRefused('.a { overflow: hidden; white-space: nowrap; text-indent: 9999px; }', logo, 'a', 'l:text0', /at least 9999px .*\(text-indent 9999px included\)/);
+    expectRefused('.a { overflow: hidden; text-indent: -9999px; } .s { padding: 0 4px; }', span, 'a', 's:text0', /starts -9995px/);
+  });
+  it('compiles an indent that a later line, a block or start padding undoes, or a centered line', () => {
+    expectCompiles('.a { overflow: hidden; text-indent: -30px; text-align: center; }', one);
+    expectCompiles('.a { overflow: hidden; text-indent: -30px; } .s { padding-left: 20px; }', span);
+    // A wrapping text's later words start the next line, without the indent; its first word alone is sure to be past the end.
+    expectCompiles('.a { overflow: hidden; text-indent: 9999px; }', phrase);
+    expectRefused('.a { overflow: hidden; text-indent: 9999px; }', words, 'a', 'a:text0', /at least 9999px/);
+    expectRefused('.a { overflow: hidden; text-indent: 9999px; white-space: nowrap; }', phrase, 'a', 'a:text0', /at least 9999px/);
+    expectCompiles('.a { overflow: hidden; text-indent: -9999px; } .s { display: block; text-indent: 0; }', span);
+  });
+});
+
+describe('clip view over text: percentages of the clip box\'s width', () => {
+  it('refuses flex: 0 0 100% and flex: none; width: 100% carousels, column-flow grid tracks, and a % margin', () => {
+    expectRefused('.a { display: flex; overflow: hidden; } .i { flex: 0 0 100%; }', slides, 'a', 'i2:text0', /at least 100% of its width .*\(100px\)/);
+    expectRefused('.a { display: flex; overflow: hidden; } .i { flex: none; width: 100%; }', slides, 'a', 'i2:text0', /at least 100% of its width/);
+    expectRefused('.a { display: flex; overflow: hidden; width: 80%; } .i { flex-shrink: 0; width: 100%; }', slides, 'a', 'i2:text0', /at least 100% of its width/);
+    expectRefused('.a { display: grid; grid-auto-flow: column; grid-auto-columns: 100px; width: 100px; overflow: hidden; }', slides, 'a', 'i2:text0', /at least 100px/);
+    expectRefused('.a { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; overflow: hidden; }', slides, 'a', 'i2:text0', /at least 100% of its width/);
+    expectRefused('.a { overflow: hidden; } .b { margin-left: 100%; }', deep, 'a', 'b:text0', /at least 100% of its width/);
+  });
+  it('compiles a % slide that shrinks or is narrower, and an unknown or negative % margin', () => {
+    for (const [css, body] of [
+      ['.a { display: flex; overflow: hidden; } .i { flex: 0 1 100%; }', slides],
+      ['.a { display: flex; overflow: hidden; } .i { flex: 0 0 90%; }', slides],
+      ['.a { display: grid; grid-auto-flow: column; grid-auto-columns: 50%; overflow: hidden; }', slides],
+      ['.a { overflow: hidden; } .b { margin-left: calc(100% - 1px); }', deep],
+      ['.a { overflow: hidden; height: 10px; } .c { height: 100px; margin-bottom: -50%; }', tall],
+    ] as const) expectCompiles(css, body);
+  });
+});
+
+describe('clip view over text: whitespace and the low findings', () => {
+  it('compiles a font-size: 0 nav whose collapsible whitespace has no line, and refuses its items\' own empty line', () => {
+    expectCompiles('.a { overflow: hidden; font-size: 0; } .i { display: inline-block; font-size: 10px; }', nav);
+    expectRefused('.a { overflow: hidden; font-size: 0; } .i { display: inline-block; }', nav, 'a', 'i1:text0', /i1's line box is empty/);
+  });
+  it('an inline box\'s block-axis margin, border and padding move no line', () => {
+    expectCompiles('.a { overflow: hidden; height: 20px; } .w { padding-top: 50px; margin-top: 50px; border-top: 50px solid; }', words);
+  });
+  it('counts a previous block\'s negative margin-bottom', () => {
+    expectCompiles('.a { overflow: hidden; height: 10px; } .c { height: 100px; margin-bottom: -95px; }', tall);
+    expectRefused('.a { overflow: hidden; height: 10px; } .c { height: 100px; margin-bottom: -50px; }', tall, 'a', 'b:text0', /at least 50px below/);
+  });
+  it('a flex item that does not stretch keeps its own height under a zero-height flex row', () => {
+    expectCompiles('.p { display: flex; height: 0; align-items: flex-start; } .a { overflow: hidden; }', one);
+    expectCompiles('.p { display: flex; height: 0; } .a { overflow: hidden; align-self: center; }', one);
+    expectRefused('.p { display: flex; height: 0; align-items: stretch; } .a { overflow: hidden; }', one, 'a', 'a:text0', /its ancestor p has height 0px/);
+  });
+  it('a display: contents sibling stacks no block of its own (native refuses display: contents on its own, so no clip-view refusal)', () => {
+    expect(viewErrors(compile('.a { overflow: hidden; height: 10px; } .c { display: contents; height: 100px; }', contents))).toEqual([]);
+    expectRefused('.a { overflow: hidden; height: 10px; } .d { height: 100px; }', contents, 'a', 'b:text0', /at least 100px below/);
+    // An auto-height block is at least as tall as the blocks it stacks; an unknown margin among them could pull them up.
+    expectCompiles('.a { overflow: hidden; height: 10px; } .d { height: 100px; margin-bottom: calc(-50% + 1px); }', contents);
+    expectCompiles('.a { overflow: hidden; height: 10px; } .c { max-height: 5px; } .d { height: 100px; }', contents);
+  });
+  it('a font size with no build-time value is not zero (native refuses a vw font size on its own, so no clip-view refusal)', () => {
+    expect(viewErrors(compile('.a { overflow: hidden; font-size: 2vw; }', one))).toEqual([]);
+    expect(viewErrors(compile('.a { overflow: hidden; font-size: calc(1px + 1vw); }', one))).toEqual([]);
+    expectRefused('.a { overflow: hidden; font-size: 2vw; line-height: 0; }', one, 'a', 'a:text0', /its line box is empty \(line-height 0/);
   });
 });
