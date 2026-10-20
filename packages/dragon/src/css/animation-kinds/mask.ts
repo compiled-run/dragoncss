@@ -2,9 +2,9 @@
 import { DISCRETE, UNADMITTED, type AnimationKind } from './kinds.ts';
 import type { MASK_LONGHANDS } from '../properties/mask.ts';
 
-// MASK-CLIP: Chrome interpolates the position and size lists; Dragon accepts only initial values, so it admits no animation.
+// MASK-CLIP: Chrome interpolates the image, position and size lists (an image list through a cross-fade); Dragon admits no such animation.
 export const MASK_ANIMATION: { readonly [P in (typeof MASK_LONGHANDS)[number]]: AnimationKind } = {
-  'mask-image': DISCRETE,
+  'mask-image': UNADMITTED,
   '-webkit-mask-position-x': UNADMITTED,
   '-webkit-mask-position-y': UNADMITTED,
   'mask-size': UNADMITTED,

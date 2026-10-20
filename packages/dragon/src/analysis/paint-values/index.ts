@@ -11,6 +11,7 @@ import { FIXED_VALUES } from './fixed.ts';
 import { FOREIGN_VIEW_VALUES } from './foreign-view.ts';
 import { GRADIENT_VALUES } from './gradient.ts';
 import { IMAGE_VALUES } from './image.ts';
+import { MASK_VALUES } from './mask.ts';
 import { OUTLINE_VALUES } from './outline.ts';
 import { RADIUS_VALUES } from './radius.ts';
 import { SCROLL_VALUES } from './scroll.ts';
@@ -46,6 +47,7 @@ export const PAINT_VALUES: readonly PaintValues[] = [
   VISIBILITY_VALUES,
   TEXT_DECORATION_VALUES,
   TEXT_SHADOW_VALUES,
+  MASK_VALUES,
 ];
 
 if (PAINT_VALUES.map((m) => m.name).join() !== PAINT_MODULE_NAMES.join()) throw new Error('the paint-values registry is not in PAINT_MODULE_NAMES order');

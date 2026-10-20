@@ -639,6 +639,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'text-shadow':
         // TXT-FX draws text shadows from the static program only; the state runtime has no text shadow writer yet.
         throw new StateEmitError(`${n.id}: text shadows in a state program have no state-node write (TXT-FX draws them on the static program only)`);
+      case 'mask-image':
+        // MASK-CLIP draws a gradient mask from the static program only; the state runtime has no mask writer yet.
+        throw new StateEmitError(`${n.id}: a mask in a state program has no state-node write (MASK-CLIP draws it on the static program only)`);
       case 'visibility':
         // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
         throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
