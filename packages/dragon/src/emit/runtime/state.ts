@@ -647,6 +647,7 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
         throw new StateEmitError(`${n.id}: a clip rect in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       case 'clip-path-inset':
       case 'clip-path-shape':
+      case 'clip-text':
         // MASK-CLIP: a state record holds no clip-path write; the clip is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a clip-path in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       case 'mask-layer':

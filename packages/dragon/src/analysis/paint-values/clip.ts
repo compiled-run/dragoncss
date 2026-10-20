@@ -154,11 +154,8 @@ function clipPathRefusal(el: ResolvedElement): { readonly fact: string; readonly
   };
   const ringed = outline(el, true);
   if (ringed !== null) return { fact: `${ringed} an outline, which Dragon draws in the root view, outside the clip`, manual: `Remove the outline inside ${at}, or the clip-path.` };
-  // The clip covers every descendant, text that overflows the border box and positioned descendants included, so even an inset of 0
-  // or less can hide text whole. Chrome keeps clipped text in the accessibility tree; until a device run proves the native clip keeps
-  // it there too (VoiceOver, TalkBack), the native targets refuse a clip-path over any text, as they refuse clip: rect().
-  const text = textInside(el);
-  if (text !== null) return { fact: `its text ${text} can be clipped out of sight, which Chrome keeps in its accessibility tree and screen readers read; the native accessibility tree of a clipped view is not proven yet`, manual: `Clip a box without text, or move the text out of ${at}.` };
+  // The clip covers every descendant, text included, which Chrome keeps in the accessibility tree; the native clip touches no view's
+  // accessibility either, as the clip-text readback proves on the device (lower/paint/clip.ts).
   return null;
 }
 

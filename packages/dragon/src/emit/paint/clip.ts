@@ -7,8 +7,9 @@
 // css-masking-1 §6.1: clip-path: inset() stores its edges through dragonSetClipPath; after every layout the clip rect is the snapped
 // border box inset by each edge (px times the scale, plus its percentage of the layout width or height), in device px (clipPathRect).
 // UIKit masks the box view's layer with an opaque layer over the rect; Android clips the canvas of the box view's draw, around its own
-// paint and its children's. Neither touches the views' visibility; analysis still refuses a clip-path over any text, since the native
-// accessibility tree of clipped text is not proven yet.
+// paint and its children's. Neither touches the views' visibility or accessibility: text a clip-path or a gradient mask hides stays
+// in the accessibility tree, as in Chrome's, which the clip-text readback proves (dragonClipText.exposed: the labels of the text
+// views inside the box view that VoiceOver or TalkBack reaches, in preorder).
 // circle(), ellipse() and polygon() store their lengths through dragonSetClipShape; after every layout the shape's geometry is
 // computed against the layout size of the border box in device px (clipShapeGeometry): each coordinate is px times the scale plus its
 // percentage of the width or height, or the width or height less px times the scale from the right or bottom; a circle radius
@@ -39,6 +40,8 @@ const SWIFT_MEMBERS = String.raw`  /// The view the children are hosted in over 
   public var dragonClipShapeValues: [Double] = []
   /// The shape's geometry in device px relative to the box, from the last layout (dragonClipShapeGeometry); empty without one.
   public var dragonClipShapeGeometry: [Double] = []
+  /// Whether the box has text under a clip-path or a gradient mask, whose accessibility the readback reports (dragonClipText).
+  public var dragonClipText = false
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -170,6 +173,37 @@ public func dragonAfterLayoutClip(_ v: DragonBoxView, _ shape: DragonBoxShape, _
 
 /// The readback of the clip module: the clip frame in whole device px / scale, or null when it does not clip.
 /// The empty clip rect's readback is 1 when the box view is hidden, or 0.
+/// The clip-text write of a box (runtime writer): it marks the box whose text views' accessibility the readback reports.
+public func dragonClipText(_ v: DragonBoxView) {
+  v.dragonClipText = true
+}
+
+/// Whether VoiceOver reaches a text view: an accessibility element labelled with its text, with a non-empty frame in a window, not
+/// hidden or transparent, and under no ancestor that is hidden, transparent, hides its accessibility elements or is one itself.
+func dragonTextExposed(_ t: DragonTextView) -> Bool {
+  if !t.isAccessibilityElement || t.accessibilityLabel != t.dragonText || t.isHidden || t.alpha < 0.01 || t.accessibilityElementsHidden || t.window == nil { return false }
+  if t.bounds.width <= 0 || t.bounds.height <= 0 { return false }
+  var p = t.superview
+  while let a = p {
+    if a.isHidden || a.alpha < 0.01 || a.accessibilityElementsHidden || a.isAccessibilityElement { return false }
+    p = a.superview
+  }
+  return true
+}
+
+/// The labels of the text views inside a box view that VoiceOver reaches, in subview preorder.
+func dragonExposedTexts(_ v: UIView) -> [DumpJson] {
+  var out: [DumpJson] = []
+  for c in v.subviews {
+    if let t = c as? DragonTextView {
+      if dragonTextExposed(t) { out.append(.string(t.dragonText)) }
+    } else {
+      out.append(contentsOf: dragonExposedTexts(c))
+    }
+  }
+  return out
+}
+
 public func dragonAppliedClip(_ v: DragonBoxView) -> DumpJsonObject {
   var out: DumpJsonObject = []
   if let c = v.dragonClipView {
@@ -188,6 +222,7 @@ public func dragonAppliedClip(_ v: DragonBoxView) -> DumpJsonObject {
     let points = g.enumerated().map { (i, x) -> Double in v.dragonClipShapeKind == 2 && i == 0 ? x : x / s }
     out.append(("dragonClipPath.shape", (v.layer.mask as? CAShapeLayer)?.path == nil || g.isEmpty ? .null : .array(points.map { .number($0) })))
   }
+  if v.dragonClipText { out.append(("dragonClipText.exposed", .array(dragonExposedTexts(v)))) }
   return out
 }
 `;
@@ -215,6 +250,8 @@ const KOTLIN_MEMBERS = String.raw`  /** The view the children are hosted in over
   var dragonClipShapeGeometry: DoubleArray? = null
   /** The shape's path in device px relative to the box, from the last layout; null without one. */
   var dragonClipShapePath: android.graphics.Path? = null
+  /** Whether the box has text under a clip-path or a gradient mask, whose accessibility the readback reports (dragonClipText). */
+  var dragonClipText = false
   /** clip-path: the canvas is clipped around the box's own paint and its children's; the views' visibility is untouched. */
   override fun draw(canvas: Canvas) {
     val r = dragonClipPathRect
@@ -356,6 +393,32 @@ fun dragonAfterLayoutClip(v: DragonBoxView, shape: DragonBoxShape, scale: Double
 
 /** The readback of the clip module: the clip bounds in device px, or null when the clip view does not clip to its bounds. */
 /** The empty clip rect's readback is 1 when the box view is invisible, or 0. */
+/** The clip-text write of a box (runtime writer): it marks the box whose text views' accessibility the readback reports. */
+fun dragonClipText(v: DragonBoxView) {
+  v.dragonClipText = true
+}
+
+/** Whether TalkBack reaches a text view: its node is visible to the user and labelled with its text, and it is important for accessibility. */
+fun dragonTextExposed(t: DragonTextView): Boolean {
+  if (!t.isImportantForAccessibility || t.contentDescription?.toString() != t.dragonText) return false
+  val info = t.createAccessibilityNodeInfo()
+  return info.isVisibleToUser && info.contentDescription?.toString() == t.dragonText
+}
+
+/** The labels of the text views inside a box view that TalkBack reaches, in child preorder. */
+fun dragonExposedTexts(v: android.view.ViewGroup): List<DumpJson> {
+  val out = ArrayList<DumpJson>()
+  for (i in 0 until v.childCount) {
+    val c = v.getChildAt(i)
+    if (c is DragonTextView) {
+      if (dragonTextExposed(c)) out.add(DumpJson.Str(c.dragonText))
+    } else if (c is android.view.ViewGroup) {
+      out.addAll(dragonExposedTexts(c))
+    }
+  }
+  return out
+}
+
 fun dragonAppliedClip(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val out = ArrayList<Pair<String, DumpJson>>()
   val c = v.dragonClipView
@@ -372,6 +435,7 @@ fun dragonAppliedClip(v: DragonBoxView): List<Pair<String, DumpJson>> {
     val g = v.dragonClipShapeGeometry
     out.add(Pair("dragonClipPath.shape", if (g == null || v.dragonClipShapePath == null) DumpJson.Null else DumpJson.Arr(g.map { DumpJson.Num(it) })))
   }
+  if (v.dragonClipText) out.add(Pair("dragonClipText.exposed", DumpJson.Arr(dragonExposedTexts(v))))
   return out
 }
 `;
@@ -456,22 +520,26 @@ const swiftNumber = (n: number): string => {
   return /[.eE]/.test(t) ? t : `${t}.0`;
 };
 
-export const CLIP_EMITTER: PaintEmitter<'padding-box-clip' | 'clip-rect-empty' | 'clip-path-inset' | 'clip-path-shape', 'clip-rect-ignored' | 'clip-path-ignored'> = {
+export const CLIP_EMITTER: PaintEmitter<'padding-box-clip' | 'clip-rect-empty' | 'clip-path-inset' | 'clip-path-shape' | 'clip-text', 'clip-rect-ignored' | 'clip-path-ignored'> = {
   name: 'clip',
-  kinds: ['padding-box-clip', 'clip-rect-empty', 'clip-path-inset', 'clip-path-shape'],
+  kinds: ['padding-box-clip', 'clip-rect-empty', 'clip-path-inset', 'clip-path-shape', 'clip-text'],
   lines: {
     uikit: (v, _n, w) => [
-      w.kind === 'clip-path-shape' ? `  dragonSetClipShape(${v}, ${clipShapeKind(w.shape)}, [${clipShapeValues(w.shape).map(swiftNumber).join(', ')}])`
+      w.kind === 'clip-text' ? `  dragonClipText(${v})`
+        : w.kind === 'clip-path-shape' ? `  dragonSetClipShape(${v}, ${clipShapeKind(w.shape)}, [${clipShapeValues(w.shape).map(swiftNumber).join(', ')}])`
         : w.kind === 'clip-path-inset' ? `  dragonSetClipPath(${v}, [${clipPathInsets(w.edges).map(swiftNumber).join(', ')}])` : w.kind === 'clip-rect-empty' ? `  dragonClipRectEmpty(${v})` : `  ${v}.dragonEnableClip()`,
     ],
     'android-views': (v, _n, w) => [
-      w.kind === 'clip-path-shape' ? `  dragonSetClipShape(${v}, ${clipShapeKind(w.shape)}, doubleArrayOf(${clipShapeValues(w.shape).map(swiftNumber).join(', ')}))`
+      w.kind === 'clip-text' ? `  dragonClipText(${v})`
+        : w.kind === 'clip-path-shape' ? `  dragonSetClipShape(${v}, ${clipShapeKind(w.shape)}, doubleArrayOf(${clipShapeValues(w.shape).map(swiftNumber).join(', ')}))`
         : w.kind === 'clip-path-inset' ? `  dragonSetClipPath(${v}, doubleArrayOf(${clipPathInsets(w.edges).map(swiftNumber).join(', ')}))` : w.kind === 'clip-rect-empty' ? `  dragonClipRectEmpty(${v})` : `  ${v}.dragonEnableClip()`,
     ],
   },
   applied: (_e, backend, w, dpr, g) => {
     // The box view hidden.
     if (w.kind === 'clip-rect-empty') return 1;
+    // Every visible text leaf stays accessible.
+    if (w.kind === 'clip-text') return [...w.texts];
     if (w.kind === 'clip-path-shape') {
       const kind = clipShapeKind(w.shape);
       const geometry = clipShapeGeometry(kind, clipShapeValues(w.shape), g.size, dpr);

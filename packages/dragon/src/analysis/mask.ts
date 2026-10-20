@@ -4,7 +4,8 @@
 // descendant's, overflow included, keep the mask's alpha and nothing outside the border box shows. Natively the translated
 // paint-gradient.ts rasterises that layer at every layout (lower/paint/gradient.ts, the mask-layer write), and the device masks the
 // box view with its alpha: on iOS the view layer's mask, on Android a DST_IN draw over a saveLayer of the view's draw. Chrome
-// keeps masked text in its accessibility tree; neither native mask touches the views' accessibility, so text is kept too.
+// keeps masked text in its accessibility tree; neither native mask touches the views' accessibility, so text is kept too, as the
+// clip-text readback proves on the device (lower/paint/clip.ts).
 // Refused on the native targets, where the device mask would differ from Chrome's: the root and body (the canvas), an inline box
 // (painted per fragment), an SVG shape (no box view), a paint outside the box view (its box-shadow companion, an outline in the
 // root view, a layer item hosted under another stacking context), a clip-path (which takes the view layer's mask on iOS), a

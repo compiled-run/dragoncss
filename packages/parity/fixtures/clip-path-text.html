@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Clips over text: Chrome clips the glyphs and keeps the text in its accessibility tree, hidden or not; visibility: hidden */
+/* text is in neither. The glyph sits in the middle of each box, clear of the clip edges the samples cross. */
+body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
+.stage { position: relative; height: 176px; padding: 8px; background-color: rgb(236, 240, 244); }
+.row { position: relative; height: 80px; margin-bottom: 8px; background-color: rgb(250, 200, 60); }
+.box { position: absolute; top: 0; width: 80px; height: 64px; box-sizing: border-box; padding: 24px 0 0 32px; background-color: rgb(40, 90, 200); color: rgb(255, 255, 255); }
+.a { left: 8px; }
+.b { left: 104px; }
+.c { left: 200px; }
+.d { left: 296px; }
+.h { visibility: hidden; }
+.in { clip-path: inset(4px); }
+.cir { -webkit-clip-path: circle(28px); }
+.ell { clip-path: ellipse(36px 26px at 50% 50%); }
+.pol { clip-path: polygon(4px 4px, 76px 4px, 76px 60px, 4px 60px); }
+.gone { clip-path: inset(50%); }
+.nest { clip-path: inset(2px 6px); }
+.kid { width: 16px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="cut-a" class="box a in">X</div>
+<div data-dragon-id="cut-b" class="box b cir">X</div>
+<div data-dragon-id="cut-c" class="box c ell"><div data-dragon-id="cut-c-kid" class="kid">X</div></div>
+<div data-dragon-id="cut-d" class="box d pol">X</div>
+</div>
+<div data-dragon-id="row2" class="row">
+<div data-dragon-id="cut-e" class="box a gone">X</div>
+<div data-dragon-id="cut-f" class="box b nest"><div data-dragon-id="cut-f-kid" class="kid">X</div><div data-dragon-id="cut-f-hid" class="kid h">Y</div></div>
+<div data-dragon-id="cut-g" class="box c in"><div data-dragon-id="cut-g-hid" class="kid h">Y</div></div>
+</div>
+</div>
+</body>
+</html>

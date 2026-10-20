@@ -1,6 +1,6 @@
 // The clip-path circle(), ellipse() and polygon() parse against Chrome 145 (properties/clip-path.ts): Dragon drops no value Chrome
 // keeps, every value Dragon accepts Chrome keeps and computes to the text Dragon computes, and every value Dragon refuses is one
-// Chrome keeps. Each planted reading must be caught.
+// Chrome keeps; -webkit-clip-path parses and computes as clip-path. Each planted reading must be caught.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { chromeClipPathText } from '../../dragon/src/css/properties/clip-path.ts';
@@ -10,7 +10,7 @@ const SOURCE = { uri: 'dragon-source://test/clip-shape.css', revision: 'r1', has
 
 /** code: Dragon's diagnostic, or null; value: the text Dragon computes when it accepts the value, else null. */
 type Item = { readonly v: string; readonly code: string | null; readonly value: string | null };
-type Seen = { readonly parsed: boolean; readonly computed: string };
+type Seen = { readonly parsed: boolean; readonly computed: string; readonly alias: string };
 
 function item(v: string): Item {
   const css = `.a { clip-path: ${v}; }`;
@@ -82,14 +82,20 @@ describe('clip-path circle(), ellipse() and polygon(): Chrome 145 parsing', () =
       seen = (await page.evaluate(`(${JSON.stringify(sets)}).map((items) => items.map((it) => {
         const a = document.getElementById('a');
         a.style.removeProperty('clip-path');
+        a.style.setProperty('-webkit-clip-path', it.v);
+        const alias = a.style.getPropertyValue('-webkit-clip-path') === '' ? null : getComputedStyle(a).getPropertyValue('clip-path');
+        a.style.removeProperty('clip-path');
         a.style.setProperty('clip-path', it.v);
         const parsed = a.style.getPropertyValue('clip-path') !== '';
-        return { parsed, computed: getComputedStyle(a).getPropertyValue('clip-path') };
+        const computed = getComputedStyle(a).getPropertyValue('clip-path');
+        return { parsed, computed, alias: alias === (parsed ? computed : null) ? 'alike' : String(alias) };
       }))`)) as Seen[][];
     } finally {
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
+    // -webkit-clip-path (aliases/clip-path.ts): Chrome parses and computes every value as clip-path.
+    expect(real.filter((_, i) => (seen[0] as Seen[])[i]?.alias !== 'alike').map((it) => it.v)).toEqual([]);
     expect(real.filter((it) => it.value !== null).length).toBeGreaterThanOrEqual(60);
     expect(real.filter((it) => it.code === 'DRAGON_UNSUPPORTED_VALUE').map((it) => it.v)).toEqual(['circle(10px) padding-box', 'circle(calc(10px + 5%))', 'circle(1vw)', 'polygon(0px 0px, 10px 0px) content-box', 'path("M0 0 L10 0 L5 10 Z")', 'shape(from 0 0, line to 10px 10px)', 'rect(0 1px 2px 3px)', 'xywh(0 0 1px 1px)']);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
