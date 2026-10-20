@@ -13,6 +13,7 @@ import type { CssValue } from '../css/values.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import type { Diagnostic } from '../types.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
+import { isReplacedTag } from './elements/replaced.ts';
 import { valueToString } from './resolve.ts';
 
 type InitialOnlyFamily = { readonly id: string; readonly longhands: readonly Longhand[]; readonly initial: { readonly [p: string]: CssValue }; readonly reason: string };
@@ -81,7 +82,10 @@ export function checkScrollSnap(root: ResolvedElement, propagated: ResolvedEleme
     // An absolutely or fixed positioned box's containing block may lie outside the inner scroll containers, so it counts as an area
     // of each of them (it may snap any of them).
     const outside = keywordOf(el, 'position') === 'absolute' || keywordOf(el, 'position') === 'fixed' ? 0 : from;
-    if (el !== root && alignsSnap((el.props.get('scroll-snap-align') as ResolvedValue).value)) {
+    // A snap area is a box (css-scroll-snap-1 §5): a display: contents element has none, and Blink's snap areas are LayoutBoxes, so
+    // a non-replaced inline box is none either; an atomic inline (inline-block, a replaced element) is one.
+    const box = display !== 'contents' && (display !== 'inline' || isReplacedTag(el.element.tag));
+    if (el !== root && box && alignsSnap((el.props.get('scroll-snap-align') as ResolvedValue).value)) {
       for (const c of chain.slice(outside)) if (!firstArea.has(c)) firstArea.set(c, el);
     }
     // Overflow makes only a block, flex or grid container a scroll container (css-overflow-3 §3), never an inline box.

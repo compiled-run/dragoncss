@@ -185,6 +185,10 @@ describe('scroll snapping, scroll-padding and scroll-margin', () => {
     expect(snap(`.s { ${SCROLLER}; } .i { scroll-snap-align: center end; } .o { scroll-snap-align: start; }`).errors).toEqual([]);
     // An area whose box is not rendered.
     expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; } .i { display: none; scroll-snap-align: start; }`).errors).toEqual([]);
+    // An aligned element with no box of its own (display: contents) or a non-replaced inline box: Chrome snaps to neither.
+    // (Both fail native lowering for other reasons in this tree, so only the snap refusal is asserted absent.)
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; } .i { display: contents; scroll-snap-align: start; }`).messages.filter((m) => m.includes('SCROLL-SNAP'))).toEqual([]);
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; } .n { display: inline; scroll-snap-align: start; }`).messages.filter((m) => m.includes('SCROLL-SNAP'))).toEqual([]);
     // A snap type of none from the cascade, a CSS-wide keyword or var().
     expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; scroll-snap-type: none; } .i { scroll-snap-align: start; }`).errors).toEqual([]);
     expect(snap(`.s { ${SCROLLER}; --t: none; scroll-snap-type: var(--t); } .i { scroll-snap-align: start; scroll-snap-type: inherit; }`).errors).toEqual([]);
@@ -199,6 +203,8 @@ describe('scroll snapping, scroll-padding and scroll-margin', () => {
     // Through var() and inherit.
     expect(snap(`.s { ${SCROLLER}; --t: y mandatory; scroll-snap-type: var(--t); } .i { --a: center; scroll-snap-align: var(--a); }`).errors).toEqual(NATIVE);
     expect(snap(`.s { ${SCROLLER}; scroll-snap-type: block; scroll-snap-align: end; } .i { scroll-snap-align: inherit; }`).errors).toEqual(NATIVE);
+    // An atomic inline is a snap area.
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; } .n { display: inline-block; scroll-snap-align: start; }`).errors).toEqual(NATIVE);
     // The plant accepts it.
     expect(snap(`.s { ${SCROLLER}; scroll-snap-type: x mandatory; } .i { scroll-snap-align: start; }`, { ...NO_FAULTS, scrollSnapAccepted: true }).errors).toEqual([]);
   });
