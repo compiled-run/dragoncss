@@ -23,8 +23,8 @@ import type { DeviceRun, HostRun } from './lanes.ts';
 import { committedDprCapture } from './dpr.ts';
 import type { BreakVector, ChromeBreaks } from './line-breaks.ts';
 import { BREAK_MISMATCH, breakVector, checkDumpBreaks, compareVectorWithChrome, engineTextLines, leafTexts, readBreakVector, readChromeBreaks } from './line-breaks.ts';
-import type { CheckResult, DumpFault, ExpectedApplied, NamedCheck, RgbaImage } from './native-compare.ts';
-import { checkAgainstChrome, checkAgainstEngine, checkApplied, DUMP_FAULTS, FAULT_CHECK, pixelAt, plantDumpFault } from './native-compare.ts';
+import type { CheckResult, DumpFault, ExpectedApplied, FrameTransform, NamedCheck, RgbaImage } from './native-compare.ts';
+import { checkAgainstChrome, checkAgainstEngine, checkApplied, DUMP_FAULTS, FAULT_CHECK, pixelAt, plantDumpFault, transformedFrames } from './native-compare.ts';
 import type { NativeDump } from './native-dump.ts';
 import { validateNativeDump } from './native-dump.ts';
 import type { NativeCase } from './native-host.ts';
@@ -107,7 +107,22 @@ export type CaseReference = {
   readonly pixels: RgbaImage | null;
   /** False where the lane compares no pixels (a device-anim sample outside the R18 pixel subset); absent means compared. */
   readonly pixelsCompared?: boolean;
+  /**
+   * ANIM-b2: present where Chrome's rects are transformed bounding boxes (a frame capture, which has no transform twin): each
+   * node's transform write, through which (a) maps the dump's untransformed frames. Absent for a twin capture's untransformed rects.
+   */
+  readonly chromeTransforms?: ReadonlyMap<string, FrameTransform>;
 };
+
+/** (a): the dump against Chrome, its frames first mapped to transformed bounding boxes where Chrome's rects are those. */
+const chromeCheck = (dump: NativeDump, ref: CaseReference): CheckResult => checkAgainstChrome(ref.chromeTransforms === undefined ? dump : transformedFrames(dump, ref.chromeTransforms), ref.chrome);
+
+/** Every transform write of a program by node: what each node's view is transformed by. */
+export function programTransforms(p: NativeProgram): ReadonlyMap<string, FrameTransform> {
+  const out = new Map<string, FrameTransform>();
+  for (const n of p.nodes) for (const w of n.writes) if (w.kind === 'transform') out.set(n.id, { ops: w.ops, origin: w.origin });
+  return out;
+}
 
 export function caseReference(target: NativeTarget, n: CheckedCase, dpr: number): CaseReference {
   const program = programOf(n, target);
@@ -163,7 +178,7 @@ export function evaluateCase(target: NativeTarget, n: CheckedCase, dpr: number, 
   // The line boxes each check actually compared: those present in both the reference and the dump.
   const dumpLines = new Set(dump.nodes.flatMap((x) => x.lines.map((_, j) => `${x.id}:line${j}`)));
   const chromeLines = ref.chrome.nodes.filter((c) => c.kind === 'line' && dumpLines.has(c.id)).length;
-  const a = splitByLines(checkAgainstChrome(dump, ref.chrome), chromeLines);
+  const a = splitByLines(chromeCheck(dump, ref), chromeLines);
   const engineLines = ref.engine.filter((r) => r.parent !== null && r.id.startsWith(`${r.parent}:line`) && dumpLines.has(r.id)).length;
   const d = splitByLines(checkAgainstEngine(dump, ref.engine), engineLines);
   compared.a += a.nodes.compared + a.lines.compared;
@@ -266,7 +281,7 @@ export function readDump(file: string): { readonly kind: 'missing' } | { readonl
 function namedCheck(check: NamedCheck, dump: NativeDump, target: NativeTarget, n: CheckedCase, dpr: number, ref: CaseReference): readonly string[] {
   switch (check) {
     case 'a':
-      return checkAgainstChrome(dump, ref.chrome).problems;
+      return chromeCheck(dump, ref).problems;
     case 'd':
       return checkAgainstEngine(dump, ref.engine).problems;
     case 'b':
@@ -615,6 +630,7 @@ export function animReference(target: NativeTarget, s: AnimSample, dpr: number, 
     points: compared ? devicePoints(s.program, viewport, dpr) : [],
     pixels: compared ? committedFramePixels(s.case.id, dpr, s.index) : null,
     pixelsCompared: compared,
+    chromeTransforms: programTransforms(s.program),
   };
 }
 

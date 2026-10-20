@@ -2,8 +2,8 @@
 // GATE_DEVICE_PX, (b) applied against expected exactly, (c) pixel samples against Chrome's pixels (channel delta GATE_CHANNEL_DELTA,
 // edge positions within GATE_DEVICE_PX, each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX), (d) frames against snapRect of
 // the TS engine frames exactly. Tolerances are imported only.
-import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
-import { absoluteRects, LU_PER_PX, snapEdges } from '@dragon/layout';
+import type { LayoutBox, LayoutInput, LayoutRect, Matrix2D, TransformOp, TransformOrigin } from '@dragon/layout';
+import { absoluteRects, LU_PER_PX, mapPoint, paintTransformMatrix, snapEdges } from '@dragon/layout';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from './compare.ts';
 import { GRADIENT_CHANNEL_DELTA } from './allowances/gradient.ts';
@@ -86,6 +86,57 @@ export function checkAgainstChrome(dump: NativeDump, capture: WebCapture): Check
     if (lines.length + elements.length === 0 || uncompared.length > 0) problems.push(`${n.id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
   }
   return result(compared, problems);
+}
+
+/** A node's transform as its view takes it: the functions and the origin, lengths unresolved. */
+export type FrameTransform = { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin };
+
+const times = (m1: Matrix2D, m2: Matrix2D): Matrix2D => ({ full: true, a: m1.a * m2.a + m1.c * m2.b, b: m1.b * m2.a + m1.d * m2.b, c: m1.a * m2.c + m1.c * m2.d, d: m1.b * m2.c + m1.d * m2.d, e: m1.a * m2.e + m1.c * m2.f + m1.e, f: m1.b * m2.e + m1.d * m2.f + m1.f });
+const shift = (x: number, y: number): Matrix2D => ({ full: true, a: 1, b: 0, c: 0, d: 1, e: x, f: y });
+
+/** The bounding box of a frame mapped through m. */
+function boundsOf(m: Matrix2D, f: DumpFrame): DumpFrame {
+  const ps = [mapPoint(m, f.x, f.y), mapPoint(m, f.x + f.width, f.y), mapPoint(m, f.x + f.width, f.y + f.height), mapPoint(m, f.x, f.y + f.height)];
+  const xs = ps.map((p) => p.x);
+  const ys = ps.map((p) => p.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
+/**
+ * ANIM-b2: the dump with every node and line under a transform at its transformed bounding box, which is what Chrome's rects of a
+ * frame capture are (getBoundingClientRect). The dump's frames ignore transforms (PNT2), so each transformed ancestor-or-self's
+ * T(frame) · paint matrix · T(-frame) is taken at the device's own frame, outermost first. A dump without transforms is returned as is.
+ */
+export function transformedFrames(dump: NativeDump, transforms: ReadonlyMap<string, FrameTransform>): NativeDump {
+  if (transforms.size === 0) return dump;
+  const byId = new Map(dump.nodes.map((n) => [n.id, n]));
+  const memo = new Map<string, Matrix2D | null>();
+  const matrixOf = (id: string): Matrix2D | null => {
+    if (memo.has(id)) return memo.get(id) as Matrix2D | null;
+    const n = byId.get(id);
+    // A node the dump lacks is checkAgainstChrome's to report; the validator rejects an unknown parent.
+    if (n === undefined) return null;
+    memo.set(id, null);
+    const up = n.parent === null ? null : matrixOf(n.parent);
+    const t = transforms.get(id);
+    let m = up;
+    if (t !== undefined && t.ops.length > 0) {
+      const f = n.frame;
+      const own = times(times(shift(f.x, f.y), paintTransformMatrix(t.ops, t.origin, f.width, f.height, { sin: Math.sin, cos: Math.cos })), shift(-f.x, -f.y));
+      m = up === null ? own : times(up, own);
+    }
+    memo.set(id, m);
+    return m;
+  };
+  return {
+    ...dump,
+    nodes: dump.nodes.map((n) => {
+      const m = matrixOf(n.id);
+      return m === null ? n : { ...n, frame: boundsOf(m, n.frame), lines: n.lines.map((l) => ({ ...l, frame: boundsOf(m, l.frame) })) };
+    }),
+  };
 }
 
 // ---------------------------------------------------------------- (b) applied against expected
