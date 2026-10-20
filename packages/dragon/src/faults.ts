@@ -15,6 +15,7 @@ import { GEN_B_FAULTS } from './faults/gen-b.ts';
 import { GEN_C_FAULTS } from './faults/gen-c.ts';
 import { INL1A_FAULTS } from './faults/inl1a.ts';
 import { INL2A_FAULTS } from './faults/inl2a.ts';
+import { INTERACTION_FAULTS } from './faults/interaction.ts';
 import { MASK_FAULTS } from './faults/mask.ts';
 import { MEDIA_FAULTS } from './faults/media.ts';
 import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
@@ -54,6 +55,7 @@ export const FAULT_GROUPS = {
   'gen-c': GEN_C_FAULTS,
   inl1a: INL1A_FAULTS,
   inl2a: INL2A_FAULTS,
+  interaction: INTERACTION_FAULTS,
   mask: MASK_FAULTS,
   media: MEDIA_FAULTS,
   'milestone-1': MILESTONE_1_FAULTS,

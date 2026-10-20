@@ -26,7 +26,7 @@ import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { checkGeneratedIdentity, generatedRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, gateInteractionFeatures, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
@@ -207,7 +207,7 @@ export type InternalRecord = {
   readonly bands: InternalBands | null;
   /**
    * SELD-R2: the native targets on which a compile outside the parity lanes refuses this document's interaction rules
-   * (nativeInteractionRefusals). In a lanes compile those targets lower, but their cases prove no profile row users could use.
+   * (gateInteractionFeatures). In a lanes compile those targets lower, but their cases prove no profile row users could use.
    */
   readonly laneOnlyNative: readonly ('ios' | 'android')[];
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
@@ -276,7 +276,7 @@ export type InternalOptions = {
   readonly nativeRealFaces?: boolean;
   /**
    * SELD-R2: the parity lanes compile :hover, :active, :focus and :focus-visible on native, to prove each state's resolution ahead
-   * of the native runtime; every other compile refuses them there (nativeInteractionRefusals).
+   * of the native runtime; every other compile refuses them there unless the profile proves them (gateInteractionFeatures).
    */
   readonly interactionLanes?: boolean;
 };
@@ -981,7 +981,7 @@ const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initi
  * counted as compiled.
  */
 function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): void {
-  // Outside the lanes every interaction rule is already refused on native (nativeInteractionRefusals).
+  // Outside the lanes no profile has a pointer row yet, and forced-only :focus and :focus-visible need no hit test (gateInteractionFeatures).
   if (options.faults.hitUnmodelledNotRefused || !options.interactionLanes) return;
   const seen = new Set<string>();
   for (const t of NATIVE_TARGETS.filter((x) => targets.includes(x))) {
@@ -1227,9 +1227,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
     diagnostics.push(...interactionRefusals(rules));
     diagnostics.push(...generatedRuleRefusals(rules));
-    const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
-    if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
-    else diagnostics.push(...nativeRefusals);
+    // SELD-R2 PR 5: the native interaction gate needs the linked cases (focusability); its refusals keep this place in the list.
+    const interactionAt = diagnostics.length;
+    const interactionRules = [...rules];
     const conditions = conditionsOf(rules);
     const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
     if (partition !== null && partition.kind === 'refused') {
@@ -1257,8 +1257,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     fonts = compileFonts(input, config.fonts, fontFaces, diagnostics);
     checkFamilies(rules, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
     const keys = fonts.keys;
-    const valuesAt = diagnostics.length;
+    let valuesAt = diagnostics.length;
     linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
+    const nativeRefusals = gateInteractionFeatures(interactionRules, linked?.cases ?? null, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
+    if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
+    else {
+      diagnostics.splice(interactionAt, 0, ...nativeRefusals);
+      valuesAt += nativeRefusals.length;
+    }
     // An unsupported at-rule blocks every output but does not stop the analysis (T005 rec 3): every diagnostic comes in one pass.
     const fatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
     if (linked !== null && !fatal) {

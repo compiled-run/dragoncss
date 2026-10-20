@@ -1,7 +1,7 @@
 // Profile rows derived from a parity run (M1): the single definition used by scripts/gen-profile-rows.ts and by the
 // committed profile-proof test in parity.test.ts.
 import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
-import { MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
+import { interactionContext, interactionRowFeature, MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
 import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
@@ -96,6 +96,39 @@ export function deriveAnimationRows(target: ProfileTarget, passing: readonly Pas
     const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);
     const valueSubset = feature.slice(feature.indexOf(':') + 1);
     return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane, valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
+  });
+}
+
+/** SELD-R2 PR 5: the device lanes a forced interaction case must pass at every DPR before it proves an interaction row. */
+export const INTERACTION_ROW_LANES = [STATE_LANE, 'device-frames', 'device-applied', 'device-pixels'] as const;
+
+/** Why a forced interaction case is not device-proven on a target, or null when it passes every INTERACTION_ROW_LANES lane at every DPR (pure). */
+export function interactionDeviceBlocker(ev: DeviceEvidence, id: string): string | null {
+  if (ev.unavailable !== null) return ev.unavailable;
+  for (const lane of INTERACTION_ROW_LANES) {
+    const l = ev.lanes.find((x) => x.lane === lane);
+    if (l === undefined) return `${ev.target} has no ${lane} lane`;
+    if (!l.cases.has(id)) return `${id} is not run by ${ev.target} ${lane} at every DPR`;
+    if (l.failing.has(id)) return `${id} fails ${ev.target} ${lane}`;
+  }
+  return null;
+}
+
+/**
+ * SELD-R2 PR 5 (step 5a): the native interaction rows in context interaction/forced-only, from the forced cases that pass the host
+ * lanes and force :focus or :focus-visible in a case with no focusable element. iOS and Android: exact, only for the cases that pass
+ * every INTERACTION_ROW_LANES lane on that target's committed device record. Web keeps its rows from deriveRows; no touch or mouse rows.
+ */
+export function deriveInteractionRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[], device: DeviceEvidence | null): ProfileRow[] {
+  if (target === 'web' || device === null) return [];
+  const context = interactionContext('forced-only');
+  const allowed = (['focus', 'focus-visible'] as const).map(interactionRowFeature);
+  const proven = passing.filter((c) => interactionDeviceBlocker(device, c.id) === null);
+  const features = [...new Set(proven.flatMap((c) => c.features))].filter((f) => allowed.includes(f)).sort();
+  return features.map((feature) => {
+    const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const valueSubset = feature.slice(feature.indexOf(':') + 1);
+    return { feature, context, status: 'exact', proofs: [{ aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context, cases: ids }] };
   });
 }
 

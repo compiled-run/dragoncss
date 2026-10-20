@@ -9,15 +9,18 @@
 // - Identity: a document without interaction rules, or with one that matches nothing, compiles as it did.
 import { describe, expect, it } from 'vitest';
 import type { CompilerFaults, Diagnostic, FrontEndResult, InteractionPartition, InteractionState } from '../src/internal.ts';
-import { interactionPartition, isFocusable } from '../src/analysis/interaction.ts';
+import { anyFocusable, interactionContext, interactionInputs, interactionPartition, interactionRowFeature, isFocusable } from '../src/analysis/interaction.ts';
+import type { ProfileRow } from '../src/profiles/types.ts';
+import type { SupportProfiles } from '../src/project.ts';
+import type { ElementNode } from '../src/types.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
-import { comboIndex, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
+import { comboIndex, COMMITTED_PROFILES, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { internalRecord } from '../src/project.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
-import { DOC, div, eq, inputFor, text } from './helpers.ts';
+import { always, DOC, div, eq, inputFor, text } from './helpers.ts';
 
 const CSS = [
   'body { font-family: Ahem; font-size: 10px; }',
@@ -226,15 +229,108 @@ describe('interaction states: compile', () => {
   });
 });
 
+describe('interaction states: the native profile gate (SELD-R2 PR 5, gateInteractionFeatures)', () => {
+  const NATIVE_TARGETS = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } };
+  const row = (p: 'hover' | 'active' | 'focus' | 'focus-visible', i: 'forced-only' | 'mouse' | 'touch'): ProfileRow => ({ feature: interactionRowFeature(p), context: interactionContext(i), status: 'exact', proofs: [] });
+  const FOCUS_ROWS = [row('focus', 'forced-only'), row('focus-visible', 'forced-only')];
+  const withRows = (rows: readonly ProfileRow[]): Required<SupportProfiles> => ({
+    web: COMMITTED_PROFILES.web,
+    ios: { ...COMMITTED_PROFILES.ios, rows: [...COMMITTED_PROFILES.ios.rows, ...rows] },
+    android: { ...COMMITTED_PROFILES.android, rows: [...COMMITTED_PROFILES.android.rows, ...rows] },
+  });
+  const attr = (name: string, value: string) => ({ name, value: [{ when: always, value }], origin: { kind: 'unlocated', reason: 'test' } as const });
+  /** One element f, its tag and attributes given, under the focus rules. */
+  const doc = (tag: string, attrs: readonly (readonly [string, string])[], css: string): FrontEndResult =>
+    inputFor(`${BODY}.f { display: block; width: 10px; height: 10px; } ${css}`, (r) => [{ ...div(r, 'f', ['f']), tag, attributes: attrs.map(([n, v]) => attr(n, v)) } as ElementNode]);
+  const gated = (input: FrontEndResult, supportProfiles: Required<SupportProfiles>, opts: { faults?: Partial<CompilerFaults>; profiles?: 'enforce' | 'derive'; lanes?: boolean } = {}) =>
+    createProjectWith({ projectId: 'test', targets: NATIVE_TARGETS }, { faults: { ...NO_FAULTS, ...opts.faults }, profiles: opts.profiles ?? 'enforce', direction: 'ltr', supportProfiles, ...(opts.lanes === true ? { interactionLanes: true } : {}) }).compile(input);
+  const gateErrors = (ds: readonly Diagnostic[]) => errors(ds).filter((m) => m.includes('no passing device proof of'));
+  const FOCUS_CSS = '.f:focus { width: 80px; } .f:focus-visible { height: 7px; }';
+
+  it('accepts forced-only :focus and :focus-visible on native where the profile has their forced-only rows', () => {
+    const c = gated(doc('div', [], FOCUS_CSS), withRows(FOCUS_ROWS));
+    expect(errors(c.diagnostics)).toEqual([]);
+    const states = c.targets as Record<string, string>;
+    expect([states.ios, states.android]).not.toContain('blocked');
+    const record = internalRecord(c);
+    if (record === undefined || record.linked === null) throw new Error('no linked cases');
+    expect(anyFocusable(record.linked.cases)).toBe(false);
+  });
+
+  it('refuses them where a forced-only row is missing, naming each missing row and the profile revision', () => {
+    const rev = (t: 'ios' | 'android') => COMMITTED_PROFILES[t].revision;
+    expect(gateErrors(gated(doc('div', [], FOCUS_CSS), COMMITTED_PROFILES).diagnostics)).toEqual((['ios', 'android'] as const).flatMap((t) => [
+      `DRAGON_UNSUPPORTED_SELECTOR [${t}] :focus is not supported on ${t}: no passing device proof of selector:pseudo-class(:focus) in interaction/forced-only (support profile ${rev(t)})`,
+      `DRAGON_UNSUPPORTED_SELECTOR [${t}] :focus-visible is not supported on ${t}: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/forced-only (support profile ${rev(t)})`,
+    ]));
+    // Each pseudo-class of a rule needs its own row: with :focus proven alone, :focus-visible is still refused, and so is a rule with both.
+    const c = gated(doc('div', [], `${FOCUS_CSS} .f:focus:focus-visible { margin-top: 1px; }`), withRows([row('focus', 'forced-only')]));
+    expect(gateErrors(c.diagnostics).filter((m) => m.includes('[ios]'))).toEqual([
+      `DRAGON_UNSUPPORTED_SELECTOR [ios] :focus-visible is not supported on ios: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/forced-only (support profile ${rev('ios')})`,
+      `DRAGON_UNSUPPORTED_SELECTOR [ios] :focus, :focus-visible is not supported on ios: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/forced-only (support profile ${rev('ios')})`,
+    ]);
+    const d = gated(doc('div', [], FOCUS_CSS), COMMITTED_PROFILES).diagnostics.find((x) => x.target === 'ios' && x.code === 'DRAGON_UNSUPPORTED_SELECTOR');
+    expect(d?.profile).toEqual({ target: 'ios', profileRevision: rev('ios'), feature: 'selector:pseudo-class(:focus)', context: 'interaction/forced-only', status: 'unsupported' });
+  });
+
+  it('refuses :focus where an element of the case is focusable (a with href, a valid tabindex), since a tap or click reaches it', () => {
+    for (const [tag, attrs] of [['a', [['href', '#']]], ['div', [['tabindex', '0']]], ['span', [['tabindex', '-1']]]] as const) {
+      const input = doc(tag, attrs, '.f:focus { width: 80px; }');
+      const c = gated(input, withRows(FOCUS_ROWS));
+      expect(gateErrors(c.diagnostics), tag).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :focus is not supported on ${t}: no passing device proof of selector:pseudo-class(:focus) in interaction/mouse, selector:pseudo-class(:focus) in interaction/touch (support profile ${COMMITTED_PROFILES[t as 'ios'].revision})`));
+      // The refusal comes from the linked case's focusability, not from a missing case list.
+      const record = internalRecord(c);
+      if (record === undefined || record.linked === null) throw new Error(`${tag}: no linked cases`);
+      expect(anyFocusable(record.linked.cases), tag).toBe(true);
+    }
+    // A tabindex that is not a valid integer makes nothing focusable.
+    const record = internalRecord(gated(doc('div', [['tabindex', 'x']], FOCUS_CSS), withRows(FOCUS_ROWS)));
+    expect(record?.linked === null || record === undefined ? null : anyFocusable(record.linked.cases)).toBe(false);
+    expect(anyFocusable(null)).toBe(true);
+  });
+
+  it('still refuses :hover and :active natively, even with every forced-only row: any element can be hovered or pressed', () => {
+    const all = withRows((['hover', 'active', 'focus', 'focus-visible'] as const).map((p) => row(p, 'forced-only')));
+    for (const p of ['hover', 'active'] as const) {
+      expect(gateErrors(gated(doc('div', [], `.f:${p} { width: 80px; }`), all).diagnostics), p).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :${p} is not supported on ${t}: no passing device proof of selector:pseudo-class(:${p}) in interaction/mouse, selector:pseudo-class(:${p}) in interaction/touch (support profile ${COMMITTED_PROFILES[t as 'ios'].revision})`));
+    }
+    expect(interactionInputs('hover', false)).toEqual(['mouse', 'touch']);
+    expect(interactionInputs('active', false)).toEqual(['mouse', 'touch']);
+    expect(interactionInputs('focus', false)).toEqual(['forced-only']);
+    expect(interactionInputs('focus-visible', true)).toEqual(['mouse', 'touch']);
+  });
+
+  it('a derive compile reads no profile, so it refuses forced-only focus too; a lanes compile records the gate as lane-only', () => {
+    expect(gateErrors(gated(doc('div', [], '.f:focus { width: 80px; }'), withRows(FOCUS_ROWS), { profiles: 'derive' }).diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :focus is not supported on ${t}: no passing device proof of selector:pseudo-class(:focus) in interaction/forced-only (a derive compile reads no support profile)`));
+    const lanes = (profiles: Required<SupportProfiles>) => gated(doc('div', [], FOCUS_CSS), profiles, { lanes: true });
+    expect([laneOnlyNative(lanes(withRows(FOCUS_ROWS)), 'ios'), laneOnlyNative(lanes(withRows(FOCUS_ROWS)), 'android')]).toEqual([false, false]);
+    expect([laneOnlyNative(lanes(COMMITTED_PROFILES), 'ios'), laneOnlyNative(lanes(COMMITTED_PROFILES), 'android')]).toEqual([true, true]);
+    expect(errors(lanes(COMMITTED_PROFILES).diagnostics)).toEqual([]);
+  });
+
+  it('keeps the refusals where the old literal refusal stood: before the value checks', () => {
+    // An ios profile without the width rows: the value check refuses width there, and splices its refusal in after the gate's.
+    const noWidth: Required<SupportProfiles> = { ...COMMITTED_PROFILES, ios: { ...COMMITTED_PROFILES.ios, rows: COMMITTED_PROFILES.ios.rows.filter((r) => !r.feature.startsWith('width:')) } };
+    const codes = gated(doc('div', [], '.f:hover { height: 8px; }'), noWidth).diagnostics.filter((d) => d.target === 'ios' && d.severity === 'error').map((d) => d.code);
+    expect(codes).toEqual(['DRAGON_UNSUPPORTED_SELECTOR', 'DRAGON_UNSUPPORTED_VALUE']);
+  });
+
+  it('catches the plant interactionRowIgnored', () => {
+    const input = doc('div', [], '.f:hover { width: 80px; } .f:focus { height: 7px; }');
+    expect(gateErrors(gated(input, COMMITTED_PROFILES).diagnostics).length).toBe(4);
+    expect(gateErrors(gated(input, COMMITTED_PROFILES, { faults: { interactionRowIgnored: true } }).diagnostics)).toEqual([]);
+  });
+});
+
 describe('interaction states: what no target can carry yet', () => {
-  it('refuses every interaction rule on native outside the lanes, naming the runtime PRs, and compiles it on web', () => {
+  it('refuses every interaction rule on native outside the lanes, naming the missing profile rows, and compiles it on web', () => {
     const css = `${BODY}.a:active { background-color: #0c0; } .card:hover .title { width: 60px; }`;
     const c = compile({}, css, tree, TARGETS, 'enforce', false);
     expect(errors(c.diagnostics)).toEqual([
-      'DRAGON_UNSUPPORTED_SELECTOR [ios] :active is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
-      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
-      'DRAGON_UNSUPPORTED_SELECTOR [android] :active is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
-      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
+      `DRAGON_UNSUPPORTED_SELECTOR [ios] :active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile ${COMMITTED_PROFILES.ios.revision})`,
+      `DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios: no passing device proof of selector:pseudo-class(:hover) in interaction/mouse, selector:pseudo-class(:hover) in interaction/touch (support profile ${COMMITTED_PROFILES.ios.revision})`,
+      `DRAGON_UNSUPPORTED_SELECTOR [android] :active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile ${COMMITTED_PROFILES.android.revision})`,
+      `DRAGON_UNSUPPORTED_SELECTOR [android] :hover is not supported on android: no passing device proof of selector:pseudo-class(:hover) in interaction/mouse, selector:pseudo-class(:hover) in interaction/touch (support profile ${COMMITTED_PROFILES.android.revision})`,
     ]);
     const states = c.targets as Record<string, string>;
     expect([states.ios, states.android]).toEqual(['blocked', 'blocked']);
@@ -340,8 +436,8 @@ describe('interaction states: hit model (R13)', () => {
     }
     // Outside the lanes the interaction rules are refused on native already, so R13 adds nothing.
     expect(otherErrors(compile({}, css, body, TARGETS, 'derive', false).diagnostics)).toEqual([
-      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
-      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
+      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios: no passing device proof of selector:pseudo-class(:hover) in interaction/mouse, selector:pseudo-class(:hover) in interaction/touch (a derive compile reads no support profile)',
+      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover is not supported on android: no passing device proof of selector:pseudo-class(:hover) in interaction/mouse, selector:pseudo-class(:hover) in interaction/touch (a derive compile reads no support profile)',
     ]);
   });
 

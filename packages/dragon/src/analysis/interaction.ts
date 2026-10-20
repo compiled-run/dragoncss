@@ -12,6 +12,8 @@ import type { Rule } from '../css/stylesheet.ts';
 import type { VarPart } from '../css/variables.ts';
 import type { CssValue } from '../css/values.ts';
 import type { CompilerFaults } from '../faults.ts';
+import type { SupportProfile } from '../profiles/types.ts';
+import { provenContexts } from '../profiles/types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import type { Diagnostic, Origin } from '../types.ts';
 import type { ResolvedValue } from './computed.ts';
@@ -350,32 +352,26 @@ export function selectorIsInteractive(s: Selector): boolean {
 /** Whether a rule only applies in some interaction state. */
 export const ruleIsInteractive = (r: Rule): boolean => r.selectors.some(selectorIsInteractive);
 
-/** The first interaction pseudo-class a rule's selectors test, in source order, arguments included. */
-export function firstInteractionPseudo(r: Rule): InteractionPseudo | null {
-  const inPseudo = (p: PseudoClass): InteractionPseudo | null => {
-    if (p.kind === 'interaction') return p.pseudo;
+/** Every interaction pseudo-class a rule's selectors test, once each, in source order, arguments included. */
+export function interactionPseudosOf(r: Rule): InteractionPseudo[] {
+  const out: InteractionPseudo[] = [];
+  const inPseudo = (p: PseudoClass): void => {
+    if (p.kind === 'interaction') {
+      if (!out.includes(p.pseudo)) out.push(p.pseudo);
+      return;
+    }
     const list = p.kind === 'is' || p.kind === 'not' || p.kind === 'has' ? p.selectors : p.kind === 'nth' && p.of !== null ? p.of : [];
-    for (const s of list) {
-      const found = inSelector(s);
-      if (found !== null) return found;
-    }
-    return null;
+    for (const s of list) inSelector(s);
   };
-  const inSelector = (s: Selector): InteractionPseudo | null => {
-    for (const part of s.parts) {
-      for (const p of part.compound.pseudos) {
-        const found = inPseudo(p);
-        if (found !== null) return found;
-      }
-    }
-    return null;
+  const inSelector = (s: Selector): void => {
+    for (const part of s.parts) for (const p of part.compound.pseudos) inPseudo(p);
   };
-  for (const s of r.selectors) {
-    const found = inSelector(s);
-    if (found !== null) return found;
-  }
-  return null;
+  for (const s of r.selectors) inSelector(s);
+  return out;
 }
+
+/** The first interaction pseudo-class a rule's selectors test, in source order, arguments included. */
+export const firstInteractionPseudo = (r: Rule): InteractionPseudo | null => interactionPseudosOf(r)[0] ?? null;
 
 /**
  * The declarations of interaction rules Dragon cannot resolve per state. direction is resolved before the cascade (logical.ts)
@@ -417,23 +413,49 @@ export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   return out;
 }
 
+/** SELD-R2 PR 5: the inputs an interaction row is proven for, each its own profile context interaction/<input>. */
+export const INTERACTION_INPUTS = ['forced-only', 'mouse', 'touch'] as const;
+export type InteractionInput = (typeof INTERACTION_INPUTS)[number];
+export const interactionContext = (input: InteractionInput): string => `interaction/${input}`;
+export const interactionRowFeature = (pseudo: InteractionPseudo): string => `selector:pseudo-class(:${pseudo})`;
+
 /**
- * Native has no interaction runtime until SELD-R2 PR 3 (rt-interaction.ts) and PR 4 (the UIKit and Android glue), and no support
- * profile row: every interaction rule is refused on each native target. lanes: the parity lanes compile the states on native to
- * prove their resolution (forced cases), so they skip this refusal.
+ * The inputs that can put an element of a document into a pseudo-class. Any element can be hovered or pressed; :focus and
+ * :focus-visible need a focusable element (isFocusable), so with none they are reached only by forcing (forced-only).
  */
-export function nativeInteractionRefusals(rules: readonly Rule[], targets: readonly ('ios' | 'android')[]): Diagnostic[] {
+export function interactionInputs(pseudo: InteractionPseudo, focusable: boolean): readonly InteractionInput[] {
+  return (pseudo === 'focus' || pseudo === 'focus-visible') && !focusable ? ['forced-only'] : ['mouse', 'touch'];
+}
+
+/** Whether any case of a document has a focusable element; unknown cases (null) count as having one. */
+export const anyFocusable = (cases: readonly { readonly root: LinkedElement }[] | null): boolean =>
+  cases === null || cases.some((c) => preorder(c.root).some((n) => isFocusable(n.el)));
+
+/**
+ * SELD-R2 PR 5 (seld-r2-pr5-design.md section 3): on each native target an interaction rule compiles only where the profile proves
+ * each of its pseudo-classes, in context interaction/<input>, for every input that can reach that state in the document's cases;
+ * otherwise it is refused, naming the missing rows. profileOf null (a derive compile) reads no profile, so every rule is refused.
+ */
+export function gateInteractionFeatures(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, targets: readonly ('ios' | 'android')[], profileOf: ((t: 'ios' | 'android') => SupportProfile) | null, faults: Pick<CompilerFaults, 'interactionRowIgnored'>): Diagnostic[] {
   const out: Diagnostic[] = [];
+  const focusable = anyFocusable(cases);
   for (const t of targets) {
+    const profile = profileOf === null ? null : profileOf(t);
     for (const r of rules) {
-      const pseudo = firstInteractionPseudo(r);
+      const pseudos = interactionPseudosOf(r);
       const first = r.declarations[0];
-      if (pseudo === null || first === undefined) continue;
+      if (pseudos.length === 0 || first === undefined) continue;
+      const keys = pseudos.flatMap((p) => interactionInputs(p, focusable).map((i) => ({ feature: interactionRowFeature(p), context: interactionContext(i) })));
+      const missing = keys.filter((k) => profile === null || !provenContexts(profile, k.feature).includes(k.context));
+      if (missing.length === 0 || faults.interactionRowIgnored) continue;
+      const where = profile === null ? 'a derive compile reads no support profile' : `support profile ${profile.revision}`;
+      const m = missing[0] as { feature: string; context: string };
       out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
         origin: authored(first.span),
         target: t,
-        message: `:${pseudo} is not supported on ${t} yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4`,
-        manual: `Style the state with a component state and a class, or target web only, until the ${t} interaction runtime lands.`,
+        message: `${pseudos.map((p) => `:${p}`).join(', ')} is not supported on ${t}: no passing device proof of ${missing.map((k) => `${k.feature} in ${k.context}`).join(', ')} (${where})`,
+        manual: `Style the state with a component state and a class, or target web only, until the ${t} profile proves it.`,
+        ...(profile === null ? {} : { profile: { target: t, profileRevision: profile.revision, feature: m.feature, context: m.context, status: 'unsupported' as const } }),
       }));
     }
   }
