@@ -101,9 +101,12 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...WRITING_MODE_ANIMATION,
 };
 
-/** ANIM-b1 admits colour and length (R1, R13): kinds with an rt interpolator and a runtime writer on every target. */
+/**
+ * ANIM-b1 admits colour and length, ANIM-b2 transform (R1, R13): kinds with an rt interpolator and a runtime writer on every
+ * target. Opacity stays unadmitted: a fractional opacity is refused natively (PNT1-opacity-b).
+ */
 export function admitted(kind: AnimationKind): boolean {
-  return kind.kind === 'color' || kind.kind === 'length';
+  return kind.kind === 'color' || kind.kind === 'length' || kind.kind === 'transform';
 }
 
 export function animationKind(p: Longhand): AnimationKind {

@@ -7,11 +7,12 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import type { Browser, CDPSession } from 'playwright';
-import { absoluteRects, layout, rtEasing, rtInterpolate } from '@dragon/layout';
+import type { LayoutRect, Matrix2D, TransformOp, TransformOrigin } from '@dragon/layout';
+import { absoluteRects, layout, LU_PER_PX, mapPoint, paintTransformMatrix, rtEasing, rtInterpolate, transformFunctionsMatrix } from '@dragon/layout';
 import type { CapturedNode } from './capture.ts';
 import type { AnimCase, FrameDump, FrameStep } from './anim-cases.ts';
 import { animCasesOf, animFixtures, frameScript, runFrameScript, trackedProperties } from './anim-cases.ts';
-import { compareZoomedLayout } from './compare.ts';
+import { compareZoomedLayout, GATE_DEVICE_PX } from './compare.ts';
 import { referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import { canonicalJsonText } from './state-cases.ts';
@@ -404,8 +405,41 @@ export function committedFrames(caseId: string, rendering: 'authored' | 'compile
   return c;
 }
 
-/** The properties whose getComputedStyle string is the computed value, so the animator's string must equal it. */
-const STRING_COMPARED = (p: string): boolean => p === 'color' || p.endsWith('-color') || p.startsWith('margin-');
+/**
+ * The properties whose getComputedStyle string is the computed value, so the animator's string must equal it. transform (ANIM-b2)
+ * is Chrome's matrix of the functions at the element's border box, compared at DPR 1 as PNT2 compares it (pnt2-quads.test.ts);
+ * the transformed geometry is compared at every DPR by bounding box.
+ */
+const STRING_COMPARED = (p: string): boolean => p === 'color' || p.endsWith('-color') || p.startsWith('margin-') || p === 'transform';
+
+const multiply = (m1: Matrix2D, m2: Matrix2D): Matrix2D => ({ full: true, a: m1.a * m2.a + m1.c * m2.b, b: m1.b * m2.a + m1.d * m2.b, c: m1.a * m2.c + m1.c * m2.d, d: m1.b * m2.c + m1.d * m2.d, e: m1.a * m2.e + m1.c * m2.f + m1.e, f: m1.b * m2.e + m1.d * m2.f + m1.f });
+const shift = (x: number, y: number): Matrix2D => ({ full: true, a: 1, b: 0, c: 0, d: 1, e: x, f: y });
+
+/** The transform of each node of a dump as the views write it: the animated ones, then every other node's static transform. */
+function dumpTransforms(d: FrameDump): Map<string, { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin }> {
+  const out = new Map<string, { ops: readonly TransformOp[]; origin: TransformOrigin }>();
+  for (const n of d.program.nodes) for (const w of n.writes) if (w.kind === 'transform') out.set(n.id, { ops: w.ops, origin: w.origin });
+  return out;
+}
+
+/**
+ * The page matrix of a captured node (an element, or a text or line of one): each transformed ancestor-or-self's T(box) · paint
+ * matrix · T(-box), outermost first, in CSS px; null when no ancestor-or-self is transformed.
+ */
+function pageMatrix(d: FrameDump, rects: ReadonlyMap<string, LayoutRect>, transforms: ReadonlyMap<string, { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin }>, id: string, scale: number): Matrix2D | null {
+  const parents = new Map(d.program.nodes.map((n) => [n.id, n.parent]));
+  const chain: string[] = [];
+  for (let at: string | null = id.split(':')[0] as string; at !== null; at = parents.get(at) ?? null) chain.unshift(at);
+  let m: Matrix2D | null = null;
+  for (const a of chain) {
+    const t = transforms.get(a);
+    const r = rects.get(a);
+    if (t === undefined || t.ops.length === 0 || r === undefined) continue;
+    const b = { x: r.x / scale, y: r.y / scale, w: r.width / scale, h: r.height / scale };
+    m = multiply(m ?? shift(0, 0), multiply(multiply(shift(b.x, b.y), paintTransformMatrix(t.ops, t.origin, b.w, b.h, { sin: Math.sin, cos: Math.cos })), shift(-b.x, -b.y)));
+  }
+  return m;
+}
 
 export type AnimReport = { readonly cases: number; readonly samples: number; readonly values: number; readonly boxes: number; readonly dual: number; readonly settles: number; readonly failures: readonly string[]; readonly passingCases: readonly string[] };
 
@@ -437,25 +471,57 @@ export function animCaseReport(c: AnimCase, dprs: readonly number[] = [1, 2, 2.6
       const shown = closureFrame(d.frame, c.ap, anim);
       samples++;
       if (s.at !== d.at) failures.push(`${c.id} DPR ${dpr} sample ${i}: captured at ${s.at} ms, scripted at ${d.at} ms`);
-      for (const t of tracked) {
-        if (!STRING_COMPARED(t.property)) continue;
-        const node = s.nodes.find((n) => n.id === t.node);
-        if (node === undefined || !node.hasBox) continue;
-        const want = (node.computed ?? {})[t.property];
-        const mine = shown.get(trackKey(t.node, t.property)) ?? staticValue(c, d, t.node, t.property);
-        if (mine === null) continue;
-        values++;
-        const got = rtInterpolate.serializeValue(mine, 0, 0, trig);
-        if (got !== want) failures.push(`${c.id} DPR ${dpr} t=${s.at} ${t.node} ${t.property}: chrome ${String(want)}, dragon ${got}`);
-      }
       const input = programInput(d.program, c.viewport, dpr);
       const out = layout(input, referenceMeasurer());
       if (out.kind !== 'ok') {
         failures.push(`${c.id} DPR ${dpr} t=${s.at}: the engine refused the live program`);
         return;
       }
-      const capture = { fixture: c.id, chrome: cap.chrome, browser: '', platform: '', viewport: c.viewport, devicePixelRatio: dpr, direction: c.direction, nodes: s.nodes };
-      const cmp = compareZoomedLayout(capture, absoluteRects(out.boxes), input, env);
+      const rects = absoluteRects(out.boxes);
+      const scale = LU_PER_PX * dpr;
+      const transforms = dumpTransforms(d);
+      for (const t of tracked) {
+        if (!STRING_COMPARED(t.property)) continue;
+        if (t.property === 'transform' && dpr !== 1) continue;
+        const node = s.nodes.find((n) => n.id === t.node);
+        if (node === undefined || !node.hasBox) continue;
+        const want = (node.computed ?? {})[t.property];
+        if (t.property === 'transform') {
+          // The functions' matrix at the engine's border box of this frame (the views resolve percentages against it at use).
+          const r = rects.get(t.node);
+          const w = transforms.get(t.node);
+          values++;
+          const got = r === undefined ? 'no box' : w === undefined || w.ops.length === 0 ? 'none' : rtInterpolate.serializeMatrix(transformFunctionsMatrix(w.ops, r.width / scale, r.height / scale, trig));
+          if (got !== want) failures.push(`${c.id} DPR ${dpr} t=${s.at} ${t.node} transform: chrome ${String(want)}, dragon ${got}`);
+          continue;
+        }
+        const mine = shown.get(trackKey(t.node, t.property)) ?? staticValue(c, d, t.node, t.property);
+        if (mine === null) continue;
+        values++;
+        const got = rtInterpolate.serializeValue(mine, 0, 0, trig);
+        if (got !== want) failures.push(`${c.id} DPR ${dpr} t=${s.at} ${t.node} ${t.property}: chrome ${String(want)}, dragon ${got}`);
+      }
+      // ANIM-b2: Chrome's rect of a node under a transform is its transformed bounding box, so those nodes are compared by mapping
+      // the engine's box through the page matrix (within the PNT2 quad gate); every other node is compared exactly in zoomed LU.
+      const moved = s.nodes.filter((n) => n.hasBox && pageMatrix(d, rects, transforms, n.id, scale) !== null);
+      for (const n of moved) {
+        const r = rects.get(n.id);
+        const m = pageMatrix(d, rects, transforms, n.id, scale) as Matrix2D;
+        boxes++;
+        if (r === undefined) {
+          failures.push(`${c.id} DPR ${dpr} t=${s.at} ${n.id}: Chrome has a transformed box but Dragon has none`);
+          continue;
+        }
+        const b = { x: r.x / scale, y: r.y / scale, w: r.width / scale, h: r.height / scale };
+        const corners = [mapPoint(m, b.x, b.y), mapPoint(m, b.x + b.w, b.y), mapPoint(m, b.x + b.w, b.y + b.h), mapPoint(m, b.x, b.y + b.h)];
+        const xs = corners.map((p) => p.x);
+        const ys = corners.map((p) => p.y);
+        const edges = [Math.min(...xs) - n.x, Math.min(...ys) - n.y, Math.max(...xs) - (n.x + n.width), Math.max(...ys) - (n.y + n.height)];
+        if (!edges.every((e) => Math.abs(e) * dpr <= GATE_DEVICE_PX)) failures.push(`${c.id} DPR ${dpr} t=${s.at} ${n.id}: the transformed bounding box is off by ${JSON.stringify(edges)} CSS px (gate ${GATE_DEVICE_PX} device px)`);
+      }
+      const still = s.nodes.filter((n) => !moved.includes(n));
+      const capture = { fixture: c.id, chrome: cap.chrome, browser: '', platform: '', viewport: c.viewport, devicePixelRatio: dpr, direction: c.direction, nodes: still };
+      const cmp = compareZoomedLayout(capture, new Map([...rects].filter(([id]) => !moved.some((n) => n.id === id))), input, env);
       boxes += cmp.nodes.length;
       for (const p of cmp.problems) failures.push(`${c.id} DPR ${dpr} t=${s.at}: ${p}`);
       for (const n of cmp.nodes) if (n.dragon !== null && !n.exactLu) failures.push(`${c.id} DPR ${dpr} t=${s.at} ${n.id}: not exact in zoomed LU (chrome ${JSON.stringify(n.chrome)}, engine LU ${JSON.stringify(n.dragonLu)})`);

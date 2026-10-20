@@ -137,8 +137,8 @@ import type { ScriptStep, TransitionListing, TransitionState } from '../../layou
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
-import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
-import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
+import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, OriginTable, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
+import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
 import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
 import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
@@ -2442,15 +2442,33 @@ function anEasing(v: JsonValue, path: string): EasingCode {
 }
 
 function anValueKind(v: JsonValue, path: string): ValueKind {
-  const k = lit(v, ['color', 'length', 'none'], path);
+  const k = lit(v, ['color', 'length', 'transform', 'none'], path);
   if (k === 'color') return 'color';
   if (k === 'length') return 'length';
+  if (k === 'transform') return 'transform';
   return 'none';
 }
 
+/** A table length {kind, px, percent}. */
+function anLength(v: JsonValue, path: string): LengthValue {
+  const o = obj(v, ['kind', 'px', 'percent'], path);
+  const k = lit(field(o, 'kind', path), ['px', 'percent', 'calc'], `${path}.kind`);
+  const px = numField(o, 'px', path);
+  const percent = numField(o, 'percent', path);
+  if (k === 'px') return { kind: 'px', px, percent };
+  if (k === 'percent') return { kind: 'percent', px, percent };
+  return { kind: 'calc', px, percent };
+}
+
+/** A table transform function {fn, x, y, angle, sx, sy} (ANIM-b2). */
+function anOp(v: JsonValue, path: string): TransformOp {
+  const o = obj(v, ['fn', 'x', 'y', 'angle', 'sx', 'sy'], path);
+  return { fn: rtTransformFn(field(o, 'fn', path), `${path}.fn`), x: anLength(field(o, 'x', path), `${path}.x`), y: anLength(field(o, 'y', path), `${path}.y`), angle: numField(o, 'angle', path), sx: numField(o, 'sx', path), sy: numField(o, 'sy', path) };
+}
+
 function anValue(v: JsonValue, path: string): ValueCode {
-  const o = obj(v, ['kind', 'r', 'g', 'b', 'alpha', 'px', 'percent', 'calc'], path);
-  return { kind: anValueKind(field(o, 'kind', path), `${path}.kind`), r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path), px: numField(o, 'px', path), percent: numField(o, 'percent', path), calc: bool(field(o, 'calc', path), `${path}.calc`) };
+  const o = obj(v, ['kind', 'r', 'g', 'b', 'alpha', 'px', 'percent', 'calc', 'ops'], path);
+  return { kind: anValueKind(field(o, 'kind', path), `${path}.kind`), r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path), px: numField(o, 'px', path), percent: numField(o, 'percent', path), calc: bool(field(o, 'calc', path), `${path}.calc`), ops: arr(field(o, 'ops', path), `${path}.ops`).map((x, i): TransformOp => anOp(x, `${path}.ops[${i}]`)) };
 }
 
 function anMode(v: JsonValue, path: string): ListingMode {
@@ -2461,7 +2479,10 @@ function anMode(v: JsonValue, path: string): ListingMode {
 }
 
 function anTrackKind(v: JsonValue, path: string): TrackKind {
-  return lit(v, ['length', 'color'], path) === 'length' ? 'length' : 'color';
+  const k = lit(v, ['length', 'color', 'transform'], path);
+  if (k === 'length') return 'length';
+  if (k === 'transform') return 'transform';
+  return 'color';
 }
 
 function anRange(v: JsonValue, path: string): ValueRange {
@@ -2553,8 +2574,19 @@ function anClosure(v: JsonValue, path: string): ClosureTable {
   return { source: anRef(field(o, 'source', path), `${path}.source`), writes: arr(field(o, 'writes', path), `${path}.writes`).map((x, i): TrackRef => anRef(x, `${path}.writes[${i}]`)) };
 }
 
+/** A node's transform-origin per assignment {node, values: [{x, y}]} (ANIM-b2). */
+function anOrigins(v: JsonValue, path: string): OriginTable {
+  const o = obj(v, ['node', 'values'], path);
+  const values = arr(field(o, 'values', path), `${path}.values`).map((x, i): TransformOrigin => {
+    const at = `${path}.values[${i}]`;
+    const p = obj(x, ['x', 'y'], at);
+    return { x: anLength(field(p, 'x', at), `${at}.x`), y: anLength(field(p, 'y', at), `${at}.y`) };
+  });
+  return { node: str(field(o, 'node', path), `${path}.node`), values };
+}
+
 function anTables(v: JsonValue, path: string): AnimTables {
-  const o = obj(v, ['assignments', 'slots', 'animations', 'keyframes', 'rendered', 'bases', 'closure'], path);
+  const o = obj(v, ['assignments', 'slots', 'animations', 'keyframes', 'rendered', 'bases', 'closure', 'origins'], path);
   return {
     assignments: numField(o, 'assignments', path),
     slots: arr(field(o, 'slots', path), `${path}.slots`).map((x, i): SlotTable => anSlot(x, `${path}.slots[${i}]`)),
@@ -2563,13 +2595,14 @@ function anTables(v: JsonValue, path: string): AnimTables {
     rendered: arr(field(o, 'rendered', path), `${path}.rendered`).map((x, i): RenderedTable => anRendered(x, `${path}.rendered[${i}]`)),
     bases: arr(field(o, 'bases', path), `${path}.bases`).map((x, i): BaseTable => anBase(x, `${path}.bases[${i}]`)),
     closure: arr(field(o, 'closure', path), `${path}.closure`).map((x, i): ClosureTable => anClosure(x, `${path}.closure[${i}]`)),
+    origins: arr(field(o, 'origins', path), `${path}.origins`).map((x, i): OriginTable => anOrigins(x, `${path}.origins[${i}]`)),
   };
 }
 
 /**
  * An animator script: [op, tables, inputs, initial, steps]; inputs are every assignment's engine input resolved at DPR 1, steps
- * ["event", assignment], ["advance", ms] or ["dump"]. Each dump gives the frame (node, property and the serialised value) and the
- * colour writes with their closure as the device draws them.
+ * ["event", assignment], ["advance", ms] or ["dump"]. Each dump gives the frame (node, property and the serialised value), the
+ * colour writes with their closure as the device draws them, and the transform writes (ANIM-b2) the views' writer takes.
  */
 function rtAnimatorResult(a: readonly JsonValue[]): string {
   if (a.length !== 5) return fail('rt-animator: expected [op, tables, inputs, initial, steps]');
@@ -2590,7 +2623,15 @@ function rtAnimatorResult(a: readonly JsonValue[]): string {
       for (const e of frame) values += `${values === '' ? '' : ','}[${q(e.node)},${q(e.property)},${q(serializeValue(e.value, 0, 0, RT_TRIG))}]`;
       let colors = '';
       for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
-      out += `${out === '' ? '' : ','}[[${values}],[${colors}]]`;
+      // ANIM-b2: each transform write, its functions' fields and its origin as bits (lengths unresolved, as the views take them).
+      const len = (l: LengthValue): string => `[${q(l.kind)},${h(l.px)},${h(l.percent)}]`;
+      let transforms = '';
+      for (const w of frameTransforms(s, t, frame)) {
+        let ops = '';
+        for (const o of w.ops) ops += `${ops === '' ? '' : ','}[${q(o.fn)},${len(o.x)},${len(o.y)},${h(o.angle)},${h(o.sx)},${h(o.sy)}]`;
+        transforms += `${transforms === '' ? '' : ','}[${q(w.node)},[${ops}],${len(w.origin.x)},${len(w.origin.y)}]`;
+      }
+      out += `${out === '' ? '' : ','}[[${values}],[${colors}],[${transforms}]]`;
     } else fail(`${path}: unknown step ${op}`);
   });
   return `[${out}]`;
