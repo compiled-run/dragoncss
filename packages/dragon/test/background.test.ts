@@ -142,7 +142,6 @@ describe('background layer longhands and background-position', () => {
 describe('background shorthand: refusals', () => {
   // [property, value, the span the diagnostic points at, a part of its reason]
   const unsupported: [string, string, string, string][] = [
-    ['background', 'url(a.png) red', 'url(a.png)', 'BG2-u'],
     ['background', 'image-set("a.png" 1x)', 'image-set("a.png" 1x)', 'BG2b'],
     ['background', 'conic-gradient(red, blue)', 'conic-gradient(red, blue)', 'BG2-c'],
     ['background', 'linear-gradient(in oklab, red, blue)', 'linear-gradient(in oklab, red, blue)', 'BG2b'],
@@ -153,14 +152,14 @@ describe('background shorthand: refusals', () => {
     ['background', 'fixed red', 'fixed', 'BG2b'],
     ['background', 'local red', 'local', 'BG2b'],
     ['background', 'text red', 'text', 'BG2c'],
-    ['background-image', 'url(a.png), linear-gradient(red, blue)', 'url(a.png)', 'BG2-u'],
     ['background-position-x', 'right calc(5px + 1%)', 'calc(5px + 1%)', 'CALC-p'],
     ['background-size', '2vmin', '2vmin', 'CALC-p'],
     ['background-attachment', 'scroll, fixed', 'fixed', 'BG2b'],
   ];
   // R7 and R8: what bg2 refused at parse time and BG2-a accepts (em folds at computed-value time; edge offsets; negative stops;
-  // space and round, which only the native targets refuse, in the element check).
-  for (const [property, value] of [['background', 'linear-gradient(red 1em, blue)'], ['background', 'right 10px top red'], ['background', 'repeat space red'], ['background', 'round red'], ['background-position-x', 'right 5px'], ['background-size', '2em'], ['background-image', 'linear-gradient(red -5px, blue)']]) {
+  // space and round, which only the native targets refuse, in the element check). BG2-u: url() parses; images/compile.ts resolves
+  // its source and the element check refuses the stacks it does not draw (background-url.test.ts).
+  for (const [property, value] of [['background', 'linear-gradient(red 1em, blue)'], ['background', 'right 10px top red'], ['background', 'repeat space red'], ['background', 'round red'], ['background-position-x', 'right 5px'], ['background-size', '2em'], ['background-image', 'linear-gradient(red -5px, blue)'], ['background', 'url(a.png) red'], ['background-image', 'url("a.png"), linear-gradient(red, blue)']]) {
     it(`${property}: ${value} parses for every target`, () => {
       const css = `.a { ${property}: ${value}; }`;
       const diagnostics: Diagnostic[] = [];
@@ -208,14 +207,15 @@ describe('background shorthand: refusals', () => {
     expect(declaration?.longhands.find((l) => l.property === 'background-color')?.value).toMatchObject({ kind: 'color' });
   });
 
-  it('a refused background blocks both targets through the public compile', () => {
+  it('a refused background blocks both targets through the public compile: an unmapped url() is DRAGON_REMOTE_IMAGE at its token', () => {
     const css = '.a { width: 10px; height: 10px; background: url(a.png) red; }';
     const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
     const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(input);
     expect(c.ok).toBe(false);
     expect(c.outputs.web.kind).toBe('blocked');
     expect(c.outputs.ios.kind).toBe('blocked');
-    const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE') as Diagnostic;
+    const d = c.diagnostics.find((x) => x.code === 'DRAGON_REMOTE_IMAGE') as Diagnostic;
+    expect(d.target).toBeNull();
     expect(spanTextOf(input, d)).toBe('url(a.png)');
     expectCatalogued(c.diagnostics);
   });

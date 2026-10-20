@@ -1,9 +1,14 @@
-// REPL-a: the images of one compilation (R1). Every img src of every reachable case resolves to build-time bytes, a data: URL
-// or a src the images option maps to a snapshot asset; a remote or unmapped src is DRAGON_REMOTE_IMAGE, and bytes REPL-a cannot
-// draw are DRAGON_UNSUPPORTED_IMAGE naming the owning package. The manifest enters the compilation digest.
+// REPL-a: the images of one compilation (R1). Every img src and background-image url() (BG2-u, R10) of every reachable case and
+// state resolves to build-time bytes, a data: URL or a src the images option maps to a snapshot asset; a remote or unmapped src is
+// DRAGON_REMOTE_IMAGE, and bytes REPL-a cannot draw are DRAGON_UNSUPPORTED_IMAGE naming the owning package. A url() resolves
+// against its stylesheet's base, so a mapped src is read only from a <style> or a style attribute, whose base is the document's,
+// as an img src's is; a data: URL is read anywhere. The manifest enters the compilation digest.
+import { parse } from 'css-tree';
+import type { CssNode } from 'css-tree';
+import { imageItem, unfoldedLength, valueItems } from '../analysis/paint-values/gradient.ts';
 import type { ResolvedElement } from '../analysis/resolve.ts';
-import { diagnostic } from '../diagnostics/catalogue.ts';
-import type { Diagnostic, Origin } from '../types.ts';
+import { authored, diagnostic } from '../diagnostics/catalogue.ts';
+import type { Diagnostic, Origin, Span } from '../types.ts';
 import { buildImageManifest, manifestDigestInput, resolveImageSource } from './manifest.ts';
 import type { ImageAssetMap, ImageEntry } from './manifest.ts';
 import type { NaturalSize } from './natural-size.ts';
@@ -26,12 +31,57 @@ export type CompiledImages = {
   readonly digestInput: unknown;
 };
 
-type ImgUse = { readonly el: ResolvedElement; readonly src: string | null };
+/**
+ * One image use: an img's src, or a background-image url(). A url()'s base is the document's when every span of its value lies in
+ * the element's own source (a <style> or style attribute); stylesheet names the other source; var means the url() may have come
+ * through var(), whose custom property's sheet Dragon does not track.
+ */
+type ImgUse =
+  | { readonly kind: 'img'; readonly el: ResolvedElement; readonly src: string | null }
+  | { readonly kind: 'background'; readonly el: ResolvedElement; readonly src: string; readonly origin: Origin; readonly base: UrlBase };
 
-function imgUses(roots: readonly ResolvedElement[]): ImgUse[] {
+/** unknown: the value has no authored span in a known source (the element's own origin is not authored). */
+type UrlBase = { readonly kind: 'document' } | { readonly kind: 'stylesheet'; readonly uri: string } | { readonly kind: 'var' } | { readonly kind: 'unknown' };
+
+/** The span of the url() token naming src inside an authored value span, or the value span when it cannot be found. */
+function urlSpan(span: Span, src: string, sourceText: (uri: string) => string | undefined): Span {
+  const text = sourceText(span.source.uri);
+  if (text === undefined) return span;
+  let found: Span | null = null;
+  try {
+    const walk = (n: CssNode): void => {
+      if (found !== null) return;
+      if (n.type === 'Url' && String(n['value']) === src && n.loc !== undefined && n.loc !== null) found = { source: span.source, start: span.start + n.loc.start.offset, end: span.start + n.loc.end.offset };
+      const kids = (n as { children?: { forEach: (f: (c: CssNode) => void) => void } | null }).children;
+      if (kids !== undefined && kids !== null) kids.forEach(walk);
+    };
+    walk(parse(text.slice(span.start, span.end), { context: 'value', positions: true }));
+  } catch {
+    return span;
+  }
+  return found ?? span;
+}
+
+function imgUses(roots: readonly ResolvedElement[], sourceText: (uri: string) => string | undefined): ImgUse[] {
   const out: ImgUse[] = [];
   const walk = (el: ResolvedElement): void => {
-    if (el.element.tag === 'img') out.push({ el, src: el.element.attributes.get('src') ?? null });
+    if (el.element.tag === 'img') out.push({ kind: 'img', el, src: el.element.attributes.get('src') ?? null });
+    const v = el.props.get('background-image');
+    // A length compute could not fold is refused at the element (CALC-p) before the layers are read.
+    if (v !== undefined && unfoldedLength(v.value) === null && !(v.value.kind === 'keyword')) {
+      const doc = el.element.node.origin.kind === 'authored' ? el.element.node.origin.span.source.uri : null;
+      const spans = [v.span, v.declaration?.valueSpan ?? null].filter((x): x is Span => x !== null);
+      const foreign = spans.find((sp) => sp.source.uri !== doc);
+      for (const item of valueItems(v.value)) {
+        const i = imageItem(item);
+        if (!i.ok || i.value.kind !== 'url') continue;
+        const src = i.value.url;
+        const at = v.declaration?.valueSpan ?? spans[0];
+        const origin = at === undefined ? el.element.node.origin : authored(urlSpan(at, src, sourceText));
+        const base: UrlBase = v.substitution !== undefined ? { kind: 'var' } : spans.length === 0 || doc === null ? { kind: 'unknown' } : foreign !== undefined ? { kind: 'stylesheet', uri: foreign.source.uri } : { kind: 'document' };
+        out.push({ kind: 'background', el, src, origin, base });
+      }
+    }
     for (const c of el.children) if (c.kind === 'element') walk(c);
   };
   for (const r of roots) walk(r);
@@ -48,12 +98,13 @@ function attributeOrigin(el: ResolvedElement, name: string): Origin {
 const shown = (src: string): string => (src.length > 64 ? `${src.slice(0, 48)}…` : src);
 
 /**
- * Resolves every img of the cases, pushing a diagnostic per element and problem. assets: the snapshot's asset bytes by id. An
- * images entry naming an asset the snapshot lacks is DRAGON_CONFIG_INVALID.
+ * Resolves every img and background url() of the resolved trees (every case, band and interaction state), pushing a diagnostic
+ * per element and problem. assets: the snapshot's asset bytes by id. sourceText: a source's text by uri, to point a url()
+ * diagnostic at its token. An images entry naming an asset the snapshot lacks is DRAGON_CONFIG_INVALID.
  */
-export function compileImages(roots: readonly ResolvedElement[], images: ImageAssetMap | undefined, assets: ReadonlyMap<string, Uint8Array>, diagnostics: Diagnostic[]): CompiledImages {
+export function compileImages(roots: readonly ResolvedElement[], images: ImageAssetMap | undefined, assets: ReadonlyMap<string, Uint8Array>, diagnostics: Diagnostic[], sourceText: (uri: string) => string | undefined = () => undefined): CompiledImages {
   const map = images ?? {};
-  const uses = imgUses(roots);
+  const uses = imgUses(roots, sourceText);
   const missing = Object.entries(map).filter(([, id]) => !assets.has(id));
   for (const [src, id] of missing) {
     diagnostics.push(diagnostic('DRAGON_CONFIG_INVALID', { origin: { kind: 'unlocated', reason: 'configuration images' }, message: `images entry "${shown(src)}" names asset ${id}, which is not in the snapshot`, manual: 'Map the src to the id of an asset in the source snapshot.' }));
@@ -70,26 +121,35 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
   }
   const reported = new Set<string>();
   const report = (u: ImgUse, code: 'DRAGON_REMOTE_IMAGE' | 'DRAGON_UNSUPPORTED_IMAGE', message: string, manual?: string): void => {
-    const id = `${code}|${u.el.element.address}|${u.src ?? ''}`;
+    const origin = u.kind === 'img' ? attributeOrigin(u.el, 'src') : u.origin;
+    const id = `${code}|${u.kind}|${u.el.element.address}|${u.src ?? ''}|${JSON.stringify(origin)}`;
     if (reported.has(id)) return;
     reported.add(id);
-    diagnostics.push(diagnostic(code, { origin: attributeOrigin(u.el, 'src'), message, ...(manual === undefined ? {} : { manual }) }));
+    diagnostics.push(diagnostic(code, { origin, message, ...(manual === undefined ? {} : { manual }) }));
   };
   const naturals = new Map<string, NaturalSize>();
   const bytes = new Map<string, Uint8Array>();
   for (const u of uses) {
-    const where = `<img> ${u.el.element.address}`;
+    const where = u.kind === 'img' ? `<img> ${u.el.element.address}` : `background-image on ${u.el.element.address}`;
+    const what = u.kind === 'img' ? 'src' : 'url()';
     if (u.src === null) {
       report(u, 'DRAGON_UNSUPPORTED_IMAGE', `${where} has no src: Dragon draws an img only from a src it reads at build time`, 'Give the img a src: a data: URL, or a src the images option maps.');
       continue;
     }
     const problem = problems.get(u.src);
+    // A src the map names or leaves unmapped is relative to its stylesheet's base; only a data: URL or a remote URL needs none.
+    const relative = problem === 'unmapped-image' || (problem === undefined && resolveImageSource(u.src, usable, read).kind === 'mapped');
+    if (u.kind === 'background' && u.base.kind !== 'document' && relative) {
+      const why = u.base.kind === 'stylesheet' ? `it is in the stylesheet ${u.base.uri}, whose base is not the document's` : u.base.kind === 'var' ? 'it reaches background-image through var(), so Dragon cannot tell which stylesheet\'s base it resolves against' : 'its value has no authored source in the document';
+      report(u, 'DRAGON_REMOTE_IMAGE', `${where}: url() ${shown(u.src)} is not read: ${why}; Dragon maps an image src relative to the document only (a <style> or a style attribute, as an <img> src)`, 'Write the image as a data: URL, or move the declaration into a <style> or style attribute and map its src with the images option.');
+      continue;
+    }
     if (problem === 'remote-image' || problem === 'unmapped-image') {
-      report(u, 'DRAGON_REMOTE_IMAGE', `${where}: src ${shown(u.src)} is ${problem === 'remote-image' ? 'a remote URL' : 'not mapped'}; Dragon reads every image at build time`);
+      report(u, 'DRAGON_REMOTE_IMAGE', `${where}: ${what} ${shown(u.src)} is ${problem === 'remote-image' ? 'a remote URL' : 'not mapped'}; Dragon reads every image at build time`);
       continue;
     }
     if (problem !== undefined) {
-      report(u, 'DRAGON_UNSUPPORTED_IMAGE', `${where}: src ${shown(u.src)} is a malformed data: URL`, 'Write a well-formed data: URL, for example data:image/png;base64,....');
+      report(u, 'DRAGON_UNSUPPORTED_IMAGE', `${where}: ${what} ${shown(u.src)} is a malformed data: URL`, 'Write a well-formed data: URL, for example data:image/png;base64,....');
       continue;
     }
     const e = entries.get(u.src) as ImageEntry;
