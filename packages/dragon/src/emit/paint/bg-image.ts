@@ -308,11 +308,11 @@ fun dragonAppliedBackgroundImage(v: DragonBoxView): List<Pair<String, DumpJson>>
 }
 `;
 
-/** The raster plant: every tile drawn 1 device px right of its place. */
+/** The raster plant: every tile drawn 2 device px right of its place (1 would sit on the GATE_DEVICE_PX edge bound, not past it). */
 export const BG_IMAGE_PLANT = {
   name: 'bg-image-offset-1',
   replace: {
-    uikit: ['public let dragonBackgroundImagePlantDevicePx: Double = 0\n', 'public let dragonBackgroundImagePlantDevicePx: Double = 1\n'],
-    'android-views': ['const val DRAGON_BACKGROUND_IMAGE_PLANT_DEVICE_PX = 0.0\n', 'const val DRAGON_BACKGROUND_IMAGE_PLANT_DEVICE_PX = 1.0\n'],
+    uikit: ['public let dragonBackgroundImagePlantDevicePx: Double = 0\n', 'public let dragonBackgroundImagePlantDevicePx: Double = 2\n'],
+    'android-views': ['const val DRAGON_BACKGROUND_IMAGE_PLANT_DEVICE_PX = 0.0\n', 'const val DRAGON_BACKGROUND_IMAGE_PLANT_DEVICE_PX = 2.0\n'],
   },
 } as const;

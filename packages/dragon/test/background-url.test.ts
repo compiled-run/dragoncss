@@ -244,8 +244,8 @@ describe('the native targets draw a url() layer from its own write (BG2-u part 2
       // A no-repeat axis places the tile at a whole device px (Blink LayoutUnit::Round, half up).
       expect(own).toContain(b === 'uikit' ? 'if !b.repeats[k] { at = (at + 0.5).rounded(.down) }' : 'if (!b.repeats[k]) at = kotlin.math.floor(at + 0.5)');
       const planted = emitNativeSupport(b, 'bg-image-offset-1').find((f) => f.path.endsWith(`DragonPaintGradient.${ext}`))?.text ?? '';
-      expect(planted).toContain(b === 'uikit' ? 'public let dragonBackgroundImagePlantDevicePx: Double = 1\n' : 'const val DRAGON_BACKGROUND_IMAGE_PLANT_DEVICE_PX = 1.0\n');
-      expect(planted.replace(b === 'uikit' ? 'Double = 1\n' : 'PX = 1.0\n', b === 'uikit' ? 'Double = 0\n' : 'PX = 0.0\n')).toBe(own);
+      expect(planted).toContain(b === 'uikit' ? 'public let dragonBackgroundImagePlantDevicePx: Double = 2\n' : 'const val DRAGON_BACKGROUND_IMAGE_PLANT_DEVICE_PX = 2.0\n');
+      expect(planted.replace(b === 'uikit' ? 'Double = 2\n' : 'PX = 2.0\n', b === 'uikit' ? 'Double = 0\n' : 'PX = 0.0\n')).toBe(own);
     }
   });
   it('a url() only a :hover rule sets is read on every target; native refuses only the :hover selector', () => {

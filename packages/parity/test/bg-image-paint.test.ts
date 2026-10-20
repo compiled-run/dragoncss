@@ -8,7 +8,8 @@
 // the device lanes sample it (paint-samples/bg-image.ts) on the device's own tile geometry: Chrome must show the flat source pixel at
 // every image-flat tile point and every kept base point the image decides, and at every tile edge scanline Chrome's edge must lie
 // within GATE_DEVICE_PX of the crisp drawing of that geometry, which is where the device draws it. The plant's host twin (every tile
-// one device px right, bg-image-offset-1) must disagree with Chrome on a scanline pixel the unplanted geometry gets right.
+// PLANT_DEVICE_PX device px right, bg-image-offset-1) must fail that edge check, as the device lanes judge it, on at least one tile
+// edge scanline at every DPR.
 import { describe, expect, it } from 'vitest';
 import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, zoomInput } from '@dragon/layout';
 import type { Compiled, NativeProgram } from 'dragon';
@@ -154,7 +155,10 @@ function judge(caseId: string, compiled: Compiled<'ios' | 'android'>, p: NativeP
   return { problems, counts };
 }
 
-type DeviceVerdict = { readonly problems: string[]; readonly flat: Map<string, number>; readonly edges: Map<string, number>; readonly caught: number; readonly worst: number };
+/** How far the bg-image-offset-1 plant draws every tile right of its place (dragon emit/paint/bg-image.ts BG_IMAGE_PLANT). */
+const PLANT_DEVICE_PX = 2;
+
+type DeviceVerdict = { readonly problems: string[]; readonly flat: Map<string, number>; readonly edges: Map<string, number>; readonly caught: Map<number, number>; readonly worst: number };
 
 /**
  * The device lanes' samples of the url() boxes at every DPR against the committed Chrome PNGs: the colour Chrome must show at each
@@ -165,7 +169,7 @@ function judgeDevice(caseId: string, p: NativeProgram, viewport: { width: number
   const problems: string[] = [];
   const flat = new Map<string, number>();
   const edges = new Map<string, number>();
-  let caught = 0;
+  const caught = new Map<number, number>();
   let worst = 0;
   const colors = new Map(p.nodes.map((n) => {
     const w = n.writes.find((x) => x.kind === 'background-color');
@@ -187,7 +191,7 @@ function judgeDevice(caseId: string, p: NativeProgram, viewport: { width: number
       const under = colors.get(t.id) as Rgba;
       return s === null ? under : over(under, s as Rgba);
     };
-    const shifted = (t: TileBox): TileBox => ({ ...t, tile: [(t.tile[0] as number) + 1, t.tile[1], t.tile[2], t.tile[3]] });
+    const shifted = (t: TileBox): TileBox => ({ ...t, tile: [(t.tile[0] as number) + PLANT_DEVICE_PX, t.tile[1], t.tile[2], t.tile[3]] });
     for (let i = 0; i < points.length;) {
       const pt = points[i] as SamplePoint;
       const named = pt.rule.slice(pt.rule.indexOf(':') + 1).split(':')[0] as string;
@@ -209,12 +213,11 @@ function judgeDevice(caseId: string, p: NativeProgram, viewport: { width: number
           worst = Math.max(worst, Math.abs(a - b));
           if (Math.abs(a - b) > GATE_DEVICE_PX) problems.push(`${pt.rule} @${dpr}: Chrome's edge ${a.toFixed(3)} device px along the scanline, the device geometry's ${b.toFixed(3)}`);
         }
-        const planted = shifted(t);
-        if (PLANT_RULES['bg-image-offset-1'].test(pt.rule)) {
-          line.forEach((q, k) => {
-            const g = got[k] as Rgba;
-            if (g.every((v, n) => v === (want[k] as Rgba)[n]) && crisp(planted, q.x, q.y).some((v, n) => v !== g[n])) caught++;
-          });
+        // The twin fails the scanline as the device lanes judge it: no edge where Chrome shows one, or one more than GATE_DEVICE_PX off.
+        if (a !== null && PLANT_RULES['bg-image-offset-1'].test(pt.rule)) {
+          const planted = shifted(t);
+          const c = edgeDistance(line.map((q) => crisp(planted, q.x, q.y)), channel);
+          if (c === null || Math.abs(c - a) > GATE_DEVICE_PX) caught.set(dpr, (caught.get(dpr) ?? 0) + 1);
         }
         continue;
       }
@@ -270,7 +273,7 @@ describe('BG2-u background-image url(): the web paint model and the device sampl
           expect(d.flat.get(id) ?? 0, `${id} image-flat tile points`).toBeGreaterThanOrEqual(DPRS.length);
           expect(d.edges.get(id) ?? 0, `${id} tile edge scanlines`).toBeGreaterThanOrEqual(DPRS.length);
         }
-        expect(d.caught, 'the bg-image-offset-1 twin').toBeGreaterThan(0);
+        for (const dpr of DPRS) expect(d.caught.get(dpr) ?? 0, `the bg-image-offset-1 twin's failing tile edge scanlines @${dpr}`).toBeGreaterThan(0);
         expect(d.worst, 'the largest tile edge difference from Chrome').toBeLessThanOrEqual(GATE_DEVICE_PX);
       });
     }
