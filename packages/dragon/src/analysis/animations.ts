@@ -468,7 +468,9 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           once(`inl-anim|${ea.address}|${a.name}`, diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanFor(ea, 'animation-name')), message: `animation ${a.name} on <${el.element.tag}> ${ea.address} animates an inline box, which Dragon does not animate yet: no frame fixture proves it (INL1a)`, manual: INLINE_ANIM_MANUAL }));
         }
         const rule = keyframes.get(a.name) as KeyframesRule;
-        const fontSize = fontPx(valueAt(el, 'font-size').value);
+        // CALC-2: a font size that follows the viewport has no px here; its em keyframes are refused below.
+        const ownSize = valueAt(el, 'font-size').value;
+        const fontSize = ownSize.kind === 'length' && ownSize.unit === 'px' ? ownSize.value : null;
         const rootSize = fontPx(valueAt(rootEl, 'font-size').value);
         const transforms: { offset: number; value: AnimValue; span: Span }[] = [];
         for (const b of rule.blocks) {
@@ -483,7 +485,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
               once(`kfem|${ea.address}|${v.span.start}`, refuse(v.valueSpan, `${v.property}: ${v.text} in @keyframes ${a.name} on ${ea.address} is unsupported: an em keyframe under a font-size that follows the viewport is not resolved on the device yet (CALC-2)`));
               continue;
             }
-            const value = kind.kind === 'transform' ? transformValueOf(v.value, followsViewport ? null : fontSize, rootSize) : keyframeValueOf(v.value, followsViewport ? Number.NaN : fontSize, rootSize);
+            const value = kind.kind === 'transform' ? transformValueOf(v.value, fontSize, rootSize) : keyframeValueOf(v.value, fontSize ?? Number.NaN, rootSize);
             if (kind.kind === 'transform') {
               if (value.kind === 'env') once(`kfenv|${v.span.start}`, refuse(v.valueSpan, `${v.property}: ${v.text} in @keyframes ${a.name} is unsupported: a transform length that does not compute to px is not built yet (package ANIM-b2)`));
               else for (const offset of b.offsets) transforms.push({ offset, value, span: v.valueSpan });

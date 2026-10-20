@@ -118,8 +118,9 @@ describe('text-shadow', () => {
     expect(at('14.5px', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     expect(at('1.5', '0 0 0 red')).toEqual([]);
     expect(at('1.4', '0 0 0 red')).toEqual(NATIVE_REFUSED);
-    // A percentage line height is refused on the native targets before this bound (and would resolve against the font size).
-    expect(at('150%', '0 0 0 red')).toEqual(NATIVE_REFUSED);
+    // A percentage line height computes to px of the font size (CALC-2), so 150% of 10px keeps the bound as 15px does.
+    expect(at('150%', '0 0 0 red')).toEqual([]);
+    expect(at('140%', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     expect(at('normal', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     // A negative y reaches further up; every shadow of the list must keep the bound, a transparent one excepted.
     expect(at('20px', '0 -5px 0 red')).toEqual([]);

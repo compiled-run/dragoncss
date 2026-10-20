@@ -45,7 +45,7 @@ const CARD = '.x { width: 80px; padding: 4px; background-color: #fff; color: #12
 
 describe('FX-0: backdrop-filter and mix-blend-mode', () => {
   it('follow color-scheme, last in the registry; a backdrop-filter list is not admitted to animate and mix-blend-mode is discrete', () => {
-    expect(LONGHANDS.slice(LONGHANDS.indexOf('color-scheme') + 1)).toEqual(['backdrop-filter', 'mix-blend-mode']);
+    expect(LONGHANDS.slice(LONGHANDS.indexOf('color-scheme') + 1)).toEqual(['break-before', 'break-after', 'break-inside', 'orphans', 'widows', 'backdrop-filter', 'mix-blend-mode']);
     expect(ANIMATION_KINDS['backdrop-filter']).toBe(UNADMITTED);
     expect(ANIMATION_KINDS['mix-blend-mode']).toBe(DISCRETE);
   });
