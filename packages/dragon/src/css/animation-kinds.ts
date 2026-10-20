@@ -32,6 +32,7 @@ import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
 import { MASK_ANIMATION } from './animation-kinds/mask.ts';
 import { OUTLINE_ANIMATION } from './animation-kinds/outline.ts';
 import { OVERFLOW_ANIMATION } from './animation-kinds/overflow.ts';
+import { FRAGMENTATION_ANIMATION } from './animation-kinds/fragmentation.ts';
 import { OVERSCROLL_ANIMATION } from './animation-kinds/overscroll.ts';
 import { POINTER_ANIMATION } from './animation-kinds/pointer.ts';
 import { POSITION_ANIMATION } from './animation-kinds/position.ts';
@@ -83,6 +84,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_STRETCH_ANIMATION,
   ...FONT_TUNING_ANIMATION,
   ...FONT_VARIANT_ANIMATION,
+  ...FRAGMENTATION_ANIMATION,
   ...GRID_ANIMATION,
   ...INLINE_ANIMATION,
   ...LINE_CLAMP_ANIMATION,

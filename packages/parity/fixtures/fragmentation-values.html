@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --b: avoid-page; }
+.box { width: 80px; height: 10px; background-color: rgb(40, 90, 200); }
+.pb { break-before: page; break-after: column; }
+.av { break-inside: avoid; }
+.up { BREAK-AFTER: Recto; }
+.v { break-before: var(--b); }
+.lg { page-break-before: always; page-break-inside: avoid; }
+.wc { -webkit-column-break-after: always; -webkit-column-break-inside: avoid; }
+.par { orphans: 3; widows: 4; width: 120px; background-color: rgb(200, 60, 40); }
+.inh { break-inside: inherit; width: 60px; }
+.ini { orphans: initial; width: 60px; }
+.f { display: flex; width: 200px; height: 20px; break-inside: avoid-column; }
+.fi { width: 60px; height: 20px; background-color: rgb(20, 160, 80); break-after: left; }
+.rel { position: relative; width: 60px; height: 20px; widows: calc(1.5); }
+.abs { position: absolute; left: 4px; top: 2px; width: 20px; height: 10px; break-before: verso; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="pb" class="box pb">X</div>
+<div data-dragon-id="av" class="box av">X</div>
+<div data-dragon-id="up" class="box up">X</div>
+<div data-dragon-id="v" class="box v">X</div>
+<div data-dragon-id="lg" class="box lg">X</div>
+<div data-dragon-id="wc" class="box wc">X</div>
+<div data-dragon-id="par" class="par av"><div data-dragon-id="inh" class="inh">XX XX XX</div><div data-dragon-id="ini" class="ini">X</div></div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXX</div><div data-dragon-id="f2" class="fi">X</div></div>
+<div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs">X</div></div>
+</body>
+</html>
