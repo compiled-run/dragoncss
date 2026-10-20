@@ -189,11 +189,13 @@ jobs:
           { echo "branch=$branch"; echo "sha=$sha"; echo "mode=push"; } >> "$GITHUB_OUTPUT"
           echo "regen-on-ci: $branch at $sha" >> "$GITHUB_STEP_SUMMARY"
       # resume names an earlier run whose chrome-1 tree and regen store this run starts from (resume-chrome-1 below). It must be a
-      # regen-on-ci run of this repository whose chrome-1 artifact is live and was not left by a failed or cancelled chrome-1 (the
-      # round uploads even then). A given run that does not qualify only warns: the run regenerates from scratch, as without it.
-      # A regen label run, or a branch dispatch without resume, takes the newest earlier run of the same branch that qualifies,
-      # so the landing's fix rounds resume by themselves. A store from another run never goes into the shared cache: a run that
-      # resumes saves none.
+      # regen-on-ci run of this repository, made from this repository (a fork's pull request runs its own copy of this workflow,
+      # so its artifacts are its own), by a label on a branch of this repository, a dispatch from master or a push to master, of
+      # the branch this run regenerates when it names one, whose chrome-1 artifact is live and was not left by a failed or
+      # cancelled chrome-1 (the round uploads even then). A given run that does not qualify only warns: the run regenerates from
+      # scratch, as without it. A regen label run, or a branch dispatch without resume, takes the newest earlier run of the same
+      # branch that qualifies, so the landing's fix rounds resume by themselves. A store from another run never goes into the
+      # shared cache: a run that resumes saves none.
       - name: Check the run to resume from
         id: resume
         env:
@@ -205,32 +207,47 @@ jobs:
           RUNS_TRIED: '5'
         run: |
           set -euo pipefail
-          # Why run $1 cannot be resumed from, or nothing when it can.
+          # Why run $1 cannot be resumed from, in why (empty when it can); regen is 1 once it is known to be a regen run that
+          # uploaded a chrome-1 (a label run with another label uploads nothing, and does not use up a try).
           why_not() {
-            local run arts bad
-            run=$(gh api "repos/$REPO/actions/runs/$1" 2>/dev/null) || { echo "run $1 was not found"; return; }
-            [ "$(jq -r '.path // ""' <<<"$run")" = .github/workflows/regen-on-ci.yml ] || { echo "run $1 is not a regen-on-ci run"; return; }
+            local run src arts bad
+            why=""; regen=0
+            run=$(gh api "repos/$REPO/actions/runs/$1" 2>/dev/null) || { why="run $1 was not found"; return; }
+            [ "$(jq -r '.path // ""' <<<"$run")" = .github/workflows/regen-on-ci.yml ] || { why="run $1 is not a regen-on-ci run"; return; }
+            src=$(jq -r --arg repo "$REPO" --arg b "$BRANCH" '
+              if (.repository.full_name // "") != $repo or (.head_repository.full_name // "") != $repo then "was not made from \($repo)"
+              elif .event == "pull_request" then (if $b == "" or .head_branch == $b then "" else "regenerated another branch" end)
+              elif .event == "workflow_dispatch" then (if .head_branch != "master" then "was not dispatched from master"
+                elif $b == "" or ((.display_title // "") | startswith("regen of branch \($b) at ")) then "" else "regenerated another branch" end)
+              elif .event == "push" then (if .head_branch == "master" and ($b == "" or $b == "master") then "" else "regenerated another branch" end)
+              else "came from a \(.event // "unknown") event" end' <<<"$run" 2>/dev/null) || src="could not be read"
+            [ -z "$src" ] || { why="run $1 $src"; return; }
             arts=$(gh api "repos/$REPO/actions/runs/$1/artifacts?name=chrome-1&per_page=100" -q '[.artifacts[] | select(.expired == false)] | length' 2>/dev/null) || arts=error
-            [ "$arts" != 0 ] && [ "$arts" != error ] || { echo "run $1 has no live chrome-1 artifact"; return; }
+            [ "$arts" != 0 ] && [ "$arts" != error ] || { why="run $1 has no live chrome-1 artifact"; return; }
+            regen=1
             bad=$(gh api "repos/$REPO/actions/runs/$1/jobs?filter=latest&per_page=100" -q '[.jobs[] | select((.name == "chrome-1" or (.name | startswith("chrome-1 /"))) and .conclusion != "success" and .conclusion != "skipped")] | length' 2>/dev/null) || bad=error
-            [ "$bad" = 0 ] || echo "run $1's chrome-1 did not succeed"
+            [ "$bad" = 0 ] || why="run $1's chrome-1 did not succeed"
           }
           resume=""
           if [ -n "${RESUME:-}" ] && [ "$MODE" != skip ]; then
             [[ "$RESUME" =~ ^[0-9]+$ ]] || { echo "::error::resume is not a run id: $RESUME"; exit 1; }
-            why=$(why_not "$RESUME")
+            why_not "$RESUME"
             if [ -n "$why" ]; then echo "::warning::$why; chrome-1 runs from scratch"; else resume=$RESUME; fi
           elif [ "$MODE" = push ]; then
-            # The branch's label runs (head_branch) and its branch dispatches (run-name; dispatched from master), newest first, made
-            # before this one, at most RUNS_TRIED of them (each costs three API calls). A failed list only means no resume.
+            # The branch's label runs (head_branch) and its branch dispatches (run-name; dispatched from master) made from this
+            # repository before this one, newest first. At most RUNS_TRIED regen runs are tried and 30 runs looked at (each costs
+            # up to three API calls). A failed list only means no resume.
             labelled=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?event=pull_request&branch=$(jq -rn --arg b "$BRANCH" '$b | @uri')&per_page=30" 2>/dev/null) || labelled='{}'
             dispatched=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?event=workflow_dispatch&per_page=50" 2>/dev/null) || dispatched='{}'
-            ids=$(jq -rs --arg b "$BRANCH" --argjson me "$GITHUB_RUN_ID" --argjson n "$RUNS_TRIED" '[((.[0].workflow_runs // [])[] | select(.head_branch == $b)), ((.[1].workflow_runs // [])[] | select((.display_title // "") | startswith("regen of branch \($b) at ")))] | map(.id | select(type == "number" and . < $me)) | unique | reverse | .[:$n] | .[]' <<<"$labelled$dispatched" 2>/dev/null) || ids=""
+            ids=$(jq -rs --arg b "$BRANCH" --arg repo "$REPO" --argjson me "$GITHUB_RUN_ID" '[((.[0].workflow_runs // [])[] | select(.head_branch == $b)), ((.[1].workflow_runs // [])[] | select(.head_branch == "master" and ((.display_title // "") | startswith("regen of branch \($b) at "))))] | map(select((.head_repository.full_name // "") == $repo) | .id | select(type == "number" and . < $me)) | unique | reverse | .[:30] | .[]' <<<"$labelled$dispatched" 2>/dev/null) || ids=""
+            tried=0
             for id in $ids; do
               [[ "$id" =~ ^[0-9]+$ ]] || continue
-              why=$(why_not "$id")
+              why_not "$id"
               if [ -z "$why" ]; then resume=$id; break; fi
               echo "regen-on-ci: not resuming from run $id: $why"
+              tried=$((tried + regen))
+              [ "$tried" -lt "$RUNS_TRIED" ] || break
             done
           fi
           save=false
@@ -245,6 +262,9 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.mode != 'skip' && needs.resolve.outputs.resume != ''
     runs-on: ubuntu-latest
+    # A job-level failure (a lost runner, the timeout) leaves resumed unset, so chrome-1 runs; no later job tests this one's result.
+    timeout-minutes: 30
+    continue-on-error: true
     permissions:
       contents: read
       actions: read
@@ -306,6 +326,13 @@ jobs:
             git apply --binary --check "$prev/outputs.patch" || { echo "run $RESUME's chrome-1 outputs do not apply to $SHA; chrome-1 runs"; exit 0; }
             git apply --binary "$prev/outputs.patch"
           fi
+          # Only regen outputs (.gitattributes merge=dragon-generated, which regen.test keeps equal to the steps' outputs) come
+          # from the earlier run; a path no step claims is never judged by --explain below, so it is not taken.
+          git add -A
+          names=$(git diff --cached --name-only --no-renames "$SHA")
+          unclaimed=""
+          [ -z "$names" ] || unclaimed=$(git check-attr --stdin merge <<<"$names" | { grep -v ': merge: dragon-generated$' || true; } | sed 's/: merge: [^:]*$//' | head -n 5 | paste -sd ' ' -)
+          [ -z "$unclaimed" ] || { echo "run $RESUME's chrome-1 changes files no regen step claims ($unclaimed); chrome-1 runs"; exit 0; }
           mkdir -p .git/dragon-regen
           zstd -dcq "$prev/store.tar.zst" | tar -xf - -C .git/dragon-regen
           log=node_modules/.cache/dragon-regen/last-run.json
@@ -357,8 +384,8 @@ jobs:
     if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && needs.resume-chrome-1.outputs.resumed != 'true' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
     with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', seed_run: '${{ needs.resolve.outputs.resume }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
-  # chrome-1 is skipped when resume-chrome-1 supplied it, so host-1 and every later round test their ancestors themselves
-  # (!cancelled, !failure): the default success() skips a job below any skipped one.
+  # chrome-1 is skipped when resume-chrome-1 supplied it, so host-1 and every later round test the round before them themselves
+  # (!cancelled, its result): the default success() skips a job below any skipped one.
   host-1:
     needs: [resolve, resume-chrome-1, chrome-1]
     if: ${{ !cancelled() && needs.resolve.result == 'success' && (needs.chrome-1.result == 'success' || needs.resume-chrome-1.outputs.resumed == 'true') && (needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false' }}
@@ -366,22 +393,23 @@ jobs:
     with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   chrome-2:
     needs: [resolve, host-1]
-    if: ${{ !cancelled() && !failure() && needs.host-1.outputs.changed == 'true' && needs.host-1.outputs.next != 'false' }}
+    if: ${{ !cancelled() && needs.host-1.result == 'success' && needs.host-1.outputs.changed == 'true' && needs.host-1.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
     with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   host-2:
     needs: [resolve, chrome-2]
-    if: ${{ !cancelled() && !failure() && needs.chrome-2.outputs.changed == 'true' && needs.chrome-2.outputs.next != 'false' }}
+    if: ${{ !cancelled() && needs.chrome-2.result == 'success' && needs.chrome-2.outputs.changed == 'true' && needs.chrome-2.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
     with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   chrome-3:
     needs: [resolve, host-2]
-    if: ${{ !cancelled() && !failure() && needs.host-2.outputs.changed == 'true' && needs.host-2.outputs.next != 'false' }}
+    if: ${{ !cancelled() && needs.host-2.result == 'success' && needs.host-2.outputs.changed == 'true' && needs.host-2.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
     with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   converge:
     needs: [resolve, resume-chrome-1, chrome-1, host-1, chrome-2, host-2, chrome-3]
-    if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    # The rounds' results only: resume-chrome-1 failing at job level means chrome-1 ran instead.
+    if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && !contains(format('{0} {1} {2} {3} {4}', needs.chrome-1.result, needs.host-1.result, needs.chrome-2.result, needs.host-2.result, needs.chrome-3.result), 'failure') && !contains(format('{0} {1} {2} {3} {4}', needs.chrome-1.result, needs.host-1.result, needs.chrome-2.result, needs.host-2.result, needs.chrome-3.result), 'cancelled')
     runs-on: ubuntu-latest
     outputs:
       last: ${{ steps.last.outputs.name }}

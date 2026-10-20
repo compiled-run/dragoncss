@@ -531,7 +531,7 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(yml).toContain("(needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false'");
     for (const [prev, cur] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) {
       const job = yml.slice(yml.indexOf(`\n  ${cur}:\n`), yml.indexOf('uses:', yml.indexOf(`\n  ${cur}:\n`)));
-      expect(job).toContain(`if: ${'${{'} !cancelled() && !failure() && needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false' }}`);
+      expect(job).toContain(`if: ${'${{'} !cancelled() && needs.${prev}.result == 'success' && needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false' }}`);
     }
   });
   it('the run-name gives branch mode its branch, head and nonce; patch mode keeps "regen of <sha>"', () => {
@@ -559,6 +559,8 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     const head = git(w, 'rev-parse', 'HEAD');
     writeFileSync(join(w, 'out.json'), '2\n');
     const patch = git(w, 'diff', '--binary') + '\n';
+    writeFileSync(join(w, 'pad.txt'), 'a\nB\nc\n');
+    const wide = git(w, 'diff', '--binary') + '\n';
     git(w, 'checkout', '-q', '--', '.');
     writeFileSync(join(w, 'later.ts'), 'y\n');
     git(w, 'add', '.');
@@ -680,14 +682,18 @@ describe('regen-on-ci.yml resume: chrome-1 taken from an earlier run, run locall
   // The branch the run regenerates and this run's id, as resolve and GitHub give them.
   const base = { BRANCH: BR, GITHUB_RUN_ID: '5000', RUNS_TRIED: '5' };
   const RUN = '4242';
-  const ghFor = (o: { readonly path?: string; readonly artifacts?: readonly object[]; readonly jobs?: readonly object[]; readonly missing?: boolean; readonly labelled?: readonly object[]; readonly dispatched?: readonly object[] } = {}) => `
+  // The run as GitHub gives it: by default a label run of BR made from this repository.
+  const ownRun = { path: '.github/workflows/regen-on-ci.yml', event: 'pull_request', head_branch: BR, display_title: 'Batch 3 landing', repository: { full_name: REPO }, head_repository: { full_name: REPO } };
+  const ghFor = (o: { readonly run?: object; readonly artifacts?: readonly object[]; readonly jobs?: readonly object[]; readonly missing?: boolean; readonly labelled?: readonly object[]; readonly dispatched?: readonly object[]; readonly also?: readonly number[]; readonly failed?: readonly number[] } = {}) => `
 case "$2" in
   *workflows/regen-on-ci.yml/runs?event=pull_request*) body='${JSON.stringify({ workflow_runs: o.labelled ?? [] })}' ;;
   *workflows/regen-on-ci.yml/runs?event=workflow_dispatch*) body='${JSON.stringify({ workflow_runs: o.dispatched ?? [] })}' ;;
-  repos/${REPO}/actions/runs/[0-9]*/artifacts*|repos/${REPO}/actions/runs/[0-9]*/jobs*|repos/${REPO}/actions/runs/[0-9]*) [ "$(cut -d/ -f6 <<<"$2" | cut -d'?' -f1)" = ${RUN} ] || { echo '{"message":"Not Found"}'; exit 1; } ;;&
-  repos/${REPO}/actions/runs/${RUN}) ${o.missing === true ? `echo '{"message":"Not Found"}'; exit 1` : `body='${JSON.stringify({ path: o.path ?? '.github/workflows/regen-on-ci.yml' })}'`} ;;
-  repos/${REPO}/actions/runs/${RUN}/artifacts*) body='${JSON.stringify({ artifacts: o.artifacts ?? [{ name: 'chrome-1', expired: false }] })}' ;;
+  repos/${REPO}/actions/runs/[0-9]*/artifacts*|repos/${REPO}/actions/runs/[0-9]*/jobs*|repos/${REPO}/actions/runs/[0-9]*) id=$(cut -d/ -f6 <<<"$2" | cut -d'?' -f1); [ "$id" = ${RUN} ] || [[ " ${[...(o.also ?? []), ...(o.failed ?? [])].join(' ')} " == *" $id "* ]] || { echo '{"message":"Not Found"}'; exit 1; } ;;&
+  repos/${REPO}/actions/runs/[0-9]*/jobs*) [[ " ${(o.failed ?? []).join(' ')} " != *" $id "* ]] || { body='{"jobs":[{"name":"chrome-1 / round","conclusion":"failure"}]}'; jq -r "$4" <<<"$body"; exit 0; } ;;&
+  repos/${REPO}/actions/runs/[0-9]*/artifacts*) [ "$id" = ${RUN} ] || [[ " ${(o.failed ?? []).join(' ')} " == *" $id "* ]] || { body='{"artifacts":[]}'; if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; fi; exit 0; } ;;&
+  repos/${REPO}/actions/runs/[0-9]*/artifacts*) body='${JSON.stringify({ artifacts: o.artifacts ?? [{ name: 'chrome-1', expired: false }] })}' ;;
   repos/${REPO}/actions/runs/${RUN}/jobs*) body='${JSON.stringify({ jobs: o.jobs ?? [{ name: 'resolve', conclusion: 'success' }, { name: 'chrome-1 / round', conclusion: 'success' }, { name: 'host-1 / round', conclusion: 'failure' }] })}' ;;
+  repos/${REPO}/actions/runs/[0-9]*) ${o.missing === true ? `echo '{"message":"Not Found"}'; exit 1` : `body='${JSON.stringify({ ...ownRun, ...o.run })}'`} ;;
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac
 if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
@@ -702,8 +708,8 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
     expect(runStep(check, { ...base, RESUME: '', MODE: 'warm' }, 'exit 9').out).toEqual({ resume: '', save: 'true' });
   });
   it('a label run or a branch dispatch takes the newest earlier run of its branch that qualifies, and then saves no cache', () => {
-    const lab = (id: number, head_branch = BR) => ({ id, head_branch, display_title: 'Batch 3 landing' });
-    const dis = (id: number, branch = BR) => ({ id, head_branch: 'master', display_title: runTitle(branch, HEAD, NONCE) });
+    const lab = (id: number, head_branch = BR, from = REPO) => ({ id, head_branch, display_title: 'Batch 3 landing', head_repository: { full_name: from } });
+    const dis = (id: number, branch = BR) => ({ id, head_branch: 'master', display_title: runTitle(branch, HEAD, NONCE), head_repository: { full_name: REPO } });
     // 4242 qualifies; 4300 (newer) has no such run in the stub, so it is passed over; 6000 is newer than this run; other branches never count.
     const found = runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ labelled: [lab(4300), lab(4242), lab(6000), lab(4400, 'other')], dispatched: [dis(4350, 'other'), dis(4100)] }));
     expect(found.status, found.stderr).toBe(0);
@@ -712,12 +718,21 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
     expect(found.stdout).not.toContain('4400');
     expect(found.stdout).not.toContain('4350');
     // A branch dispatch (run-name "regen of branch <b> at ...") counts too.
-    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ dispatched: [dis(4242)] })).out).toEqual({ resume: RUN, save: 'false' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ run: { event: 'workflow_dispatch', head_branch: 'master', display_title: runTitle(BR, HEAD, NONCE) }, dispatched: [dis(4242)] })).out).toEqual({ resume: RUN, save: 'false' });
+    // A fork's pull request from a branch of the same name is never looked at.
+    const fork = runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ labelled: [lab(4242, BR, 'fork/r')] }));
+    expect(fork.out).toEqual({ resume: '', save: 'true' });
+    expect(fork.stdout).not.toContain('4242');
+    // Label runs with no chrome-1 (another label) do not use up the tries.
+    const busy = runStep(check, { ...base, RESUME: '', MODE: 'push', RUNS_TRIED: '1' }, ghFor({ labelled: [lab(4300), lab(4290), lab(4242)], also: [4300, 4290] }));
+    expect(busy.out).toEqual({ resume: RUN, save: 'false' });
+    expect(busy.stdout).toContain('not resuming from run 4300: run 4300 has no live chrome-1 artifact');
     // Nothing that qualifies, or a failed list: no resume, and the cache is saved as before.
     expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ labelled: [lab(4300)] })).out).toEqual({ resume: '', save: 'true' });
     expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, 'echo nope; exit 1').out).toEqual({ resume: '', save: 'true' });
-    // At most RUNS_TRIED runs are tried.
-    const capped = runStep(check, { ...base, RESUME: '', MODE: 'push', RUNS_TRIED: '1' }, ghFor({ labelled: [lab(4300), lab(4242)] }));
+    // At most RUNS_TRIED regen runs are tried.
+    const capped = runStep(check, { ...base, RESUME: '', MODE: 'push', RUNS_TRIED: '1' }, ghFor({ labelled: [lab(4300), lab(4242)], failed: [4300] }));
+    expect(capped.stdout).toContain("not resuming from run 4300: run 4300's chrome-1 did not succeed");
     expect(capped.out).toEqual({ resume: '', save: 'true' });
     // Patch mode (the landing driver) and master's warm run never look for one.
     expect(runStep(check, { ...base, RESUME: '', MODE: 'patch' }, ghFor({ labelled: [lab(4242)] })).out).toEqual({ resume: '', save: 'false' });
@@ -726,18 +741,30 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
   it('warns and regenerates from scratch for a run that does not qualify, and refuses an id that is not a number', () => {
     for (const [o, why] of [
       [{ missing: true }, `run ${RUN} was not found`],
-      [{ path: '.github/workflows/test-files.yml' }, `run ${RUN} is not a regen-on-ci run`],
+      [{ run: { path: '.github/workflows/test-files.yml' } }, `run ${RUN} is not a regen-on-ci run`],
+      // A fork's pull request runs its own copy of the workflow (the same path), so its artifacts are its own.
+      [{ run: { head_repository: { full_name: 'fork/r' } } }, `run ${RUN} was not made from ${REPO}`],
+      [{ run: { repository: { full_name: 'fork/r' } } }, `run ${RUN} was not made from ${REPO}`],
+      [{ run: { head_repository: null } }, `run ${RUN} was not made from ${REPO}`],
+      [{ run: { event: 'schedule' } }, `run ${RUN} came from a schedule event`],
+      [{ run: { event: 'workflow_dispatch', head_branch: 'lane/y', display_title: runTitle(BR, HEAD, NONCE) } }, `run ${RUN} was not dispatched from master`],
+      [{ run: { event: 'workflow_dispatch', head_branch: 'master', display_title: runTitle('other', HEAD, NONCE) } }, `run ${RUN} regenerated another branch`],
+      [{ run: { head_branch: 'other' } }, `run ${RUN} regenerated another branch`],
+      [{ run: { event: 'push', head_branch: 'master' } }, `run ${RUN} regenerated another branch`],
       [{ artifacts: [{ name: 'chrome-1', expired: true }] }, `run ${RUN} has no live chrome-1 artifact`],
       [{ artifacts: [] }, `run ${RUN} has no live chrome-1 artifact`],
       [{ jobs: [{ name: 'chrome-1 / round', conclusion: 'failure' }] }, `run ${RUN}'s chrome-1 did not succeed`],
       [{ jobs: [{ name: 'chrome-1 / round', conclusion: 'cancelled' }] }, `run ${RUN}'s chrome-1 did not succeed`],
       [{ jobs: [{ name: 'chrome-1 / round', conclusion: null }] }, `run ${RUN}'s chrome-1 did not succeed`],
     ] as const) {
-      const r = runStep(check, { ...base, RESUME: RUN, MODE: 'patch' }, ghFor(o));
+      const r = runStep(check, { ...base, RESUME: RUN, MODE: 'push' }, ghFor(o));
       expect(r.status, why).toBe(0);
       expect(r.stdout, why).toContain(`::warning::${why}; chrome-1 runs from scratch`);
       expect(r.out, why).toEqual({ resume: '', save: 'false' });
     }
+    // Patch mode names no branch: any branch's run of this repository qualifies, a fork's never.
+    expect(runStep(check, { ...base, BRANCH: '', RESUME: RUN, MODE: 'patch' }, ghFor({ run: { head_branch: 'other' } })).out).toEqual({ resume: RUN, save: 'false' });
+    expect(runStep(check, { ...base, BRANCH: '', RESUME: RUN, MODE: 'patch' }, ghFor({ run: { head_repository: { full_name: 'fork/r' } } })).out).toEqual({ resume: '', save: 'false' });
     const bad = runStep(check, { ...base, RESUME: '12; rm -rf /', MODE: 'patch' }, 'exit 9');
     expect(bad.status).toBe(1);
     expect(bad.stdout).toContain('::error::resume is not a run id');
@@ -759,7 +786,7 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
   });
 
   const git = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).trim();
-  /** The earlier run's commit (out.json 1), this run's commit on it (a host-only change), and the earlier chrome-1's patch (out.json 2). */
+  /** The earlier run's commit (out.json 1, a regen output), this run's commit on it (a host-only change), and the earlier chrome-1's patch (out.json 2), and one that also changes pad.txt. */
   function repo() {
     const d = tmpDir();
     const w = join(d, 'w');
@@ -767,15 +794,18 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
     writeFileSync(join(w, 'out.json'), '1\n');
     writeFileSync(join(w, 'pad.txt'), 'a\nb\nc\n');
     writeFileSync(join(w, '.gitignore'), 'node_modules/\n');
+    writeFileSync(join(w, '.gitattributes'), 'out.json merge=dragon-generated\n');
     git(w, 'add', '.');
     git(w, 'commit', '-q', '-m', 'earlier');
     writeFileSync(join(w, 'out.json'), '2\n');
     const patch = git(w, 'diff', '--binary') + '\n';
+    writeFileSync(join(w, 'pad.txt'), 'a\nB\nc\n');
+    const wide = git(w, 'diff', '--binary') + '\n';
     git(w, 'checkout', '-q', '--', '.');
     writeFileSync(join(w, 'host.kt'), 'fix\n');
     git(w, 'add', '.');
     git(w, 'commit', '-q', '-m', 'host fix');
-    return { w, sha: git(w, 'rev-parse', 'HEAD'), patch };
+    return { w, sha: git(w, 'rev-parse', 'HEAD'), patch, wide };
   }
   /** RUNNER_TEMP with prev/outputs.patch and prev/store.tar.zst (a plain tar: zstd is stubbed as cat), and stubs for zstd and node. */
   function temp(patch: string, chrome: object[], host: object[]) {
@@ -825,6 +855,8 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
       ['restore', (r) => temp(r.patch, [{ ...skipped('capture'), action: 'would restore', why: 'outputs differ' }], []), 'this commit changes Chrome-step inputs: capture (would restore'],
       ['apply', (r) => temp(r.patch.replace('\n-1\n', '\n-7\n'), [skipped('capture')], []), 'outputs do not apply to'],
       ['none', (r) => temp(r.patch, [], []), 'regen --explain judged no step; chrome-1 runs'],
+      // Only regen outputs come from the earlier run: a patch that also changes another file (pad.txt) is not taken.
+      ['unclaimed', (r) => temp(r.wide, [skipped('capture')], []), 'changes files no regen step claims (pad.txt); chrome-1 runs'],
     ];
     for (const [name, make, msg] of cases) {
       const r = repo();
