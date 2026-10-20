@@ -3974,9 +3974,11 @@
         { "lines": "10996-11003", "symbol": "WebkitBorderImage::ApplyValue", "source": "located" },
         { "lines": "7287-7294", "symbol": "ObjectPosition::ParseSingleValue", "source": "located" },
         { "lines": "8293-8316", "symbol": "Perspective::ParseSingleValue", "source": "located" },
-        { "lines": "8329-8336", "symbol": "PerspectiveOrigin::ParseSingleValue", "source": "located" }
+        { "lines": "8329-8336", "symbol": "PerspectiveOrigin::ParseSingleValue", "source": "located" },
+        { "lines": "9180-9207", "symbol": "ScrollSnapType::ParseSingleValue", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/css/properties/scroll-snap.ts", "symbol": "parseScrollSnapType", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "parseListsValue", "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" },
