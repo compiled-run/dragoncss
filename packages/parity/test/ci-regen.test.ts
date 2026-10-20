@@ -912,3 +912,42 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
     expect(git(r.w, 'cat-file', '-p', blob)).toBe('2');
   });
 });
+
+describe('regen-on-ci.yml host-precheck: the android host lanes on Linux, beside host-1', () => {
+  const judge = stepScript('Judge the android host lanes');
+  const AGREE = 'parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android';
+  const block = (target: string, host: string) => [`${target} (device DPRs 2, 3; projection p):`, `  layout-vectors-host: ${host}; cases [2: 10] + corpora 5 = 15`, '  layout-vectors-device: pass; cases [2: 10] + corpora 0 = 10', '  device-pixels: fail (carried); cases [2: 10] + corpora 0 = 10', '  device-traces: fail; cases [2: 3] + corpora 0 = 3'];
+  const run = (log: string[], code = 1) => {
+    const d = tmpDir();
+    writeFileSync(join(d, 'lanes.log'), `${log.join('\n')}\n`);
+    writeFileSync(join(d, 'lanes.code'), `${code}\n`);
+    return runStep(judge, { RUNNER_TEMP: d }, 'exit 9');
+  };
+  it('passes when lane parity agrees and every android lane but the carried device lanes passes, whatever iOS reads', () => {
+    const ok = run([...block('ios', 'blocked (owner tooling) (swiftc not found)'), ...block('android', 'pass'), AGREE]);
+    expect(ok.status, ok.stdout + ok.stderr).toBe(0);
+    expect(run([...block('ios', 'blocked (owner tooling)'), ...block('android', 'pass'), AGREE], 0).status).toBe(0);
+  });
+  it('fails on an android host lane that does not pass, a parity failure, no android block or a crash', () => {
+    const lane = run([...block('ios', 'blocked (owner tooling)'), ...block('android', 'fail (kotlin suite vectors 3/10)'), AGREE]);
+    expect(lane.status).toBe(1);
+    expect(lane.stdout).toContain('::error::an android host lane does not pass');
+    expect(lane.stdout).toContain('layout-vectors-host: fail');
+    const parity = run([...block('android', 'pass'), 'parity:lanes: parity FAILS:', '  layout-vectors-host: ios and android differ in their case lists']);
+    expect(parity.status).toBe(1);
+    expect(parity.stdout).toContain('::error::lane parity fails');
+    expect(parity.stdout).toContain('differ in their case lists');
+    expect(run([...block('ios', 'pass'), AGREE]).stdout).toContain('::error::parity:lanes printed no android lanes');
+    const crash = run(['TypeError: x is undefined'], 2);
+    expect(crash.status).toBe(1);
+    expect(crash.stdout).toContain('::error::parity:lanes --run-host exited 2 on Linux');
+  });
+  it('runs beside host-1 under the same condition, never as a need of a round', () => {
+    const at = yml.indexOf('\n  host-precheck:\n');
+    const job = yml.slice(at, yml.indexOf('\n  host-1:\n'));
+    const host1 = yml.slice(yml.indexOf('\n  host-1:\n'), yml.indexOf('\n  chrome-2:\n'));
+    const cond = (j: string) => /\n {4}if: (.+)\n/.exec(j)?.[1];
+    expect(cond(job)).toBe(cond(host1));
+    for (const j of ['chrome-2', 'host-2', 'chrome-3', 'converge', 'patch', 'push']) expect(yml.slice(yml.indexOf(`\n  ${j}:\n`)).split('\n').find((l) => l.startsWith('    needs:')), j).not.toContain('host-precheck');
+  });
+});

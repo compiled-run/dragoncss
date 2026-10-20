@@ -387,6 +387,78 @@ jobs:
     if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && needs.resume-chrome-1.outputs.resumed != 'true' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
     with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', seed_run: '${{ needs.resolve.outputs.resume }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+  # Beside host-1, on Linux: parity:lanes --run-host on chrome-1's tree with kotlinc only (iOS reads as blocked), so a lane
+  # configuration, manifest or verdict break shows in this job long before the macOS host round ends. It only reports: host-1
+  # still decides the run, and nothing here is kept. continue-on-error keeps the run's conclusion whatever this job does (a
+  # download flake, its timeout), and land-devices-ci.ts failedJobs skips it (REPORT_ONLY_JOBS), so it never fails a regen.
+  host-precheck:
+    needs: [resolve, resume-chrome-1, chrome-1]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && (needs.chrome-1.result == 'success' || needs.resume-chrome-1.outputs.resumed == 'true') && (needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    continue-on-error: true
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - name: Check out the commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+      - name: Set up pnpm 10.33.2
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - name: Set up Node 24.15.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: kotlinc 2.4.20 (the release lanes.json records)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          echo "59e9ca74c7904ef2c122b12114937673ccce68de820a663f0ed66ccf8799e0b7  $RUNNER_TEMP/kotlin.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/kotlinc/bin/kotlinc" -version 2>&1 | grep -q 'kotlinc-jvm 2.4.20' || { echo "::error::not kotlinc 2.4.20"; exit 1; }
+      - name: Download chrome-1
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-1
+          path: ${{ runner.temp }}/c1
+      - name: Apply chrome-1's outputs
+        run: if [ -s "$RUNNER_TEMP/c1/outputs.patch" ]; then git apply --binary "$RUNNER_TEMP/c1/outputs.patch"; fi
+      - name: parity:lanes --run-host (android)
+        run: |
+          set +e
+          pnpm -s run parity:lanes --run-host > "$RUNNER_TEMP/lanes.log" 2>&1
+          echo "$?" > "$RUNNER_TEMP/lanes.code"
+          tail -200 "$RUNNER_TEMP/lanes.log"
+      - name: Judge the android host lanes
+        run: |
+          set -euo pipefail
+          code=$(cat "$RUNNER_TEMP/lanes.code")
+          log="$RUNNER_TEMP/lanes.log"
+          # parity:lanes exits 0 or 1 (a failing lane, a device lane carried as failed); anything else is a crash.
+          if [ "$code" != 0 ] && [ "$code" != 1 ]; then echo "::error::parity:lanes --run-host exited $code on Linux; host-1 will fail the same way"; exit 1; fi
+          if ! grep -qx 'parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android' "$log"; then
+            grep -A40 '^parity:lanes: parity FAILS:' "$log" || true
+            echo "::error::lane parity fails on chrome-1's tree; host-1 will fail the same way"
+            exit 1
+          fi
+          # As lanes-host's verdict (scripts/regen.ts lanesVerdict) judges, on android alone: every lane but the device lanes, which
+          # are carried from the device runs, must pass.
+          lanes=$(awk '/^android \(device DPRs /{a=1; next} /^[a-z]+ \(device DPRs /{a=0} a && /^  [a-z0-9-]+: /{print}' "$log")
+          [ -n "$lanes" ] || { echo "::error::parity:lanes printed no android lanes"; exit 1; }
+          bad=$(grep -vE '^  (device-[a-z0-9-]+|[a-z0-9-]+-device): ' <<<"$lanes" | grep -vE '^  [a-z0-9-]+: pass(;|$)' || true)
+          if [ -n "$bad" ]; then echo "$bad"; echo "::error::an android host lane does not pass on chrome-1's tree; host-1 will fail the same way"; exit 1; fi
+          echo "host-precheck: lane parity agrees and every android host lane passes on chrome-1's tree" | tee -a "$GITHUB_STEP_SUMMARY"
   # chrome-1 is skipped when resume-chrome-1 supplied it, so host-1 and every later round test the round before them themselves
   # (!cancelled, its result): the default success() skips a job below any skipped one.
   host-1:
