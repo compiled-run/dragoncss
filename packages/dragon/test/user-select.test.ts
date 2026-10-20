@@ -1,7 +1,7 @@
 // T154 (css-ui-4 §6.1): user-select is a longhand appended after visibility, inherited as Blink declares it, with no layout or
 // paint aspect. Chrome 145 parses auto, text, none and all (contain only under a test-status flag). Unenforced, web compiles all
-// four, and iOS and Android refuse every author value but none until package P6c (T077) builds selection; the profiles admit none
-// only until a web-only fixture proves the rest on web (fixture-groups/selection.ts).
+// four, and iOS and Android compile none and any value whose used value is the default's (analysis/selection.ts); the rest wait for
+// package P6c (T077) to build selection.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -66,7 +66,7 @@ describe('user-select: web computes every value as specified and inherits it', (
   }
 });
 
-describe('user-select: native compiles none only (P6c)', () => {
+describe('user-select: native compiles none and the values that change nothing (P6c)', () => {
   it('none, through the alias, var(), inherit and unset from none, compiles on ios and android', () => {
     for (const css of ['.a { user-select: none; }', '.a { -webkit-user-select: NONE; }', '.a { --u: none; user-select: var(--u); }', '.a { user-select: none; } .b { user-select: inherit; }', '.a { user-select: none; } .b { user-select: unset; }']) {
       const c = compile(css, NATIVE);
@@ -76,23 +76,34 @@ describe('user-select: native compiles none only (P6c)', () => {
     }
   });
 
-  it('auto, text, all and initial are refused on ios and android by name, at the declaration, naming P6c, and compile for web', () => {
-    for (const v of ['auto', 'text', 'all', 'initial']) {
-      const css = `.a { user-select: ${v}; }`;
+  it('auto, initial, and text, inherit or unset under the default compile on ios and android: their used value is the default\'s', () => {
+    for (const css of ['.a { user-select: auto; }', '.a { user-select: initial; }', '.a { user-select: text; }', '.a { user-select: text; } .b { user-select: inherit; }', '.b { user-select: unset; }', '.a { user-select: none; } .b { user-select: auto; }', '.a { -webkit-user-select: TEXT; } .b { user-select: auto; }']) {
+      const c = compile(css, NATIVE);
+      expect(errors(c), css).toEqual([]);
+      expect(c.outputs.ios.kind, css).not.toBe('blocked');
+      expect(c.outputs.android.kind, css).not.toBe('blocked');
+    }
+  });
+
+  it('text or inherit under none, and all anywhere, are refused on ios and android at the declaration, naming P6c, and compile for web', () => {
+    for (const [css, el, k, used, def] of [
+      ['.a { user-select: none; } .b { user-select: text; }', 'b', 'text', 'text', 'none'],
+      ['.a { user-select: all; }', 'a', 'all', 'all', 'text'],
+      ['.a { user-select: none; } .b { user-select: all; }', 'b', 'all', 'all', 'none'],
+    ] as const) {
       const c = compile(css, NATIVE);
       const errs = errors(c);
-      expect(errs.map((d) => [d.code, d.target]), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'android']]);
-      const computed = v === 'initial' ? 'auto' : v;
-      expect(errs[0]?.message, v).toBe(`a has user-select ${computed}, which makes its text selectable in Chrome; no ios text is selectable until package P6c (T077) builds selection, so Dragon compiles user-select: none only`);
-      expect(c.outputs.web.kind, v).toBe('ready');
-      expect(c.outputs.ios.kind, v).toBe('blocked');
+      expect(errs.map((d) => [d.code, d.target]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'android']]);
+      expect(errs[0]?.message, css).toBe(`${el} has user-select ${k}, whose used value in Chrome is ${used} where the default's is ${def}; no ios text is selectable until package P6c (T077) builds selection, so Dragon compiles user-select only where it is none or changes nothing`);
+      expect(c.outputs.web.kind, css).toBe('ready');
+      expect(c.outputs.ios.kind, css).toBe('blocked');
       expectCatalogued(errs);
     }
   });
 
   it('refuses only the element that declares the value: its inheriting child is not reported again', () => {
-    const c = compile('.a { user-select: text; }', NATIVE);
-    expect(errors(c).map((d) => d.message.slice(0, 22))).toEqual(['a has user-select text', 'a has user-select text']);
+    const c = compile('.a { user-select: all; }', NATIVE);
+    expect(errors(c).map((d) => d.message.slice(0, 21))).toEqual(['a has user-select all', 'a has user-select all']);
   });
 
   it('a value that loses the cascade to none compiles; the -webkit- alias that wins is refused', () => {
