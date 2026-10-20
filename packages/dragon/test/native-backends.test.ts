@@ -277,5 +277,13 @@ describe('movingTransforms', () => {
     expect(moved[0]).toMatch(/p/);
     expect([...movingTransforms([a, a, null], null)]).toEqual([]);
   });
+  // Review of #511 at 78f4d9cf: an individual transform that differs between cases moves the element too.
+  it('a rotate, scale or translate that differs between cases moves', () => {
+    for (const [x, y] of [['rotate: 10deg', 'rotate: 20deg'], ['scale: 2', 'scale: 3'], ['translate: 1px', 'translate: 2px']]) {
+      const moved = [...movingTransforms([resolvedOf(`.p { ${x}; }`), resolvedOf(`.p { ${y}; }`)], null)];
+      expect(moved.length, x).toBe(1);
+      expect(moved[0]).toMatch(/p/);
+    }
+  });
 });
 

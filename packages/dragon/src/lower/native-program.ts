@@ -12,6 +12,8 @@ import { synthesizesBold, SYNTHETIC_OBLIQUE_SHEAR, synthesizesOblique } from '..
 import { nativeTextShadows } from '../analysis/text-shadow.ts';
 import { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES } from '../fonts/synthetic-bold.ts';
 import { canonicalJson } from '../digest.ts';
+import { elementTransform } from '../analysis/paint-values/transform.ts';
+import { INDIVIDUAL_TRANSFORMS } from '../css/properties/transform.ts';
 import type { TxtWFaults } from '../faults/txt-w.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
@@ -240,16 +242,19 @@ function toBackend(backend: NativeBackend, root: LayoutBox, rootFontSize: number
   };
 }
 
+/** The properties that move a transform (css-transforms-2 §4: translate, rotate and scale apply with transform). */
+const MOVING_PROPERTIES = ['transform', ...INDIVIDUAL_TRANSFORMS] as const;
+
 /**
- * The elements whose transform moves at run time: a transform transition is listed for it, one of its keyframe animations sets
- * transform, or its computed transform differs between two reachable cases (a state change). Conservative: any case counts.
+ * The elements whose transform moves at run time: a transition of one of those properties is listed for it, one of its keyframe animations
+ * sets one, or its effective transform differs between two reachable cases (a state change). Conservative: any case counts.
  */
 export function movingTransforms(cases: readonly (ResolvedElement | null)[], animation: AnimationAnalysis | null): ReadonlySet<string> {
   const out = new Set<string>();
   const seen = new Map<string, string>();
   const walk = (el: ResolvedElement): void => {
-    const v = el.props.get('transform');
-    const text = v === undefined ? '' : canonicalJson(v.value);
+    // The effective transform: translate, rotate and scale count as much as transform does.
+    const text = canonicalJson(elementTransform(el));
     const was = seen.get(el.element.address);
     if (was === undefined) seen.set(el.element.address, text);
     else if (was !== text) out.add(el.element.address);
@@ -258,10 +263,10 @@ export function movingTransforms(cases: readonly (ResolvedElement | null)[], ani
   for (const r of cases) if (r !== null) walk(r);
   for (const c of animation?.cases ?? []) {
     for (const [address, e] of c.elements) {
-      if (e.listings.get('transform')?.mode === 'listed') out.add(address);
+      if (MOVING_PROPERTIES.some((p) => e.listings.get(p)?.mode === 'listed')) out.add(address);
       for (const a of e.animations) {
         const rule = animation?.keyframes.get(a.name);
-        if (rule !== undefined && rule.blocks.some((b) => b.values.some((d) => d.property === 'transform'))) out.add(address);
+        if (rule !== undefined && rule.blocks.some((b) => b.values.some((d) => (MOVING_PROPERTIES as readonly string[]).includes(d.property)))) out.add(address);
       }
     }
   }

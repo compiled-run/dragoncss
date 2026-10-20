@@ -154,6 +154,14 @@ describe('the svg model in a compile', () => {
     expect(overflow.filter((m) => m.includes('on <svg> s is not supported on native: Chrome paints its shapes past the box')).sort()).toEqual(['android', 'ios'].flatMap((t) => ['overflow-x'].map((p) => `DRAGON_UNSUPPORTED_VALUE ${t} ${p}: visible on <svg> s is not supported on native: Chrome paints its shapes past the box, and native clips them to it until the SVG structure package SVG-b`)));
     expect(overflow.every((m) => !m.startsWith('DRAGON_UNSUPPORTED_VALUE web') && !m.startsWith('DRAGON_UNSUPPORTED_VALUE *'))).toBe(true);
   });
+  // Review of #511 at 78f4d9cf: translate, rotate and scale move a shape as transform does, and native draws it from its attributes.
+  it('refuses translate, rotate and scale on a shape, as it refuses transform', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']])];
+    for (const [css, decl] of [['rect { rotate: 45deg; }', 'rotate: 45deg'], ['rect { scale: 2; }', 'scale: 2'], ['rect { translate: 1px; }', 'translate: 1px']] as const) {
+      const e = errors(compile(svgTree(css, shapes), false));
+      for (const t of ['android', 'ios', 'web']) expect(e, css).toContain(`DRAGON_UNSUPPORTED_VALUE ${t} ${decl} on <rect> r is not supported: a shape's geometry comes from its attributes until the SVG structure package SVG-b`);
+    }
+  });
   it("draws no shape Chrome renders nothing for: a zero-size rect or circle, an empty path, a shape with display: none, and a hidden or fully transparent one", () => {
     expect([svgShapeEmpty({ kind: 'rect', x: 4, y: 2, width: 0, height: 10 }), svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 3, height: 0 }), svgShapeEmpty({ kind: 'circle', cx: 1, cy: 1, r: 0 }), svgShapeEmpty({ kind: 'path', segments: [] })]).toEqual([true, true, true, true]);
     expect([svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 1, height: 1 }), svgShapeEmpty({ kind: 'circle', cx: 0, cy: 0, r: 1 })]).toEqual([false, false]);
