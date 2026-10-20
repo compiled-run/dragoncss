@@ -3,8 +3,8 @@
 // the web target still refuses it until a Chrome proof exists. Nothing is not-applicable by default: anything off this list is
 // refused as before. text-rendering and scrollbar-color were reviewed and left off (optimizeSpeed turns off kerning and ligatures;
 // transparent colours hide the scrollbar), and the owner listed them anyway (decision card, 2026-10-19). Reviewed and left off: break-*, orphans and
-// widows (they fragment columns too); scrollbar-width (supported: none hides the native scroll
-// indicators, css/properties/scrollbar.ts); -webkit-appearance (a property now, properties/appearance.ts); will-change (transform makes a
+// widows (they fragment columns too); scrollbar-width (supported: none hides the native scroll indicators, css/properties/scrollbar.ts);
+// -webkit-appearance (a property now, properties/appearance.ts); will-change (transform makes a
 // containing block and stacking context, analysis/paint-values/transform.ts); color-scheme (dark changes the UA colours,
 // ua/datasets.ts); ::-webkit-slider-thumb (its appearance decides how a range paints, forms/appearance.ts); ::-moz-range-thumb
 // (Chrome drops it, so Dragon already drops the rule on every target); ::-webkit-scrollbar* rules (several common forms hide the

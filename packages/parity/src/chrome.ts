@@ -1,8 +1,11 @@
 // Pinned Chrome for the parity lane: Playwright 1.58.2 with its cached chromium-1208, DPR 1, Ahem as a data URI.
-import { readFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { repoPath } from './paths.ts';
+import { hostPlatform, REFERENCE_PLATFORM } from './platform.ts';
 
 export const CHROME_VERSION = '145.0.7632.6';
 export const PLAYWRIGHT_VERSION = '1.58.2';
@@ -52,9 +55,15 @@ export const PLAYWRIGHT_POINTER_SETTINGS = '--blink-settings=primaryHoverType=2,
  * Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture.
  * withoutPointerSettings drops PLAYWRIGHT_POINTER_SETTINGS, so the page's pointer and hover come from Chrome alone.
  */
+/**
+ * On the reference platform every launch with Playwright's pointer settings has overlay scrollbars (launchOverlayChrome
+ * below), so a scroll case captured through any caller (profile:rows, vectors, report) meets the overlay-scrollbar
+ * rule (capture.ts). --hide-scrollbars already hides every scrollbar, so no other capture changes.
+ */
 export async function launchChrome(forceDeviceScaleFactor: number = 1, opts: { readonly withoutPointerSettings?: boolean } = {}): Promise<Browser> {
   const args = chromeArgsAt(forceDeviceScaleFactor);
   const without = opts.withoutPointerSettings === true;
+  if (!without && hostPlatform() === REFERENCE_PLATFORM) return launchOverlayChrome(forceDeviceScaleFactor);
   const browser = await chromium.launch({ args: [...args], ...(without ? { ignoreDefaultArgs: [PLAYWRIGHT_POINTER_SETTINGS] } : {}) });
   launchArgs.set(browser, without ? [...args, `!${PLAYWRIGHT_POINTER_SETTINGS}`] : args);
   const version = browser.version();
@@ -135,4 +144,42 @@ export async function openFrozenPage(browser: Browser, html: string, env: PageEn
   const t = await page.evaluate(() => document.timeline.currentTime);
   if (t !== 0) throw new Error(`the document timeline is not frozen at 0: ${String(t)}`);
   return page;
+}
+
+/**
+ * NSUserDefaults argument-domain pair that makes this Chrome process use overlay scrollbars whatever the machine's setting or
+ * mouse; it changes no system setting. Playwright refuses a launch argument that does not start with "-", so a wrapper script
+ * appends the pair when it execs the headless shell Playwright would launch.
+ */
+export const SCROLLBAR_ARGS: readonly string[] = ['-AppleShowScrollBars', 'WhenScrolling'];
+
+/** The chromium-headless-shell executable Playwright launches by default (its registry). */
+function headlessShellPath(): string {
+  const own = createRequire(import.meta.url);
+  const pw = createRequire(own.resolve('playwright'));
+  const core = pw.resolve('playwright-core');
+  const { registry } = pw(core.replace(/index\.js$/, 'lib/server/registry/index.js')) as { registry: { findExecutable(n: string): { executablePath(): string | undefined } | undefined } };
+  const path = registry.findExecutable('chromium-headless-shell')?.executablePath();
+  if (path === undefined) throw new Error(`Playwright ${PLAYWRIGHT_VERSION} names no chromium-headless-shell executable`);
+  return path;
+}
+
+/** launchChrome (chrome.ts) with SCROLLBAR_ARGS; the wrapper directory is removed once Chrome has started or failed to. */
+export async function launchOverlayChrome(forceDeviceScaleFactor: number): Promise<Browser> {
+  const dir = mkdtempSync(`${tmpdir()}/dragon-scroll-chrome-`);
+  try {
+    const wrapper = `${dir}/chrome`;
+    const quoted = (a: string): string => `'${a.replaceAll("'", "'\\''")}'`;
+    writeFileSync(wrapper, `#!/bin/sh\nexec ${quoted(headlessShellPath())} "$@" ${SCROLLBAR_ARGS.map(quoted).join(' ')}\n`);
+    chmodSync(wrapper, 0o755);
+    const browser = await chromium.launch({ executablePath: wrapper, args: [...chromeArgsAt(forceDeviceScaleFactor)] });
+    if (browser.version() !== CHROME_VERSION) {
+      await browser.close();
+      throw new Error(`Chrome must be ${CHROME_VERSION} (Playwright ${PLAYWRIGHT_VERSION}), got ${browser.version()}`);
+    }
+    launchArgs.set(browser, [...chromeArgsAt(forceDeviceScaleFactor), ...SCROLLBAR_ARGS]);
+    return browser;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }

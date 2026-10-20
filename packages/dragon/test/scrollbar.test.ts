@@ -6,7 +6,6 @@ import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, profileNoteFor } from '../src/internal.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
-import { BACKGROUND_LAYERS_LONGHANDS } from '../src/css/properties/background-layers.ts';
 import { SCROLLBAR_LONGHANDS } from '../src/css/properties/scrollbar.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE } from '../src/css/animation-kinds/kinds.ts';
@@ -34,9 +33,9 @@ function compile(css: string, targets: Targets = { web: {} }) {
 const errors = (c: ReturnType<typeof compile>): Diagnostic[] => c.diagnostics.filter((d) => d.severity === 'error');
 
 describe('scrollbar: registry and parse', () => {
-  it('follows the background layers, not inherited, layout aspect only, discrete, initial auto', () => {
+  it('follows background-blend-mode, not inherited, layout aspect only, discrete, initial auto', () => {
     expect([...SCROLLBAR_LONGHANDS]).toEqual(['scrollbar-width', 'scrollbar-gutter']);
-    expect(LONGHANDS[LONGHANDS.indexOf('scrollbar-width') - 1]).toBe(BACKGROUND_LAYERS_LONGHANDS[BACKGROUND_LAYERS_LONGHANDS.length - 1]);
+    expect(LONGHANDS[LONGHANDS.indexOf('scrollbar-width') - 1]).toBe('background-blend-mode');
     for (const p of SCROLLBAR_LONGHANDS) {
       expect(INHERITED.has(p), p).toBe(false);
       expect(PROPERTY_ASPECTS[p], p).toEqual({ layout: true, paint: false });

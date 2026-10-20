@@ -40,9 +40,10 @@ import { casePoints, checkCasePixels, committedPixels, decodePng, devicePoints, 
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
-
-export const DEVICE_CHECK_LANES = ['device-frames', 'device-applied', 'device-lines', 'device-pixels'] as const;
-export type DeviceCheckLane = (typeof DEVICE_CHECK_LANES)[number];
+import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
+import type { DeviceCheckLane, DeviceLaneId } from './lane-ids.ts';
+export { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE };
+export type { DeviceCheckLane, DeviceLaneId };
 
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
@@ -52,14 +53,6 @@ export type FailureKind =
   | 'frame-reference'
   | 'trace-missing' | 'trace-mismatch' | 'motion-mismatch';
 
-/** SELD-R1b's device lanes: the case scripts' dumps (device-states) and the device hit test's answers (device-hit). */
-export const STATE_LANE = 'device-states';
-export const HIT_LANE = 'device-hit';
-/** ANIM-b1 3b (T065 R18): every frame sample's dump, checked by the four device checks against that sample's references. */
-export const ANIM_LANE = 'device-anim';
-/** SELD-R2's device lane (T064 R14): the interaction scripts' traces against the TS interaction runtime's. */
-export const TRACE_LANE = 'device-traces';
-export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE | typeof TRACE_LANE;
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
 export type LaneFailure = { readonly lane: DeviceLaneId; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };

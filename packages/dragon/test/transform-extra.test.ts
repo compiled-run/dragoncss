@@ -1,8 +1,8 @@
 // PNT2: backface-visibility, transform-style, transform-box, perspective and perspective-origin are accepted at their initial values
-// alone, on every target, and their -webkit- names are aliases; every other value is kept as Chrome keeps it and refused where it
-// applies, since hidden can hide a box (and its text) and none of them is drawn. The Chrome cases are transform-extra-initial,
-// reject-transform-extra-backface and reject-transform-extra-perspective (packages/parity/fixtures);
-// packages/parity/test/transform-extra-parse.test.ts pins the parse.
+// on every target, and backface-visibility at hidden on any box but an inline one (a normal-flow paint layer, lower/paint/stacking.ts);
+// their -webkit- names are aliases; every other value is kept as Chrome keeps it and refused where it applies. The Chrome cases are
+// transform-extra-initial, stacking-backface, reject-transform-extra-backface (hidden on an inline box) and
+// reject-transform-extra-perspective (packages/parity/fixtures); packages/parity/test/transform-extra-parse.test.ts pins the parse.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -104,6 +104,11 @@ describe('the 3D transform longhands', () => {
     // The later declaration wins between the alias and its property, as in Chrome.
     expect(errorsAt('backface-visibility: hidden; -webkit-backface-visibility: visible')).toEqual([]);
     expect(errorsAt('-webkit-transform-style: preserve-3d; transform-style: flat')).toEqual([]);
+    // A hidden backface on a block box: no 2D transform turns it away, and its paint layer is placed (paint-stacking.test.ts).
+    expect(errorsAt('backface-visibility: hidden')).toEqual([]);
+    expect(errorsAt('-webkit-backface-visibility: hidden')).toEqual([]);
+    expect(errorsAt('--b: hidden; backface-visibility: var(--b)')).toEqual([]);
+    expect(errorsAt('transform: scaleX(-1) rotate(30deg); backface-visibility: hidden')).toEqual([]);
     expect(errorsAt('perspective: none; perspective-origin: 50% 50%')).toEqual([]);
     expect(errorsAt('-webkit-perspective: none; -webkit-perspective-origin: center')).toEqual([]);
     expect(errorsAt('perspective: initial; perspective-origin: left 50% top 50%')).toEqual([]);
@@ -113,10 +118,9 @@ describe('the 3D transform longhands', () => {
   });
 
   it('refuse every other value on every target, once per element where it applies', () => {
-    for (const d of ['backface-visibility: hidden', 'transform-style: preserve-3d', 'transform-box: border-box', 'transform-box: content-box', 'transform-box: fill-box', 'transform-box: stroke-box']) {
+    for (const d of ['transform-style: preserve-3d', 'transform-box: border-box', 'transform-box: content-box', 'transform-box: fill-box', 'transform-box: stroke-box']) {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
-    expect(errorsAt('-webkit-backface-visibility: hidden')).toEqual(REFUSED);
     expect(errorsAt('-webkit-transform-style: preserve-3d')).toEqual(REFUSED);
     for (const d of ['perspective: 100px', 'perspective: 0', 'perspective: calc(10px + 1px)', 'perspective-origin: left top', 'perspective-origin: 50% 49%', 'perspective-origin: 10px 50%', '-webkit-perspective-origin: right']) {
       expect(errorsAt(d), d).toEqual(REFUSED);
@@ -126,23 +130,32 @@ describe('the 3D transform longhands', () => {
     expect(errorsAt('perspective: none; perspective: 100px; perspective-origin: 0 0')).toEqual(REFUSED);
     expect(errorsAt('--p: 50px; perspective: var(--p)')).toEqual(REFUSED);
     expect(errorsAt('--o: left; perspective-origin: var(--o)')).toEqual(REFUSED);
-    expect(errorsAt('backface-visibility: visible; -webkit-backface-visibility: hidden')).toEqual(REFUSED);
     expect(errorsAt('backface-visibility: hidden; transform-style: preserve-3d; transform-box: border-box')).toEqual(REFUSED);
     // A value that arrives through var() is refused as well, and the initial value through var() is accepted.
-    expect(errorsAt('--b: hidden; backface-visibility: var(--b)')).toEqual(REFUSED);
+    expect(errorsAt('--b: preserve-3d; transform-style: var(--b)')).toEqual(REFUSED);
     expect(errorsAt('--b: flat; -webkit-transform-style: var(--b)')).toEqual([]);
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { backface-visibility: hidden; }';
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { transform-style: preserve-3d; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
     const errors = c.diagnostics.filter((x) => x.severity === 'error');
     expect(errors).toHaveLength(3);
-    for (const d of errors) expect(d.message).toMatch(/^backface-visibility: hidden on <div> a is unsupported: .*only visible is accepted$/);
+    for (const d of errors) expect(d.message).toMatch(/^transform-style: preserve-3d on <div> a is unsupported: .*only flat is accepted$/);
+  });
+
+  it('refuse a hidden backface on an inline box, which Chrome gives no paint layer and Dragon does not model, on every target', () => {
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { backface-visibility: hidden; }';
+    const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', [], [el(r, 'b', 'span', ['s'], [text(r, 't', 'XX')])])]));
+    const errors = c.diagnostics.filter((x) => x.severity === 'error');
+    expect(errors.map((d) => d.target).sort()).toEqual(['android', 'ios', 'web']);
+    for (const d of errors) expect(d.message).toMatch(/^backface-visibility: hidden on the inline box <span> b is unsupported: Chrome gives an inline box no paint layer for it/);
+    const ok = project(NO_FAULTS).compile(inputFor(`${css} .s { display: inline-block; }`, (r) => [el(r, 'a', 'div', [], [el(r, 'b', 'span', ['s'], [text(r, 't', 'XX')])])]));
+    expect(ok.diagnostics.filter((x) => x.severity === 'error' && x.message.includes('backface'))).toEqual([]);
   });
 
   it('refuse a value a child inherits explicitly, on the child too', () => {
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { backface-visibility: hidden; } .c { backface-visibility: inherit; }';
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { transform-box: border-box; } .c { transform-box: inherit; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]));
     const at = c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0]).sort();
-    expect(at).toEqual(['backface-visibility: hidden on <div> a', 'backface-visibility: hidden on <div> a', 'backface-visibility: hidden on <div> a', 'backface-visibility: hidden on <div> b', 'backface-visibility: hidden on <div> b', 'backface-visibility: hidden on <div> b']);
+    expect(at).toEqual(['transform-box: border-box on <div> a', 'transform-box: border-box on <div> a', 'transform-box: border-box on <div> a', 'transform-box: border-box on <div> b', 'transform-box: border-box on <div> b', 'transform-box: border-box on <div> b']);
   });
 
   it('are refused in @keyframes, where Dragon has no discrete animation writer', () => {
@@ -152,7 +165,7 @@ describe('the 3D transform longhands', () => {
   });
 
   it('plant transformExtraAccepted: a non-initial value compiles', () => {
-    expect(errorsAt('backface-visibility: hidden', { ...NO_FAULTS, transformExtraAccepted: true })).toEqual([]);
+    expect(errorsAt('transform-box: border-box', { ...NO_FAULTS, transformExtraAccepted: true })).toEqual([]);
     expect(errorsAt('transform-style: preserve-3d', { ...NO_FAULTS, transformExtraAccepted: true })).toEqual([]);
     expect(errorsAt('perspective: 100px; perspective-origin: left top', { ...NO_FAULTS, transformExtraAccepted: true })).toEqual([]);
   });
