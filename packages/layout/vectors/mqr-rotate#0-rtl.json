@@ -143,10 +143,17 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
+    "textIndent": {
+     "kind": "px",
+     "value": 0
+    },
+    "lineClamp": 0,
     "grid": null,
     "gridItem": null
    },
    "strut": null,
+   "marker": null,
    "children": [
     {
      "kind": "box",
@@ -263,10 +270,17 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
+      "textIndent": {
+       "kind": "px",
+       "value": 0
+      },
+      "lineClamp": 0,
       "grid": null,
       "gridItem": null
      },
      "strut": null,
+     "marker": null,
      "children": [
       {
        "kind": "box",
@@ -385,10 +399,17 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
+        "textIndent": {
+         "kind": "px",
+         "value": 0
+        },
+        "lineClamp": 0,
         "grid": null,
         "gridItem": null
        },
        "strut": null,
+       "marker": null,
        "children": [
         {
          "kind": "box",
@@ -506,10 +527,17 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
          "strut": null,
+         "marker": null,
          "children": []
         },
         {
@@ -628,10 +656,17 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
           "grid": null,
           "gridItem": null
          },
          "strut": null,
+         "marker": null,
          "children": []
         }
        ]
