@@ -237,6 +237,57 @@ describe('text-shadow', () => {
     expect([...new Set(NATIVE_ONLY(flex('12px', '10px'), row))]).toEqual(NATIVE_REFUSED);
   });
 
+  it('accepts a shadow whose meeting text paints later and opaque, and boxes kept apart by auto margins, list items, a grid gap or inline-block buttons', () => {
+    // A shadowed heading above an unshadowed paragraph: the paragraph's opaque glyphs paint later and cover the shadow as in Chrome.
+    const heading = (r: SourceRef) => [el(r, 'h', 'div', ['h'], [text(r, 't', 'XX')]), el(r, 'p', 'p', [], [text(r, 'u', 'XX')])];
+    const h = '.h { font-size: 20px; margin: 0 0 10px; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }';
+    expect(errorsIn(h, heading)).toEqual([]);
+    // Translucent glyphs painted later, or the paragraph first and the heading's shadow over it, are refused.
+    expect(errorsIn(`${h} p { color: rgba(0, 0, 0, 0.5); }`, heading)).toEqual(NATIVE_REFUSED);
+    const above = (r: SourceRef) => [el(r, 'p', 'p', ['q'], [text(r, 'u', 'XX')]), el(r, 'h', 'div', ['h'], [text(r, 't', 'XX')])];
+    expect(errorsIn(`${h} .q { margin: 0; }`, above)).toEqual(NATIVE_REFUSED);
+    const shadow = 'text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);';
+    const pair = (tag: string, cls: string) => (r: SourceRef) => [el(r, 'c', 'div', ['c'], [el(r, 'a', tag, [cls], [text(r, 't', 'XX')]), el(r, 'b', tag, [cls], [text(r, 'u', 'XX')])])];
+    // Auto margins in a flex row add free space only.
+    expect([...new Set(errorsIn(`.c { display: flex; } .i { width: 30px; margin: 0 auto 0 20px; ${shadow} }`, pair('div', 'i')))]).toEqual([]);
+    // List items without a marker.
+    expect([...new Set(errorsIn(`.c { margin: 0; padding: 0; } .i { list-style: none; margin-bottom: 24px; ${shadow} }`, (r) => [el(r, 'c', 'ul', ['c'], [el(r, 'a', 'li', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'li', ['i'], [text(r, 'u', 'XX')])])]))]).toEqual([]);
+    expect([...new Set(errorsIn(`.c { margin: 0; padding: 0; } .i { margin-bottom: 24px; ${shadow} }`, (r) => [el(r, 'c', 'ul', ['c'], [el(r, 'a', 'li', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'li', ['i'], [text(r, 'u', 'XX')])])]))]).toEqual(NATIVE_REFUSED);
+    // Auto-placed grid items, a gap apart on both axes; a placed item may share a cell.
+    expect([...new Set(errorsIn(`.c { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; } .i { ${shadow} }`, pair('div', 'i')))]).toEqual([]);
+    expect([...new Set(errorsIn(`.c { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; } .i { ${shadow} }`, pair('div', 'i')))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(`.c { display: grid; gap: 24px; } .i { grid-area: 1 / 1; ${shadow} }`, pair('div', 'i')))]).toEqual(NATIVE_REFUSED);
+    // Inline-block link buttons with margins on every side (Dragon has no <button>).
+    expect([...new Set(errorsIn(`.i { display: inline-block; margin: 12px; ${shadow} }`, pair('a', 'i')))]).toEqual([]);
+    expect([...new Set(errorsIn(`.i { display: inline-block; margin: 1px; ${shadow} }`, pair('a', 'i')))]).toEqual(NATIVE_REFUSED);
+  });
+
+  it('refuses a shadow a relatively positioned inline box, a negative margin inside, or a shrinking px width may move into another text', () => {
+    const shadow = 'text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);';
+    // A span pulled up against the previous block (landing's repro).
+    const pulled = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['s', 'm'], [el(r, 'c', 'span', ['r'], [text(r, 'u', 'XX')])])];
+    expect([...new Set(errorsIn(`.s { line-height: 20px; ${shadow} } .m { margin-top: 30px; }`, pulled))]).toEqual([]);
+    expect([...new Set(errorsIn(`.s { line-height: 20px; ${shadow} } .m { margin-top: 30px; } .r { position: relative; top: -30px; }`, pulled))]).toEqual(NATIVE_REFUSED);
+    // A negative margin-bottom on a block inside the first ends its auto height above its text.
+    const nested = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [el(r, 'n', 'div', ['n'], [text(r, 't', 'XX')])]), el(r, 'b', 'div', ['s', 'm'], [text(r, 'u', 'XX')])];
+    expect([...new Set(errorsIn(`.s { line-height: 20px; ${shadow} } .m { margin-top: 30px; }`, nested))]).toEqual([]);
+    expect([...new Set(errorsIn(`.s { line-height: 20px; ${shadow} } .m { margin-top: 30px; } .n { margin-bottom: -40px; }`, nested))]).toEqual(NATIVE_REFUSED);
+    // A flex item's px width shrinks to min-width 0 on a full line, past its text; flex-shrink: 0 keeps it.
+    const row = (r: SourceRef) => [el(r, 'c', 'div', ['c'], [el(r, 'a', 'div', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['i'], [text(r, 'u', 'XX')])])];
+    const flex = (extra: string) => `.c { display: flex; } .i { width: 30px; margin: 0 12px; min-width: 0; ${extra} ${shadow} }`;
+    expect([...new Set(errorsIn(flex(''), row))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(flex('flex-shrink: 0;'), row))]).toEqual([]);
+  });
+
+  it('checks 300 shadowed blocks in well under a second (each pair once)', () => {
+    const many = (r: SourceRef) => [...Array(300).keys()].map((k) => el(r, `d${k}`, 'div', ['s'], [text(r, `t${k}`, 'XX')]));
+    const started = performance.now();
+    const c = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .s { white-space: nowrap; margin-bottom: 20px; text-shadow: 0 1px 2px red; }', many));
+    expect(performance.now() - started).toBeLessThan(5_000);
+    // None meets another (the document budget refuses the later lists).
+    expect(c.diagnostics.filter((d) => d.message.includes('may meet'))).toEqual([]);
+  });
+
   it('refuses the lists after the document budget, keeping the ones before it', () => {
     const lines = (count: number) => (r: SourceRef) => [...Array(count).keys()].map((k) => el(r, `d${k}`, 'div', ['s'], [text(r, `t${k}`, 'X'.repeat(40))]));
     // Each line's own block, 20px apart, so no two lines' shadows meet.

@@ -25,7 +25,7 @@ import { valueToString } from './resolve.ts';
 import { lineClampOf } from './line-clamp.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import type { DrawnShadow, InkText } from './text-shadow-apart.ts';
-import { meetRefusal, parentsOf, reachOf } from './text-shadow-apart.ts';
+import { MeetCheck, parentsOf, reachOf } from './text-shadow-apart.ts';
 
 /** One text shadow as the native targets draw it: css px lengths at zoom 1 and an sRGB RGBA8 colour. */
 export type TextShadowValue = { readonly x: number; readonly y: number; readonly blur: number; readonly color: Rgba8 };
@@ -213,7 +213,14 @@ function groupOf(el: ResolvedElement): string | null {
 }
 
 /** Every text's ink and reach, and the parents of the tree's elements, for the check that no two texts' shadows meet. */
-type Others = { readonly inks: ReadonlyMap<ResolvedText, InkText>; readonly parents: ReadonlyMap<ResolvedElement, ResolvedElement> };
+type Others = { readonly inks: ReadonlyMap<ResolvedText, InkText>; readonly meet: MeetCheck };
+
+/** The alpha of the colour an element's glyphs fill in: -webkit-text-fill-color, or color where it is currentcolor. */
+function glyphAlpha(el: ResolvedElement): number {
+  const fill = (el.props.get('-webkit-text-fill-color') as ResolvedValue | undefined)?.value;
+  const v = fill !== undefined && fill.kind === 'color' ? fill : (el.props.get('color') as ResolvedValue).value;
+  return v.kind === 'color' ? v.value.alpha : 0;
+}
 
 /** A list's drawn shadows for the meeting check: a length other than px (refused on every target) reaches without bound. */
 function drawnShadows(shadows: readonly Shadow[]): DrawnShadow[] {
@@ -232,8 +239,12 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
   const painters: number[] = [];
   const inks = new Map<ResolvedText, InkText>();
   let order = 0;
-  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean): void => {
+  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null): void => {
     if (keyword(el.props, 'display') === 'none') return;
+    // A relatively positioned (or sticky) inline box between a text and its block container moves the text off its line box.
+    const inline = keyword(el.props, 'display') === 'inline';
+    const position = keyword(el.props, 'position');
+    const moved = !inline ? null : movedAbove ?? (position === 'static' ? null : `the inline box ${el.element.address} is position: ${position}, which may move its text off its line`);
     // A line-clamp container clamps (and may end in an ellipsis) its own inline content and its child blocks', at any depth here.
     const clamped = clampedAbove || lineClampOf(el) !== 0;
     // text-overflow is not inherited: it is the block container's, through any depth of inline boxes.
@@ -245,15 +256,15 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
     if (own !== null && !declared.has(own)) declared.set(own, []);
     const g = group ?? groupOf(el);
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c, own, g, container, clamped);
+      if (c.kind === 'element') walk(c, own, g, container, clamped, moved);
       else {
         order++;
         if (own !== null) (declared.get(own) as Shadowed[]).push({ text: c, parent: el, container, clamped, order, group: g });
-        if (c.text.trim() !== '') inks.set(c, { text: c, container, reach: reachOf(drawnShadows(shadowList(el))) });
+        if (c.text.trim() !== '') inks.set(c, { text: c, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved });
       }
     }
   };
-  walk(root, null, null, root, false);
+  walk(root, null, null, root, false, null);
   return { declared, painters, inks };
 }
 
@@ -276,12 +287,12 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
     if (keyword(container.props, 'text-overflow') !== 'clip') return `${at} may end in an ellipsis, which the native shadow does not draw`;
     if (clamped) return `${at} is inside a -webkit-line-clamp container, whose clamp may end its line in an ellipsis the native shadow does not draw`;
     if (group !== null) return `${at} is inside an element with ${group}, a compositing group in Chrome`;
-    // No other text's ink or shadows may meet a blurred or translucent shadow of this text, nor this text's ink or shadows another's.
+    // Where this text and another meet, the later-painted one's blurred or translucent paint must not land on the earlier's.
     const self = others.inks.get(text);
     if (self !== undefined) {
       for (const u of others.inks.values()) {
         if (u === self) continue;
-        const why = meetRefusal(self, u, others.parents, TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE);
+        const why = others.meet.refusal(self, u);
         if (why !== null) return `${at}: ${why}`;
       }
     }
@@ -299,7 +310,7 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
 export function checkTextShadows(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: TxtFxFaults): void {
   if (faults.textShadowListAccepted) return;
   const { declared, painters, inks } = survey(root);
-  const others: Others = { inks, parents: parentsOf(root) };
+  const others: Others = { inks, meet: new MeetCheck(parentsOf(root), TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE) };
   if (declared.size === 0) return;
   // The native work of the lists accepted so far, in declaration order (the document budget).
   const budget = { used: 0 };
