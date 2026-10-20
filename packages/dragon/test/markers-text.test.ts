@@ -267,7 +267,14 @@ describe('marker text through the compiler (analysis/markers.ts) against the GEN
       ({ element: { address: 'body > div', tag: 'div', attributes: new Map() }, props: new Map(props.map(([k, v]) => [k, { value: v }])), children: [] }) as unknown as ResolvedElement;
     expect(() => ordinalTreeOf(el([]))).toThrow(/body > div: display did not resolve/);
     expect(() => ordinalTreeOf(el([['display', { kind: 'other', type: 'x', text: 'list-item' }]]))).toThrow(/display computed to a other, not a keyword/);
-    expect(ordinalTreeOf(el([['display', { kind: 'keyword', value: 'list-item' }]]))).toMatchObject({ box: 'box', listItem: true });
+    const kw = (value: string) => ({ kind: 'keyword', value });
+    expect(ordinalTreeOf(el([['display', kw('list-item')], ['container-type', kw('normal')]]))).toMatchObject({ box: 'box', listItem: true, styleContainment: false });
+  });
+  it('makes a size or inline-size query container style contained, so a list owner (probed in Chrome 145), and no other container type', () => {
+    const el = (type: string): ResolvedElement =>
+      ({ element: { address: 'body > div', tag: 'div', attributes: new Map() }, props: new Map([['display', { value: { kind: 'keyword', value: 'block' } }], ['container-type', { value: { kind: 'keyword', value: type } }]]), children: [] }) as unknown as ResolvedElement;
+    const contained = ['normal', 'inline-size', 'size', 'scroll-state', 'inline-size scroll-state', 'anchored', 'size scroll-state anchored'].map((t) => [t, ordinalTreeOf(el(t)).styleContainment]);
+    expect(contained).toEqual([['normal', false], ['inline-size', true], ['size', true], ['scroll-state', false], ['inline-size scroll-state', true], ['anchored', false], ['size scroll-state anchored', true]]);
   });
   it('handles ol start and reversed and li value only (HTML §4.4.5, §4.4.8); the same names elsewhere stay refused', () => {
     for (const [tag, name] of [['ol', 'start'], ['ol', 'reversed'], ['li', 'value']]) expect(attributeRefusal(tag as string, name as string), `<${tag} ${name}>`).toBeNull();

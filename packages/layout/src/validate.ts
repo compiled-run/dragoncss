@@ -175,6 +175,7 @@ export const styleSchema = obj({
   textOverflow: lit('clip', 'ellipsis'),
   textIndent: tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...calc }),
   lineClamp: count0,
+  containInlineSize: bool,
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -507,6 +508,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     checkFields(value, { id: str, style: styleSchema, font: fontSpecSchema, lineHeight: lineHeightSchema }, path, errors, ['kind', 'children']);
     const style = value['style'];
     if (isRecord(style) && style['display'] !== 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an inline box has display inline' });
+    // css-contain-2 §3.2: inline-size containment has no effect on a non-atomic inline box.
+    if (isRecord(style) && style['containInlineSize'] === true) errors.push({ path: `${path}.style.containInlineSize`, code: 'bad-value', message: 'an inline box is never inline-size contained' });
     // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
     if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
     const kids = childrenOf(value, path, errors);
@@ -528,6 +531,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       if (style['overflowX'] !== style['overflowY']) errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
       // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
       if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
+      // css-contain-2 §3.2: a size-contained replaced box loses its natural size, which replaced.ts does not model.
+      if (style['containInlineSize'] === true) errors.push({ path: `${path}.style.containInlineSize`, code: 'bad-value', message: 'an inline-size contained replaced box is not supported' });
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
       if (style['display'] === 'grid' || style['display'] === 'inline-grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
@@ -867,6 +872,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   textOverflow: 'clip',
   lineClamp: 0,
+  containInlineSize: false,
   grid: null,
 };
 

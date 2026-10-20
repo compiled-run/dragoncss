@@ -33,7 +33,7 @@ export function markerTypeOf(value: CssValue): MarkerType {
   return { kind: 'refused', reason: `list-style-type: ${value.value} is not supported yet: ${COUNTER_STYLE_OWNER}` };
 }
 
-const keywordOf = (el: ResolvedElement, property: 'display' | 'list-style-type'): CssValue => {
+const keywordOf = (el: ResolvedElement, property: 'display' | 'list-style-type' | 'container-type'): CssValue => {
   const v = el.props.get(property) as ResolvedValue | undefined;
   if (v === undefined) throw new Error(`${el.element.address}: ${property} did not resolve`);
   return v.value;
@@ -43,6 +43,12 @@ const displayOf = (el: ResolvedElement): string => {
   const v = keywordOf(el, 'display');
   if (v.kind !== 'keyword') throw new Error(`${el.element.address}: display computed to a ${v.kind}, not a keyword`);
   return v.value;
+};
+
+// css-conditional-5 §2.1: a size or inline-size query container is style contained (probed in Chrome 145: it owns the list items in it).
+const styleContained = (el: ResolvedElement): boolean => {
+  const v = keywordOf(el, 'container-type');
+  return v.kind === 'keyword' && v.value.split(' ').some((k) => k === 'size' || k === 'inline-size');
 };
 
 /** The resolved tree as list_item_ordinal.cc walks it: node ids are element addresses. */
@@ -55,7 +61,7 @@ export function ordinalTreeOf(root: ResolvedElement): OrdinalNode {
       tag: el.element.tag,
       box: none ? 'none' : display === 'contents' ? 'contents' : 'box',
       listItem: display === 'list-item',
-      styleContainment: false,
+      styleContainment: styleContained(el),
       attributes: el.element.attributes,
       children: el.children.flatMap((c) => (c.kind === 'element' ? [toNode(c, none)] : [])),
     };

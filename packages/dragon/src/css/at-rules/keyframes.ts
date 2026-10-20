@@ -41,6 +41,10 @@ export const NOT_VALID_FOR_KEYFRAME: readonly string[] = [
   'timeline-trigger-entry-range',
 ];
 
+// Chrome 145 ignores container-name and container-type in @keyframes too, though css_properties.json5 leaves them valid_for_keyframe
+// (probed: an animation of both keeps normal and none).
+const IGNORED_IN_KEYFRAMES: readonly string[] = ['container', 'container-name', 'container-type'];
+
 const TIMELINE_RANGE_NAMES = ['cover', 'contain', 'entry', 'exit', 'entry-crossing', 'exit-crossing', 'scroll', 'view'];
 
 /** <keyframes-name>: a <custom-ident> other than none, or a string (css-animations-1 §3). */
@@ -168,7 +172,7 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       else easing = item.easing;
       continue;
     }
-    if (NOT_VALID_FOR_KEYFRAME.includes(property)) {
+    if (NOT_VALID_FOR_KEYFRAME.includes(property) || IGNORED_IN_KEYFRAMES.includes(property)) {
       refuse('DRAGON_UNSUPPORTED_PROPERTY', `${property} has no effect inside @keyframes in Chrome; remove it`);
       continue;
     }

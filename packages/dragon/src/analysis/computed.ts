@@ -8,7 +8,7 @@ import { absolutizeGridText, GRID_TRACK_LONGHANDS } from '../css/grid-values.ts'
 import { properties as grammar } from '../css/grammar.generated.ts';
 import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
-import type { CssValue, Declaration } from '../css/stylesheet.ts';
+import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import type { FoldBases } from '../css/math.ts';
 import { foldableUnits, foldLength, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
@@ -38,7 +38,17 @@ export type Origin = 'author' | 'presentational-hint' | 'inherited' | 'user-agen
  * leaves the root font-family at the dataset's value.
  */
 /** registered: the document's @property registrations (css/at-rules/property.ts); none when absent. */
-export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset; readonly registered?: Registrations };
+export type ResolveEnvironment = {
+  readonly direction: 'ltr' | 'rtl';
+  readonly rootFont: RootFont;
+  readonly ua: UaDataset;
+  readonly registered?: Registrations;
+  /**
+   * CQ: whether a @container rule applies to an element, given its ancestors (a generated box's end with its host) and the element
+   * (null for a generated box); absent, no @container rule applies (analysis/container-rules.ts finds the containers without them).
+   */
+  readonly container?: (rule: Rule, ancestors: readonly LinkedElement[], self: LinkedElement | null) => boolean;
+};
 
 export type RootFont = 'ahem' | 'ua-default';
 

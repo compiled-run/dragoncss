@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.page { container: page / inline-size; margin: 0 8px; padding: 0 4px 0 8px; border-top: 2px solid #1a1a2e; }
+.card { container-type: inline-size; max-width: 340px; border-top: 1px solid #1a1a2e; border-bottom: 1px solid #1a1a2e; }
+.a { height: 10px; background-color: #cccccc; }
+.b { height: 10px; background-color: #888888; }
+@media (min-width: 384px) { .page { padding: 0 20px; } }
+@container page (min-width: 324px) { .a { width: 40px; background-color: #00cc00; } }
+@container (max-width: 292px) { .a { height: 20px; } }
+@container page (300px < width <= 340px) { .b { margin-left: 8px; background-color: #0000cc; } }
+@container (width >= 332px) { .card .a { background-color: #cc00cc; } .page { background-color: #ffff00; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="page" class="page"><div data-dragon-id="p-a" class="a">X</div><div data-dragon-id="p-b" class="b">X</div><div data-dragon-id="card" class="card"><div data-dragon-id="c-a" class="a">X</div><div data-dragon-id="c-b" class="b">X</div></div></div>
+<div data-dragon-id="out" class="a b">X</div>
+</body>
+</html>

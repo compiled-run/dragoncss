@@ -290,3 +290,11 @@ export function isScrollContainer(style: LayoutStyle): boolean {
   return x === 'hidden' || x === 'auto' || x === 'scroll';
 }
 
+/**
+ * Whether a block container in a block flow lays out its contents in a new formatting context (Blink
+ * LayoutBox::CreatesNewFormattingContext): not a plain block, a scroll container, or a query container (css-conditional-5 §2.1).
+ */
+export function establishesFormattingContext(style: LayoutStyle, faults: EngineFaults): boolean {
+  return style.display !== 'block' || isScrollContainer(style) || (style.containInlineSize && !faults.containerJoinsFlow);
+}
+

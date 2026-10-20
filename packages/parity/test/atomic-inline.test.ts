@@ -30,7 +30,7 @@ const STYLE = {
   paddingTop: { kind: 'px', value: 0 }, paddingRight: { kind: 'px', value: 0 }, paddingBottom: { kind: 'px', value: 0 }, paddingLeft: { kind: 'px', value: 0 },
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
-  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0,
+  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containInlineSize: false,
   verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' }, grid: null, gridItem: null,
 } as const satisfies LayoutStyle;
 

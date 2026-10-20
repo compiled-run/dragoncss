@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resolve.ts';
 import type { Candidate } from '../src/analysis/resolve.ts';
-import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
+import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, containerAtRule, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
 import { layerAtRule } from '../src/css/at-rules/layer.ts';
 import { propertyAtRule } from '../src/css/at-rules/property.ts';
@@ -131,13 +131,14 @@ describe('E2 seams: FIXTURES', () => {
   });
 });
 
-describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, @charset and @layer is still refused', () => {
+describe('E2 seams: every at-rule but @media, @container, @keyframes, @supports, @property, @charset and @layer is still refused', () => {
   // MQ-a made @media conditional, ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts), ANIM-b2 accepted @-webkit-keyframes
   // as @keyframes (aliases.test.ts), CASC decides @supports (casc.test.ts), CASC 2 registers a top-level @property
-  // (casc-property.test.ts) and CASC 3 orders cascade layers (casc-layer.test.ts). The enclosing at-rule of the fourth sheet is
+  // (casc-property.test.ts), CASC 3 orders cascade layers (casc-layer.test.ts) and CQ applies @container rules per query container
+  // (container-rules.test.ts). The enclosing at-rule of the fourth sheet is
   // @unknown-thing, which no handler will ever take. @charset has its own handler, which accepts only "utf-8" at the start of a sheet (charset.test.ts).
   const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && n !== 'layer' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && n !== 'layer' && n !== 'container' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
   const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@unknown-thing w { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
@@ -146,8 +147,8 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face, media, keyframes, supports, property, charset and layer is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : name === 'layer' ? layerAtRule : refuseAtRule);
+  it('every registered name but font-face, media, container, keyframes, supports, property, charset and layer is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : name === 'layer' ? layerAtRule : name === 'container' ? containerAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -199,8 +200,9 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
     // before taking ANIM-b2 (1b8eacfdf9) gives 48d27023… for this list too. charset left with its own handler: without it master
     // before it (9b32f10e18) gives ecd10b0c… too. property left with CASC 2: without it master before CASC 2 (508db670c4) gives
     // 1397573c… too. CASC 3 orders @layer, so layer left the list and the enclosing at-rule became @unknown-thing (never registered, so always refused): master before
-    // CASC 3 (8a91837674) gives 180df812… for these runs too, so every other at-rule is still unchanged.
-    const pinned = ['color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
+    // CASC 3 (8a91837674) gives 180df812… for these runs too, so every other at-rule is still unchanged. container left with CQ:
+    // without it the commit before CQ (f5bd030d8e) gives 0a87ea72… too.
+    const pinned = ['color-profile', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -216,7 +218,7 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('180df812178562c5c4cde6b617b5ba74c2aa0f3565c8d39177a9d8717aed5b3e');
+    expect(sha(strip(runs))).toBe('0a87ea72a3f19a643739d5065ca5a064cfd9d9b01e44f86c30e30b4ae817479b');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });

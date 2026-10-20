@@ -1,4 +1,4 @@
-// The scroll-snap, containment and container-query parse against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES,
+// The scroll-snap and containment parse against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES,
 // css/properties/initial-only.ts, css/properties/scroll-snap.ts): Dragon drops what Chrome drops and no value Chrome keeps, and every
 // value Dragon accepts computes in Chrome to what the longhands it sets compute to, in an ltr and an rtl box (the flow-relative scroll
 // names map onto the physical longhands by direction). The initial-only families accept their initial values alone and keep every
@@ -8,14 +8,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
-import { CONTAINER_QUERY_LONGHANDS } from '../../dragon/src/css/properties/container-query.ts';
 import { CONTAINMENT_LONGHANDS } from '../../dragon/src/css/properties/containment.ts';
 import { NON_INITIAL_VALUE_TYPE } from '../../dragon/src/css/properties/initial-only.ts';
 import { SCROLL_SNAP_LONGHANDS } from '../../dragon/src/css/properties/scroll-snap.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
 
 const SOURCE = { uri: 'dragon-source://test/scroll-containment.css', revision: 'r1', hash: 'sha256:0' };
-const LONGHANDS: readonly string[] = [...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS];
+const LONGHANDS: readonly string[] = [...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS];
 
 type Pairs = readonly (readonly [string, string])[];
 /** code: Dragon's diagnostic, or null; ltr, rtl: the longhands Dragon sets in each direction as [property, text] when it accepts the value, else null. */
@@ -73,13 +72,10 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
   'contain-intrinsic-height': ['none', 'auto 5px'],
   'contain-intrinsic-inline-size': ['none', '1px'],
   'contain-intrinsic-block-size': ['NONE', 'auto none'],
-  'container-type': ['normal', 'NORMAL', 'size', 'inline-size', 'scroll-state', 'inline-size scroll-state', 'normal size', 'anchored', 'none'],
-  'container-name': ['none', 'NONE', 'card', 'a b', 'none none', 'and', 'not', 'a none', 'normal'],
-  container: ['none', 'NONE', 'none / normal', 'NONE/NORMAL', 'none / size', 'card', 'card / inline-size', 'none normal', 'none /', '/ normal', 'none / normal size'],
 };
 
 /** How many of VALUES Dragon accepts and drops (pinned so a parser change that accepts or drops more or fewer is seen). */
-const ACCEPTED = 143;
+const ACCEPTED = 135;
 const DROPPED = 28;
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
@@ -96,7 +92,7 @@ function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
 /** A planted reading: Dragon's code, and the same longhands in both directions. */
 const plant = (name: string, v: string, code: string | null, longhands: Pairs | null): Item => ({ name, v, code, ltr: longhands, rtl: longhands });
 
-describe('scroll-snap, containment and container-query: Chrome 145 parsing', () => {
+describe('scroll-snap and containment: Chrome 145 parsing', () => {
   type Browser = { newPage(): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown> }>; close(): Promise<void> };
 
   it('Dragon drops what Chrome drops, every accepted value computes as Dragon\'s longhands do in both directions, and the plants are caught', async () => {
@@ -109,7 +105,6 @@ describe('scroll-snap, containment and container-query: Chrome 145 parsing', () 
       { name: 'marginPercentKept', items: [plant('scroll-margin-top', '10%', null, [['scroll-margin-top', '10%']])] },
       { name: 'inlineStartPhysicalRight', items: [plant('scroll-padding-inline-start', '3px', null, [['scroll-padding-right', '3px']])] },
       { name: 'paddingTwoValuesTopBottomOnly', items: [plant('scroll-padding', '0 20px', null, [['scroll-padding-top', '0px'], ['scroll-padding-right', '0px'], ['scroll-padding-bottom', '0px'], ['scroll-padding-left', '0px']])] },
-      { name: 'containerTypeReadAsInitial', items: [plant('container', 'none / size', null, [['container-name', 'none'], ['container-type', 'normal']])] },
     ];
     const sets = [real, ...planted.map((p) => p.items)];
     const { launchChrome } = (await import(new URL('../src/chrome.ts', import.meta.url).href)) as { launchChrome: () => Promise<Browser> };
@@ -119,7 +114,7 @@ describe('scroll-snap, containment and container-query: Chrome 145 parsing', () 
       const page = await browser.newPage();
       await page.setContent('<!DOCTYPE html><div><span id="a"></span><span id="c"></span></div><div dir="rtl"><span id="ar"></span><span id="cr"></span></div>');
       // A string expression: this test project has no DOM types. The authored value on #a and #ar, Dragon's longhands for each
-      // direction on #c and #cr, all read as every longhand of the four families.
+      // direction on #c and #cr, all read as every longhand of the three families.
       seen = (await page.evaluate(`(${JSON.stringify(sets)}).map((items) => items.map((it) => {
         const [a, c, ar, cr] = ['a', 'c', 'ar', 'cr'].map((id) => document.getElementById(id));
         const read = (e) => ${JSON.stringify(LONGHANDS)}.map((p) => getComputedStyle(e).getPropertyValue(p)).join(' | ');

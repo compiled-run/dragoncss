@@ -1301,7 +1301,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
     checkZoom(el, targets, diagnostics, reported);
-    // The containment and container-query families, initial values only (analysis/scroll-containment.ts).
+    // The containment and container-query families, initial values only (analysis/scroll-containment.ts,     // The overscroll, scroll-snap and containment families, initial values only, and container-type (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);

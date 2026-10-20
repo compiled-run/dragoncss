@@ -434,7 +434,7 @@ export function animationFeatures(compiled: object): readonly string[] {
 export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
 export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandEnvironmentOf, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
 export type { InternalBands } from './project.ts';
-export { MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
+export { CONTAINER_AT_RULE_FEATURE, MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
 // MQ-R2 (T067 R9): the device readings the device features answer from.
 export type { MediaDevice } from './media/index.ts';
 export { DESKTOP_DEVICE, TOUCH_DEVICE } from './media/index.ts';
@@ -442,7 +442,7 @@ import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';
 import { assignmentKey as keyOfAssignment } from './analysis/link.ts';
 import { bandAt as partitionBandAt, DESKTOP_DEVICE as DESKTOP_DEVICE_OF } from './media/index.ts';
 import type { MediaDevice } from './media/index.ts';
-import { MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
+import { CONTAINER_AT_RULE_FEATURE as CONTAINER_AT_RULE_FEATURE_KEY, MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
 import type { BandRuntimeFaults } from './lower/band-program.ts';
 import type { StateFaults, StateProgram } from './lower/state-program.ts';
 
@@ -453,12 +453,16 @@ export function nativeBands(compiled: object): { readonly table: import('@dragon
   return { table: record.bands.table, conditions: record.bands.conditions, initial: record.bands.initial };
 }
 
-/** The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, sorted; none without @media. */
+/**
+ * The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, and at-rule:@container
+ * when @container rules apply in its bands (CQ), sorted; none without bands.
+ */
 export function mediaFeatures(compiled: object): readonly string[] {
   const record = internalRecord(compiled);
   if (record === undefined || record.bands === null || record.bands.partition.atoms.length === 0) return [];
+  const container = record.bands.container ? [CONTAINER_AT_RULE_FEATURE_KEY] : [];
   // The authored feature names, as the profile gate reads them (-webkit-device-pixel-ratio has its own row, though its atom is resolution's).
-  return [MEDIA_AT_RULE_FEATURE_KEY, ...[...new Set(record.bands.partition.atoms.map((a) => a.feature.base))].map(mediaFeatureKeyOf)].sort();
+  return [MEDIA_AT_RULE_FEATURE_KEY, ...container, ...[...new Set(record.bands.partition.atoms.map((a) => a.feature.base))].map(mediaFeatureKeyOf)].sort();
 }
 
 /**

@@ -353,6 +353,11 @@ export type LayoutStyle = {
    * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
    */
   readonly lineClamp: number;
+  /**
+   * css-contain-2 §3.2 inline-size containment with the independent formatting context css-conditional-5 §2.1 gives a query
+   * container (container-type: inline-size): its content contributes 0 to every intrinsic inline size. Never on an inline box.
+   */
+  readonly containInlineSize: boolean;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */

@@ -65,6 +65,9 @@ export const RESIZE_SCRIPTS: readonly ResizeScript[] = [
   // CALC-2: font sizes that follow the viewport, and the em lengths under them, through both orientations (vmin and vh follow the
   // height) and back.
   { fixture: 'text-font-size-vw-boxes', start: { width: 400, height: 304 }, steps: [r(304, 304), r(352, 304), r(304, 400), r(368, 336), r(320, 304), r(400, 304)] },
+  // CQ: page's content box is the viewport less 28px (less 56px from the @media rule's 384px), and card's is page's up to 340px: the
+  // queries switch at 320, 328, 352, 360 and 368 viewport px, and at 388 and 396 inside the @media band, each crossed both ways.
+  { fixture: 'cq-rules', start: { width: 400, height: 304 }, steps: [r(304, 304), r(320, 304), r(328, 304), r(336, 304), r(352, 304), r(360, 304), r(368, 304), r(376, 304), r(384, 304), r(392, 304), r(344, 304), r(400, 304)] },
   { fixture: 'mqr-orientation', start: { width: 400, height: 296 }, steps: [r(352, 304), r(304, 304), r(304, 400), r(288, 384), r(296, 400), r(400, 296)] },
 ];
 
