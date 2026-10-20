@@ -13,10 +13,11 @@ import { nativeTextShadows } from '../analysis/text-shadow.ts';
 import { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES } from '../fonts/synthetic-bold.ts';
 import { canonicalJson } from '../digest.ts';
 import type { TxtWFaults } from '../faults/txt-w.ts';
+import type { TxtFillFaults } from '../faults/txt-fill.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
 import type { Longhand } from '../css/properties.ts';
-import { colorChannels, usedColors } from './paint/colors.ts';
+import { colorChannels, glyphFill, usedColors } from './paint/colors.ts';
 import { borderWrites } from './paint/border.ts';
 import { clipsChildren } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
@@ -120,7 +121,7 @@ export const VOCABULARY: { readonly [B in NativeBackend]: Vocabulary } = {
 export const WRITE_CSS: { readonly [K in WriteKind['kind']]: readonly Longhand[] } = {
   ...paintWriteCss(),
   font: ['font-family', 'font-size'],
-  'text-color': ['color'],
+  'text-color': ['color', '-webkit-text-fill-color'],
   'synthetic-oblique': ['font-style', 'font-synthesis-style'],
   'synthetic-bold': ['font-weight', 'font-synthesis-weight'],
 };
@@ -202,15 +203,17 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
 type OwnedText = { readonly text: ResolvedText; readonly owner: ResolvedElement };
 
 /** The TXT-W plants the lowering reads: the synthetic bold from 700 instead of 600 or never stroked, and the oblique never sheared. */
-export type TextPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked' | 'ahemObliqueUnsheared'>;
-const NO_TEXT_PLANTS: TextPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false };
+export type TextPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked' | 'ahemObliqueUnsheared'> & Pick<TxtFillFaults, 'textFillIgnored'>;
+const NO_TEXT_PLANTS: TextPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false, textFillIgnored: false };
 
 function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, OwnedText>, plants: TextPlants): NodePaint {
   const owned = texts.get(t.id);
   if (owned === undefined) throw new ProgramError(`${t.id}: no resolved text for the text leaf`);
   const color = owned.text.props.get('color');
   if (color === undefined) throw new ProgramError(`${t.id}: color did not resolve`);
-  const writes: WriteKind[] = [{ kind: 'font', font: t.font }, { kind: 'text-color', color: colorChannels(color.value, t.id) }];
+  // compat §5: glyphs are filled in -webkit-text-fill-color (inherited, so the owner's), which is color where it is currentcolor.
+  const fill = plants.textFillIgnored ? colorChannels(color.value, t.id) : glyphFill(owned.owner);
+  const writes: WriteKind[] = [{ kind: 'font', font: t.font }, { kind: 'text-color', color: fill }];
   // Native draws only Ahem (a real face is refused on native), whose one regular face Chrome shears for a slope of 14deg and up
   // and emboldens from weight 600 (both together are refused, computed-checks.ts syntheticTextFont).
   if (t.font.family === 'Ahem' && synthesizesOblique(owned.owner.props) && !plants.ahemObliqueUnsheared) writes.push({ kind: 'synthetic-oblique', shear: SYNTHETIC_OBLIQUE_SHEAR });
