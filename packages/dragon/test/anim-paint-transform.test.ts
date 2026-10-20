@@ -113,9 +113,12 @@ describe('ANIM-b2: transform animations', () => {
     const spin = 'body { margin: 0; } .a { height: 20px; animation: k 1s infinite; } @keyframes k { to { transform: translateX(10px) } }';
     const why = (s: string): string => `animation k on a animates transform on an element whose transform is none, with ${s}: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`;
     // A later sibling: Chrome paints the animating a over b, as a stacking context; native would paint b over it.
-    expect(diags(`${spin} .b { height: 20px; margin-top: -10px; }`, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])])).toEqual([why('content after it, which its stacking context would paint it over')]);
+    const order = why('content its stacking context would paint in another order');
+    expect(diags(`${spin} .b { height: 20px; margin-top: -10px; }`, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])])).toEqual([order]);
+    // An earlier positioned sibling (a layer item): Chrome paints the animating a over it, native under it.
+    expect(diags(`${spin} .p { position: relative; height: 20px; }`, (r) => [div(r, 'p', ['p']), div(r, 'a', ['a'])])).toEqual([order]);
     // A z-index on a flex item inside it: its own stacking context would hold the item.
-    expect(diags(`${spin} .a { display: flex; } .z { z-index: -1; height: 5px; }`, (r) => [div(r, 'a', ['a'], [div(r, 'z', ['z'])])])).toEqual([why('a descendant with a z-index, which its stacking context would hold')]);
+    expect(diags(`${spin} .a { display: flex; } .z { z-index: -1; height: 5px; }`, (r) => [div(r, 'a', ['a'], [div(r, 'z', ['z'])])])).toEqual([order]);
     // An earlier box (no text) and its own children are fine; a transform of its own already makes it a stacking context.
     expect(diags(`${spin} .e { height: 5px; } .c { height: 5px; }`, (r) => [div(r, 'e', ['e']), div(r, 'a', ['a'], [div(r, 'c', ['c'])])])).toEqual([]);
     expect(diags(`${spin} .a { transform: translateX(1px); } .b { height: 20px; }`, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])])).toEqual([]);

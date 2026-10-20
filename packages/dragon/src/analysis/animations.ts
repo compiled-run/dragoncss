@@ -26,7 +26,11 @@ import { beats } from './cascade.ts';
 import type { ResolvedValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import { selectorMatches, specificityFor } from './match.ts';
-import type { ResolvedElement, ResolvedText } from './resolve.ts';
+import { stackingOf } from '../lower/paint/stacking.ts';
+import type { StackNode } from '../lower/paint/stacking.ts';
+import { propagatedFrom } from './computed-checks.ts';
+import { resolvedStackTree } from './paint-values/stacking.ts';
+import type { ResolvedElement } from './resolve.ts';
 import { resolvedCustoms } from './resolve.ts';
 import type { CustomProperties } from './variables.ts';
 import { substituteVars } from './variables.ts';
@@ -333,8 +337,8 @@ function inlineBoxAt(el: ResolvedElement, root: ResolvedElement): boolean {
  * ANIM-b2: while its transform animates, an element is a containing block and stacking context even where its own transform is
  * none (css-transforms-1 §3, css-animations-1 §3, Chrome's running-animation compositing reasons); Dragon lowers both from the static
  * transform only. So an element whose transform is none (and not will-change: transform) is refused when either can change what it
- * paints: a positioned descendant (the containing block), or anything its being a stacking context reorders: a descendant with a
- * z-index, text earlier in the document, or any box or text after it outside its subtree. Returns what it has, or null.
+ * paints: a positioned descendant (the containing block), or a paint order (stacking.ts stackingOf) that differs with the element
+ * made a stacking context. Returns what it has, or null.
  */
 function untransformedStacking(el: ResolvedElement, root: ResolvedElement): string | null {
   const own = valueAt(el, 'transform').value;
@@ -345,33 +349,10 @@ function untransformedStacking(el: ResolvedElement, root: ResolvedElement): stri
   };
   const positioned = (e: ResolvedElement): boolean => e.children.some((c) => c.kind === 'element' && (!isStatic(c) || positioned(c)));
   if (positioned(el)) return 'a positioned descendant, whose containing block it becomes';
-  const zIndexed = (e: ResolvedElement): boolean => e.children.some((c) => {
-    if (c.kind !== 'element') return false;
-    const z = valueAt(c, 'z-index').value;
-    return !(z.kind === 'keyword' && z.value === 'auto') || zIndexed(c);
-  });
-  if (zIndexed(el)) return 'a descendant with a z-index, which its stacking context would hold';
-  // Document order outside el's subtree: text before it, or any node after it.
-  let after = false;
-  let found: string | null = null;
-  const walk = (n: ResolvedElement | ResolvedText): void => {
-    if (found !== null) return;
-    if (n === el) {
-      after = true;
-      return;
-    }
-    if (n.kind === 'text') {
-      found = after ? 'content after it' : 'text before it';
-      return;
-    }
-    if (after) {
-      found = 'content after it';
-      return;
-    }
-    for (const c of n.children) walk(c);
-  };
-  for (const c of root.children) walk(c);
-  return found === null ? null : `${found}, which its stacking context would paint it over`;
+  // The paint order with the element a stacking context (as a transformed box is) against the static one (Appendix E).
+  const tree = resolvedStackTree(root, propagatedFrom(root));
+  const marked = (n: StackNode): StackNode => ({ ...n, transformed: n.transformed || n.id === el.element.address, children: n.children.map(marked) });
+  return stackingOf(marked(tree)).order.join() === stackingOf(tree).order.join() ? null : 'content its stacking context would paint in another order';
 }
 
 const INLINE_ANIM_MANUAL = 'Animate a block-level element instead (display: block or inline-block on a wrapper), or remove the declaration.';
