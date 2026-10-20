@@ -1,6 +1,6 @@
 // Colour resolution for the milestone subset (css-color-4). This is the only file in the core that converts or rounds colours.
 // Chrome 145 keeps legacy sRGB colours (named, hex, rgb(), hsl()) as 8-bit channels; each rule below was measured against it.
-import { generate } from 'css-tree';
+import { generate, parse } from 'css-tree';
 import type { CssNode, List } from 'css-tree';
 import type { ColorSpace, HueMethod } from './color-space.ts';
 import { BlinkColor, isLegacySpace } from './color-space.ts';
@@ -16,8 +16,12 @@ export type ColorSyntax =
 
 export type ColorParse =
   /** css is Chrome's computed serialization when it is not the rgb()/rgba() of the 8-bit value (COL4 colour functions). */
-  /** css: Chrome's computed serialization, when it is not the 8-bit rgb() one. oklab: Chrome animates it in oklab (Color::GetColorInterpolationSpace). */
-  | { readonly ok: true; readonly kind: 'rgba'; readonly value: Rgba8; readonly syntax: ColorSyntax; readonly css?: string; readonly oklab?: true }
+  /**
+   * css: Chrome's computed serialization, when it is not the 8-bit rgb() one; web: that colour to nine significant digits, which web
+   * output writes so Chrome paints the same bytes. oklab: Chrome animates it in oklab (Color::GetColorInterpolationSpace).
+   * fractional: an hsl() or hwb() colour Chrome interpolates in float sRGB between 8-bit steps.
+   */
+  | { readonly ok: true; readonly kind: 'rgba'; readonly value: Rgba8; readonly syntax: ColorSyntax; readonly css?: string; readonly web?: string; readonly oklab?: true; readonly fractional?: true }
   | { readonly ok: true; readonly kind: 'keyword'; readonly keyword: 'transparent' | 'currentcolor' }
   | { readonly ok: false; readonly reason: string };
 
@@ -221,9 +225,9 @@ const refusal = (refused: string): Refusal => ({ refused });
 const isRefusal = (v: unknown): v is Refusal => typeof v === 'object' && v !== null && 'refused' in v;
 
 const FUNCTION_SPACE: { readonly [name: string]: ColorSpace } = { rgb: 'rgb', rgba: 'rgb', hsl: 'hsl', hsla: 'hsl', hwb: 'hwb', lab: 'lab', lch: 'lch', oklab: 'oklab', oklch: 'oklch' };
-// ColorSpaceFromColorSpaceArgument; display-p3-linear and rec2100-linear sit behind runtime flags that Chrome 145 leaves off.
+// ColorSpaceFromColorSpaceArgument; rec2100-linear sits behind a runtime flag that Chrome 145 leaves off (display-p3-linear does not).
 const PREDEFINED_SPACE: { readonly [name: string]: ColorSpace } = {
-  srgb: 'srgb', 'srgb-linear': 'srgb-linear', 'display-p3': 'display-p3', 'a98-rgb': 'a98-rgb', 'prophoto-rgb': 'prophoto-rgb', rec2020: 'rec2020',
+  srgb: 'srgb', 'srgb-linear': 'srgb-linear', 'display-p3': 'display-p3', 'display-p3-linear': 'display-p3-linear', 'a98-rgb': 'a98-rgb', 'prophoto-rgb': 'prophoto-rgb', rec2020: 'rec2020',
   xyz: 'xyz-d65', 'xyz-d50': 'xyz-d50', 'xyz-d65': 'xyz-d65',
 };
 const MIX_SPACE: { readonly [name: string]: ColorSpace } = { ...PREDEFINED_SPACE, lab: 'lab', oklab: 'oklab', lch: 'lch', oklch: 'oklch', hsl: 'hsl', hwb: 'hwb' };
@@ -503,7 +507,10 @@ function functionalColor(fn: CssNode, name: string): Parsed | Refusal {
     return f32(c.v);
   };
   const params = channels.map((c, i) => evaluate(c, meta.percent[i] as number));
-  const a = adjust(true, false, space, params, alpha === null ? resolved.alpha : evaluate(alpha, 1));
+  const alphaParam = alpha === null ? resolved.alpha : evaluate(alpha, 1);
+  // Probed on Chrome 145: calc(1 / 0) in a relative channel computes to a huge finite value (1.33444e+36), not infinity.
+  if ([...params, alphaParam].some((v) => v !== null && !Number.isFinite(v))) return refusal('a relative colour channel calculation is infinite or NaN (it divides by zero), which Dragon does not carry (COL4)');
+  const a = adjust(true, false, space, params, alphaParam);
   return { color: BlinkColor.of(space, params[0] as number | null, params[1] as number | null, params[2] as number | null, a), relative: true, mix: false };
 }
 
@@ -604,8 +611,11 @@ export function parseColorValue(node: CssNode): ColorParse {
   const relative = ident(list(node, 'children').find((c) => c.type !== 'WhiteSpace')) === 'from';
   if (!relative && (name === 'rgb' || name === 'rgba' || name === 'hsl' || name === 'hsla')) {
     const legacy = parseColorNode(node);
+    if (!legacy.ok || legacy.kind !== 'rgba') return legacy;
     // color.cc GetColorInterpolationSpace: a legacy colour with a none component animates in oklab.
-    return legacy.ok && legacy.kind === 'rgba' && list(node, 'children').some((c) => ident(c) === 'none') ? { ...legacy, oklab: true } : legacy;
+    if (list(node, 'children').some((c) => ident(c) === 'none')) return { ...legacy, oklab: true };
+    const hsl = name === 'hsl' || name === 'hsla' ? blinkColor(node) : null;
+    return hsl !== null && !isRefusal(hsl) && fractionalSrgb(hsl.color) ? { ...legacy, fractional: true } : legacy;
   }
   const p = blinkColor(node);
   if (isRefusal(p)) return { ok: false, reason: p.refused };
@@ -618,9 +628,17 @@ export function parseColorValue(node: CssNode): ColorParse {
   if (color.alpha < 1 && color.alpha > 0 && color.toSrgb().some((v) => v < 0 || v > 1)) {
     return { ok: false, reason: `${color.serialize()} is translucent and outside the sRGB gamut; Chrome blends it before clamping, which an 8-bit colour cannot reproduce (COL4)` };
   }
-  const value = { ok: true, kind: 'rgba', value: color.paintChannels(), syntax: syntaxOf(node, p), css: color.serialize() } as const;
-  return isLegacySpace(color.space) && !color.none.some((n) => n) && !color.alphaNone ? value : { ...value, oklab: true };
+  const value = { ok: true, kind: 'rgba', value: color.paintChannels(), syntax: syntaxOf(node, p), css: color.serialize(), web: color.serialize(9) } as const;
+  if (!isLegacySpace(color.space) || color.none.some((n) => n) || color.alphaNone) return { ...value, oklab: true };
+  return fractionalSrgb(color) ? { ...value, fractional: true } : value;
 }
+
+/**
+ * An hsl() or hwb() colour whose sRGB channels fall between 8-bit steps: Chrome keeps and interpolates them in float (hwb(10 20% 30%)
+ * has red 178.5), so an animation between its 8-bit bytes differs from Chrome's at a step.
+ */
+const fractionalSrgb = (c: BlinkColor): boolean =>
+  (c.space === 'hsl' || c.space === 'hwb') && c.toSrgb().some((v) => Math.abs(v * 255 - Math.round(v * 255)) > 1e-3);
 
 export const TRANSPARENT: Rgba8 = { r: 0, g: 0, b: 0, alpha: 0 };
 
@@ -640,14 +658,53 @@ export function serializeColor(c: Rgba8): string {
   return c.alpha === 255 ? `rgb(${c.r}, ${c.g}, ${c.b})` : `rgba(${c.r}, ${c.g}, ${c.b}, ${serializeAlpha(c.alpha)})`;
 }
 
-/** Parses Chrome's computed colour string back into channels; null for anything else. */
+/**
+ * Parses Chrome's computed colour string back into the 8-bit colour it paints: a legacy rgb()/rgba(), or (COL4) the color(), lab(),
+ * lch(), oklab() and oklch() forms Chrome computes the colour functions to, through Chrome's colour model; null for anything else, and
+ * for a colour function text that is not its own computed serialization.
+ */
 export function parseComputedColor(text: string): Rgba8 | null {
   const m = /^rgba?\((\d{1,3}), (\d{1,3}), (\d{1,3})(?:, (0|1|0?\.\d+))?\)$/.exec(text);
-  if (m === null) return null;
+  if (m === null) return /^(color|lab|lch|oklab|oklch)\(/.test(text) ? parseComputedColorFunction(text) : null;
   const alphaText = m[4];
   const alpha = alphaText === undefined ? 255 : Math.round(Number(alphaText) * 255);
   if (alphaText !== undefined && serializeAlpha(alpha) !== alphaText) return null;
   return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]), alpha };
+}
+
+/** A computed colour function text as the 8-bit colour it reparses to, and per channel whether its float sits at a .5 step of 255. */
+function computedColorFunction(text: string): { readonly paint: Rgba8; readonly halfStep: readonly boolean[] } | null {
+  let node: CssNode | undefined;
+  try {
+    node = (parse(text, { context: 'value' })['children'] as { toArray(): CssNode[] }).toArray()[0];
+  } catch {
+    return null;
+  }
+  if (node === undefined || node.type !== 'Function') return null;
+  // Not parseColorValue: six digits can put a translucent colour Chrome holds in gamut a hair outside it, which Dragon would refuse.
+  const p = blinkColor(node);
+  if (isRefusal(p) || !p.color.finite() || p.color.serialize() !== text) return null;
+  const half = (v: number): boolean => Math.abs(((Math.min(1, Math.max(0, v)) * 255) % 1) - 0.5) < 0.01;
+  return { paint: p.color.paintChannels(), halfStep: [...p.color.toSrgb(), p.color.alpha].map(half) };
+}
+
+const parseComputedColorFunction = (text: string): Rgba8 | null => computedColorFunction(text)?.paint ?? null;
+
+/**
+ * Whether Chrome's computed colour text is the 8-bit colour Dragon paints. A legacy rgb()/rgba() text is exact. A colour function
+ * text carries six significant digits, so a channel Chrome holds at a .5 step of 255 can reparse one step off what Chrome paints
+ * (color(srgb 0.5 0.75098 0.5) is 191.5 for green, painted 192): such a channel may differ by one, and every other must be exact.
+ * The painted bytes are proven exactly by the pixel lanes and test/color-functions.test.ts.
+ */
+export function computedColorMatches(text: string, mine: Rgba8): boolean {
+  if (text.startsWith('rgb')) {
+    const got = parseComputedColor(text);
+    return got !== null && got.r === mine.r && got.g === mine.g && got.b === mine.b && got.alpha === mine.alpha;
+  }
+  const f = computedColorFunction(text);
+  if (f === null) return false;
+  const pairs = [[f.paint.r, mine.r], [f.paint.g, mine.g], [f.paint.b, mine.b], [f.paint.alpha, mine.alpha]] as const;
+  return pairs.every(([got, want], i) => got === want || (f.halfStep[i] === true && Math.abs(got - want) === 1));
 }
 
 /** The colour-only planted fault: moves every red channel by one step without touching anything else. */

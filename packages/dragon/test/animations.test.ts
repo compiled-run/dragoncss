@@ -231,6 +231,14 @@ describe('animation analysis', () => {
     expect(packages(compile('.a { border-top-color: currentcolor; transition: all 1s; } .a.on { border-top-color: rgb(9, 9, 9); }'))).toEqual(['ANIM-cc']);
   });
 
+  it('refuses an hsl() or hwb() colour between 8-bit steps in a transition or keyframes, which Chrome mixes in float (COL4)', () => {
+    const between = (ds: readonly Diagnostic[]): number => ds.filter((d) => d.message.includes('between 8-bit steps')).length;
+    // hwb(10 20% 30%) has red 178.5: Chrome's 50% mix with black is rgb(89, 36, 26), and mixing the 8-bit bytes gives red 90.
+    expect(between(compile('.a { background-color: hwb(10 20% 30%); transition: background-color 1s; } .a.on { background-color: black; }'))).toBeGreaterThan(0);
+    expect(between(compile('.a { animation: k 1s infinite; } @keyframes k { to { color: hsl(120 100% 25%) } }'))).toBeGreaterThan(0);
+    expect(between(compile('.a { background-color: hsl(0 100% 50%); transition: background-color 1s; } .a.on { background-color: black; }'))).toBe(0);
+  });
+
   it('refuses a finite animation whose timing changes between states (R11, ANIM-t), and not an infinite one', () => {
     expect(packages(compile('.a { animation: k 1s 2; } .a.on { animation-duration: 2s; } @keyframes k { to { width: 5px } }'))).toEqual(['ANIM-t']);
     expect(compile('.a { animation: k 1s infinite; } .a.on { animation-duration: 2s; } @keyframes k { to { width: 5px } }')).toEqual([]);

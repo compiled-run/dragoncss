@@ -45,7 +45,7 @@ describe('background shorthand: parse and expansion', () => {
     ['red', { kind: 'color', value: { r: 255, g: 0, b: 0, alpha: 255 }, syntax: 'named-color' }],
     ['#0f0', { kind: 'color', value: { r: 0, g: 255, b: 0, alpha: 255 }, syntax: 'hex-color' }],
     ['rgb(1 2 3 / 50%)', { kind: 'color', value: { r: 1, g: 2, b: 3, alpha: 128 }, syntax: 'rgb()' }],
-    ['hsla(120, 100%, 25%, 0.5)', { kind: 'color', value: { r: 0, g: 128, b: 0, alpha: 128 }, syntax: 'hsla()' }],
+    ['hsla(120, 100%, 25%, 0.5)', { kind: 'color', value: { r: 0, g: 128, b: 0, alpha: 128 }, syntax: 'hsla()', fractional: true }],
     ['transparent', { kind: 'keyword', value: 'transparent' }],
     ['currentcolor', { kind: 'keyword', value: 'currentcolor' }],
   ];

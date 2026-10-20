@@ -9,7 +9,7 @@ const f32 = Math.fround;
 
 /** Blink's Color::ColorSpace; 'rgb' is kSRGBLegacy (rgb(), hex and named colours, channels 0-255). */
 export type ColorSpace =
-  | 'rgb' | 'hsl' | 'hwb' | 'srgb' | 'srgb-linear' | 'display-p3' | 'a98-rgb' | 'prophoto-rgb' | 'rec2020' | 'xyz-d50' | 'xyz-d65'
+  | 'rgb' | 'hsl' | 'hwb' | 'srgb' | 'srgb-linear' | 'display-p3' | 'display-p3-linear' | 'a98-rgb' | 'prophoto-rgb' | 'rec2020' | 'xyz-d50' | 'xyz-d65'
   | 'lab' | 'oklab' | 'lch' | 'oklch';
 
 export type HueMethod = 'shorter' | 'longer' | 'increasing' | 'decreasing';
@@ -212,6 +212,8 @@ function rgbSpaceParams(space: ColorSpace): { readonly m: Matrix; readonly t: Tr
       return { m: GAMUT_SRGB, t: TF_LINEAR };
     case 'display-p3':
       return { m: GAMUT_P3, t: TF_SRGB };
+    case 'display-p3-linear':
+      return { m: GAMUT_P3, t: TF_LINEAR };
     case 'a98-rgb':
       return { m: GAMUT_ADOBE, t: TF_2DOT2 };
     case 'prophoto-rgb':
@@ -332,7 +334,7 @@ function srgbToHwb(r: number, g: number, b: number): Vec {
 const LEGACY: ReadonlySet<ColorSpace> = new Set(['rgb', 'hsl', 'hwb']);
 const LIGHTNESS_FIRST: ReadonlySet<ColorSpace> = new Set(['lab', 'oklab', 'lch', 'oklch']);
 const CHROMA_SECOND: ReadonlySet<ColorSpace> = new Set(['lch', 'oklch']);
-const RGB_OR_XYZ: ReadonlySet<ColorSpace> = new Set(['srgb', 'srgb-linear', 'display-p3', 'a98-rgb', 'prophoto-rgb', 'rec2020', 'xyz-d50', 'xyz-d65', 'rgb']);
+const RGB_OR_XYZ: ReadonlySet<ColorSpace> = new Set(['srgb', 'srgb-linear', 'display-p3', 'display-p3-linear', 'a98-rgb', 'prophoto-rgb', 'rec2020', 'xyz-d50', 'xyz-d65', 'rgb']);
 const ACHROMATIC_CHROMA = f32(0.02);
 const KEPSILON = f32(1e-7);
 
@@ -437,6 +439,7 @@ export class BlinkColor {
       case 'xyz-d50':
       case 'srgb-linear':
       case 'display-p3':
+      case 'display-p3-linear':
       case 'a98-rgb':
       case 'prophoto-rgb':
       case 'rec2020': {
@@ -585,16 +588,20 @@ export class BlinkColor {
     return this.p.every(Number.isFinite) && Number.isFinite(this.alpha);
   }
 
-  /** Color::SerializeAsCSSColor. */
-  serialize(): string {
+  /**
+   * Color::SerializeAsCSSColor, its parameters and alpha to six significant digits; with `digits` 9 (COL4 web output), the float32
+   * channels exactly, so Chrome reparses the text to the same colour and paints the same bytes (six digits can move a channel at a
+   * .5 step of 255 by one) while computing it to the same six-digit text.
+   */
+  serialize(digits = 6): string {
     if (LEGACY.has(this.space)) {
       const [r, g, b] = this.legacyChannels();
       const opaque = this.alpha >= 1;
       return opaque ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${legacyAlphaText(this.alpha)})`;
     }
     const head = LIGHTNESS_FIRST.has(this.space) ? `${this.space}(` : `color(${this.space} `;
-    const params = this.p.map((v, i) => (this.none[i] ? 'none' : paramText(v))).join(' ');
-    const alpha = this.alpha !== 1 || this.alphaNone ? ` / ${this.alphaNone ? 'none' : chromeFixedPrecision(this.alpha, 6)}` : '';
+    const params = this.p.map((v, i) => (this.none[i] ? 'none' : paramText(v, digits))).join(' ');
+    const alpha = this.alpha !== 1 || this.alphaNone ? ` / ${this.alphaNone ? 'none' : chromeFixedPrecision(this.alpha, digits)}` : '';
     return `${head}${params}${alpha})`;
   }
 
@@ -646,10 +653,10 @@ function legacyAlphaText(alpha: number): string {
 }
 
 /** ColorParamToString: infinities and NaN as calc() (css-values-4 §10.13), anything else to six significant digits. */
-function paramText(v: number): string {
+function paramText(v: number, digits: number): string {
   if (Number.isNaN(v)) return 'calc(NaN)';
   if (!Number.isFinite(v)) return v < 0 ? 'calc(-infinity)' : 'calc(infinity)';
-  return chromeFixedPrecision(v, 6);
+  return chromeFixedPrecision(v, digits);
 }
 
 /**

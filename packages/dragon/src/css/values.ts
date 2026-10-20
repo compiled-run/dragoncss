@@ -25,7 +25,7 @@ export type CssValue =
    * A resolved colour as the 8-bit sRGB colour Chrome paints; transparent and currentcolor stay keywords. css is Chrome's computed
    * serialization when it is not rgb()/rgba() of value (the COL4 colour functions: color-mix(), relative colours, lab() and so on).
    */
-  | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax; readonly css?: string; readonly oklab?: true }
+  | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax; readonly css?: string; readonly web?: string; readonly oklab?: true; readonly fractional?: true }
   | { readonly kind: 'other'; readonly type: string; readonly text: string };
 
 /** One computed <position> axis: px or a percentage of the free space. */
@@ -100,7 +100,7 @@ export function tokenValue(node: CssNode, property: string): CssValue | string {
   const c = parseColorValue(node);
   if (!c.ok) return c.reason;
   if (c.kind === 'keyword') return { kind: 'keyword', value: c.keyword };
-  return { kind: 'color', value: c.value, syntax: c.syntax, ...(c.css === undefined ? {} : { css: c.css }), ...(c.oklab === undefined ? {} : { oklab: c.oklab }) };
+  return { kind: 'color', value: c.value, syntax: c.syntax, ...(c.css === undefined ? {} : { css: c.css }), ...(c.web === undefined ? {} : { web: c.web }), ...(c.oklab === undefined ? {} : { oklab: c.oklab }), ...(c.fractional === undefined ? {} : { fractional: c.fractional }) };
 }
 
 export function toValue(node: CssNode, property: string): CssValue {
