@@ -105,8 +105,8 @@ describe('math functions Chrome rejects are invalid CSS (T131)', () => {
   it('font-weight takes a number calculation and font-style an angle one (TXT-W1): each valid kind passes, any other kind is dropped', () => {
     expect(mathGrammarFor('font-weight')).toBe('number');
     expect(mathGrammarFor('font-style')).toBe('angle');
-    expect(mathGrammarFor('rotate')).toBe('angle');
-    expect(mathGrammarFor('scale')).toBe('number-or-length-percentage');
+    expect(mathGrammarFor('rotate')).toBe('number-or-angle');
+    expect(mathGrammarFor('scale')).toBe('number-or-percentage');
     expect(mathInvalidity('calc(250 + 0.3)', 'number')).toBeNull();
     expect(mathInvalidity('calc(10deg + 5deg)', 'angle')).toBeNull();
     expect(mathInvalidity('calc(10px)', 'number')).toBe('it resolves to a length, and the property takes a number');
@@ -130,8 +130,9 @@ describe('math functions Chrome rejects are invalid CSS (T131)', () => {
       if (GRID_VALUE_PROPERTIES.has(p)) continue;
       // font is checked above: its parts take a number, a length-percentage or an angle, which this syntax walk does not see.
       if (p === 'font') continue;
-      // rotate takes an <angle> beside its axis numbers, which this syntax walk does not see; a math function in it is the angle.
-      if (p === 'rotate') continue;
+      // rotate takes an <angle> beside its axis numbers (number-or-angle), and scale a <number> or a <percentage> with no length
+      // (number-or-percentage), which this syntax walk reads too coarsely to derive.
+      if (p === 'rotate' || p === 'scale') continue;
       const s = expand(properties[p]?.syntax ?? '', 6).replace(/[a-z-]+\([^)]*\)/g, '');
       const number = /<(number|integer)\b/.test(s);
       const percent = /<(length-percentage|percentage)\b/.test(s);
