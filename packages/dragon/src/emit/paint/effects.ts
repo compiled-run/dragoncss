@@ -161,7 +161,7 @@ func dragonGroupTranslucent(_ b: DragonBoxView) -> Bool {
 }
 
 /// S2: the frame a group's software layer is built in: the root, the extent in root device px and its size, the device scale,
-/// the sRGB space and the cc tiles.
+/// the sRGB space, the cc tiles, and each text view's extent edges (its glyph ink at whole device px).
 struct DragonGroupFrame {
   let root: UIView
   let ext: [Int]
@@ -171,6 +171,7 @@ struct DragonGroupFrame {
   let space: CGColorSpace
   let tileSize: Double
   let originX: Double
+  let textEdges: [ObjectIdentifier: [Int]]
 }
 
 /// A device px rect [left, top, right, bottom] of a view's layout rect in root's coordinates; its edges are whole device px.
@@ -287,6 +288,7 @@ public final class DragonGroupView: UIView {
     var ext = dragonGroupEdges(dragonLayoutRect(g, in: root), s)
     var texts: [DragonTextView] = []
     var boxes: [DragonBoxView] = [g]
+    var textEdges: [ObjectIdentifier: [Int]] = [:]
     func grow(_ v: UIView) {
       for c in v.subviews where c !== self {
         let e: [Int]
@@ -296,6 +298,7 @@ public final class DragonGroupView: UIView {
           let r = dragonLayoutRect(tv, in: root)
           let ink = tv.dragonInkFrame()
           e = dragonGroupOuterEdges(CGRect(x: r.minX + ink.minX, y: r.minY + ink.minY, width: ink.width, height: ink.height), s)
+          textEdges[ObjectIdentifier(tv)] = e
         } else {
           e = dragonGroupEdges(dragonLayoutRect(c, in: root), s)
           if let b = c as? DragonBoxView { boxes.append(b) }
@@ -321,10 +324,10 @@ public final class DragonGroupView: UIView {
     let software = dragonGroupTranslucent(g) || dragonNeedsSoftware(g)
     // The group's layer: the platform's rendering of the group's view and its subtree at the device scale, this overlay hidden.
     let gr = dragonLayoutRect(g, in: root)
-    var lp = [UInt8](repeating: 0, count: w * h * 4)
+    var lp: [UInt8] = []
     isHidden = true
     dragonDisplayTree(g.layer)
-    if !software { lp.withUnsafeMutableBytes { raw in
+    if !software { lp = [UInt8](repeating: 0, count: w * h * 4); lp.withUnsafeMutableBytes { raw in
       guard let ctx = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("dragon: no RGBA8 context for a group") }
       ctx.interpolationQuality = .none
       ctx.translateBy(x: 0, y: CGFloat(h))
@@ -387,8 +390,8 @@ public final class DragonGroupView: UIView {
     var q: [UInt8]
     if software {
       q = bp
-      let f = DragonGroupFrame(root: root, ext: ext, width: w, height: h, s: s, space: space, tileSize: tileSize, originX: originX)
-      dragonSoftwareGroup(&q, g, f, dragonAlpha8, dragonAlphaPlantIgnored ? 1 : g.dragonOpacity, dragonMatrices)
+      let f = DragonGroupFrame(root: root, ext: ext, width: w, height: h, s: s, space: space, tileSize: tileSize, originX: originX, textEdges: textEdges)
+      dragonSoftwareGroup(&q, g, f, f, dragonAlpha8, dragonAlphaPlantIgnored ? 1 : g.dragonOpacity, dragonMatrices)
     } else {
       // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
       // each text line's ink (a DrawTextBlob, which cc never folds).
@@ -517,7 +520,7 @@ public final class DragonGroupView: UIView {
         dragonSoftwareText(&buf, tv, f)
       } else if let b = c as? DragonBoxView {
         if b.dragonNestedGroup {
-          dragonSoftwareGroup(&buf, b, f, dragonAlphaPlantIgnored ? 255 : b.dragonAlpha8, dragonAlphaPlantIgnored ? 1 : b.dragonOpacity, nil)
+          if let nf = dragonNestedFrame(b, f) { dragonSoftwareGroup(&buf, b, f, nf, dragonAlphaPlantIgnored ? 255 : b.dragonAlpha8, dragonAlphaPlantIgnored ? 1 : b.dragonOpacity, nil) }
         } else {
           dragonSoftwareBox(&buf, b, f)
           dragonSoftwareChildren(&buf, b, f)
@@ -561,16 +564,40 @@ public final class DragonGroupView: UIView {
     }
   }
 
-  /// Group b composited onto dst (premultiplied RGBA8 over the extent) as Chrome's raster does: its layer built from its draw list,
-  /// then, per cc raster tile, its one op drawn at the folded alpha (groupFoldAlpha, groupFill) or the layer blitted at its alpha
-  /// byte (groupComposite); with a colour-matrix filter, the filter and then the alpha (groupFilterComposite), never folded.
-  func dragonSoftwareGroup(_ dst: inout [UInt8], _ b: DragonBoxView, _ f: DragonGroupFrame, _ alpha8: Int, _ opacity: Double, _ matrices: JsArray<Double>?) {
-    var l = [UInt8](repeating: 0, count: f.width * f.height * 4)
-    dragonSoftwareBox(&l, b, f)
-    dragonSoftwareChildren(&l, b, f)
+  /// The frame of nested group b's layer inside f: b's box and every view inside it (a text view's glyph ink), as the group's own
+  /// extent is grown, clamped to f; nil when empty. Outside it b's layer is clear, and a clear layer pixel leaves dst as it is.
+  func dragonNestedFrame(_ b: DragonBoxView, _ f: DragonGroupFrame) -> DragonGroupFrame? {
+    var e = dragonGroupEdges(dragonLayoutRect(b, in: f.root), f.s)
+    func grow(_ v: UIView) {
+      for c in v.subviews where c !== self {
+        let r: [Int]
+        if let tv = c as? DragonTextView {
+          guard let t = f.textEdges[ObjectIdentifier(tv)] else { fatalError("dragon: \(b.dragonId): a text view the group's extent did not reach") }
+          r = t
+        } else {
+          r = dragonGroupEdges(dragonLayoutRect(c, in: f.root), f.s)
+        }
+        e = [min(e[0], r[0]), min(e[1], r[1]), max(e[2], r[2]), max(e[3], r[3])]
+        grow(c)
+      }
+    }
+    grow(b)
+    e = [max(e[0], f.ext[0]), max(e[1], f.ext[1]), min(e[2], f.ext[2]), min(e[3], f.ext[3])]
+    if e[2] <= e[0] || e[3] <= e[1] { return nil }
+    return DragonGroupFrame(root: f.root, ext: e, width: e[2] - e[0], height: e[3] - e[1], s: f.s, space: f.space, tileSize: f.tileSize, originX: f.originX, textEdges: f.textEdges)
+  }
+
+  /// Group b composited onto dst (premultiplied RGBA8 over f's extent) as Chrome's raster does: its layer built over lf's extent
+  /// (inside f's) from its draw list, then, per cc raster tile, its one op drawn at the folded alpha (groupFoldAlpha, groupFill) or the
+  /// layer blitted at its alpha byte (groupComposite); with a colour-matrix filter, the filter and then the alpha
+  /// (groupFilterComposite), never folded.
+  func dragonSoftwareGroup(_ dst: inout [UInt8], _ b: DragonBoxView, _ f: DragonGroupFrame, _ lf: DragonGroupFrame, _ alpha8: Int, _ opacity: Double, _ matrices: JsArray<Double>?) {
+    var l = [UInt8](repeating: 0, count: lf.width * lf.height * 4)
+    dragonSoftwareBox(&l, b, lf)
+    dragonSoftwareChildren(&l, b, lf)
     var draws: [Double] = []
     var colours: [DragonRGBA8] = []
-    dragonSoftwareDraws(b, false, f, &draws, &colours)
+    dragonSoftwareDraws(b, false, lf, &draws, &colours)
     let jsDraws = JsArray(draws)
     var foldCache: [Int: Int] = [:]
     let a8 = Double(alpha8)
@@ -587,26 +614,27 @@ public final class DragonGroupView: UIView {
         foldCache[key] = k
         return k
       }
-      for y in 0..<f.height {
-        for x in 0..<f.width {
-          let i = (y * f.width + x) * 4
+      for y in 0..<lf.height {
+        for x in 0..<lf.width {
+          let i = (y * lf.width + x) * 4
+          let j = ((lf.ext[1] - f.ext[1] + y) * f.width + (lf.ext[0] - f.ext[0] + x)) * 4
           let packed: Double
           if let m = matrices {
-            packed = try paintGroup_groupFilterComposite(Double(l[i]), Double(l[i + 1]), Double(l[i + 2]), Double(l[i + 3]), Double(dst[i]), Double(dst[i + 1]), Double(dst[i + 2]), Double(dst[i + 3]), m, a8)
+            packed = try paintGroup_groupFilterComposite(Double(l[i]), Double(l[i + 1]), Double(l[i + 2]), Double(l[i + 3]), Double(dst[j]), Double(dst[j + 1]), Double(dst[j + 2]), Double(dst[j + 3]), m, a8)
           } else {
-            let k = try foldIndex(f.ext[0] + x, f.ext[1] + y)
+            let k = try foldIndex(lf.ext[0] + x, lf.ext[1] + y)
             if k >= 0 {
               // The tile's one op: where the layer is clear it drew nothing.
               if l[i + 3] == 0 { continue }
               let c = colours[k]
               let fa = try paintGroup_groupFoldAlpha(Double(c.a), opacity)
-              packed = try paintGroup_groupFill(Double(dst[i]), Double(dst[i + 1]), Double(dst[i + 2]), Double(dst[i + 3]), Double(c.r), Double(c.g), Double(c.b), fa)
+              packed = try paintGroup_groupFill(Double(dst[j]), Double(dst[j + 1]), Double(dst[j + 2]), Double(dst[j + 3]), Double(c.r), Double(c.g), Double(c.b), fa)
             } else {
-              packed = try paintGroup_groupComposite(Double(l[i]), Double(l[i + 1]), Double(l[i + 2]), Double(l[i + 3]), Double(dst[i]), Double(dst[i + 1]), Double(dst[i + 2]), Double(dst[i + 3]), a8, false)
+              packed = try paintGroup_groupComposite(Double(l[i]), Double(l[i + 1]), Double(l[i + 2]), Double(l[i + 3]), Double(dst[j]), Double(dst[j + 1]), Double(dst[j + 2]), Double(dst[j + 3]), a8, false)
             }
           }
           let v = Int(packed)
-          dst[i] = UInt8(v & 0xff); dst[i + 1] = UInt8((v >> 8) & 0xff); dst[i + 2] = UInt8((v >> 16) & 0xff); dst[i + 3] = UInt8((v >> 24) & 0xff)
+          dst[j] = UInt8(v & 0xff); dst[j + 1] = UInt8((v >> 8) & 0xff); dst[j + 2] = UInt8((v >> 16) & 0xff); dst[j + 3] = UInt8((v >> 24) & 0xff)
         }
       }
     } catch { fatalError("dragon: \(b.dragonId): paint-group software composite failed: \(error)") }
@@ -756,8 +784,11 @@ fun dragonGroupTranslucent(b: DragonBoxView): Boolean {
   return (0 until 4).any { shown[it] && b.dragonBorderColors[it].a in 1..254 }
 }
 
-/** S2: the frame a group's software layer is built in: the root, the extent in root device px and its size, and the cc tiles. */
-class DragonGroupFrame(val root: View, val ext: IntArray, val width: Int, val height: Int, val tileSize: Double, val originX: Double)
+/**
+ * S2: the frame a group's software layer is built in: the root, the extent in root device px and its size, the cc tiles, and each
+ * text view's extent edges (its frame and its lines' ink with 2 device px of antialiasing).
+ */
+class DragonGroupFrame(val root: View, val ext: IntArray, val width: Int, val height: Int, val tileSize: Double, val originX: Double, val textEdges: Map<DragonTextView, IntArray>)
 
 /**
  * The draw ops of a group member box's display item (Blink box_border_painter.cc PaintBorderFastPath): its background fill, then
@@ -816,6 +847,9 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
   var dragonDirty = true
   private var skipping = false
   private var bitmap: Bitmap? = null
+  /** S2: the bitmap and bytes a text view is drawn into a software layer through, reused across text views and composites. */
+  private var textBitmap: Bitmap? = null
+  private var textBytes = ByteArray(0)
   private val bitmapPaint = Paint().apply { isFilterBitmap = false; isDither = false; isAntiAlias = false }
   /** The last composite, premultiplied RGBA8, and its rect (left, top, right, bottom) in page device px. */
   var dragonQ = ByteArray(0)
@@ -904,11 +938,15 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     // A text view draws its glyph ink past its frame: the extent takes each line's ink (dragonGroupLineInks) and 2 device px of
     // antialiasing, as iOS's dragonInkFrame does.
     val inks = HashMap<DragonTextView, List<DoubleArray>>()
+    val textEdges = HashMap<DragonTextView, IntArray>()
     for (tv in texts) {
       val o = dragonLayoutOffset(tv, root)
       val lines = dragonGroupLineInks(tv, o[0].toDouble(), o[1].toDouble())
       inks[tv] = lines
-      for (e in lines) ext = intArrayOf(minOf(ext[0], e[0].toInt() - 2), minOf(ext[1], e[1].toInt() - 2), maxOf(ext[2], e[2].toInt() + 2), maxOf(ext[3], e[3].toInt() + 2))
+      var te = edgesOf(tv, 0, 0, tv.width, tv.height)
+      for (e in lines) te = intArrayOf(minOf(te[0], e[0].toInt() - 2), minOf(te[1], e[1].toInt() - 2), maxOf(te[2], e[2].toInt() + 2), maxOf(te[3], e[3].toInt() + 2))
+      textEdges[tv] = te
+      ext = intArrayOf(minOf(ext[0], te[0]), minOf(ext[1], te[1]), maxOf(ext[2], te[2]), maxOf(ext[3], te[3]))
     }
     ext = intArrayOf(maxOf(ext[0], 0), maxOf(ext[1], 0), minOf(ext[2], root.width), minOf(ext[3], root.height))
     val w = ext[2] - ext[0]
@@ -926,7 +964,7 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     // S2: a group holding translucent paint or a nested group has its layer built in software (softwareGroup).
     val software = dragonGroupTranslucent(g) || needsSoftware(g)
     // The group's layer: the platform's rendering of the group's view and its subtree, this overlay skipped.
-    val lp = ByteArray(w * h * 4)
+    val lp = if (software) ByteArray(0) else ByteArray(w * h * 4)
     if (!software) {
       val layerBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
       val go = dragonLayoutOffset(g, root)
@@ -989,7 +1027,8 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     val q: ByteArray
     if (software) {
       q = bp
-      softwareGroup(q, g, DragonGroupFrame(root, ext, w, h, tileSize, originX), dragonAlpha8, if (DRAGON_ALPHA_PLANT_IGNORED) 1.0 else g.dragonOpacity, dragonMatrices)
+      val f = DragonGroupFrame(root, ext, w, h, tileSize, originX, textEdges)
+      softwareGroup(q, g, f, f, dragonAlpha8, if (DRAGON_ALPHA_PLANT_IGNORED) 1.0 else g.dragonOpacity, dragonMatrices)
     } else {
       // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
       // each text line's ink (a DrawTextBlob, which cc never folds).
@@ -1094,15 +1133,28 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     }
   }
 
-  /** A text view drawn by the platform into a layer, over what the layer holds, as View.draw draws it in the group's render. */
+  /**
+   * A text view drawn by the platform into a layer, over what the layer holds, as View.draw draws it in the group's render: the
+   * layer's pixels under the view's extent edges copied into one reused bitmap, drawn over at the same device position, copied back.
+   */
   private fun softwareText(buf: ByteArray, tv: DragonTextView, f: DragonGroupFrame) {
-    val bm = Bitmap.createBitmap(f.width, f.height, Bitmap.Config.ARGB_8888)
-    bm.copyPixelsFromBuffer(ByteBuffer.wrap(buf))
+    val te = f.textEdges[tv] ?: throw IllegalStateException("dragon: " + tv.dragonId + ": a text view the group's extent did not reach")
+    val l = maxOf(te[0], f.ext[0]); val tp = maxOf(te[1], f.ext[1]); val r = minOf(te[2], f.ext[2]); val b = minOf(te[3], f.ext[3])
+    val cw = r - l
+    val ch = b - tp
+    if (cw <= 0 || ch <= 0) return
+    val n = cw * ch * 4
+    if (textBytes.size < n) textBytes = ByteArray(n)
+    val reuse = textBitmap
+    val bm = if (reuse != null && reuse.allocationByteCount >= n) reuse.also { it.reconfigure(cw, ch, Bitmap.Config.ARGB_8888) } else Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888).also { textBitmap = it }
+    for (y in 0 until ch) System.arraycopy(buf, ((tp - f.ext[1] + y) * f.width + (l - f.ext[0])) * 4, textBytes, y * cw * 4, cw * 4)
+    bm.copyPixelsFromBuffer(ByteBuffer.wrap(textBytes, 0, n))
     val canvas = Canvas(bm)
     val o = dragonLayoutOffset(tv, f.root)
-    canvas.translate((o[0] - f.ext[0]).toFloat(), (o[1] - f.ext[1]).toFloat())
+    canvas.translate((o[0] - l).toFloat(), (o[1] - tp).toFloat())
     tv.draw(canvas)
-    bm.copyPixelsToBuffer(ByteBuffer.wrap(buf))
+    bm.copyPixelsToBuffer(ByteBuffer.wrap(textBytes, 0, n))
+    for (y in 0 until ch) System.arraycopy(textBytes, y * cw * 4, buf, ((tp - f.ext[1] + y) * f.width + (l - f.ext[0])) * 4, cw * 4)
   }
 
   /** A view's children painted into a layer in paint order (the drawing order): boxes and their subtrees, nested groups composited. */
@@ -1112,7 +1164,7 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       if (c === this || c is DragonGroupView || c.visibility != View.VISIBLE) continue
       if (c is DragonTextView) softwareText(buf, c, f)
       else if (c is DragonBoxView) {
-        if (c.dragonNestedGroup) softwareGroup(buf, c, f, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else c.dragonAlpha8, if (DRAGON_ALPHA_PLANT_IGNORED) 1.0 else c.dragonOpacity, null)
+        if (c.dragonNestedGroup) nestedFrame(c, f)?.let { softwareGroup(buf, c, f, it, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else c.dragonAlpha8, if (DRAGON_ALPHA_PLANT_IGNORED) 1.0 else c.dragonOpacity, null) }
         else {
           softwareBox(buf, c, f)
           softwareChildren(buf, c, f)
@@ -1159,17 +1211,43 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
   }
 
   /**
-   * Group b composited onto dst (premultiplied RGBA8 over the extent) as Chrome's raster does: its layer built from its draw list,
-   * then, per cc raster tile, its one op drawn at the folded alpha (groupFoldAlpha, groupFill) or the layer blitted at its alpha byte
-   * (groupComposite); with a colour-matrix filter, the filter and then the alpha (groupFilterComposite), never folded.
+   * The frame of nested group b's layer inside f: b's box and every view inside it (a text view's extent edges), as the group's own
+   * extent is grown, clamped to f; null when empty. Outside it b's layer is clear, and a clear layer pixel leaves dst as it is.
    */
-  private fun softwareGroup(dst: ByteArray, b: DragonBoxView, f: DragonGroupFrame, alpha8: Int, opacity: Double, matrices: JsArray<Double>?) {
-    val l = ByteArray(f.width * f.height * 4)
-    softwareBox(l, b, f)
-    softwareChildren(l, b, f)
+  private fun nestedFrame(b: DragonBoxView, f: DragonGroupFrame): DragonGroupFrame? {
+    fun edgesOf(v: View): IntArray {
+      val o = dragonLayoutOffset(v, f.root)
+      return intArrayOf(o[0], o[1], o[0] + v.width, o[1] + v.height)
+    }
+    var e = edgesOf(b)
+    fun grow(v: ViewGroup) {
+      for (i in 0 until v.childCount) {
+        val c = v.getChildAt(i)
+        if (c === this) continue
+        val r = if (c is DragonTextView) f.textEdges[c] ?: throw IllegalStateException("dragon: " + b.dragonId + ": a text view the group's extent did not reach") else edgesOf(c)
+        e = intArrayOf(minOf(e[0], r[0]), minOf(e[1], r[1]), maxOf(e[2], r[2]), maxOf(e[3], r[3]))
+        if (c is ViewGroup) grow(c)
+      }
+    }
+    grow(b)
+    e = intArrayOf(maxOf(e[0], f.ext[0]), maxOf(e[1], f.ext[1]), minOf(e[2], f.ext[2]), minOf(e[3], f.ext[3]))
+    if (e[2] <= e[0] || e[3] <= e[1]) return null
+    return DragonGroupFrame(f.root, e, e[2] - e[0], e[3] - e[1], f.tileSize, f.originX, f.textEdges)
+  }
+
+  /**
+   * Group b composited onto dst (premultiplied RGBA8 over f's extent) as Chrome's raster does: its layer built over lf's extent
+   * (inside f's) from its draw list, then, per cc raster tile, its one op drawn at the folded alpha (groupFoldAlpha, groupFill) or the
+   * layer blitted at its alpha byte (groupComposite); with a colour-matrix filter, the filter and then the alpha
+   * (groupFilterComposite), never folded.
+   */
+  private fun softwareGroup(dst: ByteArray, b: DragonBoxView, f: DragonGroupFrame, lf: DragonGroupFrame, alpha8: Int, opacity: Double, matrices: JsArray<Double>?) {
+    val l = ByteArray(lf.width * lf.height * 4)
+    softwareBox(l, b, lf)
+    softwareChildren(l, b, lf)
     val draws = ArrayList<Double>()
     val colours = ArrayList<DragonRGBA8>()
-    softwareDraws(b, false, f, draws, colours)
+    softwareDraws(b, false, lf, draws, colours)
     val jsDraws = JsArray(draws.toMutableList())
     val foldCache = HashMap<Long, Int>()
     fun foldIndex(x: Int, y: Int): Int {
@@ -1184,21 +1262,22 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     }
     val a8 = alpha8.toDouble()
     fun u(x: Byte): Double = (x.toInt() and 0xff).toDouble()
-    for (y in 0 until f.height) {
-      for (x in 0 until f.width) {
-        val i = (y * f.width + x) * 4
+    for (y in 0 until lf.height) {
+      for (x in 0 until lf.width) {
+        val i = (y * lf.width + x) * 4
+        val j = ((lf.ext[1] - f.ext[1] + y) * f.width + (lf.ext[0] - f.ext[0] + x)) * 4
         val v: Long
-        if (matrices != null) v = paintGroup_groupFilterComposite(u(l[i]), u(l[i + 1]), u(l[i + 2]), u(l[i + 3]), u(dst[i]), u(dst[i + 1]), u(dst[i + 2]), u(dst[i + 3]), matrices, a8).toLong()
+        if (matrices != null) v = paintGroup_groupFilterComposite(u(l[i]), u(l[i + 1]), u(l[i + 2]), u(l[i + 3]), u(dst[j]), u(dst[j + 1]), u(dst[j + 2]), u(dst[j + 3]), matrices, a8).toLong()
         else {
-          val k = foldIndex(f.ext[0] + x, f.ext[1] + y)
+          val k = foldIndex(lf.ext[0] + x, lf.ext[1] + y)
           if (k >= 0) {
             // The tile's one op: where the layer is clear it drew nothing.
             if (l[i + 3].toInt() == 0) continue
             val c = colours[k]
-            v = paintGroup_groupFill(u(dst[i]), u(dst[i + 1]), u(dst[i + 2]), u(dst[i + 3]), c.r.toDouble(), c.g.toDouble(), c.b.toDouble(), paintGroup_groupFoldAlpha(c.a.toDouble(), opacity)).toLong()
-          } else v = paintGroup_groupComposite(u(l[i]), u(l[i + 1]), u(l[i + 2]), u(l[i + 3]), u(dst[i]), u(dst[i + 1]), u(dst[i + 2]), u(dst[i + 3]), a8, false).toLong()
+            v = paintGroup_groupFill(u(dst[j]), u(dst[j + 1]), u(dst[j + 2]), u(dst[j + 3]), c.r.toDouble(), c.g.toDouble(), c.b.toDouble(), paintGroup_groupFoldAlpha(c.a.toDouble(), opacity)).toLong()
+          } else v = paintGroup_groupComposite(u(l[i]), u(l[i + 1]), u(l[i + 2]), u(l[i + 3]), u(dst[j]), u(dst[j + 1]), u(dst[j + 2]), u(dst[j + 3]), a8, false).toLong()
         }
-        dst[i] = (v and 0xffL).toByte(); dst[i + 1] = ((v shr 8) and 0xffL).toByte(); dst[i + 2] = ((v shr 16) and 0xffL).toByte(); dst[i + 3] = ((v shr 24) and 0xffL).toByte()
+        dst[j] = (v and 0xffL).toByte(); dst[j + 1] = ((v shr 8) and 0xffL).toByte(); dst[j + 2] = ((v shr 16) and 0xffL).toByte(); dst[j + 3] = ((v shr 24) and 0xffL).toByte()
       }
     }
   }

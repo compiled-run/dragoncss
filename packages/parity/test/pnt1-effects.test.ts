@@ -61,6 +61,17 @@ describe('Chrome 145 composites opacity with Skia\'s getAlpha byte and the Color
     expect(opacityAlpha8(0.872549)).toBe(223);
     expect(opacityAlpha8(0.817647)).toBe(208);
   });
+  it('a clear layer pixel leaves dst unchanged at every alpha byte, so a nested layer is built over its own extent only', () => {
+    for (let a8 = 0; a8 <= 255; a8++) {
+      for (let d = 0; d <= 255; d++) {
+        const da = 255 - ((d * 37) % 256);
+        const pack = d + d * 256 + d * 65536 + da * 16777216;
+        expect(groupComposite(0, 0, 0, 0, d, d, d, da, a8, false)).toBe(pack);
+        expect(groupComposite(0, 0, 0, 0, d, d, d, da, a8, true)).toBe(pack);
+        expect(s32aBlend([d, d, d, da], [0, 0, 0, 0], a8)).toEqual([d, d, d, da]);
+      }
+    }
+  });
   it('the blits give the bytes the capture shows', () => {
     expect(color32([200, 40, 90, 255], { r: 10, g: 220, b: 130 }, opacityAlpha8(0.01))).toEqual([197, 42, 90, 255]);
     expect(color32([200, 40, 90, 255], { r: 10, g: 220, b: 130 }, opacityAlpha8(0.3))).toEqual([142, 93, 101, 255]);
@@ -410,7 +421,8 @@ function deviceSoftware(dst: Px, items: readonly Item[], opacity: number, alpha8
   for (const it of items) {
     if (it.kind === 'box') layer = softwareBox(layer, it.box, x, y);
     else if (it.kind === 'text') layer = paintItem(layer, it, x, y, tile, byId);
-    else layer = deviceSoftware(layer, it.items, it.opacity, it.alpha8, null, x, y, tile, byId);
+    // The device builds a nested group's layer over the nested group's own extent only; outside it the layer is clear.
+    else if (inExtent(it.items, x, y)) layer = deviceSoftware(layer, it.items, it.opacity, it.alpha8, null, x, y, tile, byId);
   }
   if (matrices !== null) return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], dst[0], dst[1], dst[2], dst[3], matrices, alpha8));
   const colours: Rgba[] = [];
