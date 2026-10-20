@@ -13,7 +13,7 @@ import { allAnimCases, animEmits, animSampleId, animSampleIds, animSamples, anim
 import { frameScript, frameStateProgram, pixelSamples } from '../src/anim-cases.ts';
 import type { DeviceSet, LaneFailure } from '../src/device-lanes.ts';
 import { ANIM_LANE, animPixelSubsets, animReference, evaluateAnim } from '../src/device-lanes.ts';
-import { checkAgainstChrome, transformedFrames } from '../src/native-compare.ts';
+import { appliedTransforms, checkAgainstChrome, transformedFrames } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
 import type { DeviceRecord } from '../src/device-run.ts';
 import type { DeviceRun } from '../src/lanes.ts';
@@ -222,6 +222,51 @@ describe('device-anim frames of a transformed node', () => {
       expect(unmapped.some((id) => id.startsWith('anim-spin@'))).toBe(true);
     });
   }
+
+  /** A sample's fake dump at DPR 2 with the panel's applied readback replaced (undefined removes it). */
+  const withApplied = (s: AnimSample, transform: unknown): NativeDump => {
+    const d = relabelledReferenceDump('ios', { id: s.id, fixture: s.case.fixture.id, direction: s.case.direction, compilerDigest: s.case.compiled.digest, viewport: s.case.viewport, program: s.program }, DPR) as NativeDump;
+    return { ...d, nodes: d.nodes.map((n) => {
+      if (n.id !== 'panel') return n;
+      const { dragonTransform: _, ...rest } = n.applied as Record<string, unknown>;
+      return { ...n, applied: (transform === undefined ? rest : { ...rest, dragonTransform: transform }) as typeof n.applied };
+    }) };
+  };
+
+  it('judges the transform native reads back, not the compiler\'s: a panel that never moved fails frame-chrome mid-slide', () => {
+    const slide = transformed.find((xs) => xs[0]?.case.id === 'anim-slide@400x300');
+    const mid = slide?.[5];
+    if (slide === undefined || mid === undefined) throw new Error('no anim-slide sample 5');
+    const identity = { functions: [['translateX', ['px', 0, 0], ['px', 0, 0], 0, 1, 1]], origin: [['percent', 0, 50], ['percent', 0, 50]] };
+    for (const [name, transform] of [['no readback', undefined], ['identity', identity]] as const) {
+      const at = join(dir, `unmoved-${name.replace(' ', '-')}`);
+      mkdirSync(at);
+      writeFileSync(join(at, `${mid.id}@${DPR}.json`), JSON.stringify(withApplied(mid, transform)));
+      const set = evaluateAnim('ios', DPR, at, device, [[mid]]);
+      const frames = set.failures.filter((f) => f.case === mid.id && f.kind === 'frame-chrome');
+      expect(frames.map((f) => f.node), name).toEqual(['panel']);
+      expect(frames[0]!.detail, name).toMatch(/^panel: edge delta \[-39\.5\d*,0,-39\.5\d*,0\]/);
+    }
+  });
+
+  it('reads the applied readback of both hosts, and reports a malformed one instead of mapping it', () => {
+    const mid = transformed.find((xs) => xs[0]?.case.id === 'anim-slide@400x300')![5]!;
+    const read = appliedTransforms(withApplied(mid, { functions: [['translateX', ['percent', 0, 19.7596], ['px', 0, 0], 0, 1, 1]], origin: [['percent', 0, 50], ['percent', 0, 50]] }));
+    expect(read.problems).toEqual([]);
+    expect(read.transforms.get('panel')).toEqual({ ops: [{ fn: 'translateX', x: { kind: 'percent', px: 0, percent: 19.7596 }, y: { kind: 'px', px: 0, percent: 0 }, angle: 0, sx: 1, sy: 1 }], origin: { x: { kind: 'percent', px: 0, percent: 50 }, y: { kind: 'percent', px: 0, percent: 50 } } });
+    expect(appliedTransforms(withApplied(mid, undefined)).transforms.size).toBe(0);
+    for (const bad of [null, 'rotate(90deg)', { functions: [['skew', ['px', 0, 0], ['px', 0, 0], 0, 1, 1]], origin: [['px', 0, 0], ['px', 0, 0]] }, { functions: [], origin: [['px', 0, 0]] }, { functions: [['rotate', ['px', 0, 0], ['px', 0, 0], 'x', 1, 1]], origin: [['px', 0, 0], ['px', 0, 0]] }]) {
+      const r = appliedTransforms(withApplied(mid, bad));
+      expect(r.transforms.size, JSON.stringify(bad)).toBe(0);
+      expect(r.problems.length, JSON.stringify(bad)).toBe(1);
+    }
+    // Through the lane: the malformed readback fails frame-chrome on its own line, besides the unmapped frame.
+    const at = join(dir, 'malformed');
+    mkdirSync(at);
+    writeFileSync(join(at, `${mid.id}@${DPR}.json`), JSON.stringify(withApplied(mid, 'rotate(90deg)')));
+    const set = evaluateAnim('ios', DPR, at, device, [[mid]]);
+    expect(set.failures.some((f) => f.kind === 'frame-chrome' && f.detail.includes('is not {functions'))).toBe(true);
+  });
 });
 
 describe('the device-anim lane record', () => {

@@ -2,7 +2,7 @@
 // GATE_DEVICE_PX, (b) applied against expected exactly, (c) pixel samples against Chrome's pixels (channel delta GATE_CHANNEL_DELTA,
 // edge positions within GATE_DEVICE_PX, each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX), (d) frames against snapRect of
 // the TS engine frames exactly. Tolerances are imported only.
-import type { LayoutBox, LayoutInput, LayoutRect, Matrix2D, TransformOp, TransformOrigin } from '@dragon/layout';
+import type { LayoutBox, LayoutInput, LayoutRect, Matrix2D, TransformFn, TransformLength, TransformOp, TransformOrigin } from '@dragon/layout';
 import { absoluteRects, LU_PER_PX, mapPoint, paintTransformMatrix, snapEdges } from '@dragon/layout';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from './compare.ts';
@@ -90,6 +90,65 @@ export function checkAgainstChrome(dump: NativeDump, capture: WebCapture): Check
 
 /** A node's transform as its view takes it: the functions and the origin, lengths unresolved. */
 export type FrameTransform = { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin };
+
+/** The functions the paint-transform writers take (rt-interpolate.ts TransformFn). */
+const TRANSFORM_FNS: readonly TransformFn[] = ['translate', 'translateX', 'translateY', 'rotate', 'scale', 'scaleX', 'scaleY'];
+
+const finite = (v: JsonValue | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
+
+/** A dump length [kind, px, percent] (transform.ts dragonTransformLengthJson), or null when it is not one. */
+function readLength(v: JsonValue | undefined): TransformLength | null {
+  if (!Array.isArray(v) || v.length !== 3) return null;
+  const [kind, px, percent] = v as readonly JsonValue[];
+  if ((kind !== 'px' && kind !== 'percent' && kind !== 'calc') || !finite(px) || !finite(percent)) return null;
+  return { kind, px, percent };
+}
+
+/** A dump transform function [fn, x, y, angle, sx, sy], or null when it is not one. */
+function readOp(v: JsonValue): TransformOp | null {
+  if (!Array.isArray(v) || v.length !== 6) return null;
+  const [fn, x, y, angle, sx, sy] = v as readonly JsonValue[];
+  const lx = readLength(x);
+  const ly = readLength(y);
+  if (typeof fn !== 'string' || !(TRANSFORM_FNS as readonly string[]).includes(fn) || lx === null || ly === null || !finite(angle) || !finite(sx) || !finite(sy)) return null;
+  return { fn: fn as TransformFn, x: lx, y: ly, angle, sx, sy };
+}
+
+/**
+ * ANIM-b2: each dump node's transform as the device read it back from its view (applied.dragonTransform, the paint transform
+ * module's readback); a node without the key holds no transform. A malformed readback is a problem, and its node is left unmapped.
+ */
+export function appliedTransforms(dump: NativeDump): { readonly transforms: ReadonlyMap<string, FrameTransform>; readonly problems: readonly string[] } {
+  const transforms = new Map<string, FrameTransform>();
+  const problems: string[] = [];
+  for (const n of dump.nodes) {
+    const v = n.applied['dragonTransform'];
+    if (v === undefined) continue;
+    const bad = (): void => {
+      problems.push(`${n.id}: applied dragonTransform ${JSON.stringify(v)} is not {functions: [[fn, x, y, angle, sx, sy]], origin: [x, y]}`);
+    };
+    if (v === null || typeof v !== 'object' || Array.isArray(v)) {
+      bad();
+      continue;
+    }
+    const o = v as { readonly [k: string]: JsonValue };
+    const fns = o['functions'];
+    const origin = o['origin'];
+    if (Object.keys(o).length !== 2 || !Array.isArray(fns) || !Array.isArray(origin) || origin.length !== 2) {
+      bad();
+      continue;
+    }
+    const ops = (fns as readonly JsonValue[]).map(readOp);
+    const ox = readLength((origin as readonly JsonValue[])[0]);
+    const oy = readLength((origin as readonly JsonValue[])[1]);
+    if (ops.some((x) => x === null) || ox === null || oy === null) {
+      bad();
+      continue;
+    }
+    transforms.set(n.id, { ops: ops as TransformOp[], origin: { x: ox, y: oy } });
+  }
+  return { transforms, problems };
+}
 
 const times = (m1: Matrix2D, m2: Matrix2D): Matrix2D => ({ full: true, a: m1.a * m2.a + m1.c * m2.b, b: m1.b * m2.a + m1.d * m2.b, c: m1.a * m2.c + m1.c * m2.d, d: m1.b * m2.c + m1.d * m2.d, e: m1.a * m2.e + m1.c * m2.f + m1.e, f: m1.b * m2.e + m1.d * m2.f + m1.f });
 const shift = (x: number, y: number): Matrix2D => ({ full: true, a: 1, b: 0, c: 0, d: 1, e: x, f: y });
