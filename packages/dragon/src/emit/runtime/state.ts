@@ -587,6 +587,8 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
   for (const w of n.writes) {
     switch (w.kind) {
       case 'background-color':
+        // PNT1-opacity-b: a folded fill is drawn over its backdrop from the static program only, as opacity is (below).
+        if (w.folded === true) throw new StateEmitError(`${n.id}: a fractional opacity folded into the fill has no state-node write (PNT1-opacity-b draws it on the static program only)`);
         writes.push(lang === 'swift' ? `.background(${rgba(w.color)})` : `DragonStateWrite.Background(${rgba(w.color)})`);
         break;
       case 'border-styles':
