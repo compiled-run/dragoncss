@@ -1,11 +1,11 @@
 // css-images-3 §5.3: image-rendering (initial auto), inherited (Chrome 145 css_properties.json5). It picks the scaling algorithm of
 // an image drawn at another size than its own. Chrome 145 parses three keywords, in any ASCII case: auto, -webkit-optimize-contrast
 // and pixelated; it drops every other value (crisp-edges, smooth, high-quality, optimizeSpeed, optimizeQuality), so Dragon drops
-// them too (packages/parity/test/render-anchor-parse.test.ts pins the parse). -webkit-optimize-contrast draws every img, url()
-// background and gradient pixel for pixel as auto does in Chrome 145, so every target accepts it as auto. pixelated samples an img
-// nearest-neighbour, which the native image stage draws (emit/paint/image.ts); it also changes url() and tiled gradient backgrounds,
-// which no native target draws that way, so the native targets refuse it on an element that paints an image layer
-// (analysis/image-rendering.ts). The web output writes the value as computed.
+// them too (packages/parity/test/render-anchor-parse.test.ts pins the parse). Blink maps -webkit-optimize-contrast to low
+// interpolation quality; the upscaled imgs, url() backgrounds and gradients probed in Chrome 145 drew pixel for pixel as auto, so
+// every target accepts it as auto. pixelated samples an img nearest-neighbour, which the native image stage draws
+// (emit/paint/image.ts); it can also change url() and gradient backgrounds, which no native target draws that way, so the native
+// targets refuse it on an element that paints any image layer, and on an img under a transform (analysis/image-rendering.ts). The web output writes the value as computed.
 import type { CssNode } from 'css-tree';
 import { asciiLower } from '../escapes.ts';
 import type { PropertyAspect } from '../properties.ts';

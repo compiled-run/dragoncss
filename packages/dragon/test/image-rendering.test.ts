@@ -74,6 +74,29 @@ describe('image-rendering', () => {
     for (const d of errors) expect(d.message).toBe('image-rendering: pixelated on <div> a is unsupported with its background-image: Chrome samples that image layer nearest-neighbour, and Dragon draws only an img\'s image so');
   });
 
+  it('refuses pixelated on iOS and Android on an img under a transform, set, will-change or animated, on it or an ancestor', () => {
+    /** The pixelated-under-transform errors for an img .i (`.i { img }`) inside a div .w (`.w { wrap }`). */
+    const under = (img: string, wrap = '', faults: CompilerFaults = NO_FAULTS): string[] => {
+      const css = `body { margin: 0; } @keyframes k { to { opacity: 0.5; } } @keyframes t { to { rotate: 10deg; } } .w { ${wrap} } .i { width: 20px; height: 20px; image-rendering: pixelated; ${img} }`;
+      const c = project(faults).compile(inputFor(css, (r) => [el(r, 'w', 'div', ['w'], [{ ...el(r, 'i', 'img', ['i']), attributes: [] }])]));
+      return c.diagnostics.filter((d) => d.severity === 'error' && d.message.includes('under')).map((d) => `${String(d.target)} ${/under (its own|the transform or animation of \w+)/.exec(d.message)?.[1] ?? d.message}`).sort();
+    };
+    const at = (who: string): string[] => [`android ${who}`, `ios ${who}`];
+    expect(under('')).toEqual([]);
+    expect(under('transform: scale(3)')).toEqual(at('its own'));
+    expect(under('rotate: 10deg')).toEqual(at('its own'));
+    expect(under('will-change: transform')).toEqual(at('its own'));
+    expect(under('', 'transform: rotate(10deg)')).toEqual(at('the transform or animation of w'));
+    expect(under('', 'animation: t 1s')).toEqual(at('the transform or animation of w'));
+    expect(under('animation: t 1s')).toEqual(at('its own'));
+    // An animation of no transform, and a transform inside the img's own transformed ancestor, are the same refusal once.
+    expect(under('', 'animation: k 1s')).toEqual([]);
+    expect(under('transform: scale(3)', 'animation: t 1s')).toEqual(at('its own'));
+    expect(under('image-rendering: auto', 'transform: rotate(10deg)')).toEqual([]);
+    expect(under('display: none', 'transform: rotate(10deg)')).toEqual([]);
+    expect(under('transform: scale(3)', '', { ...NO_FAULTS, imageRenderingAccepted: true })).toEqual([]);
+  });
+
   it('plants its fault: pixelated over an image layer compiles', () => {
     expect(errorsAt('image-rendering: pixelated; background-image: linear-gradient(red, blue)', '', { ...NO_FAULTS, imageRenderingAccepted: true })).toEqual([]);
   });
