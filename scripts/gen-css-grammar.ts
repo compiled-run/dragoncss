@@ -127,6 +127,9 @@ const SUBSET = [
   'zoom',
   // isolation (compositing-1 §3.2), after transform-extra, as LONGHANDS registers it.
   'isolation',
+  // css-break-4 §5.4: box-decoration-break, after isolation, as LONGHANDS registers it. webref's keywords are
+  // Chrome 145's (css_properties.json5 keywords).
+  'box-decoration-break',
   // TXT2-i: hyphens (css-text-3 §6.1), before the line clamp, as LONGHANDS registers it.
   'hyphens',
   // TXT2-c3: tab-size (css-text-3 §4.2), before the line clamp, as LONGHANDS registers it.
