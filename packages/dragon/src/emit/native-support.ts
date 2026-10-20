@@ -188,12 +188,33 @@ public protocol DragonNodeView: UIView {
 
 /// The initial containing block: the fixture root at the device origin, white like Chrome's canvas.
 public final class DragonRootView: UIView {
+  /// P6b: every node view in DOM order (DragonTree.apply), whatever hosts it, so VoiceOver reads in Chrome's order, not by position.
+  public var dragonAccessibleOrder: [UIView] = []
   public init() {
     super.init(frame: .zero)
     backgroundColor = .white
     clipsToBounds = false
   }
   required init?(coder: NSCoder) { fatalError("DragonRootView is built in code") }
+
+  /// P6b: the text views with lines and the views that are accessibility elements themselves (a whole leaf, a control), in DOM order, that VoiceOver
+  /// can reach now: shown, and not inside a view that is one element for its whole subtree.
+  public override var accessibilityElements: [Any]? {
+    get {
+      if dragonAccessibleOrder.isEmpty { return super.accessibilityElements }
+      return dragonAccessibleOrder.filter { v in
+        let exposed = v.isAccessibilityElement || ((v as? DragonTextView)?.dragonAccessibleLines.isEmpty == false)
+        if !exposed { return false }
+        var x: UIView? = v
+        while let c = x, c !== self {
+          if c.isHidden || c.alpha < 0.01 || c.accessibilityElementsHidden || (c !== v && c.isAccessibilityElement) { return false }
+          x = c.superview
+        }
+        return x != nil
+      }
+    }
+    set { super.accessibilityElements = newValue }
+  }
 }
 
 /// css-overflow-3 §3: the padding box of an overflow: hidden node; its children are clipped to its bounds.
@@ -851,6 +872,8 @@ public final class DragonTree {
   public let root = DragonRootView()
   private var views: [String: DragonNodeView] = [:]
   private var order: [String] = []
+  /// P6b: the node views as the program builds them, which is DOM order.
+  private var domOrder: [UIView] = []
   private var parents: [String: String?] = [:]
   /// Per text view: each line's half-leading (its content top below the line top, INL1a: it differs by line), and the view's
   /// one ascent and descent.
@@ -875,11 +898,13 @@ public final class DragonTree {
   public func boxNode(_ id: String, parent: String?, kind: String) -> DragonBoxView {
     let v = DragonBoxView(dragonId: id, kind: kind, parent: parent)
     views[id] = v
+    domOrder.append(v)
     return v
   }
   public func textNode(_ id: String, parent: String?, kind: String) -> DragonTextView {
     let v = DragonTextView(dragonId: id, kind: kind, parent: parent)
     views[id] = v
+    domOrder.append(v)
     // Visibility (T150a): the run follows its element, through an anonymous box, which inherits the element's value.
     var owner = parent.flatMap { views[$0] as? DragonBoxView }
     if let o = owner, o.dragonKind == "anonymous" { owner = o.dragonParent.flatMap { views[$0] as? DragonBoxView } }
@@ -1248,6 +1273,8 @@ public final class DragonTree {
         dragonAfterText(cv, tv, DragonTextGeometry(id: id, lines: geometry, cps: geometryCps, pens: geometryPens, textFont: [m.ascent, m.ascent, leaves[li].font.size], strutFont: [ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size], boxFonts: boxFonts, origin: [e[0], e[1]], scale: s))
       }
     }
+    // P6b: VoiceOver reads the views in DOM order, whatever view hosts each (PNT1) and wherever it sits.
+    root.dragonAccessibleOrder = domOrder
     // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
     inlineLines = [:]
     var fragments: [String: [Int]] = [:]
@@ -2314,6 +2341,8 @@ class DragonTree(val context: Context) {
   val root = DragonRootView(context)
   private val views = HashMap<String, DragonNodeView>()
   private val order = ArrayList<String>()
+  /** P6b: the node views as the program builds them, which is DOM order. */
+  private val domOrder = ArrayList<android.view.View>()
   private val parents = HashMap<String, String?>()
   /** Per text view: the ascent, the descent, then each line's half-leading (its content top below the line top; INL1a). */
   private val textMetrics = HashMap<String, DoubleArray>()
@@ -2341,11 +2370,13 @@ class DragonTree(val context: Context) {
   fun boxNode(id: String, parent: String?, kind: String): DragonBoxView {
     val v = DragonBoxView(context, id, kind, parent)
     views[id] = v
+    domOrder.add(v)
     return v
   }
   fun textNode(id: String, parent: String?, kind: String): DragonTextView {
     val v = DragonTextView(context, id, kind, parent)
     views[id] = v
+    domOrder.add(v)
     // Visibility (T150a): the run follows its element, through an anonymous box, which inherits the element's value.
     var owner = parent?.let { views[it] as? DragonBoxView }
     if (owner != null && owner.dragonKind == "anonymous") owner = owner.dragonParent?.let { views[it] as? DragonBoxView }
@@ -2736,6 +2767,16 @@ class DragonTree(val context: Context) {
         for ((b, ib) in ifc.boxes.withIndex()) boxFonts[ib.id] = doubleArrayOf(ifc.boxMetrics[b].ascent / lu, ifc.boxMetrics[b].ascent / lu, ib.font.size)
         dragonAfterText(cv, tv, DragonTextGeometry(id, geometry, geometryCps, geometryPens, doubleArrayOf(vm[0], vm[0], leaves[li].font.size), doubleArrayOf(ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size), boxFonts, doubleArrayOf(e[0], e[1]), scale))
       }
+    }
+    // P6b: TalkBack reads the views in DOM order, whatever view hosts each (PNT1) and wherever it sits: each exposed view (a text
+    // view with lines or exposed whole, or a box view that is one node for its subtree) is traversed after the one before it.
+    var previous: android.view.View? = null
+    for (v in domOrder) {
+      val exposed = (v is DragonTextView && (v.dragonAccessibleNames.isNotEmpty() || v.contentDescription != null)) || (v is DragonBoxView && v.contentDescription != null)
+      if (!exposed) continue
+      if (v.id == android.view.View.NO_ID) v.id = android.view.View.generateViewId()
+      v.accessibilityTraversalAfter = previous?.id ?: android.view.View.NO_ID
+      previous = v
     }
     // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
     inlineLines.clear()

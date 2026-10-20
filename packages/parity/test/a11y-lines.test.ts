@@ -50,6 +50,13 @@ const AX_DOCS: readonly AxDoc[] = [
     css: 'h1, h2, h3, h4, h5, h6 { font-size: 10px; margin: 0; font-weight: normal; }',
     body: '<h1 data-dragon-id="a">AA <b data-dragon-id="b">BB</b></h1><h2 data-dragon-id="c">CC</h2><h3 data-dragon-id="d">DD<div data-dragon-id="e">EE EE</div></h3><h4 data-dragon-id="f">FF</h4><h5 data-dragon-id="g">GG</h5><h6 data-dragon-id="h">HH</h6><div data-dragon-id="i">II</div>',
   },
+  // Boxes placed against DOM order (a reversed flex column, a box moved up over the one before it): Chrome reads in DOM order,
+  // as native does (DragonRootView's accessibilityElements, Android's traversal-after chain), not by position.
+  {
+    id: 'order',
+    css: '.f { display: flex; flex-direction: column-reverse; } .m { position: relative; top: -40px; }',
+    body: '<div data-dragon-id="a" class="f"><div data-dragon-id="b">BB</div><div data-dragon-id="c">CC</div></div><div data-dragon-id="d">DD</div><div data-dragon-id="e" class="m">EE</div>',
+  },
   {
     id: 'hidden',
     css: '.h { visibility: hidden; } .v { visibility: visible; }',
