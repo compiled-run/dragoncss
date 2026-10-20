@@ -63,7 +63,7 @@ describe('the initial-only scroll and containment families', () => {
   it('follow transform-extra and zoom in the registry, are paint-role rows, animate as Chrome 145 does and know their initial values', () => {
     expect(LONGHANDS.slice(LONGHANDS.indexOf('zoom') + 1, LONGHANDS.indexOf('zoom') + 33)).toEqual(ALL);
     expect(ALL).toHaveLength(32);
-    // container-type changes layout, and container-name compiles everywhere, so both key their rows by the box's context.
+    // container-type changes layout, so it keys its rows by the box's context, except at normal (analysis/context.ts layoutInert).
     for (const p of ALL) expect(PROPERTY_ROLE[p], p).toBe((CONTAINER_QUERY_LONGHANDS as readonly string[]).includes(p) ? 'item' : 'paint');
     for (const p of ALL) expect(ANIMATION_KINDS[p], p).toBe(p === 'contain-intrinsic-width' || p === 'contain-intrinsic-height' ? UNADMITTED : DISCRETE);
     expect(isInitialValue(ZERO_LENGTH, { kind: 'length', value: 0, unit: 'px' })).toBe(true);
@@ -107,6 +107,14 @@ describe('the initial-only scroll and containment families', () => {
     expect(errorsAt('scroll-snap-type: y mandatory; scroll-snap-type: none')).toEqual([]);
     expect(errorsAt('container: card / size; container: none')).toEqual([]);
     expect(errorsAt('--z: 0px; scroll-margin: var(--z)')).toEqual([]);
+  });
+
+  it('key container-name, and container-type: normal, by the element\'s direction alone, so the committed rows prove them in any box', () => {
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { container: none; } .f { display: flex; flex-direction: column; } .h { display: none; }';
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(
+      inputFor(css, (r) => [el(r, 'p', 'div', [], [el(r, 'i', 'span', ['s'], [text(r, 't', 'X')])]), el(r, 'f', 'div', ['f'], [el(r, 'fi', 'div', ['s'])]), el(r, 'h', 'div', ['h'], [el(r, 'hi', 'div', ['s'])])]),
+    );
+    expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.message}`)).toEqual([]);
   });
 
   it('compile every container-name and container-type: inline-size, from any spelling and through var() and inherit', () => {

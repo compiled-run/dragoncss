@@ -18,6 +18,8 @@ body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
 .mc { width: min-content; }
 .w { width: 70px; }
 .if { display: inline-flex; }
+.g { display: grid; grid-template-columns: 30px 40px; column-gap: 5px; }
+.ig { display: inline-grid; grid-template-columns: repeat(2, 20px) auto; column-gap: 3px; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -31,5 +33,9 @@ body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
 <div data-dragon-id="mc" class="box q mc">XX XX</div>
 <div data-dragon-id="nest-p">X<div data-dragon-id="nest" class="ib box q"><div data-dragon-id="nest-t">X<div data-dragon-id="nest-k" class="ib box q">XX</div>X</div><div data-dragon-id="nest-l" class="box w">XX</div></div>X</div>
 <div data-dragon-id="flexq-p">X<div data-dragon-id="flexq" class="if q"><div data-dragon-id="flexq-a" class="box q">XX</div><div data-dragon-id="flexq-b" class="box">XXX</div></div>X</div>
+<div data-dragon-id="st" class="rel box"><div data-dragon-id="st-q" class="box q"><div data-dragon-id="st-k" class="abs box">X</div></div></div>
+<div data-dragon-id="cg-p">X<div data-dragon-id="cg" class="ig box q"><div data-dragon-id="cg-a">XXXXXXXX</div><div data-dragon-id="cg-b">X</div><div data-dragon-id="cg-c">XX XX</div></div>X</div>
+<div data-dragon-id="cg-mc" class="g box q mc"><div data-dragon-id="cg-mc-a">XX</div><div data-dragon-id="cg-mc-b">XXXXXXXXXX</div></div>
+<div data-dragon-id="row2" class="row box"><div data-dragon-id="row2-g" class="g box q"><div data-dragon-id="row2-a">XX</div></div><div data-dragon-id="row2-b" class="box">X</div></div>
 </body>
 </html>
