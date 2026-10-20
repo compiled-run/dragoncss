@@ -126,13 +126,16 @@ describe('the text fill colour and stroke', () => {
     expect(textColors('.s { color: blue; -webkit-text-fill-color: red; }', { ...NO_FAULTS, textFillIgnored: true })).toEqual({ 'b:text0': 'rgb(0, 0, 255)', 'c:text0': 'rgb(0, 0, 255)' });
   });
 
-  it('keeps an underline under a filled text in color', () => {
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { color: blue; -webkit-text-fill-color: red; text-decoration: underline; }';
-    const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
-    const p = nativePrograms(c, []);
-    if (p.kind !== 'ready') throw new Error(p.reason);
-    const w = p.programs.uikit.nodes.flatMap((n) => n.writes).find((x) => x.kind === 'text-decoration');
-    expect(w?.kind === 'text-decoration' ? w.entries.map((e) => e.color) : null).toEqual([{ r: 0, g: 0, b: 255, alpha: 255 }]);
+  it('paints a currentcolor decoration in the decorating box\'s fill, and an explicit decoration colour as written', () => {
+    const decorationColors = (css: string): string[] => {
+      const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['r'], [text(r, 't', 'XX')])])]));
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      return p.programs.uikit.nodes.flatMap((n) => n.writes).flatMap((w) => (w.kind === 'text-decoration' ? w.entries.map((e) => serializeColor(e.color)) : []));
+    };
+    expect(decorationColors('.s { color: blue; -webkit-text-fill-color: red; text-decoration: underline; } .r { -webkit-text-fill-color: green; }')).toEqual(['rgb(255, 0, 0)']);
+    expect(decorationColors('.s { color: blue; text-decoration: underline; } .r { -webkit-text-fill-color: green; }')).toEqual(['rgb(0, 0, 255)']);
+    expect(decorationColors('.s { color: blue; -webkit-text-fill-color: red; text-decoration: underline navy; }')).toEqual(['rgb(0, 0, 128)']);
   });
 
   it('refuses on native an animation or transition of color over text with its own fill, and only there', () => {

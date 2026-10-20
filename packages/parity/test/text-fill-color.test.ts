@@ -1,10 +1,11 @@
 // TXT-FX on the host: text-fill-stroke-colors against Chrome's pixels at every device DPR, shot here as parity:pixel-capture shoots
 // them (chrome.ts launch and page, CDP Page.captureScreenshot, the raster size rule), so the proof needs no regen. Chrome fills glyphs in
-// -webkit-text-fill-color (color where it is currentcolor) and paints decorations in color; native fills each text view in the
-// program's text colour (native-program.ts textPaint) and draws decorations from the text-decoration write. Every pixel at least
-// MARGIN device px inside an Ahem glyph box must be Chrome's fill: the text colour where it is opaque, the paint model's backdrop
-// where it is transparent (the fixture has no translucent fill). The underline beneath un's glyphs (skip-ink none) must show color
-// at its row points and the fill at its ink points. The textFillIgnored plant (glyphs filled in color) must fail.
+// -webkit-text-fill-color (color where it is currentcolor) and paints a currentcolor decoration in the decorating box's fill; native
+// fills each text view in the program's text colour (native-program.ts textPaint) and draws decorations from the text-decoration
+// write. Every pixel at least MARGIN device px inside an Ahem glyph box must be Chrome's fill: the text colour where it is opaque,
+// the paint model's backdrop where it is transparent (the fixture has no translucent fill). un's underline runs beneath its child
+// uc's glyphs (skip-ink none): its row points must show un's fill and the write's colour, its ink points uc's fill. The
+// textFillIgnored plant (glyphs filled in color) must fail.
 import { describe, expect, it } from 'vitest';
 import type { CompilerFaults, NativeProgram } from 'dragon';
 import { createProjectWith, nativePrograms, NO_FAULTS } from 'dragon';
@@ -32,7 +33,7 @@ const FILLS: { readonly [text: string]: Rgba | null } = {
   'hsl:text0': [0, 128, 0, 255],
   'inh:text0': [0, 102, 204, 255],
   'cc:text0': [128, 0, 128, 255],
-  'un:text0': [255, 165, 0, 255],
+  'uc:text0': [170, 0, 170, 255],
   'bg:text0': [0, 102, 204, 255],
   'mix:text0': [0, 0, 0, 255],
   'sp:text0': [153, 0, 153, 255],
@@ -40,8 +41,8 @@ const FILLS: { readonly [text: string]: Rgba | null } = {
   'ra:text0': [10, 127, 94, 255],
   'rb:text0': [10, 127, 94, 255],
 };
-/** un's color, which its underline is painted in. */
-const UNDERLINE: Rgba = [0, 0, 255, 255];
+/** un's fill, which its currentcolor underline is painted in (its color is blue). */
+const UNDERLINE: Rgba = [255, 165, 0, 255];
 /** The model judges a pixel only when it is this far (device px) inside a glyph box. */
 const MARGIN = 1;
 
@@ -133,14 +134,16 @@ describe('TXT-FX: text-fill-stroke-colors\' glyph fills equal Chrome\'s pixels',
         for (const t of Object.keys(FILLS)) expect(r.judged.get(t) ?? 0, `${t} DPR ${dpr}`).toBeGreaterThan(200 * dpr * dpr);
         // The plant fills every filled text in color; its glyphs differ from Chrome's wherever color and the fill differ.
         expect(judge(chrome, planted.uikit, dpr).mismatches.length, `DPR ${dpr} plant`).toBeGreaterThan(9 * 200 * dpr * dpr);
-        // un's underline: color between the glyphs (row points), the fill over it where the glyphs cover it (ink points).
-        const points = casePoints(real.uikit, ENVIRONMENT.viewport, dpr).filter((q) => q.rule.startsWith('decoration:un:text0:'));
+        // un's underline: un's fill between the glyphs (row points), uc's fill over it where the glyphs cover it (ink points).
+        const w = real.uikit.nodes.flatMap((n) => n.writes).find((x) => x.kind === 'text-decoration');
+        expect(w?.kind === 'text-decoration' ? w.entries.map((e) => [e.text, e.color.r, e.color.g, e.color.b, e.color.alpha]) : null).toEqual([['uc:text0', ...UNDERLINE]]);
+        const points = casePoints(real.uikit, ENVIRONMENT.viewport, dpr).filter((q) => q.rule.startsWith('decoration:uc:text0:'));
         const rows = points.filter((q) => q.rule.endsWith(':row'));
         const inks = points.filter((q) => q.rule.endsWith(':ink'));
         expect(rows.length, `DPR ${dpr} row points`).toBeGreaterThan(0);
         expect(inks.length, `DPR ${dpr} ink points`).toBeGreaterThan(0);
         for (const q of rows) expect(`${q.rule} ${at(chrome, q.x, q.y)}`).toBe(`${q.rule} ${UNDERLINE.slice(0, 3).join()}`);
-        for (const q of inks) expect(`${q.rule} ${at(chrome, q.x, q.y)}`).toBe(`${q.rule} ${(FILLS['un:text0'] as Rgba).slice(0, 3).join()}`);
+        for (const q of inks) expect(`${q.rule} ${at(chrome, q.x, q.y)}`).toBe(`${q.rule} ${(FILLS['uc:text0'] as Rgba).slice(0, 3).join()}`);
       }
     }, 300_000);
   }
