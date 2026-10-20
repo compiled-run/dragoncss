@@ -64,7 +64,7 @@ function isNothing(v: CssValue): boolean {
 
 /** A child of the inline box, as the resolver holds it: a resolved element's display, or a text and whether it collapses away. */
 export type BlockInInlineChild =
-  | { readonly kind: 'block' }
+  | { readonly kind: 'block'; readonly empty: boolean }
   | { readonly kind: 'inline-level' }
   | { readonly kind: 'none' }
   | { readonly kind: 'out-of-flow' }
@@ -78,6 +78,8 @@ export type BlockInInlineChild =
  */
 export function blockInInlineBlocker(props: ReadonlyMap<Longhand, ResolvedValue>, kids: readonly BlockInInlineChild[], ua: UaDataset): string | null {
   if (!kids.some((k) => k.kind === 'block' || k.kind === 'nested')) return 'it holds no in-flow block-level box';
+  // Blocks whose margins all collapse through them leave the inline box no line of blocks (Chrome sizes it 0 wide).
+  if (!kids.some((k) => (k.kind === 'block' && !k.empty) || k.kind === 'nested')) return 'it holds only empty blocks, whose margins collapse through it';
   if (kids.some((k) => k.kind === 'inline-level')) return 'it holds inline-level content beside its block-level boxes';
   // Each inline box inside it would end the line of blocks before it and start its own (its tags take empty lines between them).
   const nested = kids.find((k) => k.kind === 'nested');

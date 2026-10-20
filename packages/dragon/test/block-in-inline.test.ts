@@ -48,12 +48,21 @@ describe('BII: block-in-inline', () => {
   });
 
   it('drops the sizes, block margins and ratio an inline box ignores from its block-in-inline box, as Chrome does', () => {
-    const c = compile('* + * { margin-top: 5px; } .s { width: 30px; height: 20px; min-height: 40px; max-width: 20px; margin-bottom: 10px; aspect-ratio: 1; box-sizing: border-box; } .k { height: 10px; }', (r) => [div(r, 'p', [], [div(r, 'a', []), tagged(r, 'span', 's', ['s'], [div(r, 'k', ['k'])])])]);
+    const c = compile('* + * { margin-top: 5px; } .s { width: 30px; height: 20px; min-height: 40px; max-width: 20px; margin-bottom: 10px; aspect-ratio: 1; box-sizing: border-box; overflow: hidden; } .k { height: 10px; }', (r) => [div(r, 'p', [], [div(r, 'a', []), tagged(r, 'span', 's', ['s'], [div(r, 'k', ['k'])])])]);
     expect(errors(c)).toEqual([]);
     const p = iosLayoutProjection(c, ENV, []);
     if (p.kind !== 'ready') throw new Error('blocked');
     const st = (find(p.input.root, 's') as LayoutBox).style;
-    expect([st.width, st.height, st.minHeight, st.maxWidth, st.marginTop, st.marginBottom, st.aspectRatio, st.boxSizing]).toEqual([{ kind: 'auto' }, { kind: 'auto' }, { kind: 'auto' }, { kind: 'none' }, { kind: 'px', value: 0 }, { kind: 'px', value: 0 }, { kind: 'auto' }, 'content-box']);
+    expect([st.width, st.height, st.minHeight, st.maxWidth, st.marginTop, st.marginBottom, st.aspectRatio, st.boxSizing, st.overflowX, st.overflowY]).toEqual([{ kind: 'auto' }, { kind: 'auto' }, { kind: 'auto' }, { kind: 'none' }, { kind: 'px', value: 0 }, { kind: 'px', value: 0 }, { kind: 'auto' }, 'content-box', 'visible', 'visible']);
+  });
+
+  it('refuses an animation on a block-in-inline box, which the runtime would apply to the block, and an inline box of empty blocks', () => {
+    const anim = errors(compile('@keyframes k { from { height: 10px; } to { height: 50px; } } .s { animation: k 1s infinite; } .k { height: 10px; }', (r) => [div(r, 'p', [], [tagged(r, 'span', 's', ['s'], [div(r, 'k', ['k'])])])]));
+    expect(anim.filter((e) => e.includes('animates an inline box')).length).toBeGreaterThan(0);
+    const empty = (css: string): string[] => errors(compile(`.w { padding-top: 1px; } ${css}`, (r) => [div(r, 'w', ['w'], [tagged(r, 'span', 's', [], [div(r, 'e', ['e'], [text(r, 'x', ' ')])])])])).filter((e) => e.includes('it holds only empty blocks'));
+    expect(empty('.e { margin: 6px 0 2px; }').length).toBeGreaterThan(0);
+    expect(empty('.e { margin: 6px 0 2px; padding-bottom: 1px; }')).toEqual([]);
+    expect(empty('.e { height: 1px; }')).toEqual([]);
   });
 
   it('refuses keyword widths and an aspect-ratio on a float, which the engine sizes shrink-to-fit', () => {

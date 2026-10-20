@@ -18,5 +18,6 @@ export const BLOCK_IN_INLINE: readonly FixtureSpec[] = [
   // above the blocks' top margin only where the inline boxes are their container's whole inline formatting context.
   both('block-in-inline-ignored'),
   reject('reject-block-in-inline-box', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="b">YY</div>', '<div> b is block-level inside the inline box <span> s'),
+  reject('reject-block-in-inline-empty', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="e" class="e"></div>', '<div> e is block-level inside the inline box <span> s'),
   reject('reject-block-in-inline-beside', 'DRAGON_UNSUPPORTED_VALUE', '<span data-dragon-id="s"><div data-dragon-id="b">YY</div></span>', 'the inline box <span> s holds block-level boxes beside the text'),
 ];

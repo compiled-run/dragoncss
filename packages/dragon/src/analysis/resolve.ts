@@ -228,6 +228,38 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
+const outOfFlow = (k: ResolvedElement): boolean => {
+  const position = (k.props.get('position') as ResolvedValue).value;
+  const float = (k.props.get('float') as ResolvedValue).value;
+  return (position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed')) || (float.kind === 'keyword' && float.value !== 'none');
+};
+
+/** Whether an inline box holds anything a line box is made for: text that is not white space, a <br>, or an atomic inline. */
+function inlineHasContent(el: ResolvedElement): boolean {
+  if (el.element.tag === 'br') return true;
+  return el.children.some((k) => (k.kind === 'text' ? /[^ \t\n]/u.test(k.text) : displayOf(k) !== 'none' && !outOfFlow(k) && (!isInlineBox(k) || inlineHasContent(k))));
+}
+
+/**
+ * CSS2 §8.3.1: whether a block box may be empty, so that its top and bottom margins collapse through it: a block container that
+ * is no formatting context root, with no positive height or min-height, no vertical padding or border, and nothing in flow but
+ * such boxes and white space. Conservative: a percentage height or a float inside counts as nothing.
+ */
+function mayCollapseThrough(el: ResolvedElement): boolean {
+  const value = (p: Longhand): CssValue => (el.props.get(p) as ResolvedValue).value;
+  const positive = (v: CssValue): boolean => (v.kind === 'length' || v.kind === 'percentage') && v.value > 0;
+  const drawn = (side: 'top' | 'bottom'): boolean => {
+    const st = value(`border-${side}-style` as Longhand);
+    return !(st.kind === 'keyword' && (st.value === 'none' || st.value === 'hidden')) && !(value(`border-${side}-width` as Longhand).kind === 'length' && (value(`border-${side}-width` as Longhand) as { value: number }).value === 0);
+  };
+  const overflow = value('overflow-x');
+  if (displayOf(el) !== 'block' || isReplacedTag(el.element.tag) || !(overflow.kind === 'keyword' && overflow.value === 'visible')) return false;
+  const height = value('height');
+  if ((height.kind === 'length' && height.value > 0) || (value('min-height').kind === 'length' && positive(value('min-height')))) return false;
+  if (positive(value('padding-top')) || positive(value('padding-bottom')) || drawn('top') || drawn('bottom')) return false;
+  return el.children.every((k) => (k.kind === 'text' ? !/[^ \t\n]/u.test(k.text) : displayOf(k) === 'none' || outOfFlow(k) || (isInlineBox(k) ? !inlineHasContent(k) : mayCollapseThrough(k))));
+}
+
 /** A child of an inline box as blockInInlineBlocker reads it. */
 export function blockInInlineChild(k: ResolvedElement | { readonly kind: 'text'; readonly text: string }): BlockInInlineChild {
   if (k.kind === 'text') return { kind: 'text', blank: /^[ \t\n]*$/u.test(k.text) };
@@ -235,10 +267,8 @@ export function blockInInlineChild(k: ResolvedElement | { readonly kind: 'text';
   const d = displayOf(k);
   if (d === 'none') return { kind: 'none' };
   // An absolutely positioned or floated child leaves the flow: it neither splits the inline box nor makes it a block's.
-  const position = (k.props.get('position') as ResolvedValue).value;
-  const float = (k.props.get('float') as ResolvedValue).value;
-  if ((position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed')) || (float.kind === 'keyword' && float.value !== 'none')) return { kind: 'out-of-flow' };
-  return isInlineBox(k) || isAtomicInline(k) || d === 'contents' || d.startsWith('inline') ? { kind: 'inline-level' } : { kind: 'block' };
+  if (outOfFlow(k)) return { kind: 'out-of-flow' };
+  return isInlineBox(k) || isAtomicInline(k) || d === 'contents' || d.startsWith('inline') ? { kind: 'inline-level' } : { kind: 'block', empty: mayCollapseThrough(k) };
 }
 
 /** css-variables-1 §2: every resolved element's computed custom properties (ANIM-v substitutes transition and animation values with them). */

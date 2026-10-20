@@ -622,8 +622,8 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
   };
 }
 
-// CSS2 §10.2, §10.5, §10.7, §8.3 and css-sizing-4 §5.1: a non-replaced inline box takes no width, height, min or max size, block
-// margins or ratio. A block-in-inline box is that inline box (its web output keeps display: inline), so its block box takes none
+// CSS2 §10.2, §10.5, §10.7, §8.3, css-sizing-4 §5.1 and css-overflow-3 §3: a non-replaced inline box takes no width, height, min
+// or max size, block margins, ratio or overflow. A block-in-inline box is that inline box (its web output keeps display: inline), so its block box takes none
 // of them either (measured against Chrome 145: span { height: 20px; width: 30px; margin-top: 10px } lays out as if unset).
 const INLINE_IGNORES = {
   boxSizing: 'content-box',
@@ -636,6 +636,9 @@ const INLINE_IGNORES = {
   marginTop: { kind: 'px', value: 0 },
   marginBottom: { kind: 'px', value: 0 },
   aspectRatio: { kind: 'auto' },
+  // css-overflow-3 §3: overflow applies to block containers, so an inline box never clips.
+  overflowX: 'visible',
+  overflowY: 'visible',
 } as const satisfies Partial<LayoutStyle>;
 
 /**

@@ -4,6 +4,7 @@
 // (the last rule of a name wins, M13), and every refusal of the spec's §1 table that needs the reachable states is decided here:
 // ANIM-p (R13), ANIM-o (R12), ANIM-cc, ANIM-t (R11) and ANIM-v. The support gate keys every used value as a feature in the
 // `animation` context: a feature with no passing frame-lane row is refused per target, as every unproven value is.
+import { isBlockInInline } from './block-in-inline.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { KeyframesRule } from '../css/at-rules/keyframes.ts';
 import type { AnimationKind } from '../css/animation-kinds.ts';
@@ -261,7 +262,8 @@ const PACKAGE_OF = (p: string): string => (p === 'opacity' || p === 'transform' 
  */
 function inlineBoxAt(el: ResolvedElement, root: ResolvedElement): boolean {
   const v = valueAt(el, 'display').value;
-  return el !== root && v.kind === 'keyword' && v.value === 'inline';
+  // BII: a block-in-inline box is an inline box laid out as a block, which the runtime would animate as the block.
+  return el !== root && ((v.kind === 'keyword' && v.value === 'inline') || isBlockInInline(el));
 }
 
 const INLINE_ANIM_MANUAL = 'Animate a block-level element instead (display: block or inline-block on a wrapper), or remove the declaration.';
