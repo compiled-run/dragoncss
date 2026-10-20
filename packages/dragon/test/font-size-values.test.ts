@@ -175,6 +175,15 @@ describe("the minimum logical font size Chrome clamps a relative size to", () =>
     expect(errors('line-height: 150%;', '12px', '14px')).toEqual([]);
   });
 
+  it('treats a calculation whose type is a percentage alone as a percentage, and any other calculation as absolute', () => {
+    // Chrome's ConvertFontSize asks IsPercentage of the math value, which is true when its type reduces to a percentage.
+    for (const q of ['calc(50%)', 'calc(0.5 * 50%)', 'max(50%, 40%)', 'clamp(1%, 25%, 50%)']) expect(errors('', 'x-small', q), q).toEqual(CLAMPED);
+    expect(errors('', 'calc(100%)', '0.25em')).toEqual(CLAMPED);
+    expect(errors('', 'x-small', 'calc(60%)')).toEqual([]);
+    // 5px, but a length plus a percentage is absolute, as a px size is.
+    expect(errors('', 'x-small', 'calc(40% + 1px)')).toEqual([]);
+  });
+
   it('plant keywordMinimumUnchecked: the clamped size is accepted', () => {
     expect(errors('', 'x-small', '50%', { ...NO_FAULTS, keywordMinimumUnchecked: true })).toEqual([]);
   });

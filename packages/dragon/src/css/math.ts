@@ -1220,6 +1220,11 @@ export function lowerLengthCalc(n: MathNode, fonts: MathFonts, range: LengthCalc
   return { kind: 'calc', expr: lowerMathNode(n, fonts, faults), range };
 }
 
+/** Whether a calculation's type reduces to a percentage alone (calc(50%), max(50%, 40%)): Blink's CSSPrimitiveValue::IsPercentage. */
+export function isPercentMath(n: MathNode): boolean {
+  return (isLit(n) ? unitCategory(n.unit) : n.category) === 'percent';
+}
+
 /** The px each em, rem and % of a calculation folded at build time reads (foldLength). */
 export type FoldBases = { readonly em: number; readonly rem: number; readonly percent: number };
 
