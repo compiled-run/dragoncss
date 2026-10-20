@@ -1,11 +1,13 @@
 // T154 slice 2a (notes/T154-user-select-spec.md): the selection model (packages/layout/src/rt-select.ts) against Chrome 145. For
 // each document Chrome clicks every point of a grid and reads the caret its selection collapses to, with that caret's rect, and
-// drags from a few anchors to sampled points and reads Selection.toString and the focus; the model, built from the engine's layout of the same
-// document compiled for native, must place every caret, rect and selected string where Chrome does.
+// drags from a few anchors to sampled points and reads Selection.toString and the focus, and screenshots the highlight it paints; the
+// model, built from the engine's layout of the same document compiled for native, must place every caret, rect, selected string and
+// highlighted pixel where Chrome does.
 import { describe, expect, it } from 'vitest';
 import type { Page } from 'playwright';
 import type { Caret, SelectTable } from '../../layout/src/rt-select.ts';
-import { anchorAt, caretRect, focusAt, pxToLu, selectedText } from '../../layout/src/rt-select.ts';
+import { anchorAt, caretRect, focusAt, highlightRects, pxToLu, selectedText } from '../../layout/src/rt-select.ts';
+import { decodePng } from '../src/pixel-reference.ts';
 import { launchChrome, openPage } from '../src/chrome.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
 import { SELECT_DOCS, selectCase, selectHtml, selectPoints } from '../src/select-cases.ts';
@@ -71,6 +73,48 @@ function leafOffset(t: SelectTable, seen: Seen & { readonly data: string }): See
   return { leaf: seen.leaf, offset: k, rect: seen.rect };
 }
 
+// The highlight is painted pure blue, glyphs and all, so a selected pixel is told from text and canvas by colour alone.
+const HIGHLIGHT_STYLE = '::selection { background: rgb(0, 0, 255); color: rgb(0, 0, 255); }';
+
+/** The pixels (CSS px at DPR 1) Chrome paints with the highlight colour, as "y:x0-x1" runs. */
+function paintedRuns(png: Uint8Array): string[] {
+  const img = decodePng(png);
+  const out: string[] = [];
+  for (let y = 0; y < img.height; y++) {
+    let start = -1;
+    for (let x = 0; x <= img.width; x++) {
+      const i = (y * img.width + x) * 4;
+      const blue = x < img.width && (img.data[i] as number) < 64 && (img.data[i + 1] as number) < 64 && (img.data[i + 2] as number) > 192;
+      if (blue && start < 0) start = x;
+      if (!blue && start >= 0) {
+        out.push(`${y}:${start}-${x}`);
+        start = -1;
+      }
+    }
+  }
+  return out;
+}
+
+/** The pixels whose centres the model's highlight rects cover, as the same runs. */
+function modelRuns(t: SelectTable, a: Caret, f: Caret, width: number, height: number): string[] {
+  const rects = highlightRects(t, a, f);
+  const out: string[] = [];
+  for (let y = 0; y < height; y++) {
+    let start = -1;
+    for (let x = 0; x <= width; x++) {
+      const cx = (x + 0.5) * 64;
+      const cy = (y + 0.5) * 64;
+      const on = x < width && rects.some((r) => cx >= r.left && cx < r.right && cy >= r.top && cy < r.bottom);
+      if (on && start < 0) start = x;
+      if (!on && start >= 0) {
+        out.push(`${y}:${start}-${x}`);
+        start = -1;
+      }
+    }
+  }
+  return out;
+}
+
 async function drag(page: Page, x0: number, y0: number, x1: number, y1: number): Promise<Read> {
   await page.mouse.click(395, 295);
   await page.evaluate('getSelection().removeAllRanges()');
@@ -91,7 +135,7 @@ function sameCaret(got: Seen | null, want: Seen | null, inexact: boolean): boole
   return got.leaf === want.leaf && got.offset === want.offset && got.rect[1] === want.rect[1] && got.rect[2] === want.rect[2] && (dx === 0 || (inexact && dx === 1 / 64));
 }
 
-describe('selection model (T154 slice 2a): carets, caret rects and selected text against Chrome drags', () => {
+describe('selection model (T154 slices 2a, 2b): carets, caret rects, selected text and highlight against Chrome drags', () => {
   it('every document compiles for native and the model refuses none of it', () => {
     for (const d of SELECT_DOCS) expect(selectCase(d).table.lines.length, d.id).toBeGreaterThan(0);
   });
@@ -113,7 +157,8 @@ describe('selection model (T154 slice 2a): carets, caret rects and selected text
     try {
       for (const d of SELECT_DOCS) {
         const t = selectCase(d).table;
-        const page = await openPage(browser, selectHtml(d), ENVIRONMENT);
+        const page = await openPage(browser, selectHtml(d).replace('</style>', `${HIGHLIGHT_STYLE}</style>`), ENVIRONMENT);
+        const clip = { x: 0, y: 0, width: 160, height: Math.ceil((t.blocks[0]?.bottom ?? 0) / 64) + 10 };
         const inexact = (await page.evaluate(`(() => { const c = document.createElement('canvas').getContext('2d'); c.font = '10px Ahem'; return c.measureText('AAAAAAAAAA').width; })()`)) !== 100;
         const points = selectPoints(t);
         // A click collapses the selection to the caret the point picks.
@@ -135,6 +180,13 @@ describe('selection model (T154 slice 2a): carets, caret rects and selected text
           const focus = seen === null || seen.focus === null ? null : leafOffset(t, seen.focus);
           const wantFocus = a === null ? null : modelCaret(t, f);
           if (!sameCaret(focus, wantFocus, inexact)) problems.push(`${d.id} drag ${ax},${ay} to ${x},${y}: Chrome's focus ${JSON.stringify(focus)}, model ${JSON.stringify(wantFocus)}`);
+          // The highlight Chrome paints, pixel for pixel, against the model's rects.
+          const painted = paintedRuns(await page.screenshot({ clip }));
+          const modelled = a === null || f === null ? [] : modelRuns(t, a, f, clip.width, clip.height);
+          if (painted.join(' ') !== modelled.join(' ')) {
+            const only = (xs: string[], ys: string[]) => xs.filter((r) => !ys.includes(r)).slice(0, 6).join(' ');
+            problems.push(`${d.id} drag ${ax},${ay} to ${x},${y}: Chrome paints ${only(painted, modelled)} the model does not; the model ${only(modelled, painted)}`);
+          }
         }
         await page.context().close();
       }

@@ -4458,6 +4458,40 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/editing/layout_selection.cc",
+      "licence": "lgpl",
+      "ruling": { "class": "A", "basis": "Chrome 145's painted ::selection highlight, measured pixel for pixel by select-model.test; the file only names the cases", "proof": ["packages/parity/test/select-model.test.ts"] },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc.",
+      "fileSha256": "209a44b5b92bcc68a166f8f7d6468d1a0fb3a74a3def25b61adecf93146b6d5f",
+      "headerSha256": "ddbbadf8b8f9db5bc294308435451ee6a33bd81d2b50d42c350a525224dd1ba4",
+      "ranges": [
+        { "lines": "446-457", "symbol": "ComputeEndOffset", "source": "located" },
+        { "lines": "684-731", "symbol": "LayoutSelection::ComputeSelectionStatus", "source": "located" },
+        { "lines": "854-918", "symbol": "CalcSelectionRangeAndSetSelectionState", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-select.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/inline_cursor.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "458f8af0ca4c54333ae65cd4359001f9d01c30da89c77e8f5b18685c5b1e9864",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "33-74", "symbol": "ExpandedSelectionRectForSoftLineBreakIfNeeded", "source": "located" },
+        { "lines": "357-382", "symbol": "InlineCursor::IsBeforeSoftLineBreak", "source": "located" },
+        { "lines": "485-511", "symbol": "InlineCursor::CurrentLocalSelectionRectForText", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-select.ts", "symbol": null, "use": "reference" }
+        ]
+      },
+      {
       "upstream": "third_party/blink/renderer/modules/accessibility/ax_node_object.cc",
       "licence": "bsd-google",
       "noticeText": "header-bsd-7",

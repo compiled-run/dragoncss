@@ -12,6 +12,11 @@
 //   line's last visible glyph is the caret before the line's hanging space.
 // - user-select none (css-ui-4 §6.1): a press on an element whose used value is none starts no selection; a caret that lands in
 //   such a subtree moves to the first selectable caret after it, else the last one before it, in either drag direction.
+// The painted highlight is measured against Chrome's own pixels (select-model.test.ts paints ::selection pure blue and compares every
+// pixel), with third_party/blink/renderer/core/editing/layout_selection.cc (LGPL, read as a reference only) and
+// third_party/blink/renderer/core/layout/inline/inline_cursor.cc (Chromium BSD, reference) naming the cases: a line paints the selected
+// glyphs over its whole line box, plus a space's advance when the selection runs past the line, and nothing when it selects no glyph;
+// a selection that ends at a block's first caret ends, as Chrome's DOM position does, before that block's text.
 // The selected text is ported from third_party/blink/renderer/core/editing/iterators/text_iterator.cc (Chromium BSD) over the
 // block elements and text nodes the table holds: TextIteratorAlgorithm::Advance's depth-first walk, which exits a parent only as
 // it climbs out of its last child, RepresentNodeOffsetZero and ShouldRepresentNodeOffsetZero (a newline entering a block), ExitNode
@@ -106,6 +111,8 @@ export type SelectPiece = {
   readonly carets: readonly number[];
   readonly textTop: number;
   readonly textHeight: number;
+  /** The advance of a space in the piece's font, letter spacing included: what a selected line break paints. */
+  readonly space: number;
 };
 
 /** One line box: its vertical extent and its pieces in order. */
@@ -119,6 +126,9 @@ export type Caret = { readonly node: number; readonly offset: number };
 
 /** A caret's rect: its x and its line's content area, as Chrome's collapsed Range.getBoundingClientRect has them. */
 export type CaretRect = { readonly x: number; readonly y: number; readonly height: number };
+
+/** A painted selection highlight: one piece's selected glyphs, and its line break when selected, over its line box. */
+export type HighlightRect = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
 
 const LU_PX = 64;
 
@@ -223,7 +233,9 @@ function lineBlock(s: SelectState, b: LayoutBox, parent: number): void {
       const x = add(left, p.x);
       const y = add(top, p.top);
       if (own.x !== x || own.y !== y) throw new SelectError(`${leaf.id}:line${j} is at ${own.x},${own.y} where the line places it at ${x},${y}`);
-      pieces.push({ node: first + p.leaf, start: p.start, end: p.visibleEnd, carets: caretsOf(s, leaf, p.start, p.visibleEnd, x), textTop: y, textHeight: add(p.ascent, p.descent) });
+      const space = s.ctx.measurer.measureRange(' ', 0, 1, leafFontOf(leaf));
+      if (!space.ok) throw new SelectError(`${leaf.id}: ${space.reason}`);
+      pieces.push({ node: first + p.leaf, start: p.start, end: p.visibleEnd, carets: caretsOf(s, leaf, p.start, p.visibleEnd, x), textTop: y, textHeight: add(p.ascent, p.descent), space: space.measure.width });
       if (n.from < 0) n.from = p.start;
       n.to = p.visibleEnd;
     }
@@ -540,6 +552,94 @@ export function selectedText(t: SelectTable, anchor: Caret, focus: Caret): strin
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Text positions as native text input counts them: every caret of selectable text, in document order.
+
+/** Every caret of selectable text, in document order: per text node, each offset from its first shown code point to its last's end. */
+export function caretList(t: SelectTable): Caret[] {
+  const out: Caret[] = [];
+  for (let k = 0; k < t.nodes.length; k++) {
+    const n = t.nodes[k] as SelectNode;
+    if (n.kind !== 'text' || !n.selectable) continue;
+    for (let o = n.from; o <= n.to; o++) out.push({ node: k, offset: o });
+  }
+  return out;
+}
+
+/**
+ * A caret's index in caretList: its own, or for a caret that is not there (an empty block's position) the first text caret after
+ * it, else the last before it, as Chrome reads such a position as the next text's start; -1 when there is no selectable text.
+ */
+export function caretIndex(carets: readonly Caret[], c: Caret): number {
+  for (let i = 0; i < carets.length; i++) {
+    const k = carets[i] as Caret;
+    if (k.node === c.node && k.offset === c.offset) return i;
+    if (k.node > c.node) return i;
+  }
+  return carets.length - 1;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The painted highlight, as measured against Chrome's pixels.
+
+/**
+ * Whether Chrome's DOM position for a caret is its block's own position (block, 0) rather than a text position: a block's first
+ * caret, measured on drags (the document's first caret aside, where nothing can end before it).
+ */
+function blockPosition(t: SelectTable, c: Caret): boolean {
+  if ((t.nodes[c.node] as SelectNode).kind === 'element') return true;
+  for (const b of t.blocks) {
+    if (b.firstLine < 0) continue;
+    const p = (t.lines[b.firstLine] as SelectLine).pieces[0];
+    if (p !== undefined && p.node === c.node && p.start === c.offset) return true;
+  }
+  return false;
+}
+
+/**
+ * The selection's paint end as a text position: a block position ends the range before the block's text, so the end is the end of
+ * the last text node before it, at its full length; null when no text precedes it.
+ */
+function paintEnd(t: SelectTable, e: Caret): Caret | null {
+  if (!blockPosition(t, e)) return e;
+  for (let k = e.node - 1; k >= 0; k--) {
+    const n = t.nodes[k] as SelectNode;
+    if (n.kind === 'text') return { node: k, offset: codePointCount(n.text) };
+  }
+  return null;
+}
+
+/**
+ * The highlight rects of a selection between two carets, in document order: per piece of selectable text that selects a glyph, the
+ * selected glyphs' extent, widened by a space's advance when it is its line's last piece and the paint end lies beyond it, over the
+ * line box.
+ */
+export function highlightRects(t: SelectTable, anchor: Caret, focus: Caret): HighlightRect[] {
+  const s = before(anchor, focus) ? anchor : focus;
+  const e = paintEnd(t, before(anchor, focus) ? focus : anchor);
+  const out: HighlightRect[] = [];
+  if (e === null || before(e, s)) return out;
+  for (const line of t.lines) {
+    for (let i = 0; i < line.pieces.length; i++) {
+      const p = line.pieces[i] as SelectPiece;
+      if (!(t.nodes[p.node] as SelectNode).selectable) continue;
+      const pieceStart: Caret = { node: p.node, offset: p.start };
+      const pieceEnd: Caret = { node: p.node, offset: p.end };
+      // Nothing of a piece wholly before the start or wholly after the end is selected.
+      if (before(pieceEnd, s) || before(e, pieceStart)) continue;
+      const lo = s.node === p.node && s.offset > p.start ? s.offset : p.start;
+      const hi = e.node === p.node && e.offset < p.end ? e.offset : p.end;
+      // A piece paints only when it selects a glyph; its line break alone paints nothing.
+      if (hi <= lo) continue;
+      let right = p.carets[hi - p.start] as number;
+      const beyond = e.node > p.node || (e.node === p.node && e.offset > p.end);
+      if (i === line.pieces.length - 1 && beyond) right = right + p.space;
+      out.push({ left: p.carets[lo - p.start] as number, top: line.top, right, bottom: line.bottom });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The encoded answers (the translate corpus's select suite and the device lane read these).
 
 function caretCode(c: Caret | null): string {
@@ -555,16 +655,19 @@ function codePointCount(text: string): number {
 }
 
 /**
- * The answers to a list of points and drags, all in LU: for each point (x, y pairs) its anchor and focus carets, with the anchor's
- * rect when it is in text; then for each drag (anchor x, y, focus x, y) the selected text, prefixed by its code point count.
+ * The answers to a list of points and drags, all in LU: for each point (x, y pairs) its anchor and focus carets and the focus's
+ * caretList index, with the anchor's rect when it is in text; then for each drag (anchor x, y, focus x, y) its highlight rects (left, top, right, bottom, each followed
+ * by a space) and the selected text, prefixed by its code point count.
  */
 export function selectAnswers(t: SelectTable, points: readonly number[], drags: readonly number[]): string {
   let out = '';
+  const carets = caretList(t);
   for (let i = 0; i + 1 < points.length; i += 2) {
     const x = points[i] as number;
     const y = points[i + 1] as number;
     const a = anchorAt(t, x, y);
-    out = `${out}${caretCode(a)} ${caretCode(focusAt(t, x, y))}`;
+    const f = focusAt(t, x, y);
+    out = `${out}${caretCode(a)} ${caretCode(f)} ${f === null ? '-' : caretIndex(carets, f).toString(16)}`;
     if (a !== null && (t.nodes[a.node] as SelectNode).kind === 'text') {
       const r = caretRect(t, a);
       out = `${out} ${r.x.toString(16)},${r.y.toString(16)},${r.height.toString(16)}`;
@@ -575,7 +678,9 @@ export function selectAnswers(t: SelectTable, points: readonly number[], drags: 
     const a = anchorAt(t, drags[i] as number, drags[i + 1] as number);
     const f = focusAt(t, drags[i + 2] as number, drags[i + 3] as number);
     const text = a === null || f === null ? '' : selectedText(t, a, f);
-    out = `${out}${codePointCount(text).toString(16)}:${text};`;
+    let rects = '';
+    if (a !== null && f !== null) for (const r of highlightRects(t, a, f)) rects = `${rects}${r.left.toString(16)},${r.top.toString(16)},${r.right.toString(16)},${r.bottom.toString(16)} `;
+    out = `${out}${rects}${codePointCount(text).toString(16)}:${text};`;
   }
   return out;
 }

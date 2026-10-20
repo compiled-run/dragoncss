@@ -7,6 +7,7 @@ import { clockSupport } from './clock.ts';
 import { interactionSupport } from './interaction.ts';
 import { interactionGlueSupport } from './interaction-glue.ts';
 import { mediaSupport } from './media.ts';
+import { selectSupport } from './select.ts';
 import { stateSupport } from './state.ts';
 
 /** The registered runtime modules, in support-file order. */
@@ -17,6 +18,7 @@ export const RUNTIME_MODULES: readonly { readonly id: string; readonly support: 
   { id: 'anim', support: animSupport },
   { id: 'interaction', support: interactionSupport },
   { id: 'interaction-glue', support: interactionGlueSupport },
+  { id: 'select', support: selectSupport },
 ];
 
 /** The runtime support files of a backend. */
