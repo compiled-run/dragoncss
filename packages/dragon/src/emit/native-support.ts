@@ -2219,7 +2219,7 @@ class DragonTree(val context: Context) {
         val baseline = snapped[i].top + font.ascent / lu
         val spec = DragonLineSpec(mt, run.first, run.second, xLU, r.width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), 0, mt.length, IntArray(0), DoubleArray(0), 0.0)
         textMetrics[id] = doubleArrayOf(font.ascent / lu, font.descent / lu, a.y - e[1] * lu)
-        tv.dragonConfigure(bridge, units_platformFontSize(marker.font.size).toFloat(), listOf(spec))
+        tv.dragonConfigure(bridge, units_platformFontSize(marker.font.size).toFloat(), listOf(spec), scale)
         continue
       }
       val pId = zParent[id] ?: throw IllegalStateException("dragon: text " + id + " has no container")

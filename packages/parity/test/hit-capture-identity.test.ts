@@ -61,7 +61,8 @@ describe('pointer-events changes the captures and emitted files only by its own 
 
   it('adds the key to every captured element and emitted rule', () => {
     // Every file under the roots, not one sample: the identity hash alone passes a file that never gained the key. Rules inside
-    // @media blocks carry only the declarations their query changes, so a CSS file is counted up to its first @media.
+    // @media blocks carry only the declarations their query changes, so a CSS file is counted up to its first @media. A ::marker rule
+    // carries only the marker's own properties (css-pseudo-4 §3.1.1: color and the font and text ones; GEN-c), so it is not counted.
     const short: string[] = [];
     let files = 0;
     for (const p of IDENTITY_ROOTS.flatMap(walk)) {
@@ -70,7 +71,7 @@ describe('pointer-events changes the captures and emitted files only by its own 
       const text = readFileSync(repoPath(p), 'utf8');
       const own = p.endsWith('.json') ? text : (text.split(/^@media /m)[0] as string);
       const keys = p.endsWith('.json') ? own.match(/"pointer-events": "(auto|none)"/g) : own.match(/^ {2}pointer-events: (auto|none);\n/gm);
-      const units = p.endsWith('.json') ? own.match(/"computed": \{/g) : own.match(/\{\n/g);
+      const units = p.endsWith('.json') ? own.match(/"computed": \{/g) : own.match(/^(?!.*::marker \{$).*\{\n/gm);
       if (units === null || keys?.length !== units.length) short.push(`${p}: ${keys?.length ?? 0} pointer-events of ${units?.length ?? 0}`);
     }
     expect(short).toEqual([]);

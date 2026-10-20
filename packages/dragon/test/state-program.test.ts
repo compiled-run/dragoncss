@@ -233,7 +233,7 @@ describe('the generated runtime', () => {
     // Android: the configuration's night bit, observed through onConfigurationChanged (the host handles uiMode itself).
     expect(kt).toContain('(config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES');
     expect(kt).toContain('override fun onConfigurationChanged(newConfig: Configuration) {');
-    expect(kt).toContain('if (!injected) machine.setReadings(DragonReadings.platform(stage.context, c))');
+    expect(kt).toContain('if (!injected) machine.applyReadings(DragonReadings.platform(stage.context, c))');
     expect(kt).toContain('BandEnvironment(scale, r.pointer, r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion, r.darkScheme)');
   });
 
