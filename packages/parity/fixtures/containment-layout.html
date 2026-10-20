@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; color: rgb(20, 40, 160); }
+.stage { position: relative; width: 300px; padding: 6px; background-color: rgb(245, 240, 230); }
+.lay { contain: layout; background-color: rgb(200, 220, 255); }
+.gap { margin-top: 12px; height: 8px; margin-bottom: 9px; background-color: rgb(40, 120, 40); }
+.abs { position: absolute; top: 3px; inset-inline-start: 5px; width: 14px; height: 6px; background-color: rgb(200, 0, 90); }
+.pnt { contain: PAINT; margin: 4px 7px; padding: 3px; border: 2px solid rgb(30, 30, 30); }
+.cnt { contain: content; padding: 2px 0; }
+.sty { contain: style; margin-top: 5px; }
+.str { contain: strict; width: 120px; margin-top: 5px; padding: 2px; border: 1px solid rgb(30, 30, 30); }
+.ib { display: inline-block; width: 30px; height: 24px; background-color: rgb(250, 190, 60); }
+.ibl { contain: layout; }
+.ibp { contain: paint; }
+.ibs { contain: size layout; width: auto; height: auto; }
+.ibi { contain: inline-size layout; width: auto; height: auto; }
+.inl { contain: layout inline-size; margin-top: 4px; }
+.row { display: flex; align-items: baseline; margin-top: 4px; }
+.it { height: 30px; }
+.big { font-size: 20px; line-height: 20px; }
+.last { display: inline-block; width: 80px; vertical-align: baseline; }
+.sh { position: absolute; top: 4px; inset-inline-end: 4px; contain: strict; }
+.mix { contain: layout paint; margin-top: 3px; }
+.ls { contain: style layout; margin-top: 3px; }
+.sp { contain: paint style; margin-top: 3px; }
+.ilp { contain: inline-size layout style paint; margin-top: 3px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="lay" class="lay"><div data-dragon-id="lay-gap" class="gap"></div><div data-dragon-id="lay-abs" class="abs"></div></div>
+<div data-dragon-id="pnt" class="pnt"><div data-dragon-id="pnt-gap" class="gap"></div><div data-dragon-id="pnt-abs" class="abs"></div></div>
+<div data-dragon-id="cnt" class="cnt"><div data-dragon-id="cnt-gap" class="gap"></div>XX XX</div>
+<div data-dragon-id="sty" class="sty"><div data-dragon-id="sty-gap" class="gap"></div></div>
+<div data-dragon-id="str" class="str"><div data-dragon-id="str-t">XXXX XXXX</div><div data-dragon-id="str-abs" class="abs"></div></div>
+<div data-dragon-id="line">X<div data-dragon-id="ib-l" class="ib ibl">XX</div><div data-dragon-id="ib-p" class="ib ibp">XX</div><div data-dragon-id="ib-n" class="ib">XX</div><div data-dragon-id="ib-s" class="ib ibs">XX</div><div data-dragon-id="ib-i" class="ib ibi">XX XX</div>X</div>
+<div data-dragon-id="inl" class="inl">XXX XX</div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="row-l" class="it lay">XX</div><div data-dragon-id="row-p" class="it pnt">XX</div><div data-dragon-id="row-n" class="it big">XX</div></div>
+<div data-dragon-id="lastline">X<div data-dragon-id="last" class="last"><div data-dragon-id="last-a">XX</div><div data-dragon-id="last-b" class="lay">XXX</div></div>X</div>
+<div data-dragon-id="mix" class="mix"><div data-dragon-id="mix-gap" class="gap"></div></div>
+<div data-dragon-id="ls" class="ls"><div data-dragon-id="ls-gap" class="gap"></div></div>
+<div data-dragon-id="sp" class="sp"><div data-dragon-id="sp-gap" class="gap"></div></div>
+<div data-dragon-id="ilp" class="ilp">XX XXX</div>
+<div data-dragon-id="sh" class="sh">XX</div>
+</div>
+</body>
+</html>

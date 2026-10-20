@@ -59,6 +59,8 @@ import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
+import { appliedContainment } from '../analysis/containment.ts';
+import type { Containment } from '../css/properties/containment.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
 import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
@@ -299,10 +301,12 @@ export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDa
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const fonts = { ...emOf(get('font-size')), rem: rootFontSize };
-  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline, lineClampOf(el));
+  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline, lineClampOf(el), appliedContainment(el));
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
+
+const NO_CONTAINMENT: Containment = { size: 'none', layout: false, style: false, paint: false };
 
 // css-lists-3 §3: a list item without a marker is a block (Blink LayoutListItem is a LayoutBlockFlow); computed-checks.ts refuses the rest.
 function displayOfStyle(id: string, get: Get, lineClamp: number): Display {
@@ -377,8 +381,13 @@ function containInlineSize(id: string, get: Get): boolean {
  * lineClamp: N for a line-clamp container, decided in analysis from the specified display (analysis/line-clamp.ts lineClampOf), else
  * 0; an anonymous box and a replaced element never clamp.
  */
-function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly emSize?: CalcExpr | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0): LayoutStyle {
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly emSize?: CalcExpr | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0, containment: Containment = NO_CONTAINMENT): LayoutStyle {
   const l: Lowering = { em: fonts.em, emSize: fonts.emSize ?? null, rem: fonts.rem, faults };
+  // css-contain-2 §3.4: paint containment clips the contents to the padding box as overflow: clip does, on an axis that does not already clip.
+  const overflow = (p: 'overflow-x' | 'overflow-y'): Overflow => {
+    const v = keyword<Overflow>(id, get, p, OVERFLOW_VALUES);
+    return containment.paint && v === 'visible' ? 'clip' : v;
+  };
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
@@ -388,8 +397,8 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     right: inset(id, get, 'right', l),
     bottom: inset(id, get, 'bottom', l),
     left: inset(id, get, 'left', l),
-    overflowX: keyword<Overflow>(id, get, 'overflow-x', OVERFLOW_VALUES),
-    overflowY: keyword<Overflow>(id, get, 'overflow-y', OVERFLOW_VALUES),
+    overflowX: overflow('overflow-x'),
+    overflowY: overflow('overflow-y'),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
     width: inlineSize(id, get, 'width', l),
@@ -432,7 +441,13 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
     textIndent: textIndent(id, get, l),
     lineClamp,
-    containInlineSize: containInlineSize(id, get),
+    containLayout: containment.layout,
+    containPaint: containment.paint,
+    // container-type: inline-size is inline-size containment too; contain: size covers both axes already.
+    containSize: containment.size !== 'none' ? containment.size : containInlineSize(id, get) ? 'inline-size' : 'none',
+    // contain-intrinsic-width and -height accept none alone (analysis/scroll-containment.ts), a size containment of 0.
+    containIntrinsicWidth: { kind: 'none' },
+    containIntrinsicHeight: { kind: 'none' },
     grid: null,
     gridItem: null,
   };

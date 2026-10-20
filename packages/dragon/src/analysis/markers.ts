@@ -12,6 +12,7 @@ import type { GenCFaults } from '../faults/gen-c.ts';
 import { GEN_C_FAULTS } from '../faults/gen-c.ts';
 import type { OrdinalNode } from './ordinals.ts';
 import { listItemOrdinals } from './ordinals.ts';
+import { appliedContainment } from './containment.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 
 /** The package that owns every counter style R14 does not list (notes/T151-gen-spec.md R14, R15). */
@@ -61,7 +62,7 @@ export function ordinalTreeOf(root: ResolvedElement): OrdinalNode {
       tag: el.element.tag,
       box: none ? 'none' : display === 'contents' ? 'contents' : 'box',
       listItem: display === 'list-item',
-      styleContainment: styleContained(el),
+      styleContainment: appliedContainment(el).style || styleContained(el),
       attributes: el.element.attributes,
       children: el.children.flatMap((c) => (c.kind === 'element' ? [toNode(c, none)] : [])),
     };

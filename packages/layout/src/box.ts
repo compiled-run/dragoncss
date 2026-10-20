@@ -290,11 +290,23 @@ export function isScrollContainer(style: LayoutStyle): boolean {
   return x === 'hidden' || x === 'auto' || x === 'scroll';
 }
 
+/** css-contain-2 §3.2, §3.4: layout and paint containment make the box an independent formatting context. */
+export function isContained(style: LayoutStyle): boolean {
+  return style.containLayout || style.containPaint;
+}
+
+/** CSS2 §10.1 item 4 and css-contain-2 §3.2, §3.4: a positioned or contained box contains absolutely positioned descendants. */
+export function containsAbsolute(style: LayoutStyle): boolean {
+  return style.position !== 'static' || isContained(style);
+}
+
 /**
  * Whether a block container in a block flow lays out its contents in a new formatting context (Blink
- * LayoutBox::CreatesNewFormattingContext): not a plain block, a scroll container, or a query container (css-conditional-5 §2.1).
+ * LayoutBox::CreatesNewFormattingContext): not a plain block, a scroll container, a layout- or paint-contained box (css-contain-2
+ * §3.2, §3.4), or a size-contained box: a query container (css-conditional-5 §2.1), or size containment, which analysis/containment.ts
+ * admits only together with layout containment.
  */
 export function establishesFormattingContext(style: LayoutStyle, faults: EngineFaults): boolean {
-  return style.display !== 'block' || isScrollContainer(style) || (style.containInlineSize && !faults.containerJoinsFlow);
+  return style.display !== 'block' || isScrollContainer(style) || isContained(style) || (style.containSize !== 'none' && !faults.containerJoinsFlow);
 }
 

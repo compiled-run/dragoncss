@@ -24,6 +24,7 @@ import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
 import { filterApplies } from '../../css/properties/filter.ts';
+import { containsDescendants } from '../../analysis/containment.ts';
 import { isolates } from '../../css/properties/isolation.ts';
 import { backfaceHidden } from '../../css/properties/transform-extra.ts';
 import { blendModeOf } from '../../css/properties/fx.ts';
@@ -41,9 +42,11 @@ export type StackNode = {
   /** An in-flow flex or grid item's order, which sorts it among its siblings (unorderedItems: whole); absent (0) for other nodes. */
   readonly order?: number;
   readonly opacity: number;
-  /** A transform, will-change: transform or opacity, a clip-path, a filter, isolation: isolate, a backdrop-filter or a mix-blend-mode: a stacking context in the z-index 0 layer. */
+  /** A transform, will-change: transform or opacity, a clip-path, a filter, isolation: isolate, a backdrop-filter, a mix-blend-mode or layout or paint containment: a stacking context in the z-index 0 layer. */
   readonly transformed: boolean;
   readonly clips: boolean;
+  /** A static box with layout or paint containment, the containing block of its absolutely positioned descendants (css-contain-2 §3.2). */
+  readonly containsAbsolute?: boolean;
   /**
    * A paint layer of its own (backface-visibility: hidden; Blink LayerTypeRequired): when the box is neither positioned nor a stacking
    * context it is a normal-flow layer, which paints with its flow descendants after its layer host's flow and before the host
@@ -127,7 +130,7 @@ function inBlockChain(a: Info, d: Info): boolean {
   for (let x: Info | null = d; x !== null && x.parent !== null; ) {
     if (x.node.position === 'fixed') return false;
     let cb: Info | null = x.parent;
-    if (x.node.position === 'absolute') while (cb !== null && cb.parent !== null && cb.node.position === 'static') cb = cb.parent;
+    if (x.node.position === 'absolute') while (cb !== null && cb.parent !== null && cb.node.position === 'static' && cb.node.containsAbsolute !== true) cb = cb.parent;
     if (cb === a) return true;
     x = cb;
   }
@@ -366,11 +369,12 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: 
 export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', 'inline-grid'];
 
 /**
- * Whether an element's transform, will-change, clip-path, filter, isolation, backdrop-filter or mix-blend-mode makes it a stacking
- * context (css-transforms-1 §3, css-will-change-1 §3, css-masking-1 §6.1, filter-effects-1 §5, compositing-1 §3.2, filter-effects-2 §3).
+ * Whether an element's transform, will-change, clip-path, filter, isolation, backdrop-filter, mix-blend-mode or layout or paint
+ * containment makes it a stacking context (css-transforms-1 §3, css-will-change-1 §3, css-masking-1 §6.1, filter-effects-1 §5,
+ * compositing-1 §3.2, filter-effects-2 §3, css-contain-2 §3.2 and §3.4).
  */
 export const transformedForStacking = (el: ResolvedElement): boolean =>
-  transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || filterOf(el) || isolates(el) || blendModeOf(el.props.get('mix-blend-mode')?.value) !== 'normal';
+  transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || filterOf(el) || isolates(el) || blendModeOf(el.props.get('mix-blend-mode')?.value) !== 'normal' || containsDescendants(el);
 
 /** Whether an element has a filter other than none (a hand-built element may carry no filter value at all). */
 const filterOf = (el: ResolvedElement): boolean => {
@@ -405,8 +409,10 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       ...(item && b.style.position !== 'absolute' ? { order: b.style.order } : {}),
       opacity,
       transformed: el !== null && transformedForStacking(el),
+      ...(el !== null && containsDescendants(el) ? { containsAbsolute: true } : {}),
       ...(el !== null && backfaceHidden(el) ? { layered: true } : {}),
-      // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), and overflow never applies to an inline box.
+      // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), as paint containment's does (lowered to clip), and
+      // overflow never applies to an inline box.
       clips: b.kind !== 'inline' && clipsChildren(b),
       text: false,
       children,

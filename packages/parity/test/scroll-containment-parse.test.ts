@@ -3,8 +3,9 @@
 // value Dragon accepts computes in Chrome to what the longhands it sets compute to, in an ltr and an rtl box (the flow-relative scroll
 // names map onto the physical longhands by direction). The initial-only families accept their initial values alone and keep every
 // other value to refuse it (analysis/scroll-containment.ts), so only their accepted values' computed values are compared; the
-// scroll-snap family accepts every value it parses. Each planted reading must be caught. The overscroll family takes every value
-// Chrome parses: packages/parity/test/overscroll-parse.test.ts.
+// scroll-snap family accepts every value it parses, and contain parses every value itself (css/properties/containment.ts
+// parseContain), its accepted values computing in Chrome as Dragon's do. Each planted reading must be caught. The overscroll family
+// takes every value Chrome parses: packages/parity/test/overscroll-parse.test.ts.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
@@ -65,7 +66,7 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
   // One or two of none, start, end and center (start start computes to start).
   'scroll-snap-align': ['none', 'None', 'none none', 'start', 'start start', 'start end', 'center end', 'none start', 'START Center', 'center center', 'left', 'start end center'],
   'scroll-snap-stop': ['normal', 'NORMAL', 'always', 'ALWAYS', 'none'],
-  contain: ['none', 'NONE', 'strict', 'content', 'size', 'inline-size', 'layout paint', 'style', 'none none', 'view-transition'],
+  contain: ['none', 'NONE', 'strict', 'content', 'size', 'inline-size', 'layout paint', 'style', 'none none', 'view-transition', 'PAINT', 'paint layout', 'size layout style paint', 'style paint layout', 'inline-size layout', 'layout layout', 'size inline-size', 'strict layout', 'none layout', '1px'],
   'content-visibility': ['visible', 'VISIBLE', 'hidden', 'auto', 'none'],
   'contain-intrinsic-size': ['none', 'NONE', 'none none', 'none none none', 'auto none', '10px', 'auto 10px none', '-1px'],
   'contain-intrinsic-width': ['none', 'None', 'auto none', '10px', 'auto', '-1px', '0'],
@@ -75,8 +76,8 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
 };
 
 /** How many of VALUES Dragon accepts and drops (pinned so a parser change that accepts or drops more or fewer is seen). */
-const ACCEPTED = 135;
-const DROPPED = 28;
+const ACCEPTED = 146;
+const DROPPED = 35;
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {

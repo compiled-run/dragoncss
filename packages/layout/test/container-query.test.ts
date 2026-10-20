@@ -1,4 +1,4 @@
-// CQ: container-type: inline-size in the engine (input.ts containInlineSize): the box's content contributes 0 to its intrinsic
+// CQ: container-type: inline-size in the engine (input.ts containSize: 'inline-size'): the box's content contributes 0 to its intrinsic
 // inline sizes (intrinsic.ts) and it lays out in a new formatting context (box.ts establishesFormattingContext). Chrome agreement is
 // proven by the container-query fixture group (packages/parity); these cases pin the engine's decisions in 10px Ahem.
 import { describe, expect, it } from 'vitest';
@@ -6,7 +6,7 @@ import type { EngineFaults, GridContainerStyle, LayoutBox, LayoutResult, LayoutS
 import { absoluteRects, ahemMeasurer, layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
 import { ahemFont, box, divStyle, neutralEnvironment, px, span, text } from './helpers.ts';
 
-const CQ: Partial<LayoutStyle> = { containInlineSize: true };
+const CQ: Partial<LayoutStyle> = { containSize: 'inline-size' };
 const t = (id: string, value: string) => text(id, value, { font: ahemFont(10) });
 // A block container of one atomic inline, which needs its own strut.
 const line = (kid: LayoutBox): LayoutBox => box('root', {}, [kid], { font: ahemFont(10), lineHeight: { kind: 'normal' } });
@@ -40,7 +40,7 @@ describe('CQ: inline-size containment', () => {
     // grid-template-columns: 30px 40px auto; column-gap: 5px.
     const grid: GridContainerStyle = { templateColumns: [{ count: 1, sizes: [track(30), track(40), AUTO] }], templateRows: [], autoColumns: [AUTO], autoRows: [AUTO], explicitColumnCount: 3, explicitRowCount: 0, autoRepeatColumns: null, autoRepeatRows: null, autoFlow: 'row', dense: false, justifyItems: 'normal' };
     const items = ['XX', 'XX', 'XXXXXXXX'].map((v, i) => box(`i${String(i)}`, { gridItem: { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' } }, [t(`t${String(i)}`, v)]));
-    const at = (contained: boolean) => rect(run(box('root', { position: 'relative' }, [box('a', { containInlineSize: contained, display: 'grid', position: 'absolute', columnGap: px(5), grid }, items)])), 'a')[2];
+    const at = (contained: boolean) => rect(run(box('root', { position: 'relative' }, [box('a', { containSize: contained ? 'inline-size' : 'none', display: 'grid', position: 'absolute', columnGap: px(5), grid }, items)])), 'a')[2];
     // 30 + 40 + 0 + 2 x 5; without containment the auto track takes the 80px item.
     expect([at(true), at(false)]).toEqual([80, 160]);
   });
@@ -68,8 +68,8 @@ describe('CQ: inline-size containment', () => {
   });
 
   it('refuses inline-size containment on an inline box', () => {
-    const root = box('root', {}, [span('s', [t('t', 'X')], { style: { ...divStyle, display: 'inline', containInlineSize: true } })], { font: ahemFont(10), lineHeight: { kind: 'normal' } });
+    const root = box('root', {}, [span('s', [t('t', 'X')], { style: { ...divStyle, display: 'inline', containSize: 'inline-size' } })], { font: ahemFont(10), lineHeight: { kind: 'normal' } });
     const v = validateLayoutInput({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root });
-    expect(v.ok ? [] : v.errors.map((e) => e.path)).toContain('$.root.children[0].style.containInlineSize');
+    expect(v.ok ? [] : v.errors.map((e) => e.path)).toContain('$.root.children[0].style.containSize');
   });
 });

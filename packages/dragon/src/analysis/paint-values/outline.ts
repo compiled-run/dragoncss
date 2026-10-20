@@ -3,6 +3,7 @@
 import type { Rgba8 } from '../../css/color.ts';
 import { serializeColor } from '../../css/color.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
+import { containsDescendants, paintContained } from '../containment.ts';
 import { backfaceHidden } from '../../css/properties/transform-extra.ts';
 import { isolates } from '../../css/properties/isolation.ts';
 import { blendModeOf } from '../../css/properties/fx.ts';
@@ -102,6 +103,7 @@ function layerReason(el: ResolvedElement): string {
   if (transformsDescendants(el)) return transformWord(el);
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
   if (hasClipPath(el)) return 'a clip-path';
+  if (containsDescendants(el)) return `contain: ${keywordOf(el, 'contain')}`;
   if (isolates(el)) return 'isolation: isolate';
   if (backfaceHidden(el)) return 'backface-visibility: hidden';
   const mode = blendModeOf(el.props.get('mix-blend-mode')?.value);
@@ -113,7 +115,7 @@ function layerReason(el: ResolvedElement): string {
 }
 
 const CLIPPING = ['hidden', 'clip', 'scroll', 'auto'];
-const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 'overflow-x')) || CLIPPING.includes(keywordOf(el, 'overflow-y'));
+const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 'overflow-x')) || CLIPPING.includes(keywordOf(el, 'overflow-y')) || paintContained(el);
 
 /**
  * Where the native outline paints. Dragon draws every outline in the root view after all the case's content, each

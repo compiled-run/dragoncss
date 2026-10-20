@@ -1,6 +1,7 @@
 // The containment family is accepted at its initial values alone, on every target (the overscroll family, registered with it,
 // takes every value Chrome parses: test/overscroll.test.ts); every other value is kept (the grammar takes any value, so Dragon never
-// drops what Chrome keeps) and refused where it applies. Scroll snapping takes Chrome 145's parse and is accepted at every value
+// drops what Chrome keeps) and refused where it applies; contain is the exception: it takes every value Chrome does and is laid out
+// (test/containment.test.ts). Scroll snapping takes Chrome 145's parse and is accepted at every value
 // wherever nothing snaps; an active snap pair (a scroll container with a snap type and a snap area) is refused on iOS and Android,
 // which snap nothing yet, and compiles on web. The container-query family parses as Chrome does, and every container-name and
 // container-type: inline-size compile. The Chrome cases are scroll-initial-longhands, scroll-snap-values, containment-initial and the
@@ -84,8 +85,9 @@ describe('the initial-only scroll and containment families', () => {
   it('follow transform-extra and zoom in the registry, are paint-role rows, animate as Chrome 145 does and know their initial values', () => {
     expect(LONGHANDS.slice(LONGHANDS.indexOf('zoom') + 1, LONGHANDS.indexOf('zoom') + 1 + ALL.length)).toEqual(ALL);
     expect(ALL).toHaveLength(24);
-    // container-type changes layout, so it keys its rows by the box's context, except at normal (analysis/context.ts layoutInert).
-    for (const p of ALL) expect(PROPERTY_ROLE[p], p).toBe((CONTAINER_QUERY_LONGHANDS as readonly string[]).includes(p) ? 'item' : 'paint');
+    // contain is laid out (CONTAIN, test/containment.test.ts) and container-type changes layout, so they key their rows by the box's
+    // context (container-type except at normal, analysis/context.ts layoutInert).
+    for (const p of ALL) expect(PROPERTY_ROLE[p], p).toBe(p === 'contain' || (CONTAINER_QUERY_LONGHANDS as readonly string[]).includes(p) ? 'item' : 'paint');
     for (const p of ALL) expect(ANIMATION_KINDS[p], p).toBe(p === 'contain-intrinsic-width' || p === 'contain-intrinsic-height' ? UNADMITTED : DISCRETE);
     expect(isInitialValue(ZERO_LENGTH, { kind: 'length', value: 0, unit: 'px' })).toBe(true);
     expect(isInitialValue(ZERO_LENGTH, { kind: 'length', value: 0, unit: 'em' })).toBe(false);
@@ -95,7 +97,7 @@ describe('the initial-only scroll and containment families', () => {
   });
 
   it('parse an initial spelling to the initial values, and keep every other value as written', () => {
-    expect(parsed('contain: none none')).toEqual(['contain: ?none none']);
+    expect(parsed('contain: none none')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('contain-intrinsic-size: none')).toEqual(['contain-intrinsic-width: none', 'contain-intrinsic-height: none']);
     expect(parsed('contain-intrinsic-size: auto none')).toEqual(['contain-intrinsic-width: ?auto none', 'contain-intrinsic-height: ?auto none']);
     expect(parsed('container: none')).toEqual(['container-name: none', 'container-type: normal']);
@@ -143,20 +145,20 @@ describe('the initial-only scroll and containment families', () => {
   });
 
   it('refuse every other value on every target, once per element and family, computed', () => {
-    for (const d of ['contain: paint', 'content-visibility: hidden', 'content-visibility: auto',
+    for (const d of ['content-visibility: hidden', 'content-visibility: auto',
       'contain-intrinsic-size: 10px', 'contain-intrinsic-block-size: auto none', 'container-type: size', 'container: card / scroll-state']) {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
-    expect(errorsAt('contain: paint; content-visibility: hidden')).toEqual(REFUSED);
-    expect(errorsAt('contain: paint; container-type: size')).toEqual([...REFUSED, ...REFUSED].sort());
+    expect(errorsAt('contain-intrinsic-size: 10px; content-visibility: hidden')).toEqual(REFUSED);
+    expect(errorsAt('content-visibility: auto; container-type: size')).toEqual([...REFUSED, ...REFUSED].sort());
     expect(errorsAt('--t: size; container-type: var(--t)')).toEqual(REFUSED);
   });
 
   it('refuse a value a child inherits explicitly, on the child too', () => {
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { contain: layout; } .c { contain: inherit; }';
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { content-visibility: hidden; } .c { content-visibility: inherit; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]));
     const at = c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0]).sort();
-    expect(at).toEqual(['contain: layout on <div> a', 'contain: layout on <div> a', 'contain: layout on <div> a', 'contain: layout on <div> b', 'contain: layout on <div> b', 'contain: layout on <div> b']);
+    expect(at).toEqual(['content-visibility: hidden on <div> a', 'content-visibility: hidden on <div> a', 'content-visibility: hidden on <div> a', 'content-visibility: hidden on <div> b', 'content-visibility: hidden on <div> b', 'content-visibility: hidden on <div> b']);
   });
 
   it('plant each family\'s fault: its non-initial value compiles, and only its own', () => {

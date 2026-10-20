@@ -57,6 +57,8 @@ import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
+import { paintContained } from './containment.ts';
+import { checkContainment } from './containment-checks.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
 import { isAcceptedMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
@@ -601,7 +603,7 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   else if (blockChild !== undefined) beside = `with text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, which Chrome wraps in anonymous blocks`;
   else if (texts.some((it) => keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse')) beside = 'with preserved white space';
   else if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') beside = 'with text-align: justify';
-  else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) beside = 'with text-overflow: ellipsis';
+  else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && clipsOverflow(el)) beside = 'with text-overflow: ellipsis';
   else if (runs.some((r) => r.some((it) => it.kind === 'atomic'))) beside = 'beside an atomic inline';
   if (beside === '') return;
   const id = `text-indent|${el.element.address}`;
@@ -670,7 +672,12 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
  */
 function truncatesOwnLines(el: ResolvedElement, propagated: ResolvedElement | null): boolean {
   if (el === propagated || isInlineBox(el) || isContents(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
-  return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible');
+  return clipsOverflow(el);
+}
+
+/** Whether a box clips its overflow: an overflow other than visible, or paint containment, which clips as overflow: clip does (css-contain-2 §3.4). */
+function clipsOverflow(el: ResolvedElement): boolean {
+  return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible') || paintContained(el);
 }
 
 // TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
@@ -1301,7 +1308,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
     checkZoom(el, targets, diagnostics, reported);
-    // The containment and container-query families, initial values only (analysis/scroll-containment.ts,     // The overscroll, scroll-snap and containment families, initial values only, and container-type (analysis/scroll-containment.ts).
+    // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
@@ -1351,6 +1358,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkTransformContexts(root, targets, diagnostics, reported);
   // FX-0: backdrop-filter and mix-blend-mode on native only where Chrome changes no pixel (analysis/fx.ts).
   checkFx(root, propagated, targets, diagnostics, reported);
+  // css-contain-2: containment Dragon does not lay out (analysis/containment-checks.ts).
+  checkContainment(root, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);

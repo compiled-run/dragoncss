@@ -5,7 +5,7 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { isInitialValue } from '../css/properties/initial-only.ts';
 import type { Longhand } from '../css/properties.ts';
-import { CONTAINMENT_INITIAL, CONTAINMENT_LONGHANDS } from '../css/properties/containment.ts';
+import { CONTAINMENT_INITIAL, CONTAINMENT_INITIAL_ONLY } from '../css/properties/containment.ts';
 import { alignsSnap, snapTypeOf } from '../css/properties/scroll-snap.ts';
 import type { CssValue } from '../css/values.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
@@ -39,12 +39,12 @@ function refuse(el: ResolvedElement, targets: readonly string[], diagnostics: Di
   }
 }
 
-// css-contain-2: containment and content-visibility change layout and can skip painting a box's contents (text included); the
-// intrinsic sizes apply only under size containment.
-const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_LONGHANDS, initial: CONTAINMENT_INITIAL, reason: 'Dragon implements no containment or content-visibility yet' };
+// css-contain-2: content-visibility skips laying out and painting a box's contents (text included), and the intrinsic sizes apply
+// under size containment; contain itself is analysis/containment.ts's.
+const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_INITIAL_ONLY, initial: CONTAINMENT_INITIAL, reason: 'Dragon skips no contents and sizes no contained box from contain-intrinsic-size yet' };
 
 /**
- * css-conditional-5 §2.1: container-type: inline-size compiles (lower/ios-layout.ts containInlineSize) on a box that generates a block
+ * css-conditional-5 §2.1: container-type: inline-size compiles (lower/ios-layout.ts containInlineSize, LayoutStyle containSize inline-size) on a box that generates a block
  * container, flex or grid box. Size containment, scroll-state and anchored containers are refused, as is inline-size on an inline box
  * (which css-contain-2 §3.2 does not contain) and on a replaced element or SVG shape (whose natural size it would drop). container-name
  * only names a query container for @container rules (analysis/container-rules.ts), so every name compiles.

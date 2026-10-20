@@ -213,6 +213,7 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
     s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap, s.textIndent,
   ];
   for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
+  for (const v of [s.containIntrinsicWidth, s.containIntrinsicHeight]) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
   return gridNeedsEnvironment(s.grid);
 }
 
@@ -321,6 +322,8 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     columnGap: resolveGap(s.columnGap, env),
     verticalAlign: resolveVerticalAlign(s.verticalAlign, env),
     textIndent: envPadding(s.textIndent, env),
+    containIntrinsicWidth: s.containIntrinsicWidth.kind === 'px' ? lengthPx(s.containIntrinsicWidth, env.zoom) : s.containIntrinsicWidth,
+    containIntrinsicHeight: s.containIntrinsicHeight.kind === 'px' ? lengthPx(s.containIntrinsicHeight, env.zoom) : s.containIntrinsicHeight,
     grid: s.grid === null ? null : resolveGrid(s.grid, env),
   };
 }

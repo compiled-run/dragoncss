@@ -1,7 +1,7 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
 import type { Auto, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
-import { add, clampNegativeToZero, divInt, max, min, sub, ZERO } from './units.ts';
+import { add, clampNegativeToZero, divInt, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMaxWith,
@@ -341,6 +341,11 @@ export type ContentsResult = {
   readonly defaultLastBaselineFlex: string;
 };
 
+/** css-sizing-4 §5.2: the content block size a size-contained box takes, contain-intrinsic-height or 0 for none. */
+function containedHeight(s: LayoutStyle): LU {
+  return s.containIntrinsicHeight.kind === 'px' ? fromCssPx(s.containIntrinsicHeight.value) : ZERO;
+}
+
 /** A set of adjoining vertical margins, kept as Blink NGMarginStrut does: the largest positive and the most negative. */
 export type Strut = { readonly positive: LU; readonly negative: LU };
 
@@ -366,9 +371,20 @@ function clampScrollBaseline(box: LayoutBox, baseline: LU | null, height: LU): L
   return min(baseline, height);
 }
 
-// CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height.
+// CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height. css-contain-2 §3.2: a box with
+// layout containment has no baseline for anything outside it to align to.
 export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
+  const r = layoutOwnContents(ctx, box, a);
+  if (!box.style.containLayout) return r;
+  return { ...r, frag: { ...r.frag, baseline: null }, lastBaseline: null, lastBaselineFlex: '', defaultLastBaseline: null, defaultLastBaselineFlex: '' };
+}
+
+function layoutOwnContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
   const s = box.style;
+  // Inline-size containment only changes the intrinsic inline size (intrinsic.ts), so it lays out on any box, query containers too.
+  if (s.containSize === 'size' && (s.display !== 'block' || !s.containLayout)) {
+    unsupported('size-containment', box.id, 'css-contain-2 §3.1', `size containment on ${box.id} (${s.display}${s.containLayout ? '' : ', without layout containment'}) is not laid out yet`);
+  }
   checkOutOfFlowSiblings(ctx, box);
   const pad = resolvePaddingWith(s, a.cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
@@ -438,7 +454,8 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   // spec reading of min-max-end-margin (CSS 2.1 §8.3.1), a non-zero min-height also keeps them from adjoining.
   const specNoCollapse = ctx.faults.minMaxEndMarginSpec && minMax.min > vbp;
   const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null && !specNoCollapse;
-  const flowIntrinsic = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  // css-contain-2 §3.1: under size containment the content height is contain-intrinsic-height (none is 0), whatever the contents.
+  const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
   // unpositioned_list_marker.cc AddToBoxWithoutLineBoxes: content without a baseline grows to hold the marker, top-aligned.
   const intrinsic = marker !== null && r.markerY === null ? max(flowIntrinsic, sub(marker.height, add(bor.top, pad.top))) : flowIntrinsic;
   // Blink: with a definite initial block size the end margins neither escape nor count toward the content height.
