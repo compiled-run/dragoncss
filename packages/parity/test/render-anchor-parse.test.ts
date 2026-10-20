@@ -1,4 +1,4 @@
-// image-rendering, the anchor positioning longhands and the svg-extra longhands parse against Chrome 145 (scripts/gen-css-grammar.ts
+// image-rendering, the anchor positioning longhands and the svg-extra, view-transition and animation-extra longhands parse against Chrome 145 (scripts/gen-css-grammar.ts
 // SYNTAX_OVERRIDES, css/properties/initial-only.ts): Dragon drops no value Chrome keeps, and every value Dragon accepts as initial
 // computes in Chrome to the initial values of the longhands it sets, as Dragon's own longhands do. Every other value is kept and then
 // refused (analysis/scroll-containment.ts), so only the accepted values' computed values are compared. Each planted reading must be
@@ -9,10 +9,12 @@ import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { ANCHOR_POSITION_LONGHANDS } from '../../dragon/src/css/properties/anchor-position.ts';
 import { IMAGE_RENDERING_LONGHANDS } from '../../dragon/src/css/properties/image-rendering.ts';
 import { SVG_EXTRA_LONGHANDS } from '../../dragon/src/css/properties/svg-extra.ts';
+import { VIEW_TRANSITION_LONGHANDS } from '../../dragon/src/css/properties/view-transition.ts';
+import { ANIMATION_EXTRA_LONGHANDS } from '../../dragon/src/css/properties/animation-extra.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
 
 const SOURCE = { uri: 'dragon-source://test/render-anchor.css', revision: 'r1', hash: 'sha256:0' };
-const LONGHANDS: readonly string[] = [...IMAGE_RENDERING_LONGHANDS, ...ANCHOR_POSITION_LONGHANDS, ...SVG_EXTRA_LONGHANDS];
+const LONGHANDS: readonly string[] = [...IMAGE_RENDERING_LONGHANDS, ...ANCHOR_POSITION_LONGHANDS, ...SVG_EXTRA_LONGHANDS, ...VIEW_TRANSITION_LONGHANDS, ...ANIMATION_EXTRA_LONGHANDS];
 
 /** code: Dragon's diagnostic, or null; longhands: the longhands Dragon sets as [property, text] when every one is initial, else null. */
 type Item = { readonly name: string; readonly v: string; readonly code: string | null; readonly longhands: readonly (readonly [string, string])[] | null };
@@ -52,10 +54,15 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
   'color-interpolation-filters': ['linearrgb', 'linearRGB', 'auto', 'sRGB', 'none'],
   'color-rendering': ['auto', 'AUTO', 'optimizeSpeed', 'optimizeQuality', 'none'],
   'buffered-rendering': ['auto', 'AUTO', 'static', 'dynamic', 'none'],
+  'view-transition-name': ['none', 'NONE', 'auto', 'match-element', 'card', '--card', 'none none'],
+  'view-transition-class': ['none', 'None', 'a', 'a b', 'none a'],
+  'view-transition-group': ['normal', 'NORMAL', 'contain', 'nearest', 'card', 'none'],
+  'interpolate-size': ['numeric-only', 'NUMERIC-ONLY', 'allow-keywords', 'auto'],
+  'timeline-scope': ['none', 'NONE', 'all', '--t', '--a, --b', 'none --a'],
 };
 
 /** How many of VALUES Dragon accepts as initial (pinned so a parser change that accepts more or fewer is seen). */
-const ACCEPTED = 49;
+const ACCEPTED = 59;
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {
@@ -79,6 +86,8 @@ describe('image-rendering, anchor positioning and svg-extra: Chrome 145 parsing'
       { name: 'anchorAutoReadAsInitial', items: [{ name: 'position-anchor', v: 'auto', code: null, longhands: [['position-anchor', 'none']] }] },
       { name: 'tryFallbackReadAsInitial', items: [{ name: 'position-try', v: 'flip-block', code: null, longhands: [['position-try-order', 'normal'], ['position-try-fallbacks', 'none']] }] },
       { name: 'halfOpacityReadAsInitial', items: [{ name: 'stop-opacity', v: '0.5', code: null, longhands: [['stop-opacity', '1']] }] },
+      { name: 'viewNameReadAsInitial', items: [{ name: 'view-transition-name', v: 'card', code: null, longhands: [['view-transition-name', 'none']] }] },
+      { name: 'keywordsReadAsInitial', items: [{ name: 'interpolate-size', v: 'allow-keywords', code: null, longhands: [['interpolate-size', 'numeric-only']] }] },
       { name: 'webrefVisibilityAccepted', items: [{ name: 'position-visibility', v: 'anchor-visible', code: null, longhands: [['position-visibility', 'anchors-visible']] }] },
     ];
     const sets = [real, ...planted.map((p) => p.items)];

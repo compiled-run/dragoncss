@@ -1,4 +1,4 @@
-// The image-rendering, anchor-position and svg-extra families are accepted at their initial values alone, on every target; every
+// The image-rendering, anchor-position, svg-extra, view-transition and animation-extra families are accepted at their initial values alone, on every target; every
 // other value is kept (the grammar takes any value, so Dragon never drops what Chrome keeps) and refused where it applies. The Chrome
 // cases are render-anchor-initial, svg-extra-initial and the reject-* cases of fixture-groups/scroll-containment.ts
 // (packages/parity/fixtures); packages/parity/test/render-anchor-parse.test.ts pins the parse against Chrome 145.
@@ -14,14 +14,16 @@ import { ANCHOR_POSITION_INITIAL, ANCHOR_POSITION_LONGHANDS } from '../src/css/p
 import { IMAGE_RENDERING_INITIAL, IMAGE_RENDERING_LONGHANDS } from '../src/css/properties/image-rendering.ts';
 import { isInitialValue, NON_INITIAL_VALUE_TYPE, numInitial } from '../src/css/properties/initial-only.ts';
 import { SVG_EXTRA_INITIAL, SVG_EXTRA_LONGHANDS } from '../src/css/properties/svg-extra.ts';
+import { VIEW_TRANSITION_INITIAL, VIEW_TRANSITION_LONGHANDS } from '../src/css/properties/view-transition.ts';
+import { ANIMATION_EXTRA_INITIAL, ANIMATION_EXTRA_LONGHANDS } from '../src/css/properties/animation-extra.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/render-anchor.css', revision: 'r1', hash: 'sha256:0' };
-const ALL = [...IMAGE_RENDERING_LONGHANDS, ...ANCHOR_POSITION_LONGHANDS, ...SVG_EXTRA_LONGHANDS];
-const INITIAL = { ...IMAGE_RENDERING_INITIAL, ...ANCHOR_POSITION_INITIAL, ...SVG_EXTRA_INITIAL };
+const ALL = [...IMAGE_RENDERING_LONGHANDS, ...ANCHOR_POSITION_LONGHANDS, ...SVG_EXTRA_LONGHANDS, ...VIEW_TRANSITION_LONGHANDS, ...ANIMATION_EXTRA_LONGHANDS];
+const INITIAL = { ...IMAGE_RENDERING_INITIAL, ...ANCHOR_POSITION_INITIAL, ...SVG_EXTRA_INITIAL, ...VIEW_TRANSITION_INITIAL, ...ANIMATION_EXTRA_INITIAL };
 
 /** The longhands one declaration sets as `property: value` (`?` marks a kept non-initial value), or its diagnostics' codes. */
 function parsed(decl: string): string[] {
@@ -56,14 +58,15 @@ const INITIAL_DECLS = [
   'stop-opacity: 1; flood-opacity: 1.0; mask-type: luminance; text-anchor: start; dominant-baseline: auto; alignment-baseline: auto',
   'baseline-shift: 0; shape-rendering: auto; color-interpolation: sRGB; color-interpolation-filters: linearRGB; color-rendering: auto; buffered-rendering: auto',
   'baseline-shift: 0px; color-interpolation: srgb; color-interpolation-filters: LINEARRGB',
+  'view-transition-name: none; view-transition-class: NONE; view-transition-group: normal; interpolate-size: numeric-only; timeline-scope: none',
 ];
 
-describe('the image-rendering, anchor-position and svg-extra families', () => {
+describe('the image-rendering, anchor-position, svg-extra, view-transition and animation-extra families', () => {
   it('follow color-scheme in the registry, are paint-role rows, inherit and animate as Chrome 145 does, and know their initial values', () => {
     expect(LONGHANDS.slice(LONGHANDS.indexOf('color-scheme') + 1)).toEqual(ALL);
-    expect(ALL).toHaveLength(20);
+    expect(ALL).toHaveLength(25);
     for (const p of ALL) expect(PROPERTY_ROLE[p], p).toBe('paint');
-    const inherited = ['image-rendering', 'text-anchor', 'dominant-baseline', 'shape-rendering', 'color-interpolation', 'color-interpolation-filters', 'color-rendering'];
+    const inherited = ['image-rendering', 'text-anchor', 'dominant-baseline', 'shape-rendering', 'color-interpolation', 'color-interpolation-filters', 'color-rendering', 'interpolate-size'];
     for (const p of ALL) expect(INHERITED.has(p), p).toBe(inherited.includes(p));
     for (const p of ALL) expect(ANIMATION_KINDS[p], p).toBe(['stop-opacity', 'flood-opacity', 'baseline-shift'].includes(p) ? UNADMITTED : DISCRETE);
     // The grammar's initial value (webref's, or Chrome's where they differ) computes to the one each family accepts.
@@ -91,6 +94,9 @@ describe('the image-rendering, anchor-position and svg-extra families', () => {
     // Values webref lists though Chrome drops them are kept and refused, never dropped.
     expect(parsed('position-visibility: anchor-visible')).toEqual(['position-visibility: ?anchor-visible']);
     expect(parsed('image-rendering: smooth')).toEqual(['image-rendering: ?smooth']);
+    expect(parsed('view-transition-name: auto')).toEqual(['view-transition-name: ?auto']);
+    expect(parsed('timeline-scope: all')).toEqual(['timeline-scope: ?all']);
+    expect(parsed('interpolate-size: Numeric-Only')).toEqual(['interpolate-size: numeric-only']);
   });
 
   it('accept the initial values on every target, from any spelling and through the CSS-wide keywords', () => {
@@ -105,7 +111,8 @@ describe('the image-rendering, anchor-position and svg-extra families', () => {
     for (const d of ['image-rendering: pixelated', 'image-rendering: crisp-edges', 'image-rendering: -webkit-optimize-contrast', 'anchor-name: --a', 'anchor-scope: all', 'position-anchor: auto',
       'position-area: top', 'position-try: flip-block', 'position-try-order: most-width', 'position-try-fallbacks: --a', 'position-visibility: always', 'stop-opacity: 0.5', 'flood-opacity: 0',
       'mask-type: alpha', 'text-anchor: middle', 'dominant-baseline: middle', 'alignment-baseline: baseline', 'baseline-shift: 2px', 'shape-rendering: crispEdges', 'color-interpolation: linearRGB',
-      'color-interpolation-filters: sRGB', 'color-rendering: optimizeSpeed', 'buffered-rendering: static']) {
+      'color-interpolation-filters: sRGB', 'color-rendering: optimizeSpeed', 'buffered-rendering: static', 'view-transition-name: card', 'view-transition-class: a b', 'view-transition-group: contain',
+      'interpolate-size: allow-keywords', 'timeline-scope: --t']) {
       // An inherited one is refused on the child as well.
       expect(errorsAt(d), d).toEqual(INHERITED.has(d.split(':')[0] as never) ? [...REFUSED, ...REFUSED].sort() : REFUSED);
     }
@@ -117,6 +124,17 @@ describe('the image-rendering, anchor-position and svg-extra families', () => {
     const errors = c.diagnostics.filter((x) => x.severity === 'error');
     expect(errors).toHaveLength(3);
     for (const d of errors) expect(d.message).toMatch(/^image-rendering: pixelated on <div> a is unsupported: Dragon scales images only as image-rendering: auto does; only auto is accepted$/);
+  });
+
+  it('accept the UA view-transition-name: root on the root, and refuse an author one', () => {
+    // inputFor puts the elements in html and body.
+    const css = 'body { font-family: Ahem; font-size: 10px; }';
+    const doc = (decl: string) => project(NO_FAULTS).compile(inputFor(`${css} ${decl}`, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
+    const errors = (decl: string) => doc(decl).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
+    expect(errors('')).toEqual([]);
+    expect(errors('html { view-transition-name: none; }')).toEqual([]);
+    expect(errors('html { view-transition-name: root; }')).toEqual(REFUSED);
+    expect(errors('.s { view-transition-name: root; }')).toEqual(REFUSED);
   });
 
   it('refuse an inherited value on the child too, and a non-inherited one only where it is set', () => {
@@ -133,6 +151,9 @@ describe('the image-rendering, anchor-position and svg-extra families', () => {
     expect(errorsAt('image-rendering: pixelated', { ...NO_FAULTS, imageRenderingAccepted: true })).toEqual([]);
     expect(errorsAt('position-area: top', { ...NO_FAULTS, anchorPositionAccepted: true })).toEqual([]);
     expect(errorsAt('shape-rendering: crispEdges', { ...NO_FAULTS, svgExtraAccepted: true })).toEqual([]);
+    expect(errorsAt('view-transition-name: card', { ...NO_FAULTS, viewTransitionAccepted: true })).toEqual([]);
+    expect(errorsAt('timeline-scope: --t', { ...NO_FAULTS, animationExtraAccepted: true })).toEqual([]);
+    expect(errorsAt('interpolate-size: allow-keywords', { ...NO_FAULTS, viewTransitionAccepted: true })).toEqual([...REFUSED, ...REFUSED].sort());
     expect(errorsAt('anchor-name: --a', { ...NO_FAULTS, imageRenderingAccepted: true, svgExtraAccepted: true })).toEqual(REFUSED);
   });
 });

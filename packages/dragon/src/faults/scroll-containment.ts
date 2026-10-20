@@ -1,4 +1,5 @@
-// The overscroll, scroll-snap, containment, container-query, image-rendering, anchor-position and svg-extra families; Dragon
+// The overscroll, scroll-snap, containment, container-query, image-rendering, anchor-position, svg-extra, view-transition and
+// animation-extra families; Dragon
 // accepts their initial values alone.
 
 export type ScrollContainmentFaults = {
@@ -16,6 +17,10 @@ export type ScrollContainmentFaults = {
   readonly anchorPositionAccepted: boolean;
   /** An svg-extra longhand other than its initial value is accepted, though no target draws what it changes. */
   readonly svgExtraAccepted: boolean;
+  /** A view-transition longhand other than its initial value is accepted, though no target runs view transitions. */
+  readonly viewTransitionAccepted: boolean;
+  /** An interpolate-size or timeline-scope other than its initial value is accepted, though no target implements it. */
+  readonly animationExtraAccepted: boolean;
 };
 
-export const SCROLL_CONTAINMENT_FAULTS: ScrollContainmentFaults = { overscrollAccepted: false, scrollSnapAccepted: false, containmentAccepted: false, containerQueryAccepted: false, imageRenderingAccepted: false, anchorPositionAccepted: false, svgExtraAccepted: false };
+export const SCROLL_CONTAINMENT_FAULTS: ScrollContainmentFaults = { overscrollAccepted: false, scrollSnapAccepted: false, containmentAccepted: false, containerQueryAccepted: false, imageRenderingAccepted: false, anchorPositionAccepted: false, svgExtraAccepted: false, viewTransitionAccepted: false, animationExtraAccepted: false };
