@@ -13,6 +13,7 @@ import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { stackingOf } from '../../lower/paint/stacking.ts';
+import { hasMaskImage } from './mask.ts';
 import { resolvedStackTree } from './stacking.ts';
 import { elementWillChange, transformsDescendants } from './transform.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
@@ -87,7 +88,7 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
 
 /**
  * Why a layer item of the stacking tree (lower/paint/stacking.ts: a positioned box, a flex or grid item with a z-index, a box with
- * opacity below 1, a transform, or will-change: transform or opacity) paints in a layer of its own rather than in its context's flow.
+ * opacity below 1, a transform, will-change: transform or opacity, a clip-path, or a mask-image) paints in a layer of its own rather than in its context's flow.
  */
 function layerReason(el: ResolvedElement): string {
   const position = keywordOf(el, 'position');
@@ -97,6 +98,7 @@ function layerReason(el: ResolvedElement): string {
   if (transformsDescendants(el)) return 'a transform';
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
   if (hasClipPath(el)) return 'a clip-path';
+  if (hasMaskImage(el)) return 'a mask-image';
   // A static box's z-index makes it a layer item only as a flex or grid item (resolvedStackTree), the one reason left.
   const z = zIndexOf((el.props.get('z-index') as ResolvedValue).value);
   if (z !== null) return `z-index: ${z} on a flex or grid item`;

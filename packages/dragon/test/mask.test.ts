@@ -96,7 +96,7 @@ describe('mask', () => {
   });
 
   it('refuses every other value on every target, once where it applies', () => {
-    for (const d of ['mask-image: linear-gradient(transparent, transparent)', 'mask-image: url(m.svg)', 'mask-repeat: no-repeat', 'mask-size: 10px', 'mask-origin: content-box', 'mask-clip: no-clip', 'mask-mode: alpha', 'mask-composite: exclude', '-webkit-mask-position-y: 50%', 'mask-position: center', 'mask: url(m.svg) no-repeat center / contain', '-webkit-mask-image: linear-gradient(black, transparent)']) {
+    for (const d of ['mask-image: radial-gradient(transparent, transparent)', 'mask-image: url(m.svg)', 'mask-repeat: no-repeat', 'mask-size: 10px', 'mask-origin: content-box', 'mask-clip: no-clip', 'mask-mode: alpha', 'mask-composite: exclude', '-webkit-mask-position-y: 50%', 'mask-position: center', 'mask: url(m.svg) no-repeat center / contain', '-webkit-mask-image: conic-gradient(black, transparent)', 'mask-image: linear-gradient(black, transparent) 0 0 / 10px']) {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
     expect(errorsAt('mask-image: url(a.svg); mask-repeat: no-repeat; mask-size: cover')).toEqual(REFUSED);
@@ -109,8 +109,12 @@ describe('mask', () => {
     expect(errors).toHaveLength(3);
     for (const d of errors) expect(d.message).toMatch(/^mask-repeat: space on <div> a is unsupported: /);
     // The reject-mask-image fixture's message (packages/parity/src/fixture-groups/mask.ts).
-    const hidden = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; } .s { mask-image: linear-gradient(transparent, transparent); }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
-    for (const d of hidden.diagnostics.filter((x) => x.severity === 'error')) expect(d.message).toMatch(/^mask-image: linear-gradient\(transparent,transparent\) on <div> a is unsupported: /);
+    const hidden = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; } .s { mask-image: radial-gradient(black, transparent); }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
+    const hiddenErrors = hidden.diagnostics.filter((x) => x.severity === 'error');
+    expect(hiddenErrors).toHaveLength(3);
+    for (const d of hiddenErrors) expect(d.message).toMatch(/^mask-image: radial-gradient\(black,transparent\) on <div> a is unsupported: /);
+    // MASK-CLIP: one linear-gradient() with the other longhands initial compiles (paint-mask.test.ts holds its cases).
+    expect(errorsAt('mask-image: linear-gradient(black, transparent)')).toEqual([]);
   });
 
   it('refuses a mask that a child inherits explicitly, on the child too', () => {
