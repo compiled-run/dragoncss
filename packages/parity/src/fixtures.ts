@@ -37,6 +37,7 @@ import { LINE_CLAMP } from './fixture-groups/line-clamp.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MASK } from './fixture-groups/mask.ts';
+import { MEDIA_ENVIRONMENT } from './fixture-groups/media-environment.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
@@ -178,6 +179,7 @@ export const GROUPS = {
   'logical-props': LOGICAL_PROPS,
   mask: MASK,
   media: MEDIA,
+  'media-environment': MEDIA_ENVIRONMENT,
   'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
   outline: OUTLINE,

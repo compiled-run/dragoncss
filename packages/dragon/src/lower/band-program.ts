@@ -1,5 +1,5 @@
 // MQ-R1 (notes/T067-mq-r-spec.md R4, R5, R8): the @media bands of a native output. The compiler writes the band table (each
-// width and height feature of the sheet as a typed atom, each band as the truth vector of all atoms) and folds every band into the
+// viewport feature of the sheet, and from MQ-R2 each device feature, as a typed atom, each band as the truth vector of all atoms) and folds every band into the
 // state program as one more variable, env#band, internal to the runtime: every (assignment, band) pair is an assignment, so a band
 // change is the same atomic delta a setter applies. The TypeScript reference of the runtime that switches bands is
 // packages/parity/src/media-runtime.ts (the core imports the layout engine for types only). The device never cascades, matches or
@@ -11,8 +11,8 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { AnimationAnalysis, ElementAnimation, Listing } from '../analysis/animations.ts';
 import type { ResolvedElement } from '../analysis/resolve.ts';
 import { canonicalJson } from '../digest.ts';
-import type { Band, BandPartition, Comparison, MediaFeature, MediaValue } from '../media/index.ts';
-import { INITIAL_FONT_SIZE, resolveLength, serialiseFeature } from '../media/index.ts';
+import type { Band, BandPartition, Comparison, MediaDevice, MediaFeature, MediaValue } from '../media/index.ts';
+import { clampToFloat, DEVICE_FEATURES, INITIAL_FONT_SIZE, resolveLength, serialiseFeature } from '../media/index.ts';
 import type { Rule, RuleCondition } from '../css/stylesheet.ts';
 import type { Assignment, Diagnostic, Scalar, Span } from '../types.ts';
 import type { NativeBackend, NativeProgram } from './native-program.ts';
@@ -35,9 +35,15 @@ const OPS: { readonly [C in Comparison]: rtBand.BandOp } = { '<': 'lt', '<=': 'l
 /** `<value> <op> <feature>` read as `<feature> <reversed op> <value>`, as Chrome's ReverseOperator does. */
 const REVERSED: { readonly [C in Comparison]: rtBand.BandOp } = { '<': 'gt', '<=': 'ge', '>': 'lt', '>=': 'le', '=': 'eq' };
 
+/** dppx per resolution unit, as Blink's canonical-unit factors (1 / CSS px per inch, 1 / CSS px per cm). */
+const DPPX_PER = { dppx: 1, x: 1, dpi: 1 / 96, dpcm: 1 / (96 / 2.54) } as const;
+
 function comparison(op: rtBand.BandOp, v: MediaValue, where: string): rtBand.BandComparison {
   if (v.kind === 'length') return { op, value: resolveLength(v.length, INITIAL_FONT_SIZE), num: 0, den: 0 };
   if (v.kind === 'ratio') return { op, value: 0, num: v.num, den: v.den };
+  // MQ-R2: the query in float dppx, and num 1 for a dpcm query, which both sides round to two decimals.
+  if (v.kind === 'resolution') return { op, value: clampToFloat(v.value * DPPX_PER[v.unit]), num: v.unit === 'dpcm' ? 1 : 0, den: 0 };
+  if (v.kind === 'number') return { op, value: clampToFloat(v.value), num: 0, den: 0 };
   throw new BandProgramError(`${where}: a ${v.kind} value has no band comparison`);
 }
 
@@ -45,8 +51,17 @@ function comparison(op: rtBand.BandOp, v: MediaValue, where: string): rtBand.Ban
 export function bandAtom(f: MediaFeature): rtBand.BandAtom {
   const where = serialiseFeature(f);
   if (f.refused !== null) throw new BandProgramError(`${where} is refused, so it has no atom`);
-  if (f.base !== 'width' && f.base !== 'height' && f.base !== 'orientation' && f.base !== 'aspect-ratio') throw new BandProgramError(`${where} is not a viewport feature`);
-  const feature: rtBand.BandFeature = f.base;
+  if (DEVICE_FEATURES.has(f.base) && f.base !== 'resolution' && f.base !== '-webkit-device-pixel-ratio') {
+    // A discrete device feature: its keyword, or 'any' for the boolean form (true unless the reading is none or no-preference).
+    const feature = f.base as rtBand.BandFeature;
+    if (f.form === 'boolean') return { feature, comparisons: [], keyword: 'any' };
+    const v = f.value;
+    if (f.form !== 'plain' || v === null || v.kind !== 'ident') throw new BandProgramError(`${where}: a device feature takes a keyword`);
+    return { feature, comparisons: [], keyword: v.name as rtBand.BandKeyword };
+  }
+  if (f.base !== 'width' && f.base !== 'height' && f.base !== 'orientation' && f.base !== 'aspect-ratio' && f.base !== 'resolution' && f.base !== '-webkit-device-pixel-ratio') throw new BandProgramError(`${where} is not a viewport or device feature`);
+  // -webkit-device-pixel-ratio compares the same float scale with a <number>.
+  const feature: rtBand.BandFeature = f.base === '-webkit-device-pixel-ratio' ? 'resolution' : f.base;
   if (f.form === 'boolean') return { feature, comparisons: [], keyword: 'none' };
   if (feature === 'orientation') {
     const v = f.value;
@@ -62,6 +77,11 @@ export function bandAtom(f: MediaFeature): rtBand.BandAtom {
   if (f.right !== null) comparisons.push(comparison(OPS[f.right.op], f.right.value, where));
   if (comparisons.length === 0) throw new BandProgramError(`${where}: a range without a comparison`);
   return { feature, comparisons, keyword: 'none' };
+}
+
+/** MQ-R2: the device readings as the runtime's band lookup takes them (rt-band.ts BandEnvironment). */
+export function bandEnvironmentOf(d: MediaDevice): rtBand.BandEnvironment {
+  return { dpr: d.dpr, pointer: d.pointer, hover: d.hover === 'hover', anyCoarse: d.anyPointer.includes('coarse'), anyFine: d.anyPointer.includes('fine'), anyHover: d.anyHover === 'hover', reducedMotion: d.reducedMotion === 'reduce' };
 }
 
 /** The band table of a partition: its atoms in atom order and every band's truth vector in band order. */
@@ -121,7 +141,7 @@ export type BandRuntimeFaults = {
   readonly bandDeltaDropped: boolean;
 } & rtBand.BandFaults;
 
-export const NO_BAND_RUNTIME_FAULTS: BandRuntimeFaults = { bandStale: false, resizeSkipsRelayout: false, bandDeltaDropped: false, bandBoundaryExclusive: false };
+export const NO_BAND_RUNTIME_FAULTS: BandRuntimeFaults = { bandStale: false, resizeSkipsRelayout: false, bandDeltaDropped: false, bandBoundaryExclusive: false, primaryPointerFineFirst: false };
 
 /** An assignment with env#band set to a band. */
 export const withBand = (a: Assignment, band: number): Assignment => [...a, { state: { instance: ENV_INSTANCE, state: BAND_STATE }, value: band }];
