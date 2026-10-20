@@ -118,8 +118,8 @@ describe('text-shadow', () => {
     expect(at('14.5px', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     expect(at('1.5', '0 0 0 red')).toEqual([]);
     expect(at('1.4', '0 0 0 red')).toEqual(NATIVE_REFUSED);
-    expect(at('150%', '0 0 0 red')).toEqual([]);
-    expect(at('140%', '0 0 0 red')).toEqual(NATIVE_REFUSED);
+    // A percentage line height is refused on the native targets before this bound (and would resolve against the font size).
+    expect(at('150%', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     expect(at('normal', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     // A negative y reaches further up; every shadow of the list must keep the bound, a transparent one excepted.
     expect(at('20px', '0 -5px 0 red')).toEqual([]);
@@ -133,9 +133,12 @@ describe('text-shadow', () => {
     expect(at('30px', '0 3px 0 red, 0 10px 0 blue')).toEqual([]);
     expect(at('30px', '0 0 4px red')).toEqual([]);
     expect(at('25px', '0 0 4px red')).toEqual(NATIVE_REFUSED);
+    // Each shadow pair takes its own blur slack: a hard shadow reaching further below does not hide a blurred one's.
+    expect(at('30px', '0 3px 4.6px blue')).toEqual(NATIVE_REFUSED);
+    expect(at('30px', '0 10px 0 red, 0 3px 4.6px blue')).toEqual(NATIVE_REFUSED);
     const meet = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .s { line-height: 40px; text-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); }', wrap)).diagnostics.find((d) => d.target === 'ios');
     expect(meet?.message).toBe(
-      'text-shadow: rgba(0, 0, 0, 0.5) 0px 8px 16px on <div> a is unsupported on ios: text a:text0 may wrap onto several lines, and the shadows of one line may meet the next line\'s, whose layer the device composites over the first instead of over the backdrop it is encoded against (line-height less font-size, less how far the shadows reach below a line, 32px, and above the next, 16px, is -18px, under 7.333333333333333px)',
+      'text-shadow: rgba(0, 0, 0, 0.5) 0px 8px 16px on <div> a is unsupported on ios: text a:text0 may wrap onto several lines, and the shadows of one line may meet the next line\'s, whose layer the device composites over the first instead of over the backdrop it is encoded against (line-height less font-size, less how far a shadow reaches below a line, 32px, and one above the next, 16px, is -18px, under 7.333333333333333px)',
     );
     // overflow-wrap: anywhere wraps a word too.
     expect(errorsIn('.s { line-height: 30px; overflow-wrap: anywhere; text-shadow: 0 1px 2px red; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])])).toEqual([]);
@@ -207,9 +210,37 @@ describe('text-shadow', () => {
     expect(errorsIn(css, inline)).toEqual(NATIVE_REFUSED);
   });
 
+  it('refuses on iOS and Android a blurred or translucent shadow that may meet another text\'s ink or shadows (each is encoded over the backdrop alone)', () => {
+    // Each declaring element is refused once per target.
+    const NATIVE_ONLY = (css: string, body: (r: SourceRef) => TreeNode[]): string[] => errorsIn(css, body);
+    // Two block siblings 12px tall: their shadows and glyphs overlap (landing's repro).
+    const siblings = (r: SourceRef) => [el(r, 's', 'div', ['s'], [el(r, 'a', 'div', [], [text(r, 't', 'XX')]), el(r, 'b', 'div', [], [text(r, 'u', 'XX')])])];
+    const blocks = '.s { line-height: 12px; background-color: #eef; text-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); }';
+    expect([...new Set(NATIVE_ONLY(blocks, siblings))]).toEqual(NATIVE_REFUSED);
+    const msg = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${blocks}`, siblings)).diagnostics.find((d) => d.target === 'ios' && d.message.startsWith('text-shadow'));
+    expect(msg?.message).toBe('text-shadow: rgba(0, 0, 0, 0.5) 0px 8px 16px on <div> s is unsupported on ios: text a:text0: its shadows and text b:text0 may meet (their vertical reaches, 0px and 16px, leave -14px between them, under 6px), and the device encodes each shadow over the backdrop alone');
+    // The same blocks far enough apart compile; so do hard opaque shadows, which cover exactly.
+    expect(NATIVE_ONLY('.s { line-height: 12px; text-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); } .s > div { margin-bottom: 60px; }', siblings)).toEqual([]);
+    expect(NATIVE_ONLY('.s { line-height: 12px; text-shadow: 0 3px 0 red; }', siblings)).toEqual([]);
+    // Two texts on one line, the blurs meeting at the seam (landing's repro); a hard opaque list there compiles.
+    const seam = (r: SourceRef) => [el(r, 'p', 'div', [], [text(r, 't', 'XX'), el(r, 'b', 'span', ['s'], [text(r, 'u', 'XX')])])];
+    expect(NATIVE_ONLY('.s { text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); }', seam)).toEqual(NATIVE_REFUSED);
+    const both = (r: SourceRef) => [el(r, 'p', 'div', ['s'], [text(r, 't', 'XX'), el(r, 'b', 'span', [], [text(r, 'u', 'XX')])])];
+    expect(NATIVE_ONLY('.s { white-space: nowrap; text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); }', both)).toEqual(NATIVE_REFUSED);
+    expect(NATIVE_ONLY('.s { white-space: nowrap; text-shadow: 2px 2px 0 red; }', both)).toEqual([]);
+    // Flex items kept apart by their margins on both axes when the row wraps; ink kept inside a px width it fits.
+    const row = (r: SourceRef) => [el(r, 'f', 'div', ['f'], [el(r, 'a', 'div', ['w'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['w'], [text(r, 'u', 'XX')])])];
+    const flex = (margin: string, width: string) => `.f { display: flex; flex-wrap: wrap; } .w { width: ${width}; margin: ${margin}; line-height: 20px; text-shadow: 0 0 4px red; }`;
+    expect(NATIVE_ONLY(flex('12px', '30px'), row)).toEqual([]);
+    expect([...new Set(NATIVE_ONLY(flex('2px', '30px'), row))]).toEqual(NATIVE_REFUSED);
+    // A px width narrower than the word lets the ink overflow toward the other item.
+    expect([...new Set(NATIVE_ONLY(flex('12px', '10px'), row))]).toEqual(NATIVE_REFUSED);
+  });
+
   it('refuses the lists after the document budget, keeping the ones before it', () => {
     const lines = (count: number) => (r: SourceRef) => [...Array(count).keys()].map((k) => el(r, `d${k}`, 'div', ['s'], [text(r, `t${k}`, 'X'.repeat(40))]));
-    const css = '.s { white-space: nowrap; text-shadow: 0 1px 2px red; }';
+    // Each line's own block, 20px apart, so no two lines' shadows meet.
+    const css = '.s { white-space: nowrap; margin-bottom: 20px; text-shadow: 0 1px 2px red; }';
     const one = textShadowWork(40, 0, 10, 0, 0, [{ x: 0, y: 1, blur: 2 }]);
     const fit = Math.floor(TEXT_SHADOW_MAX_DOCUMENT_DEVICE_PX / one);
     // One class declares the list, so the budget refuses the whole declaration once it is passed.
