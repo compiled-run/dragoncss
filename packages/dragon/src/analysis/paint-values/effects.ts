@@ -94,7 +94,7 @@ function checkOpacity(el: ResolvedElement, plan: GroupPlan | null, targets: read
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `${el.element.address} has opacity ${n}; ${t} composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: ${plan === null ? 'it is not a group' : plan.why}`,
+      message: `${el.element.address} has opacity ${n}; ${t} composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: ${plan === null ? 'it is not a group' : plan.reason}`,
       manual: 'Use opacity 0 or 1, keep the group to opaque square fills, solid borders and opaque text over opaque square fills, or use a translucent colour (rgba) instead.',
       basis: 'computed-value',
     }));
@@ -112,7 +112,7 @@ function checkOpacity(el: ResolvedElement, plan: GroupPlan | null, targets: read
 /** An admitted group: its backdrop box (null for the canvas) and the painters before it there, in paint order; or why not. */
 export type GroupPlan =
   | { readonly kind: 'group'; readonly backdrop: string | null; readonly painters: readonly string[] }
-  | { readonly kind: 'refused'; readonly why: string };
+  | { readonly kind: 'refused'; readonly reason: string };
 
 const GROUP_KEYWORDS = FOLD_KEYWORDS.filter(([p]) => p !== 'position' && p !== 'overflow-x' && p !== 'overflow-y');
 const keywordAt = (el: ResolvedElement, p: string): string | null => {
@@ -134,7 +134,7 @@ function boxProblem(el: ResolvedElement, role: 'member' | 'painter' | 'ancestor-
   const a = el.element.address;
   const tag = el.element.tag;
   const canvasTag = tag === 'html' || tag === 'body';
-  if ((FOLD_TAGS_OUT.has(tag) && !(canvasTag && role !== 'member')) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag)) return `<${tag}> ${a} is a control, replaced or svg box`;
+  if ((FOLD_TAGS_OUT.has(tag) && !(canvasTag && role !== 'member')) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag)) return `${a} is a <${tag}>, a control, replaced or svg box`;
   if (!FOLD_DISPLAYS.includes(keywordAt(el, 'display') ?? '')) return `${a} has display ${keywordAt(el, 'display')}, not a plain block or inline-block box`;
   for (const [p, ok] of GROUP_KEYWORDS) {
     const k = keywordAt(el, p);
@@ -212,7 +212,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
   const admitted = (el: ResolvedElement): boolean => plans.get(el.element.address)?.kind === 'group';
 
   const planOf = (g: ResolvedElement): GroupPlan => {
-    const refused = (why: string): GroupPlan => ({ kind: 'refused', why });
+    const refused = (reason: string): GroupPlan => ({ kind: 'refused', reason });
     // The group's own content.
     const members: ResolvedElement[] = [];
     const collect = (el: ResolvedElement): void => {
@@ -272,7 +272,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     if (el === undefined) continue;
     const o = opacityAt(el);
     if (o <= 0 || o >= 1 || opacityFolds(el)) continue;
-    plans.set(id, elementWillChange(el).includes('opacity') ? { kind: 'refused', why: 'it has will-change: opacity, a compositor layer' } : planOf(el));
+    plans.set(id, elementWillChange(el).includes('opacity') ? { kind: 'refused', reason: 'it has will-change: opacity, a compositor layer' } : planOf(el));
   }
   groupPlansOf.set(root, plans);
   return plans;
