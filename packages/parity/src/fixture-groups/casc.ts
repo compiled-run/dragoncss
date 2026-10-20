@@ -12,6 +12,8 @@ export const CASC: readonly FixtureSpec[] = [
   // css-nesting-1: nested rules read through &, relative ones with and without a leading combinator, nesting in nesting, and
   // declarations after a nested rule, which match as the parent does.
   both('casc-nesting'),
+  // css-nesting-1 §3.3: @media and @supports nested in a style rule, with declarations and nested rules inside, and nested in each other.
+  both('casc-nesting-media'),
   reject('reject-supports-selector', 'DRAGON_UNSUPPORTED_AT_RULE', '@supports selector(a > b) { .a { width: 20px; } }', '@supports selector(a > b) in the stylesheet is not supported: selector() is not evaluated'),
   reject('reject-supports-unknown-property', 'DRAGON_UNSUPPORTED_AT_RULE', '@supports (foo: bar) { .a { width: 20px; } }', '@supports (foo: bar) in the stylesheet is not supported: Dragon cannot tell whether Chrome keeps (foo: bar)'),
   reject('reject-supports-mixed-operators', 'DRAGON_UNSUPPORTED_AT_RULE', '@supports (display: flex) and (width: 1px) or (height: 1px) { .a { width: 20px; } }', '@supports (display: flex) and (width: 1px) or (height: 1px) in the stylesheet is not supported: "and" and "or" mixed without parentheses'),

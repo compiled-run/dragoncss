@@ -86,8 +86,11 @@ describe('MQ-a: @media in the parse driver', () => {
       expect(rules.map((r) => r.condition?.map((c) => c.text)), prelude).toEqual([[prelude.replace('4/3', '4 / 3')]]);
     }
   });
-  it('@media in a rule block (css-nesting-1) and @media without a block stay refused', () => {
-    expect(parse('.a { @media (min-width: 1px) { width: 2px; } }').diagnostics.map((d) => d.message)).toEqual(['@media in a rule block is not supported in milestone 1']);
+  it('@media in a rule block (css-nesting-1 §3.3) keeps its condition, and @media without a block stays refused', () => {
+    const nested = parse('.a { @media (min-width: 1px) { width: 2px; } }');
+    expect(nested.diagnostics).toEqual([]);
+    expect(nested.rules.map((r) => r.condition?.map((c) => c.text) ?? [])).toEqual([[], ['(min-width: 1px)']]);
+    expect(parse('.a { @media (min-width: 1px); }').diagnostics.map((d) => d.message)).toEqual(['@media in a rule block is not supported in milestone 1']);
     expect(parse('@media (min-width: 1px);').diagnostics.map((d) => d.message)).toEqual(['@media in the stylesheet is not supported in milestone 1']);
   });
   it('an unsupported at-rule inside @media is refused with the @media label, and its rules keep the @media condition', () => {

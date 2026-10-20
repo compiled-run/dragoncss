@@ -181,7 +181,8 @@ function styleRule(prelude: CssNode, selectorText: string, block: CssNode, st: P
   const declarations: Declaration[] = [];
   const rule = (): Rule[] => (selectors === null ? [] : [{ sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) }]);
   const children = list(block, 'children');
-  if (children.some((c) => c.type === 'Rule' || (c.type === 'Raw' && String(c['value']).includes('{')))) {
+  const conditional = (c: CssNode): boolean => c.type === 'Atrule' && ['media', 'supports'].includes(asciiLower(decodeName(String(c['name'])))) && c['block'] !== null && c['block'] !== undefined;
+  if (children.some((c) => c.type === 'Rule' || conditional(c) || (c.type === 'Raw' && String(c['value']).includes('{')))) {
     const nested = parseNestingBlock(block, selectorText, selectors, st, blockDiagnostics, dropped ? [] : enclosed, conditions, layer, declarations);
     return dropped ? rule() : [...rule(), ...nested];
   }
@@ -281,6 +282,27 @@ function splitBlock(text: string): BlockItem[] {
   return items;
 }
 
+/**
+ * A conditional at-rule nested in a style rule (css-nesting-1 §3.3): @media gives its condition, a true @supports 'holds' and a false
+ * one 'dropped' (decided at build time, at-rules/supports.ts); any other at-rule, or one the handlers refuse, is null.
+ */
+function nestedCondition(node: CssNode, st: ParseState): RuleCondition | 'holds' | 'dropped' | null {
+  const name = asciiLower(decodeName(String(node['name'])));
+  if (name !== 'media' && name !== 'supports') return null;
+  const prelude = node['prelude'] as CssNode | null | undefined;
+  const span = spanOf(node, st.base);
+  const preludeSpan = prelude === null || prelude === undefined ? null : spanOf(prelude, st.base);
+  const outcome = handleAtRule({
+    node, name: String(node['name']), where: 'a rule block', span,
+    prelude: preludeSpan === null ? '' : st.text.slice(preludeSpan.start - st.base.start, preludeSpan.end - st.base.start),
+    source: st.text.slice(span.start - st.base.start, span.end - st.base.start),
+    atSheetStart: false,
+  });
+  if (outcome.kind === 'conditional') return outcome.condition;
+  if (outcome.kind === 'supports') return outcome.holds || st.faults.supportsConditionIgnored ? 'holds' : 'dropped';
+  return null;
+}
+
 /** The & of a nested selector: css-nesting-1 §3.2 reads it as :is() of the parent's selector list. */
 function nestedSelectorText(prelude: string, parent: string): string | null {
   const is = `:is(${parent})`;
@@ -360,7 +382,19 @@ function parseNestingBlock(block: CssNode, parentText: string, parent: readonly 
     }
     if (item.kind === 'at-rule') {
       const node = parseItem('atrule');
-      refuseNode(node, sub, { label: 'a rule block', selectors: parent, conditions, layer }, diagnostics, enclosed, []);
+      const nestedBlock = node['block'] as CssNode | null | undefined;
+      const outcome = nestedBlock === null || nestedBlock === undefined || parent === null ? null : nestedCondition(node, sub);
+      if (outcome === null || nestedBlock === null || nestedBlock === undefined || parent === null) {
+        refuseNode(node, sub, { label: 'a rule block', selectors: parent, conditions, layer }, diagnostics, enclosed, []);
+      } else if (outcome !== 'dropped') {
+        // css-nesting-1 §3.3: a conditional rule nested in a style rule applies its declarations to the parent's elements while the
+        // condition holds, as a nested declarations rule (the parent's specificity), and its own nested rules read & as the parent.
+        // Its block is split again and its prelude read by media/parse.ts or at-rules/supports.ts, so css-tree's errors are not reported.
+        const own: Declaration[] = [];
+        const within = outcome === 'holds' ? conditions : [...conditions, outcome];
+        const inner = parseNestingBlock(nestedBlock, parentText, parent, sub, diagnostics, enclosed, within, layer, own);
+        out.push({ sheet: st.use.id, owner: st.use.owner, selectors: parent, declarations: own, ...(within.length === 0 ? {} : { condition: within }), ...(layer === null ? {} : { layer }) }, ...inner);
+      }
       st.order = sub.order;
       continue;
     }

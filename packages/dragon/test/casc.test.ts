@@ -101,7 +101,7 @@ describe('@supports in a stylesheet', () => {
 
   for (const [css, span, message] of [
     ['@supports selector(a > b) { .a { width: 20px; } }', '@supports selector(a > b) { .a { width: 20px; } }', '@supports selector(a > b) in the stylesheet is not supported: selector() is not evaluated'],
-    ['.a { @supports (display: flex) { width: 20px; } }', '@supports (display: flex) { width: 20px; }', '@supports in a rule block is not supported in milestone 1'],
+    ['.a { @supports (display: flex); }', '@supports (display: flex);', '@supports in a rule block is not supported in milestone 1'],
     ['@supports (display: flex);', '@supports (display: flex);', '@supports in the stylesheet is not supported in milestone 1'],
   ] as const) {
     it(`refuses ${css}`, () => {
@@ -203,5 +203,23 @@ describe('css-nesting-1 block splitting', () => {
   it('an identifier item with a {} block after other tokens is a rule, and a custom property keeps its block', () => {
     const { c } = compile('.a { & { width: 1px; } div:not(.z)& { height: 5px; } --k: {x}; }');
     expect(value(c, 'height')).toBe('5px');
+  });
+});
+
+describe('css-nesting-1 conditional rules', () => {
+  it('@media and @supports nested in a style rule apply to the parent while they hold, with & as the parent inside', () => {
+    const css = '.a { width: 1px; @media (min-width: 1px) { width: 2px; .b { height: 3px; } } }';
+    const diagnostics: Diagnostic[] = [];
+    const rules = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+    expect(diagnostics).toEqual([]);
+    expect(rules.map((r) => [r.selectors.map((x) => x.specificity.join()), r.condition?.map((c) => c.text) ?? [], r.declarations.map((d) => `${d.property}: ${d.text}`)])).toEqual([
+      [['0,1,0'], [], ['width: 1px']],
+      [['0,1,0'], ['(min-width: 1px)'], ['width: 2px']],
+      [['0,2,0'], ['(min-width: 1px)'], ['height: 3px']],
+    ]);
+    expect(value(compile('.a { width: 1px; @supports (display: flex) { width: 3px; } }').c, 'width')).toBe('3px');
+    expect(value(compile('.a { width: 1px; @supports (width: 1px 2px) { width: 3px; } }').c, 'width')).toBe('1px');
+    expect(value(compile('body { @supports (display: flex) { > .a { width: 4px; } } }').c, 'width')).toBe('4px');
+    expect(value(compile('.a { @supports (display: flex) { @supports (display: grid) { width: 5px; } } }').c, 'width')).toBe('5px');
   });
 });

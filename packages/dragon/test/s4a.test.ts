@@ -242,8 +242,9 @@ describe('C6: nested rules and every other non-declaration child of a rule block
     // css-nesting-1: & cannot stand for a pseudo-element, so a rule nested in a ::before rule is refused (the others are resolved).
     { css: '.a::before { content: "x"; & .b { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_NESTED_RULE', span: '& .b' },
     { css: '.a { .b { width: 2px; } width 1px; height: 2px; }', code: 'DRAGON_CSS_PARSE', span: 'width 1px' },
-    { css: '.a { width: 1px; @media (min-width: 1px) { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@media (min-width: 1px) { width: 2px; }' },
-    { css: '.a { width: 1px; @supports (display: flex) { .b { width: 2px; } } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@supports (display: flex) { .b { width: 2px; } }' },
+    // @media and @supports nested in a rule are resolved (css-nesting-1 §3.3); other nested at-rules are refused.
+    { css: '.a { width: 1px; @layer x { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@layer x { width: 2px; }' },
+    { css: '.a { width: 1px; @container (min-width: 1px) { .b { width: 2px; } } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@container (min-width: 1px) { .b { width: 2px; } }' },
     { css: '.a { width 1px; height: 2px; }', code: 'DRAGON_CSS_PARSE', span: 'width 1px;' },
     // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @container.
     { css: '@container (min-width: 1px) { .a { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@container (min-width: 1px) { .a { width: 2px; } }' },

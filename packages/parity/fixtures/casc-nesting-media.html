@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.box { height: 6px; margin: 2px; width: 50px; background-color: #cccccc; }
+.a {
+  width: 40px;
+  @media (width >= 300px) { width: 80px; .c { width: 20px; } }
+  @media (width >= 2000px) { width: 160px; }
+  @media (min-width: 100px) and (orientation: landscape) { & + .b { background-color: #3366cc; } }
+  @supports (display: grid) { height: 10px; @media (width < 1000px) { background-color: #00aa00; } }
+  @supports (width: 1px 2px) { height: 30px; }
+  margin-left: 4px;
+}
+.a.x { margin-left: 9px; }
+.sm\:flex { @media (width >= 40rem) { display: flex; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a1" class="box a"><div data-dragon-id="c1" class="box c"></div></div>
+<div data-dragon-id="b1" class="box b"></div>
+<div data-dragon-id="a2" class="box a x"></div>
+<div data-dragon-id="f1" class="sm:flex"><div data-dragon-id="f2" class="box"></div><div data-dragon-id="f3" class="box"></div></div>
+</body>
+</html>
