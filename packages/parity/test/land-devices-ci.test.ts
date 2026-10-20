@@ -343,6 +343,13 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     // A tooling-blocked job seen while the rest of the run still goes is never a verdict.
     const live = fake({ doneAfter: 1e9, jobs: [tooling, { name: 'ios (iPhone 17)', status: 'in_progress', conclusion: null, steps: [] }] });
     expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: live.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain(`failed in setup (android (dragon-480) (${TOOLING_STEP}))`);
+    // regen-on-ci.yml's host-precheck only reports: its failure (a kotlinc download, its timeout, its judge) never fails the run.
+    const precheck = (conclusion: string, at: string) => ({ name: 'host-precheck', status: 'completed', conclusion, steps: [step('Install dependencies', 'success'), step(at, conclusion === 'timed_out' ? 'cancelled' : 'failure')] });
+    for (const p of [precheck('failure', 'kotlinc 2.4.20 (the release lanes.json records)'), precheck('failure', 'Judge the android host lanes'), precheck('timed_out', 'parity:lanes --run-host (android)')]) {
+      expect(failedJobs([p, ok])).toEqual({ verdict: [], setup: [] });
+      const going = fake({ doneAfter: 1e9, jobs: [p, { name: 'host-1 / round', status: 'in_progress', conclusion: null, steps: [] }] });
+      expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: going.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain('did not finish within 1200s, and no job of it failed (host-1 / round');
+    }
   });
   it('device-lanes.yml reports device-ci.ts TOOLING_EXIT in the Device tooling step, never in Device run', () => {
     const yml = readFileSync(repoPath('.github/workflows/device-lanes.yml'), 'utf8');
@@ -553,15 +560,19 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     // Each round is told not to save in patch mode, and the round saves only when told to.
     const calls = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml\n {4}with: \{([^\n]*)\}/g)].map((m) => m[1]!);
     expect(calls).toHaveLength(5);
-    for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.mode != 'patch' }}"`);
+    // resolve's save is false in patch mode (and when a run resumes); ci-regen.test.ts runs that step.
+    for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.save == 'true' }}"`);
+    expect(yml).toContain(`if [ "$MODE" != patch ] && [ -z "\${RESUME:-}" ] && [ -z "$resume" ]; then save=true; fi`);
     expect(round).toContain('save_cache: { type: boolean, required: false, default: true }');
     // ...and only on the last round (each round's store holds the earlier ones): the one regen-on-ci.yml follows with no other.
     const save = /- name: Save the regen cache\n {8}if: ([^\n]+)\n {8}uses: actions\/cache\/save@v4/.exec(round)?.[1];
     expect(save).toBe("success() && inputs.save_cache && (steps.next.outputs.next == 'false' || (steps.regen.outputs.changed == 'false' && inputs.name != 'chrome-1') || inputs.name == 'chrome-3')");
     // Those are exactly the cases the next round's gate stops on: host-1 follows chrome-1 unless next is false, and every later
     // round needs changed true and next not false from the one before; chrome-3 has no round after it.
-    expect(yml).toContain("host-1:\n    needs: [resolve, chrome-1]\n    if: needs.chrome-1.outputs.next != 'false'\n");
-    for (const [prev, name] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) expect(yml).toContain(`${name}:\n    needs: [resolve, ${prev}]\n    if: needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false'\n`);
+    // (chrome-1 may come from resume-chrome-1, so the gates test the round before them themselves: ci-regen.test.ts.)
+    expect(yml).toContain("host-1:\n    needs: [resolve, resume-chrome-1, chrome-1]\n");
+    expect(yml).toContain("(needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false' }}\n");
+    for (const [prev, name] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) expect(yml).toContain(`${name}:\n    needs: [resolve, ${prev}]\n    if: \${{ !cancelled() && needs.${prev}.result == 'success' && needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false' }}\n`);
     // setup-node's pnpm cache saves in a post step: off unless the round may save (#220 review).
     expect([...round.matchAll(/\n {10}cache: ([^\n]+)/g)].map((m) => m[1])).toEqual(["${{ inputs.save_cache && 'pnpm' || '' }}"]);
     // Every cache step that saves (actions/cache or actions/cache/save) is gated on save_cache.

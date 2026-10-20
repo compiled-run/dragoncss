@@ -19,6 +19,13 @@
     {"id":"abs:text0","data":"X","lines":1,"units":[0],"blank":[]},
     {"id":"t:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
     {"id":"t:text1","data":" X","lines":1,"units":[0,0],"blank":[]},
-    {"id":"sp:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+    {"id":"sp:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"no:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"px:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"py:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"lu:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"pz:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"noi:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"sci:text0","data":"X","lines":1,"units":[0],"blank":[]}
   ]
 }

@@ -10,7 +10,9 @@ import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssP
 import type { NativeProgram } from 'dragon';
 import { programInput } from 'dragon';
 import { REFERENCE_PLATFORM } from '../platform.ts';
-import type { SampleBox, SamplePoint } from '../samples.ts';
+import { glyphLines } from '../pixel-reference.ts';
+import type { GlyphBox, SampleBox, SamplePoint } from '../samples.ts';
+import { glyphSpanAt, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
 import { boxRadii, clearInside, nearArc, rectArcs } from './radius.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
 
@@ -169,8 +171,21 @@ const GRID = [5, 3] as const;
 /** Sample geometry, as samples.ts SAMPLE_INSET_DEVICE_PX: a point stays this far from any edge of the painted area. */
 const INSET = 2;
 
-/** The gradient points of a case: per gradient box, the grid points whose (2 * INSET + 1)^2 neighbourhood the layers paint exactly. */
+/** Whether a pixel lies outside a glyph's ink box by at least SAMPLE_INSET_DEVICE_PX on some side (a sheared glyph by its widest span). */
+const clearOfGlyph = (x: number, y: number, g: GlyphBox): boolean => {
+  const [l0, r0] = glyphSpanAt(g, g.top);
+  const [l1, r1] = glyphSpanAt(g, g.bottom);
+  const d = SAMPLE_INSET_DEVICE_PX;
+  return x + 1 + d <= Math.min(l0, l1) || x >= Math.max(r0, r1) + d || y + 1 + d <= g.top || y >= g.bottom + d;
+};
+
+/**
+ * The gradient points of a case: per gradient box, the grid points whose (2 * INSET + 1)^2 neighbourhood the layers paint exactly
+ * and that stay SAMPLE_INSET_DEVICE_PX clear of every glyph box (text drawn over the gradient, T093 ruling A).
+ */
 export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
+  let glyphs: readonly GlyphBox[] | null = null;
+  const clearOfText = (x: number, y: number): boolean => (glyphs ??= glyphLines(ctx.program, ctx.viewport, ctx.dpr).flatMap((l) => l.glyphs)).every((g) => clearOfGlyph(x, y, g));
   const borders = new Map(ctx.boxes.map((b) => [b.id, [b.border.top, b.border.right, b.border.bottom, b.border.left] as [number, number, number, number]]));
   const out: SamplePoint[] = [];
   const only = backgroundOnly(ctx.program, ctx.boxes, ctx.dpr);
@@ -192,7 +207,7 @@ export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
         if (x < 0 || y < 0 || x >= ctx.size.width || y >= ctx.size.height) continue;
         let clear = true;
         for (let dy = -INSET; dy <= INSET && clear; dy++) for (let dx = -INSET; dx <= INSET && clear; dx++) if (!painted(x + dx, y + dy)) clear = false;
-        if (clear) out.push({ x, y, rule: `gradient:${id}` });
+        if (clear && clearOfText(x, y)) out.push({ x, y, rule: `gradient:${id}` });
       }
     }
     // A small layer the grid misses (a no-repeat tile): the middle of each layer's drawn area, when its neighbourhood is exact.
@@ -208,7 +223,7 @@ export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
         if (right - left < 2 * INSET + 1 || bottom - top < 2 * INSET + 1 || x < 0 || y < 0 || x >= ctx.size.width || y >= ctx.size.height) continue;
         let clear = true;
         for (let dy = -INSET; dy <= INSET && clear; dy++) for (let dx = -INSET; dx <= INSET && clear; dx++) if (!painted(x + dx, y + dy)) clear = false;
-        if (clear) {
+        if (clear && clearOfText(x, y)) {
           out.push({ x, y, rule: `gradient:${id}` });
           break;
         }

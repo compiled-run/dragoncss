@@ -21,8 +21,8 @@ import type { ResolvedElement } from '../resolve.ts';
 export const SVG_TAG = 'svg';
 
 /** The presentation attributes Dragon maps to its svg property family (SVG 2 §6.6); author rules beat them. */
-export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order' | 'vector-effect';
-export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order', 'vector-effect'];
+export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order' | 'vector-effect' | 'clip-rule' | 'marker-start' | 'marker-mid' | 'marker-end';
+export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order', 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end'];
 
 /** The attributes each SVG tag compiles: its geometry, the paint presentation attributes, and xmlns (no effect in HTML). */
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
@@ -59,8 +59,14 @@ export function svgAttributeOwner(tag: string, name: string): string | null {
   return Object.hasOwn(SVG_ATTRIBUTE_OWNERS, name) ? (SVG_ATTRIBUTE_OWNERS[name] as string) : null;
 }
 
-/** Why a computed fill or stroke value is not drawn yet (a paint server or a context keyword), or null. */
+/**
+ * Why a computed fill or stroke value is not drawn yet (a paint server or a context keyword), or (SVG-inert) a marker other than
+ * none, or null.
+ */
 export function svgPaintRefusal(property: string, v: CssValue): string | null {
+  if (property === 'marker-start' || property === 'marker-mid' || property === 'marker-end') {
+    return v.kind === 'keyword' && v.value === 'none' ? null : '<marker> elements are not built yet (package SVG-b)';
+  }
   if (property !== 'fill' && property !== 'stroke') return null;
   if (v.kind === 'color' || (v.kind === 'keyword' && ['none', 'currentcolor', 'transparent'].includes(v.value))) return null;
   return 'paint servers (url()) and the context-fill and context-stroke keywords are not built yet (package SVG-paint)';

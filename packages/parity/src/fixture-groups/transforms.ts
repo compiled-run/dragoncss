@@ -1,6 +1,7 @@
-// css-transforms-1 (PNT2): transform, transform-origin and will-change. Rotated, scaled, translated and matrix() boxes with every
-// origin form, nested and clipped transforms, transformed text, flex items and the music-player demo's patterns; the rejects name
-// what PNT2 refuses (PNT2-m: skew, 3D, perspective, a z origin and a composition that skews; the containing-block, viewport-unit,
+// css-transforms-1 (PNT2): transform, transform-origin and will-change, and css-transforms-2's translate, rotate and scale. Rotated,
+// scaled, translated and matrix() boxes with every origin form, nested and clipped transforms, transformed text, flex items, the
+// individual transforms alone, together and with transform, and the music-player demo's patterns; the rejects name
+// what PNT2 refuses (PNT2-m: skew, 3D, perspective, a z origin or translation and a composition that skews; the containing-block, viewport-unit,
 // will-change and root refusals). The perspective property (not the perspective() function) is drawn as an identity transform:
 // over 2D transforms it changes no pixel, only the stacking context and containing block (transform-perspective).
 import type { FixtureSpec } from '../fixtures.ts';
@@ -22,10 +23,12 @@ export const TRANSFORMS: readonly FixtureSpec[] = [
   both('transform-perspective'),
   layout('transform-flex'),
   both('transform-direction'),
+  layout('transform-individual'),
   reject('reject-transform-skew', 'DRAGON_UNSUPPORTED_VALUE', 'skewX(10deg)', `transform: skewX(10deg) is unsupported: ${M}`),
   reject('reject-transform-3d', 'DRAGON_UNSUPPORTED_VALUE', 'rotateY(20deg)', `transform: rotateY(20deg) is unsupported: ${M}`),
   reject('reject-transform-perspective', 'DRAGON_UNSUPPORTED_VALUE', 'perspective(200px)', `transform: perspective(200px) is unsupported: ${M}`),
   reject('reject-transform-scale-rotate', 'DRAGON_UNSUPPORTED_VALUE', 'scaleX(2) rotate(30deg)', 'transform: scaleX(2) rotate(30deg) is unsupported: a rotation after a non-uniform scale skews the box'),
+  reject('reject-transform-individual-z', 'DRAGON_UNSUPPORTED_VALUE', '6px', `translate: 6px is unsupported: a z translation moves the box off the plane: ${M}`),
   reject('reject-transform-origin-z', 'DRAGON_UNSUPPORTED_VALUE', '10px', `transform-origin: 10px is unsupported: it moves the origin off the plane: ${M}`),
   reject('reject-transform-viewport-unit', 'DRAGON_UNSUPPORTED_VALUE', '5vw', 'transform: 5vw is unsupported: vw in a transform function'),
   reject('reject-transform-will-change', 'DRAGON_UNSUPPORTED_VALUE', 'left', 'will-change: left is unsupported: only auto, transform and opacity are supported'),

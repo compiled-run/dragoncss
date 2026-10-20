@@ -6,8 +6,11 @@
 // Chrome's UA :focus-visible rule (outline: auto 1px -webkit-focus-ring-color) draws the focus ring an explicit none would hide.
 // The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
 // clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
-// So are the mask longhands, written only where one is not initial (MASK-CLIP accepts none that is not), and so are the border image
-// longhands (MISC-PAINT likewise).
+// So are the mask longhands, written only where one is not initial (of those MASK-CLIP accepts, only -webkit-mask-composite: source-over),
+// and so are the border image longhands (MISC-PAINT likewise), and appearance, written only where it is not none (no Chrome UA rule
+// sets it on a supported tag), and caret-color and accent-color, written on every element of a case where any element's is not auto
+// (FORM-b). -webkit-user-modify is never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag
+// changes (TOUCH).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
 // colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
@@ -18,7 +21,7 @@ import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';
 import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';
-import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import { isInitialMask, MASK_LONGHANDS, maskDeclarationName } from '../css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';
 import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';
 import type { CssValue } from '../css/stylesheet.ts';
@@ -55,6 +58,20 @@ function writesClip(el: ResolvedElement): boolean {
 /** Whether an element's clip-path is not none, its initial value. */
 function writesClipPath(el: ResolvedElement): boolean {
   const v = (el.props.get('clip-path') as ResolvedValue).value;
+  return !(v.kind === 'keyword' && v.value === 'none');
+}
+
+/** Whether an element's caret-color or accent-color is not auto, their initial value. */
+function writesUiColors(el: ResolvedElement): boolean {
+  return (['caret-color', 'accent-color'] as const).some((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return !(v.kind === 'keyword' && v.value === 'auto');
+  });
+}
+
+/** Whether an element's appearance is not none, its initial value. */
+function writesAppearance(el: ResolvedElement): boolean {
+  const v = (el.props.get('appearance') as ResolvedValue).value;
   return !(v.kind === 'keyword' && v.value === 'none');
 }
 
@@ -154,6 +171,20 @@ export function gatedConditions(c: InteractionCondition, gate: boolean): { reado
   return [{ media: HOVER_MEDIA, condition: c }, { media: NO_HOVER_MEDIA, condition: { on: c.on, off: c.off.filter((t) => !hover(t)) } }];
 }
 
+/**
+ * GEN-a: a ::before or ::after box of the resolved tree (analysis/generated.ts), read from the resolved element's tag alone, so the
+ * emitter still reads only the resolved result.
+ */
+const isGeneratedElement = (el: ResolvedElement): boolean => el.element.tag === '::before' || el.element.tag === '::after';
+
+/** One emitted part of a class: the element (suffix '') or one of its generated boxes ('::before', '::after'). */
+type Part = {
+  readonly suffix: string;
+  readonly decls: readonly string[];
+  readonly diffs: readonly (readonly string[])[];
+  readonly own: readonly { readonly band: number; readonly conditions: InteractionCondition[]; readonly lines: string[] }[];
+};
+
 /** One band after the first (MQ-a): its condition text and every case resolved in it. */
 export type WebBand = { readonly condition: string; readonly cases: readonly WebCase[] };
 
@@ -215,6 +246,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const v = r.value;
     // A folded order calculation that is not a whole number stays a calculation, which Chrome rounds as the engine does.
     if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
+    // MASK-CLIP: mask-composite's source-over is written under -webkit-mask-composite, the one name that parses it.
+    if (p === 'mask-composite') return `  ${maskDeclarationName(p, v)}: ${valueText(v)};`;
     return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
   };
   const classOf = new Map<string, Map<string, string>>();
@@ -223,7 +256,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
   const bandRules: string[][] = bands.map(() => []);
   // SELD-R2: per class, per band (the first, then each later one), its interaction states: the condition of every combination a
   // state stands for (R5), and the declarations that differ from the band's none state.
-  const pending: { cls: string; root: boolean; states: { band: number; conditions: InteractionCondition[]; lines: string[] }[] }[] = [];
+  const pending: { subject: string; root: boolean; states: Part['own'] }[] = [];
   const classesOf = new Map<string, string[]>();
   for (const c of cases) {
     const map = new Map<string, string>();
@@ -238,7 +271,12 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const bandCase = [c, ...bands.map((b) => b.cases.find((x) => x.key === c.key) as WebCase)];
     const states = bandCase.map((bc) => (bc.interaction?.states ?? []).map((st) => ({ conditions: st.members.map((m) => interactionCondition(m, (bc.interaction as WebInteraction).candidates)), at: byAddress(st.root) })));
     const bandBase = bandCase.map((bc) => byAddress(bc.root));
-    const visit = (el: ResolvedElement, under: boolean): void => {
+    // FORM-b: caret-color and accent-color are inherited, so they are written on every element of the case or none: an auto left out
+    // under a written colour would inherit it.
+    const uiColors = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesUiColors));
+    // One part: an element, or one of its ::before and ::after boxes (GEN-a R7), whose rule is the element's class with the
+    // pseudo-element appended. Its lines, its diffs in each later band, and its interaction states against each band's none state.
+    const partOf = (el: ResolvedElement, suffix: string, under: boolean, withAnimations: boolean): Part => {
       const insets = writesInsets(el);
       // The outline longhands are written for every resolution of the element or none (an unwritten one is Chrome's UA value).
       const at = (m: ReadonlyMap<string, ResolvedElement>): ResolvedElement[] => {
@@ -254,9 +292,10 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const clipPath = resolutions.some(writesClipPath);
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
+      const appearance = resolutions.some(writesAppearance);
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify').map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
-      if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
+      if (animations !== null && withAnimations) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).
       const diffs = inBands.map((m) => {
         const other = m.get(el.element.address);
@@ -271,25 +310,35 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         const lines = LONGHANDS.map((p) => declLine(here, p, under)).filter((line, k) => line !== declLine(base, LONGHANDS[k] as (typeof LONGHANDS)[number], under));
         return lines.length === 0 ? [] : [{ band, conditions: st.conditions, lines }];
       }));
-      const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}${own.length > 0 ? `\u0001${JSON.stringify(own)}` : ''}`;
+      return { suffix, decls, diffs, own };
+    };
+    const visit = (el: ResolvedElement, under: boolean): void => {
+      // Below a UA colour, an inherited colour stays inherited, so it follows a link's :active and visited colours.
+      const uaColor = (el.props.get('color') as ResolvedValue).origin === 'user-agent';
+      const below = under || sources.has(el.element.address) || uaColor;
+      // GEN-a: a generated box has no DOM element; it is emitted with its host as the host's class plus ::before or ::after.
+      const generated = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && isGeneratedElement(ch));
+      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false))];
+      const keyOf = (pt: Part): string => `${pt.suffix}\u0000${pt.decls.join('\n')}${pt.diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(pt.diffs)}` : ''}${pt.own.length > 0 ? `\u0001${JSON.stringify(pt.own)}` : ''}`;
+      const variant = `${el.element.address}${parts.map(keyOf).join('\u0002')}`;
       let cls = variants.get(variant);
       if (cls === undefined) {
         cls = `dg${variants.size}`;
         variants.set(variant, cls);
-        rules.push(`.${cls} {\n${decls.join('\n')}\n}`);
-        diffs.forEach((d, k) => {
-          if (d.length > 0) (bandRules[k] as string[]).push(`.${cls} {\n${d.join('\n')}\n}`);
-        });
-        if (own.length > 0) pending.push({ cls, root: el === c.root, states: own });
+        for (const pt of parts) {
+          const subject = `.${cls}${pt.suffix}`;
+          rules.push(`${subject} {\n${pt.decls.join('\n')}\n}`);
+          pt.diffs.forEach((d, k) => {
+            if (d.length > 0) (bandRules[k] as string[]).push(`${subject} {\n${d.join('\n')}\n}`);
+          });
+          if (pt.own.length > 0) pending.push({ subject, root: el === c.root, states: pt.own });
+        }
         const list = classesOf.get(el.element.address) ?? [];
         list.push(cls);
         classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
-      // Below a UA colour, an inherited colour stays inherited, so it follows a link's :active and visited colours.
-      const uaColor = (el.props.get('color') as ResolvedValue).origin === 'user-agent';
-      const below = under || sources.has(el.element.address) || uaColor;
-      for (const ch of el.children) if (ch.kind === 'element') visit(ch, below);
+      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch)) visit(ch, below);
     };
     visit(c.root, false);
   }
@@ -312,7 +361,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       for (const g of st.conditions.flatMap((c) => gatedConditions(c, gateHover))) {
         const cond = `:root${g.condition.on.map(([a, ps]) => test(a, ps, isRoot)).join('')}${g.condition.off.map(([a, ps]) => `:not(${test(a, ps, isRoot)})`).join('')}`;
         const list = selectors.get(g.media) ?? [];
-        list.push(p.root ? `${cond}.${p.cls}` : `${cond} .${p.cls}`);
+        list.push(p.root ? `${cond}${p.subject}` : `${cond} ${p.subject}`);
         selectors.set(g.media, list);
       }
       const byGate = stateRules[st.band] as Map<string | null, string[]>;

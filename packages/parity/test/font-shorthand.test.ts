@@ -27,12 +27,23 @@ import { layoutCases } from '../src/dpr.ts';
 import { FONT_SHORTHAND } from '../src/fixture-groups/font-shorthand.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
+import { HYPHENS_LONGHANDS } from '../../dragon/src/css/properties/hyphens.ts';
+import { LINE_BREAK_LONGHANDS } from '../../dragon/src/css/properties/line-break.ts';
+import { TAB_SIZE_LONGHANDS } from '../../dragon/src/css/properties/tab-size.ts';
+import { TEXT_ALIGN_LAST_LONGHANDS } from '../../dragon/src/css/properties/text-align-last.ts';
+import { TEXT_WRAP_LONGHANDS } from '../../dragon/src/css/properties/text-wrap.ts';
 import { FONT_FEATURES_LONGHANDS } from '../../dragon/src/css/properties/font-features.ts';
 import { FONT_STRETCH_LONGHANDS } from '../../dragon/src/css/properties/font-stretch.ts';
 import { TEXT_FILL_STROKE_LONGHANDS } from '../../dragon/src/css/properties/text-fill-stroke.ts';
 import { TEXT_SHADOW_LONGHANDS } from '../../dragon/src/css/properties/text-shadow.ts';
 import { MASK_LONGHANDS } from '../../dragon/src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS } from '../../dragon/src/css/properties/border-image.ts';
+import { COUNTERS_LONGHANDS } from '../../dragon/src/css/properties/counters.ts';
+import { TABLE_LONGHANDS } from '../../dragon/src/css/properties/table.ts';
+import { OVERSCROLL_LONGHANDS } from '../../dragon/src/css/properties/overscroll.ts';
+import { SCROLL_SNAP_LONGHANDS } from '../../dragon/src/css/properties/scroll-snap.ts';
+import { CONTAINMENT_LONGHANDS } from '../../dragon/src/css/properties/containment.ts';
+import { CONTAINER_QUERY_LONGHANDS } from '../../dragon/src/css/properties/container-query.ts';
 import { repoPath } from '../src/paths.ts';
 
 const SOURCE = { uri: 'dragon-source://test/font.css', revision: 'r1', hash: 'sha256:0' };
@@ -162,14 +173,16 @@ describe('the font-shorthand group', () => {
   // Retaken on master 285ce07960: #340 added an inherited-currentcolor shadow to the BASE fixture shadow-cascade (its 8 captures), the
   // only BASE capture that changed once the keys below are stripped and the later groups left out. Retaken again on the landing of #370,
   // which adds -webkit-opacity rows to the BASE fixture opacity-cascade (its 8 captures).
-  const BASE_CAPTURES = { files: 3164, digest: 'ec8955ba043db575a4aa2c9c35f981ad79127ec588fcb962d95914ea80cb4899' };
+  // Retaken on batch landing #457: TABLE (#443) adds a disc list-style-type case to list-style-values and TOUCH (#444) adds
+  // touch-action cases to touch-action-values; their captures are the only ones that changed.
+  const BASE_CAPTURES = { files: 3164, digest: '2e6eea5f6bb6532a02338a3f3493fb70671bfae3a79de6c7aefcd32594c51a1e' };
   // TDEC-a adds the decoration longhands after TXT-W2; BASE has neither, so stripping both leaves BASE's digest.
   // The keys added since BASE: TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2's spacing, text-indent,
   // text-transform, text-overflow, overflow-wrap, word-break and line-clamp, INL's vertical-align, float and clear, user-select, resize
   // SVG-a's paint and touch-action; BASE has none of them, so stripping them leaves BASE's captures.
-  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width', 'touch-action', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...TEXT_FILL_STROKE_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'vector-effect'];
+  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width', 'touch-action', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...TEXT_FILL_STROKE_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'background-blend-mode', 'vector-effect', 'box-decoration-break', ...LINE_BREAK_LONGHANDS, ...HYPHENS_LONGHANDS, ...TEXT_WRAP_LONGHANDS, ...TAB_SIZE_LONGHANDS, ...TEXT_ALIGN_LAST_LONGHANDS, 'scrollbar-width', 'scrollbar-gutter', 'color-scheme', 'translate', 'rotate', 'scale', 'isolation', 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS, 'zoom', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', ...TABLE_LONGHANDS, ...COUNTERS_LONGHANDS];
   // The groups that landed after BASE and add files and layout cases only (each prefix matches no BASE case or capture).
-  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|clip-rect-|filter-none|bg-position-|clip-path-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-|text-font-tuning-|text-font-size-|text-font-stretch-|text-font-features-|text-weight-ahem|text-weight-bold-ahem|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-shadow-none|text-fill-stroke-|alias-background|shadow-webkit-alias|text-style-ahem|alias-font|mask-initial|text-shadow-|transform-extra-|transform-perspective|border-image-initial|grid-item-)/;
+  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|clip-rect-|filter-none|bg-position-|clip-path-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-|text-font-tuning-|text-font-size-|text-font-stretch-|text-font-features-|text-weight-ahem|text-weight-bold-ahem|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-shadow-none|text-fill-stroke-|alias-background|shadow-webkit-alias|text-style-ahem|alias-font|mask-initial|text-shadow-|transform-extra-|transform-perspective|border-image-initial|grid-item-|opacity-fold|background-blend-|grid-track-math|bg-clip-text|box-decoration-|text-word-break-|text-line-break-|text-hyphens-|text-wrap-ahem|text-tab-size-|text-align-last-|scroll-scrollbar-|color-scheme-|transform-individual|stacking-isolation|stacking-backface|appearance-values|ui-colors-values|user-modify-values|scroll-initial-longhands|containment-initial|zoom-|gen-|table-properties|text-stroke-)/;
   it('every capture of BASE is unchanged but for the keys added since, which every node has', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])

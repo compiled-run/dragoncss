@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+*, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; }
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c::before { content: 'aa'; color: rgb(0, 0, 255); }
+div.c::before { content: 'bb'; }
+#k::before { content: 'cc'; }
+.l:before { content: 'dd'; color: rgb(128, 0, 0); }
+div.l::before { color: rgb(0, 128, 0); }
+.l::after { content: 'ee'; color: rgb(0, 100, 0); }
+.inh { color: rgb(200, 0, 0); font-size: 20px; }
+.inh::before { content: 'f'; }
+.tw { --tw-content: 'g'; }
+.tw::after { content: var(--tw-content); }
+.after-h::after { --tw-content: 'h'; content: var(--tw-content); }
+.none::before { content: none; }
+.normal::after { content: normal; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c" class="c">xx</div>
+<div data-dragon-id="k" id="k" class="c">xx</div>
+<div data-dragon-id="l" class="l">yy</div>
+<div data-dragon-id="i" class="inh">zz</div>
+<div data-dragon-id="t" class="tw">ww</div>
+<div data-dragon-id="h" class="after-h">vv</div>
+<div data-dragon-id="o" class="none normal">uu</div>
+</body>
+</html>
