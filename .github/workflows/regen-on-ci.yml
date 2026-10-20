@@ -12,6 +12,9 @@
 # Chrome rounds with the rest: its Chrome memo made it a few minutes, so a round of its own after them only added a runner's
 # setup. Never pushes master, a protected branch, the default branch or a fork; never force-pushes (a branch that moved
 # meanwhile makes the push fail).
+# resume (either dispatch mode): an earlier run's id. When its chrome-1 tree, applied to this commit, leaves every Chrome step
+# skipped (a fix that touched only host code, say), the chain starts at host-1; otherwise chrome-1 runs seeded with its store.
+# Either way the outputs equal a run from scratch, since cache entries are keyed by content. A run given resume saves no cache.
 # A push made with GITHUB_TOKEN starts no workflow, so the push job dispatches ci.yml on the branch for the new commit's checks.
 # Every push to master runs the same chain without pushing ("warm"): Actions caches made in a pull request are visible only to
 # that pull request, while master's are visible to every branch, so master's run keeps the regen cache warm for all of them.
@@ -36,12 +39,18 @@ on:
         description: With a branch, the caller's token for finding this run by its run-name (pnpm ci:regen)
         required: false
         type: string
+      resume:
+        description: Id of an earlier regen-on-ci run to take chrome-1 from when this commit changes no Chrome-step input; saves no cache
+        required: false
+        type: string
   pull_request:
     types: [labeled]
   push:
     branches: [master]
 permissions:
   contents: read
+  # A round given seed_run (resume) downloads another run's artifact; a called workflow gets no more than this.
+  actions: read
 # Master's cache runs share one group and cancel each other: only the newest master matters. A branch's runs have their own
 # group, per branch and per label, so a label event that is not `regen` never takes a queued regen's place.
 concurrency:
@@ -58,6 +67,8 @@ jobs:
       branch: ${{ steps.r.outputs.branch }}
       sha: ${{ steps.r.outputs.sha }}
       mode: ${{ steps.r.outputs.mode }}
+      resume: ${{ steps.resume.outputs.resume }}
+      save: ${{ steps.resume.outputs.save }}
     # Waiting for a slot (below) can take hours while device lanes or older branch regens run.
     timeout-minutes: 360
     steps:
@@ -177,33 +188,183 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ -n "$DISPATCH_HEAD" ] && [ "$sha" != "$DISPATCH_HEAD" ]; then echo "::error::$branch is at $sha, not the dispatched head $DISPATCH_HEAD; dispatch again"; exit 1; fi
           { echo "branch=$branch"; echo "sha=$sha"; echo "mode=push"; } >> "$GITHUB_OUTPUT"
           echo "regen-on-ci: $branch at $sha" >> "$GITHUB_STEP_SUMMARY"
-  chrome-1:
+      # resume names an earlier run whose chrome-1 tree and regen store this run starts from (resume-chrome-1 below). It must be a
+      # regen-on-ci run of this repository whose chrome-1 artifact is live and was not left by a failed or cancelled chrome-1 (the
+      # round uploads even then). One that does not qualify only warns: the run regenerates from scratch, as without resume.
+      # A store from another run never goes into the shared cache: a run given resume saves none.
+      - name: Check the run to resume from
+        id: resume
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RESUME: ${{ inputs.resume }}
+          MODE: ${{ steps.r.outputs.mode }}
+        run: |
+          set -euo pipefail
+          resume=""
+          if [ -n "${RESUME:-}" ] && [ "$MODE" != skip ]; then
+            [[ "$RESUME" =~ ^[0-9]+$ ]] || { echo "::error::resume is not a run id: $RESUME"; exit 1; }
+            why=""
+            run=$(gh api "repos/$REPO/actions/runs/$RESUME" 2>/dev/null) || why="run $RESUME was not found"
+            if [ -z "$why" ] && [ "$(jq -r '.path // ""' <<<"$run")" != .github/workflows/regen-on-ci.yml ]; then why="run $RESUME is not a regen-on-ci run"; fi
+            if [ -z "$why" ]; then
+              arts=$(gh api "repos/$REPO/actions/runs/$RESUME/artifacts?name=chrome-1&per_page=100" -q '[.artifacts[] | select(.expired == false)] | length' 2>/dev/null) || arts=error
+              [ "$arts" != 0 ] && [ "$arts" != error ] || why="run $RESUME has no live chrome-1 artifact"
+            fi
+            if [ -z "$why" ]; then
+              bad=$(gh api "repos/$REPO/actions/runs/$RESUME/jobs?filter=latest&per_page=100" -q '[.jobs[] | select((.name == "chrome-1" or (.name | startswith("chrome-1 /"))) and .conclusion != "success" and .conclusion != "skipped")] | length' 2>/dev/null) || bad=error
+              [ "$bad" = 0 ] || why="run $RESUME's chrome-1 did not succeed"
+            fi
+            if [ -n "$why" ]; then echo "::warning::$why; chrome-1 runs from scratch"; else resume=$RESUME; fi
+          fi
+          save=false
+          if [ "$MODE" != patch ] && [ -z "${RESUME:-}" ]; then save=true; fi
+          { echo "resume=$resume"; echo "save=$save"; } >> "$GITHUB_OUTPUT"
+          [ -z "$resume" ] || echo "regen-on-ci: resuming from run $resume's chrome-1 where it still covers this commit; no cache is saved" >> "$GITHUB_STEP_SUMMARY"
+  # With resume: when the earlier run's chrome-1 tree, applied to this commit, leaves every Chrome step skipped under its regen
+  # store (regen --explain, keyed as the macOS runner, as the push job judges a moved branch), that tree is what chrome-1 would
+  # make here, so this Linux job uploads it as chrome-1 and the chain starts at host-1. Anything else (the patch does not apply,
+  # a step would run or restore, any error) leaves resumed unset and chrome-1 runs, seeded with that run's store.
+  resume-chrome-1:
     needs: resolve
-    if: needs.resolve.outputs.mode != 'skip'
+    if: needs.resolve.outputs.mode != 'skip' && needs.resolve.outputs.resume != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      resumed: ${{ steps.done.outputs.resumed }}
+      changed: ${{ steps.done.outputs.changed }}
+      next: ${{ steps.done.outputs.next }}
+    env:
+      # The machine and environment the rounds key with (regen-on-ci-round.yml), so the keys match theirs.
+      DRAGON_REGEN_MACHINE: '{"platform":"darwin","arch":"arm64","node":"v24.15.0"}'
+      DRAGON_WPT_DIR: /Users/runner/wpt
+      JAVA_HOME: /opt/homebrew/opt/openjdk@17
+      ANDROID_HOME: /opt/homebrew/share/android-commandlinetools
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - name: Check out the commit
+        id: co
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - name: Set up pnpm 10.33.2
+        id: pnpm
+        continue-on-error: true
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - name: Set up Node 24.15.0
+        id: node
+        continue-on-error: true
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - name: Install dependencies
+        id: install
+        continue-on-error: true
+        run: pnpm install --frozen-lockfile
+      - name: Download the earlier run's chrome-1
+        id: dl
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-1
+          path: ${{ runner.temp }}/prev
+          run-id: ${{ needs.resolve.outputs.resume }}
+          github-token: ${{ github.token }}
+      - name: Would chrome-1 change anything on this commit
+        id: judge
+        if: steps.co.outcome == 'success' && steps.pnpm.outcome == 'success' && steps.node.outcome == 'success' && steps.install.outcome == 'success' && steps.dl.outcome == 'success'
+        continue-on-error: true
+        env:
+          SHA: ${{ needs.resolve.outputs.sha }}
+          RESUME: ${{ needs.resolve.outputs.resume }}
+        run: |
+          set -euo pipefail
+          prev="$RUNNER_TEMP/prev"
+          test -f "$prev/store.tar.zst" || { echo "run $RESUME's chrome-1 has no store; chrome-1 runs"; exit 0; }
+          if [ -s "$prev/outputs.patch" ]; then
+            git apply --binary --check "$prev/outputs.patch" || { echo "run $RESUME's chrome-1 outputs do not apply to $SHA; chrome-1 runs"; exit 0; }
+            git apply --binary "$prev/outputs.patch"
+          fi
+          mkdir -p .git/dragon-regen
+          zstd -dcq "$prev/store.tar.zst" | tar -xf - -C .git/dragon-regen
+          log=node_modules/.cache/dragon-regen/last-run.json
+          node scripts/regen.ts --explain --skip lanes-host || { echo "regen --explain failed; chrome-1 runs"; exit 0; }
+          total=$(jq length "$log")
+          stale=$(jq -r '[.[] | select(.action != "skipped") | "\(.step) (\(.action): \(.why))"] | join("; ")' "$log")
+          [ "$total" -gt 0 ] || { echo "regen --explain judged no step; chrome-1 runs"; exit 0; }
+          [ -z "$stale" ] || { echo "this commit changes Chrome-step inputs: $stale; chrome-1 runs"; exit 0; }
+          mkdir -p "$RUNNER_TEMP/out"
+          cp "$log" "$RUNNER_TEMP/out/chrome-explain.json"
+          # The round's own outputs: the cumulative patch against this commit (made again here, so it is against $SHA), the store.
+          git add -A
+          git diff --cached --binary "$SHA" > "$RUNNER_TEMP/out/outputs.patch"
+          changed=false; [ -s "$RUNNER_TEMP/out/outputs.patch" ] && changed=true
+          mv "$prev/store.tar.zst" "$RUNNER_TEMP/out/store.tar.zst"
+          # As the round's own "Would the other side's round run anything": anything but a clean "all skipped" says host-1 runs.
+          next=true
+          if node scripts/regen.ts --explain --only lanes-host; then
+            n=$(jq '[.[] | select(.action != "skipped")] | length' "$log" 2>/dev/null || echo error)
+            [ "$n" != 0 ] || next=false
+          fi
+          echo "chrome-1 (resumed from run $RESUME): all $total Chrome steps covered on $SHA, changed files: $changed; host-1 $([ "$next" = true ] && echo runs || echo would change nothing)" | tee "$RUNNER_TEMP/out/timing.txt" >> "$GITHUB_STEP_SUMMARY"
+          { echo "ok=true"; echo "changed=$changed"; echo "next=$next"; } >> "$GITHUB_OUTPUT"
+      - name: Upload as chrome-1
+        id: up
+        if: steps.judge.outcome == 'success' && steps.judge.outputs.ok == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-1
+          path: ${{ runner.temp }}/out
+          if-no-files-found: error
+          compression-level: 0
+      - name: Resumed or not
+        id: done
+        env:
+          UP: ${{ steps.up.outcome }}
+          CHANGED: ${{ steps.judge.outputs.changed }}
+          NEXT: ${{ steps.judge.outputs.next }}
+        run: |
+          if [ "$UP" = success ]; then
+            { echo "resumed=true"; echo "changed=$CHANGED"; echo "next=$NEXT"; } >> "$GITHUB_OUTPUT"
+          else
+            echo "resumed=false" >> "$GITHUB_OUTPUT"
+            echo "regen-on-ci: chrome-1 could not be taken from the earlier run; it runs, seeded with that run's store" >> "$GITHUB_STEP_SUMMARY"
+          fi
+  chrome-1:
+    needs: [resolve, resume-chrome-1]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && needs.resume-chrome-1.outputs.resumed != 'true' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', seed_run: '${{ needs.resolve.outputs.resume }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+  # chrome-1 is skipped when resume-chrome-1 supplied it, so host-1 and every later round test their ancestors themselves
+  # (!cancelled, !failure): the default success() skips a job below any skipped one.
   host-1:
-    needs: [resolve, chrome-1]
-    if: needs.chrome-1.outputs.next != 'false'
+    needs: [resolve, resume-chrome-1, chrome-1]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && (needs.chrome-1.result == 'success' || needs.resume-chrome-1.outputs.resumed == 'true') && (needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
+    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   chrome-2:
     needs: [resolve, host-1]
-    if: needs.host-1.outputs.changed == 'true' && needs.host-1.outputs.next != 'false'
+    if: ${{ !cancelled() && !failure() && needs.host-1.outputs.changed == 'true' && needs.host-1.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   host-2:
     needs: [resolve, chrome-2]
-    if: needs.chrome-2.outputs.changed == 'true' && needs.chrome-2.outputs.next != 'false'
+    if: ${{ !cancelled() && !failure() && needs.chrome-2.outputs.changed == 'true' && needs.chrome-2.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
+    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   chrome-3:
     needs: [resolve, host-2]
-    if: needs.host-2.outputs.changed == 'true' && needs.host-2.outputs.next != 'false'
+    if: ${{ !cancelled() && !failure() && needs.host-2.outputs.changed == 'true' && needs.host-2.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   converge:
-    needs: [resolve, chrome-1, host-1, chrome-2, host-2, chrome-3]
+    needs: [resolve, resume-chrome-1, chrome-1, host-1, chrome-2, host-2, chrome-3]
     if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     outputs:
@@ -212,8 +373,8 @@ jobs:
       - name: Pick the last round
         id: last
         env:
-          C1: ${{ needs.chrome-1.outputs.changed }}
-          N1: ${{ needs.chrome-1.outputs.next }}
+          C1: ${{ needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.changed || needs.chrome-1.outputs.changed }}
+          N1: ${{ needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next }}
           H1: ${{ needs.host-1.outputs.changed }}
           C2: ${{ needs.chrome-2.outputs.changed }}
           H2: ${{ needs.host-2.outputs.changed }}
