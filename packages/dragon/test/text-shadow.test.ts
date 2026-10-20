@@ -296,6 +296,35 @@ describe('text-shadow', () => {
     expect(refused(`.a { line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'w'))).toEqual([]);
   });
 
+  it('decides tree order per pair, from the boxes below the pair\'s common ancestor: a positioned ancestor of both moves them together', () => {
+    // The shadowed heading over a paragraph under body { position: relative } or a relatively positioned wrapper of both: the
+    // paragraph still paints later and covers the shadow.
+    const h = '.h { font-size: 20px; margin: 0 0 10px; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }';
+    const heading = (r: SourceRef) => [el(r, 'h', 'div', ['h'], [text(r, 't', 'XX')]), el(r, 'p', 'p', [], [text(r, 'u', 'XX')])];
+    expect(errorsIn(`body { position: relative; } ${h}`, heading)).toEqual([]);
+    const wrapped = (r: SourceRef) => [el(r, 'w', 'div', ['w'], heading(r))];
+    expect(errorsIn(`.w { position: relative; } ${h}`, wrapped)).toEqual([]);
+    expect(errorsIn(`.w { position: relative; z-index: 1; } ${h}`, wrapped)).toEqual([]);
+    expect(errorsIn(`.w { float: left; width: 100px; } ${h}`, wrapped)).toEqual([]);
+    // A positioned box below the common ancestor, around the paragraph alone, may paint it first: refused, body relative or not.
+    const one = (r: SourceRef) => [el(r, 'h', 'div', ['h'], [text(r, 't', 'XX')]), el(r, 'w', 'div', ['w'], [el(r, 'p', 'p', [], [text(r, 'u', 'XX')])])];
+    expect(errorsIn(`.w { position: relative; z-index: -1; } ${h}`, one)).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`body { position: relative; } .w { position: relative; z-index: -1; } ${h}`, one)).toEqual(NATIVE_REFUSED);
+    // Landing's five order cases, with each trigger below a positioned common ancestor (the wrapper w, and body): still refused.
+    const shadow = 'text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);';
+    const two = (cls: string, plain: string, wrap: string) => (r: SourceRef) => [el(r, 'f', 'div', wrap.split(' '), [el(r, 'a', 'div', [cls], [text(r, 't', 'XX')]), el(r, 'b', 'div', [plain], [text(r, 'u', 'XX')])])];
+    const refused = (css: string, body: (r: SourceRef) => TreeNode[]): string[] => [...new Set(errorsIn(`body { position: relative; } .r { position: relative; } ${css}`, body))];
+    expect(refused(`.f { display: flex; } .a { order: 1; ${shadow} }`, two('a', 'p', 'f r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.f { display: flex; } .a { z-index: 1; ${shadow} }`, two('a', 'p', 'f r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.f { display: flex; } .a { ${shadow} } .p { z-index: -1; }`, two('a', 'p', 'f r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.a { position: relative; line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.a { ${shadow} } .p { float: left; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.a { ${shadow} } .p { position: relative; z-index: -1; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
+    // And without a trigger below it, the positioned wrapper changes nothing.
+    expect(refused(`.a { line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'r'))).toEqual([]);
+    expect(refused(`.f { display: flex; } .a { ${shadow} }`, two('a', 'p', 'f r'))).toEqual([]);
+  });
+
   it('refuses a column flex item that may shrink below its text (min-height 0), and keeps one at min-height auto', () => {
     const items = (r: SourceRef) => [el(r, 'f', 'div', ['f'], [el(r, 'a', 'div', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['i'], [text(r, 'u', 'XX')])])];
     const css = (min: string) => `.f { display: flex; flex-direction: column; height: 30px; } .i { ${min} line-height: 40px; text-shadow: 0 0 4px rgba(0, 0, 0, 0.5); }`;
