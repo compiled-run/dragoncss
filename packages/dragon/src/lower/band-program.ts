@@ -243,7 +243,9 @@ export function refuseSizeTransitions(bands: readonly BandAnalysis[], targets: r
           const fs = t.get(address)?.props.get('font-size')?.value;
           return fs !== undefined && dependsOnViewport(fs);
         });
-        const viewport = values.some((v) => v !== null && (dependsOnViewport(v) || (followsFont && readsFontSize(p, v))));
+        // An inherited em still relative was taken of an ancestor's size that follows the viewport (computeLengths makes the rest px).
+        const inheritedEm = trees.some((t) => t.get(address)?.props.get(p)?.origin === 'inherited');
+        const viewport = values.some((v) => v !== null && (dependsOnViewport(v) || ((followsFont || inheritedEm) && readsFontSize(p, v))));
         if (!differs && !viewport) continue;
         const ea = elements.map((e) => e.get(address)).find((x) => x !== undefined);
         const span = ea === undefined ? null : transitionSpan(ea);

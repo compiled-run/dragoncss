@@ -7,7 +7,7 @@ import { ProgramError } from '../lower/paint/types.ts';
 import { fontLoweringGap, viewportFontSize } from '../lower/ios-layout.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
-import { LONGHANDS } from '../css/properties.ts';
+import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf, isMathValue } from '../css/values.ts';
 import { isPercentMath, mathContextFor, parseMath } from '../css/math.ts';
 import type { CssValue, FamilyKeyContext } from '../css/values.ts';
@@ -114,7 +114,7 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
  * Under such a size, an em the native paint programs read (radius, shadow, outline, transform) or the text and border lowering
  * reads (spacing, border widths) stays relative too, and is refused here.
  */
-function checkViewportFont(el: ResolvedElement, staleLineHeight: boolean, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkViewportFont(el: ResolvedElement, stale: ReadonlySet<Longhand>, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   if (targets.length === 0) return;
   const get = (p: Longhand): CssValue => (el.props.get(p) as ResolvedValue).value;
   const push = (key: string, message: string, manual: string): void => {
@@ -127,10 +127,16 @@ function checkViewportFont(el: ResolvedElement, staleLineHeight: boolean, target
   };
   // A refused calculation is reported where it is declared.
   if (isRefusedMath(get('font-size')) || isRefusedMath(get('line-height'))) return;
-  const gap = fontLoweringGap(get('font-size'), get('line-height'), staleLineHeight);
-  const laysOutText = el.children.some((c) => c.kind === 'text') || keywordOf(el.props.get('display') as ResolvedValue) === 'inline';
+  const gap = fontLoweringGap(get('font-size'), get('line-height'), stale.has('line-height'));
+  const display = keywordOf(el.props.get('display') as ResolvedValue);
+  const laysOutText = el.children.some((c) => c.kind === 'text') || display === 'inline';
   if (gap !== null && (gap.property === 'font-size' || laysOutText)) {
     push('font', `${gap.property}: ${valueToString(get(gap.property))} on <${el.element.tag}> ${el.element.address} is not resolved on the device: ${gap.reason}`, `Set a px or vw ${gap.property} on <${el.element.tag}> ${el.element.address}.`);
+  }
+  // Any other inherited em length an ancestor took of a size that follows the viewport, where this element reads it.
+  const inherits = [...stale].filter((p) => p !== 'line-height' && (laysOutText || display === 'table' || display === 'inline-table')).sort();
+  if (inherits.length > 0) {
+    push('inherited-em', `${inherits.join(', ')} on <${el.element.tag}> ${el.element.address} ${inherits.length === 1 ? 'inherits an em' : 'inherit ems'} an ancestor took of a font-size that follows the viewport, which the native targets do not resolve yet`, `Use px or vw for ${inherits.join(', ')} where ${inherits.length === 1 ? 'it is' : 'they are'} declared, or set it on <${el.element.tag}> ${el.element.address}.`);
   }
   if (gap?.property === 'font-size' || viewportFontSize(get('font-size')) === null) return;
   const relative = EM_UNDER_VIEWPORT_FONT.filter((p) => EM_IN_VALUE.test(valueToString(get(p))));
@@ -146,6 +152,21 @@ const EM_UNDER_VIEWPORT_FONT: readonly Longhand[] = [
   'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing',
 ];
 const EM_IN_VALUE = /\dem(?![\w-])/i;
+
+/**
+ * CALC-2: the inherited lengths an element reads relative to a font size other than the one Chrome took them of: an em, % or
+ * calculated line-height, or another inherited length still holding em (one an ancestor declared under a size that follows the
+ * viewport, since under a px size computeLengths makes it px), inherited through an element (this one included) with its own size.
+ */
+function staleInherited(el: ResolvedElement, parent: ReadonlySet<Longhand>): ReadonlySet<Longhand> {
+  const ownSize = (el.props.get('font-size') as ResolvedValue).origin !== 'inherited';
+  const out = new Set<Longhand>();
+  for (const [p, v] of el.props) {
+    if (v.origin !== 'inherited' || !INHERITED.has(p) || !(ownSize || parent.has(p))) continue;
+    if (p === 'line-height' ? relativeLineHeight(v.value) : EM_IN_VALUE.test(valueToString(v.value))) out.add(p);
+  }
+  return out;
+}
 
 /** An em, % or calculated line-height, which an element computes against its own font size only when that is px (CALC-2). */
 const relativeLineHeight = (v: CssValue): boolean => !((v.kind === 'keyword' && v.value === 'normal') || v.kind === 'number' || (v.kind === 'length' && v.unit === 'px'));
@@ -1068,8 +1089,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
-  // staleLh: an ancestor inherits an em or % line-height over its own font size (checkViewportFont).
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], staleLh: boolean): void => {
+  // staleLh: the inherited em or % lengths an ancestor inherits over its own font size (checkViewportFont).
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], staleLh: ReadonlySet<Longhand>): void => {
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1083,8 +1104,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
-    const lh = el.props.get('line-height') as ResolvedValue;
-    const stale = lh.origin === 'inherited' && relativeLineHeight(lh.value) && (staleLh || (el.props.get('font-size') as ResolvedValue).origin !== 'inherited');
+    const stale = staleInherited(el, staleLh);
     checkOverflow(el, targets, diagnostics, reported);
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
@@ -1128,7 +1148,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     const inner = el === root ? own : (own ?? scroller);
     for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, stale);
   };
-  walk(root, false, 'viewport', [], false);
+  walk(root, false, 'viewport', [], new Set());
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

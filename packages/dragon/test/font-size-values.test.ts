@@ -193,6 +193,21 @@ describe("the minimum logical font size Chrome clamps a relative size to", () =>
     expect(nestedErrors('.k { font-size: 4vw; line-height: 150%; }')).toEqual([]);
   });
 
+  it('refuses on iOS and Android any other inherited em length taken of a viewport size above one with its own size (PR #521 review)', () => {
+    const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    expect(errors('', '2vw; text-indent: 1em', '4vw')).toEqual(NATIVE);
+    expect(errors('', '2vw; text-indent: calc(1em + 1px)', '20px')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 2vw; text-indent: 1em; } .m { font-size: 4vw; }')).toEqual(NATIVE);
+    expect(errors('', '2vw; text-indent: 1em', '2vw')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 2vw; text-indent: 1em; }')).toEqual([]);
+    expect(errors('', '20px; text-indent: 1em', '4vw')).toEqual([]);
+  });
+
+  it('refuses an em keyframe on an element whose size follows the viewport, and compiles a px one (PR #521 review)', () => {
+    expect(nestedErrors('.m { font-size: 2vw; animation: m 1s; } @keyframes m { from { width: 5px; } to { width: 10px; } }')).toEqual([]);
+    expect(nestedErrors('.m { font-size: 2vw; animation: m 1s; } @keyframes m { from { width: 1em; } to { width: 2em; } }')).toEqual(['null DRAGON_UNSUPPORTED_VALUE', 'null DRAGON_UNSUPPORTED_VALUE']);
+  });
+
   it('refuses on iOS and Android an em the paint programs, spacing or border widths read under a viewport size (PR #521 review)', () => {
     const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
     for (const d of ['border-radius: 1em', 'box-shadow: 1em 1em red', 'outline: 0.1em solid red', 'transform: translateX(1em)', 'letter-spacing: 0.1em', 'border: 0.1em solid red']) {

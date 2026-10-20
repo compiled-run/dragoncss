@@ -373,7 +373,14 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             const kind = animationKind(v.property);
             animated.add(`${ea.address}|${v.property}`);
             if (!admitted(kind)) continue;
-            const value = keyframeValueOf(v.value, fontPx(valueAt(el, 'font-size').value), fontPx(valueAt(rootEl, 'font-size').value));
+            // CALC-2: an element's font size may follow the viewport, so an em keyframe there has no px yet (refused below).
+            const fs = valueAt(el, 'font-size').value;
+            const followsViewport = !(fs.kind === 'length' && fs.unit === 'px');
+            if (followsViewport && v.value.kind === 'length' && v.value.unit === 'em') {
+              once(`kfem|${ea.address}|${v.span.start}`, refuse(v.valueSpan, `${v.property}: ${v.text} in @keyframes ${a.name} on ${ea.address} is unsupported: an em keyframe under a font-size that follows the viewport is not resolved on the device yet (CALC-2)`));
+              continue;
+            }
+            const value = keyframeValueOf(v.value, followsViewport ? Number.NaN : fontPx(fs), fontPx(valueAt(rootEl, 'font-size').value));
             if (kind.kind === 'color' && value.kind === 'keyword' && value.value === 'currentcolor') once(`kfcc|${v.span.start}`, refuse(v.valueSpan, `${v.property}: currentcolor in @keyframes ${a.name} is unsupported: a keyframe pair between currentcolor and a colour is not built yet (package ANIM-cc)`));
             const id = `${a.name}|${v.span.start}|${v.property}`;
             const text = JSON.stringify(value);
