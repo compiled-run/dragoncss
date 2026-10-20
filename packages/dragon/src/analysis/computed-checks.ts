@@ -52,6 +52,7 @@ import { checkTransformExtra } from './transform-extra.ts';
 import { checkZoom } from './zoom.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
+import { checkImageRendering } from './image-rendering.ts';
 import { checkScrollContainment } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
 import type { MaskFaults } from '../faults/mask.ts';
@@ -1098,6 +1099,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkZoom(el, targets, diagnostics, reported);
     // The overscroll, scroll-snap, containment and container-query families, initial values only (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
+    if (!here) checkImageRendering(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);

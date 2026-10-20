@@ -5,7 +5,8 @@
 // them once (ImageIO on UIKit, BitmapFactory on Android) and, in the image stage after the border, draws the bitmap into the
 // engine's destination rect clipped to the drawn part of the content box (DragonTree.apply sets both after layout from the
 // translated paint.ts replacedPaint), and a rounded img also clipped to its padding-edge curve (the roundedPath hook, as Blink's
-// inner border radius clip). The readback is the natural size, the fit and the destination rect.
+// inner border radius clip). An img whose image-rendering is pixelated is sampled nearest-neighbour (dragonSetImagePixelated), as
+// Chrome 145 draws it. The readback is the natural size, the fit, the destination rect and, for a pixelated img, pixelated.
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT, rgbaLit } from './types.ts';
 
@@ -17,6 +18,12 @@ const SWIFT_MEMBERS = String.raw`  /// REPL-a image: the decoded bitmap, its nat
     dragonImage = dragonDecodeImage(base64, dragonId)
     dragonImageNatural = [width, height]
     dragonImageFit = fit
+    setNeedsDisplay()
+  }
+  /// image-rendering: pixelated: the image stage samples the bitmap nearest-neighbour.
+  public private(set) var dragonImagePixelated = false
+  public func dragonSetImagePixelated() {
+    dragonImagePixelated = true
     setNeedsDisplay()
   }
   /// SVG-a2: the svg's viewBox (min-x, min-y, width, height) or nil, and its shapes in paint order.
@@ -178,6 +185,9 @@ public func dragonAppliedSvg(_ v: DragonBoxView) -> DumpJsonObject {
 
 /// Device px added to the drawn destination x; 0 except in the image-offset-1 raster plant build, which proves the pixel lane sees the image.
 public let dragonImagePlantDevicePx: Double = 0
+/// Whether a pixelated image is drawn filtered anyway; false except in the image-smooth raster plant build, which proves the pixel
+/// lane sees nearest-neighbour sampling.
+public let dragonImagePlantSmooth = false
 
 /// Decodes the PNG bytes once, when the view is built (kCGImageSourceShouldCacheImmediately), so a capture never waits on a decode.
 public func dragonDecodeImage(_ base64: String, _ id: String) -> CGImage {
@@ -189,7 +199,8 @@ public func dragonDecodeImage(_ base64: String, _ id: String) -> CGImage {
 }
 
 /// The image stage: the bitmap into the destination rect, clipped to the drawn part of the content box and, for a rounded img, to
-/// its padding-edge curve (its content box, since a rounded img has no padding), in points.
+/// its padding-edge curve (its content box, since a rounded img has no padding), in points. CoreGraphics samples it with its high
+/// quality filter, or, for image-rendering: pixelated, nearest-neighbour (.none), the texel under each device pixel's centre as Skia does.
 public func dragonPaintImageStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
   dragonPaintSvg(v, ctx)
   guard let image = v.dragonImage, let d = v.dragonReplacedDest, let c = v.dragonReplacedDrawn else { return }
@@ -200,17 +211,19 @@ public func dragonPaintImageStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape:
     ctx.addPath(curve)
     ctx.clip()
   }
-  ctx.interpolationQuality = .high
+  ctx.interpolationQuality = v.dragonImagePixelated && !dragonImagePlantSmooth ? .none : .high
   UIImage(cgImage: image).draw(in: CGRect(x: CGFloat(d[0] + dragonImagePlantDevicePx) / s, y: CGFloat(d[1]) / s, width: CGFloat(d[2]) / s, height: CGFloat(d[3]) / s))
   ctx.restoreGState()
 }
 
-/// The readback of the image module: the natural size, the fit and the destination rect in points relative to the box.
+/// The readback of the image module: the natural size, the fit, the destination rect in points relative to the box and, for a
+/// pixelated image only, pixelated.
 public func dragonAppliedImage(_ v: DragonBoxView) -> DumpJsonObject {
   guard v.dragonImage != nil else { return dragonAppliedSvg(v) }
   let s = v.dragonScale
   let dest: DumpJson = v.dragonReplacedDest.map { .array($0.map { .number($0 / s) }) } ?? .null
-  return [("dragonImage", .object([("natural", .array(v.dragonImageNatural.map { .number($0) })), ("fit", .string(v.dragonImageFit)), ("dest", dest)]))]
+  let pixelated: DumpJsonObject = v.dragonImagePixelated ? [("pixelated", .bool(true))] : []
+  return [("dragonImage", .object([("natural", .array(v.dragonImageNatural.map { .number($0) })), ("fit", .string(v.dragonImageFit)), ("dest", dest)] + pixelated))]
 }
 `;
 
@@ -231,6 +244,13 @@ const KOTLIN_MEMBERS = String.raw`  /** REPL-a image: the decoded bitmap, its na
     dragonImageNatural = doubleArrayOf(width, height)
     dragonImageFit = fit
     dragonImageLayer = layer
+    invalidate()
+  }
+  /** image-rendering: pixelated: the image stage samples the bitmap nearest-neighbour. */
+  var dragonImagePixelated: Boolean = false
+    private set
+  fun dragonSetImagePixelated() {
+    dragonImagePixelated = true
     invalidate()
   }
   /** SVG-a2: the svg's viewBox (min-x, min-y, width, height) or null, and its shapes in paint order. */
@@ -260,6 +280,8 @@ import dev.dragon.dump.DumpJson
 
 /** Device px added to the drawn destination x; 0 except in the image-offset-1 raster plant build, which proves the pixel lane sees the image. */
 const val DRAGON_IMAGE_PLANT_DEVICE_PX = 0.0
+/** Whether a pixelated image is drawn filtered anyway; false except in the image-smooth raster plant build, which proves the pixel lane sees nearest-neighbour sampling. */
+const val DRAGON_IMAGE_PLANT_SMOOTH = false
 
 /**
  * SVG-a2: one shape, its outline as verb-coded user units (0 move, 1 line, 2 quad, 3 cubic, 4 close, 5 circle), paint and stroke
@@ -405,7 +427,7 @@ fun dragonDecodeImage(base64: String, id: String): Bitmap {
 }
 
 /**
- * The image stage: the bitmap, filtered, into the destination rect, clipped to the drawn part of the content box and, for a rounded
+ * The image stage: the bitmap, filtered (nearest-neighbour when pixelated), into the destination rect, clipped to the drawn part of the content box and, for a rounded
  * img, to its padding-edge curve, in device px.
  * On a hardware canvas it is drawn into a RenderNode with its own compositing layer over the drawn part (whole device px), which
  * the frame composites unscaled: a filtered bitmap drawn straight into the window's frame moved other boxes' edges by one colour
@@ -418,7 +440,9 @@ fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShap
   val c = v.dragonReplacedDrawn ?: return
   val x = d[0] + DRAGON_IMAGE_PLANT_DEVICE_PX
   val dest = RectF(x.toFloat(), d[1].toFloat(), (x + d[2]).toFloat(), (d[1] + d[3]).toFloat())
-  val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+  // image-rendering: pixelated samples nearest-neighbour, the texel under each device pixel's centre as Skia does. Paint's
+  // constructor adds FILTER_BITMAP_FLAG to every paint (its hidden default flags), so it is cleared, not left out.
+  val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply { isFilterBitmap = !v.dragonImagePixelated || DRAGON_IMAGE_PLANT_SMOOTH }
   // A rounded img: the padding-edge curve (its content box, since a rounded img has no padding), in the view's device px.
   val curve = dragonRoundedPath(v, shape, true)
   val px = dragonCoveringPx(c)
@@ -470,12 +494,13 @@ fun dragonWholePxTranslate(v: View): Boolean {
   return true
 }
 
-/** The readback of the image module: the natural size, the fit and the destination rect in device px relative to the box. */
+/** The readback of the image module: the natural size, the fit, the destination rect in device px relative to the box and, for a pixelated image only, pixelated. */
 fun dragonAppliedImage(v: DragonBoxView): List<Pair<String, DumpJson>> {
   if (v.dragonImage == null) return dragonAppliedSvg(v)
   val d = v.dragonReplacedDest
   val dest = if (d == null) DumpJson.Null else DumpJson.Arr(d.map { DumpJson.Num(it) })
-  return listOf(Pair("dragonImage", DumpJson.Obj(listOf(Pair("natural", DumpJson.Arr(v.dragonImageNatural.map { DumpJson.Num(it) })), Pair("fit", DumpJson.Str(v.dragonImageFit)), Pair("dest", dest)))))
+  val pixelated = if (v.dragonImagePixelated) listOf(Pair("pixelated", DumpJson.Bool(true))) else emptyList()
+  return listOf(Pair("dragonImage", DumpJson.Obj(listOf(Pair("natural", DumpJson.Arr(v.dragonImageNatural.map { DumpJson.Num(it) })), Pair("fit", DumpJson.Str(v.dragonImageFit)), Pair("dest", dest)) + pixelated)))
 }
 `;
 
@@ -500,16 +525,16 @@ const numLit = (n: number): string => {
 
 const svgColor = (c: { r: number; g: number; b: number; alpha: number } | null, backend: 'swift' | 'kotlin'): string => (c === null ? (backend === 'swift' ? 'nil' : 'null') : rgbaLit(c));
 
-export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image-offset-1' | 'svg-stroke-first' | 'svg-even-odd' | 'svg-stroke-unscaled' | 'svg-paint-swapped' | 'svg-cap-butt' | 'svg-join-miter' | 'svg-miter-limit-4' | 'svg-dash-solid' | 'svg-dash-phase-0' | 'svg-paint-order-normal' | 'svg-vector-effect-none'> = {
+export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image-offset-1' | 'image-smooth' | 'svg-stroke-first' | 'svg-even-odd' | 'svg-stroke-unscaled' | 'svg-paint-swapped' | 'svg-cap-butt' | 'svg-join-miter' | 'svg-miter-limit-4' | 'svg-dash-solid' | 'svg-dash-phase-0' | 'svg-paint-order-normal' | 'svg-vector-effect-none'> = {
   name: 'image',
   kinds: ['replaced-image', 'svg-shapes'],
   lines: {
     uikit: (v, _n, w) => (w.kind === 'svg-shapes'
       ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'nil' : `[${w.viewBox.map(numLit).join(', ')}]`}, [${w.shapes.map((sh) => `DragonSvgShape([${sh.path.map(numLit).join(', ')}], ${svgColor(sh.fill, 'swift')}, ${svgColor(sh.stroke, 'swift')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)}, [${sh.dashes.map(numLit).join(', ')}], ${numLit(sh.dashPhase)}, ${sh.strokeFirst ? 'true' : 'false'}, ${sh.nonScalingStroke ? 'true' : 'false'})`).join(', ')}])`]
-      : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, width: ${pxLit(w.width)}, height: ${pxLit(w.height)}, fit: ${keywordLit(w.fit)})`]),
+      : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, width: ${pxLit(w.width)}, height: ${pxLit(w.height)}, fit: ${keywordLit(w.fit)})`, ...(w.pixelated ? [`  ${v}.dragonSetImagePixelated()`] : [])]),
     'android-views': (v, _n, w) => (w.kind === 'svg-shapes'
       ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'null' : `doubleArrayOf(${w.viewBox.map(numLit).join(', ')})`}, listOf(${w.shapes.map((sh) => `DragonSvgShape(doubleArrayOf(${sh.path.map(numLit).join(', ')}), ${svgColor(sh.fill, 'kotlin')}, ${svgColor(sh.stroke, 'kotlin')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)}, doubleArrayOf(${sh.dashes.map(numLit).join(', ')}), ${numLit(sh.dashPhase)}, ${sh.strokeFirst ? 'true' : 'false'}, ${sh.nonScalingStroke ? 'true' : 'false'})`).join(', ')}))`]
-      : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)}, ${w.layer ? 'true' : 'false'})`]),
+      : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)}, ${w.layer ? 'true' : 'false'})`, ...(w.pixelated ? [`  ${v}.dragonSetImagePixelated()`] : [])]),
   },
   applied: (_e, backend, w, dpr, g) => {
     if (w.kind === 'svg-shapes') {
@@ -517,7 +542,7 @@ export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image
       return { viewBox: w.viewBox === null ? null : [...w.viewBox], shapes: w.shapes.map((sh) => [rgba(sh.fill), rgba(sh.stroke), sh.width, sh.cap, sh.join, sh.miterLimit, sh.fillRule, [...sh.dashes], sh.dashPhase, sh.strokeFirst, sh.nonScalingStroke]) };
     }
     if (g.replaced === null) throw new Error('an image write on a box that is not replaced');
-    return { natural: [w.width, w.height], fit: w.fit, dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest] };
+    return { natural: [w.width, w.height], fit: w.fit, dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest], ...(w.pixelated ? { pixelated: true } : {}) };
   },
   native: {
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, stages: { border: 'dragonPaintImageStage' }, applied: 'dragonAppliedImage' },
@@ -531,6 +556,7 @@ export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image
         'android-views': ['const val DRAGON_IMAGE_PLANT_DEVICE_PX = 0.0', 'const val DRAGON_IMAGE_PLANT_DEVICE_PX = 1.0'],
       },
     },
+    { name: 'image-smooth', replace: { uikit: ['public let dragonImagePlantSmooth = false', 'public let dragonImagePlantSmooth = true'], 'android-views': ['const val DRAGON_IMAGE_PLANT_SMOOTH = false', 'const val DRAGON_IMAGE_PLANT_SMOOTH = true'] } },
     { name: 'svg-stroke-first', replace: { uikit: ['public let dragonSvgPlantStrokeFirst = false', 'public let dragonSvgPlantStrokeFirst = true'], 'android-views': ['const val DRAGON_SVG_PLANT_STROKE_FIRST = false', 'const val DRAGON_SVG_PLANT_STROKE_FIRST = true'] } },
     { name: 'svg-even-odd', replace: { uikit: ['public let dragonSvgPlantEvenOdd = false', 'public let dragonSvgPlantEvenOdd = true'], 'android-views': ['const val DRAGON_SVG_PLANT_EVEN_ODD = false', 'const val DRAGON_SVG_PLANT_EVEN_ODD = true'] } },
     { name: 'svg-stroke-unscaled', replace: { uikit: ['public let dragonSvgPlantStrokeUnscaled = false', 'public let dragonSvgPlantStrokeUnscaled = true'], 'android-views': ['const val DRAGON_SVG_PLANT_STROKE_UNSCALED = false', 'const val DRAGON_SVG_PLANT_STROKE_UNSCALED = true'] } },

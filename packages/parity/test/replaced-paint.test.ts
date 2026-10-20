@@ -1,7 +1,8 @@
 // REPL-a Phase B: the replaced paint on the host. The image paint's sample points (image-flat and the destination-rect edges)
 // are proven against the committed Chrome screenshots: at every image-flat point Chrome shows exactly the source colour the
 // engine's destination rect maps there, at DPR 2, 3 and 2.625. Iframes are masked: no point inside a web view's content box.
-// The expected dumps carry each image's destination rect and each web view's frame from the same engine geometry.
+// The expected dumps carry each image's destination rect and each web view's frame from the same engine geometry. A pixelated img
+// (replaced-pixelated) also has nearest points, a quarter texel inside its texels' corners, where Chrome shows the texel itself.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createProjectWith, emitAndroidViewsCases, emitUikitCases, expectedDump, nativePrograms, NO_FAULTS, WRITE_CSS } from 'dragon';
@@ -10,7 +11,7 @@ import { deviceDprs } from '../src/targets.ts';
 import { REPLACED } from '../src/fixture-groups/replaced.ts';
 import { expectedEngine, hostSources, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
 import { maskedAt } from '../src/paint-samples/foreign-view.ts';
-import { dropsBaseAt, flatAt, imagePointsOf } from '../src/paint-samples/image.ts';
+import { dropsBaseAt, flatAt, IMAGE_NEAREST_CLEAR_DEVICE_PX, imagePointsOf, nearestAt } from '../src/paint-samples/image.ts';
 import type { ReplacedSamplesBox } from '../src/paint-samples/replaced-geometry.ts';
 import { replacedBoxes } from '../src/paint-samples/replaced-geometry.ts';
 import { repoPath } from '../src/paths.ts';
@@ -31,7 +32,7 @@ function contextOf(n: (typeof cases)[number], dpr: number) {
 
 describe('REPL-a replaced paint against the committed Chrome pixels', () => {
   it('covers the replaced fixtures at every device DPR', () => {
-    expect(cases.length).toBe(12);
+    expect(cases.length).toBe(14);
     expect(DPRS).toEqual([2, 2.625, 3]);
   });
 
@@ -138,7 +139,7 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     expect(image.data).toBe(src?.[1]);
     expect([image.width, image.height, image.fit, image.technique]).toEqual([32, 18, 'cover', 'dragon-owned-paint']);
     expect(node('video')?.writes.find((w) => w.kind === 'foreign-view')).toMatchObject({ src: null, key: 'dragonForeignView', technique: 'native-property' });
-    expect(WRITE_CSS['replaced-image']).toEqual(['object-fit', 'object-position']);
+    expect(WRITE_CSS['replaced-image']).toEqual(['object-fit', 'object-position', 'image-rendering']);
     const viewport = demo.case.environment.viewport;
     const one = { id: demo.case.id, fixture: demo.spec.id, direction: demo.case.environment.direction, compilerDigest: 'd', viewport, expectedDigests: [] };
     const swift = emitUikitCases([{ ...one, program: demo.programs.uikit }]).map((f) => f.text).join('\n');
@@ -147,6 +148,29 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     expect(swift).toMatch(/dragonSetForeignView\(v\d+, src: nil\)/);
     expect(kotlin).toContain(`.dragonSetImage("${image.data}", 32.0, 18.0, "cover", true)`);
     expect(kotlin).toMatch(/dragonSetForeignView\(v\d+, null\)/);
+  });
+
+  it('lowers image-rendering: pixelated to a nearest-neighbour image, emitted on each backend, with nearest points on every DPR', () => {
+    const px = cases.find((n) => n.case.id === 'replaced-pixelated');
+    if (px === undefined) throw new Error('no replaced-pixelated case');
+    const pixelated = (id: string) => px.programs.uikit.nodes.find((x) => x.id === id)?.writes.find((w) => w.kind === 'replaced-image');
+    // i0 to i5 are pixelated; i6 is -webkit-optimize-contrast and i7 auto, both drawn as auto.
+    expect(['i0', 'i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7'].map((id) => { const w = pixelated(id); return w?.kind === 'replaced-image' && w.pixelated; })).toEqual([true, true, true, true, true, true, false, false]);
+    const viewport = px.case.environment.viewport;
+    const one = { id: px.case.id, fixture: px.spec.id, direction: px.case.environment.direction, compilerDigest: 'd', viewport, expectedDigests: [] };
+    const swift = emitUikitCases([{ ...one, program: px.programs.uikit }]).map((f) => f.text).join('\n');
+    const kotlin = emitAndroidViewsCases([{ ...one, program: px.programs['android-views'] }]).map((f) => f.text).join('\n');
+    expect(swift.match(/\.dragonSetImagePixelated\(\)/g)).toHaveLength(6);
+    expect(kotlin.match(/\.dragonSetImagePixelated\(\)/g)).toHaveLength(6);
+    const engine = expectedEngine();
+    expect(expectedDump(px.programs.uikit, px.case.id, viewport, 2, engine).nodes.find((x) => x.id === 'i0')?.applied).toMatchObject({ dragonImage: { natural: [4, 4], fit: 'fill', pixelated: true } });
+    expect(expectedDump(px.programs['android-views'], px.case.id, viewport, 2, engine).nodes.find((x) => x.id === 'i7')?.applied).not.toHaveProperty('dragonImage.pixelated');
+    for (const dpr of DPRS) {
+      const ctx = contextOf(px, dpr);
+      const nearest = (id: string) => ctx.points.filter((p) => p.rule.startsWith(`image-flat:${id}:nearest-`)).length;
+      for (const id of ['i0', 'i1', 'i2', 'i3', 'i4', 'i5']) expect(nearest(id), `${id}@${dpr}`).toBeGreaterThanOrEqual(8);
+      for (const id of ['i6', 'i7']) expect(nearest(id), `${id}@${dpr}`).toBe(0);
+    }
   });
 
   it('both lane hosts clear dragonForeignViewLoadsSrc in their entry point, before the first case runs (R9: lanes never load src)', () => {
@@ -181,7 +205,7 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) data.set(x < 32 ? [255, 0, 0, 255] : [0, 0, 255, 255], (y * 64 + x) * 4);
     const rect = { x: -320, y: -320, width: 640, height: 640 };
     const box = (later: ReplacedSamplesBox['later'], cover: ReplacedSamplesBox['cover'], image = true): ReplacedSamplesBox =>
-      ({ paint: { dest: rect, content: rect, drawn: rect }, image: image ? { width: 64, height: 64, data } : null, later, cover, clip: [] });
+      ({ paint: { dest: rect, content: rect, drawn: rect }, image: image ? { width: 64, height: 64, data } : null, later, cover, clip: [], pixelated: false });
     const over = { id: 'later', left: -10, top: -10, right: 40, bottom: 40, width: 50, height: 50 };
 
     it('never places an image point outside the raster, though the drawn part starts left of and above it', () => {
@@ -203,6 +227,26 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
       // An image-flat point still needs no later box at all over it.
       expect(flatAt(box([over], []), 20, 20)).toBe(false);
       expect(flatAt(box([], []), -200, -200)).toBe(true);
+    });
+
+    it('takes a pixelated image\'s pixel as determinate where its centre keeps 0.75 device px from every texel boundary', () => {
+      // The red/blue seam (source x 32) is at device x 0, and a texel row boundary at device y 0. Filtered, (1, 5) reads both sides of
+      // the seam; nearest, its centre is 1.5 px clear of it and 4.5 px clear of the rows.
+      const pixelated = { ...box([], []), pixelated: true };
+      expect(flatAt(box([], []), 1, 5)).toBe(false);
+      expect(flatAt(pixelated, 1, 5)).toBe(true);
+      expect(flatAt(pixelated, -2, 5)).toBe(true);
+      expect(dropsBaseAt(pixelated, 1, 5)).toBe(false);
+      // Centres 0.5 px from the seam, on either side: Chrome's unsnapped texel boundary may lie on the other side of them.
+      expect(nearestAt(pixelated, 0, 5)).toBe(false);
+      expect(nearestAt(pixelated, -1, 5)).toBe(false);
+      expect(dropsBaseAt(pixelated, 0, 5)).toBe(true);
+      expect(nearestAt(box([], []), 1, 5)).toBe(false);
+      expect(IMAGE_NEAREST_CLEAR_DEVICE_PX).toBe(0.75);
+      // Every nearest point is clear, inside the raster and named for its image.
+      const points = imagePointsOf(new Map([['img', pixelated]]), { width: 400, height: 400 }).filter((p) => p.rule.startsWith('image-flat:img:nearest-'));
+      expect(points.length).toBeGreaterThan(0);
+      expect(points.filter((p) => !nearestAt(pixelated, p.x, p.y) || p.x < 0 || p.y < 0)).toEqual([]);
     });
 
     it('masks a web view point unless a later opaque box hides it', () => {

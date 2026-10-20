@@ -208,7 +208,7 @@ const FAMILIES = [
   family('counters', COUNTERS_LONGHANDS, COUNTERS_SHORTHANDS, COUNTERS_INHERITED, COUNTERS_ASPECTS, COUNTERS_CONTAINER, COUNTERS_TEXT_ROLE),
   // css-color-adjust-1 §2.1: color-scheme, where it changes nothing, after counters.
   family('color-scheme', COLOR_SCHEME_LONGHANDS, COLOR_SCHEME_SHORTHANDS, COLOR_SCHEME_INHERITED, COLOR_SCHEME_ASPECTS, COLOR_SCHEME_CONTAINER, COLOR_SCHEME_TEXT_ROLE),
-  // css-images-3 §5.3: image-rendering, initial value only until Dragon draws images another way than smoothly, after color-scheme.
+  // css-images-3 §5.3: image-rendering, auto, -webkit-optimize-contrast and pixelated (nearest-neighbour imgs), after color-scheme.
   family('image-rendering', IMAGE_RENDERING_LONGHANDS, IMAGE_RENDERING_SHORTHANDS, IMAGE_RENDERING_INHERITED, IMAGE_RENDERING_ASPECTS, IMAGE_RENDERING_CONTAINER, IMAGE_RENDERING_TEXT_ROLE),
   // css-anchor-position-1: the anchor positioning longhands and position-try, initial values only until Dragon anchors boxes, after image-rendering.
   family('anchor-position', ANCHOR_POSITION_LONGHANDS, ANCHOR_POSITION_SHORTHANDS, ANCHOR_POSITION_INHERITED, ANCHOR_POSITION_ASPECTS, ANCHOR_POSITION_CONTAINER, ANCHOR_POSITION_TEXT_ROLE),
