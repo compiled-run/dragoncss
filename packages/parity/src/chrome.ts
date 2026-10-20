@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { repoPath } from './paths.ts';
+import { hostPlatform, REFERENCE_PLATFORM } from './platform.ts';
 
 export const CHROME_VERSION = '145.0.7632.6';
 export const PLAYWRIGHT_VERSION = '1.58.2';
@@ -52,9 +53,15 @@ export const PLAYWRIGHT_POINTER_SETTINGS = '--blink-settings=primaryHoverType=2,
  * Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture.
  * withoutPointerSettings drops PLAYWRIGHT_POINTER_SETTINGS, so the page's pointer and hover come from Chrome alone.
  */
+/**
+ * On the reference platform every launch with Playwright's pointer settings has overlay scrollbars (scroll-metrics.ts
+ * launchOverlayChrome), so a scroll case captured through any caller (profile:rows, vectors, report) meets the overlay-scrollbar
+ * rule (capture.ts). --hide-scrollbars already hides every scrollbar, so no other capture changes.
+ */
 export async function launchChrome(forceDeviceScaleFactor: number = 1, opts: { readonly withoutPointerSettings?: boolean } = {}): Promise<Browser> {
   const args = chromeArgsAt(forceDeviceScaleFactor);
   const without = opts.withoutPointerSettings === true;
+  if (!without && hostPlatform() === REFERENCE_PLATFORM) return (await import('./scroll-metrics.ts')).launchOverlayChrome(forceDeviceScaleFactor);
   const browser = await chromium.launch({ args: [...args], ...(without ? { ignoreDefaultArgs: [PLAYWRIGHT_POINTER_SETTINGS] } : {}) });
   launchArgs.set(browser, without ? [...args, `!${PLAYWRIGHT_POINTER_SETTINGS}`] : args);
   const version = browser.version();
