@@ -14,7 +14,7 @@ import { AHEM_FACE_ID, fontMetricLengths, letterSpacingAfter, smallCapsCodePoint
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import {
-  add, floatAdd, floorToWholePx, fontMetricPx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, neg, platformFontSize, roundCoreTextMetricToWholePx,
+  add, floatAdd, floorToWholePx, fontMetricPx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, LU_PER_PX, neg, platformFontSize, roundCoreTextMetricToWholePx,
   roundFontMetricHalfUpToWholePx, sub, textRunLayoutUnit, toFloat, toPx, ZERO,
 } from './units.ts';
 
@@ -1487,7 +1487,8 @@ function handleOverflow(b: LineBuild): void {
     if (it.kind !== 'text' || r.end === r.start) continue;
     if (toRewind < 0 && r.mayBreakInside) {
       const itemAvail = -toRewind;
-      const minAvail = r.width - 1;
+      // inline_size - 1 is LayoutUnit minus an int: one whole pixel (layout_unit.h operator-), not one LayoutUnit.
+      const minAvail = r.width - LU_PER_PX;
       if (minAvail <= 0) throw new BreakFailure('a zero-width text result overflows (BreakTextAtPreviousBreakOpportunity)');
       const before: MutableResult = { index: r.index, start: r.start, end: r.end, width: r.width, hyphen: r.hyphen, view: r.view, canBreakAfter: r.canBreakAfter, mayBreakInside: r.mayBreakInside, hangs: r.hangs };
       breakText(b, r, itemAvail < minAvail ? itemAvail : minAvail, itemAvail);

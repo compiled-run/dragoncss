@@ -26,5 +26,5 @@ export const TEXT_BREAK: readonly FixtureSpec[] = [
 export const TEXT_BREAK_FACES: ReadonlyMap<string, { readonly [id: string]: string }> = new Map([
   ['text-break-lato', { a: 'Lato-Regular', b: 'Lato-Regular', c: 'Lato-Regular', d: 'Lato-Regular', e: 'Lato-Regular', e1: 'Lato-Regular', r1: 'Lato-Regular', r2: 'Lato-Regular' }],
   ['text-break-all-lato', { a: 'Lato-Regular', b: 'Lato-Regular', c: 'Lato-Regular', d: 'Lato-Regular', r1: 'Lato-Regular', r2: 'Lato-Regular' }],
-  ['text-break-hyphen-lato', { a: 'Lato-Regular', b: 'Lato-Regular', c: 'Lato-Regular', d: 'Lato-Regular', e: 'Lato-Regular', f: 'Lato-Regular', g: 'Lato-Regular', h: 'Lato-Regular', r1: 'Lato-Regular', r2: 'Lato-Regular' }],
+  ['text-break-hyphen-lato', { a: 'Lato-Regular', b: 'Lato-Regular', c: 'Lato-Regular', d: 'Lato-Regular', e: 'Lato-Regular', f: 'Lato-Regular', g: 'Lato-Regular', h: 'Lato-Regular', i: 'Lato-Regular', j: 'Lato-Regular', r1: 'Lato-Regular', r2: 'Lato-Regular' }],
 ]);
