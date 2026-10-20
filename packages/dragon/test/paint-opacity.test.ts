@@ -173,6 +173,20 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     expect(() => nodeLit('swift', n)).toThrow(StateEmitError);
     expect(() => nodeLit('kotlin', n)).toThrow(/folded into the fill has no state-node write/);
   });
+  it('keeps the platform blend for a folded fill an offset can move over an earlier sibling\'s fill', () => {
+    const folded = (decl: string) => {
+      const input = inputFor(`body { margin: 0; } .s { height: 5px; background-color: rgb(200, 0, 0); } .b { ${leaf} opacity: 0.3; ${decl} }`, (r) => [div(r, 'a', ['a'], [div(r, 's', ['s']), div(r, 'b', ['b'])])]);
+      const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input), []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const w = p.programs.uikit.nodes.find((x) => x.id === 'b')?.writes.find((x) => x.kind === 'background-color');
+      if (w === undefined || w.kind !== 'background-color') throw new Error(`${decl}: no background write`);
+      return [w.color.alpha, w.folded];
+    };
+    // Over the sibling at top: -5px the backdrop is the sibling's red, not the ancestors' fills the folded bytes model.
+    expect(folded('position: relative; top: -5px;')).toEqual([77, undefined]);
+    expect(folded('position: absolute; top: 0;')).toEqual([77, undefined]);
+    expect([folded(''), folded('position: relative;'), folded('position: relative; top: 0; left: 0px;')]).toEqual([[77, true], [77, true], [77, true]]);
+  });
   it("the lowering's alpha byte is @dragon/layout's opacityAlpha8", () => {
     const vals: number[] = [];
     for (let k = 0; k <= 255; k++) for (const d of [0, 0.4999, 0.5, 0.5001]) vals.push((k + d) / 255);
