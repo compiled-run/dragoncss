@@ -22,7 +22,7 @@ try {
   for (const spec of FIXTURES) outcomes.push(await runFixture(spec, browser, { authored: liveAuthored(browser), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' }));
   // TXT1-C: the web-only fonts fixtures, chrome-dual alone, under their stated reference.
   for (const f of FONT_FIXTURES) webOnly.push(...(await runFontFixture(f, browser, { authored: liveFontAuthored(browser, f) })));
-  // ENV-SAFE: the web-only env() fixtures, chrome-dual alone, under their safe-area insets.
+  // ENV-SAFE: the env() fixtures, both lanes under their safe-area insets.
   for (const f of ENV_FIXTURES) webOnly.push(...(await runEnvFixture(f, browser, { authored: liveEnvAuthored(browser, f) })));
 } finally {
   await browser.close();

@@ -638,6 +638,13 @@ public struct DragonCase {
   }
 }
 
+/// css-env-1 env(safe-area-inset-*) on iOS: container's safe-area insets (UIView.safeAreaInsets, in points, which are CSS px):
+/// how far the status bar, home indicator and sensor housing reach into it. A container laid out inside them reads 0 on every side.
+public func dragonSafeArea(_ container: UIView) -> SafeAreaInsets {
+  let i = container.safeAreaInsets
+  return SafeAreaInsets(Double(i.top), Double(i.right), Double(i.bottom), Double(i.left))
+}
+
 /// The native tree of one case: builds the views, applies the translated engine's snapped frames at the device scale, and reads
 /// the dump back from the live tree.
 public final class DragonTree {
@@ -652,6 +659,9 @@ public final class DragonTree {
   private var inlineLines: [String: [(edges: [Double], baseline: Double)]] = [:]
   private var hosts: [String: String] = [:]
   private var companions: [String: [UIView]] = [:]
+  /// css-env-1 env(safe-area-inset-*): the root view's insets in CSS px, set by the mount from its container (dragonSafeArea) before
+  /// apply; the case input's own safeArea is replaced by it.
+  public var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
   public init() {}
 
   /// Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
@@ -686,7 +696,8 @@ public final class DragonTree {
 
   /// Runs the translated engine at the device scale, snaps with the translated snapEdges and sets every frame relative to its
   /// native parent as CGFloat(edge - parentEdge) / scale. No Auto Layout.
-  public func apply(_ input: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) throws {
+  public func apply(_ given: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) throws {
+    let input = LayoutInput(given.viewport, given.devicePixelRatio, given.viewportUnits, safeArea, given.rootFontSize, given.root)
     let result = try layout_layout(input, measurer)
     if let refused = result as? LayoutResult_unsupported { fatalError("dragon: the engine refused the case: \(refused.unsupported.code) at \(refused.unsupported.nodeId): \(refused.unsupported.detail)") }
     guard let ok = result as? LayoutResult_ok else { fatalError("dragon: the engine gave no result") }
@@ -1632,6 +1643,7 @@ import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
+import dev.dragon.layout.SafeAreaInsets
 import dev.dragon.layout.ObjectRect
 import dev.dragon.layout.PieceGlyphs_okFalse
 import dev.dragon.layout.PieceGlyphs_okTrue
@@ -1688,6 +1700,25 @@ class DragonCase(
 }
 
 /**
+ * css-env-1 env(safe-area-inset-*) on Android: how far the window's system bars and display cutout reach into container's content
+ * box (its bounds less padding, where the tree's root view goes), side by side, in CSS px (device px / scale). A container laid out
+ * inside the insets reads 0 on every side.
+ */
+fun dragonSafeArea(container: android.view.View, scale: Double): SafeAreaInsets {
+  val wi = container.rootWindowInsets ?: return SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
+  val bars = wi.getInsets(android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout())
+  val at = IntArray(2)
+  container.getLocationInWindow(at)
+  val window = container.rootView
+  val left = at[0] + container.paddingLeft
+  val top = at[1] + container.paddingTop
+  val right = at[0] + container.width - container.paddingRight
+  val bottom = at[1] + container.height - container.paddingBottom
+  fun css(px: Int): Double = maxOf(0, px) / scale
+  return SafeAreaInsets(css(bars.top - top), css(right - (window.width - bars.right)), css(bottom - (window.height - bars.bottom)), css(bars.left - left))
+}
+
+/**
  * The native tree of one case: builds the views, applies the translated engine's snapped frames at the device scale through
  * View.layout ints from dragonCheckedInt, and reads the dump back from the live tree.
  */
@@ -1700,6 +1731,11 @@ class DragonTree(val context: Context) {
   private val textMetrics = HashMap<String, DoubleArray>()
   private val hosts = HashMap<String, String>()
   private val companions = HashMap<String, ArrayList<android.view.View>>()
+  /**
+   * css-env-1 env(safe-area-inset-*): the root view's insets in CSS px, set by the mount from its container (dragonSafeArea) before
+   * apply; the case input's own safeArea is replaced by it.
+   */
+  var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
 
   /**
    * Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
@@ -1739,7 +1775,8 @@ class DragonTree(val context: Context) {
   private fun setFrame(f: IntArray, l: Double, t: Double, r: Double, b: Double, what: String) = dragonSetFrame(f, l, t, r, b, what)
 
   /** Runs the translated engine at the device scale, snaps with the translated snapEdges and stores every frame in device px. */
-  fun apply(input: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+  fun apply(given: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+    val input = LayoutInput(given.viewport, given.devicePixelRatio, given.viewportUnits, safeArea, given.rootFontSize, given.root)
     val result = layout_layout(input, measurer)
     val refused = result as? dev.dragon.layout.LayoutResult_unsupported
     if (refused != null) throw IllegalStateException("dragon: the engine refused the case: " + refused.unsupported.code + " at " + refused.unsupported.nodeId + ": " + refused.unsupported.detail)

@@ -216,6 +216,7 @@ public final class DragonInteractionMount {
     let t = DragonTree()
     machine.build(t)
     root.addSubview(t.root)
+    t.safeArea = dragonSafeArea(root)
     do {
       try t.apply(machine.input(scale), measurer: measurer, scale: scale, bridge: bridge)
     } catch {
@@ -348,6 +349,7 @@ class DragonInteractionMount(val machine: DragonInteractionMachine, stage: ViewG
   private fun render() {
     val t = DragonTree(root.context)
     machine.build(t)
+    t.safeArea = dragonSafeArea(root, scale)
     t.apply(machine.input(scale), measurer, scale, bridge)
     root.addView(t.root, FrameLayout.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
     shown?.let { root.removeView(it.root) }

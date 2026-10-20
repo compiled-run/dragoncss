@@ -1,22 +1,27 @@
-// The web-only lane of the env() fixtures (fixture-groups/env.ts): Chrome renders both documents with the fixture's safe-area insets
-// (CDP Emulation.setSafeAreaInsetsOverride), and every case must pass chrome-dual exactly. linux-dragon-layout is not run here: native
-// targets refuse env() until the native runtime reads the root view's insets; env-engine.test.ts proves the engine with the same
-// insets injected into its input.
+// The lanes of the env() fixtures (fixture-groups/env.ts): Chrome renders both documents with the fixture's safe-area insets (CDP
+// Emulation.setSafeAreaInsetsOverride), and every case must pass chrome-dual exactly. linux-dragon-layout lays out the native lowering
+// with the same insets in its input, as a native mount feeds the root view's measured insets (DragonTree.safeArea, dragonSafeArea in
+// emit/native-support.ts), and compares it with the authored capture; a case that passes both proves its ios rows.
 import { readFileSync } from 'node:fs';
 import type { Browser, Page } from 'playwright';
+import type { EngineFaults, LayoutUnsupported } from '@dragon/layout';
+import { absoluteRects, layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
 import type { CompilerFaults } from 'dragon';
-import { compiledFeatures, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, webClassMap } from 'dragon';
+import { compiledFeatures, iosLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture, captureJson } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf, fixtureInput } from './cases.ts';
 import { CHROME_VERSION } from './chrome.ts';
+import type { Comparison } from './compare.ts';
+import { compareLayout } from './compare.ts';
 import { compareDual } from './dual.ts';
 import type { EnvFixture, SafeAreaInsets } from './fixture-groups/env.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import { compileFixture, webCssOf } from './pipeline.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
+import { referenceShapedMeasurer } from './text-shaper-host.ts';
 
 const SIDES = ['top', 'right', 'bottom', 'left'] as const;
 
@@ -97,18 +102,21 @@ export const committedEnvAuthored = (f: EnvFixture) => (c: ParityCase): Promise<
 export type EnvRunOptions = {
   readonly authored: (c: ParityCase) => Promise<WebCapture>;
   readonly faults?: CompilerFaults;
+  readonly engineFaults?: EngineFaults;
   readonly profiles?: 'enforce' | 'derive';
 };
 
-/** Every case of an env fixture through the web-only lane: Dragon's web CSS and the authored document, both under the insets. */
+/** Every case of an env fixture through both lanes, each under the fixture's insets. */
 export async function runEnvFixture(f: EnvFixture, browser: Browser, opts: EnvRunOptions): Promise<CaseOutcome[]> {
   const out: CaseOutcome[] = [];
+  const engineFaults = opts.engineFaults ?? NO_ENGINE_FAULTS;
   for (const c of envCases(f)) {
     const { compiled } = compileFixture(f.spec, opts.faults ?? NO_FAULTS, opts.profiles ?? 'enforce', c.environment.direction);
+    const projection = iosLayoutProjection(compiled, c.environment, c.assignment);
     const base = {
       id: c.id, fixture: c.fixture, index: c.index, direction: c.environment.direction, assignment: c.assignment, isInitial: c.isInitial,
-      unsupported: null, comparison: null, vector: null, textLines: [], topology: textTopology(compiled, c.assignment),
-      features: { ios: [], web: compiledFeatures(compiled, 'web', c.assignment) },
+      vector: null, textLines: [], topology: textTopology(compiled, c.assignment),
+      features: { ios: projection.kind === 'ready' ? compiledFeatures(compiled, 'ios', c.assignment) : [], web: compiledFeatures(compiled, 'web', c.assignment) },
     };
     const css = webCssOf(compiled);
     const classOf = webClassMap(compiled, c.assignment);
@@ -116,12 +124,40 @@ export async function runEnvFixture(f: EnvFixture, browser: Browser, opts: EnvRu
     const textColors = resolvedTextColors(compiled, c.assignment);
     if (css === null || classOf === null || colors === null || textColors === null) {
       const errors = compiled.diagnostics.filter((d) => d.target !== 'ios').map((d) => `${d.code} ${d.message}`).join('; ');
-      out.push({ ...base, dual: null, status: 'fail', reason: `web output not ready: ${errors}`, lanes: { 'linux-dragon-layout': 'not-run', 'chrome-dual': 'fail' } });
+      out.push({ ...base, unsupported: null, comparison: null, dual: null, status: 'fail', reason: `web output not ready: ${errors}`, lanes: { 'linux-dragon-layout': 'not-run', 'chrome-dual': 'fail' } });
       continue;
     }
     const authored = await opts.authored(c);
+    const reasons: string[] = [];
+
+    // Lane linux-dragon-layout: the native lowering with the fixture's insets as the mount's measured ones.
+    let layout: 'pass' | 'fail' = 'fail';
+    let comparison: Comparison | null = null;
+    let unsupported: LayoutUnsupported | null = null;
+    if (projection.kind === 'blocked') {
+      reasons.push(`linux-dragon-layout: ios output blocked: ${projection.reason}`);
+    } else {
+      const validated = validateLayoutInput(JSON.parse(JSON.stringify({ ...projection.input, safeArea: f.safeArea })));
+      if (!validated.ok) {
+        reasons.push(`linux-dragon-layout: layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}`);
+      } else {
+        const result = layoutWithFaults(validated.input, referenceShapedMeasurer(engineFaults), engineFaults);
+        if (result.kind === 'unsupported') {
+          unsupported = result.unsupported;
+          reasons.push(`linux-dragon-layout: LayoutUnsupported ${unsupported.code} at ${unsupported.nodeId}: ${unsupported.detail}`);
+        } else {
+          comparison = compareLayout(authored, absoluteRects(result.boxes), validated.input, c.environment);
+          if (comparison.pass) layout = 'pass';
+          else reasons.push(`linux-dragon-layout: ${comparison.problems.join('; ')}`);
+        }
+      }
+    }
+
+    // Lane chrome-dual.
     const dual = compareDual(authored, await captureWithInsets(browser, c, c.compiledHtml(css, classOf), f), colors, textColors, c.computedExtra);
-    out.push({ ...base, dual, status: dual.pass ? 'pass' : 'fail', reason: dual.pass ? null : `chrome-dual: ${dual.problems.join('; ')}`, lanes: { 'linux-dragon-layout': 'not-run', 'chrome-dual': dual.pass ? 'pass' : 'fail' } });
+    if (!dual.pass) reasons.push(`chrome-dual: ${dual.problems.join('; ')}`);
+    const pass = layout === 'pass' && dual.pass;
+    out.push({ ...base, unsupported, comparison, dual, status: pass ? 'pass' : 'fail', reason: pass ? null : reasons.join(' | '), lanes: { 'linux-dragon-layout': layout, 'chrome-dual': dual.pass ? 'pass' : 'fail' } });
   }
   return out;
 }

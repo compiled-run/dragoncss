@@ -265,6 +265,7 @@ public final class DragonStateMount {
     let t = DragonTree()
     machine.build(t)
     stage.addSubview(t.root)
+    t.safeArea = dragonSafeArea(stage)
     do {
       try t.apply(machine.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
@@ -526,6 +527,7 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     val t = DragonTree(stage.context)
     machine.build(t)
+    t.safeArea = dragonSafeArea(stage, scale)
     t.apply(machine.input(scale), bridge.measurer, scale, bridge)
     stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
     stage.removeView(shown.root)

@@ -255,6 +255,7 @@ func dragonWarmUp(_ run: DragonRun, stage: UIView, scale: Double, bridge: Dragon
     let tree = DragonTree()
     c.build(tree)
     stage.addSubview(tree.root)
+    tree.safeArea = dragonSafeArea(stage)
     do {
       try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
@@ -301,6 +302,7 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     tree = DragonTree()
     c.build(tree)
     stage.addSubview(tree.root)
+    tree.safeArea = dragonSafeArea(stage)
     t0 = CACurrentMediaTime()
     do {
       try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
@@ -515,6 +517,7 @@ class DragonActivity : Activity() {
       tree = DragonTree(this)
       c.build(tree)
       t0 = SystemClock.elapsedRealtimeNanos()
+      tree.safeArea = dragonSafeArea(frame, scale)
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
