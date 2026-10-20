@@ -11,7 +11,7 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { groupComposite, groupFilterComposite, groupFilterMatrices, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
 import { filterPairs } from '../../dragon/src/emit/paint/effects.ts';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
@@ -115,7 +115,7 @@ type Stacking = { paintOrder: number; clipChain: readonly string[] };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
   | { readonly kind: 'text'; readonly node: ProgramNode; readonly glyphs: readonly { left: number; top: number; right: number; bottom: number }[] }
-  | { readonly kind: 'group'; readonly box: Box; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly items: readonly Item[] };
+  | { readonly kind: 'group'; readonly box: Box; readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly items: readonly Item[] };
 
 const stackingOf = (n: ProgramNode): Stacking => {
   const s = n.facts['stacking'] as Stacking | undefined;
@@ -164,7 +164,7 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
       if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
       const filter = effects.filter ?? [];
       const matrices = filter.length === 0 ? null : groupFilterMatrices(faults.filterIgnored ? [] : filterPairs(filter));
-      out.push({ kind: 'group', box: byId.get(n.id) as Box, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
+      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
       k += members.length - 1;
     }
     return out;
@@ -234,7 +234,7 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
     if (c === undefined || c.kind !== 'text-color') throw new Error(`${it.node.id}: no text colour`);
     return color32(dst, c.color, c.color.alpha);
   }
-  if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, 255);
+  if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, null);
   if (it.alpha8 === 0) return dst;
   // A filtered group is a layer drawn through the filter's colour matrices, then composited at its alpha; it never folds
   // (paint-group.ts groupFilterComposite, measured against Chrome 145).
@@ -246,21 +246,22 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
   // The group's one drawing in this tile, when it is a background rect, takes the alpha itself (cc folds the layer into it).
   const content = tileItems(it.items, tile);
   const only = content.direct[0];
-  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, cx, cy, byId, it.alpha8);
+  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, cx, cy, byId, it.opacity);
   let layer: Px = [0, 0, 0, 0];
   for (const inner of it.items) layer = paintItem(layer, inner, x, y, tile, byId);
   return s32aBlend(dst, layer, it.alpha8);
 }
 
-/** A box's background and solid border sides at a pixel centre, the box's one op at a folded alpha when alpha is below 255. */
-function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, alpha: number): Px {
+/**
+ * A box's background and solid border sides at a pixel centre; with fold, the opacity of the group folded into the box's one op,
+ * which takes the colour's alpha times it in float (cc ScopedRasterFlags, measured: groupFoldAlpha).
+ */
+function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, fold: number | null): Px {
   if (clippedOut(b.node, byId, cx, cy) || !inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
   let out = dst;
   const bg = b.node.writes.find((w) => w.kind === 'background-color');
   if (bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0) {
-    // A folded translucent colour would take Skia's float alpha product, which the fixtures do not use.
-    if (alpha !== 255 && bg.color.alpha !== 255) throw new Error(`${b.node.id}: the model folds opaque backgrounds only`);
-    out = color32(out, bg.color, alpha === 255 ? bg.color.alpha : alpha);
+    out = color32(out, bg.color, fold === null ? bg.color.alpha : groupFoldAlpha(bg.color.alpha, fold));
   }
   const [bt, br, bb, bl] = b.border as [number, number, number, number];
   if (inside(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb)) return out;
@@ -270,9 +271,8 @@ function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<str
   const side = cy < b.t + bt ? 0 : cy >= b.b - bb ? 2 : cx < b.l + bl ? 3 : 1;
   if (styles.styles[side] !== 'solid') throw new Error(`${b.node.id}: the model paints solid borders only`);
   const c = colours.colors[side] as { r: number; g: number; b: number; alpha: number };
-  // A folded border is the box's one op (boxOps): its opaque colour at the group's alpha.
-  if (alpha !== 255 && c.alpha !== 255) throw new Error(`${b.node.id}: the model folds opaque borders only`);
-  return color32(out, c, alpha === 255 ? c.alpha : alpha);
+  // A folded border is the box's one op (boxOps): its colour at the folded alpha.
+  return color32(out, c, fold === null ? c.alpha : groupFoldAlpha(c.alpha, fold));
 }
 
 /** The model's colour at the centre of pixel (x, y). */
@@ -288,14 +288,14 @@ export function effectsModelAt(items: readonly Item[], byId: ReadonlyMap<string,
 
 // ---------------------------------------------------------------- the device's group composite (PNT1-opacity-b)
 
-type GroupPlan = { readonly alpha8: number; readonly matrices: readonly number[] | null; readonly painters: readonly string[] };
+type GroupPlan = { readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly painters: readonly string[] };
 
 /** The plan of a node the compiler pre-composites (an opacity-group or filter-group write), or null. */
 function groupPlanOf(n: ProgramNode): GroupPlan | null {
   for (const w of n.writes) {
-    if (w.kind === 'opacity-group') return { alpha8: opacityAlpha8(w.opacity), matrices: null, painters: w.painters };
+    if (w.kind === 'opacity-group') return { opacity: w.opacity, alpha8: opacityAlpha8(w.opacity), matrices: null, painters: w.painters };
     // The matrices the device builds from the emitted (code, amount) pairs (EFFECTS_EMITTER, DragonGroupView).
-    if (w.kind === 'filter-group') return { alpha8: opacityAlpha8(w.opacity), matrices: groupFilterMatrices(filterPairs(w.filter)), painters: w.painters };
+    if (w.kind === 'filter-group') return { opacity: w.opacity, alpha8: opacityAlpha8(w.opacity), matrices: groupFilterMatrices(filterPairs(w.filter)), painters: w.painters };
   }
   return null;
 }
@@ -338,16 +338,88 @@ function backdropBox(dst: Px, b: Box, cx: number, cy: number): Px {
   return c === null ? out : [c.r, c.g, c.b, 255];
 }
 
-/** The display items the device counts for the per-tile fold: each painting box (a lone fill folds) and each glyph. */
-function groupDraws(items: readonly Item[]): number[] {
+type Rgba = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
+
+/** A box's background colour, transparent for none. */
+const bgOf = (b: Box): Rgba => {
+  const w = b.node.writes.find((x) => x.kind === 'background-color');
+  return w !== undefined && w.kind === 'background-color' ? w.color : { r: 0, g: 0, b: 0, alpha: 0 };
+};
+
+/** A box's shown border sides (a width and a drawn style) and their colours, top, right, bottom, left. */
+function sidesOf(b: Box): { readonly shown: readonly boolean[]; readonly colours: readonly Rgba[] } {
+  const styles = b.node.writes.find((w) => w.kind === 'border-styles');
+  const colours = b.node.writes.find((w) => w.kind === 'border-colors');
+  const shown = [0, 1, 2, 3].map((k) => styles !== undefined && styles.kind === 'border-styles' && styles.styles[k] !== 'none' && styles.styles[k] !== 'hidden' && (b.border[k] as number) > 0);
+  return { shown, colours: [0, 1, 2, 3].map((k) => (colours !== undefined && colours.kind === 'border-colors' ? (colours.colors[k] as Rgba) : { r: 0, g: 0, b: 0, alpha: 0 })) };
+}
+
+/**
+ * The display items the device counts for the per-tile fold and each item's one colour: each painting box (a lone op folds), each
+ * glyph, and every item of a nested group, which never folds the group it is in (DragonGroupView.dragonSoftwareDraws).
+ */
+function groupDraws(items: readonly Item[], nested = false, colours: Rgba[] = []): number[] {
   return items.flatMap((it) => {
     if (it.kind === 'box') {
       const ops = boxOps(it.box);
-      return ops.count === 0 ? [] : [it.box.l, it.box.t, it.box.r, it.box.b, ops.foldable ? 1 : 0];
+      if (ops.count === 0) return [];
+      const bg = bgOf(it.box);
+      const sides = sidesOf(it.box);
+      colours.push(bg.alpha > 0 ? bg : (sides.colours[Math.max(sides.shown.indexOf(true), 0)] as Rgba));
+      return [it.box.l, it.box.t, it.box.r, it.box.b, ops.foldable && !nested ? 1 : 0];
     }
-    if (it.kind === 'text') return it.glyphs.flatMap((g) => [Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom), 0]);
-    return groupDraws(it.items);
+    if (it.kind === 'text') {
+      const c = it.node.writes.find((w) => w.kind === 'text-color');
+      for (const _ of it.glyphs) colours.push(c !== undefined && c.kind === 'text-color' ? c.color : { r: 0, g: 0, b: 0, alpha: 0 });
+      return it.glyphs.flatMap((g) => [Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom), 0]);
+    }
+    return groupDraws(it.items, true, colours);
   });
+}
+
+/** Whether a box paints a translucent colour (DragonGroupView's dragonGroupTranslucent). */
+function translucentBox(b: Box): boolean {
+  const bg = bgOf(b).alpha;
+  const sides = sidesOf(b);
+  return (bg > 0 && bg < 255) || [0, 1, 2, 3].some((k) => sides.shown[k] && (sides.colours[k] as Rgba).alpha > 0 && (sides.colours[k] as Rgba).alpha < 255);
+}
+
+/** Whether the device builds a group's layer in software: translucent paint or a nested group in it (dragonNeedsSoftware). */
+const softwareGroup = (items: readonly Item[]): boolean => items.some((it) => it.kind === 'group' || (it.kind === 'box' && translucentBox(it.box)));
+
+/** A box's own paint as the device's software layer draws it: its background over the box, then one side's colour, each with groupFill. */
+function softwareBox(dst: Px, b: Box, x: number, y: number): Px {
+  if (!(x >= b.l && x < b.r && y >= b.t && y < b.b) || b.node.writes.some((w) => w.kind === 'visibility')) return dst;
+  let out = dst;
+  const bg = bgOf(b);
+  if (bg.alpha > 0) out = unpack(groupFill(out[0], out[1], out[2], out[3], bg.r, bg.g, bg.b, bg.alpha));
+  const { shown, colours } = sidesOf(b);
+  const [bt, br, bb, bl] = b.border as [number, number, number, number];
+  const side = shown[0] && y < b.t + bt ? 0 : shown[1] && x >= b.r - br ? 1 : shown[2] && y >= b.b - bb ? 2 : shown[3] && x < b.l + bl ? 3 : -1;
+  const c = colours[side];
+  return c === undefined || c.alpha === 0 ? out : unpack(groupFill(out[0], out[1], out[2], out[3], c.r, c.g, c.b, c.alpha));
+}
+
+/**
+ * A group composited onto dst by the device's software layer (DragonGroupView.dragonSoftwareGroup): its boxes drawn with groupFill,
+ * its text as the platform draws it (the model's glyph), nested groups composited into it, then the tile's fold (groupTileFoldIndex:
+ * the one op at groupFoldAlpha) or the layer at its alpha byte (groupComposite), or the filter (groupFilterComposite).
+ */
+function deviceSoftware(dst: Px, items: readonly Item[], opacity: number, alpha8: number, matrices: readonly number[] | null, x: number, y: number, tile: Tile, byId: ReadonlyMap<string, Box>): Px {
+  let layer: Px = [0, 0, 0, 0];
+  for (const it of items) {
+    if (it.kind === 'box') layer = softwareBox(layer, it.box, x, y);
+    else if (it.kind === 'text') layer = paintItem(layer, it, x, y, tile, byId);
+    else layer = deviceSoftware(layer, it.items, it.opacity, it.alpha8, null, x, y, tile, byId);
+  }
+  if (matrices !== null) return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], dst[0], dst[1], dst[2], dst[3], matrices, alpha8));
+  const colours: Rgba[] = [];
+  const k = groupTileFoldIndex(groupDraws(items, false, colours), tile.l, tile.t, tile.r, tile.b);
+  if (k >= 0) {
+    const c = colours[k] as Rgba;
+    return layer[3] === 0 ? dst : unpack(groupFill(dst[0], dst[1], dst[2], dst[3], c.r, c.g, c.b, groupFoldAlpha(c.alpha, opacity)));
+  }
+  return unpack(groupComposite(layer[0], layer[1], layer[2], layer[3], dst[0], dst[1], dst[2], dst[3], alpha8, false));
 }
 
 /** Whether a pixel lies in a group's extent: its boxes and its glyphs, widened to whole device px. */
@@ -378,6 +450,7 @@ function deviceQ(g: Item & { kind: 'group' }, plan: GroupPlan, x: number, y: num
     if (it.kind === 'text') throw new Error(`${id}: a text painter`);
     d = backdropBox(d, it.box, x + 0.5, y + 0.5);
   }
+  if (softwareGroup(members)) return deviceSoftware(d, members, plan.opacity, plan.alpha8, plan.matrices, x, y, tile, byId);
   let layer: Px = [0, 0, 0, 0];
   for (const it of members) layer = paintItem(layer, it, x, y, tile, byId);
   if (plan.matrices !== null) return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.matrices, plan.alpha8));

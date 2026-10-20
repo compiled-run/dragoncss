@@ -37,7 +37,7 @@ describe('EMS: engine paint seams', () => {
     expect(lines).toEqual([
       "export type { ReplacedPaint } from './paint.ts';",
       "export { opacityAlpha8, replacedPaint } from './paint.ts';",
-      "export { groupComposite, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupPack, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';",
+      "export { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';",
       "export type { BoxShape } from './paint.ts';",
       "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
       "export { borderDoubleRings, hasRoundedCorner, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from './paint-radius.ts';",

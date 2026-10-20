@@ -1,7 +1,7 @@
 // background-color: a native property filling the border box (UIView.backgroundColor, a ColorDrawable). PNT1-opacity-b (first
 // part): a box whose opacity folds (analysis/paint-values/effects.ts opacityFolds) has its opaque fill written with Chrome's
 // opacity alpha byte (paint.ts opacityAlpha8), as Chrome folds the group's alpha into its one draw; effects.ts then writes no alpha.
-import { opacityFolds } from '../../analysis/paint-values/effects.ts';
+import { groupPlanAt, opacityFolds } from '../../analysis/paint-values/effects.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import { opacityAlpha8, TRANSPARENT } from '../../css/color.ts';
 import { opacityOf } from '../../css/properties/effects.ts';
@@ -23,13 +23,13 @@ export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
   lower: ({ el }) => [{ kind: 'background-color', color: el === null ? TRANSPARENT : foldedBackground(el) }],
 };
 
-/** The fractional opacity of an element whose group folds into its fill, or null. */
+/** The fractional opacity of an element whose group folds into its fill, or null; a group nested in a pre-composited one stays a group. */
 export function foldedOpacity(el: ResolvedElement): number | null {
   const v = el.props.get('opacity');
   if (v === undefined) throw new ProgramError(`${el.element.address}: opacity did not resolve`);
   const o = opacityOf(v.value);
   if (o === null) throw new ProgramError(`${el.element.address}: opacity did not compute to a number`);
-  return o > 0 && o < 1 && opacityFolds(el) ? o : null;
+  return o > 0 && o < 1 && opacityFolds(el) && groupPlanAt(el)?.kind !== 'nested' ? o : null;
 }
 
 function foldedBackground(el: ResolvedElement): Rgba8 {

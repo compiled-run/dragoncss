@@ -79,7 +79,7 @@ import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
-import { groupComposite, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupPack, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -1565,6 +1565,10 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (name === 'paint:group:groupTileSize') return `["ok",${h(groupTileSize(arg(a, 1)))}]`;
   if (name === 'paint:group:groupTileIndex') return `["ok",${h(groupTileIndex(arg(a, 1), arg(a, 2)))}]`;
   if (name === 'paint:group:groupTileSpan') return numList(groupTileSpan(arg(a, 1), arg(a, 2)));
+  // PNT1-opacity-b S2: the software layer's fill, fold alpha and fold item.
+  if (name === 'paint:group:groupTileFoldIndex') return `["ok",${h(groupTileFoldIndex(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)))}]`;
+  if (name === 'paint:group:groupFoldAlpha') return `["ok",${h(groupFoldAlpha(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:group:groupFill') return `["ok",${h(groupFill(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8)))}]`;
   if (name === 'paint:group:groupTileFolds') return `["ok",${groupTileFolds(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)) ? 'true' : 'false'}]`;
   // PNT1-filter: paint-group.ts colour-matrix filters.
   if (name === 'paint:group:groupFilterMatrix') return numList(groupFilterMatrix(arg(a, 1), arg(a, 2)));
