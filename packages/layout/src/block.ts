@@ -517,9 +517,9 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const keywordMin = keyword(s.minWidth.kind);
   const keywordMax = keyword(s.maxWidth.kind);
   const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
-  // A block button's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched by its
-  // block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-width*.html).
-  const fits = node.kind === 'control' && node.control.kind === 'button-block';
+  // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
+  // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
+  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range');
   const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
   const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);

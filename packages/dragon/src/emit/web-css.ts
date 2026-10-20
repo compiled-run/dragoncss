@@ -15,6 +15,7 @@
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
 // the resolved one.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
+import { rangePartOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -37,6 +38,20 @@ export type WebEmit = {
 };
 
 export const WEB_CSS_PATH = 'dragon.css';
+
+/** The track and thumb of range input el (analysis/resolve.ts), with the pseudo-element that styles each. */
+function rangeStyledParts(el: ResolvedElement): { readonly pseudo: string; readonly el: ResolvedElement }[] {
+  const out: { pseudo: string; el: ResolvedElement }[] = [];
+  let at: ResolvedElement = el;
+  for (;;) {
+    const next = at.children.find((c): c is ResolvedElement => c.kind === 'element' && rangePartOf(c) !== undefined);
+    if (next === undefined) return out;
+    const part = (rangePartOf(next) as { part: string | null }).part;
+    if (part === 'track') out.push({ pseudo: '-webkit-slider-runnable-track', el: next });
+    if (part === 'thumb') out.push({ pseudo: '-webkit-slider-thumb', el: next });
+    at = next;
+  }
+}
 
 /** CSS2 §9.3.2 box offsets, written only when one of them is not auto. */
 export const INSET_LONGHANDS: readonly (typeof LONGHANDS)[number][] = ['top', 'right', 'bottom', 'left'];
@@ -315,7 +330,10 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const below = under || sources.has(el.element.address) || uaColor;
       // GEN-a: a generated box has no DOM element; it is emitted with its host as the host's class plus ::before or ::after.
       const generated = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && isGeneratedElement(ch));
-      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false))];
+      // FORM-a A4: a range's track and thumb are styled through their pseudo-elements on the input's class (in every band and
+      // interaction state); its container takes only UA and inherited values, which the input's own rules reproduce.
+      const ranges = rangePartOf(el)?.part === null ? rangeStyledParts(el).map((p) => partOf(p.el, `::${p.pseudo}`, below, false)) : [];
+      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false)), ...ranges];
       const keyOf = (pt: Part): string => `${pt.suffix}\u0000${pt.decls.join('\n')}${pt.diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(pt.diffs)}` : ''}${pt.own.length > 0 ? `\u0001${JSON.stringify(pt.own)}` : ''}`;
       const variant = `${el.element.address}${parts.map(keyOf).join('\u0002')}`;
       let cls = variants.get(variant);
@@ -335,7 +353,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
-      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch)) visit(ch, below);
+      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch) && (rangePartOf(ch)?.part ?? null) === null) visit(ch, below);
     };
     visit(c.root, false);
   }

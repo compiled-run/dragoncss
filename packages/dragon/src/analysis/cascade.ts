@@ -2,7 +2,7 @@
 // values come from the captured dataset, computed.ts, and Chrome's UA rules for the supported tags hold no !important), so the
 // order is importance, then cascade layer, then specificity, then order of appearance.
 import type { Longhand } from '../css/properties.ts';
-import type { GeneratedPseudo, Selector } from '../css/selectors.ts';
+import type { GeneratedPseudo, RangePart, Selector } from '../css/selectors.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { Registrations } from '../css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from '../css/at-rules/property.ts';
@@ -11,7 +11,7 @@ import type { LinkedElement } from './link.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import { elementDirection, hasDirectionalValues, inDirection } from './logical.ts';
 import type { InteractionState } from './match.ts';
-import { NO_INTERACTION, pseudoSelectorMatches, selectorMatches, specificityFor } from './match.ts';
+import { NO_INTERACTION, partSelectorMatches, pseudoSelectorMatches, selectorMatches, specificityFor } from './match.ts';
 import type { CustomProperties, SubstitutedDeclaration, Substitution, VarScope } from './variables.ts';
 import { computeCustoms } from './variables.ts';
 
@@ -69,6 +69,9 @@ export type CascadeResult = {
 /** GEN-a (notes/T151-gen-spec.md R6): the cascade of a ::before or ::after box, and its host's direction, which it takes. */
 export type CascadePseudo = { readonly name: GeneratedPseudo; readonly direction: Direction };
 
+/** A range part's cascade: the part's pseudo-element (null for the container, which no author selector reaches) and its direction. */
+export type CascadePart = { readonly name: RangePart | null; readonly direction: Direction };
+
 /** css-variables-1 §3.1: a longhand of a declaration holding var() competes with this value until substitution. */
 const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var()', text: d.text });
 
@@ -77,9 +80,14 @@ const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var(
  * order: custom properties first (over the parent's, inherited), then direction with var() substituted, then every other
  * longhand with each flow-relative declaration mapped to the physical side of that direction.
  */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION, registered: Registrations = NO_REGISTRATIONS, pseudo: CascadePseudo | null = null): CascadeResult {
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION, registered: Registrations = NO_REGISTRATIONS, pseudo: CascadePseudo | null = null, part: CascadePart | null = null): CascadeResult {
   // GEN-a: a generated box cascades only its own pseudo-element's selectors, matched on its host's chain (chain ends with the host).
-  const matches = (rule: Rule, sel: Selector): boolean => (pseudo === null ? selectorMatches(rule, sel, chain, chain.length - 1, 0, faults, ix) : pseudoSelectorMatches(rule, sel, chain, pseudo.name, faults, ix));
+  // FORM-a A4: a range part (::-webkit-slider-thumb, ::-webkit-slider-runnable-track) cascades only its own pseudo-element
+  // selectors, matched on the input's chain; the element's cascade never takes them (match.ts selectorMatches).
+  const matches = (rule: Rule, sel: Selector): boolean =>
+    pseudo !== null ? pseudoSelectorMatches(rule, sel, chain, pseudo.name, faults, ix)
+      : part !== null ? part.name !== null && partSelectorMatches(rule, sel, chain, part.name, faults, ix)
+      : selectorMatches(rule, sel, chain, chain.length - 1, 0, faults, ix);
   const customs = new Map<string, { declaration: Declaration; specificity: readonly [number, number, number] }>();
   for (const rule of rules) {
     for (const sel of rule.selectors) {
@@ -95,8 +103,9 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
   }
   const scope: VarScope = { customs: computeCustoms(new Map([...customs].map(([name, c]) => [name, c.declaration])), inheritedCustoms, registered), memo: new Map<Declaration, SubstitutedDeclaration>() };
   // css-logical-1 §4: flow-relative declarations take part as the physical longhands of the element's direction (logical.ts).
-  // A generated box takes its host's direction (R6); computed-checks.ts refuses an authored direction on it.
-  const own = !hasDirectionalValues(rules) ? null : pseudo !== null ? pseudo.direction : elementDirection(rules, chain, faults, direction, scope);
+  // A generated box takes its host's direction (R6), and a range part the one it inherits from the input; computed-checks.ts
+  // refuses an authored direction on either.
+  const own = !hasDirectionalValues(rules) ? null : pseudo !== null ? pseudo.direction : part !== null ? part.direction : elementDirection(rules, chain, faults, direction, scope);
   const winners = new Map<Longhand, Candidate>();
   const matched = new Map<Longhand, Declaration[]>();
   const candidates: (readonly [Longhand, Candidate])[] = [];

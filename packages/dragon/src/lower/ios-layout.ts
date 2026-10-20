@@ -55,6 +55,9 @@ import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { isControlTag } from '../analysis/elements/controls.ts';
+import { rangePartOf } from '../analysis/resolve.ts';
+import { rangeRatio } from '../forms/range-value.ts';
+import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
@@ -655,6 +658,17 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
   const strut = strutOf(el, inlineContent, l.mode);
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
-  if (isControlTag(el.element.tag) && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  const range = rangePartOf(el);
+  if (range !== undefined && range.part === null) {
+    // A range is a flex container whatever its display (range_input_type.cc CreateLayoutObject); its default track length is
+    // FORM-0's captured width of an appearance: none thumb in an auto-width range (the track's content width).
+    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'range', defaultInlineSize: RANGE_NONE_THUMB.width }, strut, children };
+  }
+  if (range !== undefined && range.part === 'thumb') {
+    const a = range.host.attributes;
+    const ratio = rangeRatio({ min: a.get('min') ?? null, max: a.get('max') ?? null, step: a.get('step') ?? null, value: a.get('value') ?? null });
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'slider-thumb', ratio }, strut, children };
+  }
   return { kind: 'box', id, boxType: 'element', style, strut, children };
 }

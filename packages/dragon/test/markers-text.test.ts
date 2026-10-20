@@ -271,7 +271,7 @@ describe('marker text through the compiler (analysis/markers.ts) against the GEN
   });
   it('handles ol start and reversed and li value only (HTML §4.4.5, §4.4.8); the same names elsewhere stay refused', () => {
     for (const [tag, name] of [['ol', 'start'], ['ol', 'reversed'], ['li', 'value']]) expect(attributeRefusal(tag as string, name as string), `<${tag} ${name}>`).toBeNull();
-    for (const [tag, name, owner] of [['ul', 'start', 'not proven neutral'], ['ul', 'reversed', 'not proven neutral'], ['div', 'start', 'not proven neutral'], ['ol', 'value', 'FORM-a'], ['input', 'value', 'FORM-a'], ['li', 'start', 'not proven neutral']]) {
+    for (const [tag, name, owner] of [['ul', 'start', 'not proven neutral'], ['ul', 'reversed', 'not proven neutral'], ['div', 'start', 'not proven neutral'], ['ol', 'value', 'FORM-a'], ['li', 'start', 'not proven neutral']]) {
       expect(attributeRefusal(tag as string, name as string), `<${tag} ${name}>`).toContain(owner);
     }
   });

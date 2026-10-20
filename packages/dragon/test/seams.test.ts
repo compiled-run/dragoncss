@@ -204,7 +204,7 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
       return { text, diagnostics, enclosed };
     }));
     // The selectors package added Compound.pseudos and Selector.anchor, TREE added Compound.ids and Selector.dropped, and GEN-a
-    // added Selector.pseudoElement: every selector here must carry the defaults ([], null, [], false and null), and without them the
+    // and FORM-a A4 added Selector.pseudoElement: every selector here must carry the defaults ([], null, [], false and null), and without them the
     // runs are byte-identical to the 4c1331c pin.
     const added: unknown[] = [];
     const strip = (v: unknown): unknown => JSON.parse(JSON.stringify(v, (k, x: unknown) => {

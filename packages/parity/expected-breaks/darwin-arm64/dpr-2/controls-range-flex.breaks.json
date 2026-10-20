@@ -1,0 +1,9 @@
+{
+  "case": "controls-range-flex",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"time-current:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"time-total:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

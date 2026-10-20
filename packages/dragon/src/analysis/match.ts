@@ -1,7 +1,7 @@
 // Selector matching over the linked tree (selectors are parsed in css/selectors.ts). Each case tree is fixed, so every
 // structural match (siblings, :nth-*, :empty, :has()) is decided at build time; state-dependent children are already
 // enumerated into one tree per reachable assignment by link.ts.
-import type { AttributeTest, Compound, GeneratedPseudo, PseudoClass, Selector, Specificity } from '../css/selectors.ts';
+import type { AttributeTest, Compound, GeneratedPseudo, PseudoClass, RangePart, Selector, Specificity } from '../css/selectors.ts';
 import { specificityOf } from '../css/selectors.ts';
 import type { Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
@@ -221,7 +221,8 @@ function hasMatches(rule: Rule, sel: Selector, anchorPath: Path, faults: Compile
 export function selectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], index: number, part: number, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
   if (index < 0 || chain[index] === undefined) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
-  // A pseudo-element selector styles its generated box (pseudoSelectorMatches), never the element; a statically empty one no box.
+  // A pseudo-element selector styles its generated box (pseudoSelectorMatches) or its range part (partSelectorMatches), never the
+  // element; a statically empty one no box.
   if (sel.pseudoElement !== null) return false;
   return matchFrom(rule, sel, chain.slice(0, index + 1), part, faults, ix, () => true);
 }
@@ -229,6 +230,13 @@ export function selectorMatches(rule: Rule, sel: Selector, chain: readonly Linke
 /** GEN-a (notes/T151-gen-spec.md R6): whether sel styles the ::before or ::after box of the host chain[chain.length - 1]. */
 export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
   if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind !== 'generated' || sel.pseudoElement.name !== pseudo) return false;
+  if (sel.dropped && !faults.invalidSelectorListKept) return false;
+  return matchFrom(rule, sel, chain, 0, faults, ix, () => true);
+}
+
+/** FORM-a A4: whether sel styles the range part rangePart of the input chain[chain.length - 1]. */
+export function partSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], rangePart: RangePart, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
+  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind !== 'range' || sel.pseudoElement.name !== rangePart) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
   return matchFrom(rule, sel, chain, 0, faults, ix, () => true);
 }

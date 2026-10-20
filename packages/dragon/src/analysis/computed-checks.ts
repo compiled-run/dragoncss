@@ -53,7 +53,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
-import { buttonAppearance, isControlTag } from './elements/controls.ts';
+import { buttonAppearance, isControlTag, isRangeType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { dashArrayOf } from '../css/properties/svg-dash.ts';
@@ -63,7 +63,7 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { environmentOf, generatedPseudoOf, refusedGenerationOf, valueToString } from './resolve.ts';
+import { environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, valueToString } from './resolve.ts';
 import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
@@ -665,7 +665,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const declared = size.origin === 'author' ? size.declared : null;
     const relative = declared !== null && (declared.kind === 'percentage' || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
     const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
-    const keyed = uaRows(ua, uaTagOf(tag)).contexts;
+    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'))).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
       once(`ua-context|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
@@ -1060,6 +1060,74 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   }
 }
 
+/** The container-role longhands of a range input, which Chrome's range layout (a flex container) would read. */
+const RANGE_FLEX_LONGHANDS: readonly Longhand[] = ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap'];
+
+/**
+ * FORM-a A4: an input[type=range] is laid out as its UA shadow tree and painted as CSS boxes when the input and its thumb are both
+ * appearance: none (R11, FORM-0 ruling F3). Refused: any other input type (FORM-b), a themed range or thumb (FORM-b), an
+ * inline-level range (RF-INL), any display but block or flex, an absolutely positioned range, and a flex container longhand
+ * on the input other than its initial value (the shadow tree's flex layout would read it).
+ */
+function checkRange(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const address = el.element.address;
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
+  const type = el.element.attributes.get('type');
+  if (!isRangeType(type)) {
+    const id = `input-type|${address}`;
+    if (!reported.has(id)) {
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input> ${address} of type ${type === undefined ? 'text (no type)' : type} is not supported: only type=range is laid out; other inputs wait for the FORM-b package`, manual: `Use type="range", or a div in place of <input> ${address}.` }));
+    }
+    return;
+  }
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  const thumb = rangePart(el, 'thumb');
+  const thumbAppearance = thumb === null ? null : (thumb.props.get('appearance') as ResolvedValue);
+  if (keywordOf(appearance) !== 'none' || thumbAppearance === null || keywordOf(thumbAppearance) !== 'none') {
+    const v = keywordOf(appearance) !== 'none' ? appearance : thumbAppearance;
+    refuse(v, 'theme', `<input type=range> ${address} is painted by the platform theme unless it and its ::-webkit-slider-thumb are both appearance: none (Blink LayoutTheme; FORM-0 ruling F3), which waits for the FORM-b package`, `Set appearance: none on <input> ${address} and on its ::-webkit-slider-thumb.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <input> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <input> ${address}, or make it a flex item.`);
+  } else if (d !== 'block' && d !== 'flex') {
+    refuse(display, 'display', `display: ${d} on <input> ${address} is not supported on a range; only block-level ranges are laid out`, `Set display: block on <input> ${address}.`);
+  }
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  if (pos === 'absolute' || pos === 'fixed') {
+    refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
+  }
+  for (const p of RANGE_FLEX_LONGHANDS) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (v.declaration === null || isInitialByProvenance(v, p)) continue;
+    refuse(v, `flex-${p}`, `${p}: ${valueToString(v.value)} on <input type=range> ${address} is not supported: the range's shadow tree is laid out as a flex container, which no fixture proves under it`, `Remove ${p} from <input> ${address}.`);
+  }
+}
+
+/** A range shadow part of input el (resolve.ts), or null. */
+function rangePart(el: ResolvedElement, part: 'container' | 'track' | 'thumb'): ResolvedElement | null {
+  let at: ResolvedElement | undefined = el;
+  while (at !== undefined) {
+    const next: ResolvedElement | undefined = at.children.find((c): c is ResolvedElement => c.kind === 'element' && rangePartOf(c)?.part !== undefined && rangePartOf(c)?.part !== null);
+    if (next === undefined) return null;
+    if (rangePartOf(next)?.part === part) return next;
+    at = next;
+  }
+  return null;
+}
+
+/** A range part inherits its direction from the input: a direction set in a part rule is refused (cascade.ts maps flow-relative sides by the input's). */
+function checkRangePart(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const info = rangePartOf(el);
+  if (info === undefined || info.part === null) return;
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (direction.declaration === null) return;
+  refuseOn(el, direction, 'part-direction', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `direction on the ${info.part} of <input> ${info.host.address} is not supported: a range part takes its input's direction`, `Set direction on <input> ${info.host.address} instead.`);
+}
+
 /** An absolutely positioned box inside a form control: the engine does not look up its containing block there (control-out-of-flow). */
 function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const position = el.props.get('position') as ResolvedValue;
@@ -1105,8 +1173,14 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
-    else if (!here && isControlTag(el.element.tag)) {
+    else if (!here && el.element.tag === 'button') {
       checkButton(el, parentDisplay, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported, shapedAt);
+    } else if (!here && el.element.tag === 'input') {
+      checkRange(el, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported, shapedAt);
+    } else if (!here && rangePartOf(el) !== undefined) {
+      checkRangePart(el, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt);
     } else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);

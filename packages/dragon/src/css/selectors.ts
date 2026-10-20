@@ -42,17 +42,23 @@ export type Compound = {
   readonly pseudos: readonly PseudoClass[];
 };
 export type Specificity = readonly [number, number, number];
+/** The range parts an author selector can style (FORM-a A4): ::-webkit-slider-thumb and ::-webkit-slider-runnable-track. */
+export type RangePart = 'thumb' | 'track';
+const RANGE_PSEUDO_ELEMENTS: Readonly<Record<string, RangePart>> = { '-webkit-slider-thumb': 'thumb', '-webkit-slider-runnable-track': 'track' };
+const RANGE_PSEUDO_NAMES: Readonly<Record<RangePart, string>> = { thumb: '-webkit-slider-thumb', track: '-webkit-slider-runnable-track' };
 /** The pseudo-elements that generate a box from string content (GEN-a, notes/T151-gen-spec.md R2, R5). */
 export type GeneratedPseudo = 'before' | 'after';
 export const GENERATED_PSEUDOS: readonly GeneratedPseudo[] = ['before', 'after'];
 /**
  * The pseudo-element a selector's subject compound ends with (R5): ::before or ::after (or the legacy :before and :after), whose
  * box the cascade builds from the host's chain, or a statically empty one (::backdrop, ::placeholder, a date or number input part),
- * which matches no box once analysis/pseudo-hosts.ts proves no element of the tree can host it. span: the pseudo-element's text.
+ * which matches no box once analysis/pseudo-hosts.ts proves no element of the tree can host it, or a range part (FORM-a A4),
+ * which the cascade styles per part of an input[type=range]. span: the pseudo-element's text.
  */
 export type SelectorPseudoElement =
   | { readonly kind: 'generated'; readonly name: GeneratedPseudo; readonly span: Span; /** Written as CSS2's single-colon :before or :after. */ readonly legacy: boolean }
-  | { readonly kind: 'static-empty'; readonly name: string; readonly span: Span };
+  | { readonly kind: 'static-empty'; readonly name: string; readonly span: Span }
+  | { readonly kind: 'range'; readonly name: RangePart; readonly span: Span };
 /**
  * Right-to-left: parts[0] is the subject; each later part is joined to the previous by its combinator. anchor: in a :has()
  * argument, the combinator joining the leftmost compound to the :has() element (Selectors-4 §3.4 relative selectors); else null.
@@ -279,7 +285,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
     if (pseudoElement !== null) {
       // R5: the pseudo-element ends the selector; Dragon refuses whatever follows it (::before:hover, ::before::marker, a combinator).
       ok = false;
-      refuse(part, `"${generate(part)}" after the pseudo-element ::${pseudoElement.name} of ${generate(sel)} is not supported (${afterPseudoOwner(part)})`, 'End the selector with the pseudo-element.');
+      refuse(part, `"${generate(part)}" after the pseudo-element ::${pseudoElement.kind === 'range' ? RANGE_PSEUDO_NAMES[pseudoElement.name] : pseudoElement.name} of ${generate(sel)} is not supported (${afterPseudoOwner(part)})`, 'End the selector with the pseudo-element.');
       break;
     }
     if (part.type === 'Combinator') {
@@ -337,9 +343,14 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       else current.pseudos.push(p);
     } else if (part.type === 'PseudoElementSelector') {
       const name = asciiLower(String(part['name']));
+      const rangePart = part['children'] === null ? RANGE_PSEUDO_ELEMENTS[name] : undefined;
       const generated = part['children'] === null && (GENERATED_PSEUDOS as readonly string[]).includes(name);
       const empty = part['children'] === null && isStaticEmptyPseudo(name);
-      if ((generated || empty) && ctx.inArgument) {
+      if (rangePart !== undefined && ctx.inArgument) {
+        ok = false;
+        refuse(part, `pseudo-element ${generate(part)} inside a selector argument is not supported`, 'Write the pseudo-element at the end of a top-level selector.');
+      } else if (rangePart !== undefined) pseudoElement = { kind: 'range', name: rangePart, span: spanOf(part, ctx.base) };
+      else if ((generated || empty) && ctx.inArgument) {
         // Selectors-4 §4: a pseudo-element is invalid in a selector argument; Chrome drops it, and so does Dragon.
         ok = false;
         chromeInvalid(part, generate(part), ctx, refuse);
