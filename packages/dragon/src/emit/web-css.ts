@@ -11,12 +11,15 @@
 // sets it on a supported tag), and caret-color and accent-color, written on every element of a case where any element's is not auto
 // (FORM-b). -webkit-user-modify is never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag
 // changes (TOUCH).
+// break-before, break-after and break-inside are written only where one is not auto, and orphans and widows, inherited, on every
+// element of a case where any element's is not 2: their initial values, which no Chrome UA rule sets (css-break-3).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
 // colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
 // the resolved one.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';
+import { markerOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -67,6 +70,22 @@ function writesUiColors(el: ResolvedElement): boolean {
   return (['caret-color', 'accent-color'] as const).some((p) => {
     const v = (el.props.get(p) as ResolvedValue).value;
     return !(v.kind === 'keyword' && v.value === 'auto');
+  });
+}
+
+/** Whether an element's break-before, break-after or break-inside is not auto, their initial value. */
+function writesBreaks(el: ResolvedElement): boolean {
+  return (['break-before', 'break-after', 'break-inside'] as const).some((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return !(v.kind === 'keyword' && v.value === 'auto');
+  });
+}
+
+/** Whether an element's orphans or widows is not 2, their initial value. */
+function writesOrphansWidows(el: ResolvedElement): boolean {
+  return (['orphans', 'widows'] as const).some((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return !(v.kind === 'number' && v.value === 2);
   });
 }
 
@@ -121,6 +140,16 @@ export function valueText(v: CssValue): string {
     case 'other':
       return v.text;
   }
+}
+
+/**
+ * A background-image value with each mapped url() src written as its data: URL (images/compile.ts webUrls). The resolved text holds
+ * every url() as background.ts urlText serializes it, so the token is matched whole.
+ */
+export function backgroundImageText(v: CssValue, imageUrls: ReadonlyMap<string, string>): string {
+  let text = valueText(v);
+  for (const [src, data] of imageUrls) text = text.split(`url(${serializeString(src)})`).join(`url(${serializeString(data)})`);
+  return text;
 }
 
 /** The parts of an interaction state the web output reads (analysis/interaction.ts InteractionValue): who matches each pseudo-class. */
@@ -225,7 +254,7 @@ export type WebAnimations = {
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
-export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true, webkitBoxEmittedAsFlowRoot = false): WebEmit {
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true, webkitBoxEmittedAsFlowRoot = false, imageUrls: ReadonlyMap<string, string> = new Map()): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
     const text = familyListText(v);
@@ -249,6 +278,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
     // MASK-CLIP: mask-composite's source-over is written under -webkit-mask-composite, the one name that parses it.
     if (p === 'mask-composite') return `  ${maskDeclarationName(p, v)}: ${valueText(v)};`;
+    if (p === 'background-image') return `  ${p}: ${backgroundImageText(v, imageUrls)};`;
     return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
   };
   const classOf = new Map<string, Map<string, string>>();
@@ -275,6 +305,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     // FORM-b: caret-color and accent-color are inherited, so they are written on every element of the case or none: an auto left out
     // under a written colour would inherit it.
     const uiColors = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesUiColors));
+    // css-break-3: orphans and widows are inherited too, so they are written on every element of the case or none.
+    const orphansWidows = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesOrphansWidows));
     // One part: an element, or one of its ::before and ::after boxes (GEN-a R7), whose rule is the element's class with the
     // pseudo-element appended. Its lines, its diffs in each later band, and its interaction states against each band's none state.
     const partOf = (el: ResolvedElement, suffix: string, under: boolean, withAnimations: boolean): Part => {
@@ -294,7 +326,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
       const appearance = resolutions.some(writesAppearance);
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify').map((p) => declLine(el, p, under));
+      const breaks = resolutions.some(writesBreaks);
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows'))).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null && withAnimations) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).
@@ -313,13 +346,30 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       }));
       return { suffix, decls, diffs, own };
     };
+    // css-lists-3 §3.1: a list item's ::marker part, written only when its color is not inherited from the item in some band or
+    // state; an item that is no list item there has no marker, so inherit stands for it.
+    const markerPart = (el: ResolvedElement): Part[] => {
+      const line = (item: ResolvedElement | undefined): string => {
+        const m = item === undefined ? undefined : markerOf(item);
+        const v = m === undefined ? undefined : (m.props.get('color') as ResolvedValue);
+        return v === undefined || v.origin === 'inherited' ? '  color: inherit;' : `  color: ${valueText(v.value)};`;
+      };
+      const base = line(el);
+      const diffs = inBands.map((m) => (line(m.get(el.element.address)) === base ? [] : [line(m.get(el.element.address))]));
+      const own = states.flatMap((list, band) => list.flatMap((st) => {
+        const here = line(st.at.get(el.element.address));
+        return here === line((bandBase[band] as Map<string, ResolvedElement>).get(el.element.address)) ? [] : [{ band, conditions: st.conditions, lines: [here] }];
+      }));
+      const inherit = base === '  color: inherit;' && diffs.every((d) => d.length === 0) && own.length === 0;
+      return inherit ? [] : [{ suffix: '::marker', decls: [base], diffs, own }];
+    };
     const visit = (el: ResolvedElement, under: boolean): void => {
       // Below a UA colour, an inherited colour stays inherited, so it follows a link's :active and visited colours.
       const uaColor = (el.props.get('color') as ResolvedValue).origin === 'user-agent';
       const below = under || sources.has(el.element.address) || uaColor;
       // GEN-a: a generated box has no DOM element; it is emitted with its host as the host's class plus ::before or ::after.
       const generated = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && isGeneratedElement(ch));
-      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false))];
+      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false)), ...markerPart(el)];
       // NA-NATIVE: ::-webkit-scrollbar rules that hide the element's scrollbars are written as the one rule that does (webkit-scrollbar.ts),
       // outside @media and interaction states when they hide them in any band or state: where they do not, the element scrolls on no
       // axis they leave shown (that resolution refuses them otherwise), or a scrollbar-width other than auto makes Chrome ignore the rule.

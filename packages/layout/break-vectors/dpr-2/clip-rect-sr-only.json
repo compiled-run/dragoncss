@@ -1,0 +1,15 @@
+{
+  "case": "clip-rect-sr-only",
+  "dpr": 2,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,4]]},
+    {"id":"t2:text0","lines":[[0,2]]},
+    {"id":"cut-probe-c1:text0","lines":[[0,2]]},
+    {"id":"cut-probe-c2:text0","lines":[[0,2]]},
+    {"id":"cut-inline:text0","lines":[[0,6]]},
+    {"id":"cut-inline-s:text0","lines":[[0,5]]},
+    {"id":"cut-lines:text0","lines":[[0,2]]},
+    {"id":"cut-lines:text1","lines":[[0,2]]},
+    {"id":"cut-sr:text0","lines":[[0,15]]}
+  ]
+}

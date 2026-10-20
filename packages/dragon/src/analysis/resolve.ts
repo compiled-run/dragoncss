@@ -18,7 +18,7 @@ import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, synthesizesSmallCaps, userAgentValue } from './computed.ts';
-import { uaTagOf } from './elements.ts';
+import { MARKER_TAG, uaTagOf } from './elements.ts';
 import { generatedElement, generatedText, generatedTextNode, hostRefusal } from './generated.ts';
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
@@ -238,16 +238,18 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   // GEN-a: the generated pseudo-elements some rule selects; only these are cascaded on each element.
   const selected = new Set(rules.flatMap((r) => r.selectors.flatMap((sel) => (sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' ? [sel.pseudoElement.name] : []))));
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
-  const rulesOf = new Map(GENERATED_PSEUDOS.map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' && sel.pseudoElement.name === p))] as const));
+  const rulesOf = new Map([...GENERATED_PSEUDOS, 'marker' as const].map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind !== 'static-empty' && sel.pseudoElement.name === p))] as const));
+  const markerRules = rulesOf.get('marker') as readonly Rule[];
   const scrollbarRules = hasScrollbarRules(rules);
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = RESOLVED_CUSTOMS;
   // The children of each inline box, waiting for its block container's inline formatting context to collapse their text.
   const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
-  // GEN-a (R2): pseudo is set for a host's ::before or ::after box, el is its element (generated.ts generatedElement) and chain
-  // ends with the host; the box cascades its pseudo-element's rules on the host's chain and inherits from parent, the host.
-  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | null = null): ResolvedElement => {
+  // GEN-a (R2): pseudo is set for a host's ::before, ::after or ::marker box, el is its element (generated.ts generatedElement,
+  // markerElement) and chain ends with the host; the box cascades its pseudo-element's rules on the host's chain and inherits from
+  // parent, the host.
+  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | 'marker' | null = null): ResolvedElement => {
     const here = pseudo === null ? [...chain, el] : chain;
     const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
     const { winners, matched, scope } = cascadeElement(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo);
@@ -285,8 +287,10 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       // css-color-4 §4.4: currentcolor as the value of color behaves as inherit.
       const currentColorOnColor = p === 'color' && w !== undefined && w.value.kind === 'keyword' && w.value.value === 'currentcolor';
       // css-cascade-5 §7.3, §7.4: revert in the author origin rolls back to the user-agent origin (there is no user origin), and
-      // revert-layer outside any layer is revert; presentational hints are author-level, so they are rolled back too.
+      // revert-layer outside any layer is revert; presentational hints are author-level, so revert rolls them back too.
       const reverted = !faults.revertAsUnset && w !== undefined && w.value.kind === 'keyword' && (w.value.value === 'revert' || w.value.value === 'revert-layer');
+      // revert-layer with no author layer below rolls back to the presentational hints, which sit below every layer (Chrome 145).
+      const toHint = reverted && w.value.kind === 'keyword' && w.value.value === 'revert-layer' && hints.has(p);
       if (w !== undefined && !currentColorOnColor && !reverted && !(w.value.kind === 'keyword' && ['inherit', 'initial', 'unset', 'revert', 'revert-layer'].includes(w.value.value))) {
         props.set(p, { value: w.value, origin: 'author', span: w.declaration.span, ...author });
       } else if (w !== undefined && !reverted && w.value.kind === 'keyword') {
@@ -294,7 +298,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const useInherit = kw === 'inherit' || currentColorOnColor || ((kw === 'unset' || kw === 'revert' || kw === 'revert-layer') && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
-      } else if (w === undefined && hints.has(p)) {
+      } else if ((w === undefined || toHint) && hints.has(p)) {
         // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
         // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
         const value = hints.get(p) as CssValue;
@@ -313,7 +317,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, defaultFor(p));
         defaulted.add(p);
       }
-      if (reverted && w !== undefined) {
+      if (reverted && w !== undefined && !toHint) {
         props.set(p, { ...(props.get(p) as ResolvedValue), span: w.declaration.span, ...author });
         revertedProps.add(p);
       }
@@ -355,11 +359,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeJustifyItems(props, parent === null ? null : parent.props);
     if (pseudo === null) computeLists(props, faults);
-    else computePseudoContent(props, faults);
+    else if (pseudo !== 'marker') computePseudoContent(props, faults);
     // R3: a generated box's one text child (none for an empty string); the element is built once its content is computed.
-    const content = pseudo === null ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
+    const content = pseudo === null || pseudo === 'marker' ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
     const host = pseudo === null ? null : (chain[chain.length - 1] as LinkedElement);
-    const own = pseudo === null || host === null || content === null || content === '' ? el : generatedElement(host, pseudo, [generatedTextNode(host, pseudo, content, props.get('content') as ResolvedValue)]);
+    const own = pseudo === null || pseudo === 'marker' || host === null || content === null || content === '' ? el : generatedElement(host, pseudo, [generatedTextNode(host, pseudo, content, props.get('content') as ResolvedValue)]);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
       kind: 'element',
       element: own,
@@ -369,6 +373,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
     const kids: (ResolvedElement | LinkedText)[] = own.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
+    // css-lists-3 §3.1: a list item's ::marker rules cascade onto its marker, which inherits from the item; it is kept beside the
+    // tree (markerOf), as only its color is drawn (generated.ts markerRuleRefusals refuses every other property).
+    if (pseudo === null && markerRules.length > 0 && isListItem(props.get('display') as ResolvedValue)) {
+      markers.set(self, visit(markerElement(el), here, self, 'marker'));
+    }
     if (pseudo === null) {
       // GEN-a (R2-R4): the host's ::before box is its first child and its ::after box its last. A box on a host R4 refuses is not
       // built; it is recorded for the computed-value checks (refusedGenerationOf).
@@ -391,8 +400,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         else kids.push(box);
       }
     }
-    // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it.
-    if (parent !== null && isInlineBox(self)) {
+    // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it, and so
+    // does a display: contents element's, whose children take its place in its parent's box (css-display-3 §2.5).
+    if (parent !== null && (isInlineBox(self) || displayOf(self) === 'contents')) {
       pendingInline.set(self, kids);
       return self;
     }
@@ -426,6 +436,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
           modes.push(collapseModeOf(owner));
           transforms.push({ kind: 'text', node: kid, transform: textTransformOf(owner) });
         } else if (displayOf(kid) === 'none') continue;
+        else if (displayOf(kid) === 'contents' && pendingInline.has(kid)) gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') {
             run.push(null);
@@ -486,6 +497,25 @@ export type GeneratedInfo = { readonly pseudo: GeneratedPseudo; readonly host: R
 export type RefusedGeneration = { readonly pseudo: GeneratedPseudo; readonly content: ResolvedValue; readonly reason: string };
 const generated = new WeakMap<ResolvedElement, GeneratedInfo>();
 const refused = new WeakMap<ResolvedElement, readonly RefusedGeneration[]>();
+
+const markers = new WeakMap<ResolvedElement, ResolvedElement>();
+const isListItem = (v: ResolvedValue): boolean => v.value.kind === 'keyword' && v.value.value === 'list-item';
+
+/** The element resolve.ts cascades a list item's ::marker rules on: "<item>::marker", located at the item, with no children. */
+function markerElement(host: LinkedElement): LinkedElement {
+  return { kind: 'element', address: `${host.address}::marker`, node: host.node, instance: host.instance, owner: host.owner, tag: MARKER_TAG, classes: [], attributes: new Map(), children: [] };
+}
+
+/**
+ * The resolved ::marker of a list item when some rule selects ::marker (its color is the marker's), or undefined: then the marker
+ * takes every value from the item.
+ */
+export function markerOf(item: ResolvedElement): ResolvedElement | undefined {
+  return markers.get(item);
+}
+
+/** The element whose color a list item's marker is drawn in: its resolved ::marker, or the item itself. */
+export const markerStyleOf = (item: ResolvedElement): ResolvedElement => markers.get(item) ?? item;
 
 /** The pseudo-element and host of a ::before or ::after box resolveTree built, or undefined for every other element. */
 export function generatedPseudoOf(el: ResolvedElement): GeneratedInfo | undefined {

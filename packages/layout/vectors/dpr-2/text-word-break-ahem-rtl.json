@@ -153,6 +153,7 @@
     "gridItem": null
    },
    "strut": null,
+   "marker": null,
    "children": [
     {
      "kind": "box",
@@ -279,6 +280,7 @@
       "gridItem": null
      },
      "strut": null,
+     "marker": null,
      "children": [
       {
        "kind": "box",
@@ -419,6 +421,7 @@
          "kind": "normal"
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -447,7 +450,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         }
        ]
       },
@@ -590,6 +594,7 @@
          "kind": "normal"
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -618,7 +623,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         }
        ]
       },
@@ -761,6 +767,7 @@
          "kind": "normal"
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -789,7 +796,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         }
        ]
       },
@@ -932,6 +940,7 @@
          "kind": "normal"
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -960,7 +969,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         },
         {
          "kind": "inline",
@@ -1125,7 +1135,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "break-all"
+           "wordBreak": "break-all",
+           "smallCaps": false
           }
          ]
         },
@@ -1156,7 +1167,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "break-all"
+         "wordBreak": "break-all",
+         "smallCaps": false
         }
        ]
       },
@@ -1299,6 +1311,7 @@
          "kind": "normal"
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1327,7 +1340,8 @@
           "value": 0
          },
          "overflowWrap": "normal",
-         "wordBreak": "keep-all"
+         "wordBreak": "keep-all",
+         "smallCaps": false
         }
        ]
       },
@@ -1457,6 +1471,7 @@
         "gridItem": null
        },
        "strut": null,
+       "marker": null,
        "children": [
         {
          "kind": "box",
@@ -1596,6 +1611,7 @@
            "kind": "normal"
           }
          },
+         "marker": null,
          "children": [
           {
            "kind": "text",
@@ -1624,7 +1640,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "break-all"
+           "wordBreak": "break-all",
+           "smallCaps": false
           }
          ]
         },
@@ -1766,6 +1783,7 @@
            "kind": "normal"
           }
          },
+         "marker": null,
          "children": [
           {
            "kind": "text",
@@ -1794,7 +1812,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "keep-all"
+           "wordBreak": "keep-all",
+           "smallCaps": false
           }
          ]
         }
@@ -1926,6 +1945,7 @@
         "gridItem": null
        },
        "strut": null,
+       "marker": null,
        "children": [
         {
          "kind": "box",
@@ -2065,6 +2085,7 @@
            "kind": "normal"
           }
          },
+         "marker": null,
          "children": [
           {
            "kind": "text",
@@ -2093,7 +2114,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "break-all"
+           "wordBreak": "break-all",
+           "smallCaps": false
           }
          ]
         },
@@ -2235,6 +2257,7 @@
            "kind": "normal"
           }
          },
+         "marker": null,
          "children": [
           {
            "kind": "text",
@@ -2263,7 +2286,8 @@
             "value": 0
            },
            "overflowWrap": "normal",
-           "wordBreak": "keep-all"
+           "wordBreak": "keep-all",
+           "smallCaps": false
           }
          ]
         }

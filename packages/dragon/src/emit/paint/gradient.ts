@@ -2,8 +2,10 @@
 // through the public writer; after every layout the translated paint-gradient.ts plans the background at the device scale (Blink's
 // tile geometry on the unsnapped border box, the cc tiles of the box's composited layer) and rasterises the colour and every layer
 // into one premultiplied device-pixel bitmap (R1, R6). The background-layers stage draws it 1:1 with no filtering (R11), clipped
-// to the radius module's rounded border box; uploads never convert (CGImage premultipliedLast, copyPixelsFromBuffer).
+// to the radius module's rounded border box; uploads never convert (CGImage premultipliedLast, copyPixelsFromBuffer). A url() layer
+// (BG2-u) is drawn in the same stage from its own write (bg-image.ts).
 import type { LoweredGradient, LoweredLayer } from '../../lower/paint/gradient.ts';
+import { BG_IMAGE_KOTLIN, BG_IMAGE_KOTLIN_IMPORTS, BG_IMAGE_KOTLIN_MEMBERS, BG_IMAGE_PLANT, BG_IMAGE_SWIFT, BG_IMAGE_SWIFT_MEMBERS, backgroundImageApplied, backgroundImageLine } from './bg-image.ts';
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT } from './types.ts';
 
@@ -93,6 +95,7 @@ public func dragonSetBackgroundLayers(_ v: DragonBoxView, _ p: DragonGradientLay
 /// After every layout: plan the background on the unsnapped border box at the device scale and rasterise it row by row with
 /// the translated paint-gradient.ts, into a premultiplied RGBA8 image uploaded as it is.
 public func dragonAfterLayoutGradient(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
+  dragonAfterLayoutBackgroundImage(v, shape, scale)
   guard let p = v.dragonGradientLayers else { return }
   if shape.lu[2] <= 0 || shape.lu[3] <= 0 { v.dragonGradientRaster = nil; return }
   do {
@@ -140,6 +143,7 @@ public func dragonAfterLayoutGradient(_ v: DragonBoxView, _ shape: DragonBoxShap
 /// The background-layers stage: the raster at its device-px offset in the view, one image pixel per device pixel, clipped to the
 /// rounded border box when the radius module rounds it.
 public func dragonPaintGradientStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
+  dragonPaintBackgroundImage(v, ctx, shape)
   guard let r = v.dragonGradientRaster, !r.strips.isEmpty else { return }
   let s = CGFloat(v.dragonScale)
   ctx.saveGState()
@@ -161,24 +165,25 @@ public func dragonPaintGradientStage(_ v: DragonBoxView, _ ctx: CGContext, _ sha
 }
 
 /// The readback of the gradient module: the layer count, each layer's kind and linear slope bits, the layer origin, and whether the
-/// device drew every layer as one tile of a modelled shader.
+/// device drew every layer as one tile of a modelled shader; and a url() layer's (dragonAppliedBackgroundImage).
 public func dragonAppliedGradient(_ v: DragonBoxView) -> DumpJsonObject {
-  guard let p = v.dragonGradientLayers else { return [] }
+  guard let p = v.dragonGradientLayers else { return dragonAppliedBackgroundImage(v) }
   var kinds: [DumpJson] = []
   var slopes: [DumpJson] = []
   for l in p.layers {
     kinds.append(.string((l.image.repeating ? "repeating-" : "") + (l.image.radial ? "radial" : "linear")))
     slopes.append(.string(String(format: "%08x", Float(l.image.slope).bitPattern)))
   }
-  return [("dragonBackgroundLayers", .object([
+  let own: DumpJsonObject = [("dragonBackgroundLayers", .object([
     ("layers", .number(Double(p.layers.count))),
     ("kinds", .array(kinds)),
     ("slopes", .array(slopes)),
     ("origin", .array([.number(p.layerX), .number(p.layerY)])),
     ("modelled", .bool(v.dragonGradientRaster?.modelled ?? false)),
   ]))]
+  return own + dragonAppliedBackgroundImage(v)
 }
-`;
+${BG_IMAGE_SWIFT}`;
 
 const KOTLIN_MEMBERS = String.raw`  /** The gradient layers the case code wrote (BG2) and the raster of the last layout. */
   var dragonGradientLayers: DragonGradientLayers? = null
@@ -189,7 +194,7 @@ const KOTLIN_MEMBERS = String.raw`  /** The gradient layers the case code wrote 
 const KOTLIN = String.raw`package dev.dragon.views
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
+${BG_IMAGE_KOTLIN_IMPORTS}import android.graphics.Canvas
 import dev.dragon.dump.DumpJson
 import dev.dragon.layout.BackgroundBox
 import dev.dragon.layout.BackgroundLayer
@@ -234,8 +239,9 @@ fun dragonSetBackgroundLayers(v: DragonBoxView, p: DragonGradientLayers) {
  * translated paint-gradient.ts, into a premultiplied RGBA8 bitmap uploaded as it is (copyPixelsFromBuffer does not convert).
  */
 fun dragonAfterLayoutGradient(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
-  val p = v.dragonGradientLayers ?: return
   v.dragonGradientScale = scale
+  dragonAfterLayoutBackgroundImage(v, shape, scale)
+  val p = v.dragonGradientLayers ?: return
   if (shape.lu[2] <= 0.0 || shape.lu[3] <= 0.0) {
     v.dragonGradientRaster = null
     return
@@ -286,6 +292,7 @@ fun dragonAfterLayoutGradient(v: DragonBoxView, shape: DragonBoxShape, scale: Do
 
 /** The background-layers stage: the raster at its device-px offset, one bitmap pixel per device pixel with a null Paint, clipped to the rounded box. */
 fun dragonPaintGradientStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
+  dragonPaintBackgroundImage(v, canvas, shape)
   val r = v.dragonGradientRaster ?: return
   if (r.strips.isEmpty()) return
   val save = canvas.save()
@@ -300,7 +307,7 @@ fun dragonPaintGradientStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxS
  * device drew every layer as one tile of a modelled shader.
  */
 fun dragonAppliedGradient(v: DragonBoxView): List<Pair<String, DumpJson>> {
-  val p = v.dragonGradientLayers ?: return listOf()
+  val p = v.dragonGradientLayers ?: return dragonAppliedBackgroundImage(v)
   val kinds = p.layers.map { l -> DumpJson.Str((if (l.image.repeating) "repeating-" else "") + (if (l.image.radial) "radial" else "linear")) }
   val slopes = p.layers.map { l -> DumpJson.Str(String.format("%08x", java.lang.Float.floatToRawIntBits(l.image.slope.toFloat()))) }
   return listOf(Pair("dragonBackgroundLayers", DumpJson.Obj(listOf(
@@ -309,29 +316,29 @@ fun dragonAppliedGradient(v: DragonBoxView): List<Pair<String, DumpJson>> {
     Pair("slopes", DumpJson.Arr(slopes)),
     Pair("origin", DumpJson.Arr(listOf(DumpJson.Num(p.layerX), DumpJson.Num(p.layerY)))),
     Pair("modelled", DumpJson.Bool(v.dragonGradientRaster?.modelled ?: false)),
-  ))))
+  )))) + dragonAppliedBackgroundImage(v)
 }
-`;
+${BG_IMAGE_KOTLIN}`;
 
 /** The Kotlin member that keeps the device scale for runtime writes (the Android box view stores no scale of its own). */
 const KOTLIN_SCALE = '  var dragonGradientScale = 1.0\n';
 
-export const GRADIENT_EMITTER: PaintEmitter<'background-layers', 'gradient-offset-1' | 'gradient-unpremultiplied-upload'> = {
+export const GRADIENT_EMITTER: PaintEmitter<'background-layers' | 'background-image', 'gradient-offset-1' | 'gradient-unpremultiplied-upload' | 'bg-image-offset-1'> = {
   name: 'gradient',
-  kinds: ['background-layers'],
+  kinds: ['background-layers', 'background-image'],
   lines: {
-    uikit: (v, _n, w) => [
+    uikit: (v, _n, w) => w.kind === 'background-image' ? [backgroundImageLine('swift', v, w)] : [
       `  dragonSetBackgroundLayers(${v}, DragonGradientLayers(color: ${color(w.color)}, colorClip: ${keywordLit(w.colorClip)}, obscures: [${w.obscures.map(keywordLit).join(', ')}], layers: [`,
       ...w.layers.map((l) => `    ${layer('swift', l)},`),
       `  ], lastIsBottom: ${w.lastIsBottom}, layerX: ${num(w.layerOrigin[0])}, layerY: ${num(w.layerOrigin[1])}))`,
     ],
-    'android-views': (v, _n, w) => [
+    'android-views': (v, _n, w) => w.kind === 'background-image' ? [backgroundImageLine('kotlin', v, w)] : [
       `  dragonSetBackgroundLayers(${v}, DragonGradientLayers(${color(w.color)}, ${keywordLit(w.colorClip)}, arrayOf(${w.obscures.map(keywordLit).join(', ')}), listOf(`,
       ...w.layers.map((l) => `    ${layer('kotlin', l)},`),
       `  ), ${w.lastIsBottom}, ${num(w.layerOrigin[0])}, ${num(w.layerOrigin[1])}))`,
     ],
   },
-  applied: (_e, _b, w) => ({
+  applied: (_e, _b, w) => w.kind === 'background-image' ? backgroundImageApplied(w) : ({
     layers: w.layers.length,
     kinds: w.layers.map((l) => `${l.gradient.repeating ? 'repeating-' : ''}${l.gradient.radial ? 'radial' : 'linear'}`),
     slopes: w.layers.map((l) => slopeBits(l.gradient.slope)),
@@ -339,8 +346,8 @@ export const GRADIENT_EMITTER: PaintEmitter<'background-layers', 'gradient-offse
     modelled: true,
   }),
   native: {
-    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, stages: { 'background-layers': 'dragonPaintGradientStage' }, afterLayout: 'dragonAfterLayoutGradient', applied: 'dragonAppliedGradient' },
-    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS + KOTLIN_SCALE, file: KOTLIN, stages: { 'background-layers': 'dragonPaintGradientStage' }, afterLayout: 'dragonAfterLayoutGradient', applied: 'dragonAppliedGradient' },
+    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS + BG_IMAGE_SWIFT_MEMBERS, file: SWIFT, stages: { 'background-layers': 'dragonPaintGradientStage' }, afterLayout: 'dragonAfterLayoutGradient', applied: 'dragonAppliedGradient' },
+    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS + KOTLIN_SCALE + BG_IMAGE_KOTLIN_MEMBERS, file: KOTLIN, stages: { 'background-layers': 'dragonPaintGradientStage' }, afterLayout: 'dragonAfterLayoutGradient', applied: 'dragonAppliedGradient' },
   },
   plants: [
     {
@@ -357,5 +364,6 @@ export const GRADIENT_EMITTER: PaintEmitter<'background-layers', 'gradient-offse
         'android-views': ['const val DRAGON_GRADIENT_PLANT_SET_PIXELS = false\n', 'const val DRAGON_GRADIENT_PLANT_SET_PIXELS = true\n'],
       },
     },
+    BG_IMAGE_PLANT,
   ],
 };

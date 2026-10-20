@@ -120,6 +120,8 @@ describe('dependency boundaries', () => {
       "import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';",
       // NA-NATIVE: whether an element's ::-webkit-scrollbar rules hide its scrollbars, recorded on its resolution (no matching here).
       "import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';",
+      // ::marker: a list item's resolved marker color, from the resolved tree alone.
+      "import { markerOf } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",

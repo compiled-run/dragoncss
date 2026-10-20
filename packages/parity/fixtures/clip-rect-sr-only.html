@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Text inside boxes an empty clip rect hides: Chrome paints none of it and keeps it in its accessibility tree (the visually-hidden
+   pattern); native boxes draw nothing and carry the text as one accessibility label. */
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
+.stage { position: relative; height: 150px; padding: 8px 16px; background-color: rgb(236, 240, 244); }
+.row { position: relative; height: 40px; margin-bottom: 6px; background-color: rgb(250, 200, 60); }
+.u { position: absolute; top: 5px; clip: rect(0, 0, 0, 0); background-color: rgb(40, 90, 200); color: rgb(200, 30, 30); }
+.probe { left: 8px; }
+.inline { left: 90px; width: 80px; }
+.lines { left: 190px; width: 40px; }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.t { color: rgb(20, 20, 20); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="cut-probe" class="u probe"><div data-dragon-id="cut-probe-c1">Hi</div><div data-dragon-id="cut-probe-c2">Hi</div></div>
+<div data-dragon-id="cut-inline" class="u inline">Hello <span data-dragon-id="cut-inline-s">world</span></div>
+<div data-dragon-id="cut-lines" class="u lines">AB<br data-dragon-id="cut-lines-br">CD</div>
+</div>
+<div data-dragon-id="row2" class="row"><div data-dragon-id="t1" class="t">XXXX</div><div data-dragon-id="cut-sr" class="sr">Skip to content</div><div data-dragon-id="t2" class="t">XX</div></div>
+</div>
+</body>
+</html>

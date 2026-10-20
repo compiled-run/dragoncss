@@ -1,0 +1,21 @@
+{
+  "case": "text-synthesis-small-caps-ahem",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","lines":[[0,11]]},
+    {"id":"au:text0","lines":[[0,5]]},
+    {"id":"fsc:text0","lines":[[0,8]]},
+    {"id":"fall:text0","lines":[[0,11]]},
+    {"id":"fsw:text0","lines":[[0,5]]},
+    {"id":"plain:text0","lines":[[0,8]]},
+    {"id":"pa:text0","lines":[[0,5]]},
+    {"id":"pf:text0","lines":[[0,5]]},
+    {"id":"pin:text0","lines":[[0,5]]},
+    {"id":"hin:text0","lines":[[0,5]]},
+    {"id":"hun:text0","lines":[[0,5]]},
+    {"id":"hhn:text0","lines":[[0,5]]},
+    {"id":"narrow:text0","lines":[[0,8],[8,10]]},
+    {"id":"ra:text0","lines":[[0,5]]},
+    {"id":"rb:text0","lines":[[0,2]]}
+  ]
+}

@@ -153,6 +153,7 @@
     "gridItem": null
    },
    "strut": null,
+   "marker": null,
    "children": [
     {
      "kind": "box",
@@ -279,6 +280,7 @@
       "gridItem": null
      },
      "strut": null,
+     "marker": null,
      "children": [
       {
        "kind": "box",
@@ -421,6 +423,7 @@
          "value": 10
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -596,6 +599,7 @@
          "value": 10
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",

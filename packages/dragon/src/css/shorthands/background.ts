@@ -17,7 +17,7 @@ import type { CssValue } from '../values.ts';
 import { COLOR_FIX, kw, tokenValue } from '../values.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { explicit, implicit } from './shared.ts';
-import { asciiLower } from '../escapes.ts';
+import { asciiLower, serializeString } from '../escapes.ts';
 
 const IMAGE_FUNCTIONS = new Set([
   'url', 'src', 'image', 'image-set', '-webkit-image-set', 'cross-fade', '-webkit-cross-fade', 'element', 'paint',
@@ -47,11 +47,14 @@ export const LAYER_INITIAL: { readonly [P in BackgroundLayerLonghand]: string } 
   'background-clip': 'border-box',
 };
 
-const textOf = (tokens: readonly CssNode[]): string => tokens.map((t) => generate(t)).join(' ');
+/** A url() as Chrome 145 serializes it (SerializeURI): url( and the URL as a double-quoted CSS string. */
+export const urlText = (t: CssNode): string => `url(${serializeString(String(t['value']))})`;
+const tokenText = (t: CssNode): string => (t.type === 'Url' ? urlText(t) : generate(t));
+const textOf = (tokens: readonly CssNode[]): string => tokens.map(tokenText).join(' ');
 
 /**
  * A layer longhand's value from its items' texts: one single-token item keeps its natural kind (keyword, percentage, px
- * length, or a gradient function), anything else is an 'other' value: type 'list' for several layers (as a captured list
+ * length, a gradient function, or a url()), anything else is an 'other' value: type 'list' for several layers (as a captured list
  * parses), the longhand's own name for one multi-token item.
  */
 export function layerValue(property: BackgroundLayerLonghand, items: readonly (readonly CssNode[])[]): CssValue {
@@ -63,6 +66,7 @@ export function layerValue(property: BackgroundLayerLonghand, items: readonly (r
     if (t.type === 'Number' && Number(t['value']) === 0) return { kind: 'length', value: 0, unit: 'px' };
     if (t.type === 'Dimension' && asciiLower(String(t['unit'])) === 'px') return { kind: 'length', value: Number(t['value']), unit: 'px' };
     if (t.type === 'Function') return { kind: 'other', type: `${asciiLower(String(t['name']))}()`, text: generate(t) };
+    if (t.type === 'Url') return { kind: 'other', type: 'url()', text: urlText(t) };
   }
   const text = items.map(textOf).join(', ');
   return { kind: 'other', type: items.length > 1 ? 'list' : property.slice('background-'.length), text };

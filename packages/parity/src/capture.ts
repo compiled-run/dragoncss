@@ -11,7 +11,7 @@ import { assertOverlayScrollbars, isScrollCase } from './scroll-metrics.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import { BROWSER_FLAVOUR, hostPlatform, REFERENCE_PLATFORM } from './platform.ts';
 import { applyTransformTwin } from './transform-capture.ts';
-import { capturePseudoElements, NO_PSEUDO_CAPTURE_FAULTS, pageHasGeneratedContent } from './pseudo-capture.ts';
+import { capturePseudoElements, hasGeneratedBox, NO_PSEUDO_CAPTURE_FAULTS, pageHasGeneratedContent } from './pseudo-capture.ts';
 import type { PseudoCaptureFaults } from './pseudo-capture.ts';
 
 export type CapturedNode = {
@@ -129,7 +129,7 @@ async function captureFixtureLive(browser: Browser, fixture: string, html: strin
     // PNT2 case-kind registration (RT-13 style): a page with a transformed element is captured through the transform twin.
     const twin = await applyTransformTwin(page, [...LONGHANDS, ...extra]);
     const nodes = await page.evaluate(collectNodes, [...LONGHANDS, ...extra]);
-    // GEN-a R9: the ::before and ::after boxes and their text, through CDP; a page without one opens no CDP session.
+    // GEN-a R9: the ::before, ::after and ::marker boxes and their text, through CDP; a page without one opens no CDP session.
     if (await pageHasGeneratedContent(page)) {
       if (twin !== null) throw new Error(`${fixture}: a page with a transformed element and a generated box is not captured (the transform twin restyles the page)`);
       nodes.push(...(await capturePseudoElements(page, [...LONGHANDS, ...extra], faults)));
@@ -179,7 +179,7 @@ export async function captureFixtureInFrame(browser: Browser, fixture: string, h
     if (failed.length > 0) throw new Error(`${fixture}: the ${frame.widthPx}x${frame.heightPx} device px frame at zoom ${frame.zoom} fails ${failed.join(', ')}`);
     const dpr = await child.evaluate(() => window.devicePixelRatio);
     if (dpr !== frame.zoom) throw new Error(`${fixture}: the frame's device pixel ratio is ${dpr}, not ${frame.zoom}`);
-    if (await child.evaluate(() => Array.from(document.querySelectorAll('*')).some((el) => ['::before', '::after'].some((p) => getComputedStyle(el, p).content !== 'none')))) {
+    if (await child.evaluate(hasGeneratedBox)) {
       throw new Error(`${fixture}: a zoomed frame with a generated box is not captured (GEN-a R9 reads generated boxes through the page's CDP session)`);
     }
     const nodes = await child.evaluate(collectNodes, [...LONGHANDS]);
