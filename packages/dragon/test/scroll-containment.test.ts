@@ -62,7 +62,7 @@ describe('the initial-only scroll and containment families', () => {
     expect(LONGHANDS.slice(LONGHANDS.indexOf('zoom') + 1, LONGHANDS.indexOf('zoom') + 33)).toEqual(ALL);
     expect(ALL).toHaveLength(32);
     for (const p of ALL) expect(PROPERTY_ROLE[p], p).toBe('paint');
-    for (const p of ALL) expect(ANIMATION_KINDS[p], p).toBe(p.startsWith('contain-intrinsic-') ? UNADMITTED : DISCRETE);
+    for (const p of ALL) expect(ANIMATION_KINDS[p], p).toBe(p === 'contain-intrinsic-width' || p === 'contain-intrinsic-height' ? UNADMITTED : DISCRETE);
     expect(isInitialValue(ZERO_LENGTH, { kind: 'length', value: 0, unit: 'px' })).toBe(true);
     expect(isInitialValue(ZERO_LENGTH, { kind: 'length', value: 0, unit: 'em' })).toBe(false);
     expect(isInitialValue(ZERO_LENGTH, { kind: 'length', value: 1, unit: 'px' })).toBe(false);
