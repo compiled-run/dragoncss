@@ -1,8 +1,9 @@
 // PNT1-opacity-b: an opacity group as Chrome 145's CPU raster composites it, so a device can present the result (Q) itself. In a cc
 // raster tile where the group's only display item is one draw op, cc folds the group alpha into its paint (Chromium 145.0.7632.6
 // cc/paint/paint_op_buffer_iterator.cc:13-38, 96-146: any op with srcover flags but DrawTextBlob), and Skia blits that solid colour at
-// full coverage with blit_row_color32 however it scans (Skia 2ab8add5 src/core/SkBlitter_ARGB32.cpp:1450-1494, 1647-1685: blitH,
-// blitAntiH at 255, blitV and blitRect; src/opts/SkBlitRow_opts.h:243-270);
+// full coverage as blit_row_color32 computes it however it scans (Skia 2ab8add5 src/core/SkBlitter_ARGB32.cpp:1450-1494, 1647-1685:
+// blitH, blitAntiH at 255 and blitRect call it; blitV computes color + SkAlphaMulQ(dst, 256 - a), the same arithmetic;
+// src/opts/SkBlitRow_opts.h:243-270);
 // in any other tile the group is a layer composited with blit_row_s32a_blend (src/core/SkBlitRow_D32.cpp:204-301, with
 // src/core/SkColorData.h:134-137 SkAlphaMulInv256). Pixels are premultiplied RGBA8; the packed result is r + g * 2^8 + b * 2^16 +
 // a * 2^24. Pinned against Chrome's pixels by packages/parity/test/pnt1-effects.test.ts.
