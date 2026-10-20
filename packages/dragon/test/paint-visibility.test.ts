@@ -222,8 +222,9 @@ describe('visibility: emission', () => {
     it(`${backend}: turns the native background of a hidden box off (the canvas's stays) and reads back the colour it would paint`, () => {
       const file = (stem: string): string => files.find((f) => f.path.endsWith(`${stem}.${ios ? 'swift' : 'kt'}`))?.text ?? '';
       const bg = file('DragonPaintBackground');
-      expect(bg).toContain(ios ? 'if v.dragonVisible ? dragonRoundedPath(v, v.dragonShape, inner: false) == nil : v.dragonVisibilityCanvas {' : 'v.background = if (if (v.dragonVisible) dragonRoundedPath(v, v.dragonShape, false) == null else v.dragonVisibilityCanvas)');
-      expect(bg).toContain(ios ? '(!v.dragonVisible || dragonRoundedPath(v, v.dragonShape, inner: false) != nil)' : '(!v.dragonVisible || dragonRoundedPath(v, v.dragonShape, false) != null)');
+      expect(bg).toContain(ios ? 'if v.dragonVisible ? dragonRoundedPath(v, v.dragonShape, inner: false) == nil : v.dragonVisibilityCanvas {' : 'val square = if (v.dragonVisible) dragonRoundedPath(v, v.dragonShape, false) == null else v.dragonVisibilityCanvas');
+      // A folded fill (#520) reads back its colour too, as its background stage draws it.
+      expect(bg).toContain(ios ? '(v.dragonBackgroundFolded || !v.dragonVisible || dragonRoundedPath(v, v.dragonShape, inner: false) != nil)' : '(v.dragonBackgroundFolded || !v.dragonVisible || dragonRoundedPath(v, v.dragonShape, false) != null)');
       const vis = file('DragonPaintVisibility');
       // The writer validates the keyword, then syncs the background and the text views; it never touches a view other than its own and its text views.
       expect(vis).toContain(ios ? 'fatalError("dragon: \\(v.dragonId): visibility \\(value) is not visible, hidden or collapse")' : 'throw IllegalStateException("dragon: " + v.dragonId + ": visibility " + value + " is not visible, hidden or collapse")');

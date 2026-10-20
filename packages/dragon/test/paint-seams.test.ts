@@ -188,7 +188,7 @@ describe('EMS: native support', () => {
       expect(kotlin).toMatch(new RegExp(`var ${p} = .*\\n    set\\(value\\) \\{ field = value; invalidate\\(\\) \\}`));
     }
     expect(swift).toContain('public func dragonEnableClip()');
-    expect(kotlin).toContain('fun dragonBackground(v: DragonBoxView, c: DragonRGBA8)');
+    expect(kotlin).toContain('fun dragonBackground(v: DragonBoxView, c: DragonRGBA8, folded: Boolean = false)');
     expect(swift).toContain('public func node(_ id: String) -> DragonNodeView?');
     expect(kotlin).toContain('fun node(id: String): DragonNodeView?');
   });
