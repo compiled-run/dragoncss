@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { emitNativeSupport } from 'dragon';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
-import { clipShapeOf } from '../src/css/properties/clip-path.ts';
+import { chromeClipPathText, clipShapeOf } from '../src/css/properties/clip-path.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { applyPlant } from '../src/emit/native-support.ts';
 import { CLIP_EMITTER, clipShapeGeometry, clipShapeKind, clipShapeValues } from '../src/emit/paint/clip.ts';
@@ -21,7 +21,9 @@ const tree = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'a', ['a'
 const compileInput = (input: FrontEndResult, targets: Targets = { ios: { minimum: '15.0' }, web: {} }) => createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
 const compile = (css: string, targets?: Targets) => compileInput(inputFor(BASE + css, tree), targets);
 const errors = (c: { diagnostics: readonly Diagnostic[] }): Diagnostic[] => c.diagnostics.filter((d) => d.severity === 'error');
-const at = (value: string): string => explainOne(compile(`.a { clip-path: ${value}; }`), 'web', 'a', 'clip-path').value;
+const shapeOfText = (text: string) => ({ kind: 'other', type: `clip-path-${text.slice(0, text.indexOf('('))}`, text }) as const;
+const full = (value: string): string => explainOne(compile(`.a { clip-path: ${value}; }`), 'web', 'a', 'clip-path').value;
+const at = (value: string): string => chromeClipPathText(shapeOfText(full(value)));
 
 function codes(value: string): string[] {
   const css = `.a { clip-path: ${value}; }`;
@@ -68,9 +70,22 @@ describe('clip-path shapes: computed values (Chrome 145 getComputedStyle)', () =
   });
   it('round-trips every computed value through its shape', () => {
     for (const [v] of COMPUTED) {
-      const c = explainOne(compile(`.a { clip-path: ${v}; }`), 'web', 'a', 'clip-path');
-      expect(clipShapeOf({ kind: 'other', type: `clip-path-${c.value.slice(0, c.value.indexOf('('))}`, text: c.value }), v).not.toBeNull();
+      expect(clipShapeOf(shapeOfText(full(v))), v).not.toBeNull();
     }
+  });
+  it('keeps every number in full, and serializes six significant digits as Chrome does', () => {
+    const LARGE: readonly (readonly [string, string, string])[] = [
+      ['inset(1234567px)', 'inset(1234567px)', 'inset(1.23457e+06px)'], ['circle(1234567px)', 'circle(1234567px)', 'circle(1.23457e+06px)'],
+      ['polygon(0 0, 2000000px 0, 0 10px)', 'polygon(0px 0px, 2000000px 0px, 0px 10px)', 'polygon(0px 0px, 2e+06px 0px, 0px 10px)'],
+      ['circle(10px at right 1000000px top 0)', 'circle(10px at right 1000000px top 0%)', 'circle(10px at right 1e+06px top 0%)'], ['inset(1234.5678px 2px)', 'inset(1234.5678px 2px)', 'inset(1234.57px 2px)'],
+    ];
+    for (const [v, kept, chrome] of LARGE) {
+      expect(errors(compile(`.a { clip-path: ${v}; }`, ALL)), v).toEqual([]);
+      expect(full(v), v).toBe(kept);
+      expect(at(v), v).toBe(chrome);
+    }
+    const a = programs('.a { clip-path: inset(1234.5678px 2px); }').uikit.nodes.find((n) => n.id === 'a');
+    expect(a?.writes.find((w) => w.kind === 'clip-path-inset')).toEqual(expect.objectContaining({ edges: expect.arrayContaining([{ value: 1234.5678, unit: 'px' }]) }));
   });
   it('drops what Chrome drops', () => {
     for (const v of ['circle(-1px)', 'circle(10px 20px)', 'circle(closest-corner)', 'circle(at right 10px bottom)', 'circle(at left 10px top)', 'circle(at center top 5px)', 'circle(at top 10px)', 'circle(at 10px 20px 30px)', 'circle(1)', 'ellipse(10px)', 'ellipse(1px 2px 3px)', 'ellipse(closest-corner farthest-corner)', 'polygon()', 'polygon(0 0, 1px)', 'polygon(evenodd 0 0, 1px 1px)', 'polygon(0 0 round 4px, 10px 0, 10px 10px)', 'polygon(bogus, 0 0)', 'polygon(1 0)']) {

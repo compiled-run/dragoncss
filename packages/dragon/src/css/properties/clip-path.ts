@@ -61,45 +61,68 @@ export type ClipShape =
 
 const CLIP_PATH_FIX = 'Use clip-path: inset(), circle(), ellipse() or polygon() with px, em, rem, absolute-length or percentage lengths and no round, or clip-path: none.';
 
-/** A length as Chrome serializes it: six significant digits (chromeNumber). */
-const edgeText = (e: InsetEdge): string => `${chromeNumber(e.value)}${e.unit}`;
-const radiusText = (r: ShapeRadius): string => (typeof r === 'string' ? r : edgeText(r));
+/** How a shape's numbers are written: in full in the CssValue text, which the lowering reads back; as Chrome serializes them to compare. */
+type NumberText = (v: number) => string;
+const fullNumber: NumberText = (v) => String(v);
 
-function positionText(at: readonly [ShapeCoord, ShapeCoord]): string {
+const edgeText = (e: InsetEdge, n: NumberText): string => `${n(e.value)}${e.unit}`;
+const radiusText = (r: ShapeRadius, n: NumberText): string => (typeof r === 'string' ? r : edgeText(r, n));
+
+function positionText(at: readonly [ShapeCoord, ShapeCoord], n: NumberText): string {
   const [x, y] = at;
-  if (x.from === 'start' && y.from === 'start') return `${edgeText(x.offset)} ${edgeText(y.offset)}`;
-  return `${x.from === 'start' ? 'left' : 'right'} ${edgeText(x.offset)} ${y.from === 'start' ? 'top' : 'bottom'} ${edgeText(y.offset)}`;
+  if (x.from === 'start' && y.from === 'start') return `${edgeText(x.offset, n)} ${edgeText(y.offset, n)}`;
+  return `${x.from === 'start' ? 'left' : 'right'} ${edgeText(x.offset, n)} ${y.from === 'start' ? 'top' : 'bottom'} ${edgeText(y.offset, n)}`;
 }
 
-/** The CssValue of an inset() from its four edges, in Chrome's shortest form (BuildRectStringCommon). */
-export function insetValue(edges: InsetEdges): CssValue {
-  const [top, right, bottom, left] = edges.map(edgeText) as [string, string, string, string];
+/** An inset() from its four edges, in Chrome's shortest form (BuildRectStringCommon). */
+function insetText(edges: InsetEdges, n: NumberText): string {
+  const [top, right, bottom, left] = edges.map((e) => edgeText(e, n)) as [string, string, string, string];
   const showLeft = left !== right;
   const showBottom = bottom !== top || showLeft;
   const showRight = right !== top || showBottom;
   const parts = [top, ...(showRight ? [right] : []), ...(showBottom ? [bottom] : []), ...(showLeft ? [left] : [])];
-  return { kind: 'other', type: CLIP_PATH_INSET, text: `inset(${parts.join(' ')})` };
+  return `inset(${parts.join(' ')})`;
 }
 
-/** The CssValue of a clip shape, in Chrome's computed serialization (CSSBasicShape*Value::CustomCSSText). */
-export function shapeValue(shape: ClipShape): CssValue {
-  const at = (p: readonly [ShapeCoord, ShapeCoord] | null): string[] => (p === null ? [] : [`at ${positionText(p)}`]);
+/** The CssValue of an inset() from its four edges, its numbers in full. */
+export function insetValue(edges: InsetEdges): CssValue {
+  return { kind: 'other', type: CLIP_PATH_INSET, text: insetText(edges, fullNumber) };
+}
+
+function shapeText(shape: ClipShape, n: NumberText): string {
+  const at = (p: readonly [ShapeCoord, ShapeCoord] | null): string[] => (p === null ? [] : [`at ${positionText(p, n)}`]);
   switch (shape.kind) {
     case 'inset':
-      return insetValue(shape.edges);
+      return insetText(shape.edges, n);
     case 'circle':
-      return { kind: 'other', type: CLIP_PATH_CIRCLE, text: `circle(${[...(shape.radius === 'closest-side' ? [] : [radiusText(shape.radius)]), ...at(shape.at)].join(' ')})` };
+      return `circle(${[...(shape.radius === 'closest-side' ? [] : [radiusText(shape.radius, n)]), ...at(shape.at)].join(' ')})`;
     case 'ellipse': {
-      const radii = shape.radii[0] === 'closest-side' && shape.radii[1] === 'closest-side' ? [] : [`${radiusText(shape.radii[0])} ${radiusText(shape.radii[1])}`];
-      return { kind: 'other', type: CLIP_PATH_ELLIPSE, text: `ellipse(${[...radii, ...at(shape.at)].join(' ')})` };
+      const radii = shape.radii[0] === 'closest-side' && shape.radii[1] === 'closest-side' ? [] : [`${radiusText(shape.radii[0], n)} ${radiusText(shape.radii[1], n)}`];
+      return `ellipse(${[...radii, ...at(shape.at)].join(' ')})`;
     }
     case 'polygon':
-      return { kind: 'other', type: CLIP_PATH_POLYGON, text: `polygon(${shape.evenodd ? 'evenodd, ' : ''}${shape.points.map(([x, y]) => `${edgeText(x)} ${edgeText(y)}`).join(', ')})` };
+      return `polygon(${shape.evenodd ? 'evenodd, ' : ''}${shape.points.map(([x, y]) => `${edgeText(x, n)} ${edgeText(y, n)}`).join(', ')})`;
   }
 }
 
+const SHAPE_TYPE: Record<ClipShape['kind'], string> = { inset: CLIP_PATH_INSET, circle: CLIP_PATH_CIRCLE, ellipse: CLIP_PATH_ELLIPSE, polygon: CLIP_PATH_POLYGON };
+
+/**
+ * The CssValue of a clip shape in the form of Chrome's computed serialization (CSSBasicShape*Value::CustomCSSText), its numbers in
+ * full so the device clips at the authored lengths: Chrome's six significant digits (1.23457e+06) are for serialization only.
+ */
+export function shapeValue(shape: ClipShape): CssValue {
+  return { kind: 'other', type: SHAPE_TYPE[shape.kind], text: shapeText(shape, fullNumber) };
+}
+
+/** A computed clip-path as Chrome's getComputedStyle gives it: shapeValue's text with six significant digits (chromeNumber). */
+export function chromeClipPathText(v: CssValue): string {
+  const shape = clipShapeOf(v);
+  return shape === null ? 'none' : shapeText(shape, chromeNumber);
+}
+
 function lengthOf(p: string): ShapeLength {
-  const e = /^(-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?)([a-z]+|%)$/.exec(p);
+  const e = /^(-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)([a-z]+|%)$/.exec(p);
   if (e === null) throw new Error(`clip-path length ${JSON.stringify(p)} is not a length or percentage`);
   return { value: Number(e[1]), unit: e[2] as string };
 }

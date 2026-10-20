@@ -13,8 +13,8 @@
 // computed against the layout size of the border box in device px (clipShapeGeometry): each coordinate is px times the scale plus its
 // percentage of the width or height, or the width or height less px times the scale from the right or bottom; a circle radius
 // percentage is of the normalized diagonal, closest-side and farthest-side the nearest and farthest side from the centre. UIKit
-// masks the box view's layer with a CAShapeLayer filling that path; Android clips the canvas of the box view's draw to it, both
-// antialiased as Chrome's path clip is.
+// masks the box view's layer with a CAShapeLayer filling that path, antialiased as Chrome's path clip is; Android clips the canvas
+// of the box view's draw to it, whose edge antialiasing depends on the device's renderer, so its edge pixels may differ from Chrome's.
 import type { ClipShape, InsetEdge, ShapeCoord, ShapeLength, ShapeRadius } from '../../css/properties/clip-path.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
@@ -103,7 +103,11 @@ public func dragonClipShapeGeometry(_ kind: Int, _ s: [Double], _ size: [Double]
   }
   let cx = coord(0, w), cy = coord(3, h)
   if kind == 0 {
-    let r = s[6] == 0 ? s[7] * scale + s[8] / 100 * ((w * w + h * h).squareRoot() / 2.0.squareRoot()) : s[6] == 2 ? max(side(true, cx, w), side(true, cy, h)) : min(side(false, cx, w), side(false, cy, h))
+    let diagonal = (w * w + h * h).squareRoot() / 2.0.squareRoot()
+    let length = s[7] * scale + s[8] / 100 * diagonal
+    let farthest = max(side(true, cx, w), side(true, cy, h))
+    let closest = min(side(false, cx, w), side(false, cy, h))
+    let r = s[6] == 0 ? length : s[6] == 2 ? farthest : closest
     return [cx, cy, r]
   }
   let rx = s[6] == 0 ? s[7] * scale + s[8] / 100 * w : side(s[6] == 2, cx, w)
