@@ -825,7 +825,7 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
   if (image === undefined || (image.value.kind === 'keyword' && image.value.value === 'none')) return;
   const layers = resolvedLayers(el);
   if (layers.some((l) => l.image.kind === 'url')) {
-    checkUrlLayers(el, image, layers, targets, diagnostics, reported);
+    checkUrlLayers(el, image, layers, targets, native, diagnostics, reported);
     return;
   }
   if (!layers.some((l) => l.image.kind === 'gradient')) return;
@@ -858,11 +858,7 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
   }
   // The device clips the one raster to the radius module's rounded border box; Chrome clips a padding-box or content-box layer
   // (and the colour) to the inner rounded box instead.
-  const rounded = RADIUS_LONGHANDS.some((p) => {
-    const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
-    return c !== null && c[0].value > 0 && c[1].value > 0;
-  });
-  if (rounded && (layers[layers.length - 1]?.geometry.clip !== 'border-box' || layers.some((l) => l.image.kind === 'gradient' && l.geometry.clip !== 'border-box'))) {
+  if (roundedBox(el) && (layers[layers.length - 1]?.geometry.clip !== 'border-box' || layers.some((l) => l.image.kind === 'gradient' && l.geometry.clip !== 'border-box'))) {
     refuse(el, image, native, 'background-layers-rounded-clip', `background-image on ${el.element.address}: a rounded box clips a padding-box or content-box layer to its inner rounded box, and the native targets clip the layers to the rounded border box only (${BG2C})`, 'Clip the background to the border box on a rounded box.', diagnostics, reported);
     return;
   }
@@ -877,6 +873,14 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
     return;
   }
 };
+
+/** Whether a box has a corner with both radii above zero. */
+function roundedBox(el: ResolvedElement): boolean {
+  return RADIUS_LONGHANDS.some((p) => {
+    const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
+    return c !== null && c[0].value > 0 && c[1].value > 0;
+  });
+}
 
 /** Whether an element paints a url() image layer. */
 export function paintsUrl(el: ResolvedElement): boolean {
@@ -902,8 +906,12 @@ export function urlLayerRefusal(layers: readonly ElementLayer[]): { readonly at:
   return null;
 }
 
-/** BG2-u part 1: the every-target refusals of a box with a url() layer (the canvas, an inline box, urlLayerRefusal). */
-function checkUrlLayers(el: ResolvedElement, image: ResolvedValue, layers: readonly ElementLayer[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+/**
+ * BG2-u: the refusals of a box with a url() layer. Every target: the canvas, an inline box, urlLayerRefusal. The native targets
+ * only (part 2 draws the layer natively, emit/paint/bg-image.ts): a rounded box whose layer clips to its padding or content box,
+ * since the device clips the tiles to the rounded border box only, as it does a gradient's raster.
+ */
+function checkUrlLayers(el: ResolvedElement, image: ResolvedValue, layers: readonly ElementLayer[], targets: readonly string[], native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const tag = el.element.tag;
   const display = (el.props.get('display') as ResolvedValue).value;
   if (tag === 'html' || tag === 'body') {
@@ -915,26 +923,14 @@ function checkUrlLayers(el: ResolvedElement, image: ResolvedValue, layers: reado
     return;
   }
   const why = urlLayerRefusal(layers);
-  if (why === null) return;
-  const at = (el.props.get(why.at as Longhand) as ResolvedValue | undefined) ?? image;
-  refuse(el, at, targets, `background-layers-url-${why.at}`, `${why.at} on ${el.element.address}: ${why.reason}`, 'Give the url() image a box of its own as its one layer, at size auto, with repeat or no-repeat and a position in px or % from the left and top.', diagnostics, reported);
-}
-
-/**
- * BG2-u part 1: the native targets do not draw a url() layer yet (part 2 draws it natively), so a box with one is refused there, at
- * its background-image, in every resolved state. The parity lanes run it on native as a lane-only case to prove its web rows
- * (project.ts), and the device pixel lanes skip the box (the gradient lowering's undrawnImage fact).
- */
-export function refuseNativeUrlLayers(root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (native.length === 0) return;
-  const walk = (el: ResolvedElement): void => {
-    const image = el.props.get('background-image') as ResolvedValue | undefined;
-    if (image !== undefined && paintsUrl(el)) {
-      refuse(el, image, native, 'background-layers-url-native', `background-image on ${el.element.address}: a url() image is drawn on the web target only until the native image layers land (${BG2_URL})`, 'Use an <img> for the image on iOS and Android, or keep the url() background to a web-only build.', diagnostics, reported);
-    }
-    for (const c of el.children) if (c.kind === 'element') walk(c);
-  };
-  walk(root);
+  if (why !== null) {
+    const at = (el.props.get(why.at as Longhand) as ResolvedValue | undefined) ?? image;
+    refuse(el, at, targets, `background-layers-url-${why.at}`, `${why.at} on ${el.element.address}: ${why.reason}`, 'Give the url() image a box of its own as its one layer, at size auto, with repeat or no-repeat and a position in px or % from the left and top.', diagnostics, reported);
+    return;
+  }
+  if (roundedBox(el) && layers.some((l) => l.geometry.clip !== 'border-box')) {
+    refuse(el, image, native, 'background-layers-url-rounded-clip', `background-image on ${el.element.address}: a rounded box clips a padding-box or content-box url() layer to its inner rounded box, and the native targets clip the image to the rounded border box only (${BG2C})`, 'Clip the background to the border box on a rounded box.', diagnostics, reported);
+  }
 }
 
 /** The colours a gradient box bakes into its one raster: the layers' backdrop, currentcolor stops, and the borders that obscure it. */
@@ -1010,11 +1006,15 @@ export function refuseAnimatedGradients(analysis: AnimationAnalysis, roots: read
 /**
  * R13 (BG2-x): Chrome rasterises a gradient under a transform with the transform in the shader matrix, and a native transform of a
  * bitmap Dragon already rasterised resamples it; every gradient in a subtree whose transform is not the identity is refused on the
- * native targets, at its background-image, until BG2-x rasterises such layers in device space.
+ * native targets, at its background-image, until BG2-x rasterises such layers in device space. A url() layer (BG2-u) in such a
+ * subtree is refused there too.
  */
 function refuseTransformed(el: ResolvedElement, root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const image = el.props.get('background-image') as ResolvedValue | undefined;
-  if (image !== undefined && paintsGradient(el)) {
+  if (image !== undefined && paintsUrl(el)) {
+    // BG2-u: the tile points (paint-samples/bg-image.ts) are placed in the untransformed box, which the transform moves.
+    refuse(el, image, native, 'background-layers-transformed', `background-image on ${el.element.address}: the url() image is inside ${root.element.address}, whose transform is not the identity; the native targets draw it in the box's own coordinates and the device lanes do not sample a transformed image yet (${BG2_X})`, 'Remove the transform from the image box and its ancestors.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
+  } else if (image !== undefined && paintsGradient(el)) {
     refuse(el, image, native, 'background-layers-transformed', `background-image on ${el.element.address}: the gradient is inside ${root.element.address}, whose transform is not the identity; Chrome rasterises it with the transform in the shader matrix, and the native targets would resample a bitmap drawn untransformed (${BG2_X})`, 'Remove the transform from the gradient box and its ancestors.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
   }
   for (const c of el.children) if (c.kind === 'element') refuseTransformed(c, root, native, diagnostics, reported);

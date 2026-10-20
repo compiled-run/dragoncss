@@ -97,6 +97,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
   'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // BG2-u: bg-image-web's tile edges (rule edge:<id>:tile-*) move with the shifted tiles.
+  'bg-image-offset-1': ['bg-image-web'],
   // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
   // are filled and stroked in distinct colours with strokes wide enough to sample.
   'svg-stroke-first': ['svg-paint', 'svg-basic'],
@@ -147,6 +149,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'gradient-offset-1': /^gradient:/,
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  'bg-image-offset-1': /^(image-flat|edge):[^:]+:tile-/,
   'svg-stroke-first': /^svg:/,
   'svg-even-odd': /^svg:/,
   'svg-stroke-unscaled': /^svg:/,

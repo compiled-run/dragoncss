@@ -1,23 +1,33 @@
-// BG2-u part 1: background-image url() on the web, against the committed Chrome PNGs of bg-image-web at every device DPR. The
+// BG2-u: background-image url() against the committed Chrome PNGs of bg-image-web at every device DPR. The
 // model draws each box's one url() layer at its natural size times the DPR, placed in its origin box by its px or % position
 // (Chrome's BackgroundImageGeometry), tiled on each repeating axis, over the box's colour. Chrome must show the source pixel at
 // every pixel of a flat quadrant and the colour over white at every pixel outside the tile on a no-repeat axis, each at least
 // MARGIN device px from any tile, quadrant or padding edge (where snapping and filtering decide the pixel). Four model faults must
 // each disagree with Chrome somewhere in every case: the position ignored, every axis repeated, the origin box ignored, and the
-// tile left at its css px size. Native draws no url() layer yet: the case is lane-only there, and no device sample point judges a
-// url() box (paint-samples/gradient.ts keepsUndrawnImage).
+// tile left at its css px size. Part 2 draws the layer natively (dragon emit/paint/bg-image.ts) from a background-image write, and
+// the device lanes sample it (paint-samples/bg-image.ts) on the device's own tile geometry: Chrome must show the flat source pixel at
+// every image-flat tile point and every kept base point the image decides, and at every tile edge scanline Chrome's edge must lie
+// within GATE_DEVICE_PX of the crisp drawing of that geometry, which is where the device draws it. The plant's host twin (every tile
+// one device px right, bg-image-offset-1) must disagree with Chrome on a scanline pixel the unplanted geometry gets right.
 import { describe, expect, it } from 'vitest';
 import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, zoomInput } from '@dragon/layout';
 import type { Compiled, NativeProgram } from 'dragon';
 import { laneOnlyNative, nativePrograms, programInput } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
+import { GATE_DEVICE_PX } from '../src/compare.ts';
+import { PLANT_CASES, PLANT_RULES } from '../src/device-run.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import type { RgbaImage } from '../src/native-compare.ts';
+import { contrastChannel, edgeDistance } from '../src/native-compare.ts';
 import { nativeCompile } from '../src/native-compile.ts';
+import type { TileBox } from '../src/paint-samples/bg-image.ts';
+import { flatSource, nearestSource, tileBoxes } from '../src/paint-samples/bg-image.ts';
 import { paddings } from '../src/paint-samples/gradient.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
-import { casePoints, committedPixels, decodePng } from '../src/pixel-reference.ts';
+import { caseBoxes, casePoints, committedPixels, decodePng, rasterSize } from '../src/pixel-reference.ts';
+import { isScanlineRule } from '../src/samples.ts';
+import type { SamplePoint } from '../src/samples.ts';
 import type { Rgba } from './paint-model.ts';
 import { boxes, over } from './paint-model.ts';
 
@@ -144,26 +154,106 @@ function judge(caseId: string, compiled: Compiled<'ios' | 'android'>, p: NativeP
   return { problems, counts };
 }
 
-describe('BG2-u part 1 background-image url(): the web paint model at every judged pixel equals the committed Chrome pixels', () => {
-  it('covers the bg-image-web fixture in both directions', () => {
+type DeviceVerdict = { readonly problems: string[]; readonly flat: Map<string, number>; readonly edges: Map<string, number>; readonly caught: number; readonly worst: number };
+
+/**
+ * The device lanes' samples of the url() boxes at every DPR against the committed Chrome PNGs: the colour Chrome must show at each
+ * image-flat tile point and each kept base point the image decides, and each tile edge scanline's edge position, Chrome's against the
+ * crisp drawing of the device geometry (each pixel the source pixel nearest its centre, or the colour outside the tiles).
+ */
+function judgeDevice(caseId: string, p: NativeProgram, viewport: { width: number; height: number }): DeviceVerdict {
+  const problems: string[] = [];
+  const flat = new Map<string, number>();
+  const edges = new Map<string, number>();
+  let caught = 0;
+  let worst = 0;
+  const colors = new Map(p.nodes.map((n) => {
+    const w = n.writes.find((x) => x.kind === 'background-color');
+    const c = w !== undefined && w.kind === 'background-color' ? w.color : { r: 0, g: 0, b: 0, alpha: 0 };
+    return [n.id, over([255, 255, 255, 255], [c.r, c.g, c.b, c.alpha])] as const;
+  }));
+  for (const dpr of DPRS) {
+    const chrome = committedPixels(caseId, dpr);
+    if (chrome === null) throw new Error(`${caseId}@${dpr}: no committed Chrome PNG`);
+    const points = casePoints(p, viewport, dpr);
+    const tiles = tileBoxes({ program: p, viewport, dpr, size: rasterSize(viewport, dpr), boxes: caseBoxes(p, viewport, dpr), base: [] });
+    const byId = new Map(tiles.map((t) => [t.id, t] as const));
+    const at = (x: number, y: number): Rgba => {
+      const j = (y * chrome.width + x) * 4;
+      return [chrome.data[j], chrome.data[j + 1], chrome.data[j + 2], chrome.data[j + 3]] as unknown as Rgba;
+    };
+    const crisp = (t: TileBox, x: number, y: number): Rgba => {
+      const s = nearestSource(t, x, y);
+      const under = colors.get(t.id) as Rgba;
+      return s === null ? under : over(under, s as Rgba);
+    };
+    const shifted = (t: TileBox): TileBox => ({ ...t, tile: [(t.tile[0] as number) + 1, t.tile[1], t.tile[2], t.tile[3]] });
+    for (let i = 0; i < points.length;) {
+      const pt = points[i] as SamplePoint;
+      const named = pt.rule.slice(pt.rule.indexOf(':') + 1).split(':')[0] as string;
+      if (isScanlineRule(pt.rule)) {
+        let j = i;
+        while (j < points.length && (points[j] as SamplePoint).rule === pt.rule) j++;
+        const line = points.slice(i, j);
+        i = j;
+        const t = byId.get(named);
+        if (t === undefined || !pt.rule.includes(':tile-')) continue;
+        edges.set(t.id, (edges.get(t.id) ?? 0) + 1);
+        const got = line.map((q) => at(q.x, q.y));
+        const want = line.map((q) => crisp(t, q.x, q.y));
+        const channel = contrastChannel(got);
+        const a = edgeDistance(got, channel);
+        const b = edgeDistance(want, channel);
+        if (a === null || b === null) problems.push(`${pt.rule} @${dpr}: no edge (Chrome ${a}, the device geometry ${b})`);
+        else {
+          worst = Math.max(worst, Math.abs(a - b));
+          if (Math.abs(a - b) > GATE_DEVICE_PX) problems.push(`${pt.rule} @${dpr}: Chrome's edge ${a.toFixed(3)} device px along the scanline, the device geometry's ${b.toFixed(3)}`);
+        }
+        const planted = shifted(t);
+        if (PLANT_RULES['bg-image-offset-1'].test(pt.rule)) {
+          line.forEach((q, k) => {
+            const g = got[k] as Rgba;
+            if (g.every((v, n) => v === (want[k] as Rgba)[n]) && crisp(planted, q.x, q.y).some((v, n) => v !== g[n])) caught++;
+          });
+        }
+        continue;
+      }
+      i++;
+      for (const t of tiles) {
+        const s = flatSource(t, pt.x, pt.y, true);
+        const own = pt.rule.startsWith(`image-flat:${t.id}:tile-`);
+        if (own) flat.set(t.id, (flat.get(t.id) ?? 0) + 1);
+        if (s === null) {
+          if (own) problems.push(`${pt.rule} at ${pt.x},${pt.y} @${dpr}: not flat image content`);
+          continue;
+        }
+        // A kept base point inside the clip box on flat content shows the source pixel, as an image-flat point does.
+        if (!own && !(pt.x >= t.clip[0] + 1 && pt.x + 1 <= t.clip[2] - 1 && pt.y >= t.clip[1] + 1 && pt.y + 1 <= t.clip[3] - 1 && pt.x >= t.visible[0] && pt.x + 1 <= t.visible[2] && pt.y >= t.visible[1] && pt.y + 1 <= t.visible[3])) continue;
+        const want = over(colors.get(t.id) as Rgba, s as Rgba);
+        const got = at(pt.x, pt.y);
+        if (got.some((v, k) => v !== want[k])) problems.push(`${pt.rule} at ${pt.x},${pt.y} @${dpr}: Chrome ${JSON.stringify(got)}, the source ${JSON.stringify(want)}`);
+      }
+    }
+  }
+  return { problems, flat, edges, caught, worst };
+}
+
+describe('BG2-u background-image url(): the web paint model and the device samples at every judged pixel equal the committed Chrome pixels', () => {
+  it('covers the bg-image-web fixture in both directions, and the plant runs on it', () => {
     expect(FIXTURES.map((f) => f.id)).toEqual(['bg-image-web']);
+    expect(PLANT_CASES['bg-image-offset-1']).toEqual(['bg-image-web']);
   });
   for (const spec of FIXTURES) {
     for (const c of casesOf(spec, fixtureInput(spec))) {
-      it(`${c.id} at ${DPRS.join(', ')}; the position, repeat, origin and unscaled faults are caught`, () => {
+      it(`${c.id} at ${DPRS.join(', ')}; the position, repeat, origin and unscaled faults and the offset plant's twin are caught`, () => {
         const compiled = nativeCompile(spec, c.environment.direction);
-        expect([laneOnlyNative(compiled, 'ios'), laneOnlyNative(compiled, 'android')]).toEqual([true, true]);
+        expect([laneOnlyNative(compiled, 'ios'), laneOnlyNative(compiled, 'android')]).toEqual([false, false]);
         const programs = nativePrograms(compiled, c.assignment);
         if (programs.kind !== 'ready') throw new Error(programs.reason);
         const p = programs.programs.uikit;
-        const undrawn = p.nodes.filter((n) => (n.facts['gradient'] as { undrawnImage?: unknown } | undefined)?.undrawnImage === true).map((n) => n.id);
-        expect(undrawn).toEqual(URL_BOXES);
-        expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-layers')).map((n) => n.id)).toEqual([]);
-        // No device sample point names a url() box or lies in one.
-        for (const dpr of DPRS) {
-          const geo = geometry(p, c.environment.viewport, dpr);
-          const inside = casePoints(p, c.environment.viewport, dpr).filter((pt) => URL_BOXES.some((id) => { const named = pt.rule.slice(pt.rule.indexOf(':') + 1); return named === id || named.startsWith(`${id}:`); }) || [...geo.values()].some((g) => pt.x + 1 > g.l && pt.x < g.r && pt.y + 1 > g.t && pt.y < g.b));
-          expect(inside.map((pt) => `${pt.rule}@${dpr}`)).toEqual([]);
+        for (const prog of [p, programs.programs['android-views']]) {
+          expect(prog.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-image')).map((n) => n.id)).toEqual(URL_BOXES);
+          expect(prog.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-layers')).map((n) => n.id)).toEqual([]);
         }
         const v = judge(c.id, compiled, p, c.environment.viewport, 'none');
         expect(v.problems).toEqual([]);
@@ -173,6 +263,15 @@ describe('BG2-u part 1 background-image url(): the web paint model at every judg
           if (id !== 'r1') expect(n?.outside ?? 0, `${id} pixels outside the tile`).toBeGreaterThan(100);
         }
         for (const fault of ['position', 'repeat', 'origin', 'unscaled'] as const) expect(judge(c.id, compiled, p, c.environment.viewport, fault).problems.length, fault).toBeGreaterThan(0);
+        const d = judgeDevice(c.id, p, c.environment.viewport);
+        expect(d.problems).toEqual([]);
+        for (const id of URL_BOXES) {
+          // At every DPR: at least one image-flat point and one tile edge scanline per box.
+          expect(d.flat.get(id) ?? 0, `${id} image-flat tile points`).toBeGreaterThanOrEqual(DPRS.length);
+          expect(d.edges.get(id) ?? 0, `${id} tile edge scanlines`).toBeGreaterThanOrEqual(DPRS.length);
+        }
+        expect(d.caught, 'the bg-image-offset-1 twin').toBeGreaterThan(0);
+        expect(d.worst, 'the largest tile edge difference from Chrome').toBeLessThanOrEqual(GATE_DEVICE_PX);
       });
     }
   }
