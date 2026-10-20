@@ -1,0 +1,19 @@
+{
+  "case": "text-fill-stroke-colors",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"red:text0","data":"XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"tr:text0","data":"XXX X","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"hsl:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"inh:text0","data":"X XX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"cc:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"uc:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"bg:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"mix:text0","data":"X ","lines":1,"units":[0,0],"blank":[]},
+    {"id":"mix:text1","data":" X","lines":1,"units":[0,0],"blank":[]},
+    {"id":"sp:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"ra:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"rb:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

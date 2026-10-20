@@ -13,5 +13,7 @@ export const ALIASES: readonly FixtureSpec[] = [
   both('alias-font'),
   both('alias-logical'),
   layout('alias-paint'),
+  // TXT2-i: -webkit-hyphens is no alias in Chrome 145 (css_properties.json5 lists none for hyphens), which drops it, so Dragon refuses it.
+  reject('reject-webkit-hyphens', 'DRAGON_UNSUPPORTED_PROPERTY', '-webkit-hyphens: auto', '-webkit-hyphens is not supported'),
   reject('reject-alias-legacy-parsing', 'DRAGON_UNSUPPORTED_VALUE', 'perspective(100)', '-webkit-transform: perspective(100) is unsupported: Chrome parses -webkit-transform with legacy rules'),
 ];

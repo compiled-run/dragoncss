@@ -57,6 +57,70 @@
  },
  {
   "lane": "device-pixels",
+  "case": "opacity-web",
+  "dpr": 3,
+  "node": "interior:ow-fold",
+  "kind": "pixel",
+  "detail": "interior:ow-fold at 96,72: native [97,66,68,255], Chrome [96,65,67,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-web-rtl",
+  "dpr": 3,
+  "node": "interior:ow-fold",
+  "kind": "pixel",
+  "detail": "interior:ow-fold at 1104,72: native [97,66,68,255], Chrome [96,65,67,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold",
+  "dpr": 3,
+  "node": "interior:of-a",
+  "kind": "pixel",
+  "detail": "interior:of-a at 96,72: native [97,66,68,255], Chrome [96,65,67,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold",
+  "dpr": 3,
+  "node": "interior:of-d",
+  "kind": "pixel",
+  "detail": "interior:of-d at 360,72: native [110,113,73,255], Chrome [109,113,73,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold",
+  "dpr": 3,
+  "node": "interior:of-j",
+  "kind": "pixel",
+  "detail": "interior:of-j at 360,336: native [71,147,174,255], Chrome [71,147,173,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold-rtl",
+  "dpr": 3,
+  "node": "interior:of-a",
+  "kind": "pixel",
+  "detail": "interior:of-a at 1104,72: native [97,66,68,255], Chrome [96,65,67,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold-rtl",
+  "dpr": 3,
+  "node": "interior:of-d",
+  "kind": "pixel",
+  "detail": "interior:of-d at 840,72: native [110,113,73,255], Chrome [109,113,73,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold-rtl",
+  "dpr": 3,
+  "node": "interior:of-j",
+  "kind": "pixel",
+  "detail": "interior:of-j at 840,336: native [71,147,174,255], Chrome [71,147,173,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 3,
   "node": "svg:s1:3",
@@ -745,6 +809,70 @@
  },
  {
   "lane": "device-pixels",
+  "case": "opacity-web",
+  "dpr": 2,
+  "node": "interior:ow-fold",
+  "kind": "pixel",
+  "detail": "interior:ow-fold at 64,48: native [97,66,68,255], Chrome [96,65,67,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-web-rtl",
+  "dpr": 2,
+  "node": "interior:ow-fold",
+  "kind": "pixel",
+  "detail": "interior:ow-fold at 736,48: native [97,66,68,255], Chrome [96,65,67,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold",
+  "dpr": 2,
+  "node": "interior:of-a",
+  "kind": "pixel",
+  "detail": "interior:of-a at 64,48: native [97,66,68,255], Chrome [96,65,67,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold",
+  "dpr": 2,
+  "node": "interior:of-d",
+  "kind": "pixel",
+  "detail": "interior:of-d at 240,48: native [110,113,73,255], Chrome [109,113,73,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold",
+  "dpr": 2,
+  "node": "interior:of-j",
+  "kind": "pixel",
+  "detail": "interior:of-j at 240,224: native [71,147,174,255], Chrome [71,147,173,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold-rtl",
+  "dpr": 2,
+  "node": "interior:of-a",
+  "kind": "pixel",
+  "detail": "interior:of-a at 736,48: native [97,66,68,255], Chrome [96,65,67,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold-rtl",
+  "dpr": 2,
+  "node": "interior:of-d",
+  "kind": "pixel",
+  "detail": "interior:of-d at 560,48: native [110,113,73,255], Chrome [109,113,73,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "opacity-fold-rtl",
+  "dpr": 2,
+  "node": "interior:of-j",
+  "kind": "pixel",
+  "detail": "interior:of-j at 560,224: native [71,147,174,255], Chrome [71,147,173,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
   "case": "svg-opacity",
   "dpr": 2,
   "node": "svg:s1:69",
@@ -1142,6 +1270,70 @@
   "node": "svg:s4:76",
   "kind": "pixel",
   "detail": "svg:s4:76 at 760,324: native [26,26,170,255], Chrome [25,25,169,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "text-stroke-ahem",
+  "dpr": 2,
+  "node": "edge:cur:right:clear",
+  "kind": "pixel",
+  "detail": "edge:cur:right:clear at 429,472: native [120,60,0,255], Chrome [120,59,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "text-stroke-ahem",
+  "dpr": 2,
+  "node": "edge:cur:left:clear",
+  "kind": "pixel",
+  "detail": "edge:cur:left:clear at 274,472: native [120,60,0,255], Chrome [120,59,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "text-stroke-ahem",
+  "dpr": 2,
+  "node": "edge:sp:right:clear",
+  "kind": "pixel",
+  "detail": "edge:sp:right:clear at 685,472: native [0,128,128,255], Chrome [0,90,90,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "text-stroke-ahem",
+  "dpr": 2,
+  "node": "edge:sp:left:clear",
+  "kind": "pixel",
+  "detail": "edge:sp:left:clear at 530,472: native [0,128,128,255], Chrome [0,90,90,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "text-stroke-ahem-rtl",
+  "dpr": 2,
+  "node": "edge:cur:right:clear",
+  "kind": "pixel",
+  "detail": "edge:cur:right:clear at 493,472: native [120,60,0,255], Chrome [120,59,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "text-stroke-ahem-rtl",
+  "dpr": 2,
+  "node": "edge:cur:left:clear",
+  "kind": "pixel",
+  "detail": "edge:cur:left:clear at 338,472: native [120,60,0,255], Chrome [120,59,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "text-stroke-ahem-rtl",
+  "dpr": 2,
+  "node": "edge:sp:right:clear",
+  "kind": "pixel",
+  "detail": "edge:sp:right:clear at 237,472: native [0,128,128,255], Chrome [0,90,90,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "text-stroke-ahem-rtl",
+  "dpr": 2,
+  "node": "edge:sp:left:clear",
+  "kind": "pixel",
+  "detail": "edge:sp:left:clear at 82,472: native [0,128,128,255], Chrome [0,90,90,255] (channel delta limit 0)"
  },
  {
   "lane": "device-anim",
@@ -1558,5 +1750,581 @@
   "node": null,
   "kind": "device-record",
   "detail": "iPhone 17: the stage 1206x2334 device px cannot hold the 1236x2745 root, so its pixels are not compared (device fit; never cropped)"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f0",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f1",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f2",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f3",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-199.83615112304688,0,-199.83615112304688,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f4",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-136.3992919921875,0,-136.3992919921875,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f5",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.519325256347656,0,-39.519325256347656,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f6",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.519325256347656,0,-39.519325256347656,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f7",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.684120178222656,0,-39.684120178222656,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f8",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-90.55274963378906,0,-90.55274963378906,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f9",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-168.28958129882812,0,-168.28956604003906,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f10",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-199.99948120117188,0,-199.99948120117188,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f11",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f12",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f13",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f14",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f0",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f1",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f2",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f3",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-199.83615112304688,0,-199.83615112304688,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f4",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-136.3992919921875,0,-136.3992919921875,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f5",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.51933288574219,0,-39.51933288574219,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f6",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.51933288574219,0,-39.51933288574219,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f7",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.68412780761719,0,-39.68412780761719,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f8",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-90.552734375,0,-90.552734375,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f9",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-168.28955078125,0,-168.28955078125,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f10",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-199.99948120117188,0,-199.99948120117188,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f11",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f12",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f13",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f14",
+  "dpr": 3,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f2",
+  "dpr": 3,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f3",
+  "dpr": 3,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f4",
+  "dpr": 3,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f5",
+  "dpr": 3,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f7",
+  "dpr": 3,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [2.0581893920898438,9.845874786376953,-2.058197021484375,-9.845878601074219] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f8",
+  "dpr": 3,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 3"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f0",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f1",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f2",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f3",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-199.83615112304688,0,-199.83615112304688,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f4",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-136.3992919921875,0,-136.3992919921875,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f5",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.51932144165039,0,-39.51932144165039,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f6",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.51932144165039,0,-39.51932144165039,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f7",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.684120178222656,0,-39.684120178222656,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f8",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-90.55274200439453,0,-90.55274200439453,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f9",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-168.28956604003906,0,-168.28955078125,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f10",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-199.9994659423828,0,-199.99945068359375,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f11",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f12",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f13",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide@400x300~f14",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f0",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f1",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f2",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f3",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-199.83615112304688,0,-199.836181640625,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f4",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-136.3992919921875,0,-136.3992919921875,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f5",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.519317626953125,0,-39.519317626953125,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f6",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.519317626953125,0,-39.519317626953125,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f7",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-39.684112548828125,0,-39.684112548828125,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f8",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-90.552734375,0,-90.552734375,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f9",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-168.28955078125,0,-168.28955078125,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f10",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-199.99945068359375,0,-199.99945068359375,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f11",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f12",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f13",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-slide-rtl@400x300~f14",
+  "dpr": 2,
+  "node": "panel",
+  "kind": "frame-chrome",
+  "detail": "panel: edge delta [-200,0,-200,0] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f2",
+  "dpr": 2,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f3",
+  "dpr": 2,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f4",
+  "dpr": 2,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f5",
+  "dpr": 2,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f7",
+  "dpr": 2,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [2.0581932067871094,9.845874786376953,-2.0581893920898438,-9.845870971679688] css px exceeds 1 device px at DPR 2"
+ },
+ {
+  "lane": "device-anim",
+  "case": "anim-spin@400x300~f8",
+  "dpr": 2,
+  "node": "rec",
+  "kind": "frame-chrome",
+  "detail": "rec: edge delta [-10,10,10,-10] css px exceeds 1 device px at DPR 2"
  }
 ]
