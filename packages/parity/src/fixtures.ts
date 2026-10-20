@@ -2,6 +2,7 @@
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
 import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
+import { APPEARANCE } from './fixture-groups/appearance.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
@@ -24,6 +25,7 @@ import { ENV } from './fixture-groups/env.ts';
 import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
+import { GENERATED_CONTENT } from './fixture-groups/generated-content.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
@@ -45,6 +47,7 @@ import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { RESIZE } from './fixture-groups/resize.ts';
+import { SCROLL_CONTAINMENT } from './fixture-groups/scroll-containment.ts';
 import { SELECTION } from './fixture-groups/selection.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHADOW } from './fixture-groups/shadow.ts';
@@ -53,6 +56,7 @@ import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
+import { TABLE } from './fixture-groups/table.ts';
 import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
@@ -74,12 +78,15 @@ import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TOUCH_ACTION } from './fixture-groups/touch-action.ts';
 import { TRANSFORM_EXTRA } from './fixture-groups/transform-extra.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
+import { UI_COLORS } from './fixture-groups/ui-colors.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
+import { USER_MODIFY } from './fixture-groups/user-modify.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { VISIBILITY } from './fixture-groups/visibility.ts';
 import { WHITE_SPACE } from './fixture-groups/white-space.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
+import { ZOOM } from './fixture-groups/zoom.ts';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -135,6 +142,7 @@ export type FixtureSpec =
 export const GROUPS = {
   aliases: ALIASES,
   animations: ANIMATIONS,
+  appearance: APPEARANCE,
   'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
@@ -157,6 +165,7 @@ export const GROUPS = {
   filter: FILTER,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
+  'generated-content': GENERATED_CONTENT,
   gradients: GRADIENTS,
   grid: GRID,
   'inert-layout': INERT_LAYOUT,
@@ -178,6 +187,7 @@ export const GROUPS = {
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
   resize: RESIZE,
+  'scroll-containment': SCROLL_CONTAINMENT,
   selection: SELECTION,
   selectors: SELECTORS,
   shadow: SHADOW,
@@ -186,6 +196,7 @@ export const GROUPS = {
   'sizing-ratio': SIZING,
   states: STATES,
   svg: SVG,
+  table: TABLE,
   'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
@@ -207,12 +218,15 @@ export const GROUPS = {
   'touch-action': TOUCH_ACTION,
   'transform-extra': TRANSFORM_EXTRA,
   transforms: TRANSFORMS,
+  'ui-colors': UI_COLORS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
+  'user-modify': USER_MODIFY,
   values: VALUES,
   visibility: VISIBILITY,
   'white-space': WHITE_SPACE,
   'writing-mode': WRITING_MODE,
+  zoom: ZOOM,
 } as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
 
 export type FixtureGroupId = keyof typeof GROUPS;

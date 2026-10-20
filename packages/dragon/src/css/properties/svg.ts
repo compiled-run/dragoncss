@@ -7,11 +7,13 @@
 // <rect> (SVG 2 §10.3, §10.4; their attributes are presentation hints, elements/svg.ts), and (SVG-paint-order) paint-order,
 // inherited, whether a shape paints its stroke before its fill (svg-paint-order.ts parses the list), and (SVG-rrect) rx and ry, not
 // inherited, a <rect>'s corner radii (SVG 2 §10.4), and (SVG-vector-effect) vector-effect,
-// not inherited, whether a shape's stroke is in the svg's px (none or non-scaling-stroke, the keywords Chrome parses). fill and stroke take a <color> or none; paint servers and the context-* keywords wait for SVG-paint, and a
+// not inherited, whether a shape's stroke is in the svg's px (none or non-scaling-stroke, the keywords Chrome parses), and
+// (SVG-inert) clip-rule, marker-start, marker-mid and marker-end, inherited, which change no shape Dragon draws: clip-rule acts only
+// inside a <clipPath>, and a marker other than none waits for SVG-b (elements/svg.ts svgPaintRefusal). fill and stroke take a <color> or none; paint servers and the context-* keywords wait for SVG-paint, and a
 // stroke-width other than a px length or a unitless number (Chrome's SVG quirk) waits for SVG-units.
 import type { PropertyAspect } from '../properties.ts';
 
-export const SVG_LONGHANDS = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect'] as const;
+export const SVG_LONGHANDS = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end'] as const;
 export const SVG_SHORTHANDS = [] as const;
 /** The SVG geometry properties: a shape's position and size, which no element inherits. */
 export const SVG_GEOMETRY_PROPERTIES = ['cx', 'cy', 'r', 'x', 'y', 'rx', 'ry'] as const;
@@ -40,6 +42,10 @@ export const SVG_ASPECTS: { readonly [P in (typeof SVG_LONGHANDS)[number]]: Prop
   rx: { layout: false, paint: true },
   ry: { layout: false, paint: true },
   'vector-effect': { layout: false, paint: true },
+  'clip-rule': { layout: false, paint: false },
+  'marker-start': { layout: false, paint: false },
+  'marker-mid': { layout: false, paint: false },
+  'marker-end': { layout: false, paint: false },
 };
 
 /** The SVG paint properties whose value is a <color> or none. */

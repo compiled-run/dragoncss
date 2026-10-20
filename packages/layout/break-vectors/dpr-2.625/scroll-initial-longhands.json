@@ -1,0 +1,11 @@
+{
+  "case": "scroll-initial-longhands",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,5]]},
+    {"id":"t2:text0","lines":[[0,2]]},
+    {"id":"t3c:text0","lines":[[0,3]]},
+    {"id":"t4:text0","lines":[[0,2]]},
+    {"id":"b5:text0","lines":[[0,5]]}
+  ]
+}

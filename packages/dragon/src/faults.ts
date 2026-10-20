@@ -10,6 +10,7 @@ import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
 import { FX_FAULTS } from './faults/fx.ts';
+import { GEN_A_FAULTS } from './faults/gen-a.ts';
 import { GEN_B_FAULTS } from './faults/gen-b.ts';
 import { GEN_C_FAULTS } from './faults/gen-c.ts';
 import { INL1A_FAULTS } from './faults/inl1a.ts';
@@ -19,6 +20,7 @@ import { MEDIA_FAULTS } from './faults/media.ts';
 import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
+import { SCROLL_CONTAINMENT_FAULTS } from './faults/scroll-containment.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
 import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
@@ -47,6 +49,7 @@ export const FAULT_GROUPS = {
   'env-safe': ENV_SAFE_FAULTS,
   fonts: FONTS_FAULTS,
   fx: FX_FAULTS,
+  'gen-a': GEN_A_FAULTS,
   'gen-b': GEN_B_FAULTS,
   'gen-c': GEN_C_FAULTS,
   inl1a: INL1A_FAULTS,
@@ -56,6 +59,7 @@ export const FAULT_GROUPS = {
   'milestone-1': MILESTONE_1_FAULTS,
   'mq-r0': MQ_R0_FAULTS,
   ovfl: OVFL_FAULTS,
+  'scroll-containment': SCROLL_CONTAINMENT_FAULTS,
   seld: SELD_FAULTS,
   'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,
