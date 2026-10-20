@@ -109,6 +109,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'animator', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/animator/cases.json').cases.length },
     // SELD-R2 (T064 R12): the interaction runtime's scripts, built in code (packages/translate/src/corpus-interaction.ts).
     { corpus: 'p1', suite: 'interaction', cases: p1.cases['interaction'] ?? 0 },
+    // T154 slice 2b-1: one select case per selection document (packages/layout/rt-vectors/select/cases.json).
+    { corpus: 'p1', suite: 'select', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/select/cases.json').cases.length },
     // A shaped case's vectors are the text-latin suite's (TXT1a-2), so engine-dpr counts the plain ones.
     { corpus: 'extended', suite: 'engine-dpr', cases: vectorCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },

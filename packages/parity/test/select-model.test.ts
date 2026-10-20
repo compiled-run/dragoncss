@@ -96,6 +96,13 @@ describe('selection model (T154 slice 2a): carets, caret rects and selected text
     for (const d of SELECT_DOCS) expect(selectCase(d).table.lines.length, d.id).toBeGreaterThan(0);
   });
 
+  it('refuses text whose visibility is hidden and lines that overflow a fixed height, which Chrome hits differently', () => {
+    const hidden = { id: 'hidden', css: '.h { visibility: hidden; }', body: '<div data-dragon-id="a">AAAA</div><div data-dragon-id="b" class="h">BBBB</div><div data-dragon-id="c">CCCC</div>', paragraphs: [] };
+    expect(() => selectCase(hidden)).toThrow(/b has visibility hidden or collapse/);
+    const overflow = { id: 'overflow', css: '.a { height: 20px; } .b { margin-top: 30px; }', body: '<div data-dragon-id="a" class="a">AAAA AAAA</div><div data-dragon-id="b" class="b">BBBB</div>', paragraphs: [] };
+    expect(() => selectCase(overflow)).toThrow(/a's content overflows its border box/);
+  });
+
   it('places every caret and selects every string where Chrome does', async () => {
     const browser = await launchChrome();
     const problems: string[] = [];

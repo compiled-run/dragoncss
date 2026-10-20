@@ -66,7 +66,9 @@ export function selectCase(d: SelectDoc): SelectCase {
   const input = programInput(p.programs.uikit, ENVIRONMENT.viewport, 1);
   const refused = selectionRefusal(input);
   if (refused !== null) throw new Error(`${d.id}: the selection model refuses it: ${refused}`);
-  const facts: SelectFacts = { body: 'body', paragraphs: d.paragraphs, unselectable: d.unselectable ?? [] };
+  // The program's visibility writes name every box whose used visibility is hidden or collapse (lower/paint/visibility.ts).
+  const hidden = p.programs.uikit.nodes.filter((n) => n.writes.some((w) => w.kind === 'visibility')).map((n) => n.id);
+  const facts: SelectFacts = { body: 'body', paragraphs: d.paragraphs, unselectable: d.unselectable ?? [], hidden };
   return { input, facts, table: selectionTableOf(input, referenceMeasurer(), facts) };
 }
 
@@ -100,7 +102,7 @@ export function selectVectorsJson(): string {
       id: d.id,
       platform: 'darwin-arm64',
       input: c.input,
-      facts: [c.facts.body, c.facts.paragraphs, c.facts.unselectable],
+      facts: [c.facts.body, c.facts.paragraphs, c.facts.unselectable, c.facts.hidden],
       points: p.clicks.flatMap(([x, y]) => [Math.floor(x * 64), Math.floor(y * 64)]),
       drags: p.drags.flatMap((g) => g.map((v) => Math.floor(v * 64))),
     };

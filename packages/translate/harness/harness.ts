@@ -2431,14 +2431,14 @@ function rtHitResult(a: readonly JsonValue[]): string {
 
 // ---------------------------------------------------------------- select suite (T154 slice 2a)
 
-/** A selection read: [op, platform, input, [body, paragraphs, unselectable], points, drags] -> selectAnswers over the input's table. */
+/** A selection read: [op, platform, input, [body, paragraphs, unselectable, hidden], points, drags] -> selectAnswers over the input's table. */
 function rtSelectResult(a: readonly JsonValue[]): string {
   if (a.length !== 6) return fail('rt-select: expected [op, platform, input, facts, points, drags]');
   const platform = str(item(a, 1, '$'), '$[1]');
   const input = decodeInput(item(a, 2, '$'));
   const f = arr(item(a, 3, '$'), '$[3]');
-  if (f.length !== 3) return fail('$[3]: expected [body, paragraphs, unselectable]');
-  const facts: SelectFacts = { body: str(item(f, 0, '$[3]'), '$[3][0]'), paragraphs: strList(f, 1), unselectable: strList(f, 2) };
+  if (f.length !== 4) return fail('$[3]: expected [body, paragraphs, unselectable, hidden]');
+  const facts: SelectFacts = { body: str(item(f, 0, '$[3]'), '$[3][0]'), paragraphs: strList(f, 1), unselectable: strList(f, 2), hidden: strList(f, 3) };
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-select: no measurer for ${platform}`);
   const t = selectionTableOf(input, m.measurer, facts);
