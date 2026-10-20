@@ -625,6 +625,9 @@ describe('the svg model in a compile', () => {
     const refused = (css: string) => errors(compile(svgTree(css, shapes), false));
     for (const v of ['path("M0 0 L 10")', 'path(evenodd, "M0 0 H4")', '"M0 0 H4"', 'path("M0 0") path("M1 1")', 'path(M0)']) expect(refused(`path:first-child { d: ${v}; }`)[0], v).toContain('DRAGON_CSS_INVALID_VALUE');
     expect(refused('path:first-child { d: path("M0 0 A5 5 0 0 1 4 4"); }')).toEqual(['DRAGON_UNSUPPORTED_VALUE * d: path("M0 0 A5 5 0 0 1 4 4") is unsupported: elliptical arc commands are not built yet (package SVG-arc)']);
+    // An arc that reaches d through var() refuses too, rather than drawing nothing.
+    expect(refused('path:first-child { --x: path("M0 0 A5 5 0 0 1 4 4"); d: var(--x); }')).toHaveLength(1);
+    expect(refused('path:first-child { --x: path("M0 0 A5 5 0 0 1 4 4"); d: var(--x); }')[0]).toContain('DRAGON_UNSUPPORTED_VALUE');
   });
   it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect; a negative in CSS is invalid', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];

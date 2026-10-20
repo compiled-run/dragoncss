@@ -1023,6 +1023,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkTransformExtra(el, targets, diagnostics, reported, faults);
       checkZoom(el, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
+      // A refusal reached through var() (an arc in d, say) is reported on shapes too; the profile pass stays with boxes.
+      checkSubstitution(el, targets, diagnostics, reported, null, fonts);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
