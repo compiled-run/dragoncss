@@ -16,7 +16,7 @@ import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { AppRun, DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
 import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
-import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, MatrixMismatch, recordProblems, release, runApp, setColorScheme, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, MatrixMismatch, recordProblems, release, restoreMatrixMotion, runApp, setColorScheme, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
@@ -807,11 +807,15 @@ export const ALL_PARTS: ReadonlySet<DevicePart> = new Set(DEVICE_PARTS);
 
 /**
  * The device-env launch: the env phases; MQ-R2's motion phases hold for the host to turn the OS's reduced-motion setting on, then
- * off (setReducedMotion), and its scheme phases to turn the dark appearance on, then off (setColorScheme). Both settings are turned
- * off whatever the run does.
+ * off (setReducedMotion), and its scheme phases to turn the dark appearance on, then off (setColorScheme). The launch starts with
+ * reduced motion off and the light appearance, which the phases before them expect: a matrix AVD boots with animator_duration_scale
+ * 0 (device-run.ts prepareAvd), which is Chromium's reduced-motion signal. Whatever the run does, the appearance is put back to light
+ * and the motion setting as the matrix boots the device (restoreMatrixMotion), so the parts after this one see the device they always saw.
  */
 export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTarget, outDir: string): Promise<AppRun> {
   const ids = envIds(target);
+  setReducedMotion(h, false);
+  setColorScheme(h, false);
   try {
     return await runApp(h, artifact, {
       runFile: runFileText(ids.map((id) => ({ id, points: [] })), false),
@@ -827,7 +831,7 @@ export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTa
     });
   } finally {
     try {
-      setReducedMotion(h, false);
+      restoreMatrixMotion(h);
     } finally {
       setColorScheme(h, false);
     }

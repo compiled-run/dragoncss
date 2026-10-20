@@ -1428,8 +1428,9 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
 
 /**
  * MQ-R2 (T067 R9): the OS's animator duration scale of an Android device (Settings.Global ANIMATOR_DURATION_SCALE): 0 turns reduced
- * motion on (Chromium's AccessibilityState.prefersReducedMotion), 1 is the default. device-env's motion phases set it while the
- * app holds, and the run puts it back to 1 whatever happens. On iOS it is a no-op: simctl has no reduced-motion switch.
+ * motion on (Chromium's AccessibilityState.prefersReducedMotion), 1 is the default. A matrix AVD boots at 0 (prepareAvd); device-env
+ * runs at 1 and its motion phases set it while the app holds (device-lanes.ts runEnv). A no-op on iOS, whose Reduce Motion is
+ * setReducedMotion's accessibility default.
  */
 export function setAnimatorDurationScale(h: DeviceHandle, value: 0 | 1): void {
   // A failed adb call throws (device-exec.ts), so a scale the device did not take is never mistaken for one it did.
@@ -1448,6 +1449,12 @@ export function setReducedMotion(h: DeviceHandle, on: boolean): void {
   const m = IOS_REDUCE_MOTION;
   exec('xcrun', ['simctl', 'spawn', h.udid, 'defaults', 'write', m.domain, m.key, '-bool', on ? 'YES' : 'NO']);
   exec('xcrun', ['simctl', 'spawn', h.udid, 'notifyutil', '-p', m.notification]);
+}
+
+/** Puts the OS's motion setting back as the matrix boots the device: an AVD's animator duration scale 0 (prepareAvd), iOS's Reduce Motion off. */
+export function restoreMatrixMotion(h: DeviceHandle): void {
+  if ('serial' in h) setAnimatorDurationScale(h, 0);
+  else setReducedMotion(h, false);
 }
 
 /**
