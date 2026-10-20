@@ -14,13 +14,15 @@ function swiftSupportText(): string {
   return String.raw`import UIKit
 
 /// The compiler's selection facts of a case (rt-select.ts SelectFacts): the body's address, the p elements', every element whose
-/// used user-select is none and every element whose used visibility is hidden or collapse.
+/// used user-select is none, every element whose used visibility is hidden or collapse, and every element whose used float is not
+/// none.
 public struct DragonSelectFacts {
   public let body: String
   public let paragraphs: [String]
   public let unselectable: [String]
   public let hidden: [String]
-  public init(body: String, paragraphs: [String], unselectable: [String], hidden: [String]) { self.body = body; self.paragraphs = paragraphs; self.unselectable = unselectable; self.hidden = hidden }
+  public let floats: [String]
+  public init(body: String, paragraphs: [String], unselectable: [String], hidden: [String], floats: [String]) { self.body = body; self.paragraphs = paragraphs; self.unselectable = unselectable; self.hidden = hidden; self.floats = floats }
 }
 
 /// A text position: an index into the selection model's caret list (rt-select.ts caretList), in document order. A point in a
@@ -88,7 +90,7 @@ public final class DragonSelection: UIView, UITextInput, UITextInteractionDelega
   public var markedTextStyle: [NSAttributedString.Key: Any]?
 
   public init(input: LayoutInput, measurer: TextMeasurer, facts: DragonSelectFacts, scale: Double) {
-    let f = SelectFacts(JsString(facts.body), JsArray(facts.paragraphs.map { JsString($0) }), JsArray(facts.unselectable.map { JsString($0) }), JsArray(facts.hidden.map { JsString($0) }))
+    let f = SelectFacts(JsString(facts.body), JsArray(facts.paragraphs.map { JsString($0) }), JsArray(facts.unselectable.map { JsString($0) }), JsArray(facts.hidden.map { JsString($0) }), JsArray(facts.floats.map { JsString($0) }))
     let t = dragonSelectCall("table") { try rtSelect_selectionTableOf(input, measurer, f) }
     table = t
     carets = dragonSelectCall("carets") { try rtSelect_caretList(t) }.items
@@ -346,14 +348,14 @@ import dev.dragon.layout.rtSelect_wordAt
 const val DRAGON_SELECT_INDEX_PLANT = 0
 
 /** The compiler's selection facts of a case (rt-select.ts SelectFacts). */
-class DragonSelectFacts(val body: String, val paragraphs: List<String>, val unselectable: List<String>, val hidden: List<String>)
+class DragonSelectFacts(val body: String, val paragraphs: List<String>, val unselectable: List<String>, val hidden: List<String>, val floats: List<String>)
 
 /**
  * The selection model of one mounted tree (rt-select.ts), in the root's CSS px: carets by index in document order, the press gate,
  * the drag focus, the long-press word, caret and highlight rects, and the selected text. DragonSelectionFrame puts it on screen.
  */
 class DragonSelection(input: LayoutInput, measurer: TextMeasurer, facts: DragonSelectFacts, scale: Double) {
-  private val table: SelectTable = rtSelect_selectionTableOf(input, measurer, SelectFacts(facts.body, ArrayList(facts.paragraphs), ArrayList(facts.unselectable), ArrayList(facts.hidden)))
+  private val table: SelectTable = rtSelect_selectionTableOf(input, measurer, SelectFacts(facts.body, ArrayList(facts.paragraphs), ArrayList(facts.unselectable), ArrayList(facts.hidden), ArrayList(facts.floats)))
   private val carets: JsArray<Caret> = rtSelect_caretList(table)
   private val zoom = scale * 64.0
   val count: Int get() = carets.size
