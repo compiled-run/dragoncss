@@ -1,10 +1,10 @@
 // Compares the media module with the Chrome capture: mediaText, matchMedia at every viewport and root, and the band partition;
 // then the same at every fractional frame (MQ-R0), where each frame's media size is Chrome's float value (R3).
-import { band, bandAt, emulatedMediaViewport, evaluateMediaQueryList, mediaViewport, parseMediaQueryList, serialiseMediaQueryList } from '../../src/media/index.ts';
-import type { MediaFaults } from '../../src/media/index.ts';
+import { band, bandAt, DESKTOP_DEVICE, emulatedMediaViewport, evaluateMediaQueryList, mediaViewport, parseMediaQueryList, serialiseMediaQueryList, TOUCH_DEVICE } from '../../src/media/index.ts';
+import type { MediaDevice, MediaFaults } from '../../src/media/index.ts';
 import { chromeNumber } from './chrome-number.ts';
 import { CORPUS } from './corpus.ts';
-import type { Capture, FrameKind } from './corpus.ts';
+import type { Capture, EnvDevice, FrameKind } from './corpus.ts';
 
 type Viewport = { readonly width: number; readonly height: number };
 
@@ -87,7 +87,65 @@ export function compareCapture(capture: Capture, faults: MediaFaults): Compariso
     }
   }
   compareFractional(capture, faults, (ok, m) => expect(ok, { ...m, fractional: true }), refused);
+  compareEnvironment(capture, faults, expect, refused);
   return { comparisons, mismatches, refused };
+}
+
+/** The readings of a captured device (M7): a desktop page has a mouse, a touch or mobile page a touch screen alone. */
+export function deviceOf([dpr, kind, reducedMotion]: EnvDevice): MediaDevice {
+  return { ...(kind === 'desktop' ? DESKTOP_DEVICE : TOUCH_DEVICE), dpr, reducedMotion };
+}
+
+/** MQ-R2: every environment row and band on every captured device. */
+function compareEnvironment(capture: Capture, faults: MediaFaults, expect: (ok: boolean, m: Mismatch) => void, refused: string[]): void {
+  const { devices } = capture.environment;
+  const label = (d: EnvDevice): string => `${d[1]} DPR ${d[0]} ${d[2]}`;
+  const bitsOf = (subject: string, matches: string): string => {
+    if (matches.length !== devices.length || /[^01]/.test(matches)) throw new Error(`${subject}: ${matches.length} match bits for ${devices.length} devices`);
+    return matches;
+  };
+  for (const q of capture.environment.queries) {
+    const list = parseMediaQueryList(q.query, faults);
+    const text = serialiseMediaQueryList(list, chromeNumber);
+    expect(text === q.mediaText, { kind: 'mediaText', subject: q.query, detail: `${JSON.stringify(text)} != Chrome ${JSON.stringify(q.mediaText)}` });
+    const bits = bitsOf(q.query, q.matches);
+    devices.forEach((d, k) => {
+      const r = evaluateMediaQueryList(list, { ...CORPUS.environment.viewport, device: deviceOf(d) }, faults);
+      if (r.kind === 'refused') {
+        if (!refused.includes(q.query)) refused.push(q.query);
+        return;
+      }
+      const chrome = bits[k] === '1';
+      expect(r.matches === chrome, { kind: 'matches', subject: q.query, detail: `${label(d)}: ${r.matches} != Chrome ${chrome}` });
+    });
+  }
+  for (const captured of capture.environment.bands) {
+    const sheet = CORPUS.environment.bandSheets.find((s) => s.name === captured.sheet);
+    if (sheet === undefined) throw new Error(`capture has an unknown environment band sheet ${captured.sheet}`);
+    const partition = band(sheet.queries.map((q) => parseMediaQueryList(q, faults)), faults);
+    if (partition.kind !== 'bands') {
+      expect(false, { kind: 'band', subject: sheet.name, detail: `refused: ${partition.detail}` });
+      continue;
+    }
+    expect(JSON.stringify(partition.bands.map((b) => b.condition)) === JSON.stringify(captured.conditions.map((c) => c.text)), { kind: 'band', subject: sheet.name, detail: 'conditions differ from the captured ones' });
+    for (const c of captured.conditions) {
+      const text = serialiseMediaQueryList(parseMediaQueryList(c.text, faults), chromeNumber);
+      expect(text === c.mediaText && c.mediaText !== 'not all', { kind: 'band', subject: `${sheet.name} ${c.text}`, detail: `mediaText ${text} != Chrome ${c.mediaText}` });
+    }
+    const chromeAt = (k: number): number[] => captured.conditions.flatMap((c, i) => (bitsOf(c.text, c.matches)[k] === '1' ? [i] : []));
+    const ours = devices.map((d) => bandAt(partition, CORPUS.environment.viewport, faults, deviceOf(d))?.index ?? null);
+    devices.forEach((d, k) => {
+      const want = ours[k] === null ? [] : [ours[k]];
+      expect(JSON.stringify(chromeAt(k)) === JSON.stringify(want), { kind: 'band', subject: sheet.name, detail: `${label(d)}: band ${JSON.stringify(want)} != Chrome ${JSON.stringify(chromeAt(k))}` });
+    });
+    // Every band holds a captured device, unless the sheet names why Chrome cannot emulate one; then at least one band is unreached.
+    const unreached = partition.bands.filter((b) => !ours.includes(b.index));
+    expect(sheet.unreachable === undefined ? unreached.length === 0 : unreached.length > 0, {
+      kind: 'band',
+      subject: sheet.name,
+      detail: sheet.unreachable === undefined ? `bands ${unreached.map((b) => b.index).join(', ')} hold no captured device` : `every band holds a captured device, but the sheet says ${sheet.unreachable}`,
+    });
+  }
 }
 
 function compareFractional(capture: Capture, faults: MediaFaults, expect: (ok: boolean, m: Mismatch) => void, refused: string[]): void {

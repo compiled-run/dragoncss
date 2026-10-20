@@ -35,6 +35,7 @@ import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
 import { TEXT_LATIN_PROBES } from '../src/fixture-groups/text-latin.ts';
 import { fontEmittedPath, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
 import { ENV_FIXTURES } from '../src/fixture-groups/env.ts';
+import { MEDIA_ENVIRONMENT_FIXTURES } from '../src/fixture-groups/media-environment.ts';
 import { envEmittedPath, envExpectedPath, liveEnvAuthored, runEnvFixture } from '../src/env-run.ts';
 import type { FrontEndResult } from 'dragon';
 
@@ -88,7 +89,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     // Frame fixtures (T065) are registered by their frames.json sidecar (anim-cases.ts animFixtures) and are not layout fixtures.
     const frames = animFixtures().map((f) => f.id);
     for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
-    const webOnly = [...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec);
+    // MQ-R2's media-environment fixtures run only as their resize scripts (resize-capture.ts ENV_SCRIPTS), so they are not in FIXTURES.
+    const webOnly = [...[...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec), ...MEDIA_ENVIRONMENT_FIXTURES];
     const registered = new Set([...[...FIXTURES, ...webOnly].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`), ...frames]);
     for (const id of [...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]) expect(statSync(`${dir}/${id}.html`).isFile(), id).toBe(true);
     expect(new Set([...FIXTURES.map((f) => f.id), ...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + webOnly.length + TEXT_LATIN_PROBES.length);

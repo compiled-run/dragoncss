@@ -1,4 +1,4 @@
-// dragon.native-dump/2 (docs/research/native-strategy.md 3.2; notes/T002-device-lanes.md 1.2): one data description of every
+// dragon.native-dump/3 (docs/research/native-strategy.md 3.2; notes/T002-device-lanes.md 1.2): one data description of every
 // field, its type, whether it is required and when it may be null. The TS types are inferred from it and the validator walks it,
 // so neither can drift from it; P4 emits the Swift and Kotlin encoders from the same description.
 
@@ -38,8 +38,11 @@ const DEVICE_EDGES = obj([field('left', int, 'device px'), field('top', int, 'de
 export const DUMP_LANES = ['ios-sim', 'android-emu', 'ts-reference'] as const;
 export const REFERENCE_LANE = 'ts-reference';
 
-/** The schema id. /2 (MQ-R1, notes/T067 R6) adds the environment record; every /1 field is unchanged. */
-export const NATIVE_DUMP_SCHEMA_ID = 'dragon.native-dump/2';
+/**
+ * The schema id. /2 (MQ-R1, notes/T067 R6) adds the environment record; /3 (MQ-R2, R9) adds the device's readings to it. Every
+ * earlier field is unchanged.
+ */
+export const NATIVE_DUMP_SCHEMA_ID = 'dragon.native-dump/3';
 
 export const NATIVE_DUMP_SCHEMA = obj([
   field('schema', { kind: 'const', value: NATIVE_DUMP_SCHEMA_ID }, 'the schema id'),
@@ -98,6 +101,15 @@ export const NATIVE_DUMP_SCHEMA = obj([
     field('dpr', num, 'the scale the root view\'s px are read at'),
     field('media', arr(num, 2), 'the media width and height @media is evaluated against: fround of the px at the scale (T067 R3)'),
     field('band', { kind: 'integer', min: 0, max: null }, 'the @media band the state program is in (0 without @media)'),
+    field('readings', obj([
+      field('pointer', { kind: 'enum', values: ['none', 'coarse', 'fine'] }, 'the primary pointing device'),
+      field('hover', { kind: 'enum', values: ['none', 'hover'] }, 'whether the primary pointing device hovers'),
+      field('anyPointer', arr({ kind: 'enum', values: ['coarse', 'fine'] }), 'the kinds of every pointing device, coarse before fine'),
+      field('anyHover', { kind: 'enum', values: ['none', 'hover'] }, 'whether any pointing device hovers'),
+      field('reducedMotion', { kind: 'enum', values: ['no-preference', 'reduce'] }, 'the user\'s motion setting'),
+      field('source', { kind: 'enum', values: ['platform', 'injected'] }, 'read from the platform, or injected by a case script\'s env steps'),
+      field('inputs', arr(num), 'the platform inputs the readings came from: Android, every input device\'s getSources(); iOS, [1 on an iPad else 0, the GCMouse count]'),
+    ]), 'MQ-R2 (T067 R9): the readings the device features answer from (the scale is dpr)'),
   ]), 'MQ-R1 (T067 R6): the environment of a state mount; null for a layout case, which has no Dragon root view of its own', 'always'),
 ]);
 

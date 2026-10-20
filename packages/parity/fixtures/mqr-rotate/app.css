@@ -4,3 +4,4 @@
 .sib { flex-grow: 1; height: 20px; background-color: #999; }
 @media (orientation: landscape) { .frame { height: 60px; } .sib { background-color: #c00; } }
 @media (max-width: 500px) { .panel { width: 160px; } }
+@media (prefers-reduced-motion: reduce) { .sib { height: 28px; } }
