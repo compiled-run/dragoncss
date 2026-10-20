@@ -91,6 +91,12 @@ export type Rule = {
   readonly condition?: readonly RuleCondition[];
   /** CASC 3: the key of the cascade layer the rule is in (css/at-rules/layer.ts); absent on an unlayered rule. */
   readonly layer?: string;
+  /**
+   * NA-NATIVE: the scrollbar-color the rule declares, auto or set (anything else but inherit and unset); absent when it declares none.
+   * The declaration itself is dropped (not-applicable on native, refused on web), but a set one makes Chrome ignore every
+   * ::-webkit-scrollbar rule on the elements it reaches (analysis/webkit-scrollbar.ts).
+   */
+  readonly scrollbarColor?: 'auto' | 'set';
 };
 
 /** One stylesheet use: its id, the owner its class symbols belong to, and whether it is component-scoped. */
@@ -169,16 +175,21 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
   const dropped = diagnostics.slice(before).some((d) => d.code === 'DRAGON_SELECTOR_DROPPED');
   const blockDiagnostics = dropped ? [] : diagnostics;
   const declarations: Declaration[] = [];
+  let scrollbarColor: 'auto' | 'set' | undefined;
   for (const d of list(node['block'] as CssNode, 'children')) {
     if (d.type !== 'Declaration') {
       refuseNode(d, st, { label: 'a rule block', selectors, conditions, layer }, blockDiagnostics, dropped ? [] : enclosed, []);
       continue;
     }
+    if (asciiLower(decodeName(String(d['property']))) === 'scrollbar-color') {
+      const v = asciiLower(generate(d['value'] as CssNode)).trim();
+      if (v !== 'inherit' && v !== 'unset') scrollbarColor = ['auto', 'initial', 'revert', 'revert-layer'].includes(v) ? 'auto' : 'set';
+    }
     const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);
   }
   if (selectors === null) return null;
-  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) };
+  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }), ...(scrollbarColor === undefined ? {} : { scrollbarColor }) };
 }
 
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */

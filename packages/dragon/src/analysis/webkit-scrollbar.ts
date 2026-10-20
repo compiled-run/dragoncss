@@ -3,7 +3,10 @@
 // width (vertical) or height (horizontal) removes that one; either way no gutter is reserved and nothing is drawn, exactly as with
 // scrollbar-width: none. An unset thickness keeps the platform's (15px classic), and any other value draws a custom scrollbar in
 // the gutter it reserves, which the overlay-scrollbar layout does not model. scrollbar-width other than auto makes Chrome ignore
-// every ::-webkit-scrollbar rule (so does scrollbar-color, which native leaves out by owner ruling, profiles/not-applicable-native.ts).
+// every ::-webkit-scrollbar rule (so does scrollbar-color, which native leaves out by owner ruling, profiles/not-applicable-native.ts:
+// the stylesheet keeps whether a rule sets it, Rule.scrollbarColor). A min-width or min-height clamps the thickness up, so one that
+// is not zero draws a scrollbar too. The viewport takes its scrollbar style from body, else html (Chrome's ScrollbarStyleSource),
+// and may scroll on either axis, so their rules hide only what both axes show and are refused otherwise, scroll container or not.
 // So when the matching rules of a scroll container hide every scrollbar it can show, the web output writes ::-webkit-scrollbar
 // { display: none } on its class (emit/web-css.ts) and native hides its scroll indicators (lower/paint/scroll.ts), both reading the
 // verdict webkit-scrollbar-state.ts records. Its -thumb, -track and other part rules then style nothing. Every other matching
@@ -17,7 +20,7 @@ import type { CompilerFaults } from '../faults.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { selectorIsInteractive } from './interaction.ts';
 import type { LinkedElement } from './link.ts';
-import { scrollbarSelectorMatches } from './match.ts';
+import { scrollbarSelectorMatches, selectorMatches } from './match.ts';
 import { recordScrollbarVerdict, scrollbarVerdict } from './webkit-scrollbar-state.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 
@@ -69,6 +72,8 @@ export function scrollbarStyleOf(rules: readonly Rule[], chain: readonly LinkedE
       else if (l.property === 'width' && isZero(v)) width ??= d;
       else if (l.property === 'height' && isZero(v)) height ??= d;
       else if (l.property === 'width' || l.property === 'height') drawn ??= d;
+      // min-inline-size and min-block-size arrive as these (shorthands/logical.ts).
+      else if ((l.property === 'min-width' || l.property === 'min-height') && !isZero(v) && keyword(v) !== 'auto') drawn ??= d;
     }
   }
   if (none === null && drawn !== null) {
@@ -83,6 +88,21 @@ export function scrollbarStyleOf(rules: readonly Rule[], chain: readonly LinkedE
 const scrolls = (v: ResolvedValue): boolean => v.value.kind === 'keyword' && (v.value.value === 'auto' || v.value.value === 'scroll');
 
 /**
+ * The scrollbar-color that reaches chain[chain.length - 1] (it inherits, so a rule on any element of the chain counts): auto, set,
+ * or mixed when rules of both kinds reach it, which only the cascade Dragon does not run for it could settle.
+ */
+function scrollbarColorOf(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults): 'auto' | 'set' | 'mixed' {
+  let set = false;
+  let auto = false;
+  for (const rule of rules) {
+    if (rule.scrollbarColor === undefined || !chain.some((_, i) => rule.selectors.some((sel) => selectorMatches(rule, sel, chain, i, 0, faults)))) continue;
+    if (rule.scrollbarColor === 'set') set = true;
+    else auto = true;
+  }
+  return set ? (auto ? 'mixed' : 'set') : 'auto';
+}
+
+/**
  * Records, for the element chain[chain.length - 1] with its props after computeOverflowPair, whether its ::-webkit-scrollbar rules
  * hide its scrollbars (scrollbar-width auto only: any other value makes Chrome ignore them) or are refused. A box that scrolls on
  * neither axis is read as if it scrolled on both, so the web output hides the scrollbar in every band where it does scroll; its
@@ -91,10 +111,17 @@ const scrolls = (v: ResolvedValue): boolean => v.value.kind === 'keyword' && (v.
 export function applyWebkitScrollbar(props: ReadonlyMap<Longhand, ResolvedValue>, chain: readonly LinkedElement[], rules: readonly Rule[], faults: CompilerFaults): void {
   const width = props.get('scrollbar-width') as ResolvedValue;
   if (width.value.kind !== 'keyword' || width.value.value !== 'auto') return;
+  const color = rules.some((r) => r.scrollbarColor !== undefined) ? scrollbarColorOf(rules, chain, faults) : 'auto';
+  if (color === 'set') return;
   const x = scrolls(props.get('overflow-x') as ResolvedValue);
   const y = scrolls(props.get('overflow-y') as ResolvedValue);
-  const style = scrollbarStyleOf(rules, chain, x || !y, y || !x, faults);
-  if (style.kind === 'hidden') recordScrollbarVerdict(props, { kind: 'hidden' });
+  const tag = (chain[chain.length - 1] as LinkedElement).tag;
+  const viewport = tag === 'html' || tag === 'body';
+  const style = viewport ? scrollbarStyleOf(rules, chain, true, true, faults) : scrollbarStyleOf(rules, chain, x || !y, y || !x, faults);
+  if (style.kind === 'hidden' && color === 'mixed') {
+    recordScrollbarVerdict(props, { kind: 'refused', span: style.declaration.span, message: 'a ::-webkit-scrollbar rule under rules that set scrollbar-color and rules that reset it to auto is unsupported: Chrome ignores it wherever scrollbar-color is not auto, which Dragon does not cascade' });
+  } else if (style.kind === 'hidden') recordScrollbarVerdict(props, { kind: 'hidden' });
+  else if (style.kind === 'refused' && viewport) recordScrollbarVerdict(props, { kind: 'refused', span: style.span, message: `${style.message}; on ${tag} it styles the viewport's scrollbars, which can scroll on either axis` });
   else if (style.kind === 'refused' && (x || y)) recordScrollbarVerdict(props, { kind: 'refused', span: style.span, message: style.message });
 }
 
@@ -102,8 +129,10 @@ export function applyWebkitScrollbar(props: ReadonlyMap<Longhand, ResolvedValue>
 export function checkWebkitScrollbar(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
   const r = scrollbarVerdict(el);
   if (r === null || r.kind !== 'refused') return;
-  const id = `webkit-scrollbar|${JSON.stringify(r.span)}|${el.element.address}`;
+  const viewport = el.element.tag === 'html' || el.element.tag === 'body';
+  // html and body style the one viewport, so a rule reaching both is reported once.
+  const id = `webkit-scrollbar|${JSON.stringify(r.span)}|${viewport ? 'viewport' : el.element.address}`;
   if (reported.has(id)) return;
   reported.add(id);
-  diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: authored(r.span), message: `${r.message} (on the scroll container ${el.element.address})`, manual: 'Hide the scrollbar with ::-webkit-scrollbar { display: none } or scrollbar-width: none, or remove the rule.' }));
+  diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: authored(r.span), message: `${r.message} (on ${viewport ? '' : 'the scroll container '}${el.element.address})`, manual: 'Hide the scrollbar with ::-webkit-scrollbar { display: none } or scrollbar-width: none, or remove the rule.' }));
 }

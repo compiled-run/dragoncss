@@ -52,6 +52,35 @@ describe('::-webkit-scrollbar rules that hide the scrollbar', () => {
     expect(webCss(thin)).not.toContain('::-webkit-scrollbar');
   });
 
+  it('hide the viewport scrollbars from body or html, which is no scroll container', () => {
+    for (const css of ['body::-webkit-scrollbar { display: none; }', 'html::-webkit-scrollbar { width: 0; height: 0; }', '::-webkit-scrollbar { display: none; }']) {
+      const c = compile(css);
+      expect(errors(c)).toEqual([]);
+      expect(c.targets).toEqual({ web: 'checked', ios: 'checked', android: 'checked' });
+    }
+  });
+
+  it('do nothing where scrollbar-color is set, since Chrome then ignores them: native keeps the indicators', () => {
+    const c = compile('.a { overflow: auto; } body { scrollbar-color: red blue; } .a::-webkit-scrollbar { display: none; }');
+    expect(errors(c).filter((e) => e.includes('::-webkit-scrollbar'))).toEqual([]);
+    expect(c.targets.ios).toBe('checked');
+    expect(indicators(c, 'a')).toEqual([false, false]);
+    const auto = compile('.a { overflow: auto; } body { scrollbar-color: auto; } .a::-webkit-scrollbar { display: none; }');
+    expect(errors(auto).filter((e) => e.includes('::-webkit-scrollbar'))).toEqual([]);
+    expect(indicators(auto, 'a')).toEqual([true, true]);
+  });
+
+  it('are written outside @media when they hide the scrollbar in any band', () => {
+    for (const css of [
+      '.a { overflow: hidden; } @media (min-width: 600px) { .a { overflow-y: auto; } } .a::-webkit-scrollbar { width: 0; }',
+      '.a { overflow: auto; scrollbar-width: none; } @media (min-width: 600px) { .a { scrollbar-width: auto; } } .a::-webkit-scrollbar { display: none; }',
+    ]) {
+      const c = compile(css);
+      expect(errors(c).filter((e) => e.includes('::-webkit-scrollbar'))).toEqual([]);
+      expect(webCss(c)).toMatch(/::-webkit-scrollbar \{\\n {2}display: none;\\n\}/);
+    }
+  });
+
   it('style nothing on a box that does not scroll, whatever they say', () => {
     expect(errors(compile('.a::-webkit-scrollbar { width: 8px; } .a::-webkit-scrollbar-thumb { background: red; }'))).toEqual([]);
   });
@@ -65,6 +94,12 @@ describe('::-webkit-scrollbar rules that draw a custom scrollbar on a scroll con
     ['.a { overflow: auto; } .a::-webkit-scrollbar-thumb { background: red; }', 'DRAGON_UNSUPPORTED_SELECTOR a ::-webkit-scrollbar part rule styles the custom scrollbar'],
     ['.a { overflow: auto; } .a:hover::-webkit-scrollbar { display: none; }', 'DRAGON_UNSUPPORTED_SELECTOR a ::-webkit-scrollbar rule that depends on :hover'],
     ['.a { overflow: auto; } @media (min-width: 1px) { .a::-webkit-scrollbar { display: none; } }', 'DRAGON_UNSUPPORTED_SELECTOR a ::-webkit-scrollbar rule inside @media'],
+    ['.a { overflow: auto; } .a::-webkit-scrollbar { width: 0; height: 0; min-width: 10px; min-height: 10px; }', 'DRAGON_UNSUPPORTED_SELECTOR min-width: 10px in a ::-webkit-scrollbar rule draws a custom scrollbar'],
+    ['.a { overflow: auto; } .a::-webkit-scrollbar { width: 0; height: 0; min-inline-size: 4px; }', 'DRAGON_UNSUPPORTED_SELECTOR min-inline-size: 4px in a ::-webkit-scrollbar rule draws a custom scrollbar'],
+    ['body::-webkit-scrollbar { width: 8px; }', 'DRAGON_UNSUPPORTED_SELECTOR width: 8px in a ::-webkit-scrollbar rule draws a custom scrollbar'],
+    ['html::-webkit-scrollbar { width: 0; }', 'DRAGON_UNSUPPORTED_SELECTOR a ::-webkit-scrollbar rule that leaves the horizontal scrollbar at its platform thickness'],
+    ['::-webkit-scrollbar { width: 6px; }', 'DRAGON_UNSUPPORTED_SELECTOR width: 6px in a ::-webkit-scrollbar rule draws a custom scrollbar'],
+    ['.a { overflow: auto; } body { scrollbar-color: red blue; } .a { scrollbar-color: auto; } .a::-webkit-scrollbar { display: none; }', 'DRAGON_UNSUPPORTED_SELECTOR a ::-webkit-scrollbar rule under rules that set scrollbar-color'],
   ] as const) {
     it(css, () => {
       const c = compile(css);
