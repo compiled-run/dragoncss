@@ -827,6 +827,11 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
           // A group nested in an admitted group has an opacity-nested write: its outer group's overlay composites it.
           const nested = (n: ProgramNode): boolean => n.writes.some((w) => w.kind === 'opacity-nested');
           expect(translucent.filter((n) => groupPlanOf(n) === null && !nested(n)).map((n) => n.id), c.id).toEqual([]);
+          if (spec.id === 'opacity-group-nested') expect(p.nodes.filter(nested).map((n) => n.id), c.id).toEqual(['on-a-in', 'on-b-in', 'on-c-mid', 'on-c-deep', 'on-d-in', 'on-e-in', 'on-f-in']);
+          if (spec.id === 'opacity-group-nested' || spec.id === 'opacity-group-translucent') {
+            // Every group of these fixtures holds a nested group or translucent paint, so the device builds its layer in software.
+            for (const dpr of DPRS) for (const it of paintItems(p, c.environment.viewport, dpr)) if (it.kind === 'group') expect(softwareGroup(it.items), `${c.id} ${it.box.node.id}`).toBe(true);
+          }
           expect(p.nodes.some((n) => n.writes.some((w) => w.kind === 'opacity')), c.id).toBe(false);
         }
       }

@@ -390,62 +390,62 @@ public final class DragonGroupView: UIView {
       let f = DragonGroupFrame(root: root, ext: ext, width: w, height: h, s: s, space: space, tileSize: tileSize, originX: originX)
       dragonSoftwareGroup(&q, g, f, dragonAlpha8, dragonAlphaPlantIgnored ? 1 : g.dragonOpacity, dragonMatrices)
     } else {
-    // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
-    // each text line's ink (a DrawTextBlob, which cc never folds).
-    var draws: [Double] = []
-    for b in boxes where b.dragonVisible {
-      let fillsBg = b.dragonBackgroundColor.a > 0
-      let sides = (0..<4).filter { b.dragonShape.borders[$0] > 0 && b.dragonBorderStyles[$0] != "none" && b.dragonBorderStyles[$0] != "hidden" }.count
-      let ops = dragonGroupBoxOps(fillsBg, sides)
-      if ops == 0 { continue }
-      draws += b.dragonShape.edges + [ops == 1 ? 1 : 0]
-    }
-    for tv in texts where !tv.isHidden {
-      guard let font = tv.dragonFont else { continue }
-      let r = dragonLayoutRect(tv, in: root)
-      // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
-      // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
-      let ascent = Double(CTFontGetAscent(font as CTFont)) * s
-      let descent = Double(CTFontGetDescent(font as CTFont)) * s
-      for l in tv.specs where !l.glyphs.isEmpty {
-        guard let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * s, Double(r.minY) * s, s) else { continue }
-        let x0 = Double(r.minX) * s + l.xLU / units_LU_PER_PX
-        let base = Double(r.minY) * s + l.baseline
-        draws += [min(ink[0], x0.rounded(.down)), min(ink[1], (base - ascent).rounded(.down)), max(ink[2], (x0 + l.widthLU / units_LU_PER_PX).rounded(.up)), max(ink[3], (base + descent).rounded(.up)), 0]
+      // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
+      // each text line's ink (a DrawTextBlob, which cc never folds).
+      var draws: [Double] = []
+      for b in boxes where b.dragonVisible {
+        let fillsBg = b.dragonBackgroundColor.a > 0
+        let sides = (0..<4).filter { b.dragonShape.borders[$0] > 0 && b.dragonBorderStyles[$0] != "none" && b.dragonBorderStyles[$0] != "hidden" }.count
+        let ops = dragonGroupBoxOps(fillsBg, sides)
+        if ops == 0 { continue }
+        draws += b.dragonShape.edges + [ops == 1 ? 1 : 0]
       }
-    }
-    let jsDraws = JsArray(draws)
-    var foldCache: [Int: Bool] = [:]
-    func folds(_ x: Int, _ y: Int) -> Bool {
-      do {
-        let ix = try paintGroup_groupTileIndex(Double(x) - originX, tileSize)
-        let iy = try paintGroup_groupTileIndex(Double(y), tileSize)
-        let key = dragonCheckedInt(ix, "group tile x") * 65536 + dragonCheckedInt(iy, "group tile y")
-        if let f = foldCache[key] { return f }
-        let sx = try paintGroup_groupTileSpan(ix, tileSize).items
-        let sy = try paintGroup_groupTileSpan(iy, tileSize).items
-        let f = try paintGroup_groupTileFolds(jsDraws, sx[0] + originX, sy[0], sx[1] + originX, sy[1])
-        foldCache[key] = f
-        return f
-      } catch { fatalError("dragon: \(g.dragonId): paint-group tiles failed: \(error)") }
-    }
-    q = [UInt8](repeating: 0, count: w * h * 4)
-    let a8 = Double(dragonAlpha8)
-    do {
-      for y in 0..<h {
-        for x in 0..<w {
-          let i = (y * w + x) * 4
-          let packed: Double
-          if let m = dragonMatrices {
-            packed = try paintGroup_groupFilterComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), m, a8)
-          } else {
-            packed = try paintGroup_groupComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))
-          }
-          let v = Int(packed)
-          q[i] = UInt8(v & 0xff); q[i + 1] = UInt8((v >> 8) & 0xff); q[i + 2] = UInt8((v >> 16) & 0xff); q[i + 3] = UInt8((v >> 24) & 0xff)
+      for tv in texts where !tv.isHidden {
+        guard let font = tv.dragonFont else { continue }
+        let r = dragonLayoutRect(tv, in: root)
+        // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
+        // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
+        let ascent = Double(CTFontGetAscent(font as CTFont)) * s
+        let descent = Double(CTFontGetDescent(font as CTFont)) * s
+        for l in tv.specs where !l.glyphs.isEmpty {
+          guard let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * s, Double(r.minY) * s, s) else { continue }
+          let x0 = Double(r.minX) * s + l.xLU / units_LU_PER_PX
+          let base = Double(r.minY) * s + l.baseline
+          draws += [min(ink[0], x0.rounded(.down)), min(ink[1], (base - ascent).rounded(.down)), max(ink[2], (x0 + l.widthLU / units_LU_PER_PX).rounded(.up)), max(ink[3], (base + descent).rounded(.up)), 0]
         }
       }
-    } catch { fatalError("dragon: \(g.dragonId): paint-group composite failed: \(error)") }
+      let jsDraws = JsArray(draws)
+      var foldCache: [Int: Bool] = [:]
+      func folds(_ x: Int, _ y: Int) -> Bool {
+        do {
+          let ix = try paintGroup_groupTileIndex(Double(x) - originX, tileSize)
+          let iy = try paintGroup_groupTileIndex(Double(y), tileSize)
+          let key = dragonCheckedInt(ix, "group tile x") * 65536 + dragonCheckedInt(iy, "group tile y")
+          if let f = foldCache[key] { return f }
+          let sx = try paintGroup_groupTileSpan(ix, tileSize).items
+          let sy = try paintGroup_groupTileSpan(iy, tileSize).items
+          let f = try paintGroup_groupTileFolds(jsDraws, sx[0] + originX, sy[0], sx[1] + originX, sy[1])
+          foldCache[key] = f
+          return f
+        } catch { fatalError("dragon: \(g.dragonId): paint-group tiles failed: \(error)") }
+      }
+      q = [UInt8](repeating: 0, count: w * h * 4)
+      let a8 = Double(dragonAlpha8)
+      do {
+        for y in 0..<h {
+          for x in 0..<w {
+            let i = (y * w + x) * 4
+            let packed: Double
+            if let m = dragonMatrices {
+              packed = try paintGroup_groupFilterComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), m, a8)
+            } else {
+              packed = try paintGroup_groupComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))
+            }
+            let v = Int(packed)
+            q[i] = UInt8(v & 0xff); q[i + 1] = UInt8((v >> 8) & 0xff); q[i + 2] = UInt8((v >> 16) & 0xff); q[i + 3] = UInt8((v >> 24) & 0xff)
+          }
+        }
+      } catch { fatalError("dragon: \(g.dragonId): paint-group composite failed: \(error)") }
     }
     dragonQ = q
     dragonQRect = ext
@@ -991,57 +991,57 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       q = bp
       softwareGroup(q, g, DragonGroupFrame(root, ext, w, h, tileSize, originX), dragonAlpha8, if (DRAGON_ALPHA_PLANT_IGNORED) 1.0 else g.dragonOpacity, dragonMatrices)
     } else {
-    // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
-    // each text line's ink (a DrawTextBlob, which cc never folds).
-    val draws = ArrayList<Double>()
-    for (b in boxes) {
-      if (!b.dragonVisible) continue
-      val fillsBg = b.dragonBackgroundColor.a > 0
-      val sides = (0 until 4).count { b.dragonShape.borders[it] > 0 && b.dragonBorderStyles[it] != "none" && b.dragonBorderStyles[it] != "hidden" }
-      val ops = dragonGroupBoxOps(fillsBg, sides)
-      if (ops == 0) continue
-      for (k in 0 until 4) draws.add(b.dragonShape.edges[k])
-      draws.add(if (ops == 1) 1.0 else 0.0)
-    }
-    // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
-    // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
-    for (tv in texts) {
-      if (tv.visibility != View.VISIBLE) continue
-      val o = dragonLayoutOffset(tv, root)
-      val fm = tv.paint.fontMetrics
-      val lines = tv.specs.filter { it.glyphs.isNotEmpty() }
-      for ((i, e) in (inks[tv] ?: emptyList()).withIndex()) {
-        val l = lines[i]
-        val x0 = o[0] + l.xLU / units_LU_PER_PX
-        val base = (o[1] + l.baseline).toDouble()
-        draws.add(minOf(e[0], kotlin.math.floor(x0))); draws.add(minOf(e[1], kotlin.math.floor(base + fm.ascent)))
-        draws.add(maxOf(e[2], kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX))); draws.add(maxOf(e[3], kotlin.math.ceil(base + fm.descent)))
-        draws.add(0.0)
+      // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
+      // each text line's ink (a DrawTextBlob, which cc never folds).
+      val draws = ArrayList<Double>()
+      for (b in boxes) {
+        if (!b.dragonVisible) continue
+        val fillsBg = b.dragonBackgroundColor.a > 0
+        val sides = (0 until 4).count { b.dragonShape.borders[it] > 0 && b.dragonBorderStyles[it] != "none" && b.dragonBorderStyles[it] != "hidden" }
+        val ops = dragonGroupBoxOps(fillsBg, sides)
+        if (ops == 0) continue
+        for (k in 0 until 4) draws.add(b.dragonShape.edges[k])
+        draws.add(if (ops == 1) 1.0 else 0.0)
       }
-    }
-    val jsDraws = JsArray(draws.toMutableList())
-    val foldCache = HashMap<Long, Boolean>()
-    fun folds(x: Int, y: Int): Boolean {
-      val ix = paintGroup_groupTileIndex(x - originX, tileSize)
-      val iy = paintGroup_groupTileIndex(y.toDouble(), tileSize)
-      val key = dragonCheckedInt(ix, "group tile x").toLong() * 65536L + dragonCheckedInt(iy, "group tile y").toLong()
-      return foldCache.getOrPut(key) {
-        val sx = paintGroup_groupTileSpan(ix, tileSize)
-        val sy = paintGroup_groupTileSpan(iy, tileSize)
-        paintGroup_groupTileFolds(jsDraws, sx[0] + originX, sy[0], sx[1] + originX, sy[1])
+      // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
+      // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
+      for (tv in texts) {
+        if (tv.visibility != View.VISIBLE) continue
+        val o = dragonLayoutOffset(tv, root)
+        val fm = tv.paint.fontMetrics
+        val lines = tv.specs.filter { it.glyphs.isNotEmpty() }
+        for ((i, e) in (inks[tv] ?: emptyList()).withIndex()) {
+          val l = lines[i]
+          val x0 = o[0] + l.xLU / units_LU_PER_PX
+          val base = (o[1] + l.baseline).toDouble()
+          draws.add(minOf(e[0], kotlin.math.floor(x0))); draws.add(minOf(e[1], kotlin.math.floor(base + fm.ascent)))
+          draws.add(maxOf(e[2], kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX))); draws.add(maxOf(e[3], kotlin.math.ceil(base + fm.descent)))
+          draws.add(0.0)
+        }
       }
-    }
-    q = ByteArray(w * h * 4)
-    val a8 = dragonAlpha8.toDouble()
-    fun u(b: Byte): Double = (b.toInt() and 0xff).toDouble()
-    for (y in 0 until h) {
-      for (x in 0 until w) {
-        val i = (y * w + x) * 4
-        val m = dragonMatrices
-        val v = (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
-        q[i] = (v and 0xffL).toByte(); q[i + 1] = ((v shr 8) and 0xffL).toByte(); q[i + 2] = ((v shr 16) and 0xffL).toByte(); q[i + 3] = ((v shr 24) and 0xffL).toByte()
+      val jsDraws = JsArray(draws.toMutableList())
+      val foldCache = HashMap<Long, Boolean>()
+      fun folds(x: Int, y: Int): Boolean {
+        val ix = paintGroup_groupTileIndex(x - originX, tileSize)
+        val iy = paintGroup_groupTileIndex(y.toDouble(), tileSize)
+        val key = dragonCheckedInt(ix, "group tile x").toLong() * 65536L + dragonCheckedInt(iy, "group tile y").toLong()
+        return foldCache.getOrPut(key) {
+          val sx = paintGroup_groupTileSpan(ix, tileSize)
+          val sy = paintGroup_groupTileSpan(iy, tileSize)
+          paintGroup_groupTileFolds(jsDraws, sx[0] + originX, sy[0], sx[1] + originX, sy[1])
+        }
       }
-    }
+      q = ByteArray(w * h * 4)
+      val a8 = dragonAlpha8.toDouble()
+      fun u(b: Byte): Double = (b.toInt() and 0xff).toDouble()
+      for (y in 0 until h) {
+        for (x in 0 until w) {
+          val i = (y * w + x) * 4
+          val m = dragonMatrices
+          val v = (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
+          q[i] = (v and 0xffL).toByte(); q[i + 1] = ((v shr 8) and 0xffL).toByte(); q[i + 2] = ((v shr 16) and 0xffL).toByte(); q[i + 3] = ((v shr 24) and 0xffL).toByte()
+        }
+      }
     }
     dragonQ = q
     dragonQRect = ext
