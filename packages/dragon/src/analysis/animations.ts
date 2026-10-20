@@ -26,7 +26,7 @@ import { beats } from './cascade.ts';
 import type { ResolvedValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import { selectorMatches, specificityFor } from './match.ts';
-import type { ResolvedElement } from './resolve.ts';
+import type { ResolvedElement, ResolvedText } from './resolve.ts';
 import { resolvedCustoms } from './resolve.ts';
 import type { CustomProperties } from './variables.ts';
 import { substituteVars } from './variables.ts';
@@ -331,18 +331,47 @@ function inlineBoxAt(el: ResolvedElement, root: ResolvedElement): boolean {
 
 /**
  * ANIM-b2: while its transform animates, an element is a containing block and stacking context even where its own transform is
- * none (css-transforms-1 §3, css-animations-1 §3); Dragon lowers both from the static transform only, so such an element with a
- * positioned descendant is refused until a frame fixture proves it.
+ * none (css-transforms-1 §3, css-animations-1 §3, Chrome's running-animation compositing reasons); Dragon lowers both from the static
+ * transform only. So an element whose transform is none (and not will-change: transform) is refused when either can change what it
+ * paints: a positioned descendant (the containing block), or anything its being a stacking context reorders: a descendant with a
+ * z-index, text earlier in the document, or any box or text after it outside its subtree. Returns what it has, or null.
  */
-function untransformedWithPositioned(el: ResolvedElement): boolean {
+function untransformedStacking(el: ResolvedElement, root: ResolvedElement): string | null {
   const own = valueAt(el, 'transform').value;
-  if (!(own.kind === 'keyword' && own.value === 'none') || willChangeFeatures(valueAt(el, 'will-change').value).includes('transform')) return false;
+  if (!(own.kind === 'keyword' && own.value === 'none') || willChangeFeatures(valueAt(el, 'will-change').value).includes('transform')) return null;
   const isStatic = (e: ResolvedElement): boolean => {
     const v = valueAt(e, 'position').value;
     return v.kind === 'keyword' && v.value === 'static';
   };
   const positioned = (e: ResolvedElement): boolean => e.children.some((c) => c.kind === 'element' && (!isStatic(c) || positioned(c)));
-  return positioned(el);
+  if (positioned(el)) return 'a positioned descendant, whose containing block it becomes';
+  const zIndexed = (e: ResolvedElement): boolean => e.children.some((c) => {
+    if (c.kind !== 'element') return false;
+    const z = valueAt(c, 'z-index').value;
+    return !(z.kind === 'keyword' && z.value === 'auto') || zIndexed(c);
+  });
+  if (zIndexed(el)) return 'a descendant with a z-index, which its stacking context would hold';
+  // Document order outside el's subtree: text before it, or any node after it.
+  let after = false;
+  let found: string | null = null;
+  const walk = (n: ResolvedElement | ResolvedText): void => {
+    if (found !== null) return;
+    if (n === el) {
+      after = true;
+      return;
+    }
+    if (n.kind === 'text') {
+      found = after ? 'content after it' : 'text before it';
+      return;
+    }
+    if (after) {
+      found = 'content after it';
+      return;
+    }
+    for (const c of n.children) walk(c);
+  };
+  for (const c of root.children) walk(c);
+  return found === null ? null : `${found}, which its stacking context would paint it over`;
 }
 
 const INLINE_ANIM_MANUAL = 'Animate a block-level element instead (display: block or inline-block on a wrapper), or remove the declaration.';
@@ -439,6 +468,8 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           else for (const item of list.items) feature(`${p}:${featureType(item)}`, d.valueSpan);
         }
       }
+      // Whether an earlier animation of this element animates transform: it composes under the later ones (rt-animations.ts).
+      let transformBelow = false;
       for (const a of ea.animations) {
         if (a.name === 'none') continue;
         if (!a.hasKeyframes) {
@@ -470,12 +501,16 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             else if (prev.text !== text) once(`kfv|${id}`, refuse(v.valueSpan, `${v.property}: ${v.text} is unsupported: one @keyframes resolves to different values on ${prev.address} and ${ea.address} (package ANIM-v)`));
           }
         }
-        if (transforms.length > 0 && untransformedWithPositioned(el)) once(`kfcb|${ea.address}`, refuse(spanFor(ea, 'animation-name'), `animation ${a.name} on ${ea.address} animates transform on an element whose transform is none, with a positioned descendant: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`));
+        const stacking = transforms.length > 0 ? untransformedStacking(el, rootEl) : null;
+        if (stacking !== null) once(`kfcb|${ea.address}`, refuse(spanFor(ea, 'animation-name'), `animation ${a.name} on ${ea.address} animates transform on an element whose transform is none, with ${stacking}: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`));
         // ANIM-m: each pair of neighbouring transform keyframes, a missing 0% or 100% being the element's own value (neutral).
         if (transforms.length > 0) {
           const sorted = transforms.map((t, i) => ({ ...t, i })).sort((x, y) => x.offset - y.offset || x.i - y.i);
           const base = { value: endpointOf('transform', valueAt(el, 'transform').value), span: spanFor(ea, 'animation-name') };
           const chain = [...((sorted[0] as { offset: number }).offset === 0 ? [] : [base]), ...sorted, ...((sorted[sorted.length - 1] as { offset: number }).offset === 1 ? [] : [base])];
+          // A missing 0% or 100% takes the underlying value, which is the lower animation's frame when one animates transform too,
+          // not the static value the pairs below are checked against.
+          if (transformBelow && chain.includes(base)) once(`kfnb|${a.name}|${ea.address}`, refuse(spanFor(ea, 'animation-name'), `animation ${a.name} on ${ea.address} leaves out its 0% or 100% transform keyframe over another animation of transform, whose frames that keyframe would take: not built yet (package ANIM-b2)`));
           for (let k = 1; k < chain.length; k++) {
             const x = chain[k - 1] as { value: AnimValue; span: Span };
             const y = chain[k] as { value: AnimValue; span: Span };
@@ -483,6 +518,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             const span = y === base ? x.span : y.span;
             if (problem !== null) once(`kfm|${a.name}|${span.start}|${ea.address}`, refuse(span, `transform in @keyframes ${a.name} on ${ea.address}: ${problem}`));
           }
+          transformBelow = true;
         }
       }
     }
@@ -518,7 +554,8 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`));
             continue;
           }
-          if (p === 'transform' && (untransformedWithPositioned(ea) || untransformedWithPositioned(eb))) once(`tcb|${address}`, refuse(span, `a transition of transform on ${address} starts on an element whose transform is none, with a positioned descendant: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`));
+          const stacking = p === 'transform' ? (untransformedStacking(ea, [...ta.values()][0] as ResolvedElement) ?? untransformedStacking(eb, [...tb.values()][0] as ResolvedElement)) : null;
+          if (stacking !== null) once(`tcb|${address}`, refuse(span, `a transition of transform on ${address} starts on an element whose transform is none, with ${stacking}: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`));
           const problem = transformPairProblem(from, to);
           if (problem !== null) once(`tm|${p}|${address}|${span.start}`, refuse(span, `${p} on ${address}: a transition between two reachable states: ${problem}`));
           const cc = (v: AnimValue): boolean => v.kind === 'keyword' && v.value === 'currentcolor';

@@ -102,10 +102,31 @@ describe('ANIM-b2: transform animations', () => {
     };
     const diags = (css: string): string[] => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(tree(css)).diagnostics.map((d) => d.message);
     const spin = '.a { animation: k 1s infinite; } @keyframes k { to { transform: rotate(90deg) } }';
-    expect(diags(`${spin} .p { position: absolute; }`)).toEqual(['animation k on a animates transform on an element whose transform is none, with a positioned descendant: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)']);
+    expect(diags(`${spin} .p { position: absolute; }`)).toEqual(['animation k on a animates transform on an element whose transform is none, with a positioned descendant, whose containing block it becomes: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)']);
     expect(diags(spin)).toEqual([]);
     // With a transform of its own the element is refused as PNT2 refuses any transformed containing block, animated or not.
     expect(diags(`${spin} .a { transform: rotate(0deg); } .p { position: absolute; }`)).toEqual(["a transform on a makes it the containing block of the absolutely positioned p (css-transforms-1 §3), which Dragon's layout does not model yet"]);
+  });
+
+  it('refuses an animated transform on an element whose transform is none when its stacking context would reorder paint', () => {
+    const diags = (css: string, kids: (r: SourceRef) => ReturnType<typeof div>[]): string[] => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, kids)).diagnostics.map((d) => d.message);
+    const spin = 'body { margin: 0; } .a { height: 20px; animation: k 1s infinite; } @keyframes k { to { transform: translateX(10px) } }';
+    const why = (s: string): string => `animation k on a animates transform on an element whose transform is none, with ${s}: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`;
+    // A later sibling: Chrome paints the animating a over b, as a stacking context; native would paint b over it.
+    expect(diags(`${spin} .b { height: 20px; margin-top: -10px; }`, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])])).toEqual([why('content after it, which its stacking context would paint it over')]);
+    // A z-index on a flex item inside it: its own stacking context would hold the item.
+    expect(diags(`${spin} .a { display: flex; } .z { z-index: -1; height: 5px; }`, (r) => [div(r, 'a', ['a'], [div(r, 'z', ['z'])])])).toEqual([why('a descendant with a z-index, which its stacking context would hold')]);
+    // An earlier box (no text) and its own children are fine; a transform of its own already makes it a stacking context.
+    expect(diags(`${spin} .e { height: 5px; } .c { height: 5px; }`, (r) => [div(r, 'e', ['e']), div(r, 'a', ['a'], [div(r, 'c', ['c'])])])).toEqual([]);
+    expect(diags(`${spin} .a { transform: translateX(1px); } .b { height: 20px; }`, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])])).toEqual([]);
+  });
+
+  it('refuses a missing 0% or 100% transform keyframe over another animation of transform (its underlying value is that animation)', () => {
+    const css = '.a { animation: r 1s infinite, t 1s infinite; } @keyframes r { from { transform: rotate(0deg) } to { transform: rotate(90deg) } } @keyframes t { to { transform: translateX(10px) } }';
+    expect(refusals(css)).toEqual(expect.arrayContaining(['animation t on a leaves out its 0% or 100% transform keyframe over another animation of transform, whose frames that keyframe would take: not built yet (package ANIM-b2)']));
+    // Both ends written, or the lower animation the one with the gap, compile.
+    expect(refusals(css.replace('@keyframes t { to', '@keyframes t { from { transform: translateX(0px) } to'))).toEqual([]);
+    expect(refusals('.a { animation: t 1s infinite, r 1s infinite; } @keyframes r { from { transform: rotate(0deg) } to { transform: rotate(90deg) } } @keyframes t { to { transform: translateX(10px) } }')).toEqual([]);
   });
 
   it('carries the typed functions per endpoint (em in keyframes against the font size) and the origin of every transformed node', () => {
