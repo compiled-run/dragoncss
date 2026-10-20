@@ -49,7 +49,7 @@ import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
-import { effectiveZoom, ZOOM_SCALED } from '../analysis/zoom.ts';
+import { effectiveZoom, holdsLength, ZOOM_SCALED } from '../analysis/zoom.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
@@ -97,7 +97,7 @@ const zoomed = (value: number, zoom: number): number => value * zoom;
 /**
  * ZOOM (analysis/zoom.ts): the values of an element at effective zoom z, with every px and viewport length of a ZOOM_SCALED
  * longhand multiplied by z, as Chrome's computed lengths are before getComputedStyle divides z back out. Analysis refuses a
- * calculation in one on native, so the lowering refuses it too.
+ * calculation holding a length in one on native, so the lowering refuses it too; one of percentages and numbers alone zooms as itself.
  */
 function zoomedGet<P extends Longhand>(id: string, get: (p: P) => CssValue, zoom: number): (p: P) => CssValue {
   if (zoom === 1) return get;
@@ -105,7 +105,7 @@ function zoomedGet<P extends Longhand>(id: string, get: (p: P) => CssValue, zoom
     const v = get(p);
     if (!ZOOM_SCALED.has(p)) return v;
     if (v.kind === 'length' && (v.unit === 'px' || VIEWPORT_AXIS[v.unit] !== undefined)) return { ...v, value: zoomed(v.value, zoom) };
-    if (v.kind === 'other' && MATH_VALUE_FUNCTIONS.has(v.type.replace('()', ''))) throw new LoweringError(id, p, `${p}: ${valueToString(v)} on ${id} is a calculation at zoom ${zoom}, which native does not zoom yet (ZOOM)`);
+    if (v.kind === 'other' && MATH_VALUE_FUNCTIONS.has(v.type.replace('()', '')) && holdsLength(v)) throw new LoweringError(id, p, `${p}: ${valueToString(v)} on ${id} is a calculation at zoom ${zoom}, which native does not zoom yet (ZOOM)`);
     return v;
   };
 }

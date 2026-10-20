@@ -55,9 +55,28 @@ describe('zoom', () => {
     expect(iosMessages('2', '', 'border-top-left-radius: 3px')).toEqual(['<div> c is laid out at zoom 2 and border-top-left-radius: 3px is a length native does not zoom yet (ZOOM)']);
     expect(iosMessages('2', 'overflow: auto')).toEqual(['<div> a is laid out at zoom 2 and overflow-x: auto makes it a scroll container, which native does not zoom yet (ZOOM)']);
   });
-  it('checks no length where the effective zoom is 1, and none a zoomed element inherits', () => {
+  it('checks no length where the effective zoom is 1, and scales the lengths a zoomed element inherits only where native lays them out', () => {
     expect(at('1', 'border-top-left-radius: 3px')).toEqual([]);
-    expect(project.compile(inputFor('.a { letter-spacing: 1px; text-shadow: 1px 1px red; } .c { zoom: 2; }', (r) => [div(r, 'a', ['a'], [div(r, 'c', ['c'])])])).diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
+    const inherits = (own: string): string[] => project.compile(inputFor(`.a { ${own} } .c { zoom: 2; }`, (r) => [div(r, 'a', ['a'], [div(r, 'c', ['c'])])])).diagnostics
+      .filter((d) => d.severity !== 'info').map((d) => `${String(d.target)} ${d.code}`).sort();
+    expect(inherits('letter-spacing: 1px; line-height: 20px')).toEqual([]);
+    // Chrome zooms an inherited text-shadow again (an offset of 20px under zoom: 2 draws at 40px); native paints it at 1.
+    expect(inherits('text-shadow: 0 20px red')).toEqual(NATIVE_REFUSED);
+  });
+  it('is refused on every target where an element at a zoom other than its parent\'s inherits a length explicitly', () => {
+    const ALL_REFUSED = [...NATIVE_REFUSED, 'web DRAGON_UNSUPPORTED_VALUE'].sort();
+    const explicit = (parent: string, child: string): string[] => project.compile(inputFor(`.a { ${parent} } .c { ${child} }`, (r) => [div(r, 'a', ['a'], [div(r, 'c', ['c'])])])).diagnostics
+      .filter((d) => d.severity !== 'info').map((d) => `${String(d.target)} ${d.code}`).sort();
+    expect(explicit('padding: 3px; margin-left: 7px; width: 60px', 'zoom: 2; padding: inherit; margin-left: inherit; height: 5px')).toEqual(ALL_REFUSED);
+    expect(explicit('zoom: 2; padding: 3px', 'zoom: 0.5; padding: inherit')).toEqual(ALL_REFUSED);
+    expect(explicit('letter-spacing: 1px', 'zoom: 2; letter-spacing: unset')).toEqual(ALL_REFUSED);
+    // At the parent's zoom an inherited length is the parent's own.
+    expect(explicit('zoom: 2; padding: 3px', 'padding: inherit')).toEqual([]);
+    expect(explicit('padding: 0', 'zoom: 2; padding: inherit')).toEqual([]);
+  });
+  it('lays out a math function of percentages alone at any zoom, as a percentage does not zoom', () => {
+    expect(at('2', 'width: min(50%, 100%)')).toEqual([]);
+    expect(at('2', 'width: calc(50% + 0px)')).toEqual([]);
   });
   it('drops what Chrome drops: a negative value, auto, reset, a length and two values', () => {
     for (const v of ['-1', '-50%', 'auto', 'reset', '1px', '1 1']) expect(at(v), v).toEqual(['null DRAGON_CSS_INVALID_VALUE']);

@@ -5,7 +5,10 @@
 // The web output keeps zoom as authored, so web compiles any zoom. Native lays a zoomed subtree out by multiplying the lengths
 // the layout lowering reads (ZOOM_SCALED, lower/ios-layout.ts zoomedGet), so on iOS and Android an element whose effective zoom is
 // not 1 is refused when it holds a length the lowering does not scale (a paint length such as border-radius, a shadow, a grid
-// track, a transform), a calculation, an animation or transition, a scroll container or replaced content.
+// track, a transform, or one inherited, which Chrome zooms again at the inheriting element), a calculation, an animation or
+// transition, a scroll container or replaced content. Chrome does not zoom an explicitly inherited value again for some longhands
+// (padding, margin, border-radius, box-shadow) where it does for others, so on every target an element whose effective zoom differs
+// from its parent's is refused when a length it holds comes from inherit (or unset or revert on an inherited longhand).
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { zoomOf } from '../css/properties/zoom.ts';
 import type { Longhand } from '../css/properties.ts';
@@ -35,8 +38,8 @@ export function effectiveZoom(el: ResolvedElement, parentZoom: number): number {
 // An absolute or font-relative length that is not zero, inside any value's text.
 const NONZERO_LENGTH = /(?:^|[^\w.-])[+-]?(?:\d*\.)?\d*[1-9]\d*(?:\.\d*)?(?:e[+-]?\d+)?(?:px|em|rem|ex|rex|ch|rch|cap|rcap|ic|ric|lh|rlh|vw|vh|vi|vb|vmin|vmax|svw|svh|lvw|lvh|dvw|dvh|cqw|cqh|cqi|cqb|cqmin|cqmax|cm|mm|q|in|pt|pc)\b/i;
 
-/** Whether a computed value holds a length other than zero. */
-function holdsLength(v: CssValue): boolean {
+/** Whether a computed value holds a length other than zero (a math function of percentages and numbers alone holds none). */
+export function holdsLength(v: CssValue): boolean {
   if (v.kind === 'length') return v.value !== 0;
   if (v.kind === 'position') return (v.x.unit === 'px' && v.x.value !== 0) || (v.y.unit === 'px' && v.y.value !== 0);
   return v.kind === 'other' && NONZERO_LENGTH.test(` ${v.text}`);
@@ -52,31 +55,47 @@ function nativeZoomProblem(el: ResolvedElement, replaced: boolean): string | nul
       if (v.kind === 'other' && holdsLength(v)) return `${p}: ${valueToString(v)} is a calculation, which native does not zoom yet`;
       continue;
     }
-    // An inherited value keeps the computed value of the ancestor that declared it (whose own zoom it was checked at), and an
-    // initial one is the same at every zoom.
-    if (p === 'zoom' || p.startsWith('--') || rv.origin === 'inherited' || rv.origin === 'initial') continue;
+    // An initial value is the same at every zoom, and so is one inherited from no author declaration (the root's initial
+    // stroke-width). An authored one inherited is zoomed again at this element in Chrome (a text-shadow inherited from an
+    // unzoomed ancestor draws its offset times z), which native paint does not do.
+    if (p === 'zoom' || p.startsWith('--') || rv.origin === 'initial' || (rv.origin === 'inherited' && rv.span === null)) continue;
     if (holdsLength(v) || (v.kind === 'keyword' && (v.value === 'thin' || v.value === 'medium' || v.value === 'thick'))) return `${p}: ${valueToString(v)} is a length native does not zoom yet`;
   }
   return null;
 }
 
-/** Refuses, on iOS and Android, an element whose effective zoom z is not 1 and that holds what native does not scale; once per element. */
-export function checkZoom(el: ResolvedElement, z: number, replaced: boolean, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (z === 1) return;
+/** The first longhand of el whose length comes from an explicit inherit (a declaration that took its parent's value), or null. */
+function explicitlyInheritedLength(el: ResolvedElement): string | null {
+  for (const [p, rv] of el.props) {
+    if (p === 'zoom' || p.startsWith('--') || rv.origin !== 'inherited' || rv.declaration === null) continue;
+    const v = rv.value;
+    if (holdsLength(v) || (v.kind === 'keyword' && (v.value === 'thin' || v.value === 'medium' || v.value === 'thick'))) return `${p}: ${valueToString(v)}`;
+  }
+  return null;
+}
+
+/**
+ * Refuses, on iOS and Android, an element whose effective zoom z is not 1 and that holds what native does not scale, and on every
+ * target one whose effective zoom differs from its parent's (parentZoom) and that inherits a length explicitly; once per element.
+ */
+export function checkZoom(el: ResolvedElement, z: number, parentZoom: number, replaced: boolean, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const id = `zoom|${el.element.address}`;
   if (reported.has(id)) return;
-  const problem = nativeZoomProblem(el, replaced);
+  const inherited = z === parentZoom ? null : explicitlyInheritedLength(el);
+  const problem = inherited !== null
+    ? `${inherited} is inherited explicitly from a parent at zoom ${parentZoom}, which Chrome zooms again for some longhands and not others`
+    : z === 1 ? null : nativeZoomProblem(el, replaced);
   if (problem === null) return;
   reported.add(id);
   const v = el.props.get('zoom') as ResolvedValue | undefined;
   const origin = v !== undefined && v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
   for (const t of targets) {
-    if (t !== 'ios' && t !== 'android') continue;
+    if (inherited === null && t !== 'ios' && t !== 'android') continue;
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
       message: `<${el.element.tag}> ${el.element.address} is laid out at zoom ${z} and ${problem} (ZOOM)`,
-      manual: `Remove zoom from ${el.element.address} and its ancestors, or size it with its own lengths.`,
+      manual: inherited === null ? `Remove zoom from ${el.element.address} and its ancestors, or size it with its own lengths.` : `Write the length on ${el.element.address} instead of inherit, or remove its zoom.`,
       basis: 'computed-value',
     }));
   }

@@ -1077,7 +1077,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
-      checkZoom(el, zoom, true, targets, diagnostics, reported);
+      checkZoom(el, zoom, parentZoom, true, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
       checkColorScheme(el, false, targets, diagnostics, reported);
       return;
@@ -1097,7 +1097,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
-    checkZoom(el, zoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
+    checkZoom(el, zoom, parentZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
     // The overscroll, scroll-snap, containment and container-query families, initial values only (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
