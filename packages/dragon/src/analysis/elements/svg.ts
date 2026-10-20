@@ -129,11 +129,14 @@ export function svgAttributeRefusal(tag: string, name: string, text: string): st
 /**
  * SVG-rrect: the px value a rect's rx or ry attribute hints, or null when the text is a length Dragon does not build (a percentage,
  * em, a calculation: package SVG-units). Chrome keeps a negative attribute as the computed value and paints it as auto
- * (svgRectRadii), and computes text with no digit in it (auto, inherit, a word, empty) to 0, as an unparsable length.
+ * (svgRectRadii), and computes text that is no length at all (auto, inherit, a word, empty, "5 px", "5.") to 0. Text with a function
+ * (var(), calc(), env()) or another dimension may resolve to a length in Chrome, so it is refused.
  */
 function svgRadiusAttributeOf(name: string, text: string): number | null {
   if (name !== 'rx' && name !== 'ry') return null;
-  return parseSvgLength(text) ?? (/[0-9]/.test(text) ? null : 0);
+  const v = parseSvgLength(text);
+  if (v !== null) return v;
+  return text.includes('(') || /^[ \t\n\r\f]*[+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?(?:[a-zA-Z]+|%)[ \t\n\r\f]*$/.test(text) ? null : 0;
 }
 
 /** The geometry properties each shape tag maps its attributes to (SVG 2 §10.3, §10.4); a rect's width and height are below. */

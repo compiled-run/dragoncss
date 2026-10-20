@@ -615,10 +615,11 @@ describe('the svg model in a compile', () => {
     expect(svgAttributeRefusal('rect', 'rx', '2px')).toBeNull();
     expect(svgAttributeRefusal('rect', 'rx', '10%')).toContain('SVG-units');
     expect(svgAttributeRefusal('rect', 'ry', '5em')).toContain('SVG-units');
-    expect(svgAttributeRefusal('rect', 'rx', '5 px')).toContain('SVG-units');
   });
-  it('SVG-rrect: a negative rx or ry attribute stays the computed value and paints as auto; one with no digit (auto, a word, empty) computes to 0, as in Chrome', () => {
-    for (const t of ['-1', 'auto', 'AUTO', 'inherit', 'abc', '']) for (const n of ['rx', 'ry']) expect(svgAttributeRefusal('rect', n, t), `${n}="${t}"`).toBeNull();
+  it('SVG-rrect: a negative rx or ry attribute stays the computed value and paints as auto; one that is no length (auto, a word, empty, "5 px") computes to 0, and one with a function refuses, as in Chrome', () => {
+    for (const t of ['-1', 'auto', 'AUTO', 'inherit', 'abc', '', 'abc1', '5 px', '5.', '5PX']) for (const n of ['rx', 'ry']) expect(svgAttributeRefusal('rect', n, t), `${n}="${t}"`).toBeNull();
+    for (const t of ['var(--r)', 'calc(pi)', 'env(x, 3px)', '5em', '5e', '10%']) expect(svgAttributeRefusal('rect', 'rx', t), `rx="${t}"`).toContain('SVG-units');
+    expect(svgPresentationHints('rect', new Map([['rx', '5PX'], ['ry', '5 px'], ['width', '12pX']]))).toEqual(new Map([['rx', { kind: 'length', value: 5, unit: 'px' }], ['ry', { kind: 'length', value: 0, unit: 'px' }], ['width', { kind: 'length', value: 12, unit: 'px' }]]));
     expect(svgAttributeRefusal('circle', 'r', '-1')).toContain('negative');
     expect(svgPresentationHints('rect', new Map([['rx', '-6'], ['ry', 'auto']]))).toEqual(new Map([['rx', { kind: 'length', value: -6, unit: 'px' }], ['ry', { kind: 'length', value: 0, unit: 'px' }]]));
     expect(svgRectRadii(-6, 9, 40, 30)).toEqual({ rx: 9, ry: 9 });

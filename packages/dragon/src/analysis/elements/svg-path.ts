@@ -215,7 +215,7 @@ export function parseViewBox(text: string): ViewBox | null {
 
 /** A plain SVG number attribute (x, y, width, height, cx, cy, r), with an optional px unit; null for anything else. */
 export function parseSvgLength(text: string): number | null {
-  const m = /^[ \t\n\r\f]*([+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)(px)?[ \t\n\r\f]*$/.exec(text);
+  const m = /^[ \t\n\r\f]*([+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)(px)?[ \t\n\r\f]*$/i.exec(text);
   if (m === null) return null;
   const v = f32(Number(m[1]));
   return Number.isFinite(v) ? v : null;
