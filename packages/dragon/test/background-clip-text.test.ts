@@ -190,6 +190,32 @@ describe('background-clip: text refusals', () => {
   });
 });
 
+describe('background-clip: text judges the glyph fill (compat §5 -webkit-text-fill-color), not color', () => {
+  it('the gradient-text idiom, a transparent fill over a colour with color set, draws the glyphs in the colour natively', () => {
+    const c = compile('.a { background-color: rgb(200, 30, 40); background-clip: text; color: red; -webkit-text-fill-color: transparent; }');
+    expect(errors(c)).toEqual([]);
+    for (const prog of programsOf(c)) {
+      expect(colourOf(prog, 'a', 'background-color')).toEqual([0, 0, 0, 0]);
+      expect(colourOf(prog, 'a:text0', 'text-color')).toEqual([200, 30, 40, 255]);
+    }
+  });
+  it('transparent color under a painted fill is not transparent text: refused natively', () => {
+    const c = compile('.a { background-color: rgb(200, 30, 40); background-clip: text; color: transparent; -webkit-text-fill-color: red; }');
+    expect(clipErrors(c)).toEqual(['android', 'ios'].map((t) => `${t}: background-clip: text on a: the text is not transparent: Chrome draws it over the background colour seen through the same glyph coverage, which one native glyph draw matches only for transparent text (BG2c)`));
+  });
+  it('a transparent fill over a transparent colour hides the text: refused natively', () => {
+    const c = compile('.a { background-clip: text; -webkit-text-fill-color: transparent; }');
+    expect(clipErrors(c)).toEqual(['android', 'ios'].map((t) => `${t}: background-clip: text on a: the text is transparent and so is the background colour clipped to it, so the text would not show; Dragon refuses text that cannot be seen (BG2c)`));
+  });
+  it('an inherited transparent fill is refused natively; an own fill under an inherited color is drawn', () => {
+    const c = compile('.a { -webkit-text-fill-color: transparent; } .b { background-color: red; background-clip: text; }', nested);
+    expect(clipErrors(c)).toEqual(['android', 'ios'].map((t) => `${t}: background-clip: text on b: the box inherits its transparent -webkit-text-fill-color, which an ancestor's animation or state could change under the native glyphs (BG2c)`));
+    const d = compile('.a { color: rgb(0, 128, 0); } .b { background-color: rgb(1, 2, 3); background-clip: text; -webkit-text-fill-color: transparent; }', nested);
+    expect(clipErrors(d)).toEqual([]);
+    for (const prog of programsOf(d)) expect(colourOf(prog, 'b:text0', 'text-color')).toEqual([1, 2, 3, 255]);
+  });
+});
+
 describe('background-clip: text never reaches the gradient raster', () => {
   it('the gradient lowering throws on a layer clipped to text, which every target refuses first', () => {
     const kw = (value: string) => ({ value: { kind: 'keyword', value } });

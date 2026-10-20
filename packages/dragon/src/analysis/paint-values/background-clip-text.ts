@@ -5,7 +5,7 @@
 // colour and repaints its texts; everything else that clips to text is refused where it applies (gradient.ts checkTextClip).
 import type { Rgba8 } from '../../css/color.ts';
 import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
-import { usedColors } from '../../lower/paint/colors.ts';
+import { glyphFill, usedColors } from '../../lower/paint/colors.ts';
 import type { ResolvedElement, ResolvedValue } from '../resolve.ts';
 import type { ElementLayer } from './gradient.ts';
 
@@ -41,21 +41,25 @@ export function textClipRefusal(el: ResolvedElement, layers: readonly ElementLay
 
 /**
  * Why the native targets refuse a box's text clip, or null. A painted colour clipped to text draws natively only as the glyphs of
- * the box's own text runs in that colour, with nothing the colour would show under: so the text itself must be transparent, the
- * box a block holding text only, with no border, radius, shadow, overflow clip, text shadow or decoration, and its color its own.
+ * the box's own text runs in that colour, with nothing the colour would show under: so the glyph fill (compat §5
+ * -webkit-text-fill-color, or color where it is currentcolor) must be transparent, the box a block holding text only, with no
+ * border, radius, shadow, overflow clip, text shadow or decoration, and the colour its glyphs fill in its own.
  * Transparent text over a transparent colour would hide the text (the accessibility rule), so it is refused too.
  */
 export function nativeTextClipRefusal(el: ResolvedElement, layers: readonly ElementLayer[]): string | null {
   if (!colourClipsToText(layers)) return null;
   const colors = usedColors(el);
   const bg = colors['background-color'];
-  const fg = colors.color;
+  const fg = glyphFill(el);
   if (bg.alpha === 0) return fg.alpha === 0 ? 'the text is transparent and so is the background colour clipped to it, so the text would not show; Dragon refuses text that cannot be seen' : null;
   if (fg.alpha !== 0) return 'the text is not transparent: Chrome draws it over the background colour seen through the same glyph coverage, which one native glyph draw matches only for transparent text';
   const display = keywordOf(el, 'display');
   if (!['block', 'flex', 'grid'].includes(display)) return `the box is display: ${display || 'other'}, and Dragon draws the clip on block, flex and grid boxes only`;
   if (el.children.some((c) => c.kind === 'element')) return 'the box has child elements, whose own paint and text Chrome draws under and through the clipped colour';
-  if ((el.props.get('color') as ResolvedValue).origin === 'inherited') return 'the box inherits its transparent color, which an ancestor\'s animation or state could change under the native glyphs';
+  // The fill is currentcolor (initial, and inherited as the keyword) or a colour; whichever the glyphs take must be the box's own.
+  const fill = el.props.get('-webkit-text-fill-color') as ResolvedValue;
+  const filledByColor = fill.value.kind === 'keyword' && fill.value.value === 'currentcolor';
+  if ((el.props.get(filledByColor ? 'color' : '-webkit-text-fill-color') as ResolvedValue).origin === 'inherited') return `the box inherits its transparent ${filledByColor ? 'color' : '-webkit-text-fill-color'}, which an ancestor's animation or state could change under the native glyphs`;
   const sides = ['top', 'right', 'bottom', 'left'];
   if (sides.some((s) => !['none', 'hidden'].includes(keywordOf(el, `border-${s}-style`)) && pxOf(el, `border-${s}-width`) !== 0)) return 'the box has a border';
   if (RADIUS_LONGHANDS.some((p) => {

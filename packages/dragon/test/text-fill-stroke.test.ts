@@ -1,11 +1,13 @@
-// TXT-FX: -webkit-text-fill-color, -webkit-text-stroke-width, -webkit-text-stroke-color and the -webkit-text-stroke shorthand. A fill
-// of currentcolor and a stroke of width 0 in any colour compile on every target; any other fill colour or a wider stroke over text
-// is refused. The Chrome cases are text-fill-stroke-initial and reject-text-fill-color (packages/parity/fixtures).
+// TXT-FX: -webkit-text-fill-color, -webkit-text-stroke-width, -webkit-text-stroke-color and the -webkit-text-stroke shorthand. Any
+// fill colour and a stroke of width 0 in any colour compile on every target, and native fills the glyphs in the fill colour; a wider
+// stroke over text is refused, and so, on native, is an animation or transition of color over text with its own fill. The Chrome
+// cases are text-fill-stroke-initial, text-fill-stroke-colors and reject-text-stroke-width (packages/parity/fixtures).
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, nativePrograms, NO_FAULTS } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { valueToString } from '../src/analysis/computed.ts';
+import { serializeColor } from '../src/css/color.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { UNCAPTURED_LONGHANDS } from '../src/ua/datasets.ts';
 import type { Diagnostic } from '../src/types.ts';
@@ -38,6 +40,23 @@ function errorsAt(decl: string, faults: CompilerFaults = NO_FAULTS): string[] {
 }
 
 const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE', 'web DRAGON_UNSUPPORTED_VALUE'];
+
+/** The native text colour of each text as `rgb(...)`, for Ahem text in an element and a child with class r. */
+function textColors(css: string, faults: CompilerFaults = NO_FAULTS): Record<string, string> {
+  const c = project(faults).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', [], [text(r, 't', 'XX')]), el(r, 'c', 'div', ['r'], [text(r, 'u', 'X')])])]));
+  expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message)).toEqual([]);
+  const p = nativePrograms(c, []);
+  if (p.kind !== 'ready') throw new Error(p.reason);
+  const out: Record<string, string> = {};
+  for (const n of p.programs.uikit.nodes) {
+    const w = n.writes.find((x) => x.kind === 'text-color');
+    if (w?.kind !== 'text-color') continue;
+    const twin = p.programs['android-views'].nodes.find((m) => m.id === n.id)?.writes.find((x) => x.kind === 'text-color');
+    expect(twin?.kind === 'text-color' ? twin.color : null).toEqual(w.color);
+    out[n.id] = serializeColor(w.color);
+  }
+  return out;
+}
 
 describe('the text fill colour and stroke', () => {
   it('expands -webkit-text-stroke to width and colour, an omitted one at its initial value', () => {
@@ -89,14 +108,61 @@ describe('the text fill colour and stroke', () => {
     for (const d of ['color: red', 'color: blue; -webkit-text-stroke-width: 0']) expect(errorsAt(d), d).toEqual([]);
   });
 
-  it('refuses another fill colour or a wider stroke over text on every target', () => {
-    for (const d of ['-webkit-text-fill-color: red', '-webkit-text-fill-color: transparent', '-webkit-text-stroke-width: 1px', '-webkit-text-stroke: thin', '-webkit-text-stroke: 2px blue']) expect(errorsAt(d), d).toEqual(REFUSED);
+  it('compiles any fill colour on every target, and refuses a wider stroke over text on every target', () => {
+    for (const d of ['-webkit-text-fill-color: red', '-webkit-text-fill-color: transparent', '-webkit-text-fill-color: rgba(0, 0, 255, 0.5)', '-webkit-text-fill-color: hsl(120 100% 25%); color: blue']) expect(errorsAt(d), d).toEqual([]);
+    for (const d of ['-webkit-text-stroke-width: 1px', '-webkit-text-stroke: thin', '-webkit-text-stroke: 2px blue', '-webkit-text-fill-color: red; -webkit-text-stroke-width: 1px']) expect(errorsAt(d), d).toEqual(REFUSED);
   });
 
-  it('plants textFillColorAccepted and textStrokeAccepted: each lets its own value compile, and only it', () => {
-    expect(errorsAt('-webkit-text-fill-color: red', { ...NO_FAULTS, textFillColorAccepted: true })).toEqual([]);
-    expect(errorsAt('-webkit-text-stroke-width: 1px', { ...NO_FAULTS, textFillColorAccepted: true })).toEqual(REFUSED);
+  it('plants textStrokeAccepted: a stroke compiles, and a fill compiles without it', () => {
     expect(errorsAt('-webkit-text-stroke-width: 1px', { ...NO_FAULTS, textStrokeAccepted: true })).toEqual([]);
-    expect(errorsAt('-webkit-text-fill-color: red', { ...NO_FAULTS, textStrokeAccepted: true })).toEqual(REFUSED);
+    expect(errorsAt('-webkit-text-fill-color: red')).toEqual([]);
+  });
+
+  it('fills native glyphs in the fill colour, inherited, and in color where it is currentcolor; textFillIgnored fills them in color', () => {
+    expect(textColors('.s { color: blue; -webkit-text-fill-color: red; }')).toEqual({ 'b:text0': 'rgb(255, 0, 0)', 'c:text0': 'rgb(255, 0, 0)' });
+    expect(textColors('.s { color: blue; -webkit-text-fill-color: transparent; }')).toEqual({ 'b:text0': 'rgba(0, 0, 0, 0)', 'c:text0': 'rgba(0, 0, 0, 0)' });
+    expect(textColors('.s { color: blue; -webkit-text-fill-color: red; } .r { color: green; -webkit-text-fill-color: currentcolor; }')).toEqual({ 'b:text0': 'rgb(255, 0, 0)', 'c:text0': 'rgb(0, 128, 0)' });
+    expect(textColors('.s { color: blue; }')).toEqual({ 'b:text0': 'rgb(0, 0, 255)', 'c:text0': 'rgb(0, 0, 255)' });
+    expect(textColors('.s { color: blue; -webkit-text-fill-color: red; }', { ...NO_FAULTS, textFillIgnored: true })).toEqual({ 'b:text0': 'rgb(0, 0, 255)', 'c:text0': 'rgb(0, 0, 255)' });
+  });
+
+  it('paints a currentcolor decoration in the decorating box\'s fill, and an explicit decoration colour as written', () => {
+    const decorationColors = (css: string): string[] => {
+      const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['r'], [text(r, 't', 'XX')])])]));
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      return p.programs.uikit.nodes.flatMap((n) => n.writes).flatMap((w) => (w.kind === 'text-decoration' ? w.entries.map((e) => serializeColor(e.color)) : []));
+    };
+    expect(decorationColors('.s { color: blue; -webkit-text-fill-color: red; text-decoration: underline; } .r { -webkit-text-fill-color: green; }')).toEqual(['rgb(255, 0, 0)']);
+    expect(decorationColors('.s { color: blue; text-decoration: underline; } .r { -webkit-text-fill-color: green; }')).toEqual(['rgb(0, 0, 255)']);
+    expect(decorationColors('.s { color: blue; -webkit-text-fill-color: red; text-decoration: underline navy; }')).toEqual(['rgb(0, 0, 128)']);
+  });
+
+  it('refuses on native an animation or transition of color over text with its own fill, and only there', () => {
+    const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    const anim = '@keyframes k { from { color: red; } to { color: blue; } }';
+    expect(errorsAt(`-webkit-text-fill-color: red; animation: k 1s; } ${anim} .x {`)).toEqual(NATIVE);
+    expect(errorsAt(`animation: k 1s; } ${anim} .x {`)).toEqual([]);
+    expect(errorsAt(`-webkit-text-fill-color: currentcolor; animation: k 1s; } ${anim} .x {`)).toEqual([]);
+    // The fill on the text's element and the animation on an ancestor it inherits color from.
+    expect(errorsAt(`animation: k 1s; } ${anim} .s div { -webkit-text-fill-color: red;`)).toEqual(NATIVE);
+    // A child that sets its own color is not reached.
+    expect(errorsAt(`animation: k 1s; } ${anim} .s div { color: green; -webkit-text-fill-color: red;`)).toEqual([]);
+    // An inline box holding the text sets its own color, but the text view takes its block container's animated color.
+    const inline = (css: string): string[] => {
+      const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${anim} ${css}`, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'span', ['f'], [text(r, 't', 'XX')])])]));
+      return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
+    };
+    expect(inline('.s { animation: k 1s; } .f { color: green; -webkit-text-fill-color: red; }')).toEqual(NATIVE);
+    expect(inline('.s { animation: k 1s; } .f { color: green; }')).toEqual([]);
+  });
+
+  it('judges a translucent synthetic bold by the fill colour', () => {
+    const css = (decl: string) => `body { font-family: Ahem; font-size: 10px; } .s { font-weight: bold; ${decl} }`;
+    const codes = (decl: string): string[] => project(NO_FAULTS).compile(inputFor(css(decl), (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])])).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
+    const BOLD = ['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT'];
+    expect(codes('color: rgba(0, 0, 255, 0.5); -webkit-text-fill-color: red;')).toEqual([]);
+    expect(codes('color: blue; -webkit-text-fill-color: rgba(255, 0, 0, 0.5);')).toEqual(BOLD);
+    expect(codes('color: rgba(0, 0, 255, 0.5);')).toEqual(BOLD);
   });
 });

@@ -1,10 +1,10 @@
-// TXT-FX: the text fill colour and stroke, accepted where they draw what Chrome draws without them (computed-checks.ts checkTextFillStroke).
+// TXT-FX: the text fill colour and stroke (computed-checks.ts checkTextFillStroke, native-program.ts textPaint).
 
 export type TxtFillFaults = {
-  /** A fill colour other than currentcolor is accepted, though glyphs are painted in color. */
-  readonly textFillColorAccepted: boolean;
+  /** Native fills glyphs in color, ignoring a -webkit-text-fill-color other than currentcolor. */
+  readonly textFillIgnored: boolean;
   /** A stroke wider than 0 is accepted, though no stroke is drawn. */
   readonly textStrokeAccepted: boolean;
 };
 
-export const TXT_FILL_FAULTS: TxtFillFaults = { textFillColorAccepted: false, textStrokeAccepted: false };
+export const TXT_FILL_FAULTS: TxtFillFaults = { textFillIgnored: false, textStrokeAccepted: false };
