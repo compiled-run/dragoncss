@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Page } from 'playwright';
 import type { Caret, SelectTable } from '../../layout/src/rt-select.ts';
-import { anchorAt, caretRect, focusAt, highlightRects, pxToLu, selectedText } from '../../layout/src/rt-select.ts';
+import { anchorAt, caretRect, focusAt, highlightRects, pxToLu, selectedText, wordAt } from '../../layout/src/rt-select.ts';
 import { decodePng } from '../src/pixel-reference.ts';
 import { launchChrome, openPage } from '../src/chrome.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
@@ -53,7 +53,7 @@ const READ = `(() => {
   return { anchor: canon(s.anchorNode, s.anchorOffset), focus: canon(s.focusNode, s.focusOffset), text: s.toString() };
 })()`;
 
-type Read = { readonly anchor: Seen | null; readonly focus: (Seen & { readonly data: string }) | null; readonly text: string } | null;
+type Read = { readonly anchor: (Seen & { readonly data: string }) | null; readonly focus: (Seen & { readonly data: string }) | null; readonly text: string } | null;
 
 /**
  * A DOM text offset as the leaf's offset: the leaf's text is the DOM text after white-space phase I, which drops the spaces a block
@@ -154,6 +154,7 @@ describe('selection model (T154 slices 2a, 2b): carets, caret rects, selected te
     const problems: string[] = [];
     let clicks = 0;
     let drags = 0;
+    let words = 0;
     try {
       for (const d of SELECT_DOCS) {
         const t = selectCase(d).table;
@@ -168,6 +169,19 @@ describe('selection model (T154 slices 2a, 2b): carets, caret rects, selected te
           const want = modelCaret(t, anchorAt(t, pxToLu(x), pxToLu(y)));
           const got = seen === null || seen.focus === null ? null : leafOffset(t, seen.focus);
           if (!sameCaret(got, want, inexact)) problems.push(`${d.id} click ${x},${y}: Chrome ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
+          // A double click selects the word around the press (wordAt), anchor first.
+          await page.mouse.click(395, 295);
+          await page.evaluate('getSelection().removeAllRanges()');
+          await page.mouse.dblclick(x, y);
+          words++;
+          const w = (await page.evaluate(READ)) as Read;
+          const word = wordAt(t, pxToLu(x), pxToLu(y));
+          const at = (c: Seen | null): string => (c === null ? '-' : `${c.leaf}.${c.offset}`);
+          const chromeWord = w === null || w.text === '' ? '' : `${at(w.anchor === null ? null : leafOffset(t, w.anchor))}-${at(w.focus === null ? null : leafOffset(t, w.focus))}:${JSON.stringify(w.text)}`;
+          const a0 = word[0];
+          const a1 = word[1];
+          const modelWord = a0 === undefined || a1 === undefined ? '' : `${at(modelCaret(t, a0))}-${at(modelCaret(t, a1))}:${JSON.stringify(selectedText(t, a0, a1))}`;
+          if (chromeWord !== modelWord) problems.push(`${d.id} double click ${x},${y}: Chrome selects ${chromeWord}, model ${modelWord}`);
         }
         for (const [ax, ay, x, y] of points.drags) {
           const seen = await drag(page, ax, ay, x, y);
@@ -196,5 +210,6 @@ describe('selection model (T154 slices 2a, 2b): carets, caret rects, selected te
     expect(problems.length === 0 ? [] : [`${problems.length} mismatches`, ...problems.slice(0, 40)]).toEqual([]);
     expect(clicks).toBeGreaterThan(500);
     expect(drags).toBeGreaterThan(200);
+    expect(words).toBe(clicks);
   }, 900_000);
 });

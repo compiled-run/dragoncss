@@ -579,6 +579,65 @@ export function caretIndex(carets: readonly Caret[], c: Caret): number {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Word selection (a double click, or a long press on touch), as measured against Chrome's double clicks.
+
+/** Whether code point k of text is a space; false past its end. */
+function spaceAt(text: string, k: number): boolean {
+  let i = 0;
+  for (const ch of text) {
+    if (i === k) return ch === ' ';
+    i++;
+  }
+  return false;
+}
+
+/** The run of code points around k (all spaces or none) within [from, to) of a text node, as carets. */
+function runAround(t: SelectTable, node: number, k: number): readonly Caret[] {
+  const n = t.nodes[node] as SelectNode;
+  const space = spaceAt(n.text, k);
+  let lo = k;
+  while (lo > n.from && spaceAt(n.text, lo - 1) === space) lo--;
+  let hi = k + 1;
+  while (hi < n.to && spaceAt(n.text, hi) === space) hi++;
+  return [{ node, offset: lo }, { node, offset: hi }];
+}
+
+/**
+ * The word a double click at a point in LU selects, as [anchor, focus]; empty where it selects nothing. The press's caret picks the
+ * run (of letters, or of spaces) of the code point after it; at a soft-wrapped line's visible end, the word before it; at a text's
+ * end, its line break up to the next selectable caret, or the word before it when nothing selectable follows; in a block without
+ * text, its line break up to the next selectable caret.
+ */
+export function wordAt(t: SelectTable, x: number, y: number): readonly Caret[] {
+  const a = anchorAt(t, x, y);
+  if (a === null) return [];
+  return wordAround(t, a);
+}
+
+/** The word wordAt selects around a press's caret (a long press's position on touch). */
+export function wordAround(t: SelectTable, a: Caret): readonly Caret[] {
+  const n = t.nodes[a.node] as SelectNode;
+  if (n.kind !== 'text') {
+    // A block without text selects its line break, up to the next selectable caret.
+    const carets = caretList(t);
+    const next = caretIndex(carets, a);
+    return next >= 0 && (carets[next] as Caret).node > a.node ? [a, carets[next] as Caret] : [];
+  }
+  for (const line of t.lines) {
+    for (const p of line.pieces) {
+      if (p.node !== a.node || a.offset < p.start || a.offset > p.end) continue;
+      if (a.offset < p.end) return runAround(t, a.node, a.offset);
+      if (p.end < n.to) return runAround(t, a.node, a.offset - 1);
+      const carets = caretList(t);
+      const i = caretIndex(carets, a);
+      if (i + 1 < carets.length) return [a, carets[i + 1] as Caret];
+      return runAround(t, a.node, a.offset - 1);
+    }
+  }
+  throw new SelectError(`no line holds offset ${a.offset} of node ${a.node}`);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The painted highlight, as measured against Chrome's pixels.
 
 /**
@@ -655,8 +714,8 @@ function codePointCount(text: string): number {
 }
 
 /**
- * The answers to a list of points and drags, all in LU: for each point (x, y pairs) its anchor and focus carets and the focus's
- * caretList index, with the anchor's rect when it is in text; then for each drag (anchor x, y, focus x, y) its highlight rects (left, top, right, bottom, each followed
+ * The answers to a list of points and drags, all in LU: for each point (x, y pairs) its anchor and focus carets, the focus's
+ * caretList index and the word a double click there selects, with the anchor's rect when it is in text; then for each drag (anchor x, y, focus x, y) its highlight rects (left, top, right, bottom, each followed
  * by a space) and the selected text, prefixed by its code point count.
  */
 export function selectAnswers(t: SelectTable, points: readonly number[], drags: readonly number[]): string {
@@ -667,7 +726,10 @@ export function selectAnswers(t: SelectTable, points: readonly number[], drags: 
     const y = points[i + 1] as number;
     const a = anchorAt(t, x, y);
     const f = focusAt(t, x, y);
-    out = `${out}${caretCode(a)} ${caretCode(f)} ${f === null ? '-' : caretIndex(carets, f).toString(16)}`;
+    const w = wordAt(t, x, y);
+    const w0 = w[0];
+    const w1 = w[1];
+    out = `${out}${caretCode(a)} ${caretCode(f)} ${f === null ? '-' : caretIndex(carets, f).toString(16)} ${w0 === undefined || w1 === undefined ? '-' : `${caretCode(w0)}-${caretCode(w1)}`}`;
     if (a !== null && (t.nodes[a.node] as SelectNode).kind === 'text') {
       const r = caretRect(t, a);
       out = `${out} ${r.x.toString(16)},${r.y.toString(16)},${r.height.toString(16)}`;

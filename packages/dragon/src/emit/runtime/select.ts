@@ -3,7 +3,7 @@
 // compiler's selection facts (internal.ts selectFacts). On iOS, DragonSelection adopts UITextInput as non-editable text and hands
 // UIKit's UITextInteraction(for: .nonEditable) the handles, loupe and copy menu; its positions are the model's caret list, its
 // rects the model's caret rects and painted highlight, and its text the model's Selection.toString. On Android the same model is
-// wrapped without views until slice 2c builds the handles and the action mode over it.
+// on screen through DragonSelectionFrame: the theme's handles, a Magnifier and a floating action mode for copy.
 import type { NativeBackend } from '../../lower/native-program.ts';
 import type { GeneratedFile } from '../../types.ts';
 
@@ -52,6 +52,17 @@ public final class DragonSelectionRect: UITextSelectionRect {
   public override var isVertical: Bool { return false }
 }
 
+/// UIKit's string tokenizer, but a word is the selection model's (rt-select.ts wordAround), as Chrome selects one on a double click
+/// or a long press.
+public final class DragonWordTokenizer: UITextInputStringTokenizer {
+  private weak var selection: DragonSelection?
+  init(selection: DragonSelection) { self.selection = selection; super.init(textInput: selection) }
+  public override func rangeEnclosingPosition(_ position: UITextPosition, with granularity: UITextGranularity, inDirection direction: UITextDirection) -> UITextRange? {
+    if granularity == .word, let s = selection { return s.word(around: position) }
+    return super.rangeEnclosingPosition(position, with: granularity, inDirection: direction)
+  }
+}
+
 /// A translated selection call; a throw is a broken table or a bad caret, which the generated code never recovers from.
 func dragonSelectCall<T>(_ what: String, _ f: () throws -> T) -> T {
   do { return try f() } catch { fatalError("dragon: selection \(what): \(error)") }
@@ -67,7 +78,7 @@ public final class DragonSelection: UIView, UITextInput, UITextInteractionDelega
   private var selected: DragonTextRange?
   public let interaction = UITextInteraction(for: .nonEditable)
   public weak var inputDelegate: UITextInputDelegate?
-  public lazy var tokenizer: UITextInputTokenizer = UITextInputStringTokenizer(textInput: self)
+  public lazy var tokenizer: UITextInputTokenizer = DragonWordTokenizer(selection: self)
   public var markedTextStyle: [NSAttributedString.Key: Any]?
 
   public init(input: LayoutInput, measurer: TextMeasurer, facts: DragonSelectFacts, scale: Double) {
@@ -117,6 +128,17 @@ public final class DragonSelection: UIView, UITextInput, UITextInteractionDelega
     if carets.isEmpty { return nil }
     guard let c = dragonSelectCall("focusAt", { try rtSelect_focusAt(table, lu(p.x), lu(p.y)) }) else { return nil }
     return Int(dragonSelectCall("caretIndex") { try rtSelect_caretIndex(JsArray(carets), c) })
+  }
+
+  /// The word around a position (rt-select.ts wordAround), or nil where none is selected.
+  public func word(around position: UITextPosition) -> UITextRange? {
+    if carets.isEmpty { return nil }
+    let w = dragonSelectCall("wordAround") { try rtSelect_wordAround(table, carets[caret(position)]) }.items
+    if w.count != 2 { return nil }
+    let all = JsArray(carets)
+    let a = Int(dragonSelectCall("caretIndex") { try rtSelect_caretIndex(all, w[0]) })
+    let b = Int(dragonSelectCall("caretIndex") { try rtSelect_caretIndex(all, w[1]) })
+    return DragonTextRange(a, b)
   }
 
   // ---------------------------------------------------------------- UITextInteractionDelegate
@@ -272,6 +294,22 @@ public final class DragonSelection: UIView, UITextInput, UITextInteractionDelega
 function kotlinSupportText(): string {
   return String.raw`package dev.dragon.views
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.drawable.Drawable
+import android.view.ActionMode
+import android.view.GestureDetector
+import android.view.Menu
+import android.view.MenuItem
+import android.view.MotionEvent
+import android.view.View
+import android.widget.FrameLayout
+import android.widget.Magnifier
 import dev.dragon.layout.Caret
 import dev.dragon.layout.CaretRect
 import dev.dragon.layout.HighlightRect
@@ -289,13 +327,14 @@ import dev.dragon.layout.rtSelect_highlightRects
 import dev.dragon.layout.rtSelect_pxToLu
 import dev.dragon.layout.rtSelect_selectedText
 import dev.dragon.layout.rtSelect_selectionTableOf
+import dev.dragon.layout.rtSelect_wordAt
 
 /** The compiler's selection facts of a case (rt-select.ts SelectFacts). */
 class DragonSelectFacts(val body: String, val paragraphs: List<String>, val unselectable: List<String>, val hidden: List<String>)
 
 /**
- * The selection model of one mounted tree (rt-select.ts), in the root's px: carets by index in document order, the press gate, the
- * drag focus, caret and highlight rects, and the selected text. Slice 2c puts Android's handles and action mode over it.
+ * The selection model of one mounted tree (rt-select.ts), in the root's CSS px: carets by index in document order, the press gate,
+ * the drag focus, the long-press word, caret and highlight rects, and the selected text. DragonSelectionFrame puts it on screen.
  */
 class DragonSelection(input: LayoutInput, measurer: TextMeasurer, facts: DragonSelectFacts, scale: Double) {
   private val table: SelectTable = rtSelect_selectionTableOf(input, measurer, SelectFacts(facts.body, ArrayList(facts.paragraphs), ArrayList(facts.unselectable), ArrayList(facts.hidden)))
@@ -329,6 +368,171 @@ class DragonSelection(input: LayoutInput, measurer: TextMeasurer, facts: DragonS
 
   /** The text a selection between two caret indices copies (Selection.toString). */
   fun text(a: Int, b: Int): String = if (count == 0) "" else rtSelect_selectedText(table, carets[a], carets[b])
+
+  /** The word a long press at a point selects (rt-select.ts wordAt) as anchor and focus indices, or null. */
+  fun word(x: Double, y: Double): IntArray? {
+    if (count == 0) return null
+    val w = rtSelect_wordAt(table, lu(x), lu(y))
+    if (w.size != 2) return null
+    return intArrayOf(rtSelect_caretIndex(carets, w[0]).toInt(), rtSelect_caretIndex(carets, w[1]).toInt())
+  }
+}
+
+/**
+ * Text selection on screen (slice 2c): a frame around a mounted tree's root that watches its touches without taking them. A long
+ * press selects the model's word; the highlight is the model's, in the theme's highlight colour; the theme's handles drag either
+ * end with a Magnifier over the finger; a floating action mode copies (ClipboardManager) or selects all; a tap clears. The frame's
+ * px are device px; the model's are CSS px (divided by scale).
+ */
+class DragonSelectionFrame(context: Context, private val selection: DragonSelection, private val scale: Double) : FrameLayout(context) {
+  var anchor = -1
+    private set
+  var focus = -1
+    private set
+  private val paint = Paint().apply { color = themeColor(android.R.attr.textColorHighlight) }
+  private val left = Handle(themeDrawable(android.R.attr.textSelectHandleLeft), true)
+  private val right = Handle(themeDrawable(android.R.attr.textSelectHandleRight), false)
+  private var mode: ActionMode? = null
+  private val magnifier = Magnifier.Builder(this).build()
+  private val gestures = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+    override fun onLongPress(e: MotionEvent) {
+      val w = selection.word(e.x / scale, e.y / scale) ?: return
+      select(w[0], w[1])
+    }
+    override fun onSingleTapUp(e: MotionEvent): Boolean {
+      clear()
+      return false
+    }
+  })
+
+  init {
+    setWillNotDraw(false)
+    addView(left, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+    addView(right, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+    left.visibility = View.GONE
+    right.visibility = View.GONE
+  }
+
+  private fun themeColor(attr: Int): Int {
+    val a = context.obtainStyledAttributes(intArrayOf(attr))
+    try { return a.getColor(0, 0x6633b5e5) } finally { a.recycle() }
+  }
+
+  private fun themeDrawable(attr: Int): Drawable {
+    val a = context.obtainStyledAttributes(intArrayOf(attr))
+    try { return a.getDrawable(0) ?: throw IllegalStateException("dragon: the theme has no text selection handle") } finally { a.recycle() }
+  }
+
+  /** Watches every touch for the long press and the clearing tap; the tree below still receives it. */
+  override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+    val handled = super.dispatchTouchEvent(ev)
+    gestures.onTouchEvent(ev)
+    return handled || ev.actionMasked == MotionEvent.ACTION_DOWN
+  }
+
+  fun select(a: Int, f: Int) {
+    if (a < 0 || f < 0 || a == f) return clear()
+    anchor = a
+    focus = f
+    placeHandles()
+    invalidate()
+    if (mode == null) mode = startActionMode(Menu(), ActionMode.TYPE_FLOATING) else mode?.invalidateContentRect()
+  }
+
+  fun clear() {
+    anchor = -1
+    focus = -1
+    left.visibility = View.GONE
+    right.visibility = View.GONE
+    mode?.finish()
+    mode = null
+    invalidate()
+  }
+
+  /** The selected text (Selection.toString), or "" without a selection. */
+  fun selectedText(): String = if (anchor < 0) "" else selection.text(minOf(anchor, focus), maxOf(anchor, focus))
+
+  private fun placeHandles() {
+    val lo = minOf(anchor, focus)
+    val hi = maxOf(anchor, focus)
+    for ((h, i) in listOf(left to lo, right to hi)) {
+      val r = selection.caretRect(i)
+      val w = h.drawable.intrinsicWidth
+      val x = r[0] * scale
+      h.translationX = (if (h.start) x - w * 3.0 / 4.0 else x - w / 4.0).toFloat()
+      h.translationY = ((r[1] + r[2]) * scale).toFloat()
+      h.visibility = View.VISIBLE
+    }
+  }
+
+  override fun onDraw(canvas: Canvas) {
+    super.onDraw(canvas)
+    if (anchor < 0) return
+    for (h in selection.highlight(anchor, focus)) canvas.drawRect((h[0] * scale).toFloat(), (h[1] * scale).toFloat(), (h[2] * scale).toFloat(), (h[3] * scale).toFloat(), paint)
+  }
+
+  private fun bounds(): Rect {
+    val r = RectF()
+    for (h in selection.highlight(anchor, focus)) r.union((h[0] * scale).toFloat(), (h[1] * scale).toFloat(), (h[2] * scale).toFloat(), (h[3] * scale).toFloat())
+    return Rect(r.left.toInt(), r.top.toInt(), r.right.toInt(), r.bottom.toInt())
+  }
+
+  /** The floating copy menu: Copy and Select all, placed over the highlight. */
+  private inner class Menu : ActionMode.Callback2() {
+    override fun onCreateActionMode(mode: ActionMode, menu: android.view.Menu): Boolean {
+      menu.add(0, android.R.id.copy, 0, android.R.string.copy)
+      menu.add(0, android.R.id.selectAll, 1, android.R.string.selectAll)
+      return true
+    }
+    override fun onPrepareActionMode(mode: ActionMode, menu: android.view.Menu): Boolean = false
+    override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+      when (item.itemId) {
+        android.R.id.copy -> {
+          val cm = context.getSystemService(ClipboardManager::class.java)
+          cm?.setPrimaryClip(ClipData.newPlainText(null, selectedText()))
+          clear()
+        }
+        android.R.id.selectAll -> select(0, selection.count - 1)
+        else -> return false
+      }
+      return true
+    }
+    override fun onDestroyActionMode(mode: ActionMode) {
+      if (this@DragonSelectionFrame.mode === mode) this@DragonSelectionFrame.mode = null
+    }
+    override fun onGetContentRect(mode: ActionMode, view: View, outRect: Rect) {
+      outRect.set(bounds())
+    }
+  }
+
+  /** A selection handle: dragging it moves its end of the selection to the caret under the finger, with the magnifier over it. */
+  private inner class Handle(val drawable: Drawable, val start: Boolean) : View(context) {
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) = setMeasuredDimension(drawable.intrinsicWidth, drawable.intrinsicHeight)
+    override fun onDraw(canvas: Canvas) {
+      drawable.setBounds(0, 0, width, height)
+      drawable.draw(canvas)
+    }
+    override fun onTouchEvent(ev: MotionEvent): Boolean {
+      val fx = ev.rawX - this@DragonSelectionFrame.locationX()
+      val fy = ev.rawY - this@DragonSelectionFrame.locationY() - height
+      when (ev.actionMasked) {
+        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+          val i = selection.indexAt(fx / scale, fy / scale)
+          if (i >= 0) {
+            val lo = minOf(anchor, focus)
+            val hi = maxOf(anchor, focus)
+            if (start) select(hi, minOf(i, hi - 1).coerceAtLeast(0)) else select(lo, maxOf(i, lo + 1).coerceAtMost(selection.count - 1))
+          }
+          magnifier.show(fx, fy)
+        }
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> magnifier.dismiss()
+      }
+      return true
+    }
+  }
+
+  private fun locationX(): Float { val p = IntArray(2); getLocationOnScreen(p); return p[0].toFloat() }
+  private fun locationY(): Float { val p = IntArray(2); getLocationOnScreen(p); return p[1].toFloat() }
 }
 `;
 }
