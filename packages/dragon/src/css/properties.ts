@@ -165,7 +165,7 @@ const FAMILIES = [
   family('zoom', ZOOM_LONGHANDS, ZOOM_SHORTHANDS, ZOOM_INHERITED, ZOOM_ASPECTS, ZOOM_CONTAINER, ZOOM_TEXT_ROLE),
   // css-overscroll-1, css-scroll-anchoring-1: overscroll-behavior and overflow-anchor, after zoom.
   family('overscroll', OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS, OVERSCROLL_INHERITED, OVERSCROLL_ASPECTS, OVERSCROLL_CONTAINER, OVERSCROLL_TEXT_ROLE),
-  // css-scroll-snap-1: scroll-padding, scroll-margin and scroll snapping, initial values only, after overscroll.
+  // css-scroll-snap-1: scroll-padding, scroll-margin and scroll snapping, after overscroll.
   family('scroll-snap', SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS, SCROLL_SNAP_INHERITED, SCROLL_SNAP_ASPECTS, SCROLL_SNAP_CONTAINER, SCROLL_SNAP_TEXT_ROLE),
   // css-contain-2: contain, content-visibility and the intrinsic sizes, initial values only, after scroll-snap.
   family('containment', CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS, CONTAINMENT_INHERITED, CONTAINMENT_ASPECTS, CONTAINMENT_CONTAINER, CONTAINMENT_TEXT_ROLE),
