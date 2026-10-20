@@ -49,7 +49,7 @@ import { TXT_W_FAULTS } from '../faults/txt-w.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
 import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
 import { checkTransformExtra } from './transform-extra.ts';
-import { checkZoom } from './zoom.ts';
+import { checkZoom, effectiveZoom } from './zoom.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkScrollContainment } from './scroll-containment.ts';
@@ -1067,7 +1067,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[]): void => {
+  // parentZoom: the parent's effective zoom (analysis/zoom.ts).
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], parentZoom: number): void => {
+    const zoom = effectiveZoom(el, parentZoom);
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1075,7 +1077,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
-      checkZoom(el, targets, diagnostics, reported);
+      checkZoom(el, zoom, true, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
       checkColorScheme(el, false, targets, diagnostics, reported);
       return;
@@ -1095,7 +1097,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
-    checkZoom(el, targets, diagnostics, reported);
+    checkZoom(el, zoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
     // The overscroll, scroll-snap, containment and container-query families, initial values only (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
@@ -1131,9 +1133,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkGeneratedContent(el, targets, diagnostics, reported);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, zoom);
   };
-  walk(root, false, 'viewport', []);
+  walk(root, false, 'viewport', [], 1);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

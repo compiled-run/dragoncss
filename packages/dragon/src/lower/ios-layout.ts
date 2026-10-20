@@ -49,6 +49,7 @@ import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
+import { effectiveZoom, ZOOM_SCALED } from '../analysis/zoom.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
@@ -82,10 +83,32 @@ function keyword<T extends string>(id: string, get: Get, p: Longhand, allowed: r
   return fail(id, p, v, allowed.join(' | '));
 }
 
-/** What the lowering of one element reads besides its values: its font sizes for em and rem, and the compiler faults. */
-type Lowering = { readonly em: number | null; readonly rem: number | null; readonly faults: CompilerFaults };
+/** What the lowering of one element reads besides its values: its font sizes for em and rem, its effective zoom and the compiler faults. */
+type Lowering = { readonly em: number | null; readonly rem: number | null; readonly zoom: number; readonly faults: CompilerFaults };
 
 const VIEWPORT_AXIS: { readonly [unit: string]: 'width' | 'height' | 'min' | 'max' } = { vw: 'width', vi: 'width', vh: 'height', vb: 'height', vmin: 'min', vmax: 'max' };
+
+/**
+ * A length times an effective zoom, as Blink's CSSToLengthConversionData computes it before the engine floors it to LayoutUnits.
+ * Blink multiplies by the float zoom and stores a float; the double product here differs from it below 1/64px.
+ */
+const zoomed = (value: number, zoom: number): number => value * zoom;
+
+/**
+ * ZOOM (analysis/zoom.ts): the values of an element at effective zoom z, with every px and viewport length of a ZOOM_SCALED
+ * longhand multiplied by z, as Chrome's computed lengths are before getComputedStyle divides z back out. Analysis refuses a
+ * calculation in one on native, so the lowering refuses it too.
+ */
+function zoomedGet<P extends Longhand>(id: string, get: (p: P) => CssValue, zoom: number): (p: P) => CssValue {
+  if (zoom === 1) return get;
+  return (p) => {
+    const v = get(p);
+    if (!ZOOM_SCALED.has(p)) return v;
+    if (v.kind === 'length' && (v.unit === 'px' || VIEWPORT_AXIS[v.unit] !== undefined)) return { ...v, value: zoomed(v.value, zoom) };
+    if (v.kind === 'other' && MATH_VALUE_FUNCTIONS.has(v.type.replace('()', ''))) throw new LoweringError(id, p, `${p}: ${valueToString(v)} on ${id} is a calculation at zoom ${zoom}, which native does not zoom yet (ZOOM)`);
+    return v;
+  };
+}
 
 /**
  * A length for the engine (css-values-4 §5-§6, §10): px, a percentage, or a LengthCalc for a viewport unit or a math function,
@@ -172,6 +195,8 @@ function borderWidth(id: string, get: Get, isInitial: IsInitial, side: 'top' | '
     if (v.kind !== 'keyword' || v.value !== 'medium') return fail(id, p, v, 'the initial value medium');
     return { kind: 'device-px', value: px };
   }
+  // ZOOM: an authored keyword width is zoomed like a px one (get already zoomed px); the initial medium above is not.
+  if (v.kind === 'keyword') px = zoomed(px, l.zoom);
   return { kind: 'px', value: px };
 }
 
@@ -235,11 +260,12 @@ export function rootFontSizeOf(root: ResolvedElement): number {
 export type LastBaselineContext = { readonly items: boolean; readonly self: boolean };
 const NO_LAST_BASELINE: LastBaselineContext = { items: false, self: false };
 
-export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null, lastBaseline: LastBaselineContext = NO_LAST_BASELINE): LayoutStyle {
+/** zoom is el's effective zoom (analysis/zoom.ts effectiveZoom). */
+export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, zoom = 1): LayoutStyle {
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const fonts = { em: fontPx(get('font-size')), rem: rootFontSize };
-  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline, lineClampOf(el));
+  return lowerStyleFrom(id, zoomedGet(id, get, zoom), (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline, lineClampOf(el), zoom);
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
@@ -309,8 +335,8 @@ function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allow
  * lineClamp: N for a line-clamp container, decided in analysis from the specified display (analysis/line-clamp.ts lineClampOf), else
  * 0; an anonymous box and a replaced element never clamp.
  */
-function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0): LayoutStyle {
-  const l: Lowering = { em: fonts.em, rem: fonts.rem, faults };
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0, zoom = 1): LayoutStyle {
+  const l: Lowering = { em: fonts.em, rem: fonts.rem, zoom, faults };
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
@@ -430,9 +456,9 @@ function lowerFont(id: string, get: (p: TextLonghand) => CssValue, mode: LowerMo
 const WHITE_SPACE_COLLAPSE: readonly string[] = ['collapse', 'preserve', 'preserve-breaks', 'break-spaces'] satisfies readonly WhiteSpaceCollapse[];
 
 // goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
-function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
+function lowerText(t: ResolvedText, mode: LowerMode, zoom: number): TextLeaf {
   const id = t.node.address;
-  const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
+  const get = zoomedGet(id, (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value, zoom);
   const { font, lineHeight } = lowerFont(id, get, mode);
   const collapse = get('white-space-collapse');
   if (collapse.kind !== 'keyword' || !WHITE_SPACE_COLLAPSE.includes(collapse.value)) return fail(id, 'white-space-collapse', collapse, WHITE_SPACE_COLLAPSE.join(' | '));
@@ -463,9 +489,9 @@ function lowerSpacing(id: string, property: 'letter-spacing' | 'word-spacing', v
  * CSS2 §10.8.1: the strut of a block container with inline content, its own font and line-height; an anonymous box's are its
  * parent's (inherited). The text leaves inherit the same values, so the strut equals their font until inline boxes change it.
  */
-function strutOf(el: ResolvedElement, hasInline: boolean, mode: LowerMode): LineStrut | null {
+function strutOf(el: ResolvedElement, hasInline: boolean, mode: LowerMode, zoom: number): LineStrut | null {
   if (!hasInline) return null;
-  return lowerFont(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value, mode);
+  return lowerFont(el.element.address, zoomedGet(el.element.address, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), mode);
 }
 
 const displayOf = (el: ResolvedElement): string => {
@@ -492,8 +518,11 @@ const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'ele
 // A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line.
 const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag)) || isAtomic(c);
 
-/** propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. */
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null };
+/**
+ * propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. zoom is the effective zoom of
+ * the element whose content is being lowered: the zoom its text and anonymous boxes take, and the parent zoom of its children.
+ */
+type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly zoom: number };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -502,9 +531,10 @@ type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readon
  * carries them (C5).
  */
 function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild {
-  if (c.kind === 'text') return lowerText(c, l.mode);
+  if (c.kind === 'text') return lowerText(c, l.mode, l.zoom);
   const id = c.element.address;
-  const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
+  const zoom = effectiveZoom(c, l.zoom);
+  const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (c.props.get(p) as ResolvedValue).value, zoom), l.mode);
   if (c.element.tag === 'br') {
     if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
@@ -516,7 +546,8 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
     throw new LoweringError(block.element.address, 'display', `block-level <${block.element.tag}> ${block.element.address} inside inline box ${id} (CSS2 §9.2.1.1 block-in-inline) is not laid out`);
   }
   // An inline box is never a grid item (a grid blockifies its children, analysis/blockify.ts), so last baseline stays refused on it.
-  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
+  const inner: Lowerer = { ...l, zoom };
+  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE, zoom), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, inner)) };
 }
 
 /** A block container's inline-level child: an atomic inline is a box among its inline content (INL2a), the rest lowerInline. */
@@ -535,9 +566,10 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   // Every non-inherited property of an anonymous box is its initial value; in a grid it is a grid item (align-self: auto).
   const parentDisplay = displayOf(parent);
   const lastBaseline: LastBaselineContext = { items: false, self: parentDisplay === 'grid' || parentDisplay === 'inline-grid' };
-  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null }, lastBaseline);
+  // Its effective zoom is its parent's (l.zoom), which its inherited text-indent takes.
+  const style = lowerStyleFrom(id, zoomedGet(id, (p) => values.get(p) as CssValue, l.zoom), (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null }, lastBaseline, 0, l.zoom);
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInlineLevel(c, l)) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode, l.zoom), children: items.map((c) => lowerInlineLevel(c, l)) };
 }
 
 /**
@@ -548,7 +580,7 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source }, null);
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, zoom: 1 }, null);
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -558,8 +590,10 @@ const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', '
  * overflow clip (the UA's img and iframe rule) clips only its own content, so the engine takes it as visible; its children are
  * fallback content, which a replaced element never renders.
  */
-function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals, gridParent: GridContainer | null): ReplacedLeaf {
+function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals, gridParent: GridContainer | null, parentZoom: number): ReplacedLeaf {
   const id = el.element.address;
+  const zoom = effectiveZoom(el, parentZoom);
+  if (zoom !== 1) throw new LoweringError(id, 'zoom', `<${el.element.tag}> ${id} is replaced content at zoom ${zoom}, whose natural size native does not zoom yet (ZOOM)`);
   const raw: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const get: Get = (p) => {
     const v = raw(p);
@@ -605,7 +639,10 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const display = displayOf(el);
-  const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null });
+  const zoom = effectiveZoom(el, l.zoom);
+  const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null }, zoom);
+  // Its text, anonymous boxes and children lower at its effective zoom.
+  const lc: Lowerer = { ...l, zoom };
   // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible.
   const own: LayoutStyle = id === l.propagated ? { ...lowered, overflowX: 'visible', overflowY: 'visible' } : lowered;
   // css-grid-2 §7, §8 and §9: a grid container carries its tracks; each child of one carries its placement (an absolutely
@@ -621,7 +658,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   let anon = 0;
   const flush = (): void => {
     if (run.length > 0) {
-      const box = anonymousBox(el, `${id}:anon${anon++}`, run, l);
+      const box = anonymousBox(el, `${id}:anon${anon++}`, run, lc);
       children.push(grid === null ? box : { ...box, style: { ...box.style, gridItem: ANONYMOUS_GRID_ITEM } });
     }
     run = [];
@@ -629,7 +666,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   for (const c of kids) {
     if (!isInlineLevel(c)) {
       flush();
-      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images, grid) : lowerBox(c as ResolvedElement, l, grid));
+      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images, grid, zoom) : lowerBox(c as ResolvedElement, lc, grid));
     } else if (wrap) {
       if (l.faults.inlineWrapperPerElement && c.kind === 'element') flush();
       run.push(c);
@@ -637,12 +674,12 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     }
     else {
       if (c.kind === 'text') assertTextCarriesContainer(style, id, c);
-      children.push(lowerInlineLevel(c, l));
+      children.push(lowerInlineLevel(c, lc));
     }
   }
   flush();
   // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
   // atomic inline is on a line (INL2a).
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode, zoom), children };
 }

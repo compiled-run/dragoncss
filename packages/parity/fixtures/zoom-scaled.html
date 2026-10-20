@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 40px; height: 12px; margin: 2px 3px; padding: 3px 1px 2px 4px; background-color: #e8d36a; border: 1px solid #1a1a2e; }
+.z15 { zoom: 1.5; }
+.z2 { zoom: 2; }
+.z110 { zoom: 110%; }
+.z07 { zoom: 0.7; }
+.em { width: 3em; height: 1.5em; font-size: 12px; }
+.rem { width: 5rem; height: 1rem; }
+.vw { width: 10vw; height: 2vh; }
+.odd { width: 7.3px; height: 5.15px; padding: 0.3px; }
+.thin { border: thin solid #1a1a2e; }
+.medium { border: medium solid #1a1a2e; }
+.thick { border: thick solid #1a1a2e; }
+.initial { border-style: solid; border-color: #1a1a2e; }
+.half { border: 0.5px solid #1a1a2e; }
+.row { display: flex; column-gap: 4px; width: 150px; background-color: #c8e6f0; }
+.row > div { flex: 1 1 10px; min-width: 0; height: 8px; background-color: #f0a8b8; }
+.text { width: 90px; line-height: 12px; letter-spacing: 1px; word-spacing: 2px; text-indent: 5px; background-color: #d8f0c8; }
+.rel { position: relative; left: 4px; top: 2px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="box z15">XX XX</div>
+<div data-dragon-id="b" class="box z15"><div data-dragon-id="b1" class="box z2">X</div></div>
+<div data-dragon-id="c" class="box em z110">X</div>
+<div data-dragon-id="d" class="box rem z07">X</div>
+<div data-dragon-id="e" class="box vw z15"></div>
+<div data-dragon-id="f" class="box odd z110"></div>
+<div data-dragon-id="g" class="z15"><div data-dragon-id="g1" class="box thin"></div><div data-dragon-id="g2" class="box medium"></div><div data-dragon-id="g3" class="box thick"></div><div data-dragon-id="g4" class="box initial"></div><div data-dragon-id="g5" class="box half"></div></div>
+<div data-dragon-id="h" class="row z110"><div data-dragon-id="h1"></div><div data-dragon-id="h2"></div><div data-dragon-id="h3"></div></div>
+<div data-dragon-id="t" class="text z07">XX XX XXX X<span data-dragon-id="t1" class="z15">XX</span> XXXX XX XXX</div>
+<div data-dragon-id="u" class="text"><span data-dragon-id="u1" class="z15">XX XXX</span> XX <span data-dragon-id="u2" class="z2">X</span></div>
+<div data-dragon-id="v" class="box rel z15">X</div>
+</body>
+</html>
