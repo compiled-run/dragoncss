@@ -1,6 +1,7 @@
 // Internal fault switches, reachable only through createProjectWith, so the parity harness can prove it fails (docs/api.md §7).
 // Each feature owns faults/<feature>.ts: its fault type (one documented field per fault) and its all-off defaults, and one line in
 // FAULT_GROUPS, which is sorted by feature id. A fault name belongs to one feature (test/registry-claims.test.ts).
+import { BACKGROUND_BLEND_FAULTS } from './faults/background-blend.ts';
 import { BLOCKIFY_FAULTS } from './faults/blockify.ts';
 import { BORDER_IMAGE_FAULTS } from './faults/border-image.ts';
 import { CASC_FAULTS } from './faults/casc.ts';
@@ -38,6 +39,7 @@ import { TXT2B_FAULTS } from './faults/txt2b.ts';
 import { VALUES_FAULTS } from './faults/values.ts';
 
 export const FAULT_GROUPS = {
+  'background-blend': BACKGROUND_BLEND_FAULTS,
   blockify: BLOCKIFY_FAULTS,
   'border-image': BORDER_IMAGE_FAULTS,
   casc: CASC_FAULTS,

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 70px; margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.g { background-color: #eee; background-image: linear-gradient(#fa0, #05a); background-size: 30px 20px; background-repeat: no-repeat; }
+.two { background-color: #eee; background-image: linear-gradient(#fa0, #05a), radial-gradient(#0a5, #50a); background-size: 30px 20px; background-repeat: no-repeat; background-position: right top, left bottom; }
+.n { background-blend-mode: normal; }
+.U { BACKGROUND-BLEND-MODE: NORMAL; }
+.imp { background-blend-mode: normal !important; }
+.k { background-blend-mode: initial; }
+.u { background-blend-mode: unset; }
+.i { background-blend-mode: inherit; background-color: #9ad; }
+.v { --bbm: normal; background-blend-mode: var(--bbm); }
+.f { background-blend-mode: var(--missing, normal); }
+.row { display: flex; width: 240px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="n1" class="box n">XX XX XX</div>
+<div data-dragon-id="n2" class="box g U">XX XX</div>
+<div data-dragon-id="n3" class="box two n">XXX XX</div>
+<div data-dragon-id="n4" class="box g imp k">XX</div>
+<div data-dragon-id="n5" class="box u"><div data-dragon-id="n5c" class="i">XXX XX</div></div>
+<div data-dragon-id="n6" class="box g v"><div data-dragon-id="n6c" class="box i">XX</div></div>
+<div data-dragon-id="n7" class="box two f">XX XX</div>
+<div data-dragon-id="row" class="row n"><div data-dragon-id="ra" class="box g U">XX</div><div data-dragon-id="rb" class="box two v">XX XX</div></div>
+</body>
+</html>

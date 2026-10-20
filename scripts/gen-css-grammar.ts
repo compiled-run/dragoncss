@@ -66,6 +66,8 @@ const SUBSET = [
   'content', 'list-style', 'list-style-type', 'list-style-position', 'list-style-image',
   // Background layers (BG2), as LONGHANDS registers them, then background-position.
   'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
+  // BG2: background-blend-mode (compositing-1 §9.2), after the background layers, as LONGHANDS registers it.
+  'background-blend-mode',
   // T150a: visibility (css-display-3 §4), after lists, as LONGHANDS registers it.
   'visibility',
   // vertical-align (CSS2 §10.8.1), then float and clear (CSS2 §9.5), as LONGHANDS registers them.
@@ -142,6 +144,10 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
  * packages/parity/test/display-parse.test.ts.
  */
 const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  // Blink BackgroundBlendMode::ParseSingleValue: a comma-separated list of ConsumeBackgroundBlendMode items, normal, overlay and the
+  // modes from multiply to luminosity, so webref's <'mix-blend-mode'># loses plus-lighter (and has no plus-darker). Pinned against
+  // Chrome by packages/parity/test/background-blend-parse.test.ts.
+  'background-blend-mode': '[ normal | multiply | screen | overlay | darken | lighten | color-dodge | color-burn | hard-light | soft-light | difference | exclusion | hue | saturation | color | luminosity ]#',
   // Blink ClipPath::ParseSingleValue (longhands_custom.cc), ConsumeBasicShapeCircle and ConsumeBasicShapeEllipse (css_parsing_utils.cc):
   // a circle or ellipse radius is a non-negative <length-percentage>, closest-side or farthest-side (webref's <radial-size> drops a
   // lone percentage), rect() is ConsumeBasicShapeRect's (webref's <rect()> resolves to clip's comma form), and the reference box is
