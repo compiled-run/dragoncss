@@ -11,10 +11,11 @@ import { analyzeDecorations } from '../analysis/text-decoration.ts';
 import { synthesizesBold, SYNTHETIC_OBLIQUE_SHEAR, synthesizesOblique } from '../analysis/computed.ts';
 import { nativeTextShadows } from '../analysis/text-shadow.ts';
 import { textClipFillOf } from '../analysis/paint-values/gradient.ts';
+import { strokeColorOf, strokeWidthOf } from '../analysis/text-stroke.ts';
 import { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES } from '../fonts/synthetic-bold.ts';
 import { canonicalJson } from '../digest.ts';
-import type { TxtWFaults } from '../faults/txt-w.ts';
 import type { TxtFillFaults } from '../faults/txt-fill.ts';
+import type { TxtWFaults } from '../faults/txt-w.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
 import type { Longhand } from '../css/properties.ts';
@@ -60,7 +61,12 @@ export type WriteKind =
    * TXT-W: Ahem text Chrome draws in synthetic bold; the view strokes and fills every glyph outline with a miter join (limit 4) at
    * Skia's fake-bold width for the size it draws at (fonts/synthetic-bold.ts syntheticBoldStroke over these keys and values). Advances are the face's.
    */
-  | { readonly kind: 'synthetic-bold'; readonly keys: readonly [number, number]; readonly values: readonly [number, number] };
+  | { readonly kind: 'synthetic-bold'; readonly keys: readonly [number, number]; readonly values: readonly [number, number] }
+  /**
+   * TXT-FX: Ahem text Chrome draws with -webkit-text-stroke; after filling each line the view strokes its glyph outlines with a miter
+   * join (limit 4), width css px wide at the device scale, in an opaque colour (analysis/text-stroke.ts checkTextStrokes).
+   */
+  | { readonly kind: 'text-stroke'; readonly width: number; readonly color: Rgba8 };
 
 export type ProgramWrite = WriteKind & {
   /** The applied key in the backend's own vocabulary: what the emitter writes and what the dump reads back. */
@@ -108,6 +114,7 @@ export const VOCABULARY: { readonly [B in NativeBackend]: Vocabulary } = {
     'text-color': { key: 'foregroundColor', technique: 'native-property', detail: 'DragonTextView fill colour (sRGB) for CTFontDrawGlyphs; Dragon places every glyph at the engine advances' },
     'synthetic-oblique': { key: 'glyphShear', technique: 'native-property', detail: 'DragonTextView concatenates the shear [1 shear; 0 1] to the y-up glyph context at each baseline before CTFontDrawGlyphs' },
     'synthetic-bold': { key: 'syntheticBold', technique: 'native-property', detail: 'DragonTextView draws with CGTextDrawingMode.fillStroke, a miter join (limit 4) and the line width Skia\'s fake bold gives the device size, in a transparency layer when the colour is translucent' },
+    'text-stroke': { key: 'textStroke', technique: 'native-property', detail: 'DragonTextView strokes each line\'s glyph outlines (CTFontCreatePathForGlyph) after filling them, with a miter join (limit 4), the line width in points and the stroke colour' },
   },
   'android-views': {
     ...paintVocabulary('android-views'),
@@ -115,6 +122,7 @@ export const VOCABULARY: { readonly [B in NativeBackend]: Vocabulary } = {
     'text-color': { key: 'textPaint.color', technique: 'native-property', detail: 'TextPaint.color (ARGB) for Canvas.drawGlyphs; Dragon places every glyph at the engine advances' },
     'synthetic-oblique': { key: 'glyphShear', technique: 'native-property', detail: 'DragonTextView skews the canvas by Canvas.skew(-shear, 0) at each baseline before Canvas.drawGlyphs' },
     'synthetic-bold': { key: 'syntheticBold', technique: 'native-property', detail: 'DragonTextView draws with Paint.Style.FILL_AND_STROKE, a miter join (limit 4) and the stroke width Skia\'s fake bold gives the text size' },
+    'text-stroke': { key: 'textStroke', technique: 'native-property', detail: 'DragonTextView draws each line\'s glyphs again after the fill with Paint.Style.STROKE, a miter join (limit 4), the stroke width in device px and the stroke colour' },
   },
 };
 
@@ -125,6 +133,7 @@ export const WRITE_CSS: { readonly [K in WriteKind['kind']]: readonly Longhand[]
   'text-color': ['color', '-webkit-text-fill-color'],
   'synthetic-oblique': ['font-style', 'font-synthesis-style'],
   'synthetic-bold': ['font-weight', 'font-synthesis-weight'],
+  'text-stroke': ['-webkit-text-stroke-width', '-webkit-text-stroke-color'],
 };
 
 export const NATIVE_CLASSES: { readonly [B in NativeBackend]: { readonly box: string; readonly text: string } } = {
@@ -204,8 +213,8 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
 type OwnedText = { readonly text: ResolvedText; readonly owner: ResolvedElement };
 
 /** The TXT-W plants the lowering reads: the synthetic bold from 700 instead of 600 or never stroked, and the oblique never sheared. */
-export type TextPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked' | 'ahemObliqueUnsheared'> & Pick<TxtFillFaults, 'textFillIgnored'>;
-const NO_TEXT_PLANTS: TextPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false, textFillIgnored: false };
+export type TextPlants = Pick<TxtWFaults, 'ahemSyntheticBoldFrom700' | 'ahemBoldUnstroked' | 'ahemObliqueUnsheared'> & Pick<TxtFillFaults, 'textFillIgnored' | 'textStrokeAccepted'>;
+const NO_TEXT_PLANTS: TextPlants = { ahemSyntheticBoldFrom700: false, ahemBoldUnstroked: false, ahemObliqueUnsheared: false, textFillIgnored: false, textStrokeAccepted: false };
 
 function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, OwnedText>, plants: TextPlants): NodePaint {
   const owned = texts.get(t.id);
@@ -222,6 +231,12 @@ function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, Owned
   // and emboldens from weight 600 (both together are refused, computed-checks.ts syntheticTextFont).
   if (t.font.family === 'Ahem' && synthesizesOblique(owned.owner.props) && !plants.ahemObliqueUnsheared) writes.push({ kind: 'synthetic-oblique', shear: SYNTHETIC_OBLIQUE_SHEAR });
   if (t.font.family === 'Ahem' && synthesizesBold(owned.owner.props, plants.ahemSyntheticBoldFrom700 ? 700 : 600) && !plants.ahemBoldUnstroked) writes.push({ kind: 'synthetic-bold', keys: SYNTHETIC_BOLD_KEYS, values: SYNTHETIC_BOLD_VALUES });
+  // TXT-FX: a stroke the checks accept (analysis/text-stroke.ts); the textStrokeAccepted plant accepts every stroke and draws none.
+  const stroke = strokeWidthOf(owned.owner);
+  if (stroke === null && !plants.textStrokeAccepted) throw new ProgramError(`${t.id}: a stroke width the checks refuse reached the native program`);
+  // A transparent stroke draws nothing in Chrome, so it takes no write.
+  const strokeColor = strokeColorOf(owned.owner);
+  if (stroke !== null && stroke > 0 && strokeColor.alpha !== 0 && !plants.textStrokeAccepted) writes.push({ kind: 'text-stroke', width: stroke, color: strokeColor });
   return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes, facts: {} };
 }
 

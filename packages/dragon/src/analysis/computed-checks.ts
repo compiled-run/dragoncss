@@ -77,6 +77,7 @@ import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPai
 import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { checkTextShadows } from './text-shadow.ts';
+import { checkTextStrokes } from './text-stroke.ts';
 import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
@@ -1120,7 +1121,6 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFontTuning(el, targets, diagnostics, reported, shapedAt, faults);
       checkFontStretch(el, targets, diagnostics, reported, shapedAt, faults);
       checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
-      checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
     checkMask(el, targets, diagnostics, reported, faults);
     checkBorderImage(el, targets, diagnostics, reported, faults);
@@ -1144,6 +1144,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkSmallCaps(root, targets, diagnostics, reported, shapedAt);
   // TXT-FX: text shadows a target does not draw as Chrome does (analysis/text-shadow.ts).
   checkTextShadows(root, targets, diagnostics, reported, realFaceAt, faults);
+  // TXT-FX: text strokes a target does not draw as Chrome does (analysis/text-stroke.ts).
+  checkTextStrokes(root, targets, diagnostics, reported, realFaceAt, faults);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
   checkTextTransform(root, targets, diagnostics, reported);
 }
@@ -1230,31 +1232,6 @@ function checkAppearance(el: ResolvedElement, targets: readonly string[], diagno
       manual: `Set appearance: none on ${el.element.address}, or give it display: ${adjusted}.`,
       basis: 'computed-value',
     }));
-  }
-}
-
-// TXT-FX (compat §5): glyphs are filled in -webkit-text-fill-color (native-program.ts textPaint) and no stroke is drawn, which is
-// what Chrome draws for a stroke of width 0 in any colour. A wider stroke over the element's text is refused for every target, once
-// per text. Planted fault textStrokeAccepted accepts it.
-function checkTextFillStroke(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: TxtFillFaults): void {
-  const width = el.props.get('-webkit-text-stroke-width') as ResolvedValue;
-  const zero = (width.value.kind === 'length' || width.value.kind === 'number') && width.value.value === 0;
-  if (faults.textStrokeAccepted || zero) return;
-  for (const c of el.children) {
-    if (c.kind !== 'text') continue;
-    const id = `text-fill-stroke|${c.node.address}`;
-    if (reported.has(id)) continue;
-    reported.add(id);
-    for (const t of targets) {
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-        // Located at the element's own declaration when it has one, else at the text.
-        origin: width.origin !== 'inherited' && width.declaration !== null ? authored(width.declaration.valueSpan) : c.node.node.origin,
-        target: t,
-        message: `text ${c.node.address} takes -webkit-text-stroke-width: ${valueToString(width.value)}, a stroke Dragon does not draw (TXT-FX)`,
-        manual: `Give the text of ${el.element.address} -webkit-text-stroke-width: 0, and set color or -webkit-text-fill-color instead.`,
-        basis: 'computed-value',
-      }));
-    }
   }
 }
 

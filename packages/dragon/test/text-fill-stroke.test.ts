@@ -1,7 +1,8 @@
 // TXT-FX: -webkit-text-fill-color, -webkit-text-stroke-width, -webkit-text-stroke-color and the -webkit-text-stroke shorthand. Any
-// fill colour and a stroke of width 0 in any colour compile on every target, and native fills the glyphs in the fill colour; a wider
-// stroke over text is refused, and so, on native, is an animation or transition of color over text with its own fill. The Chrome
-// cases are text-fill-stroke-initial, text-fill-stroke-colors and reject-text-stroke-width (packages/parity/fixtures).
+// fill colour and a stroke in px in any colour compile on every target (which strokes iOS and Android draw is text-stroke.test.ts'),
+// and native fills the glyphs in the fill colour; a stroke width keyword over text is refused, and so, on native, is an animation
+// or transition of color over text with its own fill. The Chrome cases are text-fill-stroke-initial, text-fill-stroke-colors,
+// text-stroke-ahem and reject-text-stroke-width (packages/parity/fixtures).
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS } from '../src/internal.ts';
@@ -92,9 +93,8 @@ describe('the text fill colour and stroke', () => {
     expect(parsed('color', 'oklch(0.6 0.1 30)')).not.toEqual(['color: oklch(0.6 0.1 30)']);
   });
 
-  it('compiles a stroke colour given as a function in the shorthand, at width 0', () => {
-    for (const d of ['-webkit-text-stroke: rgb(255 0 0)', '-webkit-text-stroke: hsl(120 100% 25%) 0']) expect(errorsAt(d), d).toEqual([]);
-    expect(errorsAt('-webkit-text-stroke: rgb(255 0 0) 1px')).toEqual(REFUSED);
+  it('compiles a stroke colour given as a function in the shorthand, at width 0 and in px (analysis/text-stroke.ts)', () => {
+    for (const d of ['-webkit-text-stroke: rgb(255 0 0)', '-webkit-text-stroke: hsl(120 100% 25%) 0', '-webkit-text-stroke: rgb(255 0 0) 1px']) expect(errorsAt(d), d).toEqual([]);
   });
 
   it('compiles a currentcolor fill and a zero-width stroke of any colour on every target', () => {
@@ -108,13 +108,14 @@ describe('the text fill colour and stroke', () => {
     for (const d of ['color: red', 'color: blue; -webkit-text-stroke-width: 0']) expect(errorsAt(d), d).toEqual([]);
   });
 
-  it('compiles any fill colour on every target, and refuses a wider stroke over text on every target', () => {
+  it('compiles any fill colour and a px stroke on every target, and refuses a stroke width keyword over text on every target', () => {
     for (const d of ['-webkit-text-fill-color: red', '-webkit-text-fill-color: transparent', '-webkit-text-fill-color: rgba(0, 0, 255, 0.5)', '-webkit-text-fill-color: hsl(120 100% 25%); color: blue']) expect(errorsAt(d), d).toEqual([]);
-    for (const d of ['-webkit-text-stroke-width: 1px', '-webkit-text-stroke: thin', '-webkit-text-stroke: 2px blue', '-webkit-text-fill-color: red; -webkit-text-stroke-width: 1px']) expect(errorsAt(d), d).toEqual(REFUSED);
+    for (const d of ['-webkit-text-stroke-width: 1px', '-webkit-text-stroke: 2px blue', '-webkit-text-fill-color: red; -webkit-text-stroke-width: 1px']) expect(errorsAt(d), d).toEqual([]);
+    for (const d of ['-webkit-text-stroke: thin', '-webkit-text-stroke-width: medium', '-webkit-text-fill-color: red; -webkit-text-stroke: thick']) expect(errorsAt(d), d).toEqual(REFUSED);
   });
 
-  it('plants textStrokeAccepted: a stroke compiles, and a fill compiles without it', () => {
-    expect(errorsAt('-webkit-text-stroke-width: 1px', { ...NO_FAULTS, textStrokeAccepted: true })).toEqual([]);
+  it('plants textStrokeAccepted: a stroke width keyword compiles, and a fill compiles without it', () => {
+    expect(errorsAt('-webkit-text-stroke-width: thin', { ...NO_FAULTS, textStrokeAccepted: true })).toEqual([]);
     expect(errorsAt('-webkit-text-fill-color: red')).toEqual([]);
   });
 
