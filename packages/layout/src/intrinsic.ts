@@ -16,8 +16,11 @@ export type IntrinsicKind = 'min' | 'max';
 // css-sizing-3 §5.1: the min-content or max-content inline size of a box's content box. Absolutely positioned children take no
 // part (CSS2 §9.3.1). css-contain-2 §3.1: under size or inline-size containment it is contain-intrinsic-width, none being 0.
 export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
+  // css-contain-2 §3.2 and css-sizing-4 §5.2: a size-contained box sizes as if it had no content, or content of its
+  // contain-intrinsic-width. An empty grid keeps its explicit tracks and gaps (Chrome 145: an inline-grid of 30px 40px columns with a
+  // 5px column-gap is 75px wide).
   const w = box.style.containIntrinsicWidth;
-  if (box.style.containSize !== 'none') return w.kind === 'px' ? fromCssPx(w.value) : ZERO;
+  if (box.style.containSize !== 'none' && !ctx.faults.containedContentSized) return w.kind === 'px' ? fromCssPx(w.value) : box.style.display === 'grid' ? gridIntrinsicContentInlineSize(ctx, { ...box, children: [] }, kind) : ZERO;
   const kids = box.children;
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
   if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);

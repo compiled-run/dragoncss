@@ -48,6 +48,9 @@ export const RESIZE_SCRIPTS: readonly ResizeScript[] = [
   { fixture: 'mqr-forms', start: { width: 400, height: 304 }, steps: [r(400, 400), r(384, 400), r(384, 304), r(352, 304), r(352, 400), r(344, 400), r(328, 400), r(328, 304), r(336, 320)] },
   // MQ-R0's ratio atoms: landscape, portrait (a square is portrait) and a max-aspect-ratio of 3/4, at, above and below it. (A
   // min-aspect-ratio with portrait would ship a band only a 0 x 0 root reaches, which no resize can prove.)
+  // CQ: page's content box is the viewport less 28px (less 56px from the @media rule's 384px), and card's is page's up to 340px: the
+  // queries switch at 320, 328, 352, 360 and 368 viewport px, and at 388 and 396 inside the @media band, each crossed both ways.
+  { fixture: 'cq-rules', start: { width: 400, height: 304 }, steps: [r(304, 304), r(320, 304), r(328, 304), r(336, 304), r(352, 304), r(360, 304), r(368, 304), r(376, 304), r(384, 304), r(392, 304), r(344, 304), r(400, 304)] },
   { fixture: 'mqr-orientation', start: { width: 400, height: 296 }, steps: [r(352, 304), r(304, 304), r(304, 400), r(288, 384), r(296, 400), r(400, 296)] },
 ];
 

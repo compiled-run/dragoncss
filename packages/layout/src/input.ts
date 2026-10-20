@@ -364,7 +364,8 @@ export type LayoutStyle = {
    */
   readonly containPaint: boolean;
   /**
-   * css-contain-2 §3.1 size containment: size in both axes, inline-size in the inline axis only. The box sizes as if it had no
+   * css-contain-2 §3.1 size containment: size in both axes, inline-size in the inline axis only (also container-type: inline-size,
+   * whose query container css-conditional-5 §2.1 makes an independent formatting context). Never on an inline box. The box sizes as if it had no
    * contents, its content size being containIntrinsicWidth and containIntrinsicHeight (css-sizing-4 §5.2; none is 0), and then lays
    * its contents out inside that size.
    */

@@ -36,7 +36,7 @@ const css = JSON.parse(readFileSync(join(webrefDir, 'css.json'), 'utf8')) as Web
 /** The initial-only families' longhands and shorthands. */
 const INITIAL_ONLY_PROPERTIES = [
   ...OVERSCROLL_LONGHANDS, ...OVERSCROLL_SHORTHANDS, ...SCROLL_SNAP_LONGHANDS, ...SCROLL_SNAP_SHORTHANDS,
-  ...CONTAINMENT_LONGHANDS, ...CONTAINMENT_SHORTHANDS, ...CONTAINER_QUERY_LONGHANDS, ...CONTAINER_QUERY_SHORTHANDS,
+  ...CONTAINMENT_LONGHANDS, ...CONTAINMENT_SHORTHANDS,
 ];
 
 /** Longhands and shorthands the milestone-1 compiler reads. Support status lives in the profiles, not here. */
@@ -132,6 +132,8 @@ const SUBSET = [
   ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
   // The initial-only families (css/properties/initial-only.ts), after the mask family, as LONGHANDS registers them.
   ...INITIAL_ONLY_PROPERTIES,
+  // CQ: the container-query family, after containment, as LONGHANDS registers it.
+  ...CONTAINER_QUERY_LONGHANDS, ...CONTAINER_QUERY_SHORTHANDS,
   // FORM-a: appearance (css-ui-4 §7.1), after the mask family, as LONGHANDS registers it.
   'appearance',
   // FORM-b: caret-color and accent-color (css-ui-4 §6.2, §6.3), after appearance, as LONGHANDS registers them.
@@ -187,11 +189,15 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // refused, never dropped where Chrome would apply it. webref has no -webkit-border-image. Pinned against Chrome by
   // packages/parity/test/border-image-parse.test.ts.
   ...Object.fromEntries([...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS].map((p) => [p, '<any-value>'])),
-  // The overscroll, scroll-snap, containment and container-query families: Dragon accepts their initial values alone and refuses
+  // The overscroll, scroll-snap and containment families: Dragon accepts their initial values alone and refuses
   // every other value where it applies (analysis/scroll-containment.ts), so the grammar takes any value, and a value webref's grammar
   // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
   // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
+  // Blink ConsumeContainerName and ConsumeContainerType: container-name excludes and, not, or and default, which webref's grammar
+  // misses, and container-type takes anchored, which it lacks, so the grammar takes any value and the parser decides
+  // (properties/container-query.ts). Pinned against Chrome by packages/parity/test/container-query-parse.test.ts.
+  ...Object.fromEntries([...CONTAINER_QUERY_LONGHANDS, ...CONTAINER_QUERY_SHORTHANDS].map((p) => [p, '<any-value>'])),
   // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
   // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
   // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.

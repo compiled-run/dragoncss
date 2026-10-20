@@ -7,7 +7,7 @@
 // host the same children after layout, so a device and the break vectors place each child's lines as the layout did.
 import type { Ctx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
-import { contentBox, isScrollContainer, resolveBorder, resolvePaddingWith, sumEdges } from './box.ts';
+import { contentBox, establishesFormattingContext, resolveBorder, resolvePaddingWith, sumEdges } from './box.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import { placeLines } from './inline.ts';
 import type { LayoutBox, LayoutInput } from './input.ts';
@@ -27,7 +27,7 @@ export type ClampedChild = { readonly left: number; readonly kid: LayoutBox };
  * contentWidth is the child's content-box inline size and cbInline the container's, which the child's padding resolves against.
  */
 export function clampChild(ctx: Ctx, box: LayoutBox, kid: LayoutBox, borderBoxWidth: LU, cbInline: LU, left: number, after: LayoutBox['children']): ClampedChild {
-  if (kid.strut === null || kid.style.display !== 'block' || isScrollContainer(kid.style)) {
+  if (kid.strut === null || establishesFormattingContext(kid.style, ctx.faults)) {
     unsupported('line-clamp', kid.id, 'css-overflow-4 §4.2', `${kid.id} in the line-clamp container ${box.id} is not a block container of inline content in its formatting context`);
   }
   const pad = resolvePaddingWith(kid.style, cbInline, ctx.faults);

@@ -7,7 +7,7 @@ import type { Direction, LayoutBox, LayoutInput, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, fromCssPx, LU_PER_PX, max, min, snapEdge, sub, ZERO } from './units.ts';
 import type { Edges } from './box.ts';
-import { blockMinMaxWith, containsAbsolute, hasPercent, isContained, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
+import { blockMinMaxWith, containsAbsolute, establishesFormattingContext, hasPercent, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx, EngineFaults, Strut } from './block.ts';
 import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
@@ -554,8 +554,8 @@ type Flow = {
 };
 
 /** layoutContents' formattingContextRoot for a child of a block flow. */
-function isFcRoot(b: LayoutNode): boolean {
-  return b.kind === 'replaced' || b.style.display !== 'block' || isScrollContainer(b.style) || isContained(b.style);
+function isFcRoot(ix: Index, b: LayoutNode): boolean {
+  return b.kind === 'replaced' || establishesFormattingContext(b.style, ix.ctx.faults);
 }
 
 function flowOf(ix: Index, n: Node): Flow {
@@ -610,7 +610,7 @@ function readFlow(ix: Index, n: Node): Flow {
 }
 
 function isRootOrFc(ix: Index, n: Node): boolean {
-  return n.parent === null || n.parent.style.display === 'flex' || isFcRoot(n.box) || isOutOfFlow(ix.ctx, n.box);
+  return n.parent === null || n.parent.style.display === 'flex' || isFcRoot(ix, n.box) || isOutOfFlow(ix.ctx, n.box);
 }
 
 /** What layoutContents returns about margins for a block-flow child: its escaping struts and whether it collapses through. */
@@ -619,7 +619,7 @@ type ChildMargins = { readonly escapeTop: Strut; readonly escapeBottom: Strut; r
 function readChild(ix: Index, n: Node): ChildMargins {
   const b = n.box;
   const none: ChildMargins = { escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
-  if (b.kind === 'replaced' || isFcRoot(b)) return none;
+  if (b.kind === 'replaced' || isFcRoot(ix, b)) return none;
   const vbp = sumEdges(n.border.top, n.border.bottom, n.padding.top, n.padding.bottom);
   const r = flowOf(ix, n);
   const height = n.rect.height;

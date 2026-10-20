@@ -3,8 +3,8 @@
 // gives it Chrome scroll-metric captures), through every shorthand, longhand and flow-relative name, in another ASCII case and
 // through the CSS-wide keywords; containment-initial does the same for the containment and container ones on bordered and padded
 // boxes and a flex row; containment-layout sets contain's layout, paint, style and size values on blocks, inline-blocks beside text,
-// a baseline-aligned flex row and absolutely positioned boxes. The rejects: size containment on a flex container, a snap type, an overscroll behaviour, a hidden content-visibility and a container type, which
-// no target implements yet.
+// a baseline-aligned flex row and absolutely positioned boxes. The rejects: size containment on a flex container, a snap type, an
+// overscroll behaviour and a hidden content-visibility, which no target implements yet (container types are the container-query group's).
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';
 
@@ -16,5 +16,4 @@ export const SCROLL_CONTAINMENT: readonly FixtureSpec[] = [
   reject('reject-overscroll-contain', 'DRAGON_UNSUPPORTED_VALUE', 'contain', 'overscroll-behavior-x: contain'),
   reject('reject-contain-content-visibility', 'DRAGON_UNSUPPORTED_VALUE', 'hidden', 'content-visibility: hidden'),
   reject('reject-contain-size-flex', 'DRAGON_UNSUPPORTED_VALUE', 'strict', 'contain: strict on <div> f is unsupported'),
-  reject('reject-container-type', 'DRAGON_UNSUPPORTED_VALUE', 'inline-size', 'container-type: inline-size'),
 ];

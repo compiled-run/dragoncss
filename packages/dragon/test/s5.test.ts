@@ -189,8 +189,8 @@ describe('T005 rec 2: a shorthand-set longhand names the authored shorthand, its
 });
 
 describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in the same pass', () => {
-  // A width @media is native too since MQ-R1, so the unsupported at-rule here is @container, which every target refuses.
-  const R3 = 'body { margin: 0; }\n@container (min-width: 300px) {\n  .caption { width: 80px; }\n}\n.caption { font-size: 10px; line-height: 12px; color: #24292e; margin-right: 6mm; }\n';
+  // A width @media is native too since MQ-R1, so the unsupported at-rule here is @starting-style, which every target refuses.
+  const R3 = 'body { margin: 0; }\n@starting-style {\n  .caption { width: 80px; }\n}\n.caption { font-size: 10px; line-height: 12px; color: #24292e; margin-right: 6mm; }\n';
   it('T005 R3 through the public entry: DRAGON_UNSUPPORTED_AT_RULE, DRAGON_UNSUPPORTED_FONT and DRAGON_UNPROVEN_CONTEXT in one pass, every output blocked', () => {
     const input = inputFor(R3, (r) => [div(r, 'caption', ['caption'], [text(r, 't', 'CAPTION TEXT')])]);
     const c = both().compile(input);
@@ -201,8 +201,8 @@ describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in 
     expectCatalogued(c.diagnostics);
   });
   it('the enclosed rules are analysed with the block unwrapped, top-level and nested: their diagnostics are related entries that start with the code, and nothing is emitted', () => {
-    // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @container.
-    const css = `${FONT}\n@container (min-width: 1px) { .a { display: inline-table; } }\n.b { width: 5px; @supports (display: flex) { margin-right: 6mm; } }\n`;
+    // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @starting-style.
+    const css = `${FONT}\n@starting-style { .a { display: inline-table; } }\n.b { width: 5px; @supports (display: flex) { margin-right: 6mm; } }\n`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
     const c = both().compile(input);
     const atRules = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');

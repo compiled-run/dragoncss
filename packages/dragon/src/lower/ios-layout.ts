@@ -309,6 +309,14 @@ function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allow
   return keyword(id, get, p, allowed);
 }
 
+// css-conditional-5 §2.1: container-type: inline-size gives the box inline-size containment and an independent formatting context;
+// analysis/scroll-containment.ts refuses every other value but normal, and inline-size on an inline box or a replaced element.
+function containInlineSize(id: string, get: Get): boolean {
+  const v = get('container-type');
+  if (v.kind === 'keyword' && (v.value === 'normal' || v.value === 'inline-size')) return v.value === 'inline-size';
+  return fail(id, 'container-type', v, 'normal | inline-size');
+}
+
 /**
  * lineClamp: N for a line-clamp container, decided in analysis from the specified display (analysis/line-clamp.ts lineClampOf), else
  * 0; an anonymous box and a replaced element never clamp.
@@ -375,7 +383,8 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     lineClamp,
     containLayout: containment.layout,
     containPaint: containment.paint,
-    containSize: containment.size,
+    // container-type: inline-size is inline-size containment too; contain: size covers both axes already.
+    containSize: containment.size !== 'none' ? containment.size : containInlineSize(id, get) ? 'inline-size' : 'none',
     // contain-intrinsic-width and -height accept none alone (analysis/scroll-containment.ts), a size containment of 0.
     containIntrinsicWidth: { kind: 'none' },
     containIntrinsicHeight: { kind: 'none' },

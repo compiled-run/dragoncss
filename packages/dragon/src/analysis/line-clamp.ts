@@ -125,7 +125,7 @@ export function checkLineClamp(el: ResolvedElement, hidden: boolean, targets: re
   const blocks: ResolvedElement[] = [el];
   for (const c of el.children) {
     if (c.kind !== 'element' || display(c) === 'none' || display(c) === 'inline') continue;
-    const plain = display(c) === 'block' && ['overflow-x', 'overflow-y'].every((p) => keywordOf(prop(c, p as Longhand)) === 'visible') && keywordOf(prop(c, 'position')) === 'static' && keywordOf(prop(c, 'float')) === 'none';
+    const plain = display(c) === 'block' && ['overflow-x', 'overflow-y'].every((p) => keywordOf(prop(c, p as Longhand)) === 'visible') && keywordOf(prop(c, 'position')) === 'static' && keywordOf(prop(c, 'float')) === 'none' && keywordOf(prop(c, 'container-type')) === 'normal';
     // The engine truncates left to right only (inline.ts checkClampContext), so a nested rtl block is refused as the container is.
     if (keywordOf(prop(c, 'direction')) === 'rtl') refuse(targets, 'rtl', `${at} holds the rtl block <${c.element.tag}> ${c.element.address}, whose lines Dragon truncates left to right only`, `Make <${c.element.tag}> ${c.element.address} ltr, or remove -webkit-line-clamp from ${el.element.address}.`);
     if (!plain || inlineDescendants(c).some((g) => display(g) !== 'inline')) {
