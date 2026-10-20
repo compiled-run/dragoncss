@@ -94,8 +94,9 @@ describe('opacity: the native targets draw 0 and 1 only', () => {
       expect(errs[0]?.message, v).toMatch(/^a has opacity [0-9.]+; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites \(PNT1-opacity-b\), and this one is not: a has a border radius$/);
       expectCatalogued(errs);
     }
-    // An inherited fraction is refused where it computes; the declaration is the child's inherit (a bordered b, as an empty one folds).
-    const c = compile('.a { opacity: 25%; } .b { height: 5px; border: 1px solid rgb(0, 0, 0); opacity: inherit; }', { ios: { minimum: '15.0' }, web: {} });
+    // An inherited fraction is refused where it computes; the declaration is the child's inherit (a rounded b, as a plain one is a
+    // nested group native pre-composites).
+    const c = compile('.a { opacity: 25%; } .b { height: 5px; border-radius: 1px; opacity: inherit; }', { ios: { minimum: '15.0' }, web: {} });
     expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message.slice(0, 18))).toEqual(['a has opacity 0.25', 'b has opacity 0.25']);
   });
   it('opacity 0, 1 and the values that clamp to them compile on ios', () => {
@@ -118,7 +119,7 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     }
   });
   it('refuses on native a fraction whose group paints more than one fill, or composites as a layer', () => {
-    for (const extra of ['border-radius: 3px;', 'border: 1px dashed rgb(0, 0, 0);', 'border: 1px solid rgb(0, 0, 0); border-left-color: rgb(9, 9, 9);', 'outline: 1px solid rgb(0, 0, 0);', 'box-shadow: 1px 1px rgb(0, 0, 0);', 'background-color: rgba(10, 20, 30, 0.5);', 'transform: translateX(1px);', 'position: fixed;', 'display: list-item;', 'will-change: transform;', 'overflow: scroll;']) {
+    for (const extra of ['border-radius: 3px;', 'border: 1px dashed rgb(0, 0, 0);', 'border: 1px solid rgb(0, 0, 0); border-left-color: rgb(9, 9, 9);', 'outline: 1px solid rgb(0, 0, 0);', 'box-shadow: 1px 1px rgb(0, 0, 0);', 'transform: translateX(1px);', 'position: fixed;', 'display: list-item;', 'will-change: transform;', 'overflow: scroll;']) {
       expect(errors(`.b { ${leaf} ${extra} opacity: 0.3; }`), extra).toEqual(['ios b has opacity 0.', 'android b has opacity 0.']);
     }
     // A box with a child is a group of more than one draw: it does not fold, and native pre-composites it (opacity-group).
@@ -255,7 +256,9 @@ describe('opacity: a group native pre-composites', () => {
   });
   it('refuses on native a group whose content or backdrop the overlay cannot draw as Chrome does, naming why', () => {
     const cases: [string, boolean, string][] = [
-      ['.g { opacity: 0.4; } .k { opacity: 0.5; }', false, 'k inside it has opacity 0.5, a nested group'],
+      ['.g { opacity: 0.4; } .k { opacity: 0.5; filter: grayscale(1); }', false, 'k has a filter (a shadow, image, filter, clip, transform or will-change)'],
+      ['.g { opacity: 0.4; } .k { opacity: 0; }', false, 'k inside it has opacity 0'],
+      ['.g { opacity: 0.4; } .k { border-top: 1px solid rgba(0, 0, 0, 0.5); border-left: 1px solid rgba(0, 0, 0, 0.5); }', false, 'k has a translucent border on 2 sides, which Chrome draws otherwise than four sides or one'],
       ['.g { opacity: 0.4; will-change: opacity; }', false, 'it has will-change: opacity, a compositor layer'],
       ['.g { opacity: 0.4; text-shadow: 1px 1px rgb(0, 0, 0); }', false, 'the text of g has a text-shadow'],
       ['.g { opacity: 0.4; color: rgba(0, 0, 0, 0.5); }', false, 'the text of g is not opaque'],
@@ -283,6 +286,32 @@ describe('opacity: a group native pre-composites', () => {
     }
     const errs = errors(build('.u { opacity: 0.3; } .g { opacity: 0.4; }')).filter((m) => / has opacity 0\.4;/.test(m));
     expect(errs).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: u paints before it with opacity 0\\.3$`))));
+  });
+  // S2: translucent fills, translucent borders on four sides or one, and nested groups inside a group; the device builds the layer
+  // in software (DragonGroupView.dragonSoftwareGroup), measured equal to Chrome 145 (pnt1-effects.test).
+  it('admits nested groups and translucent fills and borders in a group, the nested ones with an opacity-nested write', () => {
+    const c = build('.g { opacity: 0.4; background-color: rgba(250, 250, 0, 0.5); border-color: rgba(0, 90, 0, 0.6); } .k { opacity: 0.5; }');
+    expect(errors(c)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const program of [p.programs.uikit, p.programs['android-views']]) {
+      const g = program.nodes.find((n) => n.id === 'g');
+      const k = program.nodes.find((n) => n.id === 'k');
+      expect(g?.writes.filter((w) => w.kind.startsWith('opacity')).map((w) => w.kind)).toEqual(['opacity-group']);
+      // k is a box of one opaque fill, which would fold on its own; inside a group it stays a group, and its fill keeps its colour.
+      expect(k?.writes.filter((w) => w.kind.startsWith('opacity'))).toEqual([expect.objectContaining({ kind: 'opacity-nested', key: 'dragonNestedGroup', technique: 'dragon-owned-paint', opacity: 0.5 })]);
+      expect(k?.writes.find((w) => w.kind === 'background-color')).toEqual(expect.objectContaining({ color: { r: 200, g: 0, b: 0, alpha: 255 } }));
+      // Inside an admitted group the overlay composites it, so it is never a folded fill (which draws over the page backdrop).
+      expect((k?.writes.find((w) => w.kind === 'background-color') as { folded?: true } | undefined)?.folded).toBeUndefined();
+      expect(k?.facts['effects']).toEqual({ opacity: 0.5 });
+    }
+    const k = p.programs.uikit.nodes.find((n) => n.id === 'k');
+    const w = k?.writes.find((x) => x.kind === 'opacity-nested');
+    expect(EFFECTS_EMITTER.lines.uikit('v0', k as never, w as never)).toEqual(['  dragonSetNestedGroup(v0, 0.5)']);
+    expect(EFFECTS_EMITTER.lines['android-views']('v0', k as never, w as never)).toEqual(['  dragonSetNestedGroup(v0, 0.5)']);
+    // Two levels, a lone translucent side, and a group whose only paint is a translucent fill (cc folds it at the float alpha product).
+    expect(errors(build('.g { opacity: 0.4; } .k { opacity: 0.5; border-top: 1px solid rgba(0, 0, 0, 0.3); } .w { opacity: 0.9; }'))).toEqual([]);
+    expect(errors(build('.g { opacity: 0.4; background-color: rgba(250, 250, 0, 0.5); border: 0; color: rgb(0, 0, 0); } .k { background-color: rgba(9, 9, 9, 0.2); }'))).toEqual([]);
   });
   it('admits a group under the element whose overflow the viewport takes, which neither clips nor scrolls', () => {
     for (const css of ['html { overflow-y: scroll; }', 'body { overflow: auto; }', 'html { overflow: hidden; }']) expect(errors(build(`${css} .g { opacity: 0.4; }`)), css).toEqual([]);

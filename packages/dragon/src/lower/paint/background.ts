@@ -3,7 +3,7 @@
 // opacity alpha byte (paint.ts opacityAlpha8), as Chrome folds the group's alpha into its one draw; effects.ts then writes no alpha.
 // Such a translucent fill is marked folded: native draws it as Chrome's opaque bytes over its backdrop (emit/paint/background.ts),
 // as the platform's own blend of a translucent colour is one off Chrome's blit in a channel.
-import { opacityFolds } from '../../analysis/paint-values/effects.ts';
+import { groupPlanAt, opacityFolds } from '../../analysis/paint-values/effects.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import { opacityAlpha8, TRANSPARENT } from '../../css/color.ts';
 import { textClipFillOf } from '../../analysis/paint-values/gradient.ts';
@@ -27,13 +27,13 @@ export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
   lower: ({ el, foldBackdrops }) => [el === null || textClipFillOf(el) !== null ? { kind: 'background-color', color: TRANSPARENT } : foldedBackground(el, foldBackdrops)],
 };
 
-/** The fractional opacity of an element whose group folds into its fill, or null. */
+/** The fractional opacity of an element whose group folds into its fill, or null; a group nested in a pre-composited one stays a group. */
 export function foldedOpacity(el: ResolvedElement): number | null {
   const v = el.props.get('opacity');
   if (v === undefined) throw new ProgramError(`${el.element.address}: opacity did not resolve`);
   const o = opacityOf(v.value);
   if (o === null) throw new ProgramError(`${el.element.address}: opacity did not compute to a number`);
-  return o > 0 && o < 1 && opacityFolds(el) ? o : null;
+  return o > 0 && o < 1 && opacityFolds(el) && groupPlanAt(el)?.kind !== 'nested' ? o : null;
 }
 
 function foldedBackground(el: ResolvedElement, foldBackdrops: ReadonlySet<string>): BackgroundWrite {

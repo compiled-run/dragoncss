@@ -53,8 +53,23 @@
         { "lines": "96-146", "symbol": "FindNextOp", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupTileFolds", "use": "reference" },
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupTileFoldIndex", "use": "reference" },
         { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "cc/paint/scoped_raster_flags.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "09c15b6eaa5a26e0ad2df3a4867fdba2f26cf6594917f4434b98cc04fe95bf1d",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "47-50", "symbol": "ScopedRasterFlags", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFoldAlpha", "use": "port" }
       ]
     },
     {
@@ -1828,7 +1843,7 @@
         { "file": "packages/dragon/src/css/color.ts", "symbol": "insetOutsetTones", "use": "port" },
         { "file": "packages/dragon/src/emit/paint/effects.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupTileFolds", "use": "reference" },
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupTileFoldIndex", "use": "reference" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "borderDoubleRings", "use": "port" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
@@ -3075,7 +3090,8 @@
         { "lines": "1667-1685", "symbol": "blitRect", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupComposite", "use": "reference" }
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupComposite", "use": "reference" },
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFill", "use": "reference" }
       ]
     },
     {
@@ -3122,6 +3138,36 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-shadow.ts", "symbol": "textShadowLayerOver", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkColor.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "e55245270ca5a5895e91ebad50651a64096efcbf40f3f95f9014d9a6f00c5768",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "142-144", "symbol": "SkColor4f::toSkColor", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFoldAlpha", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkSwizzlePriv.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 Google Inc.",
+      "fileSha256": "010f4c7da2908351e89563250bf1422f21da30746a6fd1db05cbcdf22178e862",
+      "headerSha256": "a65cafb3032c1f30848fc790d094eee31ac8becf6a1f9d89fe326eaec7399dc8",
+      "ranges": [
+        { "lines": "53-60", "symbol": "Sk4f_toL32", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFoldAlpha", "use": "port" }
       ]
     },
     {
@@ -3490,6 +3536,7 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-group.ts", "symbol": "groupComposite", "use": "port" },
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupFill", "use": "port" },
         { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-shadow.ts", "symbol": null, "use": "reference" }
       ]

@@ -12,8 +12,13 @@
 // PNT1-filter: a group with a colour-matrix filter is written through dragonSetFilterGroup with its functions as (code, amount)
 // pairs; its overlay builds the matrices once (paint-group.ts groupFilterMatrices) and composites every pixel with
 // groupFilterComposite instead (the filter, then the opacity; a filtered layer never folds).
+// S2: a group holding translucent paint or a nested group (written through dragonSetNestedGroup, which keeps alpha 1) has its layer
+// built in software instead of by the platform: each box's fill and sides blitted with paint-group.ts groupFill, each text view drawn
+// by the platform into the layer over what it holds, each nested group composited into it as the group is over its backdrop (per
+// tile, its one op at groupFoldAlpha where cc folds it, else groupComposite), so the platform never blends a translucent colour.
 import { COLOR_MATRIX_FILTERS } from '../../css/properties/filter.ts';
 import type { FilterFunction } from '../../css/properties/filter.ts';
+import type { EffectsWrite } from '../../lower/paint/effects.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 import { nativeString } from './stacking.ts';
@@ -45,6 +50,9 @@ const SWIFT_MEMBERS = String.raw`  /// Chrome's paint alpha byte of the box's op
   public var dragonAlpha8: Int = 255
   /// PNT1-opacity-b: the overlay showing this pre-composited group's composite; nil for a box that is no such group.
   public var dragonGroup: DragonGroupView? = nil
+  /// S2: a group nested in a pre-composited group, which that group's overlay composites in software; and the computed opacity.
+  public var dragonNestedGroup = false
+  public var dragonOpacity: Double = 1
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -73,6 +81,7 @@ public func dragonAppliedEffects(_ v: DragonBoxView) -> DumpJsonObject {
     if g.dragonFilter.isEmpty { return [("dragonGroup", .array(head))] }
     return [("dragonFilterGroup", .array(head + g.dragonFilter.map { DumpJson.number($0) }))]
   }
+  if v.dragonNestedGroup { return [("dragonNestedGroup", .array([.number(Double(v.alpha)), .number(Double(v.dragonAlpha8))]))] }
   if v.dragonAlpha8 == 255 { return [] }
   return [("alpha", .number(Double(v.alpha)))]
 }
@@ -99,6 +108,7 @@ public func dragonSetOpacityGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity
   do { raw = try paint_opacityAlpha8(opacity) } catch { fatalError("dragon: \(v.dragonId): paint_opacityAlpha8 failed: \(error)") }
   let alpha8 = dragonCheckedInt(raw, "\(v.dragonId) alpha byte")
   v.dragonAlpha8 = alpha8
+  v.dragonOpacity = opacity
   v.alpha = 1
   if v.dragonGroup != nil { fatalError("dragon: \(v.dragonId): a second group write") }
   let g = DragonGroupView(tree: t, group: v, alpha8: dragonAlphaPlantIgnored ? 255 : alpha8, backdrop: backdrop, painters: painters)
@@ -117,11 +127,51 @@ public func dragonSetFilterGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity:
   let matrices: JsArray<Double>
   do { matrices = try paintGroup_groupFilterMatrices(JsArray(filter)) } catch { fatalError("dragon: \(v.dragonId): paintGroup_groupFilterMatrices failed: \(error)") }
   v.dragonAlpha8 = alpha8
+  v.dragonOpacity = opacity
   v.alpha = 1
   if v.dragonGroup != nil { fatalError("dragon: \(v.dragonId): a second group write") }
   let g = DragonGroupView(tree: t, group: v, alpha8: dragonAlphaPlantIgnored ? 255 : alpha8, backdrop: backdrop, painters: painters, filter: filter, matrices: matrices)
   v.dragonGroup = g
   v.dragonContainer.addSubview(g)
+}
+
+/// S2: the write of a group nested in a pre-composited group (runtime writer): its computed opacity. The view keeps alpha 1; the
+/// outer group's overlay composites it into the outer group's layer in software.
+public func dragonSetNestedGroup(_ v: DragonBoxView, _ opacity: Double) {
+  if !(opacity > 0 && opacity < 1) { fatalError("dragon: \(v.dragonId): nested group opacity \(opacity) is not in (0, 1)") }
+  let raw: Double
+  do { raw = try paint_opacityAlpha8(opacity) } catch { fatalError("dragon: \(v.dragonId): paint_opacityAlpha8 failed: \(error)") }
+  v.dragonAlpha8 = dragonCheckedInt(raw, "\(v.dragonId) alpha byte")
+  v.dragonOpacity = opacity
+  v.dragonNestedGroup = true
+  v.alpha = 1
+}
+
+/// The shown border sides of a box: a width above 0 and a style that draws.
+func dragonGroupSides(_ b: DragonBoxView) -> [Bool] {
+  return (0..<4).map { b.dragonShape.borders[$0] > 0 && b.dragonBorderStyles[$0] != "none" && b.dragonBorderStyles[$0] != "hidden" }
+}
+
+/// S2: whether a box paints a translucent colour (a background or a shown side of alpha 1 to 254).
+func dragonGroupTranslucent(_ b: DragonBoxView) -> Bool {
+  let c = b.dragonBackgroundColor
+  if c.a > 0 && c.a < 255 { return true }
+  let shown = dragonGroupSides(b)
+  return (0..<4).contains { shown[$0] && b.dragonBorderColors[$0].a > 0 && b.dragonBorderColors[$0].a < 255 }
+}
+
+/// S2: the frame a group's software layer is built in: the root, the extent in root device px and its size, the device scale,
+/// the sRGB space, the cc tiles, and each text view's extent edges (its glyph ink at whole device px).
+struct DragonGroupFrame {
+  let root: UIView
+  let ext: [Int]
+  let width: Int
+  let height: Int
+  let s: Double
+  let space: CGColorSpace
+  let tileSize: Double
+  let originX: Double
+  let textEdges: [ObjectIdentifier: [Int]]
 }
 
 /// A device px rect [left, top, right, bottom] of a view's layout rect in root's coordinates; its edges are whole device px.
@@ -238,6 +288,7 @@ public final class DragonGroupView: UIView {
     var ext = dragonGroupEdges(dragonLayoutRect(g, in: root), s)
     var texts: [DragonTextView] = []
     var boxes: [DragonBoxView] = [g]
+    var textEdges: [ObjectIdentifier: [Int]] = [:]
     func grow(_ v: UIView) {
       for c in v.subviews where c !== self {
         let e: [Int]
@@ -247,6 +298,7 @@ public final class DragonGroupView: UIView {
           let r = dragonLayoutRect(tv, in: root)
           let ink = tv.dragonInkFrame()
           e = dragonGroupOuterEdges(CGRect(x: r.minX + ink.minX, y: r.minY + ink.minY, width: ink.width, height: ink.height), s)
+          textEdges[ObjectIdentifier(tv)] = e
         } else {
           e = dragonGroupEdges(dragonLayoutRect(c, in: root), s)
           if let b = c as? DragonBoxView { boxes.append(b) }
@@ -268,19 +320,21 @@ public final class DragonGroupView: UIView {
       return
     }
     guard let space = CGColorSpace(name: CGColorSpace.sRGB) else { fatalError("dragon: no sRGB colour space") }
+    // S2: a group holding translucent paint or a nested group has its layer built in software (dragonSoftwareGroup).
+    let software = dragonGroupTranslucent(g) || dragonNeedsSoftware(g)
     // The group's layer: the platform's rendering of the group's view and its subtree at the device scale, this overlay hidden.
     let gr = dragonLayoutRect(g, in: root)
-    var lp = [UInt8](repeating: 0, count: w * h * 4)
+    var lp: [UInt8] = []
     isHidden = true
     dragonDisplayTree(g.layer)
-    lp.withUnsafeMutableBytes { raw in
+    if !software { lp = [UInt8](repeating: 0, count: w * h * 4); lp.withUnsafeMutableBytes { raw in
       guard let ctx = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("dragon: no RGBA8 context for a group") }
       ctx.interpolationQuality = .none
       ctx.translateBy(x: 0, y: CGFloat(h))
       ctx.scaleBy(x: CGFloat(s), y: -CGFloat(s))
       ctx.translateBy(x: gr.minX - CGFloat(Double(ext[0]) / s), y: gr.minY - CGFloat(Double(ext[1]) / s))
       g.layer.render(in: ctx)
-    }
+    } }
     isHidden = false
     // The backdrop: the white canvas, then each painter before the group in its backdrop box, in paint order.
     var bp = [UInt8](repeating: 255, count: w * h * 4)
@@ -329,66 +383,73 @@ public final class DragonGroupView: UIView {
         }
       }
     }
-    // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
-    // each text line's ink (a DrawTextBlob, which cc never folds).
-    var draws: [Double] = []
-    for b in boxes where b.dragonVisible {
-      let fillsBg = b.dragonBackgroundColor.a > 0
-      let sides = (0..<4).filter { b.dragonShape.borders[$0] > 0 && b.dragonBorderStyles[$0] != "none" && b.dragonBorderStyles[$0] != "hidden" }.count
-      let ops = dragonGroupBoxOps(fillsBg, sides)
-      if ops == 0 { continue }
-      draws += b.dragonShape.edges + [ops == 1 ? 1 : 0]
-    }
-    for tv in texts where !tv.isHidden {
-      guard let font = tv.dragonFont else { continue }
-      let r = dragonLayoutRect(tv, in: root)
-      // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
-      // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
-      let ascent = Double(CTFontGetAscent(font as CTFont)) * s
-      let descent = Double(CTFontGetDescent(font as CTFont)) * s
-      for l in tv.specs where !l.glyphs.isEmpty {
-        guard let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * s, Double(r.minY) * s, s) else { continue }
-        let x0 = Double(r.minX) * s + l.xLU / units_LU_PER_PX
-        let base = Double(r.minY) * s + l.baseline
-        draws += [min(ink[0], x0.rounded(.down)), min(ink[1], (base - ascent).rounded(.down)), max(ink[2], (x0 + l.widthLU / units_LU_PER_PX).rounded(.up)), max(ink[3], (base + descent).rounded(.up)), 0]
-      }
-    }
-    let jsDraws = JsArray(draws)
     let tileSize: Double
     do { tileSize = try paintGroup_groupTileSize(s) } catch { fatalError("dragon: \(g.dragonId): paint-group tile size failed: \(error)") }
     // The root layer's tiles start at the root scroller's origin (BG2 R4).
     let originX = g.dragonShape.rootX / units_LU_PER_PX
-    var foldCache: [Int: Bool] = [:]
-    func folds(_ x: Int, _ y: Int) -> Bool {
-      do {
-        let ix = try paintGroup_groupTileIndex(Double(x) - originX, tileSize)
-        let iy = try paintGroup_groupTileIndex(Double(y), tileSize)
-        let key = dragonCheckedInt(ix, "group tile x") * 65536 + dragonCheckedInt(iy, "group tile y")
-        if let f = foldCache[key] { return f }
-        let sx = try paintGroup_groupTileSpan(ix, tileSize).items
-        let sy = try paintGroup_groupTileSpan(iy, tileSize).items
-        let f = try paintGroup_groupTileFolds(jsDraws, sx[0] + originX, sy[0], sx[1] + originX, sy[1])
-        foldCache[key] = f
-        return f
-      } catch { fatalError("dragon: \(g.dragonId): paint-group tiles failed: \(error)") }
-    }
-    var q = [UInt8](repeating: 0, count: w * h * 4)
-    let a8 = Double(dragonAlpha8)
-    do {
-      for y in 0..<h {
-        for x in 0..<w {
-          let i = (y * w + x) * 4
-          let packed: Double
-          if let m = dragonMatrices {
-            packed = try paintGroup_groupFilterComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), m, a8)
-          } else {
-            packed = try paintGroup_groupComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))
-          }
-          let v = Int(packed)
-          q[i] = UInt8(v & 0xff); q[i + 1] = UInt8((v >> 8) & 0xff); q[i + 2] = UInt8((v >> 16) & 0xff); q[i + 3] = UInt8((v >> 24) & 0xff)
+    var q: [UInt8]
+    if software {
+      q = bp
+      let f = DragonGroupFrame(root: root, ext: ext, width: w, height: h, s: s, space: space, tileSize: tileSize, originX: originX, textEdges: textEdges)
+      dragonSoftwareGroup(&q, g, f, f, dragonAlpha8, dragonAlphaPlantIgnored ? 1 : g.dragonOpacity, dragonMatrices)
+    } else {
+      // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
+      // each text line's ink (a DrawTextBlob, which cc never folds).
+      var draws: [Double] = []
+      for b in boxes where b.dragonVisible {
+        let fillsBg = b.dragonBackgroundColor.a > 0
+        let sides = (0..<4).filter { b.dragonShape.borders[$0] > 0 && b.dragonBorderStyles[$0] != "none" && b.dragonBorderStyles[$0] != "hidden" }.count
+        let ops = dragonGroupBoxOps(fillsBg, sides)
+        if ops == 0 { continue }
+        draws += b.dragonShape.edges + [ops == 1 ? 1 : 0]
+      }
+      for tv in texts where !tv.isHidden {
+        guard let font = tv.dragonFont else { continue }
+        let r = dragonLayoutRect(tv, in: root)
+        // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
+        // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
+        let ascent = Double(CTFontGetAscent(font as CTFont)) * s
+        let descent = Double(CTFontGetDescent(font as CTFont)) * s
+        for l in tv.specs where !l.glyphs.isEmpty {
+          guard let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * s, Double(r.minY) * s, s) else { continue }
+          let x0 = Double(r.minX) * s + l.xLU / units_LU_PER_PX
+          let base = Double(r.minY) * s + l.baseline
+          draws += [min(ink[0], x0.rounded(.down)), min(ink[1], (base - ascent).rounded(.down)), max(ink[2], (x0 + l.widthLU / units_LU_PER_PX).rounded(.up)), max(ink[3], (base + descent).rounded(.up)), 0]
         }
       }
-    } catch { fatalError("dragon: \(g.dragonId): paint-group composite failed: \(error)") }
+      let jsDraws = JsArray(draws)
+      var foldCache: [Int: Bool] = [:]
+      func folds(_ x: Int, _ y: Int) -> Bool {
+        do {
+          let ix = try paintGroup_groupTileIndex(Double(x) - originX, tileSize)
+          let iy = try paintGroup_groupTileIndex(Double(y), tileSize)
+          let key = dragonCheckedInt(ix, "group tile x") * 65536 + dragonCheckedInt(iy, "group tile y")
+          if let f = foldCache[key] { return f }
+          let sx = try paintGroup_groupTileSpan(ix, tileSize).items
+          let sy = try paintGroup_groupTileSpan(iy, tileSize).items
+          let f = try paintGroup_groupTileFolds(jsDraws, sx[0] + originX, sy[0], sx[1] + originX, sy[1])
+          foldCache[key] = f
+          return f
+        } catch { fatalError("dragon: \(g.dragonId): paint-group tiles failed: \(error)") }
+      }
+      q = [UInt8](repeating: 0, count: w * h * 4)
+      let a8 = Double(dragonAlpha8)
+      do {
+        for y in 0..<h {
+          for x in 0..<w {
+            let i = (y * w + x) * 4
+            let packed: Double
+            if let m = dragonMatrices {
+              packed = try paintGroup_groupFilterComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), m, a8)
+            } else {
+              packed = try paintGroup_groupComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))
+            }
+            let v = Int(packed)
+            q[i] = UInt8(v & 0xff); q[i + 1] = UInt8((v >> 8) & 0xff); q[i + 2] = UInt8((v >> 16) & 0xff); q[i + 3] = UInt8((v >> 24) & 0xff)
+          }
+        }
+      } catch { fatalError("dragon: \(g.dragonId): paint-group composite failed: \(error)") }
+    }
     dragonQ = q
     dragonQRect = ext
     guard let provider = CGDataProvider(data: Data(q) as CFData) else { fatalError("dragon: no data provider for a group") }
@@ -397,6 +458,187 @@ public final class DragonGroupView: UIView {
     let hr = dragonLayoutRect(host, in: root)
     bitmapLayer.frame = CGRect(x: CGFloat(Double(ext[0]) / s) - hr.minX, y: CGFloat(Double(ext[1]) / s) - hr.minY, width: CGFloat(Double(w) / s), height: CGFloat(Double(h) / s))
   }
+
+  // ---------------------------------------------------------------- S2: the layer built in software
+
+  /// Whether a view's subtree holds a nested group or translucent paint, so the group's layer is built in software.
+  func dragonNeedsSoftware(_ v: UIView) -> Bool {
+    for c in v.subviews where c !== self {
+      if let b = c as? DragonBoxView, b.dragonNestedGroup || dragonGroupTranslucent(b) { return true }
+      if dragonNeedsSoftware(c) { return true }
+    }
+    return false
+  }
+
+  /// One solid colour blitted at full coverage onto pixel i of a layer (paint-group.ts groupFill).
+  func dragonSoftwareBlend(_ buf: inout [UInt8], _ i: Int, _ c: DragonRGBA8, _ alpha: Double) {
+    let packed: Double
+    do { packed = try paintGroup_groupFill(Double(buf[i]), Double(buf[i + 1]), Double(buf[i + 2]), Double(buf[i + 3]), Double(c.r), Double(c.g), Double(c.b), alpha) } catch { fatalError("dragon: paint-group fill failed: \(error)") }
+    let v = Int(packed)
+    buf[i] = UInt8(v & 0xff); buf[i + 1] = UInt8((v >> 8) & 0xff); buf[i + 2] = UInt8((v >> 16) & 0xff); buf[i + 3] = UInt8((v >> 24) & 0xff)
+  }
+
+  /// A box's own paint into a layer: its background over the border box, then its solid sides, each pixel once (one op of one
+  /// colour: the compiler admits translucent sides only on all four sides or one, in one colour).
+  func dragonSoftwareBox(_ buf: inout [UInt8], _ b: DragonBoxView, _ f: DragonGroupFrame) {
+    if !b.dragonVisible { return }
+    let e = b.dragonShape.edges.map { dragonCheckedInt($0, "\(b.dragonId) group edge") }
+    let bw = b.dragonShape.borders.map { dragonCheckedInt($0, "\(b.dragonId) group border") }
+    let shown = dragonGroupSides(b)
+    for k in 0..<4 where shown[k] && b.dragonBorderStyles[k] != "solid" { fatalError("dragon: \(b.dragonId): a group border side that is not solid, which the compiler refuses") }
+    let x0 = max(e[0], f.ext[0]), y0 = max(e[1], f.ext[1]), x1 = min(e[2], f.ext[2]), y1 = min(e[3], f.ext[3])
+    if x0 >= x1 || y0 >= y1 { return }
+    let c = b.dragonBackgroundColor
+    for y in y0..<y1 {
+      for x in x0..<x1 {
+        let i = ((y - f.ext[1]) * f.width + (x - f.ext[0])) * 4
+        if c.a > 0 { dragonSoftwareBlend(&buf, i, c, Double(c.a)) }
+        var side = -1
+        if shown[0] && y < e[1] + bw[0] { side = 0 } else if shown[1] && x >= e[2] - bw[1] { side = 1 } else if shown[2] && y >= e[3] - bw[2] { side = 2 } else if shown[3] && x < e[0] + bw[3] { side = 3 }
+        if side >= 0 && b.dragonBorderColors[side].a > 0 { dragonSoftwareBlend(&buf, i, b.dragonBorderColors[side], Double(b.dragonBorderColors[side].a)) }
+      }
+    }
+  }
+
+  /// A text view drawn by the platform into a layer, over what the layer holds, as the platform draws it in the group's render.
+  func dragonSoftwareText(_ buf: inout [UInt8], _ tv: DragonTextView, _ f: DragonGroupFrame) {
+    let r = dragonLayoutRect(tv, in: f.root)
+    buf.withUnsafeMutableBytes { raw in
+      guard let ctx = CGContext(data: raw.baseAddress, width: f.width, height: f.height, bitsPerComponent: 8, bytesPerRow: f.width * 4, space: f.space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("dragon: no RGBA8 context for a group's text") }
+      ctx.interpolationQuality = .none
+      ctx.translateBy(x: 0, y: CGFloat(f.height))
+      ctx.scaleBy(x: CGFloat(f.s), y: -CGFloat(f.s))
+      ctx.translateBy(x: r.minX - CGFloat(Double(f.ext[0]) / f.s), y: r.minY - CGFloat(Double(f.ext[1]) / f.s))
+      tv.layer.render(in: ctx)
+    }
+  }
+
+  /// A view's children painted into a layer in paint order (the view order): boxes and their subtrees, nested groups composited.
+  func dragonSoftwareChildren(_ buf: inout [UInt8], _ v: UIView, _ f: DragonGroupFrame) {
+    for c in v.subviews where c !== self && !(c is DragonGroupView) && !c.isHidden {
+      if let tv = c as? DragonTextView {
+        dragonSoftwareText(&buf, tv, f)
+      } else if let b = c as? DragonBoxView {
+        if b.dragonNestedGroup {
+          if let nf = dragonNestedFrame(b, f) { dragonSoftwareGroup(&buf, b, f, nf, dragonAlphaPlantIgnored ? 255 : b.dragonAlpha8, dragonAlphaPlantIgnored ? 1 : b.dragonOpacity, nil) }
+        } else {
+          dragonSoftwareBox(&buf, b, f)
+          dragonSoftwareChildren(&buf, b, f)
+        }
+      } else {
+        dragonSoftwareChildren(&buf, c, f)
+      }
+    }
+  }
+
+  /// A group's display items for its per-tile fold (paint-group.ts groupTileFoldIndex), with each item's one colour: its painting
+  /// boxes (a box of one op folds), its text lines' ink, and every item of a group nested in it, which never folds this group.
+  func dragonSoftwareDraws(_ v: UIView, _ nested: Bool, _ f: DragonGroupFrame, _ draws: inout [Double], _ colours: inout [DragonRGBA8]) {
+    if let b = v as? DragonBoxView, b.dragonVisible {
+      let shown = dragonGroupSides(b)
+      let sides = shown.filter { $0 }.count
+      let fillsBg = b.dragonBackgroundColor.a > 0
+      let ops = dragonGroupBoxOps(fillsBg, sides)
+      if ops > 0 {
+        draws += b.dragonShape.edges + [ops == 1 && !nested ? 1 : 0]
+        colours.append(fillsBg ? b.dragonBackgroundColor : b.dragonBorderColors[shown.firstIndex(of: true) ?? 0])
+      }
+    }
+    for c in v.subviews where c !== self && !(c is DragonGroupView) && !c.isHidden {
+      if let tv = c as? DragonTextView {
+        guard let font = tv.dragonFont else { continue }
+        let r = dragonLayoutRect(tv, in: f.root)
+        // The fold item is the line's ink with its run box, as the group's own fold counts it.
+        let ascent = Double(CTFontGetAscent(font as CTFont)) * f.s
+        let descent = Double(CTFontGetDescent(font as CTFont)) * f.s
+        for l in tv.specs where !l.glyphs.isEmpty {
+          guard let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * f.s, Double(r.minY) * f.s, f.s) else { continue }
+          let x0 = Double(r.minX) * f.s + l.xLU / units_LU_PER_PX
+          let base = Double(r.minY) * f.s + l.baseline
+          draws += [min(ink[0], x0.rounded(.down)), min(ink[1], (base - ascent).rounded(.down)), max(ink[2], (x0 + l.widthLU / units_LU_PER_PX).rounded(.up)), max(ink[3], (base + descent).rounded(.up)), 0]
+          colours.append(tv.dragonColor)
+        }
+      } else {
+        dragonSoftwareDraws(c, nested || ((c as? DragonBoxView)?.dragonNestedGroup ?? false), f, &draws, &colours)
+      }
+    }
+  }
+
+  /// The frame of nested group b's layer inside f: b's box and every view inside it (a text view's glyph ink), as the group's own
+  /// extent is grown, clamped to f; nil when empty. Outside it b's layer is clear, and a clear layer pixel leaves dst as it is.
+  func dragonNestedFrame(_ b: DragonBoxView, _ f: DragonGroupFrame) -> DragonGroupFrame? {
+    var e = dragonGroupEdges(dragonLayoutRect(b, in: f.root), f.s)
+    func grow(_ v: UIView) {
+      for c in v.subviews where c !== self {
+        let r: [Int]
+        if let tv = c as? DragonTextView {
+          guard let t = f.textEdges[ObjectIdentifier(tv)] else { fatalError("dragon: \(b.dragonId): a text view the group's extent did not reach") }
+          r = t
+        } else {
+          r = dragonGroupEdges(dragonLayoutRect(c, in: f.root), f.s)
+        }
+        e = [min(e[0], r[0]), min(e[1], r[1]), max(e[2], r[2]), max(e[3], r[3])]
+        grow(c)
+      }
+    }
+    grow(b)
+    e = [max(e[0], f.ext[0]), max(e[1], f.ext[1]), min(e[2], f.ext[2]), min(e[3], f.ext[3])]
+    if e[2] <= e[0] || e[3] <= e[1] { return nil }
+    return DragonGroupFrame(root: f.root, ext: e, width: e[2] - e[0], height: e[3] - e[1], s: f.s, space: f.space, tileSize: f.tileSize, originX: f.originX, textEdges: f.textEdges)
+  }
+
+  /// Group b composited onto dst (premultiplied RGBA8 over f's extent) as Chrome's raster does: its layer built over lf's extent
+  /// (inside f's) from its draw list, then, per cc raster tile, its one op drawn at the folded alpha (groupFoldAlpha, groupFill) or the
+  /// layer blitted at its alpha byte (groupComposite); with a colour-matrix filter, the filter and then the alpha
+  /// (groupFilterComposite), never folded.
+  func dragonSoftwareGroup(_ dst: inout [UInt8], _ b: DragonBoxView, _ f: DragonGroupFrame, _ lf: DragonGroupFrame, _ alpha8: Int, _ opacity: Double, _ matrices: JsArray<Double>?) {
+    var l = [UInt8](repeating: 0, count: lf.width * lf.height * 4)
+    dragonSoftwareBox(&l, b, lf)
+    dragonSoftwareChildren(&l, b, lf)
+    var draws: [Double] = []
+    var colours: [DragonRGBA8] = []
+    dragonSoftwareDraws(b, false, lf, &draws, &colours)
+    let jsDraws = JsArray(draws)
+    var foldCache: [Int: Int] = [:]
+    let a8 = Double(alpha8)
+    do {
+      func foldIndex(_ x: Int, _ y: Int) throws -> Int {
+        let ix = try paintGroup_groupTileIndex(Double(x) - f.originX, f.tileSize)
+        let iy = try paintGroup_groupTileIndex(Double(y), f.tileSize)
+        let key = dragonCheckedInt(ix, "group tile x") * 65536 + dragonCheckedInt(iy, "group tile y")
+        if let k = foldCache[key] { return k }
+        let sx = try paintGroup_groupTileSpan(ix, f.tileSize).items
+        let sy = try paintGroup_groupTileSpan(iy, f.tileSize).items
+        let raw = try paintGroup_groupTileFoldIndex(jsDraws, sx[0] + f.originX, sy[0], sx[1] + f.originX, sy[1])
+        let k = dragonCheckedInt(raw, "group fold item")
+        foldCache[key] = k
+        return k
+      }
+      for y in 0..<lf.height {
+        for x in 0..<lf.width {
+          let i = (y * lf.width + x) * 4
+          let j = ((lf.ext[1] - f.ext[1] + y) * f.width + (lf.ext[0] - f.ext[0] + x)) * 4
+          let packed: Double
+          if let m = matrices {
+            packed = try paintGroup_groupFilterComposite(Double(l[i]), Double(l[i + 1]), Double(l[i + 2]), Double(l[i + 3]), Double(dst[j]), Double(dst[j + 1]), Double(dst[j + 2]), Double(dst[j + 3]), m, a8)
+          } else {
+            let k = try foldIndex(lf.ext[0] + x, lf.ext[1] + y)
+            if k >= 0 {
+              // The tile's one op: where the layer is clear it drew nothing.
+              if l[i + 3] == 0 { continue }
+              let c = colours[k]
+              let fa = try paintGroup_groupFoldAlpha(Double(c.a), opacity)
+              packed = try paintGroup_groupFill(Double(dst[j]), Double(dst[j + 1]), Double(dst[j + 2]), Double(dst[j + 3]), Double(c.r), Double(c.g), Double(c.b), fa)
+            } else {
+              packed = try paintGroup_groupComposite(Double(l[i]), Double(l[i + 1]), Double(l[i + 2]), Double(l[i + 3]), Double(dst[j]), Double(dst[j + 1]), Double(dst[j + 2]), Double(dst[j + 3]), a8, false)
+            }
+          }
+          let v = Int(packed)
+          dst[j] = UInt8(v & 0xff); dst[j + 1] = UInt8((v >> 8) & 0xff); dst[j + 2] = UInt8((v >> 16) & 0xff); dst[j + 3] = UInt8((v >> 24) & 0xff)
+        }
+      }
+    } catch { fatalError("dragon: \(b.dragonId): paint-group software composite failed: \(error)") }
+  }
 }
 `;
 
@@ -404,6 +646,9 @@ const KOTLIN_MEMBERS = String.raw`  /** Chrome's paint alpha byte of the box's o
   var dragonAlpha8 = 255
   /** PNT1-opacity-b: the overlay showing this pre-composited group's composite; null for a box that is no such group. */
   var dragonGroup: DragonGroupView? = null
+  /** S2: a group nested in a pre-composited group, which that group's overlay composites in software; and the computed opacity. */
+  var dragonNestedGroup = false
+  var dragonOpacity = 1.0
   /** The device scale of the last layout (the group composite's cc tile size depends on it). */
   var dragonEffectsScale = 1.0
 `;
@@ -422,8 +667,11 @@ import android.view.ViewTreeObserver
 import dev.dragon.dump.DumpJson
 import dev.dragon.layout.JsArray
 import dev.dragon.layout.paintGroup_groupComposite
+import dev.dragon.layout.paintGroup_groupFill
 import dev.dragon.layout.paintGroup_groupFilterComposite
 import dev.dragon.layout.paintGroup_groupFilterMatrices
+import dev.dragon.layout.paintGroup_groupFoldAlpha
+import dev.dragon.layout.paintGroup_groupTileFoldIndex
 import dev.dragon.layout.paintGroup_groupTileFolds
 import dev.dragon.layout.paintGroup_groupTileIndex
 import dev.dragon.layout.paintGroup_groupTileSize
@@ -455,6 +703,7 @@ fun dragonAppliedEffects(v: DragonBoxView): List<Pair<String, DumpJson>> {
     if (g.dragonFilter.isEmpty()) return listOf(Pair("dragonGroup", DumpJson.Arr(head)))
     return listOf(Pair("dragonFilterGroup", DumpJson.Arr(head + g.dragonFilter.map { DumpJson.Num(it) })))
   }
+  if (v.dragonNestedGroup) return listOf(Pair("dragonNestedGroup", DumpJson.Arr(listOf(DumpJson.Num(v.alpha.toDouble()), DumpJson.Num(v.dragonAlpha8.toDouble())))))
   if (v.dragonAlpha8 == 255) return emptyList()
   return listOf(Pair("alpha", DumpJson.Num(v.alpha.toDouble())))
 }
@@ -486,6 +735,7 @@ fun dragonSetOpacityGroup(t: DragonTree, v: DragonBoxView, opacity: Double, back
   if (!(opacity > 0.0 && opacity < 1.0)) throw IllegalStateException("dragon: " + v.dragonId + ": group opacity " + opacity + " is not in (0, 1)")
   val alpha8 = dragonCheckedInt(paint_opacityAlpha8(opacity), v.dragonId + " alpha byte")
   v.dragonAlpha8 = alpha8
+  v.dragonOpacity = opacity
   v.alpha = 1f
   if (v.dragonGroup != null) throw IllegalStateException("dragon: " + v.dragonId + ": a second group write")
   val g = DragonGroupView(v.context, t, v, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else alpha8, backdrop, painters)
@@ -503,12 +753,42 @@ fun dragonSetFilterGroup(t: DragonTree, v: DragonBoxView, opacity: Double, filte
   val alpha8 = dragonCheckedInt(paint_opacityAlpha8(opacity), v.dragonId + " alpha byte")
   val matrices = paintGroup_groupFilterMatrices(JsArray(filter))
   v.dragonAlpha8 = alpha8
+  v.dragonOpacity = opacity
   v.alpha = 1f
   if (v.dragonGroup != null) throw IllegalStateException("dragon: " + v.dragonId + ": a second group write")
   val g = DragonGroupView(v.context, t, v, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else alpha8, backdrop, painters, filter, matrices)
   v.dragonGroup = g
   v.dragonContainer.addView(g)
 }
+
+/**
+ * S2: the write of a group nested in a pre-composited group (runtime writer): its computed opacity. The view keeps alpha 1; the
+ * outer group's overlay composites it into the outer group's layer in software.
+ */
+fun dragonSetNestedGroup(v: DragonBoxView, opacity: Double) {
+  if (!(opacity > 0.0 && opacity < 1.0)) throw IllegalStateException("dragon: " + v.dragonId + ": nested group opacity " + opacity + " is not in (0, 1)")
+  v.dragonAlpha8 = dragonCheckedInt(paint_opacityAlpha8(opacity), v.dragonId + " alpha byte")
+  v.dragonOpacity = opacity
+  v.dragonNestedGroup = true
+  v.alpha = 1f
+}
+
+/** The shown border sides of a box: a width above 0 and a style that draws. */
+fun dragonGroupSides(b: DragonBoxView): BooleanArray = BooleanArray(4) { b.dragonShape.borders[it] > 0 && b.dragonBorderStyles[it] != "none" && b.dragonBorderStyles[it] != "hidden" }
+
+/** S2: whether a box paints a translucent colour (a background or a shown side of alpha 1 to 254). */
+fun dragonGroupTranslucent(b: DragonBoxView): Boolean {
+  val c = b.dragonBackgroundColor
+  if (c.a in 1..254) return true
+  val shown = dragonGroupSides(b)
+  return (0 until 4).any { shown[it] && b.dragonBorderColors[it].a in 1..254 }
+}
+
+/**
+ * S2: the frame a group's software layer is built in: the root, the extent in root device px and its size, the cc tiles, and each
+ * text view's extent edges (its frame and its lines' ink with 2 device px of antialiasing).
+ */
+class DragonGroupFrame(val root: View, val ext: IntArray, val width: Int, val height: Int, val tileSize: Double, val originX: Double, val textEdges: Map<DragonTextView, IntArray>)
 
 /**
  * The draw ops of a group member box's display item (Blink box_border_painter.cc PaintBorderFastPath): its background fill, then
@@ -567,6 +847,9 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
   var dragonDirty = true
   private var skipping = false
   private var bitmap: Bitmap? = null
+  /** S2: the bitmap and bytes a text view is drawn into a software layer through, reused across text views and composites. */
+  private var textBitmap: Bitmap? = null
+  private var textBytes = ByteArray(0)
   private val bitmapPaint = Paint().apply { isFilterBitmap = false; isDither = false; isAntiAlias = false }
   /** The last composite, premultiplied RGBA8, and its rect (left, top, right, bottom) in page device px. */
   var dragonQ = ByteArray(0)
@@ -655,11 +938,15 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     // A text view draws its glyph ink past its frame: the extent takes each line's ink (dragonGroupLineInks) and 2 device px of
     // antialiasing, as iOS's dragonInkFrame does.
     val inks = HashMap<DragonTextView, List<DoubleArray>>()
+    val textEdges = HashMap<DragonTextView, IntArray>()
     for (tv in texts) {
       val o = dragonLayoutOffset(tv, root)
       val lines = dragonGroupLineInks(tv, o[0].toDouble(), o[1].toDouble())
       inks[tv] = lines
-      for (e in lines) ext = intArrayOf(minOf(ext[0], e[0].toInt() - 2), minOf(ext[1], e[1].toInt() - 2), maxOf(ext[2], e[2].toInt() + 2), maxOf(ext[3], e[3].toInt() + 2))
+      var te = edgesOf(tv, 0, 0, tv.width, tv.height)
+      for (e in lines) te = intArrayOf(minOf(te[0], e[0].toInt() - 2), minOf(te[1], e[1].toInt() - 2), maxOf(te[2], e[2].toInt() + 2), maxOf(te[3], e[3].toInt() + 2))
+      textEdges[tv] = te
+      ext = intArrayOf(minOf(ext[0], te[0]), minOf(ext[1], te[1]), maxOf(ext[2], te[2]), maxOf(ext[3], te[3]))
     }
     ext = intArrayOf(maxOf(ext[0], 0), maxOf(ext[1], 0), minOf(ext[2], root.width), minOf(ext[3], root.height))
     val w = ext[2] - ext[0]
@@ -674,15 +961,19 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       invalidate()
       return
     }
+    // S2: a group holding translucent paint or a nested group has its layer built in software (softwareGroup).
+    val software = dragonGroupTranslucent(g) || needsSoftware(g)
     // The group's layer: the platform's rendering of the group's view and its subtree, this overlay skipped.
-    val layerBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    val go = dragonLayoutOffset(g, root)
-    val canvas = Canvas(layerBitmap)
-    canvas.translate((go[0] - ext[0]).toFloat(), (go[1] - ext[1]).toFloat())
-    skipping = true
-    try { g.draw(canvas) } finally { skipping = false }
-    val lp = ByteArray(w * h * 4)
-    layerBitmap.copyPixelsToBuffer(ByteBuffer.wrap(lp))
+    val lp = if (software) ByteArray(0) else ByteArray(w * h * 4)
+    if (!software) {
+      val layerBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+      val go = dragonLayoutOffset(g, root)
+      val canvas = Canvas(layerBitmap)
+      canvas.translate((go[0] - ext[0]).toFloat(), (go[1] - ext[1]).toFloat())
+      skipping = true
+      try { g.draw(canvas) } finally { skipping = false }
+      layerBitmap.copyPixelsToBuffer(ByteBuffer.wrap(lp))
+    }
     // The backdrop: the white canvas, then each painter before the group in its backdrop box, in paint order.
     val bp = ByteArray(w * h * 4) { 255.toByte() }
     fun fill(l: Int, tp: Int, r: Int, b: Int, c: DragonRGBA8) {
@@ -730,58 +1021,65 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
         }
       }
     }
-    // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
-    // each text line's ink (a DrawTextBlob, which cc never folds).
-    val draws = ArrayList<Double>()
-    for (b in boxes) {
-      if (!b.dragonVisible) continue
-      val fillsBg = b.dragonBackgroundColor.a > 0
-      val sides = (0 until 4).count { b.dragonShape.borders[it] > 0 && b.dragonBorderStyles[it] != "none" && b.dragonBorderStyles[it] != "hidden" }
-      val ops = dragonGroupBoxOps(fillsBg, sides)
-      if (ops == 0) continue
-      for (k in 0 until 4) draws.add(b.dragonShape.edges[k])
-      draws.add(if (ops == 1) 1.0 else 0.0)
-    }
-    // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
-    // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
-    for (tv in texts) {
-      if (tv.visibility != View.VISIBLE) continue
-      val o = dragonLayoutOffset(tv, root)
-      val fm = tv.paint.fontMetrics
-      val lines = tv.specs.filter { it.glyphs.isNotEmpty() }
-      for ((i, e) in (inks[tv] ?: emptyList()).withIndex()) {
-        val l = lines[i]
-        val x0 = o[0] + l.xLU / units_LU_PER_PX
-        val base = (o[1] + l.baseline).toDouble()
-        draws.add(minOf(e[0], kotlin.math.floor(x0))); draws.add(minOf(e[1], kotlin.math.floor(base + fm.ascent)))
-        draws.add(maxOf(e[2], kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX))); draws.add(maxOf(e[3], kotlin.math.ceil(base + fm.descent)))
-        draws.add(0.0)
-      }
-    }
-    val jsDraws = JsArray(draws.toMutableList())
     val tileSize = paintGroup_groupTileSize(s)
     // The root layer's tiles start at the root scroller's origin (BG2 R4).
     val originX = g.dragonShape.rootX / units_LU_PER_PX
-    val foldCache = HashMap<Long, Boolean>()
-    fun folds(x: Int, y: Int): Boolean {
-      val ix = paintGroup_groupTileIndex(x - originX, tileSize)
-      val iy = paintGroup_groupTileIndex(y.toDouble(), tileSize)
-      val key = dragonCheckedInt(ix, "group tile x").toLong() * 65536L + dragonCheckedInt(iy, "group tile y").toLong()
-      return foldCache.getOrPut(key) {
-        val sx = paintGroup_groupTileSpan(ix, tileSize)
-        val sy = paintGroup_groupTileSpan(iy, tileSize)
-        paintGroup_groupTileFolds(jsDraws, sx[0] + originX, sy[0], sx[1] + originX, sy[1])
+    val q: ByteArray
+    if (software) {
+      q = bp
+      val f = DragonGroupFrame(root, ext, w, h, tileSize, originX, textEdges)
+      softwareGroup(q, g, f, f, dragonAlpha8, if (DRAGON_ALPHA_PLANT_IGNORED) 1.0 else g.dragonOpacity, dragonMatrices)
+    } else {
+      // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
+      // each text line's ink (a DrawTextBlob, which cc never folds).
+      val draws = ArrayList<Double>()
+      for (b in boxes) {
+        if (!b.dragonVisible) continue
+        val fillsBg = b.dragonBackgroundColor.a > 0
+        val sides = (0 until 4).count { b.dragonShape.borders[it] > 0 && b.dragonBorderStyles[it] != "none" && b.dragonBorderStyles[it] != "hidden" }
+        val ops = dragonGroupBoxOps(fillsBg, sides)
+        if (ops == 0) continue
+        for (k in 0 until 4) draws.add(b.dragonShape.edges[k])
+        draws.add(if (ops == 1) 1.0 else 0.0)
       }
-    }
-    val q = ByteArray(w * h * 4)
-    val a8 = dragonAlpha8.toDouble()
-    fun u(b: Byte): Double = (b.toInt() and 0xff).toDouble()
-    for (y in 0 until h) {
-      for (x in 0 until w) {
-        val i = (y * w + x) * 4
-        val m = dragonMatrices
-        val v = (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
-        q[i] = (v and 0xffL).toByte(); q[i + 1] = ((v shr 8) and 0xffL).toByte(); q[i + 2] = ((v shr 16) and 0xffL).toByte(); q[i + 3] = ((v shr 24) and 0xffL).toByte()
+      // A text item's visual rect is its ink overflow, which always holds the fragment's run box (Blink ink_overflow.cc clamps the
+      // outsets to zero or more), so cc's rtree puts it in every tile the run box touches: the fold item is the ink with the run box.
+      for (tv in texts) {
+        if (tv.visibility != View.VISIBLE) continue
+        val o = dragonLayoutOffset(tv, root)
+        val fm = tv.paint.fontMetrics
+        val lines = tv.specs.filter { it.glyphs.isNotEmpty() }
+        for ((i, e) in (inks[tv] ?: emptyList()).withIndex()) {
+          val l = lines[i]
+          val x0 = o[0] + l.xLU / units_LU_PER_PX
+          val base = (o[1] + l.baseline).toDouble()
+          draws.add(minOf(e[0], kotlin.math.floor(x0))); draws.add(minOf(e[1], kotlin.math.floor(base + fm.ascent)))
+          draws.add(maxOf(e[2], kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX))); draws.add(maxOf(e[3], kotlin.math.ceil(base + fm.descent)))
+          draws.add(0.0)
+        }
+      }
+      val jsDraws = JsArray(draws.toMutableList())
+      val foldCache = HashMap<Long, Boolean>()
+      fun folds(x: Int, y: Int): Boolean {
+        val ix = paintGroup_groupTileIndex(x - originX, tileSize)
+        val iy = paintGroup_groupTileIndex(y.toDouble(), tileSize)
+        val key = dragonCheckedInt(ix, "group tile x").toLong() * 65536L + dragonCheckedInt(iy, "group tile y").toLong()
+        return foldCache.getOrPut(key) {
+          val sx = paintGroup_groupTileSpan(ix, tileSize)
+          val sy = paintGroup_groupTileSpan(iy, tileSize)
+          paintGroup_groupTileFolds(jsDraws, sx[0] + originX, sy[0], sx[1] + originX, sy[1])
+        }
+      }
+      q = ByteArray(w * h * 4)
+      val a8 = dragonAlpha8.toDouble()
+      fun u(b: Byte): Double = (b.toInt() and 0xff).toDouble()
+      for (y in 0 until h) {
+        for (x in 0 until w) {
+          val i = (y * w + x) * 4
+          val m = dragonMatrices
+          val v = (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
+          q[i] = (v and 0xffL).toByte(); q[i + 1] = ((v shr 8) and 0xffL).toByte(); q[i + 2] = ((v shr 16) and 0xffL).toByte(); q[i + 3] = ((v shr 24) and 0xffL).toByte()
+        }
       }
     }
     dragonQ = q
@@ -792,28 +1090,221 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     layout(dragonFrame[0], dragonFrame[1], dragonFrame[2], dragonFrame[3])
     invalidate()
   }
+
+  // ---------------------------------------------------------------- S2: the layer built in software
+
+  /** Whether a view's subtree holds a nested group or translucent paint, so the group's layer is built in software. */
+  private fun needsSoftware(v: ViewGroup): Boolean {
+    for (i in 0 until v.childCount) {
+      val c = v.getChildAt(i)
+      if (c === this) continue
+      if (c is DragonBoxView && (c.dragonNestedGroup || dragonGroupTranslucent(c))) return true
+      if (c is ViewGroup && needsSoftware(c)) return true
+    }
+    return false
+  }
+
+  /** One solid colour blitted at full coverage onto pixel i of a layer (paint-group.ts groupFill). */
+  private fun blend(buf: ByteArray, i: Int, c: DragonRGBA8, alpha: Double) {
+    fun u(b: Byte): Double = (b.toInt() and 0xff).toDouble()
+    val v = paintGroup_groupFill(u(buf[i]), u(buf[i + 1]), u(buf[i + 2]), u(buf[i + 3]), c.r.toDouble(), c.g.toDouble(), c.b.toDouble(), alpha).toLong()
+    buf[i] = (v and 0xffL).toByte(); buf[i + 1] = ((v shr 8) and 0xffL).toByte(); buf[i + 2] = ((v shr 16) and 0xffL).toByte(); buf[i + 3] = ((v shr 24) and 0xffL).toByte()
+  }
+
+  /**
+   * A box's own paint into a layer: its background over the border box, then its solid sides, each pixel once (one op of one colour:
+   * the compiler admits translucent sides only on all four sides or one, in one colour).
+   */
+  private fun softwareBox(buf: ByteArray, b: DragonBoxView, f: DragonGroupFrame) {
+    if (!b.dragonVisible) return
+    val e = IntArray(4) { dragonCheckedInt(b.dragonShape.edges[it], b.dragonId + " group edge") }
+    val bw = IntArray(4) { dragonCheckedInt(b.dragonShape.borders[it], b.dragonId + " group border") }
+    val shown = dragonGroupSides(b)
+    for (k in 0 until 4) if (shown[k] && b.dragonBorderStyles[k] != "solid") throw IllegalStateException("dragon: " + b.dragonId + ": a group border side that is not solid, which the compiler refuses")
+    val x0 = maxOf(e[0], f.ext[0]); val y0 = maxOf(e[1], f.ext[1]); val x1 = minOf(e[2], f.ext[2]); val y1 = minOf(e[3], f.ext[3])
+    val c = b.dragonBackgroundColor
+    for (y in y0 until y1) {
+      for (x in x0 until x1) {
+        val i = ((y - f.ext[1]) * f.width + (x - f.ext[0])) * 4
+        if (c.a > 0) blend(buf, i, c, c.a.toDouble())
+        val side = if (shown[0] && y < e[1] + bw[0]) 0 else if (shown[1] && x >= e[2] - bw[1]) 1 else if (shown[2] && y >= e[3] - bw[2]) 2 else if (shown[3] && x < e[0] + bw[3]) 3 else -1
+        if (side >= 0 && b.dragonBorderColors[side].a > 0) blend(buf, i, b.dragonBorderColors[side], b.dragonBorderColors[side].a.toDouble())
+      }
+    }
+  }
+
+  /**
+   * A text view drawn by the platform into a layer, over what the layer holds, as View.draw draws it in the group's render: the
+   * layer's pixels under the view's extent edges copied into one reused bitmap, drawn over at the same device position, copied back.
+   */
+  private fun softwareText(buf: ByteArray, tv: DragonTextView, f: DragonGroupFrame) {
+    val te = f.textEdges[tv] ?: throw IllegalStateException("dragon: " + tv.dragonId + ": a text view the group's extent did not reach")
+    val l = maxOf(te[0], f.ext[0]); val tp = maxOf(te[1], f.ext[1]); val r = minOf(te[2], f.ext[2]); val b = minOf(te[3], f.ext[3])
+    val cw = r - l
+    val ch = b - tp
+    if (cw <= 0 || ch <= 0) return
+    val n = cw * ch * 4
+    if (textBytes.size < n) textBytes = ByteArray(n)
+    val reuse = textBitmap
+    val bm = if (reuse != null && reuse.allocationByteCount >= n) reuse.also { it.reconfigure(cw, ch, Bitmap.Config.ARGB_8888) } else Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888).also { textBitmap = it }
+    for (y in 0 until ch) System.arraycopy(buf, ((tp - f.ext[1] + y) * f.width + (l - f.ext[0])) * 4, textBytes, y * cw * 4, cw * 4)
+    bm.copyPixelsFromBuffer(ByteBuffer.wrap(textBytes, 0, n))
+    val canvas = Canvas(bm)
+    val o = dragonLayoutOffset(tv, f.root)
+    canvas.translate((o[0] - l).toFloat(), (o[1] - tp).toFloat())
+    tv.draw(canvas)
+    bm.copyPixelsToBuffer(ByteBuffer.wrap(textBytes, 0, n))
+    for (y in 0 until ch) System.arraycopy(textBytes, y * cw * 4, buf, ((tp - f.ext[1] + y) * f.width + (l - f.ext[0])) * 4, cw * 4)
+  }
+
+  /** A view's children painted into a layer in paint order (the drawing order): boxes and their subtrees, nested groups composited. */
+  private fun softwareChildren(buf: ByteArray, v: ViewGroup, f: DragonGroupFrame) {
+    for (i in 0 until v.childCount) {
+      val c = v.getChildAt(i)
+      if (c === this || c is DragonGroupView || c.visibility != View.VISIBLE) continue
+      if (c is DragonTextView) softwareText(buf, c, f)
+      else if (c is DragonBoxView) {
+        if (c.dragonNestedGroup) nestedFrame(c, f)?.let { softwareGroup(buf, c, f, it, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else c.dragonAlpha8, if (DRAGON_ALPHA_PLANT_IGNORED) 1.0 else c.dragonOpacity, null) }
+        else {
+          softwareBox(buf, c, f)
+          softwareChildren(buf, c, f)
+        }
+      } else if (c is ViewGroup) softwareChildren(buf, c, f)
+    }
+  }
+
+  /**
+   * A group's display items for its per-tile fold (paint-group.ts groupTileFoldIndex), with each item's one colour: its painting
+   * boxes (a box of one op folds), its text lines' ink, and every item of a group nested in it, which never folds this group.
+   */
+  private fun softwareDraws(v: View, nested: Boolean, f: DragonGroupFrame, draws: ArrayList<Double>, colours: ArrayList<DragonRGBA8>) {
+    if (v is DragonBoxView && v.dragonVisible) {
+      val shown = dragonGroupSides(v)
+      val fillsBg = v.dragonBackgroundColor.a > 0
+      val ops = dragonGroupBoxOps(fillsBg, shown.count { it })
+      if (ops > 0) {
+        for (k in 0 until 4) draws.add(v.dragonShape.edges[k])
+        draws.add(if (ops == 1 && !nested) 1.0 else 0.0)
+        colours.add(if (fillsBg) v.dragonBackgroundColor else v.dragonBorderColors[maxOf(shown.indexOf(true), 0)])
+      }
+    }
+    if (v !is ViewGroup) return
+    for (i in 0 until v.childCount) {
+      val c = v.getChildAt(i)
+      if (c === this || c is DragonGroupView || c.visibility != View.VISIBLE) continue
+      if (c is DragonTextView) {
+        // The fold item is the line's ink with its run box, as the group's own fold counts it.
+        val o = dragonLayoutOffset(c, f.root)
+        val fm = c.paint.fontMetrics
+        val lines = c.specs.filter { it.glyphs.isNotEmpty() }
+        for ((n, e) in dragonGroupLineInks(c, o[0].toDouble(), o[1].toDouble()).withIndex()) {
+          val l = lines[n]
+          val x0 = o[0] + l.xLU / units_LU_PER_PX
+          val base = (o[1] + l.baseline).toDouble()
+          draws.add(minOf(e[0], kotlin.math.floor(x0))); draws.add(minOf(e[1], kotlin.math.floor(base + fm.ascent)))
+          draws.add(maxOf(e[2], kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX))); draws.add(maxOf(e[3], kotlin.math.ceil(base + fm.descent)))
+          draws.add(0.0)
+          colours.add(c.dragonColor)
+        }
+      } else softwareDraws(c, nested || (c is DragonBoxView && c.dragonNestedGroup), f, draws, colours)
+    }
+  }
+
+  /**
+   * The frame of nested group b's layer inside f: b's box and every view inside it (a text view's extent edges), as the group's own
+   * extent is grown, clamped to f; null when empty. Outside it b's layer is clear, and a clear layer pixel leaves dst as it is.
+   */
+  private fun nestedFrame(b: DragonBoxView, f: DragonGroupFrame): DragonGroupFrame? {
+    fun edgesOf(v: View): IntArray {
+      val o = dragonLayoutOffset(v, f.root)
+      return intArrayOf(o[0], o[1], o[0] + v.width, o[1] + v.height)
+    }
+    var e = edgesOf(b)
+    fun grow(v: ViewGroup) {
+      for (i in 0 until v.childCount) {
+        val c = v.getChildAt(i)
+        if (c === this) continue
+        val r = if (c is DragonTextView) f.textEdges[c] ?: throw IllegalStateException("dragon: " + b.dragonId + ": a text view the group's extent did not reach") else edgesOf(c)
+        e = intArrayOf(minOf(e[0], r[0]), minOf(e[1], r[1]), maxOf(e[2], r[2]), maxOf(e[3], r[3]))
+        if (c is ViewGroup) grow(c)
+      }
+    }
+    grow(b)
+    e = intArrayOf(maxOf(e[0], f.ext[0]), maxOf(e[1], f.ext[1]), minOf(e[2], f.ext[2]), minOf(e[3], f.ext[3]))
+    if (e[2] <= e[0] || e[3] <= e[1]) return null
+    return DragonGroupFrame(f.root, e, e[2] - e[0], e[3] - e[1], f.tileSize, f.originX, f.textEdges)
+  }
+
+  /**
+   * Group b composited onto dst (premultiplied RGBA8 over f's extent) as Chrome's raster does: its layer built over lf's extent
+   * (inside f's) from its draw list, then, per cc raster tile, its one op drawn at the folded alpha (groupFoldAlpha, groupFill) or the
+   * layer blitted at its alpha byte (groupComposite); with a colour-matrix filter, the filter and then the alpha
+   * (groupFilterComposite), never folded.
+   */
+  private fun softwareGroup(dst: ByteArray, b: DragonBoxView, f: DragonGroupFrame, lf: DragonGroupFrame, alpha8: Int, opacity: Double, matrices: JsArray<Double>?) {
+    val l = ByteArray(lf.width * lf.height * 4)
+    softwareBox(l, b, lf)
+    softwareChildren(l, b, lf)
+    val draws = ArrayList<Double>()
+    val colours = ArrayList<DragonRGBA8>()
+    softwareDraws(b, false, lf, draws, colours)
+    val jsDraws = JsArray(draws.toMutableList())
+    val foldCache = HashMap<Long, Int>()
+    fun foldIndex(x: Int, y: Int): Int {
+      val ix = paintGroup_groupTileIndex(x - f.originX, f.tileSize)
+      val iy = paintGroup_groupTileIndex(y.toDouble(), f.tileSize)
+      val key = dragonCheckedInt(ix, "group tile x").toLong() * 65536L + dragonCheckedInt(iy, "group tile y").toLong()
+      return foldCache.getOrPut(key) {
+        val sx = paintGroup_groupTileSpan(ix, f.tileSize)
+        val sy = paintGroup_groupTileSpan(iy, f.tileSize)
+        dragonCheckedInt(paintGroup_groupTileFoldIndex(jsDraws, sx[0] + f.originX, sy[0], sx[1] + f.originX, sy[1]), "group fold item")
+      }
+    }
+    val a8 = alpha8.toDouble()
+    fun u(x: Byte): Double = (x.toInt() and 0xff).toDouble()
+    for (y in 0 until lf.height) {
+      for (x in 0 until lf.width) {
+        val i = (y * lf.width + x) * 4
+        val j = ((lf.ext[1] - f.ext[1] + y) * f.width + (lf.ext[0] - f.ext[0] + x)) * 4
+        val v: Long
+        if (matrices != null) v = paintGroup_groupFilterComposite(u(l[i]), u(l[i + 1]), u(l[i + 2]), u(l[i + 3]), u(dst[j]), u(dst[j + 1]), u(dst[j + 2]), u(dst[j + 3]), matrices, a8).toLong()
+        else {
+          val k = foldIndex(lf.ext[0] + x, lf.ext[1] + y)
+          if (k >= 0) {
+            // The tile's one op: where the layer is clear it drew nothing.
+            if (l[i + 3].toInt() == 0) continue
+            val c = colours[k]
+            v = paintGroup_groupFill(u(dst[j]), u(dst[j + 1]), u(dst[j + 2]), u(dst[j + 3]), c.r.toDouble(), c.g.toDouble(), c.b.toDouble(), paintGroup_groupFoldAlpha(c.a.toDouble(), opacity)).toLong()
+          } else v = paintGroup_groupComposite(u(l[i]), u(l[i + 1]), u(l[i + 2]), u(l[i + 3]), u(dst[j]), u(dst[j + 1]), u(dst[j + 2]), u(dst[j + 3]), a8, false).toLong()
+        }
+        dst[j] = (v and 0xffL).toByte(); dst[j + 1] = ((v shr 8) and 0xffL).toByte(); dst[j + 2] = ((v shr 16) and 0xffL).toByte(); dst[j + 3] = ((v shr 24) and 0xffL).toByte()
+      }
+    }
+  }
 }
 `;
 
 const strList = (lang: 'swift' | 'kotlin', xs: readonly string[]): string => (lang === 'swift' ? `[${xs.map((x) => nativeString('swift', x)).join(', ')}]` : `listOf<String>(${xs.map((x) => nativeString('kotlin', x)).join(', ')})`);
 const optStr = (lang: 'swift' | 'kotlin', x: string | null): string => (x === null ? (lang === 'swift' ? 'nil' : 'null') : nativeString(lang, x));
 
-const lineOf = (lang: 'swift' | 'kotlin', v: string, w: { readonly kind: 'opacity'; readonly opacity: number } | { readonly kind: 'opacity-group'; readonly opacity: number; readonly backdrop: string | null; readonly painters: readonly string[] } | { readonly kind: 'filter-group'; readonly opacity: number; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[] }): string => {
+const lineOf = (lang: 'swift' | 'kotlin', v: string, w: EffectsWrite): string => {
   if (w.kind === 'opacity') return `  dragonSetOpacity(${v}, ${opacityLit(w.opacity)})`;
+  if (w.kind === 'opacity-nested') return `  dragonSetNestedGroup(${v}, ${opacityLit(w.opacity)})`;
   if (w.kind === 'opacity-group') return `  dragonSetOpacityGroup(t, ${v}, ${opacityLit(w.opacity)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)})`;
   return `  dragonSetFilterGroup(t, ${v}, ${w.opacity === 1 ? '1.0' : opacityLit(w.opacity)}, ${pairsLit(lang, w.filter)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)})`;
 };
 
-export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter-group', 'alpha-ignored'> = {
+export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter-group' | 'opacity-nested', 'alpha-ignored'> = {
   name: 'effects',
-  kinds: ['opacity', 'opacity-group', 'filter-group'],
+  kinds: ['opacity', 'opacity-group', 'filter-group', 'opacity-nested'],
   lines: {
     uikit: (v, _n, w) => [lineOf('swift', v, w)],
     'android-views': (v, _n, w) => [lineOf('kotlin', v, w)],
   },
   // Both read back a float32: UIView.alpha is backed by CALayer.opacity (a Float), and Android's View alpha is a Float. A group
-  // reads back its live alpha (1), its alpha byte and its backdrop box; a filter group then its filter's (code, amount) pairs.
-  applied: (e, _b, w) => (w.kind === 'opacity' ? e.float32(e.opacityAlpha8(w.opacity) / 255) : w.kind === 'opacity-group' ? [1, e.opacityAlpha8(w.opacity), w.backdrop] : [1, e.opacityAlpha8(w.opacity), w.backdrop, ...filterPairs(w.filter)]),
+  // reads back its live alpha (1), its alpha byte and its backdrop box; a filter group then its filter's (code, amount) pairs; a
+  // nested group its live alpha (1) and its alpha byte.
+  applied: (e, _b, w) => (w.kind === 'opacity' ? e.float32(e.opacityAlpha8(w.opacity) / 255) : w.kind === 'opacity-nested' ? [1, e.opacityAlpha8(w.opacity)] : w.kind === 'opacity-group' ? [1, e.opacityAlpha8(w.opacity), w.backdrop] : [1, e.opacityAlpha8(w.opacity), w.backdrop, ...filterPairs(w.filter)]),
   native: {
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, applied: 'dragonAppliedEffects' },
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, afterLayout: 'dragonAfterLayoutEffects', applied: 'dragonAppliedEffects' },

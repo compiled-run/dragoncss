@@ -86,16 +86,19 @@ export function groupTileSpan(i: number, tileSize: number): number[] {
 }
 
 /**
- * Whether cc folds a group's alpha into its drawing in a tile: draws holds the group's display items as flat groups of five
- * (left, top, right, bottom in device px, then 1 for an item of one draw op cc folds, or 0 for anything else: a box with a
- * background and a border, a text run, whose DrawTextBlob cc never folds). The group folds when exactly one item meets the tile
- * and it folds. A box's one op is its background alone, its border alone when all four sides are solid in one colour (Blink
- * box_border_painter.cc:261-279, 1255-1278: one stroked rect or FillDRRect), or a lone solid side (one FillRect, :841-866).
+ * The item cc folds a group's alpha into in a tile, or -1 when the group is a layer there: draws holds the group's display items as
+ * flat groups of five (left, top, right, bottom in device px, then 1 for an item of one draw op cc folds, or 0 for anything else: a
+ * box with a background and a border, a text run, whose DrawTextBlob cc never folds, or a box of a group nested in it, whose
+ * SaveLayerAlpha follows the group's own, so cc folds the inner group and never the outer: cc/paint/paint_op_buffer_iterator.cc:96-146).
+ * The group folds when exactly one item meets the tile and it folds; the result is that item's index (its first number / 5). A box's
+ * one op is its background alone, its border alone when all four sides are solid in one colour (Blink box_border_painter.cc:261-279,
+ * 1255-1278: one stroked rect or FillDRRect), or a lone solid side (one FillRect, :841-866).
  */
-export function groupTileFolds(draws: readonly number[], tileLeft: number, tileTop: number, tileRight: number, tileBottom: number): boolean {
+export function groupTileFoldIndex(draws: readonly number[], tileLeft: number, tileTop: number, tileRight: number, tileBottom: number): number {
   if (draws.length - 5 * floorOf(draws.length / 5) !== 0) throw new Error(`paint-group: draws hold ${draws.length} numbers, not groups of five`);
   let met = 0;
   let foldable = false;
+  let index = -1;
   for (let k = 0; k < draws.length; k += 5) {
     const l = at(draws, k);
     const t = at(draws, k + 1);
@@ -104,8 +107,41 @@ export function groupTileFolds(draws: readonly number[], tileLeft: number, tileT
     if (!(l < tileRight && r > tileLeft && t < tileBottom && b > tileTop)) continue;
     met += 1;
     foldable = at(draws, k + 4) === 1;
+    index = floorOf(k / 5);
   }
-  return met === 1 && foldable;
+  return met === 1 && foldable ? index : -1;
+}
+
+/** Whether cc folds a group's alpha into its drawing in a tile (groupTileFoldIndex finds an item). */
+export function groupTileFolds(draws: readonly number[], tileLeft: number, tileTop: number, tileRight: number, tileBottom: number): boolean {
+  return groupTileFoldIndex(draws, tileLeft, tileTop, tileRight, tileBottom) >= 0;
+}
+
+// ---------------------------------------------------------------- a group's layer built in software (PNT1-opacity-b, S2)
+// A group holding translucent paint or a nested group has its layer built by the device from its draw list, as Chrome's CPU raster
+// draws into a layer: a solid colour of alpha ca is premultiplied and blitted with blit_row_color32 at full coverage (Skia 2ab8add5
+// src/core/SkBlitter_ARGB32.cpp:1450-1456 SkARGB32_Blitter, 1463-1468 blitH, src/opts/SkBlitRow_opts.h:243-270), over whatever the
+// layer holds, whose alpha may be below 255; a nested group composites into its parent's layer as groupComposite does over the
+// backdrop. A folded op takes the colour's alpha times the group's (cc/paint/scoped_raster_flags.h:47-50, in float), which the
+// blitter rounds to its byte (src/core/SkColor.cpp:142-144 toSkColor, src/core/SkSwizzlePriv.h:53-60 Sk4f_toL32). Pinned against
+// Chrome's pixels by packages/parity/test/pnt1-effects.test.ts.
+
+/** The alpha byte cc's fold gives a draw of colour alpha byte ca in a group of the given opacity: (ca / 255) * opacity in float. */
+export function groupFoldAlpha(ca: number, opacity: number): number {
+  if (!(ca >= 0 && ca <= 255)) throw new Error(`paint-group: colour alpha ${ca} is not a byte`);
+  const o = froundOf(opacity < 0 ? 0 : opacity > 1 ? 1 : opacity);
+  const a = froundOf(froundOf(ca / 255) * o);
+  return floorOf(froundOf(froundOf(a * 255) + 0.5));
+}
+
+/** A solid colour (unpremultiplied cr, cg, cb with alpha byte ca) blitted at full coverage over the premultiplied pixel d. */
+export function groupFill(dr: number, dg: number, db: number, da: number, cr: number, cg: number, cb: number, ca: number): number {
+  if (ca <= 0) return groupPack(dr, dg, db, da);
+  const sr = mulDiv255Round(cr, ca);
+  const sg = mulDiv255Round(cg, ca);
+  const sb = mulDiv255Round(cb, ca);
+  if (ca >= 255) return groupPack(sr, sg, sb, 255);
+  return groupPack(color32Channel(dr, sr, ca), color32Channel(dg, sg, ca), color32Channel(db, sb, ca), color32Channel(da, ca, ca));
 }
 
 // ---------------------------------------------------------------- colour-matrix filters (PNT1-filter)

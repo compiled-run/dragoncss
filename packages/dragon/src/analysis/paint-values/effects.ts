@@ -88,7 +88,7 @@ function checkOpacity(el: ResolvedElement, plan: GroupPlan | null, targets: read
   const v = el.props.get('opacity') as ResolvedValue;
   const n = opacityOf(v.value);
   if (n === null) throw new Error(`${el.element.address}: opacity did not compute to a number`);
-  if (n === 0 || n === 1 || opacityFolds(el) || plan?.kind === 'group') return;
+  if (n === 0 || n === 1 || plan?.kind === 'group' || plan?.kind === 'nested' || (plan === null && opacityFolds(el))) return;
   const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
   for (const t of targets) {
     if (t === 'web') continue;
@@ -98,8 +98,8 @@ function checkOpacity(el: ResolvedElement, plan: GroupPlan | null, targets: read
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `${el.element.address} has opacity ${n}; ${t} composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: ${plan === null ? 'it is not a group' : plan.reason}`,
-      manual: 'Use opacity 0 or 1, keep the group to opaque square fills, solid borders and opaque text over opaque square fills, or use a translucent colour (rgba) instead.',
+      message: `${el.element.address} has opacity ${n}; ${t} composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: ${plan === null ? 'it is not a group' : plan.kind === 'refused' ? plan.reason : 'it is a group'}`,
+      manual: 'Use opacity 0 or 1, keep the group to square fills, solid borders (translucent ones on all four sides or one) and opaque text over opaque square fills, or use a translucent colour (rgba) instead.',
       basis: 'computed-value',
     }));
   }
@@ -116,6 +116,7 @@ function matrixFilterOf(el: ResolvedElement): readonly FilterFunction[] | null {
 function checkFilterGroup(el: ResolvedElement, plan: GroupPlan | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const fns = matrixFilterOf(el);
   if (fns === null || fns.length === 0 || opacityAt(el) <= 0 || plan?.kind === 'group') return;
+  const reason = plan === null ? 'it is not a group' : plan.kind === 'refused' ? plan.reason : 'it is a group nested in another, which Dragon draws only without a filter';
   const v = el.props.get('filter') as ResolvedValue;
   const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
   for (const t of targets) {
@@ -126,8 +127,8 @@ function checkFilterGroup(el: ResolvedElement, plan: GroupPlan | null, targets: 
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `${el.element.address} has filter: ${fns.map((f) => `${f.name}(${f.amount})`).join(' ')}; ${t} has no filter that rounds as Chrome's Skia pipeline does, so Dragon draws a colour-matrix filter only on a group it pre-composites (PNT1-filter), and this one is not: ${plan === null ? 'it is not a group' : plan.reason}`,
-      manual: 'Remove the filter, or keep the filtered box to opaque square fills, solid borders and opaque text over opaque square fills.',
+      message: `${el.element.address} has filter: ${fns.map((f) => `${f.name}(${f.amount})`).join(' ')}; ${t} has no filter that rounds as Chrome's Skia pipeline does, so Dragon draws a colour-matrix filter only on a group it pre-composites (PNT1-filter), and this one is not: ${reason}`,
+      manual: 'Remove the filter, or keep the filtered box to square fills, solid borders and opaque text over opaque square fills, outside any other group.',
       basis: 'computed-value',
     }));
   }
@@ -141,11 +142,29 @@ function checkFilterGroup(el: ResolvedElement, plan: GroupPlan | null, targets: 
 // such group. G's own content must be what the platform renders exactly at whole device px: square opaque fills and solid
 // opaque borders, and opaque text, with nothing that composites, moves or animates. PNT1-filter: G may instead (or as well) have a
 // colour-matrix filter, which the overlay applies to G's layer before its opacity (layout paint-group.ts groupFilterComposite).
+// S2: G's content may also hold translucent square fills, translucent solid borders on all four sides in one colour or on one side,
+// and nested groups (a fractional opacity, no filter) of the same content. The device then builds G's layer in software from the
+// draw list, as Chrome's raster draws into a layer (paint-group.ts groupFill, groupFoldAlpha, groupComposite into the parent's
+// layer), with only the text drawn by the platform into it. Measured equal to Chrome 145 on random nested trees of such boxes.
+// Translucent text stays refused: the platform blends a translucent glyph with its own rounding, and the device has no software
+// text blit to replace it. Translucent borders on two or three sides are refused: Chrome draws them otherwise (measured one off).
 
-/** An admitted group: its colour-matrix filter (empty for none), its backdrop box (null for the canvas) and the painters before it there, in paint order; or why not. */
+/**
+ * An admitted group: its colour-matrix filter (empty for none), its backdrop box (null for the canvas) and the painters before it
+ * there, in paint order; a group nested in an admitted group (its outer group's overlay composites it); or why not.
+ */
 export type GroupPlan =
   | { readonly kind: 'group'; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[] }
+  | { readonly kind: 'nested'; readonly outer: string }
   | { readonly kind: 'refused'; readonly reason: string };
+
+/** The plans opacityGroupPlans made, by element: the lowering reads whether a box is a nested group (lower/paint/background.ts). */
+const planByElement = new WeakMap<ResolvedElement, GroupPlan>();
+
+/** The plan of an element of a tree whose plans were made (opacityGroupPlans), or null. */
+export function groupPlanAt(el: ResolvedElement): GroupPlan | null {
+  return planByElement.get(el) ?? null;
+}
 
 const GROUP_KEYWORDS = FOLD_KEYWORDS.filter(([p]) => p !== 'position' && p !== 'overflow-x' && p !== 'overflow-y');
 const keywordAt = (el: ResolvedElement, p: string): string | null => {
@@ -186,9 +205,10 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   if (rounds(el)) return `${a} has a border radius`;
   const colors = usedColors(el);
   const bg = colors['background-color'].alpha;
-  if (bg !== 0 && bg !== 255) return `${a} has a translucent background`;
+  if (bg !== 0 && bg !== 255 && !content) return `${a} has a translucent background`;
   if (canvasTag && bg !== 0) return `${a} has a background, which Chrome paints on the canvas`;
   const sides: string[] = [];
+  let translucent = false;
   for (const side of SIDES) {
     const style = keywordAt(el, `border-${side}-style`);
     if (style === null || style === 'none' || style === 'hidden') continue;
@@ -197,10 +217,16 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
     if (w.value === 0) continue;
     if (style !== 'solid') return `${a} has a ${style} border`;
     const c = colors[`border-${side}-color` as 'border-top-color'];
-    if (c.alpha !== 255) return `${a} has a border side that is not opaque`;
-    sides.push(`${c.r},${c.g},${c.b}`);
+    if (c.alpha !== 255) {
+      // Blink still records a transparent side's box as a display item, which the fold count would miss (measured).
+      if (!content || c.alpha === 0) return `${a} has a border side that is not opaque`;
+      translucent = true;
+    }
+    sides.push(`${c.r},${c.g},${c.b},${c.alpha}`);
   }
   if (new Set(sides).size > 1) return `${a} has border sides in more than one colour, which meet on a diagonal`;
+  // Chrome draws translucent sides in one colour as one op on all four sides or one, and otherwise differently (measured).
+  if (translucent && sides.length !== 4 && sides.length !== 1) return `${a} has a translucent border on ${sides.length} sides, which Chrome draws otherwise than four sides or one`;
   if (canvasTag && sides.length > 0) return `${a} has a border`;
   return null;
 }
@@ -260,7 +286,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     for (const m of members) {
       const bad = boxProblem(m, m === g ? 'group' : 'member');
       if (bad !== null) return refused(bad);
-      if (m !== g && opacityAt(m) < 1) return refused(`${m.element.address} inside it has opacity ${opacityAt(m)}, a nested group`);
+      if (m !== g && opacityAt(m) <= 0) return refused(`${m.element.address} inside it has opacity 0`);
       if (m.children.some((c) => c.kind === 'text')) {
         const t = textProblem(m);
         if (t !== null) return refused(t);
@@ -312,13 +338,24 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     const el = byId.get(id);
     if (el === undefined) continue;
     const o = opacityAt(el);
+    // A fractional opacity inside an admitted group, which admitted it as content: its outer group's overlay composites it.
+    const outer = ancestors(el).find((a) => plans.get(a.element.address)?.kind === 'group');
+    if (outer !== undefined && o > 0 && o < 1) {
+      plans.set(id, { kind: 'nested', outer: outer.element.address });
+      continue;
+    }
     // A filter list Dragon does not draw is refused by checkFilter; its box is no group.
     const filter = matrixFilterOf(el);
     if (o <= 0 || filter === null) continue;
-    // A box that folds (it has no filter) is a folded fill (lower/paint/background.ts), never a group: Chrome draws it as one colour
-    // blit in every tile, which the folded fill draws over the box's real backdrop, so no overlay is planned for it (nor taken as a painter).
+    // Outside an admitted group, a box that folds (it has no filter) is a folded fill (lower/paint/background.ts), never a group:
+    // Chrome draws it as one colour blit in every tile, which the folded fill draws over its backdrop, so no overlay is planned for it
+    // (nor taken as a painter). Inside one it is nested (above): its draw lands in the outer layer, which the overlay composites.
     if (filter.length === 0 && (o >= 1 || opacityFolds(el))) continue;
     plans.set(id, elementWillChange(el).includes('opacity') ? { kind: 'refused', reason: 'it has will-change: opacity, a compositor layer' } : planOf(el, filter));
+  }
+  for (const [id, plan] of plans) {
+    const el = byId.get(id);
+    if (el !== undefined) planByElement.set(el, plan);
   }
   groupPlansOf.set(root, plans);
   return plans;

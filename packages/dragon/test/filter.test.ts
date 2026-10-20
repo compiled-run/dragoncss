@@ -94,9 +94,8 @@ describe('filter', () => {
     };
     const why = (target: string, reason: string): string => `${target} a has filter: grayscale(1); ${target} has no filter that rounds as Chrome's Skia pipeline does, so Dragon draws a colour-matrix filter only on a group it pre-composites (PNT1-filter), and this one is not: ${reason}`;
     expect(native('.s { filter: grayscale(1); border-radius: 2px; }')).toEqual([why('ios', 'a has a border radius'), why('android', 'a has a border radius')]);
-    // The nested opacity box is refused too, as inside a filtered box; keep only a's messages here.
-    const own = (ms: string[]): string[] => ms.filter((m) => / a has filter: /.test(m));
-    expect(own(native('.s { filter: grayscale(1); } .k { opacity: 0.5; }'))).toEqual([why('ios', 'b inside it has opacity 0.5, a nested group'), why('android', 'b inside it has opacity 0.5, a nested group')]);
+    // S2: a nested opacity group inside a filtered group is admitted (the layer is built in software, then filtered; measured).
+    expect(native('.s { filter: grayscale(1); } .k { opacity: 0.5; }')).toEqual([]);
     expect(native('.s { filter: grayscale(1); } .k { text-shadow: 1px 1px rgb(0, 0, 0); }')).toEqual([why('ios', 'the text of b has a text-shadow'), why('android', 'the text of b has a text-shadow')]);
     // A filtered box inside a filtered group: the inner one is a member with a filter, and inside a box with a filter.
     const nested = native('.s { filter: grayscale(1); } .k { filter: invert(1); }');

@@ -11,7 +11,7 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { groupComposite, groupFilterComposite, groupFilterMatrices, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
 import { filterPairs } from '../../dragon/src/emit/paint/effects.ts';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
@@ -60,6 +60,17 @@ describe('Chrome 145 composites opacity with Skia\'s getAlpha byte and the Color
     expect([0, 0.3, 0.5, 0.9, 1, 1.5, -1].map(opacityAlpha8)).toEqual([0, 77, 128, 230, 255, 255, 0]);
     expect(opacityAlpha8(0.872549)).toBe(223);
     expect(opacityAlpha8(0.817647)).toBe(208);
+  });
+  it('a clear layer pixel leaves dst unchanged at every alpha byte, so a nested layer is built over its own extent only', () => {
+    for (let a8 = 0; a8 <= 255; a8++) {
+      for (let d = 0; d <= 255; d++) {
+        const da = 255 - ((d * 37) % 256);
+        const pack = d + d * 256 + d * 65536 + da * 16777216;
+        expect(groupComposite(0, 0, 0, 0, d, d, d, da, a8, false)).toBe(pack);
+        expect(groupComposite(0, 0, 0, 0, d, d, d, da, a8, true)).toBe(pack);
+        expect(s32aBlend([d, d, d, da], [0, 0, 0, 0], a8)).toEqual([d, d, d, da]);
+      }
+    }
   });
   it('the blits give the bytes the capture shows', () => {
     expect(color32([200, 40, 90, 255], { r: 10, g: 220, b: 130 }, opacityAlpha8(0.01))).toEqual([197, 42, 90, 255]);
@@ -115,7 +126,7 @@ type Stacking = { paintOrder: number; clipChain: readonly string[] };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
   | { readonly kind: 'text'; readonly node: ProgramNode; readonly glyphs: readonly { left: number; top: number; right: number; bottom: number }[] }
-  | { readonly kind: 'group'; readonly box: Box; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly items: readonly Item[] };
+  | { readonly kind: 'group'; readonly box: Box; readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly items: readonly Item[] };
 
 const stackingOf = (n: ProgramNode): Stacking => {
   const s = n.facts['stacking'] as Stacking | undefined;
@@ -164,7 +175,7 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
       if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
       const filter = effects.filter ?? [];
       const matrices = filter.length === 0 ? null : groupFilterMatrices(faults.filterIgnored ? [] : filterPairs(filter));
-      out.push({ kind: 'group', box: byId.get(n.id) as Box, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
+      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
       k += members.length - 1;
     }
     return out;
@@ -234,7 +245,7 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
     if (c === undefined || c.kind !== 'text-color') throw new Error(`${it.node.id}: no text colour`);
     return color32(dst, c.color, c.color.alpha);
   }
-  if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, 255);
+  if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, null);
   if (it.alpha8 === 0) return dst;
   // A filtered group is a layer drawn through the filter's colour matrices, then composited at its alpha; it never folds
   // (paint-group.ts groupFilterComposite, measured against Chrome 145).
@@ -246,21 +257,22 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
   // The group's one drawing in this tile, when it is a background rect, takes the alpha itself (cc folds the layer into it).
   const content = tileItems(it.items, tile);
   const only = content.direct[0];
-  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, cx, cy, byId, it.alpha8);
+  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, cx, cy, byId, it.opacity);
   let layer: Px = [0, 0, 0, 0];
   for (const inner of it.items) layer = paintItem(layer, inner, x, y, tile, byId);
   return s32aBlend(dst, layer, it.alpha8);
 }
 
-/** A box's background and solid border sides at a pixel centre, the box's one op at a folded alpha when alpha is below 255. */
-function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, alpha: number): Px {
+/**
+ * A box's background and solid border sides at a pixel centre; with fold, the opacity of the group folded into the box's one op,
+ * which takes the colour's alpha times it in float (cc ScopedRasterFlags, measured: groupFoldAlpha).
+ */
+function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, fold: number | null): Px {
   if (clippedOut(b.node, byId, cx, cy) || !inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
   let out = dst;
   const bg = b.node.writes.find((w) => w.kind === 'background-color');
   if (bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0) {
-    // A folded translucent colour would take Skia's float alpha product, which the fixtures do not use.
-    if (alpha !== 255 && bg.color.alpha !== 255) throw new Error(`${b.node.id}: the model folds opaque backgrounds only`);
-    out = color32(out, bg.color, alpha === 255 ? bg.color.alpha : alpha);
+    out = color32(out, bg.color, fold === null ? bg.color.alpha : groupFoldAlpha(bg.color.alpha, fold));
   }
   const [bt, br, bb, bl] = b.border as [number, number, number, number];
   if (inside(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb)) return out;
@@ -270,9 +282,8 @@ function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<str
   const side = cy < b.t + bt ? 0 : cy >= b.b - bb ? 2 : cx < b.l + bl ? 3 : 1;
   if (styles.styles[side] !== 'solid') throw new Error(`${b.node.id}: the model paints solid borders only`);
   const c = colours.colors[side] as { r: number; g: number; b: number; alpha: number };
-  // A folded border is the box's one op (boxOps): its opaque colour at the group's alpha.
-  if (alpha !== 255 && c.alpha !== 255) throw new Error(`${b.node.id}: the model folds opaque borders only`);
-  return color32(out, c, alpha === 255 ? c.alpha : alpha);
+  // A folded border is the box's one op (boxOps): its colour at the folded alpha.
+  return color32(out, c, fold === null ? c.alpha : groupFoldAlpha(c.alpha, fold));
 }
 
 /** The model's colour at the centre of pixel (x, y). */
@@ -288,14 +299,14 @@ export function effectsModelAt(items: readonly Item[], byId: ReadonlyMap<string,
 
 // ---------------------------------------------------------------- the device's group composite (PNT1-opacity-b)
 
-type GroupPlan = { readonly alpha8: number; readonly matrices: readonly number[] | null; readonly painters: readonly string[] };
+type GroupPlan = { readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly painters: readonly string[] };
 
 /** The plan of a node the compiler pre-composites (an opacity-group or filter-group write), or null. */
 function groupPlanOf(n: ProgramNode): GroupPlan | null {
   for (const w of n.writes) {
-    if (w.kind === 'opacity-group') return { alpha8: opacityAlpha8(w.opacity), matrices: null, painters: w.painters };
+    if (w.kind === 'opacity-group') return { opacity: w.opacity, alpha8: opacityAlpha8(w.opacity), matrices: null, painters: w.painters };
     // The matrices the device builds from the emitted (code, amount) pairs (EFFECTS_EMITTER, DragonGroupView).
-    if (w.kind === 'filter-group') return { alpha8: opacityAlpha8(w.opacity), matrices: groupFilterMatrices(filterPairs(w.filter)), painters: w.painters };
+    if (w.kind === 'filter-group') return { opacity: w.opacity, alpha8: opacityAlpha8(w.opacity), matrices: groupFilterMatrices(filterPairs(w.filter)), painters: w.painters };
   }
   return null;
 }
@@ -338,16 +349,89 @@ function backdropBox(dst: Px, b: Box, cx: number, cy: number): Px {
   return c === null ? out : [c.r, c.g, c.b, 255];
 }
 
-/** The display items the device counts for the per-tile fold: each painting box (a lone fill folds) and each glyph. */
-function groupDraws(items: readonly Item[]): number[] {
+type Rgba = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
+
+/** A box's background colour, transparent for none. */
+const bgOf = (b: Box): Rgba => {
+  const w = b.node.writes.find((x) => x.kind === 'background-color');
+  return w !== undefined && w.kind === 'background-color' ? w.color : { r: 0, g: 0, b: 0, alpha: 0 };
+};
+
+/** A box's shown border sides (a width and a drawn style) and their colours, top, right, bottom, left. */
+function sidesOf(b: Box): { readonly shown: readonly boolean[]; readonly colours: readonly Rgba[] } {
+  const styles = b.node.writes.find((w) => w.kind === 'border-styles');
+  const colours = b.node.writes.find((w) => w.kind === 'border-colors');
+  const shown = [0, 1, 2, 3].map((k) => styles !== undefined && styles.kind === 'border-styles' && styles.styles[k] !== 'none' && styles.styles[k] !== 'hidden' && (b.border[k] as number) > 0);
+  return { shown, colours: [0, 1, 2, 3].map((k) => (colours !== undefined && colours.kind === 'border-colors' ? (colours.colors[k] as Rgba) : { r: 0, g: 0, b: 0, alpha: 0 })) };
+}
+
+/**
+ * The display items the device counts for the per-tile fold and each item's one colour: each painting box (a lone op folds), each
+ * glyph, and every item of a nested group, which never folds the group it is in (DragonGroupView.dragonSoftwareDraws).
+ */
+function groupDraws(items: readonly Item[], nested = false, colours: Rgba[] = []): number[] {
   return items.flatMap((it) => {
     if (it.kind === 'box') {
       const ops = boxOps(it.box);
-      return ops.count === 0 ? [] : [it.box.l, it.box.t, it.box.r, it.box.b, ops.foldable ? 1 : 0];
+      if (ops.count === 0) return [];
+      const bg = bgOf(it.box);
+      const sides = sidesOf(it.box);
+      colours.push(bg.alpha > 0 ? bg : (sides.colours[Math.max(sides.shown.indexOf(true), 0)] as Rgba));
+      return [it.box.l, it.box.t, it.box.r, it.box.b, ops.foldable && !nested ? 1 : 0];
     }
-    if (it.kind === 'text') return it.glyphs.flatMap((g) => [Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom), 0]);
-    return groupDraws(it.items);
+    if (it.kind === 'text') {
+      const c = it.node.writes.find((w) => w.kind === 'text-color');
+      for (const _ of it.glyphs) colours.push(c !== undefined && c.kind === 'text-color' ? c.color : { r: 0, g: 0, b: 0, alpha: 0 });
+      return it.glyphs.flatMap((g) => [Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom), 0]);
+    }
+    return groupDraws(it.items, true, colours);
   });
+}
+
+/** Whether a box paints a translucent colour (DragonGroupView's dragonGroupTranslucent). */
+function translucentBox(b: Box): boolean {
+  const bg = bgOf(b).alpha;
+  const sides = sidesOf(b);
+  return (bg > 0 && bg < 255) || [0, 1, 2, 3].some((k) => sides.shown[k] && (sides.colours[k] as Rgba).alpha > 0 && (sides.colours[k] as Rgba).alpha < 255);
+}
+
+/** Whether the device builds a group's layer in software: translucent paint or a nested group in it (dragonNeedsSoftware). */
+const softwareGroup = (items: readonly Item[]): boolean => items.some((it) => it.kind === 'group' || (it.kind === 'box' && translucentBox(it.box)));
+
+/** A box's own paint as the device's software layer draws it: its background over the box, then one side's colour, each with groupFill. */
+function softwareBox(dst: Px, b: Box, x: number, y: number): Px {
+  if (!(x >= b.l && x < b.r && y >= b.t && y < b.b) || b.node.writes.some((w) => w.kind === 'visibility')) return dst;
+  let out = dst;
+  const bg = bgOf(b);
+  if (bg.alpha > 0) out = unpack(groupFill(out[0], out[1], out[2], out[3], bg.r, bg.g, bg.b, bg.alpha));
+  const { shown, colours } = sidesOf(b);
+  const [bt, br, bb, bl] = b.border as [number, number, number, number];
+  const side = shown[0] && y < b.t + bt ? 0 : shown[1] && x >= b.r - br ? 1 : shown[2] && y >= b.b - bb ? 2 : shown[3] && x < b.l + bl ? 3 : -1;
+  const c = colours[side];
+  return c === undefined || c.alpha === 0 ? out : unpack(groupFill(out[0], out[1], out[2], out[3], c.r, c.g, c.b, c.alpha));
+}
+
+/**
+ * A group composited onto dst by the device's software layer (DragonGroupView.dragonSoftwareGroup): its boxes drawn with groupFill,
+ * its text as the platform draws it (the model's glyph), nested groups composited into it, then the tile's fold (groupTileFoldIndex:
+ * the one op at groupFoldAlpha) or the layer at its alpha byte (groupComposite), or the filter (groupFilterComposite).
+ */
+function deviceSoftware(dst: Px, items: readonly Item[], opacity: number, alpha8: number, matrices: readonly number[] | null, x: number, y: number, tile: Tile, byId: ReadonlyMap<string, Box>): Px {
+  let layer: Px = [0, 0, 0, 0];
+  for (const it of items) {
+    if (it.kind === 'box') layer = softwareBox(layer, it.box, x, y);
+    else if (it.kind === 'text') layer = paintItem(layer, it, x, y, tile, byId);
+    // The device builds a nested group's layer over the nested group's own extent only; outside it the layer is clear.
+    else if (inExtent(it.items, x, y)) layer = deviceSoftware(layer, it.items, it.opacity, it.alpha8, null, x, y, tile, byId);
+  }
+  if (matrices !== null) return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], dst[0], dst[1], dst[2], dst[3], matrices, alpha8));
+  const colours: Rgba[] = [];
+  const k = groupTileFoldIndex(groupDraws(items, false, colours), tile.l, tile.t, tile.r, tile.b);
+  if (k >= 0) {
+    const c = colours[k] as Rgba;
+    return layer[3] === 0 ? dst : unpack(groupFill(dst[0], dst[1], dst[2], dst[3], c.r, c.g, c.b, groupFoldAlpha(c.alpha, opacity)));
+  }
+  return unpack(groupComposite(layer[0], layer[1], layer[2], layer[3], dst[0], dst[1], dst[2], dst[3], alpha8, false));
 }
 
 /** Whether a pixel lies in a group's extent: its boxes and its glyphs, widened to whole device px. */
@@ -378,6 +462,7 @@ function deviceQ(g: Item & { kind: 'group' }, plan: GroupPlan, x: number, y: num
     if (it.kind === 'text') throw new Error(`${id}: a text painter`);
     d = backdropBox(d, it.box, x + 0.5, y + 0.5);
   }
+  if (softwareGroup(members)) return deviceSoftware(d, members, plan.opacity, plan.alpha8, plan.matrices, x, y, tile, byId);
   let layer: Px = [0, 0, 0, 0];
   for (const it of members) layer = paintItem(layer, it, x, y, tile, byId);
   if (plan.matrices !== null) return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.matrices, plan.alpha8));
@@ -434,7 +519,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity, stacking and filter fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -564,6 +649,103 @@ const FILTER_CELLS: readonly (readonly [number[], number, Px, [number, number, n
   [[1,0.639,6,0.349], 1, [29,29,29,29], [17,240,147], [35,232,149]], [[0,0.125,6,1.11], 0.55, [0,0,0,255], [18,142,200], [8,63,89]], [[0,0.125,6,1.11], 0.55, [51,51,51,51], [142,236,8], [154,238,35]],
 ];
 
+// S2: Chrome 145 (chrome-headless-shell, software raster) drew random trees of absolutely positioned 1 px boxes in 4 x 4 px cells
+// over an opaque backdrop D at DPR 1: each box a background and a 1 px border on all four sides or one, colours opaque, translucent
+// or transparent (border colours never transparent: the compiler refuses that side), an opacity of 1 or a fraction, up to four
+// levels deep, every cell inside one cc raster tile. A cell is [D, tree, the 16 pixels row by row], a tree node [x, y, w, h,
+// background r, g, b, a, the shown sides as a bit mask (top 1, right 2, bottom 4, left 8), border r, g, b, a, opacity, children].
+// Pinned here: cells with groups nested two levels or more, cells with translucent paint, and border-only groups. The full sweeps
+// (about 3.1 million device px over DPR 1, 2 and 3, translucent alpha bytes and two-decimal authored alphas) matched at every px.
+type CellNode = [number, number, number, number, number, number, number, number, number, number, number, number, number, number, CellNode[]];
+const GROUP_CELLS: readonly (readonly [readonly number[], CellNode, readonly number[]])[] = [
+  [[159,210,148],[2,2,1,2,92,64,112,133,0,0,0,0,0,0.37,[[3,0,1,4,242,66,186,92,0,0,0,0,0,1,[[3,1,1,1,97,63,97,60,0,0,0,0,0,1,[[2,0,2,1,74,56,60,170,0,0,0,0,0,0.3381,[]],[1,3,2,1,93,0,191,154,0,0,0,0,0,0.5043,[]]]]]]]],[159,210,148,159,210,148,152,197,140,160,182,144,159,210,148,159,210,148,159,210,148,162,182,147,159,210,148,159,210,148,146,182,141,170,191,153,159,210,148,151,186,152,142,166,147,170,191,153]],
+  [[180,218,164],[1,1,2,2,7,151,167,132,8,196,188,236,82,0.7071,[[0,1,2,1,230,110,147,0,0,0,0,0,0,1,[[0,1,2,1,98,55,215,212,0,0,0,0,0,0.6227,[[3,2,1,2,233,53,169,255,0,0,0,0,0,0.3293,[]]]]]],[1,2,2,2,66,79,129,255,0,0,0,0,0,0.0338,[[1,3,2,1,49,158,190,186,0,0,0,0,0,1,[[2,3,1,1,37,162,153,120,0,0,0,0,0,0.5481,[]],[1,2,3,1,74,82,23,42,0,0,0,0,0,1,[]]]],[0,0,1,3,29,15,45,97,0,0,0,0,0,1,[[2,1,2,3,75,141,179,255,2,104,114,26,255,0.7106,[]]]]]]]],[178,216,162,180,218,164,180,218,164,180,218,164,147,156,180,131,148,191,116,192,165,178,216,161,178,216,162,139,191,179,116,192,164,185,192,161,180,218,164,177,216,164,177,216,164,186,192,162]],
+  [[105,56,199],[2,2,2,1,246,104,231,102,0,0,0,0,0,0.37,[[3,2,1,2,83,105,254,10,0,0,0,0,0,0.0496,[[1,0,2,2,169,71,225,14,0,0,0,0,0,0.3851,[]],[1,0,3,2,213,180,1,0,2,134,188,6,255,0.1382,[[3,0,1,2,219,43,167,255,0,0,0,0,0,0.7009,[]]]]]],[2,1,1,2,96,146,22,255,0,0,0,0,0,0.6389,[[2,1,2,1,109,106,149,181,0,0,0,0,0,1,[[3,2,1,1,144,214,18,184,0,0,0,0,0,0.4664,[]],[0,1,2,1,76,26,217,161,0,0,0,0,0,0.5573,[]]]],[1,3,2,1,251,35,166,205,0,0,0,0,0,1,[[1,1,2,1,137,127,78,9,0,0,0,0,0,1,[]]]]]]]],[105,56,199,105,56,199,105,56,199,105,56,199,102,53,200,103,53,200,105,70,178,105,64,190,105,56,199,105,56,199,110,79,158,124,74,188,105,56,199,133,51,193,133,51,193,105,56,199]],
+  [[77,29,58],[2,0,2,1,14,43,253,3,0,0,0,0,0,0.7409,[[2,0,1,1,245,241,84,255,0,0,0,0,0,1,[[2,2,1,1,15,119,28,255,0,0,0,0,0,0.0609,[[3,2,1,1,232,146,35,0,0,0,0,0,0,1,[]]]]]],[2,2,1,2,115,16,82,0,0,0,0,0,0,1,[[2,2,1,2,110,3,82,162,0,0,0,0,0,0.7038,[]],[0,3,2,1,107,219,115,203,0,0,0,0,0,0.4792,[[3,2,1,1,46,80,230,127,0,0,0,0,0,0.8693,[]],[1,1,3,1,108,1,3,198,0,0,0,0,0,0.0875,[]]]]]]]],[77,29,58,77,29,58,201,186,77,76,29,59,77,29,58,77,28,56,77,28,56,77,28,56,77,29,58,77,29,58,86,21,65,72,36,84,85,82,74,85,82,74,88,20,66,77,29,58]],
+  [[91,45,18],[3,1,1,1,134,73,112,31,0,0,0,0,0,0.37,[[3,3,1,1,41,220,169,255,0,0,0,0,0,0.7811,[]],[3,2,1,1,220,244,15,117,0,0,0,0,0,0.0892,[[2,3,1,1,199,132,154,179,0,0,0,0,0,0.5872,[]],[2,3,1,1,213,139,46,255,0,0,0,0,0,0.0491,[]]]]]],[91,45,18,91,45,18,91,45,18,91,45,18,91,45,18,91,45,18,91,45,18,93,46,22,91,45,18,91,45,18,91,45,18,93,48,17,91,45,18,91,45,18,92,46,19,76,95,61]],
+  [[174,235,185],[2,3,2,1,161,104,223,255,0,0,0,0,0,0.37,[[0,2,2,1,88,213,223,0,0,0,0,0,0,0.65,[[3,1,1,3,239,4,35,217,0,0,0,0,0,1,[]]]],[3,1,1,3,13,130,155,255,0,0,0,0,0,1,[[2,2,2,2,180,89,221,122,1,33,165,63,255,0.1147,[]],[0,0,4,4,217,1,171,255,0,0,0,0,0,1,[]]]]]],[189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179,189,148,179]],
+  [[11,201,67],[1,3,1,1,184,74,201,29,0,0,0,0,0,0.6092,[[1,2,3,1,11,152,17,180,0,0,0,0,0,1,[[0,3,3,1,130,147,187,191,0,0,0,0,0,1,[]],[1,3,2,1,28,13,208,255,0,0,0,0,0,0.8175,[]]]]]],[11,201,67,11,201,67,11,201,67,11,201,67,11,201,67,11,201,67,11,201,67,11,201,67,11,201,67,11,179,45,11,179,45,11,179,45,65,176,121,30,103,148,29,103,147,11,201,67]],
+  [[55,97,10],[0,3,3,1,87,177,13,0,0,0,0,0,0,0.3701,[[1,0,3,2,61,106,237,255,8,199,79,55,151,0.9367,[[1,2,3,1,251,56,2,91,0,0,0,0,0,1,[[3,2,1,1,231,87,82,255,0,0,0,0,0,0.5336,[]],[1,1,2,1,96,53,208,255,0,0,0,0,0,1,[]]]]]]]],[55,97,10,85,94,51,57,100,88,57,100,88,55,97,10,69,81,78,69,81,78,57,100,88,55,97,10,79,91,8,79,91,8,99,92,22,55,97,10,55,97,10,55,97,10,55,97,10]],
+  [[30,193,129],[3,3,1,1,9,15,207,255,0,0,0,0,0,0.734,[[1,2,3,1,241,71,7,255,0,0,0,0,0,0.7462,[[1,3,2,1,172,209,91,255,0,0,0,0,0,0.9655,[[2,3,2,1,121,35,50,146,0,0,0,0,0,0.069,[]]]],[2,1,2,2,128,101,16,115,4,249,17,241,65,1,[[3,2,1,2,97,183,35,0,0,0,0,0,0,1,[]],[1,0,1,1,8,152,99,63,0,0,0,0,0,1,[]]]]]]]],[30,193,129,26,187,124,30,193,129,30,193,129,30,193,129,30,193,129,54,171,101,54,171,101,30,193,129,145,125,62,125,123,95,125,123,95,30,193,129,104,201,108,103,196,107,16,61,182]],
+  [[251,219,167],[2,3,1,1,5,15,108,150,0,0,0,0,0,0.37,[[3,1,1,3,88,208,221,134,0,0,0,0,0,1,[[2,0,1,2,226,0,194,0,0,0,0,0,0,1,[[3,0,1,1,76,34,58,96,0,0,0,0,0,1,[]],[0,3,2,1,251,95,123,83,0,0,0,0,0,1,[]]]],[3,2,1,2,225,161,123,255,0,0,0,0,0,0.4493,[[0,1,4,3,112,25,66,162,15,117,199,14,151,0.2576,[]]]]]]]],[251,219,167,251,219,167,251,219,167,227,193,152,246,216,161,246,216,161,246,216,161,217,214,171,246,216,161,247,213,163,247,213,163,225,207,161,246,202,156,246,202,156,198,176,150,225,207,161]],
+  [[105,203,111],[0,1,4,1,53,32,53,108,0,0,0,0,0,0.5,[[1,3,1,1,74,163,138,80,0,0,0,0,0,0.3902,[[1,3,2,1,168,179,150,255,0,0,0,0,0,0.3745,[[2,1,2,2,27,108,181,8,2,9,96,119,83,1,[]],[2,3,2,1,249,188,163,195,0,0,0,0,0,0.6063,[]]]]]],[2,3,1,1,127,237,121,255,0,0,0,0,0,0.0423,[[2,0,1,3,55,155,4,255,0,0,0,0,0,0.4184,[[3,2,1,2,78,192,116,255,0,0,0,0,0,1,[]]]]]]]],[105,203,111,105,203,111,104,202,110,105,203,111,93,167,98,93,167,98,93,167,97,91,166,99,105,203,111,105,203,111,104,202,110,102,200,111,105,203,111,108,200,114,112,202,114,109,202,113]],
+  [[95,50,125],[0,0,2,4,221,52,234,0,8,229,109,96,11,0.37,[[1,0,3,1,79,16,198,255,0,0,0,0,0,0.8452,[[0,2,1,2,29,116,151,69,0,0,0,0,0,0.2105,[]]]],[1,1,2,1,62,156,60,61,0,0,0,0,0,1,[[0,3,1,1,54,103,41,159,0,0,0,0,0,0.1904,[]],[1,0,3,3,252,17,87,255,0,0,0,0,0,0.0773,[]]]]]],[97,51,124,94,38,144,94,38,144,94,38,144,97,51,124,96,57,118,96,57,118,99,49,124,96,52,125,99,49,124,99,49,124,99,49,124,93,53,121,95,50,125,95,50,125,95,50,125]],
+  [[14,15,187],[2,3,2,1,54,55,113,255,0,0,0,0,0,0.6362,[[2,2,2,2,39,154,201,0,2,26,147,242,212,0.9056,[[2,0,2,2,31,47,139,255,0,0,0,0,0,1,[]],[3,0,1,3,161,129,76,0,0,0,0,0,0,0.9292,[]]]]]],[14,15,187,14,15,187,23,33,159,23,33,159,14,15,187,14,15,187,23,33,159,23,33,159,14,15,187,14,15,187,14,15,187,19,77,213,14,15,187,14,15,187,39,40,139,26,84,201]],
+  [[115,23,16],[2,0,2,3,138,205,20,166,0,0,0,0,0,0.5,[[2,0,1,3,62,93,111,255,0,0,0,0,0,0.4694,[[3,2,1,1,163,127,175,237,0,0,0,0,0,1,[[2,1,2,1,189,122,224,20,0,0,0,0,0,1,[]],[2,0,2,4,13,194,40,201,4,114,20,84,235,0.9695,[]]]]]],[1,2,3,1,225,33,224,11,0,0,0,0,0,0.6145,[[3,1,1,1,153,182,80,255,0,0,0,0,0,1,[]],[1,2,2,1,104,40,95,255,0,0,0,0,0,1,[[3,3,1,1,156,63,19,255,0,0,0,0,0,0.8658,[]],[2,0,2,3,173,63,62,97,4,55,142,181,154,0.3155,[]]]]]]]],[115,23,16,115,23,16,100,85,27,103,88,21,115,23,16,115,23,16,101,85,27,122,94,37,115,23,16,111,27,40,102,59,48,103,87,38,115,23,16,115,23,16,113,24,30,125,34,23]],
+  [[119,126,113],[3,2,1,1,231,182,151,243,0,0,0,0,0,0.37,[[3,1,1,2,2,78,147,23,0,0,0,0,0,1,[]],[2,2,1,1,30,39,243,101,0,0,0,0,0,1,[[0,0,2,1,124,148,69,255,0,0,0,0,0,0.8768,[[1,2,3,1,54,68,236,230,0,0,0,0,0,1,[]],[2,0,2,4,252,11,247,0,4,244,139,47,255,1,[]]]]]]]],[120,133,98,120,133,98,119,126,113,119,126,113,119,126,113,119,126,113,119,126,113,115,124,114,119,126,113,100,108,149,97,105,153,106,112,152,119,126,113,119,126,113,159,130,91,159,130,91]],
+  [[164,27,120],[1,1,2,1,243,121,222,38,0,0,0,0,0,0.5978,[[2,3,2,1,128,113,212,255,0,0,0,0,0,0.3606,[[0,0,4,1,189,39,28,28,0,0,0,0,0,0.802,[[2,1,1,3,176,250,75,172,0,0,0,0,0,0.4723,[]],[1,2,3,1,178,124,99,0,0,0,0,0,0,0.0801,[]]]]]]]],[164,27,118,164,27,118,164,27,118,164,27,118,164,27,120,171,35,129,171,46,125,164,27,120,164,27,120,164,27,120,165,38,117,164,27,120,164,27,120,164,27,120,158,52,132,156,45,140]],
+  [[1,134,91],[3,1,1,3,104,23,91,255,0,0,0,0,0,0.5,[[3,3,1,1,102,165,248,255,0,0,0,0,0,0.2279,[]],[3,2,1,1,102,85,46,204,0,0,0,0,0,1,[[3,3,1,1,59,90,121,120,0,0,0,0,0,0.5544,[[0,3,1,1,29,39,100,0,0,0,0,0,0,1,[]]]],[3,0,1,4,187,6,103,190,0,0,0,0,0,1,[]]]]]],[1,134,91,1,134,91,1,134,91,70,85,95,1,134,91,1,134,91,1,134,91,83,71,95,1,134,91,1,134,91,1,134,91,83,77,91,1,134,91,1,134,91,1,134,91,82,76,100]],
+  [[73,154,197],[2,2,1,2,161,106,192,169,0,0,0,0,0,0.37,[[1,1,3,2,141,197,123,165,1,54,78,67,49,0.8931,[[3,3,1,1,85,206,247,28,0,0,0,0,0,0.1965,[[0,3,4,1,120,152,112,1,0,0,0,0,0,1,[]]]],[1,2,2,2,117,83,189,179,4,116,183,42,255,1,[[3,1,1,3,138,2,125,189,0,0,0,0,0,1,[]]]]]]]],[73,154,197,73,154,197,73,154,197,73,154,197,73,154,197,83,156,176,83,156,176,91,117,174,73,154,197,87,140,191,92,138,190,92,118,175,73,154,197,87,163,146,89,162,145,89,117,180]],
+  [[224,208,109],[1,2,3,1,164,62,24,0,0,0,0,0,0,0.5,[[3,3,1,1,181,200,38,73,0,0,0,0,0,1,[[0,2,4,2,179,159,39,255,0,0,0,0,0,1,[[1,2,3,2,99,147,240,92,8,118,131,146,29,0.7906,[]],[3,0,1,4,177,98,56,0,0,0,0,0,0,1,[]]]],[0,1,3,2,62,116,46,10,8,146,159,27,216,0.738,[[3,3,1,1,228,228,18,76,0,0,0,0,0,1,[]]]]]]]],[224,208,109,224,208,109,224,208,109,224,208,109,199,192,83,221,207,108,221,207,108,224,208,109,190,183,69,186,179,103,188,180,101,189,181,102,201,183,73,188,180,104,189,181,102,197,189,93]],
+  [[148,17,57],[2,1,2,1,133,156,71,255,0,0,0,0,0,0.37,[[1,0,3,4,87,47,71,203,15,153,209,34,105,1,[[0,1,2,3,170,184,240,0,0,0,0,0,0,0.4922,[]],[0,1,3,3,0,242,73,112,15,58,116,25,234,0.1961,[[3,0,1,2,171,91,29,194,0,0,0,0,0,0.111,[]]]]]]]],[148,17,57,138,51,55,138,51,55,138,50,55,141,24,54,133,51,54,125,39,58,137,57,55,141,24,54,134,55,56,126,31,58,138,51,55,141,24,54,133,51,54,133,51,54,138,51,55]],
+  [[193,112,137],[2,0,2,4,84,67,192,45,0,0,0,0,0,0.5,[[0,3,3,1,139,157,209,166,0,0,0,0,0,1,[[2,1,2,3,247,147,172,0,8,5,212,211,80,0.1415,[[1,3,3,1,26,94,188,0,0,0,0,0,0,1,[]],[1,3,2,1,121,17,83,218,0,0,0,0,0,0.269,[]]]],[3,3,1,1,111,87,180,0,0,0,0,0,0,1,[]]]],[2,0,2,1,188,214,181,158,0,0,0,0,0,1,[]]]],[193,112,137,193,112,137,187,142,152,187,142,152,193,112,137,193,112,137,179,110,143,183,108,142,193,112,137,193,112,137,179,110,143,183,108,142,175,127,161,174,124,159,168,124,160,183,108,142]],
+  [[22,135,104],[2,3,2,1,201,242,197,3,0,0,0,0,0,0.37,[[1,3,2,1,191,137,134,255,0,0,0,0,0,0.7882,[[1,2,1,1,176,209,88,206,0,0,0,0,0,1,[]]]]]],[22,135,104,22,135,104,22,135,104,22,135,104,22,135,104,22,135,104,22,135,104,22,135,104,22,135,104,58,152,100,22,135,104,22,135,104,22,135,104,71,136,112,71,136,113,22,135,104]],
+  [[53,159,180],[2,0,2,2,113,238,43,255,1,10,238,215,201,0.37,[[0,0,3,1,250,16,169,181,0,0,0,0,0,1,[[3,0,1,3,192,133,168,255,0,0,0,0,0,1,[[0,0,2,1,36,68,191,255,0,0,0,0,0,0.4615,[]],[0,1,1,1,195,225,248,8,0,0,0,0,0,0.7411,[]]]],[0,1,1,2,182,127,93,3,0,0,0,0,0,1,[]]]],[2,0,2,3,203,181,209,89,2,111,210,110,255,1,[[1,3,3,1,128,137,111,0,0,0,0,0,0,0.8081,[[3,1,1,2,86,153,230,13,0,0,0,0,0,0.6891,[]],[2,1,2,3,226,5,35,226,0,0,0,0,0,0.0825,[]]]],[0,2,2,1,182,131,21,135,0,0,0,0,0,1,[]]]]]],[78,122,180,78,122,180,104,142,181,74,177,154,54,159,180,53,159,180,88,176,149,76,172,153,78,153,148,78,153,148,75,158,181,76,172,153,53,159,180,53,159,180,56,155,177,56,155,177]],
+  [[217,249,229],[0,2,1,1,68,253,231,195,0,0,0,0,0,0.5,[[1,1,1,1,166,88,155,255,0,0,0,0,0,1,[[2,2,2,1,73,26,18,31,0,0,0,0,0,0.6117,[]],[1,3,1,1,161,53,66,66,0,0,0,0,0,0.7585,[]]]],[2,1,2,2,193,86,197,177,2,40,6,52,255,1,[]]]],[217,249,229,217,249,229,217,249,229,217,249,229,217,249,229,191,167,191,209,192,218,127,126,139,160,250,230,217,249,229,207,189,215,127,126,139,217,249,229,211,229,213,217,249,229,217,249,229]],
+  [[35,87,16],[2,3,2,1,44,243,28,89,0,0,0,0,0,0.37,[]],[35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,35,87,16,36,106,17,36,106,17]],
+  [[128,121,248],[3,3,1,1,254,85,200,241,0,0,0,0,0,0.7392,[[3,1,1,2,137,169,178,255,0,0,0,0,0,1,[]]]],[128,121,248,128,121,248,128,121,248,128,121,248,128,121,248,128,121,248,128,121,248,134,156,196,128,121,248,128,121,248,128,121,248,134,156,196,128,121,248,128,121,248,128,121,248,216,95,215]],
+  [[3,93,238],[1,2,1,1,96,171,39,172,0,0,0,0,0,0.8685,[[2,1,2,3,113,240,16,255,0,0,0,0,0,0.349,[]],[1,3,1,1,218,112,16,255,0,0,0,0,0,1,[[2,3,2,1,135,159,195,255,0,0,0,0,0,1,[]]]]]],[3,93,238,3,93,238,3,93,238,3,93,238,3,93,238,3,93,238,35,137,171,35,137,171,3,93,238,57,138,122,35,137,171,35,137,171,3,93,238,189,109,45,117,150,200,117,150,200]],
+  [[160,60,105],[2,1,1,3,222,155,141,45,0,0,0,0,0,0.37,[[2,2,1,1,215,33,37,93,0,0,0,0,0,0.039,[]],[0,2,1,2,242,92,147,87,0,0,0,0,0,1,[[0,2,4,2,38,133,239,255,0,0,0,0,0,0.2747,[]]]]]],[160,60,105,160,60,105,160,60,105,160,60,105,160,60,105,160,60,105,164,66,107,160,60,105,155,70,122,147,67,118,150,71,120,147,67,118,155,70,122,147,67,118,150,71,120,147,67,118]],
+  [[67,213,252],[2,1,1,1,194,128,92,192,0,0,0,0,0,0.37,[]],[67,213,252,67,213,252,67,213,252,67,213,252,67,213,252,67,213,252,102,189,208,67,213,252,67,213,252,67,213,252,67,213,252,67,213,252,67,213,252,67,213,252,67,213,252,67,213,252]],
+  [[123,90,218],[1,3,2,1,148,159,172,255,0,0,0,0,0,0.5,[[3,2,1,1,44,85,154,41,0,0,0,0,0,0.8132,[[1,0,2,2,11,65,75,0,1,176,123,163,18,1,[[3,0,1,2,38,182,13,186,0,0,0,0,0,1,[]]]],[1,3,2,1,79,185,83,255,0,0,0,0,0,0.8124,[[3,3,1,1,70,183,24,255,0,0,0,0,0,1,[]]]]]]]],[123,90,218,124,91,216,124,91,216,97,117,156,123,90,218,123,90,218,123,90,218,97,117,156,123,90,218,123,90,218,123,90,218,117,89,214,123,90,218,112,133,165,112,133,165,105,120,154]],
+  [[65,68,9],[0,1,1,1,218,158,48,248,0,0,0,0,0,0.5,[[2,1,2,3,224,149,139,42,8,139,4,22,255,1,[]]]],[65,68,9,65,68,9,65,68,9,65,68,9,140,112,28,65,68,9,102,35,15,78,75,19,65,68,9,65,68,9,102,35,15,78,75,19,65,68,9,65,68,9,102,35,15,78,75,19]],
+  [[173,96,209],[0,1,1,2,133,104,202,185,0,0,0,0,0,0.5,[]],[173,96,209,173,96,209,173,96,209,173,96,209,159,99,207,173,96,209,173,96,209,173,96,209,159,99,207,173,96,209,173,96,209,173,96,209,173,96,209,173,96,209,173,96,209,173,96,209]],
+  [[239,155,135],[2,3,1,1,253,144,69,255,0,0,0,0,0,0.1236,[[1,0,2,3,226,66,198,196,4,80,169,21,103,0.2649,[]]]],[239,155,135,239,153,136,239,153,136,239,155,135,239,155,135,239,153,136,239,153,136,239,155,135,239,155,135,237,154,134,237,154,134,239,155,135,239,155,135,239,155,135,240,153,126,239,155,135]],
+  [[158,75,231],[1,1,2,3,85,52,78,144,4,219,81,15,31,0.5,[]],[158,75,231,158,75,231,158,75,231,158,75,231,158,75,231,137,68,188,137,68,188,158,75,231,158,75,231,137,68,188,137,68,188,158,75,231,158,75,231,144,69,179,144,69,179,158,75,231]],
+  [[17,134,96],[0,1,4,2,212,29,79,94,0,0,0,0,0,0.5,[]],[17,134,96,17,134,96,17,134,96,17,134,96,52,114,93,52,114,93,52,114,93,52,114,93,52,114,93,52,114,93,52,114,93,52,114,93,17,134,96,17,134,96,17,134,96,17,134,96]],
+  [[200,125,159],[3,3,1,1,244,204,70,213,0,0,0,0,0,0.072,[[0,1,1,3,234,12,34,74,0,0,0,0,0,1,[]],[1,1,3,1,15,147,252,148,0,0,0,0,0,1,[[3,1,1,3,48,64,94,140,0,0,0,0,0,0.9243,[]],[2,1,1,1,74,137,147,16,0,0,0,0,0,1,[[2,3,1,1,64,94,68,0,0,0,0,0,0,0.276,[]],[3,3,1,1,159,56,59,255,0,0,0,0,0,0.6313,[]]]]]]]],[200,125,159,200,125,159,200,125,159,200,125,159,201,122,156,192,125,163,192,126,162,190,123,158,201,122,156,200,125,159,200,125,159,194,122,156,201,122,156,200,125,159,200,125,159,196,122,152]],
+  [[225,26,178],[1,3,2,1,187,196,60,255,0,0,0,0,0,0.5,[[3,0,1,3,133,229,80,229,0,0,0,0,0,0.8663,[[0,1,1,2,243,46,128,172,0,0,0,0,0,0.4311,[[0,2,1,1,210,253,213,70,0,0,0,0,0,0.7751,[]]]],[2,1,2,2,60,13,173,255,0,0,0,0,0,0.3368,[[0,1,2,3,76,78,149,255,2,162,67,2,6,0.6496,[]],[2,3,2,1,12,13,163,255,0,0,0,0,0,0.4346,[]]]]]]]],[225,26,178,225,26,178,225,26,178,189,105,139,213,32,170,210,30,174,201,23,177,176,76,152,212,38,172,210,30,174,201,23,177,176,76,152,210,30,174,194,100,126,194,100,125,210,24,176]],
+  [[23,255,59],[0,1,3,3,66,9,193,238,15,129,227,199,243,0.5,[[1,2,3,1,64,3,81,116,0,0,0,0,0,0.3025,[[0,2,1,1,229,165,2,255,0,0,0,0,0,1,[[3,1,1,2,46,35,190,255,0,0,0,0,0,0.0316,[]],[2,0,1,4,97,166,136,20,0,0,0,0,0,0.6691,[]]]],[1,3,1,1,18,197,209,54,0,0,0,0,0,0.5812,[[0,1,1,2,183,118,71,9,0,0,0,0,0,0.1444,[]],[3,0,1,3,132,225,70,84,0,0,0,0,0,0.5572,[]]]]]]]],[23,255,59,23,255,59,23,255,59,24,254,59,74,235,129,74,235,129,74,234,129,24,253,59,90,227,98,43,138,114,70,220,121,26,238,60,74,235,129,72,234,129,74,234,129,23,255,59]],
+  [[247,139,16],[0,0,3,3,124,204,94,101,0,0,0,0,0,0.37,[[0,3,3,1,47,111,236,253,0,0,0,0,0,1,[]]]],[229,148,27,229,148,27,229,148,27,247,139,16,229,148,27,229,148,27,229,148,27,247,139,16,229,148,27,229,148,27,229,148,27,247,139,16,173,128,96,173,128,96,173,128,96,247,139,16]],
+  [[229,36,129],[0,2,3,1,50,72,149,229,0,0,0,0,0,0.6226,[]],[229,36,129,229,36,129,229,36,129,229,36,129,229,36,129,229,36,129,229,36,129,229,36,129,129,55,140,129,55,140,129,55,140,229,36,129,229,36,129,229,36,129,229,36,129,229,36,129]],
+  [[166,221,57],[0,0,4,4,0,0,0,0,15,150,23,115,90,0.5,[]],[162,186,66,162,186,66,162,186,66,162,186,66,162,186,66,166,221,57,166,221,57,162,186,66,162,186,66,166,221,57,166,221,57,162,186,66,162,186,66,162,186,66,162,186,66,162,186,66]],
+  [[197,176,93],[0,0,4,4,0,0,0,0,15,236,17,134,227,0.37,[]],[210,124,106,210,124,106,210,124,106,210,124,106,210,124,106,197,176,93,197,176,93,210,124,106,210,124,106,197,176,93,197,176,93,210,124,106,210,124,106,210,124,106,210,124,106,210,124,106]],
+  [[149,33,190],[0,0,4,4,0,0,0,0,15,209,67,180,220,0.37,[]],[167,43,186,167,43,186,167,43,186,167,43,186,167,43,186,149,33,190,149,33,190,167,43,186,167,43,186,149,33,190,149,33,190,167,43,186,167,43,186,167,43,186,167,43,186,167,43,186]],
+  [[90,244,189],[0,0,4,4,0,0,0,0,15,96,227,145,34,0.37,[]],[90,243,186,90,243,186,90,243,186,90,243,186,90,243,186,90,244,189,90,244,189,90,243,186,90,243,186,90,244,189,90,244,189,90,243,186,90,243,186,90,243,186,90,243,186,90,243,186]],
+  [[245,106,198],[0,0,4,4,0,0,0,0,15,219,203,73,65,0.5,[]],[241,118,181,241,118,181,241,118,181,241,118,181,241,118,181,245,106,198,245,106,198,241,118,181,241,118,181,245,106,198,245,106,198,241,118,181,241,118,181,241,118,181,241,118,181,241,118,181]],
+  [[117,66,123],[0,0,4,4,0,0,0,0,15,21,148,250,162,0.37,[]],[94,85,153,94,85,153,94,85,153,94,85,153,94,85,153,117,66,123,117,66,123,94,85,153,94,85,153,117,66,123,117,66,123,94,85,153,94,85,153,94,85,153,94,85,153,94,85,153]],
+  [[250,33,159],[0,0,4,4,0,0,0,0,2,218,146,255,76,0.5,[]],[250,33,159,250,33,159,250,33,159,244,50,173,250,33,159,250,33,159,250,33,159,244,50,173,250,33,159,250,33,159,250,33,159,244,50,173,250,33,159,250,33,159,250,33,159,244,50,173]],
+  [[200,79,69],[0,0,4,4,0,0,0,0,1,160,144,7,46,0.37,[]],[197,83,64,197,83,64,197,83,64,197,83,64,200,79,69,200,79,69,200,79,69,200,79,69,200,79,69,200,79,69,200,79,69,200,79,69,200,79,69,200,79,69,200,79,69,200,79,69]],
+  [[176,3,17],[0,0,4,4,0,0,0,0,4,204,214,154,75,0.5,[]],[176,3,17,176,3,17,176,3,17,176,3,17,176,3,17,176,3,17,176,3,17,176,3,17,176,3,17,176,3,17,176,3,17,176,3,17,179,34,37,179,34,37,179,34,37,179,34,37]],
+  [[245,0,95],[0,0,4,4,0,0,0,0,4,21,249,76,181,0.5,[]],[245,0,95,245,0,95,245,0,95,245,0,95,245,0,95,245,0,95,245,0,95,245,0,95,245,0,95,245,0,95,245,0,95,245,0,95,164,89,88,164,89,88,164,89,88,164,89,88]],
+  [[255,131,191],[0,0,4,4,0,0,0,0,2,234,5,44,38,0.5,[]],[255,131,191,255,131,191,255,131,191,253,121,179,255,131,191,255,131,191,255,131,191,253,121,179,255,131,191,255,131,191,255,131,191,253,121,179,255,131,191,255,131,191,255,131,191,253,121,179]],
+  [[190,37,113],[0,0,4,4,0,0,0,0,1,89,95,82,203,0.5,[]],[150,60,100,150,60,100,150,60,100,150,60,100,190,37,113,190,37,113,190,37,113,190,37,113,190,37,113,190,37,113,190,37,113,190,37,113,190,37,113,190,37,113,190,37,113,190,37,113]],
+];
+
+/**
+ * A pinned cell's pixel as the device's software layer computes it (DragonGroupView.dragonSoftwareGroup) with the layout functions:
+ * each op a groupFill, a group a layer composited with groupComposite into whatever is below it, or, when its subtree holds exactly
+ * one op and no nested group with ops (one draw between SaveLayerAlpha and Restore), that op at groupFoldAlpha.
+ */
+function cellPixel(d: Px, n: CellNode, x: number, y: number, foldAt: (a: number, o: number) => number = groupFoldAlpha): Px {
+  const ops = (m: CellNode): number => (m[7] > 0 ? 1 : 0) + (m[8] !== 0 && m[12] > 0 ? 1 : 0);
+  const all = (m: CellNode): number => ops(m) + m[14].reduce((t, k) => t + all(k), 0);
+  const groupsIn = (m: CellNode): boolean => m[14].some((k) => (k[13] < 1 && all(k) > 0) || groupsIn(k));
+  const fill = (p: Px, r: number, g: number, b: number, a: number): Px => unpack(groupFill(p[0], p[1], p[2], p[3], r, g, b, a));
+  const own = (p: Px, m: CellNode, fold: number | null): Px => {
+    const [mx, my, w, h, r, g, b, a, sides, br, bg, bb, ba] = m;
+    if (!(x >= mx && x < mx + w && y >= my && y < my + h)) return p;
+    let out = a > 0 ? fill(p, r, g, b, fold === null ? a : foldAt(a, fold)) : p;
+    const edge = ((sides & 1) !== 0 && y === my) || ((sides & 2) !== 0 && x === mx + w - 1) || ((sides & 4) !== 0 && y === my + h - 1) || ((sides & 8) !== 0 && x === mx);
+    if (edge && ba > 0) out = fill(out, br, bg, bb, fold === null ? ba : foldAt(ba, fold));
+    return out;
+  };
+  const paint = (p: Px, m: CellNode): Px => {
+    const o = m[13];
+    if (o < 1) {
+      if (all(m) === 0) return p;
+      if (all(m) === 1 && !groupsIn(m)) {
+        const folded = (q: Px, k: CellNode): Px => k[14].reduce(folded, own(q, k, ops(k) > 0 ? o : null));
+        return folded(p, m);
+      }
+      const l = m[14].reduce(paint, own([0, 0, 0, 0], m, null));
+      return unpack(groupComposite(l[0], l[1], l[2], l[3], p[0], p[1], p[2], p[3], opacityAlpha8(o), false));
+    }
+    return m[14].reduce(paint, own(p, m, null));
+  };
+  return paint(d, n);
+}
+
 describe('PNT1-opacity-b: the device\'s group composite equals the paint model', () => {
   it('groupComposite is the measured Color32 and s32a blits', () => {
     let seed = 7;
@@ -591,6 +773,27 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
       expect(v, `${pairs} ${opacity} ${l} ${d}`).toEqual([...got, 255]);
     }
     expect(FILTER_CELLS.length).toBe(192);
+  });
+  it('the software layer gives the bytes Chrome drew for nested groups and translucent paint (groupFill, groupFoldAlpha, groupComposite)', () => {
+    const problems: string[] = [];
+    let nested = 0;
+    let translucent = 0;
+    const depth = (m: CellNode): number => (m[13] < 1 ? 1 : 0) + Math.max(0, ...m[14].map(depth));
+    const clear = (m: CellNode): boolean => (m[7] > 0 && m[7] < 255) || (m[12] > 0 && m[12] < 255) || m[14].some(clear);
+    for (const [d, tree, px] of GROUP_CELLS) {
+      if (depth(tree) >= 2) nested++;
+      if (clear(tree)) translucent++;
+      for (let k = 0; k < 16; k++) {
+        const got = cellPixel([d[0] as number, d[1] as number, d[2] as number, 255], tree, k % 4, Math.floor(k / 4));
+        const want = [px[3 * k], px[3 * k + 1], px[3 * k + 2], 255];
+        if (got.join() !== want.join()) problems.push(`${JSON.stringify(tree)} at ${k}: model ${got}, Chrome ${want}`);
+      }
+    }
+    expect(problems).toEqual([]);
+    expect([GROUP_CELLS.length, nested > 20, translucent > 30]).toEqual([52, true, true]);
+    // Planted: the fold at the product of the two bytes (mulDiv255Round) instead of cc's float product misses some cell.
+    const missed = GROUP_CELLS.some(([d, tree, px]) => [...Array(16).keys()].some((k) => cellPixel([d[0] as number, d[1] as number, d[2] as number, 255], tree, k % 4, Math.floor(k / 4), (a, o) => mdr(a, opacityAlpha8(o)))[0] !== px[3 * k]));
+    expect(missed, 'byte-product fold').toBe(true);
   });
   it('folds a border-only group whose border is one op: four solid sides in one colour or a lone side, and no text group', () => {
     const spec = FIXTURES.find((f) => f.id === 'opacity-group-border-only');
@@ -622,7 +825,7 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
   const precomposited = (id: string): boolean => id.startsWith('opacity-group-') || id.startsWith('filter-matrix-');
   const groupFixtures = FIXTURES.filter((f) => precomposited(f.id));
   it('admits every translucent or filtered group of the opacity-group and filter-matrix fixtures, which compile on native as user cases', () => {
-    expect(groupFixtures.length).toBe(8);
+    expect(groupFixtures.length).toBe(10);
     for (const spec of groupFixtures) {
       for (const c of casesOf(spec, fixtureInput(spec))) {
         const lanes = nativeCompile(spec, c.environment.direction);
@@ -636,7 +839,14 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
             return e !== undefined && e.opacity > 0 && (e.opacity < 1 || (e.filter ?? []).length > 0);
           });
           expect(translucent.length, c.id).toBeGreaterThan(0);
-          expect(translucent.filter((n) => groupPlanOf(n) === null).map((n) => n.id), c.id).toEqual([]);
+          // A group nested in an admitted group has an opacity-nested write: its outer group's overlay composites it.
+          const nested = (n: ProgramNode): boolean => n.writes.some((w) => w.kind === 'opacity-nested');
+          expect(translucent.filter((n) => groupPlanOf(n) === null && !nested(n)).map((n) => n.id), c.id).toEqual([]);
+          if (spec.id === 'opacity-group-nested') expect(p.nodes.filter(nested).map((n) => n.id), c.id).toEqual(['on-a-in', 'on-b-in', 'on-c-mid', 'on-c-deep', 'on-d-in', 'on-e-in', 'on-f-in']);
+          if (spec.id === 'opacity-group-nested' || spec.id === 'opacity-group-translucent') {
+            // Every group of these fixtures holds a nested group or translucent paint, so the device builds its layer in software.
+            for (const dpr of DPRS) for (const it of paintItems(p, c.environment.viewport, dpr)) if (it.kind === 'group') expect(softwareGroup(it.items), `${c.id} ${it.box.node.id}`).toBe(true);
+          }
           expect(p.nodes.some((n) => n.writes.some((w) => w.kind === 'opacity')), c.id).toBe(false);
         }
       }
