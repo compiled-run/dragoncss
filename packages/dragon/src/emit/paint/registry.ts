@@ -14,6 +14,7 @@ import { FIXED_EMITTER } from './fixed.ts';
 import { FOREIGN_VIEW_EMITTER } from './foreign-view.ts';
 import { GRADIENT_EMITTER } from './gradient.ts';
 import { IMAGE_EMITTER } from './image.ts';
+import { LIST_MARKER_EMITTER } from './list-marker.ts';
 import { OUTLINE_EMITTER } from './outline.ts';
 import { RADIUS_EMITTER } from './radius.ts';
 import { SCROLL_EMITTER } from './scroll.ts';
@@ -48,6 +49,7 @@ const EMITTERS = [
   VISIBILITY_EMITTER,
   TEXT_DECORATION_EMITTER,
   TEXT_SHADOW_EMITTER,
+  LIST_MARKER_EMITTER,
 ] as const;
 
 export const PAINT_EMITTERS: readonly PaintEmitter<string>[] = EMITTERS as readonly PaintEmitter<string>[];

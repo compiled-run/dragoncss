@@ -4,12 +4,17 @@
 // directions. text-font-variant-caps-ahem is small-caps, which Chrome synthesizes over Ahem: lowercase runs uppercased at the rounded
 // 70% size (layout text.ts smallCapsFontSize), at 10px to 20px, through font-variant-caps, font-variant and font, with synthesis off,
 // in block, inline, flex-item and min-content contexts; native draws each run at its size, which text-font-variant-caps-ahem.test
-// proves against Chrome's pixels. The reject is what every target refuses: the other capitals (all-small-caps).
+// proves against Chrome's pixels. text-synthesis-small-caps-ahem sets font-synthesis-small-caps: auto explicitly (the longhand in any
+// case, the font-synthesis shorthand with small-caps alone, with weight and with weight and style, initial, unset and inherit), over
+// small capitals and plain text, under a parent that turns synthesis off and over a child that turns it off again, in block,
+// min-content and flex-item contexts: auto is the initial value, so Chrome synthesizes exactly as text-font-variant-caps-ahem does.
+// The reject is what every target refuses: the other capitals (all-small-caps).
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';
 
 export const TEXT_FONT_VARIANT: readonly FixtureSpec[] = [
   layout('text-font-variant-ahem', ['ltr', 'rtl']),
   layout('text-font-variant-caps-ahem', ['ltr', 'rtl']),
+  layout('text-synthesis-small-caps-ahem', ['ltr', 'rtl']),
   reject('reject-text-font-variant-caps', 'DRAGON_UNSUPPORTED_VALUE', 'all-small-caps', 'font-variant-caps: all-small-caps is unsupported'),
 ];

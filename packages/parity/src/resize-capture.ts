@@ -8,17 +8,20 @@
 import { existsSync, readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { absoluteRects, layout } from '@dragon/layout';
-import type { Assignment, BandRuntimeFaults, Compiled, NativeBackend, NativeProgram, Rgba8, StateProgram } from 'dragon';
-import { LONGHANDS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
+import type { Assignment, BandRuntimeFaults, Compiled, MediaDevice, NativeBackend, NativeProgram, PointerReadings, Rgba8, StateProgram } from 'dragon';
+import { DESKTOP_DEVICE, LONGHANDS, pointerBits, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
 import type { CapturedNode } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import { compareZoomedLayout } from './compare.ts';
+import type { RgbaImage } from './native-compare.ts';
+import { decodePng, rasterSize } from './pixel-reference.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix, environmentsOf, FIXTURES } from './fixtures.ts';
 import type { ResizeScript, ResizeStep, Size } from './fixture-groups/media-runtime.ts';
 import { RESIZE_SCRIPTS, resizeSizeProblem } from './fixture-groups/media-runtime.ts';
+import { ENV_SCRIPTS, MEDIA_ENVIRONMENT_FIXTURES } from './fixture-groups/media-environment.ts';
 import { nativeCompile, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import { compileFixture, fixtureCompileInput, webCssOf } from './pipeline.ts';
@@ -60,15 +63,61 @@ export function resizeProgram(c: ResizeCase, faults: BandRuntimeFaults = NO_BAND
 }
 
 /** Why a script cannot run, or null: a known layout fixture, sizes on the 8 px grid within the largest stage, sets naming free states. */
+/** The fixture of a script: a layout fixture, or (MQ-R2) a media-environment fixture, which runs only as its script. */
+const scriptFixture = (id: string): FixtureSpec | undefined => [...FIXTURES, ...MEDIA_ENVIRONMENT_FIXTURES].find((f) => f.id === id);
+
+/** Every resize script: the media-runtime ones, then (MQ-R2) the media-environment ones. */
+export const ALL_RESIZE_SCRIPTS: readonly ResizeScript[] = [...RESIZE_SCRIPTS, ...ENV_SCRIPTS];
+
 export function scriptProblem(s: ResizeScript): string | null {
-  const spec = FIXTURES.find((f) => f.id === s.fixture);
+  const spec = scriptFixture(s.fixture);
   if (spec === undefined || spec.kind !== 'layout') return `${s.fixture} is not a layout fixture`;
   for (const size of [s.start, ...s.steps.flatMap((x) => (x.kind === 'resize' ? [{ width: x.width, height: x.height }] : []))]) {
     const p = resizeSizeProblem(size);
     if (p !== null) return `${s.fixture}: ${p}`;
   }
   if (s.steps.length === 0) return `${s.fixture}: a script needs a step`;
+  // MQ-R2: Chrome takes a pointers step's readings at launch, on a new page, so the script carries no app state or touch emulation over it.
+  const pointers = s.steps.filter((x) => x.kind === 'env' && x.reading === 'pointers');
+  if (pointers.length > 0 && s.steps.some((x) => x.kind === 'set')) return `${s.fixture}: a script with a pointers step has no set steps (Chrome reopens its page)`;
+  const first = s.steps.findIndex((x) => x.kind === 'env' && x.reading === 'pointers');
+  if (first >= 0 && s.steps.slice(first).some((x) => x.kind === 'env' && x.reading === 'pointer')) return `${s.fixture}: a touch or desktop step follows a pointers step (touch emulation restores the launch's readings, not a desktop's)`;
+  for (const x of pointers) {
+    try {
+      if (x.kind === 'env' && x.reading === 'pointers') pointerBits(x.value);
+    } catch (e) {
+      return `${s.fixture}: ${(e as Error).message}`;
+    }
+  }
   return null;
+}
+
+/** Blink's pointer and hover type bits (ui/base/pointer/pointer_device.h PointerType and HoverType). */
+const POINTER_TYPE = { none: 1, coarse: 2, fine: 4 } as const;
+const HOVER_TYPE = { none: 1, hover: 2 } as const;
+
+/** The Chrome flag that sets every pointer and hover reading of a page (Blink's settings, which the media features read). */
+export function blinkPointerArgs(p: PointerReadings): string[] {
+  pointerBits(p);
+  const available = p.anyPointer.length === 0 ? POINTER_TYPE.none : p.anyPointer.reduce((a, k) => a | POINTER_TYPE[k], 0);
+  return [`--blink-settings=primaryPointerType=${POINTER_TYPE[p.pointer]},availablePointerTypes=${available},primaryHoverType=${HOVER_TYPE[p.hover]},availableHoverTypes=${HOVER_TYPE[p.anyHover]}`];
+}
+
+/**
+ * The media queries that read a device's pointer, hover, motion and colour-scheme readings, and the answers the readings give them
+ * (the boolean (prefers-color-scheme) in either scheme, as PrefersColorSchemeMediaFeatureEval answers it).
+ */
+export function readingQueries(d: Omit<MediaDevice, 'dpr'>): [string, boolean][] {
+  const any: readonly string[] = d.anyPointer.length === 0 ? ['none'] : d.anyPointer;
+  return [
+    ...(['none', 'coarse', 'fine'] as const).map((k): [string, boolean] => [`(pointer: ${k})`, d.pointer === k]),
+    ...(['none', 'coarse', 'fine'] as const).map((k): [string, boolean] => [`(any-pointer: ${k})`, any.includes(k)]),
+    ...(['none', 'hover'] as const).map((k): [string, boolean] => [`(hover: ${k})`, d.hover === k]),
+    ...(['none', 'hover'] as const).map((k): [string, boolean] => [`(any-hover: ${k})`, d.anyHover === k]),
+    ...(['no-preference', 'reduce'] as const).map((k): [string, boolean] => [`(prefers-reduced-motion: ${k})`, d.reducedMotion === k]),
+    ...(['light', 'dark'] as const).map((k): [string, boolean] => [`(prefers-color-scheme: ${k})`, d.colorScheme === k]),
+    ['(prefers-color-scheme)', true],
+  ];
 }
 
 let all: readonly ResizeCase[] | null = null;
@@ -77,10 +126,10 @@ let all: readonly ResizeCase[] | null = null;
 export function resizeCases(): readonly ResizeCase[] {
   if (all !== null) return all;
   const out: ResizeCase[] = [];
-  for (const script of RESIZE_SCRIPTS) {
+  for (const script of ALL_RESIZE_SCRIPTS) {
     const problem = scriptProblem(script);
     if (problem !== null) throw new Error(`resize script: ${problem}`);
-    const spec = FIXTURES.find((f) => f.id === script.fixture) as FixtureSpec;
+    const spec = scriptFixture(script.fixture) as FixtureSpec;
     const parity = casesOf(spec, fixtureCompileInput(spec));
     for (const env of environmentsOf(spec)) {
       const direction = env.direction;
@@ -102,8 +151,26 @@ export function resizeCases(): readonly ResizeCase[] {
   return out;
 }
 
-/** One point of a script: the root size and the app assignment after the start or a step. */
-export type ScriptPoint = { readonly size: Size; readonly assignment: Assignment };
+/**
+ * One point of a script: the root size, the app assignment and (MQ-R2) the device readings after the start or a step. The scale
+ * is not a reading of the script: deviceAt gives the readings at a DPR.
+ */
+export type ScriptPoint = { readonly size: Size; readonly assignment: Assignment; readonly device: MediaDevice };
+
+/** A touch screen alone (hasTouch, M7): coarse, no hover. */
+const TOUCH_READINGS = { pointer: 'coarse', anyPointer: ['coarse'], hover: 'none', anyHover: 'none' } as const;
+const DESKTOP_READINGS = { pointer: 'fine', anyPointer: ['fine'], hover: 'hover', anyHover: 'hover' } as const;
+
+/** The readings after an env step. */
+export function readingsAfter(d: MediaDevice, s: ResizeStep & { kind: 'env' }): MediaDevice {
+  if (s.reading === 'motion') return { ...d, reducedMotion: s.value };
+  if (s.reading === 'scheme') return { ...d, colorScheme: s.value };
+  if (s.reading === 'pointers') return { ...d, pointer: s.value.pointer, anyPointer: [...s.value.anyPointer], hover: s.value.hover, anyHover: s.value.anyHover };
+  return { ...d, ...(s.value === 'touch' ? TOUCH_READINGS : DESKTOP_READINGS) };
+}
+
+/** A point's device at a DPR. */
+export const deviceAt = (pt: ScriptPoint, dpr: number): MediaDevice => ({ ...pt.device, dpr });
 
 const keyOf = (e: Assignment[number]): string => stateKey(e.state.instance, e.state.state);
 
@@ -113,14 +180,17 @@ export function scriptPoints(c: ResizeCase): ScriptPoint[] {
   if (initial === undefined) throw new Error(`${c.id}: no initial case`);
   let assignment: Assignment = initial.assignment;
   let size = c.script.start;
-  const out: ScriptPoint[] = [{ size, assignment }];
+  // Chrome's page starts as a desktop: a mouse, no motion preference.
+  let device: MediaDevice = DESKTOP_DEVICE;
+  const out: ScriptPoint[] = [{ size, assignment, device }];
   for (const s of c.script.steps) {
     if (s.kind === 'resize') size = { width: s.width, height: s.height };
+    else if (s.kind === 'env') device = readingsAfter(device, s);
     else {
       if (!assignment.some((e) => keyOf(e) === s.state)) throw new Error(`${c.id}: set ${s.state}: no such free state`);
       assignment = assignment.map((e) => (keyOf(e) === s.state ? { state: e.state, value: s.value } : e));
     }
-    out.push({ size, assignment });
+    out.push({ size, assignment, device });
   }
   return out;
 }
@@ -208,7 +278,7 @@ function pageStep(s: PageStep): CapturedNode[] {
 }
 
 /** The HTML of an assignment in the authored or the compiled web rendering. */
-function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compiled'): string {
+export function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compiled'): string {
   const p = caseOf(c, a);
   if (r === 'authored') return p.authoredHtml;
   const classOf = webClassMap(c.webCompiled, a);
@@ -216,11 +286,16 @@ function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compiled'): st
   return p.compiledHtml(c.webCss, classOf);
 }
 
-/** Captures one resize case at one DPR in one rendering; the browser must be launched at that DPR (chrome.ts launchChrome). */
-export async function captureResize(browser: Browser, c: ResizeCase, dpr: number, r: 'authored' | 'compiled' = 'authored'): Promise<ResizeCapture> {
+/**
+ * Captures one resize case at one DPR in one rendering; the browser must be launched at that DPR (chrome.ts launchChrome). shot,
+ * when given, takes Chrome's pixels after the start and every step (Page.captureScreenshot, the pixel lane's capture). MQ-R2:
+ * browserFor gives a Chrome at that DPR launched with a pointers step's readings (blinkPointerArgs), where the step's page opens.
+ */
+export async function captureResize(browser: Browser, c: ResizeCase, dpr: number, r: 'authored' | 'compiled' = 'authored', shot: ((step: number, png: Buffer) => void) | null = null, browserFor: ((p: PointerReadings) => Promise<Browser>) | null = null): Promise<ResizeCapture> {
   const points = scriptPoints(c);
   const first = points[0] as ScriptPoint;
-  const page = await openPage(browser, rendering(c, first.assignment, r), { viewport: first.size, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' });
+  const open = (b: Browser, at: ScriptPoint) => openPage(b, rendering(c, at.assignment, r), { viewport: at.size, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' });
+  let page = await open(browser, first);
   const props = dpr === 1 ? [...LONGHANDS] : [...DPR_PROPERTIES];
   const settle = (): Promise<void> => page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
   try {
@@ -229,12 +304,65 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
       const inner = await page.evaluate(() => [window.innerWidth, window.innerHeight]);
       if (inner[0] !== size.width || inner[1] !== size.height) throw new Error(`${c.id} DPR ${dpr}: the viewport is ${inner.join('x')}, the script's ${size.width}x${size.height}`);
       samples.push({ size, nodes: await page.evaluate(pageStep, { kind: 'dump', props } as PageStep) });
+      // MQ-R2: Chrome answers the readings the script says it emulates, or the capture is not of them.
+      const device = (points[samples.length - 1] as ScriptPoint).device;
+      const queries = readingQueries(device);
+      const got = await page.evaluate((qs) => qs.map((q) => matchMedia(q).matches), queries.map(([q]) => q));
+      const wrong = queries.filter(([, want], k) => got[k] !== want).map(([q, want]) => `${q} ${want ? 'does not match' : 'matches'}`);
+      if (wrong.length > 0) throw new Error(`${c.id} DPR ${dpr} step ${samples.length - 1}: Chrome's readings are not the script's: ${wrong.join(', ')}`);
+      if (shot !== null) {
+        // A resize can leave raster tiles Chrome does not repaint (a box edge of the previous size stays in about half the runs of
+        // mqr-music-shape step 1 at DPR 2), so the pixels are taken after one whole-document repaint: the root hidden for a frame and
+        // its style attribute restored exactly. Layout is untouched (visibility), and the samples above are taken before it.
+        await page.evaluate(() => {
+          const e = document.documentElement;
+          (window as unknown as { dragonRootStyle: string | null }).dragonRootStyle = e.getAttribute('style');
+          e.style.setProperty('visibility', 'hidden');
+        });
+        await settle();
+        await page.evaluate(() => {
+          const e = document.documentElement;
+          const was = (window as unknown as { dragonRootStyle: string | null }).dragonRootStyle;
+          if (was === null) e.removeAttribute('style');
+          else e.setAttribute('style', was);
+        });
+        await settle();
+        const cdp = await page.context().newCDPSession(page);
+        try {
+          const png = Buffer.from(((await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string }).data, 'base64');
+          const img = decodePng(png);
+          const want = rasterSize(size, dpr);
+          if (img.width !== want.width || img.height !== want.height) throw new Error(`${c.id} DPR ${dpr} step ${samples.length - 1}: Chrome captured ${img.width}x${img.height}, the raster rule is ${want.width}x${want.height}`);
+          shot(samples.length - 1, png);
+        } finally {
+          await cdp.detach();
+        }
+      }
+    };
+    // MQ-R2: an env step switches touch emulation (pointer and hover, M7) or emulates prefers-reduced-motion and prefers-color-scheme,
+    // on the live page. The overrides belong to the CDP session that set them (a detached session's are cleared), so one session
+    // holds them to the end. setEmulatedMedia replaces every emulated feature (measured), so it always sends both settings of the
+    // point the step reaches.
+    let emulation: Awaited<ReturnType<ReturnType<typeof page.context>['newCDPSession']>> | null = null;
+    const emulate = async (s: ResizeStep & { kind: 'env'; reading: 'pointer' | 'motion' | 'scheme' }, d: MediaDevice): Promise<void> => {
+      emulation ??= await page.context().newCDPSession(page);
+      if (s.reading === 'pointer') await emulation.send('Emulation.setTouchEmulationEnabled', s.value === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
+      else await emulation.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: d.reducedMotion }, { name: 'prefers-color-scheme', value: d.colorScheme }] });
     };
     await dump(first.size);
     for (let i = 0; i < c.script.steps.length; i++) {
       const s = c.script.steps[i] as ResizeStep;
       const at = points[i + 1] as ScriptPoint;
       if (s.kind === 'resize') await page.setViewportSize({ width: s.width, height: s.height });
+      else if (s.kind === 'env' && s.reading === 'pointers') {
+        // A new page at the step's size in a Chrome launched with its readings; the motion and scheme settings are emulated again there.
+        if (browserFor === null) throw new Error(`${c.id}: a pointers step needs browserFor`);
+        const next = await open(await browserFor(s.value), at);
+        await page.context().close();
+        page = next;
+        emulation = null;
+        if (at.device.reducedMotion !== DESKTOP_DEVICE.reducedMotion || at.device.colorScheme !== DESKTOP_DEVICE.colorScheme) await emulate({ kind: 'env', reading: 'motion', value: at.device.reducedMotion }, at.device);
+      } else if (s.kind === 'env') await emulate(s, at.device);
       else await page.evaluate(pageStep, { kind: 'morph', html: rendering(c, at.assignment, r) } as PageStep);
       await settle();
       await dump(at.size);
@@ -253,6 +381,19 @@ export function resizeCaptureJson(c: ResizeCapture): string {
 
 export const expectedResizeDir = (): string => repoPath('packages/parity/expected-resize');
 export const resizeCapturePath = (caseId: string, r: 'authored' | 'compiled', dpr: number): string => `${expectedResizeDir()}/${caseId}/${r}-dpr${dpr}.json`;
+/** Chrome's pixels after step k of a resize case at a device DPR (the start is step 0), for the device-pixels lane. */
+export const resizePixelsPath = (caseId: string, dpr: number, step: number): string => `${expectedResizeDir()}/${caseId}/pixels-dpr${dpr}/step${step}.png`;
+
+const resizePngs = new Map<string, RgbaImage | null>();
+/** The committed Chrome pixels of a resize step, or null when there are none. */
+export function committedResizePixels(caseId: string, dpr: number, step: number): RgbaImage | null {
+  const path = resizePixelsPath(caseId, dpr, step);
+  const hit = resizePngs.get(path);
+  if (hit !== undefined) return hit;
+  const img = existsSync(path) ? decodePng(readFileSync(path)) : null;
+  resizePngs.set(path, img);
+  return img;
+}
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isSize = (v: unknown): v is Size => isObject(v) && typeof v['width'] === 'number' && typeof v['height'] === 'number';
@@ -307,6 +448,7 @@ export function runResizeScript(c: ResizeCase, dpr: number, faults: BandRuntimeF
   const out = [dump()];
   for (const s of c.script.steps) {
     if (s.kind === 'resize') rt.resize(pxOf(c, { width: s.width, height: s.height }, dpr));
+    else if (s.kind === 'env') rt.setDevice(readingsAfter(rt.readings, s));
     else rt.set(s.state, s.value);
     out.push(dump());
   }
@@ -359,7 +501,7 @@ export function resizeCaseReport(c: ResizeCase, dprs: readonly number[] = RESIZE
         const d = dumps[i] as ResizeDump;
         const at = `${c.id} DPR ${dpr} ${backend} step ${i} (${pt.size.width}x${pt.size.height})`;
         oracle++;
-        const band = nativeBandOfViewport(c.compiled, pt.size);
+        const band = nativeBandOfViewport(c.compiled, pt.size, deviceAt(pt, dpr));
         if (band === null) {
           failures.push(`${at}: no band of the partition holds the size`);
           return;

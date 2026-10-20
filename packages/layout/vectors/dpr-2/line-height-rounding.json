@@ -153,6 +153,7 @@
     "gridItem": null
    },
    "strut": null,
+   "marker": null,
    "children": [
     {
      "kind": "box",
@@ -279,6 +280,7 @@
       "gridItem": null
      },
      "strut": null,
+     "marker": null,
      "children": [
       {
        "kind": "box",
@@ -420,6 +422,7 @@
          "value": 1
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -594,6 +597,7 @@
          "value": 1.5
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -768,6 +772,7 @@
          "value": 2
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -942,6 +947,7 @@
          "value": 9.6171875
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1116,6 +1122,7 @@
          "value": 12.0078125
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1290,6 +1297,7 @@
          "value": 10.4921875
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1464,6 +1472,7 @@
          "value": 1.2
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1638,6 +1647,7 @@
          "value": 9.6
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1812,6 +1822,7 @@
          "value": 17.3
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",

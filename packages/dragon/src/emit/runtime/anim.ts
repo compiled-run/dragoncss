@@ -5,8 +5,9 @@
 // patches its lengths into the engine input (R16). The virtual driver is the case scripts' advance(ms); the display driver
 // (CADisplayLink, Choreographer) runs only while the animator is busy and only on a mount that asks for it, so a lane never
 // reads the wall clock (plant laneUsesWallClock). No platform animation API is used.
-import type { AnimTables, EasingCode, ValueCode } from '@dragon/layout';
+import type { AnimTables, EasingCode, TransformOrigin, ValueCode } from '@dragon/layout';
 import type { GeneratedFile } from '../../types.ts';
+import { opLit, originLit } from '../paint/transform.ts';
 import { doubleLit, stringLit } from '../native-support.ts';
 import type { Lang } from '../native-support.ts';
 
@@ -20,7 +21,7 @@ export class AnimEmitError extends Error {}
  */
 export const TABLE_FIELDS = {
   EasingCode: ['kind', 'x1', 'y1', 'x2', 'y2', 'steps', 'position'],
-  ValueCode: ['kind', 'r', 'g', 'b', 'alpha', 'px', 'percent', 'calc'],
+  ValueCode: ['kind', 'r', 'g', 'b', 'alpha', 'px', 'percent', 'calc', 'ops'],
   ListingCode: ['present', 'mode', 'delay', 'duration', 'easing'],
   SlotTable: ['node', 'property', 'kind', 'range', 'values', 'listings'],
   EntryCode: ['name', 'hasKeyframes', 'paused', 'delay', 'duration', 'iterations', 'direction', 'fill', 'easing'],
@@ -32,7 +33,8 @@ export const TABLE_FIELDS = {
   BaseTable: ['node', 'property', 'kind', 'range', 'values'],
   TrackRef: ['node', 'property'],
   ClosureTable: ['source', 'writes'],
-  AnimTables: ['assignments', 'slots', 'animations', 'keyframes', 'rendered', 'bases', 'closure'],
+  OriginTable: ['node', 'values'],
+  AnimTables: ['assignments', 'slots', 'animations', 'keyframes', 'rendered', 'bases', 'closure', 'origins'],
 } as const;
 
 /** The field counts of the fault records the glue builds with every fault off (rt-easing.ts RtFaults, rt-animator.ts AnimatorFaults). */
@@ -73,7 +75,9 @@ function record(lang: Lang, cls: TableClass, where: string, o: object, field: (n
 }
 
 const easingLit = (lang: Lang, where: string, e: EasingCode): string => record(lang, 'EasingCode', where, e, () => null);
-const valueLit = (lang: Lang, where: string, v: ValueCode): string => record(lang, 'ValueCode', where, v, () => null);
+const backendOf = (lang: Lang): 'uikit' | 'android-views' => (lang === 'swift' ? 'uikit' : 'android-views');
+// ANIM-b2: a transform endpoint's functions as the paint emitter writes them (emit/paint/transform.ts).
+const valueLit = (lang: Lang, where: string, v: ValueCode): string => record(lang, 'ValueCode', where, v, (f, x) => (f === 'ops' ? array(lang, 'TransformOp', (x as ValueCode['ops']).map((o) => opLit(backendOf(lang), o))) : null));
 const numbers = (lang: Lang, where: string, xs: readonly number[]): string => array(lang, 'Double', xs.map((x, i) => scalar(lang, `${where}[${i}]`, x)));
 const booleans = (lang: Lang, where: string, xs: readonly boolean[]): string => array(lang, lang === 'swift' ? 'Bool' : 'Boolean', xs.map((x, i) => scalar(lang, `${where}[${i}]`, x)));
 const values = (lang: Lang, where: string, xs: readonly ValueCode[]): string => array(lang, 'ValueCode', xs.map((x, i) => valueLit(lang, `${where}[${i}]`, x)));
@@ -116,6 +120,7 @@ export function animTablesLit(lang: Lang, t: AnimTables, prefix: string): { read
     if (f === 'writes') return array(lang, 'TrackRef', (v as AnimTables['closure'][number]['writes']).map((w, j) => trackLit(lang, `closure[${i}].writes[${j}]`, w)));
     return null;
   })));
+  const origins = t.origins.map((o, i) => decl(`${prefix}Origin${i}`, 'OriginTable', record(lang, 'OriginTable', `origins[${i}]`, o, (f, v) => (f === 'values' ? array(lang, 'TransformOrigin', (v as TransformOrigin[]).map((x) => originLit(backendOf(lang), x))) : null))));
   const expr = record(lang, 'AnimTables', 'tables', t, (f) => {
     switch (f) {
       case 'slots':
@@ -130,6 +135,8 @@ export function animTablesLit(lang: Lang, t: AnimTables, prefix: string): { read
         return array(lang, 'BaseTable', bases);
       case 'closure':
         return array(lang, 'ClosureTable', closure);
+      case 'origins':
+        return array(lang, 'OriginTable', origins);
       default:
         return null;
     }
@@ -149,13 +156,16 @@ function swiftText(): string {
 /// are each assignment's engine input resolved for the environment at scale 1 (R14), where length endpoints come from.
 public final class DragonAnimator {
   private let tables: AnimTables
-  private let inputs: JsArray<LayoutInput>
+  private var inputs: JsArray<LayoutInput>
+  /// MQ-R1: the next event's after-change inputs, every assignment's at the media root's new size; nil without a size change.
+  private var staged: JsArray<LayoutInput>?
   private let initial: Double
   private let faults = RtFaults(${falses(faultArity().RtFaults)})
   private let anim = AnimatorFaults(${falses(faultArity().AnimatorFaults)})
   private var state: AnimatorState
   private var entries = JsArray<FrameEntry>([])
   private var colors: [String: DragonRGBA8] = [:]
+  private var transforms: [String: TransformWrite] = [:]
 
   /// Starts at assignment current (R7: CSS animations start at first style; no transition starts on it).
   public init(tables: AnimTables, inputs: [LayoutInput], initial: Int, current: Int) {
@@ -169,9 +179,19 @@ public final class DragonAnimator {
     refresh()
   }
 
-  /// R4: one style change event, the setter having moved the machine to assignment to.
+  /// MQ-R1: the inputs the next event's after-change style resolves against, after a size change of the media root.
+  public func stage(_ after: [LayoutInput]) {
+    if Double(after.count) != tables.assignments { fatalError("dragon: \(after.count) engine inputs for \(tables.assignments) assignments") }
+    staged = JsArray(after)
+  }
+
+  /// R4: one style change event, the setter having moved the machine to assignment to; across a staged size change, the
+  /// before-change style reads the old inputs and the after-change style the new ones (MQ-R1).
   public func event(_ to: Int) {
-    do { state = try rtAnimator_animatorEvent(state, tables, inputs, initial, Double(to), faults, anim) } catch { fatalError("dragon: animator event to \(to): \(error)") }
+    let after = staged ?? inputs
+    do { state = try rtAnimator_animatorRestyle(state, tables, inputs, after, initial, Double(to), faults, anim) } catch { fatalError("dragon: animator event to \(to): \(error)") }
+    inputs = after
+    staged = nil
     refresh()
   }
 
@@ -194,10 +214,17 @@ public final class DragonAnimator {
         out[c.node.description + "|" + c.property.description] = DragonRGBA8(dragonCheckedInt(c.rgba.r, "red"), dragonCheckedInt(c.rgba.g, "green"), dragonCheckedInt(c.rgba.b, "blue"), dragonCheckedInt(c.rgba.alpha, "alpha"))
       }
       colors = out
+      var moved: [String: TransformWrite] = [:]
+      for w in try rtAnimator_frameTransforms(state, tables, entries).items { moved[w.node.description] = w }
+      transforms = moved
     } catch {
       fatalError("dragon: animator frame: \(error)")
     }
   }
+
+  /// ANIM-b2: the frame's transform of a node whose transform animates, through the view's transform writer (dragonSetTransform,
+  /// re-applied after layout at the new box size), or nil for any other node.
+  public func transform(_ node: String) -> TransformWrite? { return transforms[node] }
 
   /// The frame's colour of a node's property as the device draws it (R9 closure included), or nil where it does not animate.
   public func color(_ node: String, _ property: String) -> DragonRGBA8? { return colors[node + "|" + property] }
@@ -258,13 +285,16 @@ import dev.dragon.layout.*
  * are each assignment's engine input resolved for the environment at scale 1 (R14), where length endpoints come from.
  */
 class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, initial: Int, current: Int) {
-  private val inputs: JsArray<LayoutInput> = JsArray<LayoutInput>(inputs.size).also { it.addAll(inputs) }
+  private var inputs: JsArray<LayoutInput> = JsArray<LayoutInput>(inputs.size).also { it.addAll(inputs) }
+  /** MQ-R1: the next event's after-change inputs, every assignment's at the media root's new size; null without a size change. */
+  private var staged: JsArray<LayoutInput>? = null
   private val initial = initial.toDouble()
   private val faults = RtFaults(${falses(faultArity().RtFaults)})
   private val anim = AnimatorFaults(${falses(faultArity().AnimatorFaults)})
   private var state: AnimatorState
   private var entries: JsArray<FrameEntry> = jsArrayOf()
   private var colors: Map<String, DragonRGBA8> = emptyMap()
+  private var transforms: Map<String, TransformWrite> = emptyMap()
 
   init {
     if (inputs.size.toDouble() != tables.assignments) throw IllegalStateException("dragon: " + inputs.size + " engine inputs for " + tables.assignments + " assignments")
@@ -272,9 +302,21 @@ class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, 
     refresh()
   }
 
-  /** R4: one style change event, the setter having moved the machine to assignment to. */
+  /** MQ-R1: the inputs the next event's after-change style resolves against, after a size change of the media root. */
+  fun stage(after: List<LayoutInput>) {
+    if (after.size.toDouble() != tables.assignments) throw IllegalStateException("dragon: " + after.size + " engine inputs for " + tables.assignments + " assignments")
+    staged = JsArray<LayoutInput>(after.size).also { it.addAll(after) }
+  }
+
+  /**
+   * R4: one style change event, the setter having moved the machine to assignment to; across a staged size change, the
+   * before-change style reads the old inputs and the after-change style the new ones (MQ-R1).
+   */
   fun event(to: Int) {
-    state = rtAnimator_animatorEvent(state, tables, inputs, initial, to.toDouble(), faults, anim)
+    val after = staged ?: inputs
+    state = rtAnimator_animatorRestyle(state, tables, inputs, after, initial, to.toDouble(), faults, anim)
+    inputs = after
+    staged = null
     refresh()
   }
 
@@ -292,7 +334,16 @@ class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, 
     val out = HashMap<String, DragonRGBA8>()
     for (c in rtAnimator_frameColors(entries, tables, anim)) out[c.node + "|" + c.property] = DragonRGBA8(dragonCheckedInt(c.rgba.r, "red"), dragonCheckedInt(c.rgba.g, "green"), dragonCheckedInt(c.rgba.b, "blue"), dragonCheckedInt(c.rgba.alpha, "alpha"))
     colors = out
+    val moved = HashMap<String, TransformWrite>()
+    for (w in rtAnimator_frameTransforms(state, tables, entries)) moved[w.node] = w
+    transforms = moved
   }
+
+  /**
+   * ANIM-b2: the frame's transform of a node whose transform animates, through the view's transform writer (dragonSetTransform,
+   * re-applied after layout at the new box size), or null for any other node.
+   */
+  fun transform(node: String): TransformWrite? = transforms[node]
 
   /** The frame's colour of a node's property as the device draws it (R9 closure included), or null where it does not animate. */
   fun color(node: String, property: String): DragonRGBA8? = colors[node + "|" + property]

@@ -11,17 +11,17 @@ export type DecorationAnalysisFaults = { readonly propagatedIntoOutOfFlow: boole
 export const NO_DECORATION_ANALYSIS_FAULTS: DecorationAnalysisFaults = { propagatedIntoOutOfFlow: false };
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
-import { usedColors } from '../lower/native-program.ts';
+import { glyphFill } from '../lower/paint/colors.ts';
 import type { Assignment } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import type { ResolvedValue } from './computed.ts';
 import { parseValueText, textFontOfProps, valueToString } from './computed.ts';
 import type { LinkedElement } from './link.ts';
+import { isAnyLink } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { caseByAssignment, internalRecord } from '../project.ts';
 
-/** An a element with an href is a hyperlink (HTML §4.6.1): :any-link matches it, and :visited never does in Dragon. */
-export const isAnyLink = (el: LinkedElement): boolean => el.tag === 'a' && el.attributes.has('href');
+export { isAnyLink } from './match.ts';
 
 /**
  * html.css:1501-1505: a:-webkit-any-link { color: -webkit-link; text-decoration: underline }. Each longhand no author declaration
@@ -45,7 +45,7 @@ export type AppliedDecoration = {
   readonly box: string;
   readonly lines: readonly DecorationLine[];
   readonly style: string;
-  /** The used colour (currentcolor resolved against the decorating box's color). */
+  /** The used colour: currentcolor is the decorating box's glyph fill (its -webkit-text-fill-color, else its color), as Chrome paints it. */
   readonly color: Rgba8;
   /** auto, or a computed px length or percentage of the decorating box's font size, as text. */
   readonly thickness: CssValue;
@@ -102,10 +102,11 @@ export type DecorationAnalysis = {
 };
 
 /**
- * css-text-decor-3 §2.1: each text leaf's applied decorations. colorOf gives an element's used color (currentcolor of
- * text-decoration-color). The propagatedIntoOutOfFlow plant propagates into absolutely positioned boxes as well.
+ * css-text-decor-3 §2.1: each text leaf's applied decorations. colorOf gives the colour a currentcolor text-decoration-color takes:
+ * Chrome paints it in the decorating box's text fill colour (measured, text-fill-stroke-colors), which is color unless
+ * -webkit-text-fill-color sets another. The propagatedIntoOutOfFlow plant propagates into absolutely positioned boxes as well.
  */
-export function analyzeDecorations(root: ResolvedElement, colorOf: (el: ResolvedElement) => Rgba8 = (el) => usedColors(el).color, faults: DecorationAnalysisFaults = NO_DECORATION_ANALYSIS_FAULTS): DecorationAnalysis {
+export function analyzeDecorations(root: ResolvedElement, colorOf: (el: ResolvedElement) => Rgba8 = glyphFill, faults: DecorationAnalysisFaults = NO_DECORATION_ANALYSIS_FAULTS): DecorationAnalysis {
   const applied = new Map<string, readonly AppliedDecoration[]>();
   const unproven: { address: string; box: string }[] = [];
   const walk = (el: ResolvedElement, inherited: readonly AppliedDecoration[]): void => {

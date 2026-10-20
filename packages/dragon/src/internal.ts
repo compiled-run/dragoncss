@@ -1,9 +1,11 @@
 // Internal entry for the parity harness, selected by the "dragon-internal" export condition. Not a public API.
+import { TRANSPARENT } from './css/color.ts';
 import type { LayoutInput } from '@dragon/layout';
 import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
+import { markerStyleOf } from './analysis/resolve.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -12,7 +14,7 @@ import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
-import { rootFontSizeOf } from './lower/ios-layout.ts';
+import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
 import type { InteractionPartition } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
@@ -177,11 +179,21 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, ElementColors>();
+  const items = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
+    items.set(el.element.address, el);
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
+  // GEN-c: a ::marker box takes its color from its ::marker rules or its item, and has its initial background (transparent) and
+  // border colours (currentcolor).
+  for (const m of listItemMarkers(c.resolved)) {
+    const item = items.get(m.address);
+    if (m.type.kind === 'none' || item === undefined) continue;
+    const color = usedColors(markerStyleOf(item)).color;
+    out.set(`${m.address}::marker`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
+  }
   return out;
 }
 
@@ -253,22 +265,36 @@ export function textTopology(compiled: object, assignment: Assignment): readonly
   return out;
 }
 
-/** Dragon's resolved colour channels of every laid-out text node in one case, keyed by text address. */
-export function resolvedTextColors(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, Rgba8> | null {
+/**
+ * Dragon's resolved colour channels of every laid-out text node in one case, keyed by text address: its color, or with fill the
+ * colour its glyphs are filled in (compat §5 -webkit-text-fill-color, color where that is currentcolor).
+ */
+export function resolvedTextColors(compiled: object, assignment: Assignment, state: string | null = null, fill = false): ReadonlyMap<string, Rgba8> | null {
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, Rgba8>();
+  const elements = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
+    elements.set(el.element.address, el);
     for (const ch of el.children) {
       if (ch.kind === 'element') walk(ch);
       else {
-        const v = ch.props.get('color');
+        // A text node takes its element's fill (the property is inherited and text nodes carry only the text longhands).
+        const f = fill ? el.props.get('-webkit-text-fill-color') : undefined;
+        if (fill && f === undefined) throw new Error(`${el.element.address}: -webkit-text-fill-color did not resolve`);
+        const v = f !== undefined && !(f.value.kind === 'keyword' && f.value.value === 'currentcolor') ? f : ch.props.get('color');
         if (v === undefined) throw new Error(`${ch.node.address}: color did not resolve`);
         out.set(ch.node.address, colorChannels(v.value, ch.node.address));
       }
     }
   };
   walk(c.resolved);
+  // GEN-c: a text marker's text ("<item>::marker:text0") is drawn in its ::marker's color, which it inherits.
+  for (const m of listItemMarkers(c.resolved)) {
+    const item = elements.get(m.address);
+    if (m.type.kind !== 'type' || isSymbolMarker(m.type.type) || item === undefined) continue;
+    out.set(markerTextId(`${m.address}::marker`), usedColors(markerStyleOf(item)).color);
+  }
   return out;
 }
 
@@ -308,8 +334,8 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
 // SELD-R1a (notes/T047-runtime-spec.md §3.3): the state program, its runtime reference and the generated state runtime.
 export type { LayoutChange, LayoutVariant, StateCase, StateDelta, StateFaults, StateProgram, StateVariable } from './lower/state-program.ts';
 export { applyDelta, deriveStateProgram, MAX_STATE_TABLE_ASSIGNMENTS, NO_STATE_FAULTS, programAt, STATE_PROGRAM_VERSION, stateKey, StateProgramError, StateRuntime, StateValueError } from './lower/state-program.ts';
-export type { ScriptCase, ScriptStep, StateEmit, WebClassTable, WebStateProgram } from './emit/runtime/state.ts';
-export { emitStatePrograms, STATE_RUNTIME_VERSION, StateEmitError, typedSetters, valueKey, webStateModule, webStateProgram } from './emit/runtime/state.ts';
+export type { PointerReadings, ScriptCase, ScriptStep, StateEmit, WebClassTable, WebStateProgram } from './emit/runtime/state.ts';
+export { emitStatePrograms, pointerBits, STATE_RUNTIME_VERSION, StateEmitError, typedSetters, valueKey, webStateModule, webStateProgram } from './emit/runtime/state.ts';
 export { CLOCK_RUNTIME_VERSION, ClockError, VirtualClock } from './emit/runtime/clock.ts';
 export { RUNTIME_MODULES } from './emit/runtime/index.ts';
 
@@ -365,6 +391,7 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
 // GEN-c (T151 R14): the compile-time ordinal and marker text of every list item in one case (analysis/markers.ts).
 export type { ListItemMarker, MarkerType } from './analysis/markers.ts';
 import { listItemMarkers } from './analysis/markers.ts';
+import { markerTextId } from './lower/paint/list-marker.ts';
 import type { GenCFaults } from './faults/gen-c.ts';
 
 /** The list items of one case in tree order, with their ordinals and marker text; null without a resolved case. */
@@ -404,12 +431,16 @@ export function animationFeatures(compiled: object): readonly string[] {
 
 // MQ-R1 (notes/T067-mq-r-spec.md R4, R5): the @media bands of the native output, their per-case programs and the band program.
 export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
-export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
+export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandEnvironmentOf, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
 export type { InternalBands } from './project.ts';
 export { CONTAINER_AT_RULE_FEATURE, MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
+// MQ-R2 (T067 R9): the device readings the device features answer from.
+export type { MediaDevice } from './media/index.ts';
+export { DESKTOP_DEVICE, TOUCH_DEVICE } from './media/index.ts';
 import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';
 import { assignmentKey as keyOfAssignment } from './analysis/link.ts';
-import { bandAt as partitionBandAt } from './media/index.ts';
+import { bandAt as partitionBandAt, DESKTOP_DEVICE as DESKTOP_DEVICE_OF } from './media/index.ts';
+import type { MediaDevice } from './media/index.ts';
 import { CONTAINER_AT_RULE_FEATURE as CONTAINER_AT_RULE_FEATURE_KEY, MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
 import type { BandRuntimeFaults } from './lower/band-program.ts';
 import type { StateFaults, StateProgram } from './lower/state-program.ts';
@@ -426,21 +457,23 @@ export function nativeBands(compiled: object): { readonly table: import('@dragon
  * when @container rules apply in its bands (CQ), sorted; none without bands.
  */
 export function mediaFeatures(compiled: object): readonly string[] {
-  const bands = nativeBands(compiled);
-  if (bands === null || bands.table.atoms.length === 0) return [];
-  const container = internalRecord(compiled)?.bands?.container === true ? [CONTAINER_AT_RULE_FEATURE_KEY] : [];
-  return [MEDIA_AT_RULE_FEATURE_KEY, ...container, ...[...new Set(bands.table.atoms.map((a) => a.feature))].map(mediaFeatureKeyOf)].sort();
+  const record = internalRecord(compiled);
+  if (record === undefined || record.bands === null || record.bands.partition.atoms.length === 0) return [];
+  const container = record.bands.container ? [CONTAINER_AT_RULE_FEATURE_KEY] : [];
+  // The authored feature names, as the profile gate reads them (-webkit-device-pixel-ratio has its own row, though its atom is resolution's).
+  return [MEDIA_AT_RULE_FEATURE_KEY, ...container, ...[...new Set(record.bands.partition.atoms.map((a) => a.feature.base))].map(mediaFeatureKeyOf)].sort();
 }
 
 /**
- * The band that holds a viewport by the compile-time partition (media/band.ts bandAt over CSS px): the independent reference the
+ * The band that holds a viewport on a device (headless Chrome's desktop page at DPR 1 by default) by the compile-time partition
+ * (media/band.ts bandAt over CSS px): the independent reference the
  * runtime's band lookup is checked against; 0 without @media, null when no band holds it (only a planted partition leaves a gap).
  */
-export function nativeBandOfViewport(compiled: object, viewport: { readonly width: number; readonly height: number }): number | null {
+export function nativeBandOfViewport(compiled: object, viewport: { readonly width: number; readonly height: number }, device: MediaDevice = DESKTOP_DEVICE_OF): number | null {
   const record = internalRecord(compiled);
   if (record === undefined) throw new Error('not a compiled result from this package');
   if (record.bands === null) return 0;
-  return partitionBandAt(record.bands.partition, viewport)?.index ?? null;
+  return partitionBandAt(record.bands.partition, viewport, undefined, device)?.index ?? null;
 }
 
 /** Both native backends' programs of one case in one band (nativePrograms for the per-case programs' own band). */

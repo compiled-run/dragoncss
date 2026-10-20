@@ -1,4 +1,4 @@
-// PNT1: an outline, box-shadow, background colour or gradient raster in currentcolor takes color's value, and Chrome repaints it each
+// PNT1: an outline, box-shadow, background colour, gradient raster or text stroke in currentcolor takes color's value, and Chrome repaints it each
 // frame an animation or transition changes color. The native lowerings (lower/paint/outline.ts, lower/paint/shadow.ts,
 // lower/paint/colors.ts, lower/paint/gradient.ts) resolve currentcolor to the resting color once, and the animator's per-frame colour
 // closure (lower/anim-program.ts R9) reaches color and currentcolor border sides only, so mid-flight the native paint keeps the
@@ -58,6 +58,9 @@ function currentColorPaints(address: string, tree: ReadonlyMap<string, Node>): P
   const out: Paint[] = [];
   const style = paintedOutlineStyle(el);
   if (style !== null && isKeyword(valueOf(el, 'outline-color'), 'currentcolor')) out.push({ what: `a ${style} outline`, repaint: 'outlines or box shadows', own: true, alpha: false });
+  // TXT-FX: a text stroke is set once from the resting colour (native-program.ts text-stroke); the animator fills text only.
+  const width = valueOf(el, '-webkit-text-stroke-width');
+  if (width.kind === 'length' && width.value > 0 && isKeyword(valueOf(el, '-webkit-text-stroke-color'), 'currentcolor') && el.children.some((c) => c.kind === 'text')) out.push({ what: 'a -webkit-text-stroke', repaint: 'text strokes', own: true, alpha: false });
   if (isKeyword(valueOf(el, 'display'), 'contents')) return out;
   if (shadowInCurrentColor(address, tree)) out.push({ what: 'a box-shadow', repaint: 'outlines or box shadows', own: true, alpha: false });
   const background = isKeyword(valueOf(el, 'background-color'), 'currentcolor');

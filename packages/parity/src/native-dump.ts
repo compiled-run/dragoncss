@@ -1,4 +1,4 @@
-// dragon.native-dump/1 (docs/research/native-strategy.md 3.2; notes/T002-device-lanes.md 1.2): one data description of every
+// dragon.native-dump/3 (docs/research/native-strategy.md 3.2; notes/T002-device-lanes.md 1.2): one data description of every
 // field, its type, whether it is required and when it may be null. The TS types are inferred from it and the validator walks it,
 // so neither can drift from it; P4 emits the Swift and Kotlin encoders from the same description.
 
@@ -38,8 +38,14 @@ const DEVICE_EDGES = obj([field('left', int, 'device px'), field('top', int, 'de
 export const DUMP_LANES = ['ios-sim', 'android-emu', 'ts-reference'] as const;
 export const REFERENCE_LANE = 'ts-reference';
 
+/**
+ * The schema id. /2 (MQ-R1, notes/T067 R6) adds the environment record; /3 (MQ-R2, R9) adds the device's readings to it. Every
+ * earlier field is unchanged.
+ */
+export const NATIVE_DUMP_SCHEMA_ID = 'dragon.native-dump/3';
+
 export const NATIVE_DUMP_SCHEMA = obj([
-  field('schema', { kind: 'const', value: 'dragon.native-dump/1' }, 'the schema id'),
+  field('schema', { kind: 'const', value: NATIVE_DUMP_SCHEMA_ID }, 'the schema id'),
   field('lane', { kind: 'enum', values: DUMP_LANES }, 'the lane that wrote the dump'),
   field('case', obj([
     field('id', id, 'the parity case id; joins the Chrome capture of the same case and DPR'),
@@ -90,6 +96,22 @@ export const NATIVE_DUMP_SCHEMA = obj([
     ])), 'the generated sample points (samples.ts), read from the capture'),
   ]), 'numeric paint evidence', 'reference-lane'),
   orNull('timing', obj([field('settleMs', num, 'ms'), field('dumpMs', num, 'ms')]), 'informational; never compared', 'reference-lane'),
+  orNull('environment', obj([
+    field('rootPx', arr(num, 2), 'the Dragon root view\'s size in whole device px, as it observed it'),
+    field('dpr', num, 'the scale the root view\'s px are read at'),
+    field('media', arr(num, 2), 'the media width and height @media is evaluated against: fround of the px at the scale (T067 R3)'),
+    field('band', { kind: 'integer', min: 0, max: null }, 'the @media band the state program is in (0 without @media)'),
+    field('readings', obj([
+      field('pointer', { kind: 'enum', values: ['none', 'coarse', 'fine'] }, 'the primary pointing device'),
+      field('hover', { kind: 'enum', values: ['none', 'hover'] }, 'whether the primary pointing device hovers'),
+      field('anyPointer', arr({ kind: 'enum', values: ['coarse', 'fine'] }), 'the kinds of every pointing device, coarse before fine'),
+      field('anyHover', { kind: 'enum', values: ['none', 'hover'] }, 'whether any pointing device hovers'),
+      field('reducedMotion', { kind: 'enum', values: ['no-preference', 'reduce'] }, 'the user\'s motion setting'),
+      field('colorScheme', { kind: 'enum', values: ['light', 'dark'] }, 'the user\'s colour scheme (the root view\'s interface style or night mode)'),
+      field('source', { kind: 'enum', values: ['platform', 'injected'] }, 'read from the platform, or injected by a case script\'s env steps'),
+      field('inputs', arr(num), 'the platform inputs the readings came from: Android, every input device\'s getSources(); iOS, [1 on an iPad else 0, the GCMouse count]'),
+    ]), 'MQ-R2 (T067 R9): the readings the device features answer from (the scale is dpr)'),
+  ]), 'MQ-R1 (T067 R6): the environment of a state mount; null for a layout case, which has no Dragon root view of its own', 'always'),
 ]);
 
 // ---------------------------------------------------------------- types inferred from the description
@@ -188,7 +210,7 @@ export function validateNativeDump(value: unknown): DumpValidation {
           }
           check(x, f.type, p);
         }
-        for (const k of Object.keys(o)) if (!t.fields.some((f) => f.name === k)) err(path === '' ? k : `${path}.${k}`, 'extra-key', `${k} is not in dragon.native-dump/1`);
+        for (const k of Object.keys(o)) if (!t.fields.some((f) => f.name === k)) err(path === '' ? k : `${path}.${k}`, 'extra-key', `${k} is not in ${NATIVE_DUMP_SCHEMA_ID}`);
         return;
       }
     }
@@ -222,19 +244,4 @@ export function frameOf(e: DumpEdges, scale: number): DumpFrame {
   return { x: e.left / scale, y: e.top / scale, width: (e.right - e.left) / scale, height: (e.bottom - e.top) / scale };
 }
 
-/**
- * A text node's dump lines grouped by break line, as index lists. A line joins the group before it when it has the same top and
- * either the same offsets (TXT2-f: a truncated piece's whole run, then its painted part) or starts where it ends (TXT2-c: preserved
- * text's pieces on one line, its text, hanging spaces and line feed); engineTextLines and Chrome's breaks count the group once.
- */
-export function breakLineGroups(lines: readonly DumpLine[]): number[][] {
-  const groups: number[][] = [];
-  lines.forEach((l, j) => {
-    const prev = lines[j - 1];
-    const group = groups[groups.length - 1];
-    const joins = prev !== undefined && group !== undefined && prev.deviceEdges.top === l.deviceEdges.top && prev.start !== null && prev.end !== null && l.start !== null && l.end !== null && ((l.start === prev.start && l.end === prev.end) || l.start === prev.end);
-    if (joins) group.push(j);
-    else groups.push([j]);
-  });
-  return groups;
-}
+export { breakLineGroups } from './dump-line-groups.ts';

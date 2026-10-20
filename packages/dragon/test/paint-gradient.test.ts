@@ -68,8 +68,12 @@ describe('gradient syntax (css-images-3 §3)', () => {
     // An absolute unit reads as px times its ratio (Chrome keeps it as written in a gradient's computed value).
     expect(ok(gradient(fn('linear-gradient(red 0.1in, blue 12pt)'))).stops.map((s) => [s.unit, s.value])).toEqual([['px', 0.1 * 96], ['px', 12 * (96 / 72)]]);
   });
+  it('reads a url() image as its URL (BG2-u; images/compile.ts resolves it), in any case and quoting', () => {
+    expect(ok(imageItem(tokens('url(a.png)')))).toEqual({ kind: 'url', url: 'a.png' });
+    expect(ok(imageItem(tokens('URL("a b.png")')))).toEqual({ kind: 'url', url: 'a b.png' });
+    expect(ok(imageItem(tokens("url('data:image/png;base64,AAAA')")))).toEqual({ kind: 'url', url: 'data:image/png;base64,AAAA' });
+  });
   it('refuses what Dragon does not draw on any target, naming the package that lifts it', () => {
-    expect(reason(imageItem(tokens('url(a.png)')))).toContain('BG2-u');
     expect(reason(imageItem(tokens('conic-gradient(red, blue)')))).toContain('BG2-c');
     expect(reason(imageItem(tokens('linear-gradient(in oklab, red, blue)')))).toContain('BG2b');
     expect(reason(imageItem(tokens('linear-gradient(red, 30%, blue)')))).toContain('BG2b');

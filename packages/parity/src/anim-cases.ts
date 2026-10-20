@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import type { LayoutInput, TextMeasurer } from '@dragon/layout';
 import { NO_ENGINE_FAULTS, resolveEnvironment, rtAnimations, rtAnimator, rtEasing, rtInterpolate, rtTiming, rtTransition } from '@dragon/layout';
 import type { AnimProgram, Compiled, NativeBackend, NativeProgram, ProgramNode, Rgba8, Scalar, StateEmit, StateProgram } from 'dragon';
-import { animProgramOf, animTablesOf, compiledCases, deriveStateProgram, nativePrograms, programAt, stateKey, StateRuntime } from 'dragon';
+import { animProgramOf, animTablesOf, compiledCases, deriveStateProgram, nativePrograms, programAt, stateKey, StateRuntime, VOCABULARY, WRITE_CSS } from 'dragon';
 import { tree } from './fixture-groups/define.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { BACKEND_OF, nativeCompile, referenceMeasurer } from './native-host.ts';
@@ -312,7 +312,7 @@ export function simulator(c: AnimCase, faults: rtEasing.RtFaults = rtEasing.NO_R
   };
 }
 
-export type FrameDump = { readonly at: number; readonly settle: boolean; readonly assignment: number; readonly frame: AnimFrame; readonly program: NativeProgram };
+export type FrameDump = { readonly at: number; readonly settle: boolean; readonly assignment: number; readonly frame: AnimFrame; readonly transforms: readonly rtAnimator.TransformWrite[]; readonly program: NativeProgram };
 
 /** The dumps of a script on the TypeScript reference: each dump's animated values and the live program with them applied. */
 export function runFrameScript(c: AnimCase, steps: readonly FrameStep[], faults: rtEasing.RtFaults = rtEasing.NO_RT_FAULTS, anim: AnimFaults = NO_ANIM_FAULTS): FrameDump[] {
@@ -321,7 +321,7 @@ export function runFrameScript(c: AnimCase, steps: readonly FrameStep[], faults:
   for (const s of steps) {
     if (s.kind === 'set') sim.set(s.sets);
     else if (s.kind === 'advance') sim.animator.advance(s.ms);
-    else out.push({ at: s.at, settle: s.settle, assignment: sim.rt.assignment, frame: sim.animator.frame(), program: sim.animator.program(sim.rt.program()) });
+    else out.push({ at: s.at, settle: s.settle, assignment: sim.rt.assignment, frame: sim.animator.frame(), transforms: sim.animator.transforms(), program: sim.animator.program(sim.rt.program()) });
   }
   return out;
 }
@@ -419,9 +419,17 @@ export class Animator {
     return rtAnimator.animatorBusy(this.state);
   }
 
-  /** The live program with the frame applied (R16): colours into writes with the R9 closure, lengths into the engine input. */
+  /** ANIM-b2: the transform write of every node whose transform animates, this frame (its static value while nothing animates it). */
+  transforms(): rtAnimator.TransformWrite[] {
+    return rtAnimator.frameTransforms(this.state, this.tables, rtAnimator.animatorFrame(this.state, this.tables, this.faults));
+  }
+
+  /**
+   * The live program with the frame applied (R16): colours into writes with the R9 closure, lengths into the engine input, and
+   * each animated transform as the node's transform write (ANIM-b2; none removes it), as the device's writer sets it.
+   */
   program(base: NativeProgram): NativeProgram {
-    return applyFrame(base, this.frame(), this.tables, this.anim);
+    return applyFrame(base, this.frame(), this.tables, this.anim, this.transforms());
   }
 }
 
@@ -433,8 +441,9 @@ export function closureFrame(frame: AnimFrame, ap: AnimProgram, anim: AnimFaults
 const SIDES = ['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
 
 /** Writes a frame into a program as the device writes it into its views and engine input: a new program, the base untouched. */
-export function applyFrame(base: NativeProgram, frame: AnimFrame, tables: rtAnimator.AnimTables, anim: AnimFaults = NO_ANIM_FAULTS): NativeProgram {
+export function applyFrame(base: NativeProgram, frame: AnimFrame, tables: rtAnimator.AnimTables, anim: AnimFaults = NO_ANIM_FAULTS, transforms: readonly rtAnimator.TransformWrite[] = []): NativeProgram {
   if (frame.size === 0) return base;
+  const moved = new Map(transforms.map((t) => [t.node, t]));
   const entries = entriesOf(frame);
   const colors = new Map<string, Rgba8>(rtAnimator.frameColors(entries, tables, anim).map((c) => [trackKey(c.node, c.property), c.rgba]));
   const nodes = base.nodes.map((n): ProgramNode => {
@@ -452,7 +461,13 @@ export function applyFrame(base: NativeProgram, frame: AnimFrame, tables: rtAnim
       if (w.kind === 'text-color' && textColor !== undefined) return { ...w, color: textColor };
       return w;
     });
-    return { ...n, writes };
+    const t = moved.get(n.id);
+    if (t === undefined) return { ...n, writes };
+    // In the static write's place when the node has one, after its other writes when it has none (its static value is none).
+    type Write = ProgramNode['writes'][number];
+    const write: Write = { kind: 'transform', ops: t.ops, origin: t.origin, ...VOCABULARY[base.backend].transform, css: WRITE_CSS.transform };
+    const placed = writes.flatMap((w): Write[] => (w.kind !== 'transform' ? [w] : t.ops.length === 0 ? [] : [write]));
+    return { ...n, writes: t.ops.length === 0 || placed.some((w) => w.kind === 'transform') ? placed : [...placed, write] };
   });
   return { ...base, nodes, root: rtAnimator.patchRoot(base.root, entries, tables) };
 }

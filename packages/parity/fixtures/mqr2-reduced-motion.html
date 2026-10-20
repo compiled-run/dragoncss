@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.a { width: 120px; height: 16px; margin-left: 40px; background-color: #ccc; }
+.b { width: 30%; height: 10px; background-color: #888; }
+@media (prefers-reduced-motion: reduce) { .a { margin-left: 0; background-color: #393; } }
+@media (prefers-reduced-motion) and (max-width: 360px) { .b { width: 60%; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="a"></div>
+<div data-dragon-id="b" class="b"></div>
+</body>
+</html>

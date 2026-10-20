@@ -2,6 +2,7 @@
 // line_breaker.cc:4008-4250, :4476-4560). The text-wrap-break fixtures prove the same against Chrome at every DPR.
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layoutWithFaults, NO_ENGINE_FAULTS } from '../src/index.ts';
+import { breakAllOpportunities } from '../src/inline.ts';
 import type { EngineFaults, InlineChild, LayoutBox, LayoutInput, TextLeaf } from '../src/index.ts';
 import { box, neutralEnvironment, px, text } from './helpers.ts';
 
@@ -68,15 +69,44 @@ describe('min-content (a flex item\'s automatic minimum)', () => {
     expect(widthOf({ overflowWrap: 'break-word' })).toBe(8 * G);
     expect(widthOf({})).toBe(8 * G);
   });
+  it('break-all shrinks it to one glyph; breakAllIgnored does not', () => {
+    expect(widthOf({ wordBreak: 'break-all' })).toBe(30 * 64);
+    expect(widthOf({ wordBreak: 'break-all' }, { ...NO_ENGINE_FAULTS, breakAllIgnored: true })).toBe(8 * G);
+  });
   it('the min-content plants move it', () => {
     expect(widthOf({ overflowWrap: 'anywhere' }, { ...NO_ENGINE_FAULTS, anywhereMinContentIgnored: true })).toBe(8 * G);
     expect(widthOf({ overflowWrap: 'break-word' }, { ...NO_ENGINE_FAULTS, breakWordShrinksMinContent: true })).toBe(30 * 64);
   });
 });
 
+describe('word-break: break-all (TXT2-d)', () => {
+  it('breaks between any two ASCII letters or digits, on top of the spaces', () => {
+    expect(lines(60, [leaf('t', 'aa bbbbbbbbbb cc', { wordBreak: 'break-all' })], 't')).toEqual([[0, 6 * G], [0, 6 * G], [0, 4 * G]]);
+    expect(lines(45, [leaf('t', 'ab12cd34 ef', { wordBreak: 'break-all' })], 't')).toEqual([[0, 4 * G], [0, 4 * G], [0, 2 * G]]);
+  });
+  it('nowrap keeps it on one line', () => {
+    expect(lines(45, [leaf('t', 'aaaaaaaaaa bb', { wordBreak: 'break-all', textWrapMode: 'nowrap' })], 't')).toEqual([[0, 13 * G]]);
+  });
+  it('breakAllIgnored lays it out as normal', () => {
+    expect(lines(60, [leaf('t', 'aa bbbbbbbbbb cc', { wordBreak: 'break-all' })], 't', { ...NO_ENGINE_FAULTS, breakAllIgnored: true })).toEqual([[0, 2 * G], [0, 10 * G], [0, 2 * G]]);
+  });
+  it('breakAllOpportunities adds every letter and digit pair to the base and keeps the base', () => {
+    const cps = [...'a1 b-c'].map((c) => c.codePointAt(0) as number);
+    expect(breakAllOpportunities(cps, [3, 5])).toEqual([1, 3, 5]);
+  });
+});
+
+describe('word-break: keep-all (TXT2-d)', () => {
+  it('is normal outside CJK', () => {
+    for (const t of ['aa bbbbbbbbbb cc', 'ab-cd ef/gh ij']) expect(lines(45, [leaf('t', t, { wordBreak: 'keep-all' })], 't')).toEqual(lines(45, [leaf('t', t, {})], 't'));
+  });
+});
+
 describe('refusals', () => {
-  it('word-break break-all, keep-all and auto-phrase are word-break (TXT2-d); mixed values in one context are refused', () => {
-    for (const wb of ['break-all', 'keep-all', 'auto-phrase'] as const) expect(lines(45, [leaf('t', 'aa', { wordBreak: wb })], 't')).toBe('word-break');
+  it('word-break auto-phrase, and break-all over anything but ASCII letters, digits and spaces, are word-break (TXT2-d); mixed values in one context are refused', () => {
+    expect(lines(45, [leaf('t', 'aa', { wordBreak: 'auto-phrase' })], 't')).toBe('word-break');
+    for (const t of ['a-b', 'a.b', 'a/b', 'a(b)']) expect(lines(45, [leaf('t', t, { wordBreak: 'break-all' })], 't'), t).toBe('word-break');
+    expect(lines(45, [leaf('t', 'aa ', { wordBreak: 'break-all' }), leaf('u', 'bb', {})], 't')).toBe('mixed-text-wrap-mode');
     expect(lines(45, [leaf('t', 'aa ', {}), leaf('u', 'bb', { overflowWrap: 'anywhere' })], 't')).toBe('mixed-text-wrap-mode');
     expect(lines(45, [leaf('t', 'aa', { overflowWrap: 'break-word', whiteSpaceCollapse: 'preserve' })], 't')).toBe('word-break');
   });

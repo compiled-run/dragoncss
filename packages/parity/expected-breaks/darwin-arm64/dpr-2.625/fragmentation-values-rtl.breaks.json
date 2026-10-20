@@ -1,0 +1,18 @@
+{
+  "case": "fragmentation-values-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"pb:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"av:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"up:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"v:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"lg:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"wc:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"inh:text0","data":"XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"ini:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f1:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"f2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"abs:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

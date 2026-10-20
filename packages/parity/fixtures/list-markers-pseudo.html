@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 16px; }
+ol, ul { margin: 0; padding-inline-start: 60px; width: 300px; }
+li { color: rgb(20, 40, 160); }
+li::marker { color: rgb(200, 30, 60); }
+.sq { list-style-type: square; }
+.hot::marker { color: rgb(0, 150, 70); }
+#loses::marker { color: rgb(240, 200, 0); }
+ul .loses::marker { color: rgb(90, 0, 120); }
+.cur { color: rgb(255, 120, 0); }
+.cur::marker { color: currentcolor; }
+.inh::marker { color: inherit; }
+.mix, .mix::marker { color: rgb(30, 160, 160); }
+</style>
+</head>
+<body data-dragon-id="body">
+<ul data-dragon-id="disc"><li data-dragon-id="d1">XX</li><li data-dragon-id="d2" class="hot">X X</li></ul>
+<ul data-dragon-id="square" class="sq"><li data-dragon-id="s1">X</li><li data-dragon-id="s2" class="hot">XX</li></ul>
+<ol data-dragon-id="dec"><li data-dragon-id="n1">XX</li><li data-dragon-id="n2" class="hot">X</li><li data-dragon-id="n3" class="cur">X</li></ol>
+<ul data-dragon-id="cascade"><li data-dragon-id="c1" id="loses" class="loses">X</li><li data-dragon-id="c2" class="cur">X</li><li data-dragon-id="c3" class="cur inh">X</li></ul>
+<ol data-dragon-id="mixed"><li data-dragon-id="m1" class="mix">X</li><li data-dragon-id="m2" class="mix sq">X</li></ol>
+</body>
+</html>

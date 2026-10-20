@@ -26,6 +26,8 @@ import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
 import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
 import { layoutInline } from './inline.ts';
+import type { MarkerAlignment, MarkerBox } from './marker.ts';
+import { alignMarker, layoutMarker, markerX } from './marker.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
@@ -193,6 +195,8 @@ export type EngineFaults = {
   readonly emergencyBreakBeforeOpportunity: boolean;
   /** TXT2-a: word-break: break-word is laid out as normal. */
   readonly wordBreakBreakWordIgnored: boolean;
+  /** TXT2-d: word-break: break-all is laid out as normal. */
+  readonly breakAllIgnored: boolean;
   /** TXT2-g: a line-clamp container's content height takes every line instead of ending after line N. */
   readonly clampHeightIncludesHiddenLines: boolean;
   /** TXT2-g: line N of a line-clamp container gets an ellipsis only when it overflows, not whenever content follows. */
@@ -284,6 +288,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   breakAnywhereAlways: false,
   emergencyBreakBeforeOpportunity: false,
   wordBreakBreakWordIgnored: false,
+  breakAllIgnored: false,
   clampHeightIncludesHiddenLines: false,
   clampEllipsisMissingWhenLineFits: false,
   clampEllipsisOnExactLastLine: false,
@@ -418,19 +423,24 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   }
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
-  const r = layoutBlockFlow(ctx, box, {
+  const marker = box.marker === null ? null : layoutMarker(ctx, box.marker);
+  const flow = layoutBlockFlow(ctx, box, {
     contentWidth,
     borderBoxWidth: a.borderBoxWidth,
     bfcLineOffset: a.formattingContextRoot ? ZERO : a.bfcLineOffset,
     origin: { x: add(bor.left, pad.left), y: add(bor.top, pad.top) },
     canCollapseTop,
     childBasis,
+    marker,
   });
+  const r = marker === null ? flow : { ...flow, placed: [...flow.placed, markerPlaced(marker, flow.markerY, a.borderBoxWidth, directionOf(ctx, box))] };
   // CSS2 §10.6.3: the end margins count toward the height unless they can adjoin this box's bottom margin. Under the planted
   // spec reading of min-max-end-margin (CSS 2.1 §8.3.1), a non-zero min-height also keeps them from adjoining.
   const specNoCollapse = ctx.faults.minMaxEndMarginSpec && minMax.min > vbp;
   const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null && !specNoCollapse;
-  const intrinsic = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  const flowIntrinsic = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  // unpositioned_list_marker.cc AddToBoxWithoutLineBoxes: content without a baseline grows to hold the marker, top-aligned.
+  const intrinsic = marker !== null && r.markerY === null ? max(flowIntrinsic, sub(marker.height, add(bor.top, pad.top))) : flowIntrinsic;
   // Blink: with a definite initial block size the end margins neither escape nor count toward the content height.
   const height = fromRatio !== null
     ? ratioFinalBlockSize(box, fromRatio, add(a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0 ? intrinsic : r.cursor, vbp), minMax)
@@ -601,6 +611,8 @@ type FlowArgs = {
   readonly origin: Point;
   readonly canCollapseTop: boolean;
   readonly childBasis: HeightBasis;
+  /** The list item's outside marker (T151 R14), placed against the first baseline of the content, or null. */
+  readonly marker: MarkerBox | null;
 };
 
 type FlowResult = {
@@ -619,7 +631,21 @@ type FlowResult = {
   readonly lastBaselineFlex: string;
   readonly defaultLastBaseline: LU | null;
   readonly defaultLastBaselineFlex: string;
+  /** The marker's y from the border-box top when content gave it a baseline, or null (none, or no line boxes: Blink puts it at 0). */
+  readonly markerY: LU | null;
 };
+
+/** The marker's fragment as a child of the list item, at its InlineOffset and its aligned (or top) block offset. */
+// A text marker's box holds its text fragment, which holds its one line ("<text>:line0"), as a text leaf's rects do (inline.ts fragmentOf).
+function markerPlaced(marker: MarkerBox, y: LU | null, borderBoxWidth: LU, direction: Direction): Placed {
+  const t = marker.text;
+  const children: Placed[] = [];
+  if (t !== null) {
+    const line: Placed = { frag: { id: `${t.id}:line0`, width: marker.width, height: t.height, baseline: null, children: [], outOfFlow: [], inflow: null }, x: ZERO, y: ZERO };
+    children.push({ frag: { id: t.id, width: marker.width, height: t.height, baseline: null, children: [line], outOfFlow: [], inflow: null }, x: ZERO, y: t.top });
+  }
+  return { frag: { id: marker.id, width: marker.width, height: marker.height, baseline: null, children, outOfFlow: [], inflow: null }, x: markerX(marker, borderBoxWidth, direction), y: y === null ? ZERO : y };
+}
 
 // CSS2 §9.4.1 and §8.3.1: stacks block-level children, collapsing adjoining vertical margins. css-align-3 §9.1: the first
 // baseline is the first line box's, or the first in-flow child's that has one.
@@ -634,7 +660,10 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     const r = layoutInline(ctx, box, a.contentWidth, a.origin);
     // CSS2 §9.4.2: a formatting context with no line boxes (only empty inline boxes) is empty, so margins collapse through it.
     const last = r.lastBaseline === null ? null : add(a.origin.y, r.lastBaseline);
-    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [], lastBaseline: last, lastBaselineFlex: '', defaultLastBaseline: clampsLines(box, last) ? null : last, defaultLastBaselineFlex: clampsLines(box, last) ? box.id : '' };
+    const first = r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline);
+    if (a.marker !== null && first === null) return markerLineFlow(a.marker, a.origin.y, r.placed);
+    const markerY = a.marker === null || first === null ? null : inlineMarkerY(box, a.marker, a.origin.y, first);
+    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: first, outOfFlow: [], lastBaseline: last, lastBaselineFlex: '', defaultLastBaseline: clampsLines(box, last) ? null : last, defaultLastBaselineFlex: clampsLines(box, last) ? box.id : '', markerY };
   }
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   const direction = directionOf(ctx, box);
@@ -648,6 +677,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let lastBaselineFlex = '';
   let defaultLastBaseline: LU | null = null;
   let defaultLastBaselineFlex = '';
+  let markerY: LU | null = null;
+  let inflow = false;
   const outOfFlow: OutOfFlow[] = [];
   // TXT2-g: a line-clamp container counts the lines of its block children in order (BlockLineClampData::UpdateAfterLayout).
   let clampLeft = box.style.lineClamp > 0 ? box.style.lineClamp : 0;
@@ -669,6 +700,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       });
       continue;
     }
+    inflow = true;
     let inline: BlockLevelInline;
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext).
@@ -710,6 +742,14 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       } else {
         y = add(cursor, collapsed(before));
       }
+      // block_layout_algorithm.cc PositionOrPropagateListMarker: the first child with a baseline aligns the marker, and moves down
+      // when the marker's ascent is the taller (unpositioned_list_marker.cc AddToBox); a child without one passes it on.
+      if (a.marker !== null && markerY === null && c.frag.baseline !== null) {
+        const top = add(a.origin.y, y);
+        const aligned: MarkerAlignment = alignMarker(a.marker, top, add(top, c.frag.baseline));
+        markerY = aligned.y;
+        y = add(y, aligned.push);
+      }
       cursor = add(y, c.frag.height);
       seen = true;
       // The clamp container's content ends at the bottom of the child that clamped, its margins left out (FinishLayout, legacy).
@@ -748,9 +788,30 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     defaultLastBaseline = null;
     defaultLastBaselineFlex = box.id;
   }
-  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow, lastBaseline, lastBaselineFlex, defaultLastBaseline, defaultLastBaselineFlex };
-  if (clampedCursor !== null) return { cursor: clampedCursor, placed, escapeTop, endStrut: EMPTY_STRUT, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex, defaultLastBaseline, defaultLastBaselineFlex };
-  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex, defaultLastBaseline, defaultLastBaselineFlex };
+  // An item with no in-flow children still has a line for its marker (inline_node.cc kListMarker, line_breaker.cc forces it).
+  if (a.marker !== null && !inflow) {
+    const f = markerLineFlow(a.marker, a.origin.y, placed);
+    return { cursor: f.cursor, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: true, baseline: f.baseline, outOfFlow, lastBaseline: f.lastBaseline, lastBaselineFlex: '', defaultLastBaseline: f.defaultLastBaseline, defaultLastBaselineFlex: '', markerY: f.markerY };
+  }
+  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow, lastBaseline, lastBaselineFlex, defaultLastBaseline, defaultLastBaselineFlex, markerY };
+  if (clampedCursor !== null) return { cursor: clampedCursor, placed, escapeTop, endStrut: EMPTY_STRUT, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex, defaultLastBaseline, defaultLastBaselineFlex, markerY };
+  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex, defaultLastBaseline, defaultLastBaselineFlex, markerY };
+}
+
+/**
+ * A list item whose content makes no line box: the line its marker forces holds only the marker, so the item is one marker line
+ * tall and the marker sits at the content top (family6 empty-item: padding-top 5 puts it at y 5).
+ */
+function markerLineFlow(marker: MarkerBox, contentTop: LU, placed: readonly Placed[]): FlowResult {
+  const baseline = add(contentTop, marker.ascent);
+  return { cursor: marker.height, placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true, baseline, outOfFlow: [], lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '', markerY: contentTop };
+}
+
+/** The marker's y against an item's own first line. The strut is on every line, so the line's ascent is never below the marker's. */
+function inlineMarkerY(box: LayoutBox, marker: MarkerBox, contentTop: LU, first: LU): LU {
+  const aligned: MarkerAlignment = alignMarker(marker, contentTop, first);
+  if (aligned.push !== ZERO) throw new Error(`${box.id}: the first line's ascent is below its marker's, which shares the strut's font and line height`);
+  return aligned.y;
 }
 
 export type { Edges };
