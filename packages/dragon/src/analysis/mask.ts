@@ -17,10 +17,10 @@
 // both reduce to whole numbers (packages/parity/test/mask-gradient.test.ts). So the native targets take a mask only over the canvas,
 // when the canvas colour is such a colour: no ancestor paints a background under the masked box (the one whose background is the
 // canvas's aside), neither the box nor an ancestor is positioned, no positioned box has a negative z-index, and no layer item of
-// the z-index 0 layer (a positioned box or a stacking context) comes before it outside it, so it is laid over its ancestors alone
-// (the mask makes the box a stacking context, lower/paint/stacking.ts). Content a float or a negative margin brings under it is not known before layout, and is the author's to
+// the z-index 0 layer that leaves its place in the flow (an absolute, fixed, offset or sticky box, or a transform) comes before it
+// outside it, so it is laid over its ancestors alone (the mask makes the box a stacking context, lower/paint/stacking.ts). Content a float or a negative margin brings under it is not known before layout, and is the author's to
 // avoid. Chrome rounds the content and the mask separately in 8 bits, which agrees with the native composite only for opaque
-// content, so a translucent colour inside the masked box is refused too.
+// content, so a translucent colour inside the masked box is refused too, a decoration propagated from outside it included.
 import { opacityOf, zIndexOf } from '../css/properties/effects.ts';
 import type { MaskLonghand } from '../css/properties/mask.ts';
 import { maskGradientOf } from '../css/properties/mask.ts';
@@ -30,6 +30,7 @@ import { paintedOutlineStyle } from './paint-values/outline.ts';
 import { usedColors } from '../lower/paint/colors.ts';
 import type { Rgba8 } from '../css/color.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
+import type { AppliedDecoration } from './text-decoration.ts';
 
 const keywordOf = (el: ResolvedElement, p: string): string => {
   const v = el.props.get(p as MaskLonghand)?.value;
@@ -65,20 +66,17 @@ export function maskRefusal(el: ResolvedElement, g: GradientSpec, propagated: Re
     const colors = usedColors(e);
     const translucent = (Object.keys(colors) as (keyof typeof colors)[]).find((k) => colors[k].alpha !== 0 && colors[k].alpha !== 255);
     if (translucent !== undefined) return { fact: `${root ? 'its' : `the ${e.element.address}`} ${translucent} is translucent, and Chrome rounds translucent content and the mask separately in 8 bits, unlike the native composite`, manual: `Make the ${translucent} of ${e.element.address} opaque or transparent, or remove the mask.` };
-    // The same holds for every other translucent paint inside: an opacity, a shadow (its blur, or a translucent colour) and a
-    // drawn decoration in a translucent colour. Glyph antialiasing and rounded-corner coverage stay accepted: their edge pixels
+    // The same holds for every other translucent paint inside: an opacity and a shadow (its blur, or a translucent colour); a
+    // decoration in a translucent colour, which may come from an ancestor, is maskDecorationRefusals'. Glyph antialiasing and rounded-corner coverage stay accepted: their edge pixels
     // are the edge and glyph classes the pixel lane compares apart from flat fills (packages/parity/test/glyph-clearance-pins.json).
     const who = root ? 'its' : `the ${e.element.address}`;
     const alpha = (opacityOf((e.props.get('opacity') as ResolvedValue).value) ?? 1);
+    // An opacity of 0 paints nothing of its subtree.
+    if (alpha === 0) return null;
     if (alpha !== 0 && alpha !== 1) return { fact: `${who} opacity ${alpha} is translucent, and Chrome rounds translucent content and the mask separately in 8 bits, unlike the native composite`, manual: `Make ${e.element.address} opaque, or remove the mask.` };
     for (const p of ['box-shadow', 'text-shadow'] as const) {
       const v = e.props.get(p)?.value;
       if (v !== undefined && !(v.kind === 'keyword' && v.value === 'none')) return { fact: `${who} ${p} paints translucent pixels (its blur or colour), and Chrome rounds translucent content and the mask separately in 8 bits, unlike the native composite`, manual: `Remove the ${p} of ${e.element.address}, or the mask.` };
-    }
-    const line = e.props.get('text-decoration-line')?.value;
-    const decoration = e.props.get('text-decoration-color')?.value;
-    if (line !== undefined && !(line.kind === 'keyword' && line.value === 'none') && decoration !== undefined && decoration.kind === 'color' && decoration.value.alpha !== 0 && decoration.value.alpha !== 255) {
-      return { fact: `${who} text-decoration-color is translucent, and Chrome rounds translucent content and the mask separately in 8 bits, unlike the native composite`, manual: `Make the text-decoration-color of ${e.element.address} opaque, or remove the mask.` };
     }
     if (paintedOutlineStyle(e) !== null) return { fact: `${root ? 'it has' : `${e.element.address} has`} an outline, which Dragon draws in the root view, outside the mask`, manual: `Remove the outline inside ${at}, or the mask.` };
     if (!root) {
@@ -145,16 +143,34 @@ export function maskBackdropRefusals(root: ResolvedElement): { readonly el: Reso
   layers(root);
   const inside = (n: ResolvedElement, box: ResolvedElement): boolean => n === box || box.children.some((c) => c.kind === 'element' && inside(n, c));
   // A mask makes the box a stacking context in the z-index 0 layer (lower/paint/stacking.ts), which paints after every layer item
-  // of that layer earlier in tree order: a positioned box with z-index auto or 0, or a stacking context (a transform, opacity,
-  // clip-path or mask), outside the masked box and not its ancestor, may lie behind it. Those later in tree order and those with a
-  // positive z-index paint over it.
+  // of that layer earlier in tree order. Of those, the ones that can lie behind it outside its ancestors are the boxes that leave
+  // their place in the flow: an absolute or fixed box with z-index auto or 0, a relative box with a non-zero offset, a sticky box
+  // with any offset (it moves when the page scrolls), and a transformed box. A layer item in its flow place (a relative or sticky
+  // box with no offset, an opacity, clip-path or mask stacking context, a flex or grid item with z-index 0) overlaps the masked box
+  // only through a float or a negative margin, which is the author's to avoid, as above. A box whose subtree paints nothing (an
+  // opacity of 0, or visibility hidden all the way down) is skipped.
+  const offsetOf = (n: ResolvedElement): 'none' | 'zero' | 'moved' => {
+    let out: 'none' | 'zero' | 'moved' = 'none';
+    for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+      const v = n.props.get(side)?.value;
+      if (v === undefined || (v.kind === 'keyword' && v.value === 'auto')) continue;
+      if ((v.kind === 'length' || v.kind === 'percentage') && v.value === 0) out = out === 'moved' ? out : 'zero';
+      else out = 'moved';
+    }
+    return out;
+  };
   const layerItem = (n: ResolvedElement): boolean => {
     const p = keywordOf(n, 'position');
     const z = zIndexOf((n.props.get('z-index') as ResolvedValue).value);
-    if (p !== 'static' && p !== '' && (z === null || z === 0)) return true;
-    const clip = n.props.get('clip-path')?.value;
-    return transformsSubtree(n) || (opacityOf((n.props.get('opacity') as ResolvedValue).value) ?? 1) < 1 || (clip !== undefined && !(clip.kind === 'keyword' && clip.value === 'none')) || elementMaskGradient(n) !== null;
+    if (z === null || z === 0) {
+      if (p === 'absolute' || p === 'fixed') return true;
+      const offset = offsetOf(n);
+      if (p === 'relative' && offset === 'moved') return true;
+      if (p === 'sticky' && offset !== 'none') return true;
+    }
+    return transformsSubtree(n);
   };
+  const visible = (n: ResolvedElement): boolean => keywordOf(n, 'visibility') === 'visible' || n.children.some((c) => c.kind === 'element' && keywordOf(c, 'display') !== 'none' && visible(c));
   const earlier: ResolvedElement[] = [];
   // The nearest positioned ancestor of the box being walked: a positioned ancestor may lay the box over boxes other than its ancestors.
   let positioned: ResolvedElement | null = null;
@@ -173,11 +189,13 @@ export function maskBackdropRefusals(root: ResolvedElement): { readonly el: Reso
         const behind = negativeLayers.find((n) => !inside(n, e));
         const before = earlier.find((n) => !inside(e, n));
         if (behind !== undefined) out.push({ el: e, refusal: { fact: `${behind.element.address} is positioned with a negative z-index, so it paints under the page's in-flow boxes and may lie behind the masked box, over which Chrome's blend and the native compositors' differ; the native targets mask a box over the canvas only`, manual: `Give ${behind.element.address} z-index auto or 0 or more, or remove the mask.` } });
-        else if (before !== undefined) out.push({ el: e, refusal: { fact: `${before.element.address} paints in the masked box's layer before it (a positioned box or a stacking context earlier in the page), so it may lie behind the masked box, over which Chrome's blend and the native compositors' differ; the native targets mask a box over the canvas only`, manual: `Move ${before.element.address} after ${at}, give it a positive z-index, or remove the mask.` } });
+        else if (before !== undefined) out.push({ el: e, refusal: { fact: `${before.element.address} paints in the masked box's layer before it and leaves its place in the flow (an absolute, fixed, offset or sticky box, or a transform), so it may lie behind the masked box, over which Chrome's blend and the native compositors' differ; the native targets mask a box over the canvas only`, manual: `Move ${before.element.address} after ${at}, give it a positive z-index, or remove the mask.` } });
       }
     }
     const paints = e !== canvasFrom && paintsBackground(e) ? e : under;
-    if (layerItem(e)) earlier.push(e);
+    // An opacity of 0 paints nothing of its subtree, so nothing in it lies behind a masked box.
+    if ((opacityOf((e.props.get('opacity') as ResolvedValue).value) ?? 1) === 0) return;
+    if (layerItem(e) && visible(e)) earlier.push(e);
     const p = keywordOf(e, 'position');
     const moves = p !== 'static' && p !== '' ? e : positioned;
     const saved = positioned;
@@ -186,5 +204,38 @@ export function maskBackdropRefusals(root: ResolvedElement): { readonly el: Reso
     positioned = saved;
   };
   walk(root, null);
+  return out;
+}
+
+/**
+ * The decoration refusal of every masked box in a resolved document: a text leaf inside it that draws a decoration in a translucent
+ * colour, its own or one an ancestor outside the box propagates into it (css-text-decor-3 §2.1, analysis/text-decoration.ts), as
+ * the native decoration views draw it. Chrome rounds translucent content and the mask separately in 8 bits, unlike the native
+ * composite. A subtree under an opacity of 0 paints nothing.
+ */
+export function maskDecorationRefusals(root: ResolvedElement, applied: ReadonlyMap<string, readonly AppliedDecoration[]>): { readonly el: ResolvedElement; readonly refusal: MaskRefusal }[] {
+  const out: { el: ResolvedElement; refusal: MaskRefusal }[] = [];
+  const translucentIn = (e: ResolvedElement): { readonly text: string; readonly box: string } | null => {
+    if (keywordOf(e, 'display') === 'none' || (opacityOf((e.props.get('opacity') as ResolvedValue).value) ?? 1) === 0) return null;
+    for (const c of e.children) {
+      if (c.kind === 'text') {
+        const d = (applied.get(c.node.address) ?? []).find((a) => a.color.alpha !== 0 && a.color.alpha !== 255);
+        if (d !== undefined) return { text: e.element.address, box: d.box };
+        continue;
+      }
+      const found = translucentIn(c);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  const walk = (e: ResolvedElement): void => {
+    if (keywordOf(e, 'display') === 'none') return;
+    if (elementMaskGradient(e) !== null) {
+      const found = translucentIn(e);
+      if (found !== null) out.push({ el: e, refusal: { fact: `the text of ${found.text} draws the decoration of ${found.box} in a translucent colour, and Chrome rounds translucent content and the mask separately in 8 bits, unlike the native composite`, manual: `Make the text-decoration-color of ${found.box} opaque, stop it reaching ${e.element.address}, or remove the mask.` } });
+    }
+    for (const c of e.children) if (c.kind === 'element') walk(c);
+  };
+  walk(root);
   return out;
 }
