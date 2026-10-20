@@ -3,13 +3,14 @@
 // the emitted writer lines and the expected applied alpha (Chrome's paint alpha byte / 255 as a float32).
 import { describe, expect, it } from 'vitest';
 import { opacityAlpha8 } from '@dragon/layout';
-import type { Diagnostic } from '../src/index.ts';
+import type { Diagnostic, DraftTree } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { EFFECTS_EMITTER } from '../src/emit/paint/effects.ts';
+import { opacityAlpha8 as foldAlpha8 } from '../src/css/color.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
+import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/opacity.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -87,11 +88,11 @@ describe('opacity: the native targets draw 0 and 1 only', () => {
       const c = compile(`.a { height: 10px; opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
       const errs = c.diagnostics.filter((d) => d.severity === 'error');
       expect(errs.map((d) => [d.code, d.target]), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-      expect(errs[0]?.message, v).toMatch(/^a has opacity [0-9.]+; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest$/);
+      expect(errs[0]?.message, v).toMatch(/^a has opacity [0-9.]+; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, until package PNT1-opacity-b pre-composites the rest$/);
       expectCatalogued(errs);
     }
-    // An inherited fraction is refused where it computes; the declaration is the child's inherit.
-    const c = compile('.a { opacity: 25%; } .b { height: 5px; opacity: inherit; }', { ios: { minimum: '15.0' }, web: {} });
+    // An inherited fraction is refused where it computes; the declaration is the child's inherit (a bordered b, as an empty one folds).
+    const c = compile('.a { opacity: 25%; } .b { height: 5px; border: 1px solid rgb(0, 0, 0); opacity: inherit; }', { ios: { minimum: '15.0' }, web: {} });
     expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message.slice(0, 18))).toEqual(['a has opacity 0.25', 'b has opacity 0.25']);
   });
   it('opacity 0, 1 and the values that clamp to them compile on ios', () => {
@@ -99,6 +100,62 @@ describe('opacity: the native targets draw 0 and 1 only', () => {
       const c = compile(`.a { height: 10px; opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
       expect(c.diagnostics.filter((d) => d.severity === 'error'), v).toEqual([]);
     }
+  });
+});
+
+// PNT1-opacity-b (first part): Chrome folds a group of one draw into the draw (cc PlaybackFoldingIterator), so a box whose only paint
+// is an opaque fill paints as the fill with the opacity's alpha byte; measured equal in Chrome 145 (analysis/paint-values/effects.ts).
+describe('opacity: a group of one opaque fill folds into the fill on native', () => {
+  const native = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
+  const errors = (css: string): string[] => compile(css, native).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target} ${d.message.slice(0, 16)}`).filter((m) => / has opacity /.test(m));
+  const leaf = 'height: 5px; background-color: rgb(10, 20, 30);';
+  it('compiles on native a fraction on an empty box with an opaque or transparent fill', () => {
+    for (const css of [`.b { ${leaf} opacity: 0.3; }`, '.b { height: 5px; opacity: 45%; }', `.b { ${leaf} border: 0 solid rgb(0, 0, 0); outline: 2px none rgb(0, 0, 0); opacity: 0.7; }`]) {
+      expect(errors(css), css).toEqual([]);
+    }
+  });
+  it('refuses on native a fraction whose group paints more than one fill, or composites as a layer', () => {
+    for (const extra of ['border-radius: 3px;', 'border: 1px solid rgb(0, 0, 0);', 'outline: 1px solid rgb(0, 0, 0);', 'box-shadow: 1px 1px rgb(0, 0, 0);', 'background-color: rgba(10, 20, 30, 0.5);', 'transform: translateX(1px);', 'position: fixed;', 'display: list-item;', 'will-change: transform;', 'overflow: scroll;']) {
+      expect(errors(`.b { ${leaf} ${extra} opacity: 0.3; }`), extra).toEqual(['ios b has opacity 0.', 'android b has opacity 0.']);
+    }
+    // A box with a child or text is a group of more than one draw.
+    expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
+  });
+  it('refuses on native a folded fill whose background-color animates or transitions (the animator writes the colour alpha)', () => {
+    const fold = 'animates the fill a fractional opacity is folded into, and the animated colour would drop the opacity: not built yet (package PNT1-opacity-b)';
+    const all = (r: { diagnostics: readonly Diagnostic[] }): string[] => r.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);
+    expect(all(compile(`.b { ${leaf} opacity: 0.5; animation: k 1s infinite; } @keyframes k { from { background-color: rgb(255, 0, 0) } to { background-color: rgb(0, 0, 255) } }`, native))).toEqual([`background-color on b ${fold}`]);
+    // A transition between two states, the fold in either.
+    const stated = (css: string) => {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => {
+        const d = div(r, 'b', ['b']);
+        const on = { value: [{ when: eq('open', true), value: { owner: DOC, sheet: 's', name: 'on' } }, { when: not(eq('open', true)), value: null }], origin: d.origin };
+        return [{ ...d, classes: [...d.classes, on] }];
+      });
+      const tree = input.tree as DraftTree;
+      const root = tree.components[0] as DraftTree['components'][number];
+      return createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile({ ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 'open', domain: [false, true], initial: false, origin: root.origin }] }] } });
+    };
+    expect(all(stated(`.b { ${leaf} transition: background-color 1s; } .b.on { background-color: rgb(200, 0, 0); opacity: 0.5; }`))).toEqual([`background-color on b ${fold}`]);
+    expect(all(stated(`.b { ${leaf} opacity: 0.5; } .b.on { background-color: rgb(200, 0, 0); }`))).toEqual([]);
+  });
+  it('writes the fill with the opacity alpha byte and no opacity write; a transparent fill stays transparent', () => {
+    const c = compile(`.b { ${leaf} opacity: 0.3; } .a { height: 20px; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 } });
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const program of [p.programs.uikit, p.programs['android-views']]) {
+      const b = program.nodes.find((n) => n.id === 'b');
+      expect(b?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'background-color')).toEqual([expect.objectContaining({ kind: 'background-color', color: { r: 10, g: 20, b: 30, alpha: opacityAlpha8(0.3) } })]);
+    }
+    const t = nativePrograms(compile('.b { height: 5px; opacity: 0.3; }', { ios: { minimum: '15.0' }, android: { minSdk: 31 } }), []);
+    if (t.kind !== 'ready') throw new Error(t.reason);
+    expect(t.programs.uikit.nodes.find((n) => n.id === 'b')?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'background-color')).toEqual([expect.objectContaining({ kind: 'background-color', color: { r: 0, g: 0, b: 0, alpha: 0 } })]);
+  });
+  it("the lowering's alpha byte is @dragon/layout's opacityAlpha8", () => {
+    const vals: number[] = [];
+    for (let k = 0; k <= 255; k++) for (const d of [0, 0.4999, 0.5, 0.5001]) vals.push((k + d) / 255);
+    for (let i = 0; i <= 10000; i++) vals.push(i / 10000);
+    for (const v of vals) expect(foldAlpha8(v), String(v)).toBe(opacityAlpha8(v));
   });
 });
 

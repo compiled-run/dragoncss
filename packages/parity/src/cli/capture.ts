@@ -7,6 +7,7 @@ import { WEB_CSS_PATH } from 'dragon';
 import { captureFixture, captureJson } from '../capture.ts';
 import { casesOf, fixtureInput } from '../cases.ts';
 import { launchChrome } from '../chrome.ts';
+import { isScrollCase, launchOverlayChrome } from '../scroll-metrics.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { emittedPath, expectedDir, expectedPath } from '../committed.ts';
 import { environmentsOf, FIXTURES } from '../fixtures.ts';
@@ -30,15 +31,18 @@ if (reference) {
 }
 console.log(`capturing into packages/parity/expected/${platform}${reference ? ' (reference platform: emitted CSS rewritten)' : ' (emitted CSS untouched: it is compiled for the reference platform)'}`);
 const browser = await launchChrome();
+// On the reference platform the scroll cases are captured with overlay scrollbars (the overlay-scrollbar rule, capture.ts).
+const overlay = reference ? await launchOverlayChrome(1) : null;
 try {
   // CHROME_PAGES fixtures at once, each case in its own context (captureFixture); every file is written by one fixture alone.
   const layout = FIXTURES.filter((spec) => spec.kind === 'layout');
   await inOrder(layout, CHROME_PAGES, async (spec) => {
     const cases = casesOf(spec, fixtureInput(spec));
-    for (const c of cases) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c))));
+    const b = overlay !== null && isScrollCase(spec.id) ? overlay : browser;
+    for (const c of cases) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(b, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c))));
     // SELD-R2a: each forced case's authored rendering with its pseudo-classes forced (CSS.forcePseudoState).
     const forced = forcedCases(spec);
-    for (const c of forced) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c))));
+    for (const c of forced) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(b, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c))));
     const notes: string[] = [];
     if (reference) {
       for (const env of environmentsOf(spec)) {
@@ -94,4 +98,5 @@ try {
   });
 } finally {
   await browser.close();
+  await overlay?.close();
 }

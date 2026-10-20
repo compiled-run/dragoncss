@@ -1,0 +1,230 @@
+{
+ "case": "scroll-scrollbar-values-rtl",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "direction": "rtl",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 604,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "s1",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s2",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s3",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s4",
+   "scrollWidth": 84,
+   "scrollHeight": 54,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s4i",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s5",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s6",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s7",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "r1",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "r2",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "q1",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "g1",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "g2",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s8",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  },
+  {
+   "id": "s9",
+   "scrollWidth": 96,
+   "scrollHeight": 56,
+   "clientWidth": 66,
+   "clientHeight": 36
+  }
+ ],
+ "extents": [
+  {
+   "id": "s1",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "s2",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "s3",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "s4",
+   "minLeft": -17.5238094329834,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 17.5238094329834
+  },
+  {
+   "id": "s4i",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "s5",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "s6",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "s7",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "r1",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "r2",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "q1",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "g1",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "g2",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "s8",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  },
+  {
+   "id": "s9",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.809524536132812
+  }
+ ]
+}

@@ -281,7 +281,8 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
  * from the shaped item (pieceGlyphs, HarfBuzz's 16.16 advances), with size = platformFontSize(zoomFontSize(css size, DPR)); the
  * baseline is the snapped line top plus the engine's ascent. Each Ahem glyph's box is its font box scaled by size / unitsPerEm; a real
  * face's are its shaped glyphs' HarfBuzz extents (TXT1a-2). A text with a synthetic-bold write strokes each outline at Skia's fake-bold
- * width for the size, so its box grows by half that width on every side (an Ahem box keeps its right-angled corners under a miter join).
+ * width for the size, so its box grows by half that width on every side (an Ahem box keeps its right-angled corners under a miter join);
+ * a text-stroke write grows it by half the zoomed stroke width the same way.
  * A text with a synthetic-oblique write draws each glyph sheared about its baseline origin, so its box is the bounding box of the sheared
  * box and carries the slanted sides (shearedBox).
  */
@@ -322,6 +323,7 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
   const boxes = ahemGlyphBoxes();
   const upem = AHEM_FONT_DATA.unitsPerEm;
   const bolds = glyphBolds(p);
+  const strokes = glyphStrokes(p);
   const out: BaselineLine[] = [];
   for (const t of texts) {
     const css = sizes.get(t.id);
@@ -329,8 +331,10 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
     const size = platformFontSize(zoomFontSize(css.size, dpr));
     const bold = bolds.get(t.id);
     if (bold !== undefined && css.family !== 'Ahem') throw new Error(`${t.id}: a synthetic-bold write on ${css.family}, which native draws only over Ahem`);
+    // A text stroke reaches half its zoomed width past the outline, at every size of the line (native-program.ts text-stroke).
+    const stroke = ((strokes.get(t.id) ?? 0) * dpr) / 2;
     // Half the fake-bold stroke at a size: how far the stroked outline reaches past the upright one.
-    const grow = (at: number): number => (bold === undefined ? 0 : syntheticBoldStroke(at, bold.keys, bold.values) / 2);
+    const grow = (at: number): number => (bold === undefined ? 0 : syntheticBoldStroke(at, bold.keys, bold.values) / 2) + stroke;
     const metrics = m.metrics(t.textFont);
     for (const [j, line] of t.lines.entries()) {
       const baseline = line.snapped.top + metrics.ascent / 64;
@@ -381,6 +385,13 @@ export function uprightGlyphLines(p: NativeProgram, viewport: { readonly width: 
       out.push({ id: `${t.id}:line${j}`, baseline, glyphs });
     }
   }
+  return out;
+}
+
+/** The css px width of each text node a text-stroke write strokes, by node id. */
+export function glyphStrokes(p: NativeProgram): ReadonlyMap<string, number> {
+  const out = new Map<string, number>();
+  for (const n of p.nodes) for (const w of n.writes) if (w.kind === 'text-stroke') out.set(n.id, w.width);
   return out;
 }
 
