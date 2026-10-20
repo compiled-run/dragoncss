@@ -129,3 +129,19 @@ describe('planted faults', () => {
     expect(s.paddingLeft).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [env('right'), { kind: 'px', value: 1 }] }, range: 'non-negative' });
   });
 });
+
+describe('ENV-SAFE: native refuses animating a value that reads a safe-area inset', () => {
+  const refusals = (css: string) => compile(css).diagnostics.filter((d) => d.message.includes('reads env(safe-area-inset-*)'));
+  it('refuses a transition of a property whose value reads env(), on native only', () => {
+    const r = refusals('.x { padding-top: env(safe-area-inset-top); transition: padding-top 0.3s; }');
+    expect(r.map((d) => d.target)).toEqual(['ios']);
+    expect(r[0]?.message).toContain('a transition of padding-top on');
+  });
+  it('refuses an animation over a base that reads env() (a keyframe that reads env() is refused on every target already)', () => {
+    const base = refusals('@keyframes k { to { padding-top: 10px; } } .x { padding-top: calc(4px + env(safe-area-inset-top)); animation: k 1s; }');
+    expect(base.map((d) => d.target)).toEqual(['ios']);
+  });
+  it('keeps a transition of a value without env(), and env() on a property nothing animates', () => {
+    expect(refusals('.x { padding-top: 4px; margin-top: env(safe-area-inset-top); transition: padding-top 0.3s; }')).toEqual([]);
+  });
+});

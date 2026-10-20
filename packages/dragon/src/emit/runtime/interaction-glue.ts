@@ -192,15 +192,24 @@ public final class DragonInteractionMount {
   private let measurer: TextMeasurer
   private let scale: Double
   private let bridge: DragonBridge
+  private let stage: UIView
+  private let probe: DragonSafeAreaProbe
 
   public init(machine: DragonInteractionMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
-    self.machine = machine; self.measurer = measurer; self.scale = scale; self.bridge = bridge
+    self.machine = machine; self.measurer = measurer; self.scale = scale; self.bridge = bridge; self.stage = stage
     // The machine's hit test lays out the live program with this measurer at this scale, before any step.
     machine.attach(measurer, scale: scale)
     root = DragonInteractionRootView(machine: machine)
+    probe = DragonSafeAreaProbe(stage: stage)
     stage.addSubview(root)
+    // css-env-1: the stage's insets, which the root's views sit at the origin of; the probe renders again whenever they change.
+    machine.setSafeArea(dragonSafeArea(stage))
     render()
     machine.onChange = { [weak self] in self?.render() }
+    probe.onChange = { [weak self] in
+      guard let self = self, self.machine.setSafeArea(dragonSafeArea(self.stage)) else { return }
+      self.render()
+    }
   }
 
   /// The views on screen.
@@ -209,8 +218,12 @@ public final class DragonInteractionMount {
   /// Takes the root, and with it the views, off the stage.
   public func unmount() {
     machine.onChange = nil
+    probe.onChange = nil
+    probe.removeFromSuperview()
     root.removeFromSuperview()
   }
+
+  deinit { probe.removeFromSuperview() }
 
   private func render() {
     let t = DragonTree()
@@ -331,10 +344,15 @@ class DragonInteractionMount(val machine: DragonInteractionMachine, stage: ViewG
   val tree: DragonTree
     get() = shown ?: throw IllegalStateException("dragon: the interaction mount has not rendered")
 
+  private val probe: DragonSafeAreaProbe<DragonInteractionMount>
+
   init {
     // The machine's hit test lays out the live program with this measurer at this scale, before any step.
     machine.attach(measurer, scale)
     stage.addView(root, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    // css-env-1: the stage's insets (the root is laid out at its content origin); the probe renders again whenever they change.
+    machine.setSafeArea(dragonSafeArea(stage, scale))
+    probe = DragonSafeAreaProbe(stage, this) { m -> if (m.machine.setSafeArea(dragonSafeArea(stage, m.scale))) m.render() }
     render()
     machine.onChange = { render() }
   }
@@ -342,6 +360,7 @@ class DragonInteractionMount(val machine: DragonInteractionMachine, stage: ViewG
   /** Takes the root, and with it the views, off the stage. */
   fun unmount() {
     machine.onChange = null
+    (probe.parent as? ViewGroup)?.removeView(probe)
     (root.parent as? ViewGroup)?.removeView(root)
   }
 

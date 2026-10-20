@@ -32,6 +32,7 @@ export type ProfileRow = { readonly feature: string; readonly context: string; r
  */
 export const PROFILE_NOTES = {
   overlayScrollbars: 'holds with overlay scrollbars only (the reference environment); classic scrollbars reserve a 15px gutter at the inline and block end (11px for scrollbar-width: thin; measured on Chrome 145), which this claim does not cover',
+  measuredSafeArea: 'proven with the insets injected into the layout input; the insets a mount measures from its stage (dragonSafeArea) are not yet proven by a device lane with nonzero insets, so the row stays caveat until one runs',
 } as const;
 
 export type ProfileNote = keyof typeof PROFILE_NOTES;
@@ -45,9 +46,14 @@ export function nativeOutlinePending(feature: string): boolean {
   return feature === 'outline-style:auto';
 }
 
-/** The note a target's row for a feature carries, or null: web overflow auto and scroll, scrollbar-width other than none and a stable gutter depend on the scrollbar environment (R3). */
+/**
+ * The note a target's row for a feature carries, or null: web overflow auto and scroll, scrollbar-width other than none and a
+ * stable gutter depend on the scrollbar environment (R3); a native env() row depends on the insets the mount measures, which no
+ * device lane proves yet (ENV-SAFE).
+ */
 export function profileNoteFor(target: Target, feature: string): ProfileNote | null {
-  return target === 'web' && /^(overflow-[xy]:(auto|scroll)|scrollbar-width:(auto|thin)|scrollbar-gutter:stable( both-edges)?)$/.test(feature) ? 'overlayScrollbars' : null;
+  if (target === 'web') return /^(overflow-[xy]:(auto|scroll)|scrollbar-width:(auto|thin)|scrollbar-gutter:stable( both-edges)?)$/.test(feature) ? 'overlayScrollbars' : null;
+  return feature.includes('<env()>') ? 'measuredSafeArea' : null;
 }
 
 export type SupportProfile = { readonly target: Target; readonly revision: string; readonly rows: readonly ProfileRow[] };

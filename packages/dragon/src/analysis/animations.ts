@@ -35,6 +35,7 @@ import type { ResolvedElement } from './resolve.ts';
 import { resolvedCustoms } from './resolve.ts';
 import type { CustomProperties } from './variables.ts';
 import { substituteVars } from './variables.ts';
+import { ENV_VALUE_TYPE } from '../css/values.ts';
 
 /** The most transition slots, and closure writes per frame, a program holds (R8, R9): a larger one is refused, never cut. */
 export const MAX_TRANSITION_SLOTS = 256;
@@ -585,6 +586,43 @@ export function refuseBandedAnimations(allRules: readonly Rule[], inEveryBand: (
         message: `${d.property} inside @media is unsupported on web: transition and animation lists that differ between @media bands are not built yet (package ANIM-mq)`,
         manual: 'Declare the transition or animation outside @media, the same at every viewport width.',
       }));
+    }
+  }
+}
+
+/** ENV-SAFE: a value that reads a safe-area inset, env() alone or inside a math function (css/values.ts ENV_VALUE_TYPE). */
+const readsEnv = (v: CssValue | undefined): boolean => v !== undefined && v.kind === 'other' && v.type === ENV_VALUE_TYPE;
+
+/**
+ * ENV-SAFE: on native, a transition or animation of a property whose value reads a safe-area inset is refused. The mount measures
+ * the insets at run time and they change without a style change event (rotation, status bar), while the animator holds absolute
+ * endpoints: Chrome would transition the change, or move a running transition's endpoint, and native would snap or jump. Web keeps
+ * them, since Chrome animates the inset itself.
+ */
+export function refuseAnimatedSafeAreaInsets(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string> = new Set()): void {
+  if (nativeTargets.length === 0) return;
+  const trees = roots.map((r) => byAddress(r));
+  const readsEnvAnywhere = (address: string, p: Longhand): boolean => trees.some((t) => readsEnv(t.get(address)?.props.get(p)?.value));
+  for (const c of analysis.cases) {
+    for (const ea of c.elements.values()) {
+      const found: [Longhand, 'an animation' | 'a transition', AnimLonghand][] = [];
+      for (const a of ea.animations) {
+        if (a.name === 'none' || !a.hasKeyframes) continue;
+        for (const b of analysis.keyframes.get(a.name)?.blocks ?? []) {
+          for (const v of b.values) if (readsEnv(v.value) || readsEnvAnywhere(ea.address, v.property)) found.push([v.property, 'an animation', 'animation-name']);
+        }
+      }
+      for (const [p, l] of ea.listings) if (l.mode === 'listed' && l.delay + l.duration > 0 && readsEnvAnywhere(ea.address, p)) found.push([p, 'a transition', 'transition-property']);
+      for (const [p, what, longhand] of found) {
+        const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
+        if (d === undefined) continue;
+        for (const t of nativeTargets) {
+          const id = `${t}|${ea.address}|${p}|${longhand}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(d.valueSpan), target: t, message: `${what} of ${p} on ${ea.address}, whose value reads env(safe-area-inset-*): the native animator holds absolute endpoints, so a change of the measured insets (rotation, status bar) would snap or jump where Chrome animates it (ENV-SAFE)`, manual: `Remove the ${longhand === 'animation-name' ? 'animation' : 'transition'} of ${p}, or give ${p} a value without env().` }));
+        }
+      }
     }
   }
 }

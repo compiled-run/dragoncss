@@ -155,6 +155,9 @@ public final class DragonStateMachine {
   private let anim: AnimTables?
   private let initialAssignment: Int
   private var animatorMeasurer: TextMeasurer?
+  /// css-env-1 env(safe-area-inset-*): the mount's measured insets in CSS px, which every engine input the machine lays out or
+  /// animates from carries in place of its compile-time zeros (setSafeArea).
+  public private(set) var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
   public let clock = DragonVirtualClock()
   /// ANIM-b1: the animator over the program's animation tables, started by the mount (nil without tables).
   public private(set) var animator: DragonAnimator?
@@ -216,8 +219,22 @@ public final class DragonStateMachine {
   /// Every assignment's engine input resolved at scale 1 and the current viewport: where the animator reads length endpoints.
   private func animatorInputs(_ measurer: TextMeasurer) -> [LayoutInput] {
     return deltas.map { d -> LayoutInput in
-      do { return try environment_resolveEnvironment(variants[d.variant](1, viewport.0, viewport.1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
+      do { return try environment_resolveEnvironment(laid(d.variant, 1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
     }
+  }
+
+  /// Variant v's engine input at dpr and the current viewport, with the measured insets.
+  private func laid(_ v: Int, _ dpr: Double) -> LayoutInput {
+    return dragonWithSafeArea(variants[v](dpr, viewport.0, viewport.1), safeArea)
+  }
+
+  /// css-env-1: takes the mount's measured insets. Returns whether they differed, so the mount renders again. The animator keeps
+  /// the inputs it started with: native refuses animating a value that reads env() (refuseAnimatedSafeAreaInsets), so none of its
+  /// endpoints depends on the insets.
+  @discardableResult public func setSafeArea(_ s: SafeAreaInsets) -> Bool {
+    if dragonSameInsets(s, safeArea) { return false }
+    safeArea = s
+    return true
   }
 
   /// The clock step (R2): the virtual clock and every running transition and animation move by ms.
@@ -266,7 +283,7 @@ public final class DragonStateMachine {
 
   /// The engine input last laid out, at the current viewport, with the animator's frame lengths patched in (R16).
   public func input(_ dpr: Double) -> LayoutInput {
-    let i = variants[laidOut](dpr, viewport.0, viewport.1)
+    let i = laid(laidOut, dpr)
     return animator?.patch(i) ?? i
   }
 
@@ -327,6 +344,7 @@ public final class DragonStateMount {
   private let bridge: DragonBridge
   private var stale = false
   private var driver: DragonDisplayDriver?
+  private let probe: DragonSafeAreaProbe
 
   /// MQ-R2: the platform readings' observer, and whether a script injected its own (the platform then no longer reaches the machine).
   private var observer: DragonReadingsObserver?
@@ -343,15 +361,25 @@ public final class DragonStateMount {
     media.frame = CGRect(x: 0, y: 0, width: CGFloat(size.0), height: CGFloat(size.1))
     media.layoutIfNeeded()
     machine.resize(media.sizePx.0, media.sizePx.1, css: size, scale: scale)
+    // css-env-1: the media root's insets (it is the viewport) before the animator resolves its inputs; the probe renders again
+    // whenever they change.
+    probe = DragonSafeAreaProbe(stage: stage)
+    machine.setSafeArea(dragonSafeArea(media))
     // ANIM-b1 R7: CSS animations start at first style, so the first render shows their t = 0 values.
     machine.startAnimator(measurer)
     render()
+    probe.onChange = { [weak self] in
+      guard let self = self, self.machine.setSafeArea(dragonSafeArea(self.media)) else { return }
+      self.render()
+    }
     machine.onChange = { [weak self] in
       self?.render()
       self?.drive()
     }
     media.onSize = { [weak self] w, h, cw, ch in
       guard let self = self else { return }
+      // css-env-1: the media root's new size changes how far the unsafe area reaches into it, and the probe sees only the stage.
+      self.machine.setSafeArea(dragonSafeArea(self.media))
       self.machine.resize(w, h, css: (cw, ch), scale: self.scale)
     }
     observer = DragonReadingsObserver { [weak self] in
@@ -413,6 +441,8 @@ public final class DragonStateMount {
     shown = t
     renders += 1
   }
+
+  deinit { probe.removeFromSuperview() }
 }
 
 /// A case script: its case (identity and expected digests, the viewport it ends at), its start size and its steps, which run on a
@@ -456,6 +486,7 @@ function kotlinSupportText(): string {
 import android.view.ViewGroup
 import dev.dragon.layout.AnimTables
 import dev.dragon.layout.LayoutInput
+import dev.dragon.layout.SafeAreaInsets
 import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.environment_resolveEnvironment
@@ -509,6 +540,12 @@ class DragonStateMachine(
   private val baseById = HashMap<String, DragonStateNode>()
   private val initialAssignment = initial
   private var animatorMeasurer: TextMeasurer? = null
+  /**
+   * css-env-1 env(safe-area-inset-*): the mount's measured insets in CSS px, which every engine input the machine lays out or
+   * animates from carries in place of its compile-time zeros (setSafeArea).
+   */
+  var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
+    private set
   val clock = DragonVirtualClock()
   /** The band of the current assignment, and the viewport (CSS px) the engine lays out at: the media root's size. */
   var bandIndex: Int = initialBand
@@ -584,7 +621,21 @@ class DragonStateMachine(
 
   /** Every assignment's engine input resolved at scale 1 and the current viewport: where the animator reads length endpoints. */
   private fun animatorInputs(measurer: TextMeasurer): List<LayoutInput> =
-    deltas.map { environment_resolveEnvironment(variants[it.variant](1.0, viewport.first, viewport.second), block_NO_ENGINE_FAULTS, measurer) }
+    deltas.map { environment_resolveEnvironment(laid(it.variant, 1.0), block_NO_ENGINE_FAULTS, measurer) }
+
+  /** Variant v's engine input at dpr and the current viewport, with the measured insets. */
+  private fun laid(v: Int, dpr: Double): LayoutInput = dragonWithSafeArea(variants[v](dpr, viewport.first, viewport.second), safeArea)
+
+  /**
+   * css-env-1: takes the mount's measured insets. Returns whether they differed, so the mount renders again. The animator keeps
+   * the inputs it started with: native refuses animating a value that reads env() (refuseAnimatedSafeAreaInsets), so none of its
+   * endpoints depends on the insets.
+   */
+  fun setSafeArea(s: SafeAreaInsets): Boolean {
+    if (dragonSameInsets(s, safeArea)) return false
+    safeArea = s
+    return true
+  }
 
   /** The clock step (R2): the virtual clock and every running transition and animation move by ms. */
   fun advance(ms: Double) {
@@ -634,7 +685,7 @@ class DragonStateMachine(
 
   /** The engine input last laid out, at the current viewport, with the animator's frame lengths patched in (R16). */
   fun input(dpr: Double): LayoutInput {
-    val i = variants[laidOut](dpr, viewport.first, viewport.second)
+    val i = laid(laidOut, dpr)
     return animator?.patch(i) ?: i
   }
 
@@ -707,6 +758,7 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     private set
   private var stale = false
   private var driver: DragonDisplayDriver? = null
+  private val probe: DragonSafeAreaProbe<DragonStateMount>
 
   /** The views on screen, rendered for the current frame. */
   val tree: DragonTree
@@ -721,10 +773,16 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     media.onSize = { w, h ->
       val css = requested ?: Pair(w / scale, h / scale)
       requested = null
+      // css-env-1: the media root's new size changes how far the unsafe area reaches into it.
+      machine.setSafeArea(dragonSafeArea(media, scale))
       machine.resize(w, h, css, scale)
     }
     // The first size: laid out here, so the machine takes its band before the first render; the setter then renders nothing.
     media.layout(0, 0, pxOf(size.first), pxOf(size.second))
+    // css-env-1: the media root's insets (it is the viewport) before the animator resolves its inputs; the probe renders again
+    // whenever they change.
+    machine.setSafeArea(dragonSafeArea(media, scale))
+    probe = DragonSafeAreaProbe(stage, this) { m -> if (m.machine.setSafeArea(dragonSafeArea(m.media, m.scale))) m.render() }
     // ANIM-b1 R7: CSS animations start at first style, so the first render shows their t = 0 values.
     machine.startAnimator(measurer)
     render()
@@ -768,6 +826,16 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
   fun close() {
     observer?.close()
     observer = null
+    (probe.parent as? ViewGroup)?.removeView(probe)
+  }
+
+  /** Takes the media root, with the views, and the safe-area probe off the stage, and closes the mount; it renders no more. */
+  fun unmount() {
+    close()
+    machine.onChange = null
+    machine.onFrame = null
+    driver?.stop()
+    stage.removeView(media)
   }
 
   private fun drive() {

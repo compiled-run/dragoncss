@@ -178,6 +178,25 @@ public final class DragonInteractionMachine {
     hitTables = [:]
   }
 
+  /// css-env-1 env(safe-area-inset-*): the mount's measured insets in CSS px, which the inputs the machine lays out and hit tests
+  /// carry in place of their compile-time zeros, so a hit lands on the boxes as drawn.
+  public private(set) var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
+
+  /// css-env-1: takes the mount's measured insets; when they differ, the hit tables are laid out again and a hovering pointer's
+  /// last point is hit on the new layout (P11), as after an app setter. Returns whether they differed, so the mount renders again.
+  @discardableResult public func setSafeArea(_ s: SafeAreaInsets) -> Bool {
+    if dragonSameInsets(s, safeArea) { return false }
+    safeArea = s
+    hitTables = [:]
+    if pointer.pointerIn, let l = last {
+      step {
+        let h = hitAt(l.0, l.1)
+        commit(dragonInteractionCall("layoutChanged") { try rtInteraction_layoutChanged(tables, pointer, h, faults) })
+      }
+    }
+    return true
+  }
+
   private var tables: InteractionTables { return levels[app].tables }
 
   public func pointerMoved(_ x: Double, _ y: Double) {
@@ -329,7 +348,7 @@ public final class DragonInteractionMachine {
     if entry == nil {
       let map = JsStringMap<HitFact>()
       for r in facts[f] { map.set(JsString(r.id), HitFact(JsString(r.pointerEvents), r.inherited, r.activation)) }
-      let t = dragonInteractionCall("hit table") { try rtHit_hitTableOf(variants[laidOut](scale), measurer, map, HitTableFaults(false)) }
+      let t = dragonInteractionCall("hit table") { try rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea), measurer, map, HitTableFaults(false)) }
       let prepared = dragonInteractionCall("prepare hit") { try rtHit_prepareHit(t.nodes, HitFaults(false, false)) }
       entry = (prepared, t.ids.items.map { $0.description })
       hitTables[key] = entry
@@ -372,7 +391,7 @@ public final class DragonInteractionMachine {
 
   /// The engine input last laid out.
   public func input(_ dpr: Double) -> LayoutInput {
-    return variants[laidOut](dpr)
+    return dragonWithSafeArea(variants[laidOut](dpr), safeArea)
   }
 }
 
@@ -515,6 +534,28 @@ class DragonInteractionMachine(
     hitTables.clear()
   }
 
+  /**
+   * css-env-1 env(safe-area-inset-*): the mount's measured insets in CSS px, which the inputs the machine lays out and hit tests
+   * carry in place of their compile-time zeros, so a hit lands on the boxes as drawn.
+   */
+  var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
+    private set
+
+  /**
+   * css-env-1: takes the mount's measured insets; when they differ, the hit tables are laid out again and a hovering pointer's
+   * last point is hit on the new layout (P11), as after an app setter. Returns whether they differed, so the mount renders again.
+   */
+  fun setSafeArea(s: SafeAreaInsets): Boolean {
+    if (dragonSameInsets(s, safeArea)) return false
+    safeArea = s
+    hitTables.clear()
+    if (pointer.pointerIn && hasLast) step {
+      val h = hitAt(lastX, lastY)
+      commit(rtInteraction_layoutChanged(tables, pointer, h, faults))
+    }
+    return true
+  }
+
   private val tables: InteractionTables get() = levels[app].tables
 
   fun pointerMoved(x: Double, y: Double) = step {
@@ -647,7 +688,7 @@ class DragonInteractionMachine(
     val entry = hitTables.getOrPut(key) {
       val map = JsStringMap<HitFact>()
       for (r in facts[f]) map.set(r.id, HitFact(r.pointerEvents, r.inherited, r.activation))
-      val t = rtHit_hitTableOf(variants[laidOut](scale), measurer, map, HitTableFaults(false))
+      val t = rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea), measurer, map, HitTableFaults(false))
       Pair(rtHit_prepareHit(t.nodes, HitFaults(false, false)), t.ids.toList())
     }
     val zoom = scale * 64.0
@@ -684,7 +725,7 @@ class DragonInteractionMachine(
   }
 
   /** The engine input last laid out. */
-  fun input(dpr: Double): LayoutInput = variants[laidOut](dpr)
+  fun input(dpr: Double): LayoutInput = dragonWithSafeArea(variants[laidOut](dpr), safeArea)
 }
 
 /**

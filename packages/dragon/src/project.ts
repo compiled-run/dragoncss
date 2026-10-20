@@ -31,7 +31,7 @@ import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
-import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
+import { analyzeAnimations, gateAnimationFeatures, refuseAnimatedSafeAreaInsets, refuseBandedAnimations } from './analysis/animations.ts';
 import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
 import { refuseAnimatedFx } from './analysis/fx.ts';
 import { refuseStatefulStrokes } from './analysis/text-stroke.ts';
@@ -1313,6 +1313,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const translucentReported = new Set<string>();
       const currentColorReported = new Set<string>();
       const groupMotionReported = new Set<string>();
+      // ENV-SAFE: the measured insets change without a style change event, so native refuses animating a value that reads them.
+      const safeAreaReported = new Set<string>();
       const textFillReported = new Set<string>();
       const fxReported = new Set<string>();
       bandCases.forEach((r, k) => {
@@ -1322,6 +1324,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
+        refuseAnimatedSafeAreaInsets(a, roots, nativeTargets, diagnostics, safeAreaReported);
         refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
         // PNT1-opacity-b: motion under a pre-composited group; lane-gated like checkTranslucent (the lanes make such a case lane-only,         // FX-0: a backdrop-filter or mix-blend-mode is drawn only on a page that does not animate (analysis/fx.ts).
         if (!options.interactionLanes) refuseAnimatedGroups(a, roots, nativeTargets, diagnostics, fxReported, groupMotionReported,         refuseAnimatedFx(a);

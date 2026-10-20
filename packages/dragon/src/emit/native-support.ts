@@ -672,6 +672,62 @@ public struct DragonCase {
   }
 }
 
+/// css-env-1 env(safe-area-inset-*) on iOS: how far the window's safe-area insets (status bar, home indicator, sensor housing; in
+/// points, which are CSS px) reach into container's bounds, side by side. The window's insets, not the view's: a view controller's
+/// bars and additionalSafeAreaInsets are app chrome, not the device's unsafe area, and Android reads the window's too. A container
+/// laid out inside the insets, or not in a window yet, reads 0 on every side, as a page without viewport-fit=cover does (P7).
+public func dragonSafeArea(_ container: UIView) -> SafeAreaInsets {
+  guard let w = container.window else { return SafeAreaInsets(0.0, 0.0, 0.0, 0.0) }
+  let i = w.safeAreaInsets
+  let r = container.convert(container.bounds, to: w)
+  let b = w.bounds
+  func css(_ v: CGFloat) -> Double { return Double(max(0, v)) }
+  return SafeAreaInsets(css(i.top - r.minY), css(r.maxX - (b.width - i.right)), css(r.maxY - (b.height - i.bottom)), css(i.left - r.minX))
+}
+
+/// css-env-1: input with its safe-area insets replaced by a mount's measured ones.
+public func dragonWithSafeArea(_ input: LayoutInput, _ s: SafeAreaInsets) -> LayoutInput {
+  return LayoutInput(input.viewport, input.devicePixelRatio, input.viewportUnits, s, input.rootFontSize, input.root)
+}
+
+/// css-env-1: whether two inset sets are equal side by side.
+public func dragonSameInsets(_ a: SafeAreaInsets, _ b: SafeAreaInsets) -> Bool {
+  return a.top == b.top && a.right == b.right && a.bottom == b.bottom && a.left == b.left
+}
+
+/// css-env-1: an empty view over a mount's stage that calls onChange whenever the stage's safe-area insets may have changed: the
+/// stage entering a window, the window's insets changing (rotation, status bar, split view) or the stage resizing. The calls are
+/// coalesced onto the next main-queue turn, never made inside UIKit's own callback. The mount then measures the stage again
+/// (dragonSafeArea) and re-renders when the insets differ.
+public final class DragonSafeAreaProbe: UIView {
+  public var onChange: (() -> Void)?
+  private var pending = false
+
+  public init(stage: UIView) {
+    super.init(frame: stage.bounds)
+    isUserInteractionEnabled = false
+    isAccessibilityElement = false
+    autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    stage.insertSubview(self, at: 0)
+  }
+
+  required init?(coder: NSCoder) { fatalError("dragon: DragonSafeAreaProbe is built in code") }
+
+  public override func didMoveToWindow() { super.didMoveToWindow(); changed() }
+  public override func safeAreaInsetsDidChange() { super.safeAreaInsetsDidChange(); changed() }
+  public override func layoutSubviews() { super.layoutSubviews(); changed() }
+
+  private func changed() {
+    if pending { return }
+    pending = true
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.pending = false
+      self.onChange?()
+    }
+  }
+}
+
 /// The native tree of one case: builds the views, applies the translated engine's snapped frames at the device scale, and reads
 /// the dump back from the live tree.
 public final class DragonTree {
@@ -686,6 +742,9 @@ public final class DragonTree {
   private var inlineLines: [String: [(edges: [Double], baseline: Double)]] = [:]
   private var hosts: [String: String] = [:]
   private var companions: [String: [UIView]] = [:]
+  /// css-env-1 env(safe-area-inset-*): the root view's insets in CSS px, measured from its container (dragonSafeArea) by a host
+  /// before apply, which then replace the case input's own; nil keeps the input's (a mount's machine puts its insets there).
+  public var safeArea: SafeAreaInsets? = nil
   public init() {}
 
   /// Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
@@ -720,7 +779,8 @@ public final class DragonTree {
 
   /// Runs the translated engine at the device scale, snaps with the translated snapEdges and sets every frame relative to its
   /// native parent as CGFloat(edge - parentEdge) / scale. No Auto Layout.
-  public func apply(_ input: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) throws {
+  public func apply(_ given: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) throws {
+    let input = safeArea.map { dragonWithSafeArea(given, $0) } ?? given
     let result = try layout_layout(input, measurer)
     if let refused = result as? LayoutResult_unsupported { fatalError("dragon: the engine refused the case: \(refused.unsupported.code) at \(refused.unsupported.nodeId): \(refused.unsupported.detail)") }
     guard let ok = result as? LayoutResult_ok else { fatalError("dragon: the engine gave no result") }
@@ -1738,6 +1798,7 @@ import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
 import dev.dragon.layout.ListMarker
+import dev.dragon.layout.SafeAreaInsets
 import dev.dragon.layout.ObjectRect
 import dev.dragon.layout.PieceGlyphs_okFalse
 import dev.dragon.layout.PieceGlyphs_okTrue
@@ -1797,6 +1858,69 @@ class DragonCase(
 }
 
 /**
+ * css-env-1 env(safe-area-inset-*) on Android: how far the window's system bars and display cutout reach into container's content
+ * box (its bounds less padding, where the tree's root view goes), side by side, in CSS px (device px / scale). A container laid out
+ * inside the insets, or not attached yet, reads 0 on every side, as a page without viewport-fit=cover does (P7).
+ */
+fun dragonSafeArea(container: android.view.View, scale: Double): SafeAreaInsets {
+  val wi = container.rootWindowInsets ?: return SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
+  val bars = wi.getInsets(android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout())
+  val at = IntArray(2)
+  container.getLocationInWindow(at)
+  val window = container.rootView
+  val left = at[0] + container.paddingLeft
+  val top = at[1] + container.paddingTop
+  val right = at[0] + container.width - container.paddingRight
+  val bottom = at[1] + container.height - container.paddingBottom
+  fun css(px: Int): Double = maxOf(0, px) / scale
+  return SafeAreaInsets(css(bars.top - top), css(right - (window.width - bars.right)), css(bottom - (window.height - bars.bottom)), css(bars.left - left))
+}
+
+/** css-env-1: input with its safe-area insets replaced by a mount's measured ones. */
+fun dragonWithSafeArea(input: LayoutInput, s: SafeAreaInsets): LayoutInput =
+  LayoutInput(input.viewport, input.devicePixelRatio, input.viewportUnits, s, input.rootFontSize, input.root)
+
+/** css-env-1: whether two inset sets are equal side by side. */
+fun dragonSameInsets(a: SafeAreaInsets, b: SafeAreaInsets): Boolean = a.top == b.top && a.right == b.right && a.bottom == b.bottom && a.left == b.left
+
+/**
+ * css-env-1: an empty, zero-size view in a mount's stage that calls onChange (posted, never inside a dispatch) whenever the stage's
+ * safe-area insets may have changed: attach, new window insets (rotation, status bar, multi-window) or any layout of the window. The
+ * mount then measures the stage again (dragonSafeArea) and re-renders when the insets differ. A mount that is gone takes the probe
+ * off the stage on the next call.
+ */
+class DragonSafeAreaProbe<M : Any>(stage: ViewGroup, mount: M, private val onChange: (M) -> Unit) : android.view.View(stage.context) {
+  private val mount = java.lang.ref.WeakReference(mount)
+  private val check = Runnable {
+    val m = this.mount.get()
+    if (m == null) (parent as? ViewGroup)?.removeView(this) else onChange(m)
+  }
+  private val layoutListener = android.view.ViewTreeObserver.OnGlobalLayoutListener { post(check) }
+
+  init {
+    importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    stage.addView(this, 0, ViewGroup.LayoutParams(0, 0))
+  }
+
+  override fun onApplyWindowInsets(insets: android.view.WindowInsets): android.view.WindowInsets {
+    post(check)
+    return super.onApplyWindowInsets(insets)
+  }
+
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
+    post(check)
+  }
+
+  override fun onDetachedFromWindow() {
+    viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
+    removeCallbacks(check)
+    super.onDetachedFromWindow()
+  }
+}
+
+/**
  * The native tree of one case: builds the views, applies the translated engine's snapped frames at the device scale through
  * View.layout ints from dragonCheckedInt, and reads the dump back from the live tree.
  */
@@ -1809,6 +1933,11 @@ class DragonTree(val context: Context) {
   private val textMetrics = HashMap<String, DoubleArray>()
   private val hosts = HashMap<String, String>()
   private val companions = HashMap<String, ArrayList<android.view.View>>()
+  /**
+   * css-env-1 env(safe-area-inset-*): the root view's insets in CSS px, measured from its container (dragonSafeArea) by a host
+   * before apply, which then replace the case input's own; null keeps the input's (a mount's machine puts its insets there).
+   */
+  var safeArea: SafeAreaInsets? = null
 
   /**
    * Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
@@ -1848,7 +1977,8 @@ class DragonTree(val context: Context) {
   private fun setFrame(f: IntArray, l: Double, t: Double, r: Double, b: Double, what: String) = dragonSetFrame(f, l, t, r, b, what)
 
   /** Runs the translated engine at the device scale, snaps with the translated snapEdges and stores every frame in device px. */
-  fun apply(input: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+  fun apply(given: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+    val input = safeArea?.let { dragonWithSafeArea(given, it) } ?: given
     val result = layout_layout(input, measurer)
     val refused = result as? dev.dragon.layout.LayoutResult_unsupported
     if (refused != null) throw IllegalStateException("dragon: the engine refused the case: " + refused.unsupported.code + " at " + refused.unsupported.nodeId + ": " + refused.unsupported.detail)

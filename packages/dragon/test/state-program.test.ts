@@ -254,12 +254,15 @@ describe('the generated runtime', () => {
     const sw = emitNativeSupport('uikit', null).map((f) => f.text).join('\n');
     expect(sw).toMatch(/let moved = css != viewport\n {4}viewport = css\n {4}if moved, let a = animator, let m = animatorMeasurer \{ a\.stage\(animatorInputs\(m\)\) \}\n {4}if let b = band \{/);
     expect(sw).toMatch(/if moved \{ animator\?\.event\(current\) \}\n {4}onChange\?\(\)/);
-    expect(sw).toContain('variants[d.variant](1, viewport.0, viewport.1)');
+    // The inputs are at the current viewport, with the mount's measured safe-area insets (laid).
+    expect(sw).toContain('environment_resolveEnvironment(laid(d.variant, 1)');
+    expect(sw).toContain('dragonWithSafeArea(variants[v](dpr, viewport.0, viewport.1), safeArea)');
     const kt = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
     expect(kt).toMatch(/val moved = css != viewport\n {4}viewport = css\n/);
     expect(kt).toContain('if (moved && a != null && m != null) a.stage(animatorInputs(m))');
     expect(kt).toMatch(/if \(moved\) animator\?\.event\(current\)\n {4}onChange\?\.invoke\(\)/);
-    expect(kt).toContain('variants[it.variant](1.0, viewport.first, viewport.second)');
+    expect(kt).toContain('environment_resolveEnvironment(laid(it.variant, 1.0)');
+    expect(kt).toContain('dragonWithSafeArea(variants[v](dpr, viewport.first, viewport.second), safeArea)');
   });
 
   it('the web attribute program writes each assignment\'s classes and validates before any mutation', async () => {
@@ -313,6 +316,13 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     expect(t).toMatch(/current = to\n {4}\/\/ ANIM-b1 R4: one style change event per setter call\.\n {4}animator\?\.event\(to\)\n {4}onChange\?\(\)\n {2}\}/);
     expect(t).toMatch(/machine\.onChange = \{ \[weak self\] in\n {6}self\?\.render\(\)\n/);
     expect(t).toMatch(/let t = DragonTree\(\)\n {4}machine\.build\(t\)\n {4}media\.addSubview\(t\.root\)\n {4}do \{\n {6}try t\.apply\(machine\.input\(scale\)/);
+    // css-env-1: the media root's measured insets reach the animator's inputs and every laid-out input, and a change re-renders.
+    expect(t).toMatch(/machine\.setSafeArea\(dragonSafeArea\(media\)\)\n(.*\n)? {4}machine\.startAnimator\(measurer\)/);
+    expect(t).toContain('return dragonWithSafeArea(variants[v](dpr, viewport.0, viewport.1), safeArea)');
+    expect(t).toContain('environment_resolveEnvironment(laid(d.variant, 1)');
+    expect(t).toMatch(/guard let self = self, self\.machine\.setSafeArea\(dragonSafeArea\(self\.media\)\) else \{ return \}\n {6}self\.render\(\)/);
+    // A resize of the media root alone re-measures its insets before the machine lays out at the new size.
+    expect(t).toMatch(/self\.machine\.setSafeArea\(dragonSafeArea\(self\.media\)\)\n {6}self\.machine\.resize\(w, h, css: \(cw, ch\), scale: self\.scale\)/);
     expect(t).toMatch(/shown\.root\.removeFromSuperview\(\)\n {4}shown = t\n {4}renders \+= 1/);
     // MQ-R1: a script runs on the mount (its resize steps size the mount's media root), its setters on the mount's machine.
     expect(t).toContain('case .set(let a, let b): m.machine.set(a, b)');
@@ -323,6 +333,11 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     const t = support('android-views');
     expect(t).toMatch(/current = to\n {4}\/\/ ANIM-b1 R4: one style change event per setter call\.\n {4}animator\?\.event\(to\)\n {4}onChange\?\.invoke\(\)\n {2}\}/);
     expect(t).toMatch(/machine\.onChange = \{\n {6}render\(\)\n/);
+    expect(t).toMatch(/machine\.setSafeArea\(dragonSafeArea\(media, scale\)\)\n(.*\n)* {4}machine\.startAnimator\(measurer\)/);
+    expect(t).toContain('dragonWithSafeArea(variants[v](dpr, viewport.first, viewport.second), safeArea)');
+    expect(t).toContain('environment_resolveEnvironment(laid(it.variant, 1.0)');
+    expect(t).toContain('if (m.machine.setSafeArea(dragonSafeArea(m.media, m.scale))) m.render()');
+    expect(t).toMatch(/machine\.setSafeArea\(dragonSafeArea\(media, scale\)\)\n {6}machine\.resize\(w, h, css, scale\)/);
     expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), bridge\.measurer, scale, bridge\)\n {4}media\.addView\(t\.root/);
     expect(t).toMatch(/media\.removeView\(shown\.root\)\n {4}shown = t\n {4}renders\+\+/);
     expect(t).toContain('is DragonScriptStep.Set -> m.machine.set(s.s, s.v)');
