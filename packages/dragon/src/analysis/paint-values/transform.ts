@@ -10,6 +10,7 @@ import { lengthToPx } from '../../css/units.ts';
 import type { Diagnostic, Origin } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { containsDescendants } from '../containment.ts';
 import type { PaintValueContext, PaintValues } from './types.ts';
 
 /** A declared length in px, or unchanged when its font base is unknown (the font-size pre-pass), it is a percentage or it overflows. */
@@ -115,7 +116,8 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
       const tag = el.element.tag;
       if (tag === 'html' || tag === 'body') refuse(el, 'root', `a transform on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
       if (display !== 'block' && display !== 'flex') refuse(el, 'display', `a transform on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
-      if (position === 'static') {
+      // A box with layout or paint containment is already the containing block, transformed or not (css-contain-2 §3.2).
+      if (position === 'static' && !containsDescendants(el)) {
         const cb = absoluteDescendant(el);
         if (cb !== null) refuse(el, 'containing-block', `a transform on ${address} makes it the containing block of the absolutely positioned ${cb.element.address} (css-transforms-1 §3), which Dragon's layout does not model yet`, `Set position: relative on ${address}, so it is the containing block with or without the transform.`);
       }
@@ -126,13 +128,13 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
   walk(root, null);
 }
 
-/** An absolutely positioned descendant whose containing block would be el (no positioned or transformed box between them), or null. */
+/** An absolutely positioned descendant whose containing block would be el (no positioned, transformed or contained box between them), or null. */
 function absoluteDescendant(el: ResolvedElement): ResolvedElement | null {
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c, 'display') === 'none') continue;
     const position = keywordOf(c, 'position');
     if (position === 'absolute') return c;
-    if (position !== 'static' || transformsDescendants(c)) continue;
+    if (position !== 'static' || transformsDescendants(c) || containsDescendants(c)) continue;
     const deeper = absoluteDescendant(c);
     if (deeper !== null) return deeper;
   }

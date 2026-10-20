@@ -5,7 +5,7 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { isInitialValue } from '../css/properties/initial-only.ts';
 import type { Longhand } from '../css/properties.ts';
 import { CONTAINER_QUERY_INITIAL, CONTAINER_QUERY_LONGHANDS } from '../css/properties/container-query.ts';
-import { CONTAINMENT_INITIAL, CONTAINMENT_LONGHANDS } from '../css/properties/containment.ts';
+import { CONTAINMENT_INITIAL, CONTAINMENT_INITIAL_ONLY } from '../css/properties/containment.ts';
 import { OVERSCROLL_INITIAL, OVERSCROLL_LONGHANDS } from '../css/properties/overscroll.ts';
 import { SCROLL_SNAP_INITIAL, SCROLL_SNAP_LONGHANDS } from '../css/properties/scroll-snap.ts';
 import type { CssValue } from '../css/values.ts';
@@ -42,9 +42,9 @@ const OVERSCROLL: InitialOnlyFamily = { id: 'overscroll', longhands: OVERSCROLL_
 // css-scroll-snap-1: a snap type snaps scroll positions, and scroll-padding and scroll-margin move snap and scrollIntoView targets;
 // Dragon does neither yet.
 const SCROLL_SNAP: InitialOnlyFamily = { id: 'scroll-snap', longhands: SCROLL_SNAP_LONGHANDS, initial: SCROLL_SNAP_INITIAL, reason: 'Dragon implements no scroll snapping or scroll target offsets yet' };
-// css-contain-2: containment and content-visibility change layout and can skip painting a box's contents (text included); the
-// intrinsic sizes apply only under size containment.
-const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_LONGHANDS, initial: CONTAINMENT_INITIAL, reason: 'Dragon implements no containment or content-visibility yet' };
+// css-contain-2: content-visibility skips laying out and painting a box's contents (text included), and the intrinsic sizes apply
+// under size containment; contain itself is analysis/containment.ts's.
+const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_INITIAL_ONLY, initial: CONTAINMENT_INITIAL, reason: 'Dragon skips no contents and sizes no contained box from contain-intrinsic-size yet' };
 // css-conditional-5: a container-type other than normal applies size containment, and a container-name only names a query container.
 const CONTAINER_QUERY: InitialOnlyFamily = { id: 'container-query', longhands: CONTAINER_QUERY_LONGHANDS, initial: CONTAINER_QUERY_INITIAL, reason: 'Dragon implements no container queries or the containment they apply yet' };
 

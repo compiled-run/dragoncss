@@ -18,6 +18,7 @@ import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
+import { containsDescendants } from '../../analysis/containment.ts';
 import { clipsChildren } from './clip.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -32,9 +33,11 @@ export type StackNode = {
   /** An in-flow flex or grid item's order, which sorts it among its siblings (unorderedItems: whole); absent (0) for other nodes. */
   readonly order?: number;
   readonly opacity: number;
-  /** A transform, will-change: transform or opacity, or a clip-path: a stacking context in the z-index 0 layer. */
+  /** A transform, will-change: transform or opacity, a clip-path or layout or paint containment: a stacking context in the z-index 0 layer. */
   readonly transformed: boolean;
   readonly clips: boolean;
+  /** A static box with layout or paint containment, the containing block of its absolutely positioned descendants (css-contain-2 §3.2). */
+  readonly containsAbsolute?: boolean;
   /** Text leaves and boxes, in tree order; a text leaf is a StackNode with no children that is never positioned. */
   readonly children: readonly StackNode[];
   readonly text: boolean;
@@ -109,7 +112,7 @@ function inBlockChain(a: Info, d: Info): boolean {
   for (let x: Info | null = d; x !== null && x.parent !== null; ) {
     if (x.node.position === 'fixed') return false;
     let cb: Info | null = x.parent;
-    if (x.node.position === 'absolute') while (cb !== null && cb.parent !== null && cb.node.position === 'static') cb = cb.parent;
+    if (x.node.position === 'absolute') while (cb !== null && cb.parent !== null && cb.node.position === 'static' && cb.node.containsAbsolute !== true) cb = cb.parent;
     if (cb === a) return true;
     x = cb;
   }
@@ -331,8 +334,11 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: 
 /** The displays whose children are flex or grid items, whose z-index applies when static (Blink StyleAdjuster). */
 export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', 'inline-grid'];
 
-/** Whether an element's transform, will-change or clip-path makes it a stacking context (css-transforms-1 §3, css-will-change-1 §3, css-masking-1 §6.1). */
-export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el);
+/**
+ * Whether an element's transform, will-change, clip-path or layout or paint containment makes it a stacking context (css-transforms-1
+ * §3, css-will-change-1 §3, css-masking-1 §6.1, css-contain-2 §3.2 and §3.4).
+ */
+export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || containsDescendants(el);
 
 /** The stacking tree of a layout tree, with each element's z-index, opacity and transform from its resolved style. */
 export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, ResolvedElement>): StackNode {
@@ -361,7 +367,9 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       ...(item && b.style.position !== 'absolute' ? { order: b.style.order } : {}),
       opacity,
       transformed: el !== null && transformedForStacking(el),
-      // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), and overflow never applies to an inline box.
+      ...(el !== null && containsDescendants(el) ? { containsAbsolute: true } : {}),
+      // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), as paint containment's does (lowered to clip), and
+      // overflow never applies to an inline box.
       clips: b.kind !== 'inline' && clipsChildren(b),
       text: false,
       children,

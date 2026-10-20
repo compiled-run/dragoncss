@@ -1,7 +1,8 @@
 // The overscroll, scroll-snap, containment and container-query parse against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES,
 // css/properties/initial-only.ts): Dragon drops no value Chrome keeps, and every value Dragon accepts as initial computes in Chrome to
 // the initial values of the longhands it sets, as Dragon's own longhands do. Every other value is kept and then refused
-// (analysis/scroll-containment.ts), so only the accepted values' computed values are compared. Each planted reading must be caught.
+// (analysis/scroll-containment.ts), so only the accepted values' computed values are compared. contain parses every value itself
+// (css/properties/containment.ts parseContain), and its accepted values must compute in Chrome as Dragon's do. Each planted reading must be caught.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
@@ -62,7 +63,7 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
   'scroll-snap-type': ['none', 'NONE', 'x', 'y mandatory', 'both proximity', 'none mandatory', 'pair', 'block'],
   'scroll-snap-align': ['none', 'None', 'none none', 'start', 'center end', 'none start', 'left'],
   'scroll-snap-stop': ['normal', 'NORMAL', 'always', 'none'],
-  contain: ['none', 'NONE', 'strict', 'content', 'size', 'inline-size', 'layout paint', 'style', 'none none', 'view-transition'],
+  contain: ['none', 'NONE', 'strict', 'content', 'size', 'inline-size', 'layout paint', 'style', 'none none', 'view-transition', 'PAINT', 'paint layout', 'size layout style paint', 'style paint layout', 'inline-size layout', 'layout layout', 'size inline-size', 'strict layout', 'none layout', '1px'],
   'content-visibility': ['visible', 'VISIBLE', 'hidden', 'auto', 'none'],
   'contain-intrinsic-size': ['none', 'NONE', 'none none', 'none none none', 'auto none', '10px', 'auto 10px none', '-1px'],
   'contain-intrinsic-width': ['none', 'None', 'auto none', '10px', 'auto', '-1px', '0'],
@@ -75,7 +76,9 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
 };
 
 /** How many of VALUES Dragon accepts as initial (pinned so a parser change that accepts more or fewer is seen). */
-const ACCEPTED = 77;
+const ACCEPTED = 88;
+/** The contain values Dragon reads as invalid, all of which Chrome 145 drops (judge). */
+const CONTAIN_INVALID = ['none none', 'view-transition', 'layout layout', 'size inline-size', 'strict layout', 'none layout', '1px'];
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {
@@ -122,7 +125,8 @@ describe('overscroll, scroll-snap, containment and container-query: Chrome 145 p
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
-    expect(real.filter((it) => it.code !== null)).toEqual([]);
+    // contain parses itself (CONTAIN), so the values Chrome drops are invalid there rather than unadmitted.
+    expect(real.filter((it) => it.code !== null).map((it) => `${it.name}: ${it.v}`)).toEqual(CONTAIN_INVALID.map((v) => `contain: ${v}`));
     expect(real.filter((it) => it.longhands !== null).length).toBe(ACCEPTED);
     expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThan(120);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));

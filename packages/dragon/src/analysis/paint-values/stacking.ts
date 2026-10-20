@@ -6,6 +6,7 @@ import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import type { StackNode } from '../../lower/paint/stacking.ts';
 import { FLEX_OR_GRID, stackingOf, transformedForStacking, unorderedItems } from '../../lower/paint/stacking.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
+import { containsDescendants, paintContained } from '../containment.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
 import type { Diagnostic } from '../../types.ts';
@@ -18,7 +19,7 @@ const keyword = (el: ResolvedElement, p: 'display' | 'position' | 'overflow-x'):
 
 /**
  * The stacking tree of a resolved document: display: none subtrees generate no boxes; text is never positioned. A box clips as the
- * native tree's does (lower/paint/clip.ts: any overflow but visible), except an inline box and the element whose overflow the
+ * native tree's does (lower/paint/clip.ts: any overflow but visible, or paint containment), except an inline box and the element whose overflow the
  * viewport takes (propagated; css-overflow-3 §3.3), which use visible.
  */
 export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedElement | null): StackNode {
@@ -38,7 +39,8 @@ export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedEle
       ...(item && position !== 'absolute' && position !== 'fixed' && order.kind === 'number' ? { order: order.value } : {}),
       opacity,
       transformed: transformedForStacking(el),
-      clips: el !== propagated && keyword(el, 'display') !== 'inline' && keyword(el, 'overflow-x') !== 'visible',
+      ...(containsDescendants(el) ? { containsAbsolute: true } : {}),
+      clips: el !== propagated && keyword(el, 'display') !== 'inline' && (keyword(el, 'overflow-x') !== 'visible' || paintContained(el)),
       text: false,
       children: el.children.flatMap((c): StackNode[] => {
         if (c.kind === 'text') return [{ id: `${el.element.address}:text#${texts++}`, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: true, children: [] }];
@@ -51,11 +53,12 @@ export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedEle
 
 /** Where to report a stacking refusal: the declaration that makes the box a layer item (z-index, position, opacity, transform). */
 function itemOrigin(el: ResolvedElement): ReturnType<typeof authored> | ResolvedElement['element']['node']['origin'] {
-  for (const p of ['z-index', 'position', 'opacity', 'transform', 'will-change'] as const) {
+  for (const p of ['z-index', 'position', 'opacity', 'transform', 'will-change', 'contain'] as const) {
     const v = el.props.get(p) as ResolvedValue | undefined;
     if (v === undefined || v.declaration === null) continue;
     if (p === 'z-index' && zIndexOf(v.value) === null) continue;
     if (p === 'position' && v.value.kind === 'keyword' && v.value.value === 'static') continue;
+    if (p === 'contain' && !containsDescendants(el)) continue;
     return authored(v.declaration.valueSpan);
   }
   return el.element.node.origin;

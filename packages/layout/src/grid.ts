@@ -59,6 +59,7 @@ import {
   blockMinMax,
   borderBoxFromSpecified,
   constrain,
+  containsAbsolute,
   contentBox,
   hasPercent,
   inlineMinMax,
@@ -2350,7 +2351,7 @@ function outOfFlowItem(ctx: Ctx, grid: GridState, box: LayoutBox): GridOutOfFlow
   const blockEdge = outOfFlowEdge(ctx, grid, box, 'rows');
   const gi = box.style.gridItem;
   // Blink IsAbsoluteContainer: only a positioned grid container is the containing block, whose rectangle is the grid area.
-  if (grid.style.position === 'static' || gi === null) return { box, inlineStart: null, inlineEnd: null, blockStart: null, blockEnd: null, inlineEdge, blockEdge };
+  if (!containsAbsolute(grid.style) || gi === null) return { box, inlineStart: null, inlineEnd: null, blockStart: null, blockEnd: null, inlineEdge, blockEdge };
   const columns = outOfFlowLines(ctx, outOfFlowSpan(grid.columnTracks, gi.column, ctx.gridFaults), grid.columnStartOffset, grid.columns);
   const rows = outOfFlowLines(ctx, outOfFlowSpan(grid.rowTracks, gi.row, ctx.gridFaults), grid.rowStartOffset, grid.rows);
   return {
@@ -2470,7 +2471,7 @@ export function gridOutOfFlow(ctx: Ctx, box: LayoutBox, pending: readonly GridOu
   const rtl = directionOf(ctx, box) === 'rtl';
   const bsp = logicalBsp(pad, bor, rtl);
   const edges = ctx.gridFaults.absposAutoLineContentEdge ? bsp : logicalBsp({ top: ZERO, right: ZERO, bottom: ZERO, left: ZERO }, bor, rtl);
-  const positioned = box.style.position !== 'static';
+  const positioned = containsAbsolute(box.style);
   return pending.map((p): OutOfFlow => {
     const inlineStart = !positioned ? bsp.left : p.inlineStart === null ? edges.left : p.inlineStart;
     const inlineEnd = !positioned ? sub(width, bsp.right) : p.inlineEnd === null ? sub(width, edges.right) : p.inlineEnd;

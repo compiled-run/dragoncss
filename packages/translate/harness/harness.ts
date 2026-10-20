@@ -10,6 +10,7 @@ import type {
   BoxSizing,
   BoxType,
   CalcExpr,
+  ContainSize,
   Direction,
   Display,
   FlexBasisValue,
@@ -45,9 +46,11 @@ import type {
   MaxInlineSizeValue,
   MaxSizeValue,
   MinSizeValue,
+  NoneValue,
   Overflow,
   PaddingValue,
   Position,
+  Px,
   SafeAreaSide,
   SizeValue,
   TextAlign,
@@ -547,6 +550,17 @@ function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+/** contain-intrinsic-width and -height: px or none. */
+function pxOrNone(v: JsonValue, path: string): Px | NoneValue {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'none') {
+    obj(v, ['kind'], path);
+    return { kind: 'none' };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 /** width and min-width: a SizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
 function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
   const k = kindOf(v, path);
@@ -644,7 +658,8 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout', 'containPaint',
+  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -845,6 +860,11 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     textIndent: paddingValue(f('textIndent'), p('textIndent')),
     lineClamp: num(f('lineClamp'), p('lineClamp')),
+    containLayout: bool(f('containLayout'), p('containLayout')),
+    containPaint: bool(f('containPaint'), p('containPaint')),
+    containSize: lit(f('containSize'), ['none', 'inline-size', 'size'], p('containSize')) as ContainSize,
+    containIntrinsicWidth: pxOrNone(f('containIntrinsicWidth'), p('containIntrinsicWidth')),
+    containIntrinsicHeight: pxOrNone(f('containIntrinsicHeight'), p('containIntrinsicHeight')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };

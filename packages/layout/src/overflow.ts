@@ -7,7 +7,7 @@ import type { Direction, LayoutBox, LayoutInput, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, fromCssPx, LU_PER_PX, max, min, snapEdge, sub, ZERO } from './units.ts';
 import type { Edges } from './box.ts';
-import { blockMinMaxWith, hasPercent, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
+import { blockMinMaxWith, containsAbsolute, hasPercent, isContained, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx, EngineFaults, Strut } from './block.ts';
 import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
@@ -207,7 +207,7 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
     ix.order.push(b);
     const content = clampNegativeToZero(sub(rect.width, sumEdges(border.left, border.right, padding.left, padding.right)));
     const paddingBoxWidth = clampNegativeToZero(sub(rect.width, add(border.left, border.right)));
-    const nextPositioned = b.style.position === 'static' ? positioned : b;
+    const nextPositioned = containsAbsolute(b.style) ? b : positioned;
     // A replaced leaf has no children (its fallback content never renders).
     if (b.kind === 'replaced') return;
     for (const k of b.children) {
@@ -555,7 +555,7 @@ type Flow = {
 
 /** layoutContents' formattingContextRoot for a child of a block flow. */
 function isFcRoot(b: LayoutNode): boolean {
-  return b.kind === 'replaced' || b.style.display !== 'block' || isScrollContainer(b.style);
+  return b.kind === 'replaced' || b.style.display !== 'block' || isScrollContainer(b.style) || isContained(b.style);
 }
 
 function flowOf(ix: Index, n: Node): Flow {

@@ -290,3 +290,13 @@ export function isScrollContainer(style: LayoutStyle): boolean {
   return x === 'hidden' || x === 'auto' || x === 'scroll';
 }
 
+/** css-contain-2 §3.2, §3.4: layout and paint containment make the box an independent formatting context. */
+export function isContained(style: LayoutStyle): boolean {
+  return style.containLayout || style.containPaint;
+}
+
+/** CSS2 §10.1 item 4 and css-contain-2 §3.2, §3.4: a positioned or contained box contains absolutely positioned descendants. */
+export function containsAbsolute(style: LayoutStyle): boolean {
+  return style.position !== 'static' || isContained(style);
+}
+

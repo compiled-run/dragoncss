@@ -175,6 +175,11 @@ export const styleSchema = obj({
   textOverflow: lit('clip', 'ellipsis'),
   textIndent: tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...calc }),
   lineClamp: count0,
+  containLayout: bool,
+  containPaint: bool,
+  containSize: lit('none', 'inline-size', 'size'),
+  containIntrinsicWidth: tagged({ ...px(0), none: {} }),
+  containIntrinsicHeight: tagged({ ...px(0), none: {} }),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -849,6 +854,11 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   textOverflow: 'clip',
   lineClamp: 0,
+  containLayout: false,
+  containPaint: false,
+  containSize: 'none',
+  containIntrinsicWidth: { kind: 'none' },
+  containIntrinsicHeight: { kind: 'none' },
   grid: null,
 };
 

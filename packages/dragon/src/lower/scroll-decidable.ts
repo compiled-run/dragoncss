@@ -3,7 +3,11 @@
 // whose range the engine may refuse, so the compiler refuses it at build time. It mirrors overflowOf, propagated, refuseLineLevelBoxes,
 // readFlow and readChild structurally; the one value-dependent rule (a percentage height whose end margins may collapse through it)
 // is refused whenever it may apply. packages/parity/test/scroll-decidable.test.ts checks it against the engine.
-import type { InlineChild, LayoutBox, LayoutNode, ReplacedLeaf } from '@dragon/layout';
+import type { InlineChild, LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from '@dragon/layout';
+
+/** Whether a box is the containing block of its absolutely positioned descendants: positioned, or layout- or paint-contained (the
+ * engine's box.ts containsAbsolute; the core imports @dragon/layout for types only). */
+const containsAbsolute = (s: LayoutStyle): boolean => s.position !== 'static' || s.containLayout || s.containPaint;
 
 export type ScrollUndecided = { readonly containerId: string; readonly nodeId: string; readonly detail: string };
 
@@ -37,15 +41,15 @@ function lineLevel(b: LayoutBox): void {
   }
 }
 
-/** The absolutely positioned boxes whose containing block is b (none when b is static), as indexOf files them. */
+/** The absolutely positioned boxes whose containing block is b (none when b is static and not contained), as indexOf files them. */
 function oofsOf(b: LayoutNode): LayoutNode[] {
-  if (b.kind === 'replaced' || b.style.position === 'static') return [];
+  if (b.kind === 'replaced' || !containsAbsolute(b.style)) return [];
   const out: LayoutNode[] = [];
   const walk = (p: LayoutBox): void => {
     for (const k of p.children) {
       if (!isNode(k)) continue;
       if (outOfFlow(k)) out.push(k);
-      else if (k.kind === 'box' && k.style.position === 'static') walk(k);
+      else if (k.kind === 'box' && !containsAbsolute(k.style)) walk(k);
     }
   };
   walk(b);
@@ -66,7 +70,7 @@ function unknownPadding(root: LayoutBox): ReadonlySet<string> {
     const grid = b.style.display === 'grid' || b.style.display === 'inline-grid';
     for (const k of b.children) {
       if (!isNode(k)) continue;
-      walk(k, outOfFlow(k) ? !(grid && b.style.position !== 'static') : known && !grid);
+      walk(k, outOfFlow(k) ? !(grid && containsAbsolute(b.style)) : known && !grid);
     }
   };
   walk(root, true);

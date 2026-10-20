@@ -137,6 +137,8 @@ export type Position = 'static' | 'relative' | 'absolute';
  */
 export type Overflow = 'visible' | 'hidden' | 'clip' | 'auto' | 'scroll';
 export type Direction = 'ltr' | 'rtl';
+/** css-contain-2 §3.1: the axes size containment applies in. */
+export type ContainSize = 'none' | 'inline-size' | 'size';
 export type BoxSizing = 'content-box' | 'border-box';
 export type FlexDirection = 'row' | 'row-reverse' | 'column' | 'column-reverse';
 export type FlexWrap = 'nowrap' | 'wrap' | 'wrap-reverse';
@@ -350,6 +352,25 @@ export type LayoutStyle = {
    * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
    */
   readonly lineClamp: number;
+  /**
+   * css-contain-2 §3.2 layout containment (contain: layout, content or strict; Blink applies it to every box here but an inline box):
+   * the box is an independent formatting context and the containing block of its absolutely positioned descendants, and has no
+   * baseline for anything outside it to align to (Blink LayoutBox::ShouldApplyLayoutContainment).
+   */
+  readonly containLayout: boolean;
+  /**
+   * css-contain-2 §3.4 paint containment (contain: paint, content or strict): an independent formatting context and the containing
+   * block of its absolutely positioned descendants, keeping its baseline. Its clip arrives as overflow clip on both axes.
+   */
+  readonly containPaint: boolean;
+  /**
+   * css-contain-2 §3.1 size containment: size in both axes, inline-size in the inline axis only. The box sizes as if it had no
+   * contents, its content size being containIntrinsicWidth and containIntrinsicHeight (css-sizing-4 §5.2; none is 0), and then lays
+   * its contents out inside that size.
+   */
+  readonly containSize: ContainSize;
+  readonly containIntrinsicWidth: Px | NoneValue;
+  readonly containIntrinsicHeight: Px | NoneValue;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
