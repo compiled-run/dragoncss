@@ -104,7 +104,7 @@ describe('(f2) querySupport from the public entry (docs/api.md §6.3)', () => {
     const q = (over: Record<string, unknown>): SupportAnswer => querySupport({ kind: 'resolved', result: c, target: 'web', node: 'a', instance: 'doc', assignment: [], property: 'width', ...over } as Parameters<typeof querySupport>[0]);
     expect(q({ node: 'nope' }).kind).toBe('invalid-query');
     expect(q({ instance: 'other' }).kind).toBe('invalid-query');
-    expect(q({ property: 'column-count' }).kind).toBe('invalid-query');
+    expect(q({ property: 'mix-blend-mode' }).kind).toBe('invalid-query');
     expect(q({ assignment: [{ state: { instance: 'doc', state: 'open' }, value: true }] })).toMatchObject({ kind: 'invalid-query', diagnostics: [{ code: 'DRAGON_STATE_UNKNOWN' }] });
     const webOnly = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor(`${FONT} .a { width: 50px; }`, (r) => [div(r, 'a', ['a'])]));
     expect(querySupport({ kind: 'resolved', result: webOnly, target: 'ios' as 'web', node: 'a', instance: 'doc', assignment: [], property: 'width' }).kind).toBe('invalid-query');
@@ -155,7 +155,7 @@ describe('(f3) whole-snapshot replacement (docs/api.md §8)', () => {
   it('A, then an invalid A\' (outputs blocked, never relabelled current), then a fixed A\'\' equals a fresh compile of A\'\'', () => {
     const project = both();
     const a = project.compile(snapshotA(`${FONT} .box { width: 30px; height: 4px; }`).input);
-    const broken = project.compile(snapshotA(`${FONT} .box { width: 30px; height: 4px; column-count: 2; }`).input);
+    const broken = project.compile(snapshotA(`${FONT} .box { width: 30px; height: 4px; mix-blend-mode: multiply; }`).input);
     expect(broken.ok).toBe(false);
     expect([broken.outputs.ios.kind, broken.outputs.web.kind]).toEqual(['blocked', 'blocked']);
     expect(broken.digest).not.toBe(a.digest);
@@ -228,7 +228,7 @@ describe('T005 rec 5: formatDiagnostics groups diagnostics that differ only in t
     expect(grouped.split('\n').slice(1)).toEqual(single.split('\n').slice(1));
     expect(grouped.match(/DRAGON_UNSUPPORTED_VALUE/g)?.length).toBe(1);
     // Diagnostics that differ in more than the target stay separate blocks, each exactly as formatDiagnostic renders it.
-    const two = both().compile(inputFor('.g { display: inline-table; column-count: 2; }', (r) => [div(r, 'g', ['g'])]));
+    const two = both().compile(inputFor('.g { display: inline-table; mix-blend-mode: multiply; }', (r) => [div(r, 'g', ['g'])]));
     expect(formatDiagnostics(two.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY'), two.sources)).toBe(formatDiagnostic(two.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY') as Diagnostic, two.sources));
   });
 });

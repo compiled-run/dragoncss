@@ -48,7 +48,7 @@ describe('the diagnostic catalogue (docs/api.md §6.1)', () => {
 });
 
 // !important is supported (css-cascade-5 §6.4), so the second edit fix is another unsupported property.
-const CSS_FIX = '.a { width: 10px; column-width: 10px; }\n.b { column-count: 2; }\n';
+const CSS_FIX = '.a { width: 10px; shape-margin: 10px; }\n.b { mix-blend-mode: multiply; }\n';
 
 describe('guarded fixes', () => {
   const src = new Sources({ 'app.dg': 'component App { <html><body><div a /><div b /></body></html> }', 'app.css': CSS_FIX });
@@ -70,8 +70,8 @@ describe('guarded fixes', () => {
   it('edit fixes carry revision and hash, apply atomically, and are refused when stale', () => {
     const c = both().compile(input(src));
     expectCatalogued(c.diagnostics);
-    const clear = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY' && d.message.startsWith('column-width'));
-    const property = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY' && d.message.startsWith('column-count'));
+    const clear = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY' && d.message.startsWith('shape-margin'));
+    const property = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY' && d.message.startsWith('mix-blend-mode'));
     if (clear === undefined || property === undefined || clear.fix === null || property.fix === null) throw new Error('missing fixes');
     if ('manual' in clear.fix || 'manual' in property.fix) throw new Error('expected edit fixes');
     expect(clear.fix.edits[0]?.span.source).toEqual(src.ref('app.css'));
@@ -110,19 +110,19 @@ describe('guarded fixes', () => {
     // An insertion where another edit ends, or two edits at different offsets, has one result whatever the order.
     for (const edits of [[at(1, 3, 'Q'), at(3, 3, 'X')], [at(3, 3, 'X'), at(1, 3, 'Q')]]) {
       const r = applyFix({ title: 'adjacent', edits }, files);
-      expect(r.kind === 'applied' && r.texts.get(css.uri)).toBe(`.QX{ width: 10px; column-width: 10px; }\n.b { column-count: 2; }\n`);
+      expect(r.kind === 'applied' && r.texts.get(css.uri)).toBe(`.QX{ width: 10px; shape-margin: 10px; }\n.b { mix-blend-mode: multiply; }\n`);
     }
   });
 
   it('formatDiagnostic locates origins through the source registry, lines and columns 1-based', () => {
     const c = both().compile(input(src));
-    const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_PROPERTY' && x.message.startsWith('column-count')) as Diagnostic;
+    const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_PROPERTY' && x.message.startsWith('mix-blend-mode')) as Diagnostic;
     const text = formatDiagnostic(d, c.sources);
-    expect(text.split('\n')[0]).toBe('app.css:2:6: error DRAGON_UNSUPPORTED_PROPERTY: column-count is not supported in milestone 1');
+    expect(text.split('\n')[0]).toBe('app.css:2:6: error DRAGON_UNSUPPORTED_PROPERTY: mix-blend-mode is not supported in milestone 1');
     expect(text).toContain(`  why: ${CATALOGUE.DRAGON_UNSUPPORTED_PROPERTY.why}`);
     expect(text).toContain('  fix: Remove the declaration (1 guarded edit)');
     const unlocated: Diagnostic = { ...d, target: 'ios', origin: { kind: 'unlocated', reason: 'configuration' } };
-    expect(formatDiagnostic(unlocated, c.sources).split('\n')[0]).toBe('<unlocated: configuration>: error DRAGON_UNSUPPORTED_PROPERTY [ios]: column-count is not supported in milestone 1');
+    expect(formatDiagnostic(unlocated, c.sources).split('\n')[0]).toBe('<unlocated: configuration>: error DRAGON_UNSUPPORTED_PROPERTY [ios]: mix-blend-mode is not supported in milestone 1');
   });
 });
 

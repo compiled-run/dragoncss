@@ -8,6 +8,9 @@ export const ALIASES: readonly FixtureSpec[] = [
   // -webkit-background-clip alone, in both orders with background-clip, after the background shorthand and with !important, on
   // boxes with an opaque solid border and no padding: native refuses a clip that would show what is behind the box (BG2c).
   both('alias-background'),
+  // -webkit-background-size and -webkit-background-origin, which Chrome parses with legacy rules: one size names both axes, and the
+  // border, padding and content keywords are the boxes; alone, after and before their property, over a gradient.
+  both('alias-background-legacy'),
   layout('alias-flex'),
   // -webkit-font-feature-settings alone, in both orders with font-feature-settings, with !important and inherited, over Ahem text.
   both('alias-font'),

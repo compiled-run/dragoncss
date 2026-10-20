@@ -147,7 +147,9 @@ describe('off the list, a declaration or rule is still refused on every target',
       const c = compile(`${BASE}\n${extra}`, { web: {}, ...NATIVE });
       expectCatalogued(c.diagnostics);
       expect(c.targets).toEqual({ web: 'blocked', ios: 'blocked', android: 'blocked' });
-      expect(errors(c.diagnostics).some((d) => d.target === null)).toBe(true);
+      // A refusal for no target in particular, or one for each target (multicol refuses column-count: 2 per target).
+      const refused = errors(c.diagnostics);
+      expect(refused.some((d) => d.target === null) || ['web', 'ios', 'android'].every((t) => refused.some((d) => d.target === t))).toBe(true);
       expect(c.diagnostics.some((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE')).toBe(false);
     });
   }

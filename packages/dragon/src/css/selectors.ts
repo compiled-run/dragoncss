@@ -291,6 +291,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
   let anchor: Combinator | null = relative;
   let ok = true;
   let pseudoElement: SelectorPseudoElement | null = null;
+  let afterCombinator = false;
   for (const part of list(sel, 'children')) {
     if (pseudoElement !== null) {
       // R5: the pseudo-element ends the selector; Dragon refuses whatever follows it (::before:hover, ::before::marker, a combinator).
@@ -305,6 +306,13 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
         refuse(part, `combinator "${name}" is not supported`);
         continue;
       }
+      // Selectors-4 §16: a combinator needs a compound on each side, so Chrome 145 drops "> > .a", ".a > > .b" and a trailing ".a >".
+      if (afterCombinator) {
+        ok = false;
+        chromeInvalid(part, `${generate(sel)}, which has two combinators in a row,`, ctx, refuse);
+        continue;
+      }
+      afterCombinator = true;
       if (!started) {
         if (relative === null) {
           ok = false;
@@ -319,6 +327,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       continue;
     }
     started = true;
+    afterCombinator = false;
     const follows = inCompound;
     inCompound = true;
     if (part.type === 'TypeSelector') {
@@ -374,6 +383,10 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       ok = false;
       refuse(part, `selector part "${generate(part)}" is not supported`);
     }
+  }
+  if (ok && afterCombinator) {
+    ok = false;
+    chromeInvalid(sel, `${generate(sel)}, which ends with a combinator,`, ctx, refuse);
   }
   if (!ok) return null;
   compounds.push({ compound: current, combinator: pending });

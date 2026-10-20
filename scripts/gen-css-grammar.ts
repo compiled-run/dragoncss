@@ -19,6 +19,7 @@ import { OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS } from '../packages/dragon/
 import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../packages/dragon/src/css/properties/scroll-snap.ts';
 import { CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS } from '../packages/dragon/src/css/properties/containment.ts';
 import { CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS } from '../packages/dragon/src/css/properties/container-query.ts';
+import { MULTICOL_LONGHANDS, MULTICOL_SHORTHANDS } from '../packages/dragon/src/css/properties/multicol.ts';
 
 type WebrefEntry = {
   name: string;
@@ -168,6 +169,9 @@ const SUBSET = [
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
   // color-scheme (css-color-adjust-1 §2.1), after the counters family, as LONGHANDS registers it.
   'color-scheme',
+  // MULTICOL: the multicol family (css/properties/multicol.ts), initial values only, after color-scheme, as LONGHANDS
+  // registers them.
+  ...MULTICOL_LONGHANDS, ...MULTICOL_SHORTHANDS,
   // css-break-3: the break properties, orphans and widows, then the legacy break shorthands, after the counters, as LONGHANDS registers them.
   ...FRAGMENTATION_LONGHANDS, ...FRAGMENTATION_SHORTHANDS,
   // FX: backdrop-filter (filter-effects-2 §3) and mix-blend-mode (compositing-1 §3.2), after color-scheme, as LONGHANDS registers them.
@@ -230,6 +234,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'overscroll-behavior': '[ auto | contain | none ]{1,2}',
   ...Object.fromEntries(['overscroll-behavior-x', 'overscroll-behavior-y', 'overscroll-behavior-inline', 'overscroll-behavior-block'].map((p) => [p, 'auto | contain | none'])),
   'overflow-anchor': 'auto | none | visible',
+  // The multicol family likewise: Dragon accepts its initial values alone and refuses every other value where it applies
+  // (analysis/multicol.ts), so the grammar takes any value, and a value webref's grammar lists though Chrome 145 lacks it (the
+  // gap decoration lists, column-span: <integer>, column-fill: balance-all, columns' / column-height) is refused, never dropped
+  // where Chrome would apply it.
+  ...Object.fromEntries([...MULTICOL_LONGHANDS, ...MULTICOL_SHORTHANDS].map((p) => [p, '<any-value>'])),
   // Blink ScrollSnapType::ParseSingleValue (longhands_custom.cc) takes no pair axis, which webref's css-scroll-snap-2 grammar lists.
   // The other scroll-snap, scroll-padding and scroll-margin grammars are webref's, which are Chrome 145's
   // (packages/parity/test/scroll-containment-parse.test.ts).
@@ -371,6 +380,9 @@ const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string
   // Blink's border-spacing longhands (css_properties.json5): initial 0, inherited.
   '-webkit-border-horizontal-spacing': { initial: '0', inherited: 'yes' },
   '-webkit-border-vertical-spacing': { initial: '0', inherited: 'yes' },
+  // webref's column-width entry is css-sizing-4's extension, without fields; css-multicol-1 §3.1 and Chrome 145: initial auto, not
+  // inherited.
+  'column-width': { initial: 'auto', inherited: 'no' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

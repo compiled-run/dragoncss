@@ -6,7 +6,7 @@
 // refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing,
 // css_parsing_utils.cc ConsumePerspective), and -webkit-perspective a unitless length (longhands_custom.cc
 // Perspective::ParseSingleValue). The other aliases Chrome parses with UseAliasParsing (-webkit-background-origin,
-// -webkit-background-size) wait for their property's lane, -webkit-appearance is the appearance family's (aliases/appearance.ts), the
+// -webkit-background-size) are rewritten into the standard value (legacyAliasValue), -webkit-appearance is the appearance family's (aliases/appearance.ts), the
 // -webkit-mask-* aliases are the mask family's (aliases/mask.ts),
 // -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
 // family's own shorthand (properties/radius.ts), -webkit-border-image the border image family's (properties/border-image.ts),
@@ -22,7 +22,7 @@ import type { ParsedValue } from './stylesheet.ts';
 import { isAnimationProperty } from './properties/animation.ts';
 import { ANIMATION_ALIASES } from './aliases/animation.ts';
 import { APPEARANCE_ALIASES } from './aliases/appearance.ts';
-import { BACKGROUND_LAYERS_ALIASES } from './aliases/background-layers.ts';
+import { BACKGROUND_LAYERS_ALIASES, legacyBackgroundValue } from './aliases/background-layers.ts';
 import { BOX_ALIASES } from './aliases/box.ts';
 import { BOX_DECORATION_ALIASES } from './aliases/box-decoration.ts';
 import { EFFECTS_ALIASES } from './aliases/effects.ts';
@@ -31,6 +31,7 @@ import { FLEX_ALIASES } from './aliases/flex.ts';
 import { FONT_FEATURES_ALIASES } from './aliases/font-features.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
 import { MASK_ALIAS_PARSERS, MASK_ALIASES } from './aliases/mask.ts';
+import { MULTICOL_ALIASES } from './aliases/multicol.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
 import { SELECTION_ALIASES } from './aliases/selection.ts';
 import { SHADOW_ALIASES } from './aliases/shadow.ts';
@@ -50,6 +51,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   'font-features': FONT_FEATURES_ALIASES,
   logical: LOGICAL_ALIASES,
   mask: MASK_ALIASES,
+  multicol: MULTICOL_ALIASES,
   radius: RADIUS_ALIASES,
   selection: SELECTION_ALIASES,
   shadow: SHADOW_ALIASES,
@@ -94,4 +96,9 @@ export function legacyAliasRefusal(alias: string, source: string): string | null
   if (alias === '-webkit-perspective') return PLAIN_PERSPECTIVE.test(source) ? null : 'Chrome parses -webkit-perspective with legacy rules (a unitless length), and Dragon parses only perspective';
   if (alias !== '-webkit-transform' || !/perspective|var\(|env\(|\\/i.test(source)) return null;
   return 'Chrome parses -webkit-transform with legacy rules (a unitless perspective() length), and Dragon parses only transform';
+}
+
+/** The value node an alias declaration stands for under its property, its own when the two parse alike, or a refusal. */
+export function legacyAliasValue(alias: string, value: CssNode, source: string, important: boolean): CssNode | { readonly refusal: string } {
+  return legacyBackgroundValue(alias, value, source, important) ?? value;
 }

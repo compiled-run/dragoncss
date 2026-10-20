@@ -169,12 +169,13 @@ describe('E2 seams: every at-rule but @media, @container, @keyframes, @supports,
       ]);
     }
   });
-  it('@media is conditional only at the top level with a block: its rules carry the condition; blockless or in a rule block it is refused', () => {
+  it('@media is conditional at the top level and in a rule block (css-nesting-1 §3.3) with a block: its rules carry the condition; blockless it is refused', () => {
     for (const n of ['media', 'MEDIA']) {
       const [top, statement, nested, inner] = sheets(n).map(run) as [ReturnType<typeof run>, ReturnType<typeof run>, ReturnType<typeof run>, ReturnType<typeof run>];
       expect([top.rules, top.diagnostics, top.enclosed], n).toEqual([1, [], []]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
-      expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
+      // The rule .a, which declares nothing itself, and its nested @media, as a rule for .a under the condition.
+      expect([nested.rules, nested.diagnostics, nested.enclosed], n).toEqual([2, [], []]);
       expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@unknown-thing in the stylesheet is not supported in milestone 1']]);
       // The @media inside the refused @unknown-thing is parsed into the enclosed rules, with its condition, for analysis only.
       expect(inner.enclosed.length, n).toBe(1);
