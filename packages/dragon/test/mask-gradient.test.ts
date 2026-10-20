@@ -114,9 +114,20 @@ describe('gradient masks (MASK-CLIP)', () => {
     expect(siblings(`${under} .w { position: absolute; top: 0; } .s { ${MASK}; }`)).toContainEqual(expect.stringMatching(/^its ancestor w is position: absolute/));
     expect(siblings(`${under} .w { position: relative; top: -100px; } .s { ${MASK}; }`)).toContainEqual(expect.stringMatching(/^its ancestor w is position: relative/));
     expect(siblings(`.u { position: absolute; z-index: -1; width: 50px; height: 50px; background: rgb(10, 20, 30); } .s { ${MASK}; }`)).toContainEqual(expect.stringMatching(/^u is positioned with a negative z-index/));
+    // The mask makes a stacking context in the z-index 0 layer, which paints after an earlier positioned box or stacking context.
+    for (const u of ['position: absolute; top: 0; left: 0;', 'position: relative;', 'opacity: 0.5;', 'transform: translateX(1px);']) {
+      expect(siblings(`.u { ${u} width: 200px; height: 200px; background: rgb(10, 20, 30); } .s { ${MASK}; }`), u).toContainEqual(expect.stringMatching(/^u paints in the masked box's layer before it/));
+    }
+    expect(siblings(`.u { position: absolute; z-index: 1; width: 200px; height: 200px; background: rgb(10, 20, 30); } .s { ${MASK}; }`)).toEqual([]);
     // Translucent content inside the masked box: Chrome rounds it and the mask separately.
     expect(fact(`.s { ${MASK}; background: rgba(0, 0, 255, 0.5); }`)).toContainEqual(expect.stringMatching(/^its background-color is translucent/));
     expect(fact(`.s { ${MASK}; } .c { color: rgba(0, 0, 0, 0.5); }`)).toContainEqual(expect.stringMatching(/^the b color is translucent/));
+    expect(fact(`.s { ${MASK}; } .c { opacity: 0.5; }`)).toContainEqual(expect.stringMatching(/^the b opacity 0.5 is translucent/));
+    expect(fact(`.s { ${MASK}; opacity: 0.5; }`)).toContainEqual(expect.stringMatching(/^its opacity 0.5 is translucent/));
+    expect(fact(`.s { ${MASK}; } .c { box-shadow: 0 0 2px black; }`)).toContainEqual(expect.stringMatching(/^the b box-shadow paints translucent pixels/));
+    expect(fact(`.s { ${MASK}; } .c { text-shadow: 1px 1px black; }`)).toContainEqual(expect.stringMatching(/^the b text-shadow paints translucent pixels/));
+    expect(fact(`.s { ${MASK}; } .c { text-decoration: underline rgba(0, 0, 0, 0.5); }`)).toContainEqual(expect.stringMatching(/^the b text-decoration-color is translucent/));
+    expect(errorsOf(`.s { ${MASK}; } .c { text-decoration: underline black; opacity: 0; }`)).toEqual([]);
     // An opacity of 1, z-index 0 and a transform of none are not refused.
     expect(errorsOf(`.s { ${MASK}; opacity: 1; transform: none; } .c { position: relative; z-index: 0; }`)).toEqual([]);
   });

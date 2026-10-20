@@ -179,6 +179,15 @@ describe('clip-path: stacking and hit testing', () => {
       expect(facts('a').paintOrder).toBeGreaterThan(facts('t').paintOrder);
     }
   });
+  it('a gradient mask makes the same stacking context (css-masking-1 §7.1), so positioned content inside it stays in its masked paint', () => {
+    const p = programs('.p { position: static; } .a { mask-image: linear-gradient(black, transparent); } .t { margin-top: -10px; }');
+    for (const prog of [p.uikit, p['android-views']]) {
+      const facts = (id: string) => prog.nodes.find((n) => n.id === id)?.facts['stacking'] as { createsContext: boolean; layer: string; paintOrder: number };
+      expect(facts('a').createsContext).toBe(true);
+      expect(facts('a').layer).toBe('positioned');
+      expect(facts('a').paintOrder).toBeGreaterThan(facts('t').paintOrder);
+    }
+  });
   it('refuses an interaction rule on native beside a clipped box (R13), not on web', () => {
     const lanes = createProjectWith({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: true });
     const found = errors(lanes.compile(input('.a { clip-path: inset(1px); } .p:hover { background-color: #0c0; }'))).map((d) => `${d.code} [${d.target}] ${d.message}`);

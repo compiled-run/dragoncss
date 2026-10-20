@@ -1,7 +1,7 @@
 // CSS2 Appendix E paint order on the fixed tree (T046 §1): stacking contexts, their layers, and native hosting. A stacking context
 // is the root, a positioned box or flex or grid item with an integer z-index, a box with opacity below 1, or a transformed box (a
 // transform, or will-change: transform or opacity; css-transforms-1 §3, css-will-change-1 §3) or a box with a clip-path
-// (css-masking-1 §6.1), which paints in the z-index 0 layer.
+// (css-masking-1 §6.1) or a mask image (§7.1), which paints in the z-index 0 layer.
 // Its layer items are the positioned boxes and stacking contexts it holds, not counting those inside a nested stacking context:
 // z < 0 in (z, tree) order, then z-index auto or 0 in tree order, then z > 0 in (z, tree) order, where tree order puts a flex or
 // grid container's in-flow items in order-modified document order (Blink paint_layer_stacking_node.cc ForAllChildrenSortedByOrder;
@@ -17,6 +17,7 @@ import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak } from '@
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
+import { elementMaskGradient } from '../../analysis/mask.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
 import { clipsChildren } from './clip.ts';
 import type { PaintLowering } from './types.ts';
@@ -32,7 +33,7 @@ export type StackNode = {
   /** An in-flow flex or grid item's order, which sorts it among its siblings (unorderedItems: whole); absent (0) for other nodes. */
   readonly order?: number;
   readonly opacity: number;
-  /** A transform, will-change: transform or opacity, or a clip-path: a stacking context in the z-index 0 layer. */
+  /** A transform, will-change: transform or opacity, a clip-path or a mask image: a stacking context in the z-index 0 layer. */
   readonly transformed: boolean;
   readonly clips: boolean;
   /** Text leaves and boxes, in tree order; a text leaf is a StackNode with no children that is never positioned. */
@@ -331,8 +332,11 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: 
 /** The displays whose children are flex or grid items, whose z-index applies when static (Blink StyleAdjuster). */
 export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', 'inline-grid'];
 
-/** Whether an element's transform, will-change or clip-path makes it a stacking context (css-transforms-1 §3, css-will-change-1 §3, css-masking-1 §6.1). */
-export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el);
+/**
+ * Whether an element's transform, will-change, clip-path or mask image makes it a stacking context (css-transforms-1 §3,
+ * css-will-change-1 §3, css-masking-1 §6.1 and §7.1). A mask other than a gradient is refused (analysis/mask.ts).
+ */
+export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || elementMaskGradient(el) !== null;
 
 /** The stacking tree of a layout tree, with each element's z-index, opacity and transform from its resolved style. */
 export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, ResolvedElement>): StackNode {

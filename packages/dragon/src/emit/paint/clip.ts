@@ -171,8 +171,6 @@ public func dragonAfterLayoutClip(_ v: DragonBoxView, _ shape: DragonBoxShape, _
   c.frame = CGRect(x: CGFloat(px[3]) / cg, y: CGFloat(px[0]) / cg, width: CGFloat(e[2] - e[0] - px[3] - px[1]) / cg, height: CGFloat(e[3] - e[1] - px[0] - px[2]) / cg)
 }
 
-/// The readback of the clip module: the clip frame in whole device px / scale, or null when it does not clip.
-/// The empty clip rect's readback is 1 when the box view is hidden, or 0.
 /// The clip-text write of a box (runtime writer): it marks the box whose text views' accessibility the readback reports.
 public func dragonClipText(_ v: DragonBoxView) {
   v.dragonClipText = true
@@ -192,11 +190,11 @@ func dragonTextExposed(_ t: DragonTextView) -> Bool {
 }
 
 /// The labels of the text views inside a box view that VoiceOver reaches, in subview preorder.
-func dragonExposedTexts(_ v: UIView) -> [DumpJson] {
-  var out: [DumpJson] = []
+func dragonExposedTexts(_ v: UIView) -> [String] {
+  var out: [String] = []
   for c in v.subviews {
     if let t = c as? DragonTextView {
-      if dragonTextExposed(t) { out.append(.string(t.dragonText)) }
+      if dragonTextExposed(t) { out.append(t.dragonText) }
     } else {
       out.append(contentsOf: dragonExposedTexts(c))
     }
@@ -204,6 +202,9 @@ func dragonExposedTexts(_ v: UIView) -> [DumpJson] {
   return out
 }
 
+/// The readback of the clip module: the clip frame in whole device px / scale, or null when it does not clip.
+/// The empty clip rect's readback is 1 when the box view is hidden, or 0.
+/// The exposed texts are sorted: a positioned child's view can follow later flow children (lower/paint/stacking.ts).
 public func dragonAppliedClip(_ v: DragonBoxView) -> DumpJsonObject {
   var out: DumpJsonObject = []
   if let c = v.dragonClipView {
@@ -222,7 +223,7 @@ public func dragonAppliedClip(_ v: DragonBoxView) -> DumpJsonObject {
     let points = g.enumerated().map { (i, x) -> Double in v.dragonClipShapeKind == 2 && i == 0 ? x : x / s }
     out.append(("dragonClipPath.shape", (v.layer.mask as? CAShapeLayer)?.path == nil || g.isEmpty ? .null : .array(points.map { .number($0) })))
   }
-  if v.dragonClipText { out.append(("dragonClipText.exposed", .array(dragonExposedTexts(v)))) }
+  if v.dragonClipText { out.append(("dragonClipText.exposed", .array(dragonExposedTexts(v).sorted().map { .string($0) }))) }
   return out
 }
 `;
@@ -393,8 +394,6 @@ fun dragonAfterLayoutClip(v: DragonBoxView, shape: DragonBoxShape, scale: Double
   dragonSetFrame(c.dragonFrame, px[3], px[0], e[2] - e[0] - px[1], e[3] - e[1] - px[2], v.dragonId + " clip")
 }
 
-/** The readback of the clip module: the clip bounds in device px, or null when the clip view does not clip to its bounds. */
-/** The empty clip rect's readback is 1 when the box view is invisible, or 0. */
 /** The clip-text write of a box (runtime writer): it marks the box whose text views' accessibility the readback reports. */
 fun dragonClipText(v: DragonBoxView) {
   v.dragonClipText = true
@@ -408,12 +407,12 @@ fun dragonTextExposed(t: DragonTextView): Boolean {
 }
 
 /** The labels of the text views inside a box view that TalkBack reaches, in child preorder. */
-fun dragonExposedTexts(v: android.view.ViewGroup): List<DumpJson> {
-  val out = ArrayList<DumpJson>()
+fun dragonExposedTexts(v: android.view.ViewGroup): List<String> {
+  val out = ArrayList<String>()
   for (i in 0 until v.childCount) {
     val c = v.getChildAt(i)
     if (c is DragonTextView) {
-      if (dragonTextExposed(c)) out.add(DumpJson.Str(c.dragonText))
+      if (dragonTextExposed(c)) out.add(c.dragonText)
     } else if (c is android.view.ViewGroup) {
       out.addAll(dragonExposedTexts(c))
     }
@@ -421,6 +420,9 @@ fun dragonExposedTexts(v: android.view.ViewGroup): List<DumpJson> {
   return out
 }
 
+/** The readback of the clip module: the clip bounds in device px, or null when the clip view does not clip to its bounds. */
+/** The empty clip rect's readback is 1 when the box view is invisible, or 0. */
+/** The exposed texts are sorted: a positioned child's view can follow later flow children (lower/paint/stacking.ts). */
 fun dragonAppliedClip(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val out = ArrayList<Pair<String, DumpJson>>()
   val c = v.dragonClipView
@@ -437,7 +439,7 @@ fun dragonAppliedClip(v: DragonBoxView): List<Pair<String, DumpJson>> {
     val g = v.dragonClipShapeGeometry
     out.add(Pair("dragonClipPath.shape", if (g == null || v.dragonClipShapePath == null) DumpJson.Null else DumpJson.Arr(g.map { DumpJson.Num(it) })))
   }
-  if (v.dragonClipText) out.add(Pair("dragonClipText.exposed", DumpJson.Arr(dragonExposedTexts(v))))
+  if (v.dragonClipText) out.add(Pair("dragonClipText.exposed", DumpJson.Arr(dragonExposedTexts(v).sorted().map { DumpJson.Str(it) })))
   return out
 }
 `;
@@ -540,8 +542,8 @@ export const CLIP_EMITTER: PaintEmitter<'padding-box-clip' | 'clip-rect-empty' |
   applied: (_e, backend, w, dpr, g) => {
     // The box view hidden.
     if (w.kind === 'clip-rect-empty') return 1;
-    // Every visible text leaf stays accessible.
-    if (w.kind === 'clip-text') return [...w.texts];
+    // Every visible text leaf stays accessible; the readback sorts them, as the views' order need not be the tree's.
+    if (w.kind === 'clip-text') return [...w.texts].sort();
     if (w.kind === 'clip-path-shape') {
       const kind = clipShapeKind(w.shape);
       const geometry = clipShapeGeometry(kind, clipShapeValues(w.shape), g.size, dpr);
