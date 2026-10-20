@@ -6,6 +6,7 @@
 import type { Longhand } from './properties.ts';
 import type { AnimationKind } from './animation-kinds/kinds.ts';
 import { ANCHOR_POSITION_ANIMATION } from './animation-kinds/anchor-position.ts';
+import { ANIMATION_EXTRA_ANIMATION } from './animation-kinds/animation-extra.ts';
 import { APPEARANCE_ANIMATION } from './animation-kinds/appearance.ts';
 import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_BLEND_ANIMATION } from './animation-kinds/background-blend.ts';
@@ -69,6 +70,7 @@ import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
 import { UI_COLORS_ANIMATION } from './animation-kinds/ui-colors.ts';
 import { USER_MODIFY_ANIMATION } from './animation-kinds/user-modify.ts';
+import { VIEW_TRANSITION_ANIMATION } from './animation-kinds/view-transition.ts';
 import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
 import { ZOOM_ANIMATION } from './animation-kinds/zoom.ts';
@@ -77,6 +79,7 @@ export type { AnimationKind, LengthRange } from './animation-kinds/kinds.ts';
 
 export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...ANCHOR_POSITION_ANIMATION,
+  ...ANIMATION_EXTRA_ANIMATION,
   ...APPEARANCE_ANIMATION,
   ...BACKGROUND_ANIMATION,
   ...BACKGROUND_BLEND_ANIMATION,
@@ -140,6 +143,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TRANSFORM_EXTRA_ANIMATION,
   ...UI_COLORS_ANIMATION,
   ...USER_MODIFY_ANIMATION,
+  ...VIEW_TRANSITION_ANIMATION,
   ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
   ...ZOOM_ANIMATION,

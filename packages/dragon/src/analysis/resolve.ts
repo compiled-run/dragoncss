@@ -527,7 +527,9 @@ function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>,
     // A reverted longhand keeps its author declaration (its profile row and losing list); only the value is the UA's.
     const none = reverted.has(p) ? { span: was.span, declaration: was.declaration, declared: was.declared, losing: was.losing, ...(was.substitution === undefined ? {} : { substitution: was.substitution }) } : unset;
     if (value !== null) props.set(p, { value, origin: 'user-agent', ...none });
-    else if (was.origin === 'user-agent') props.set(p, INHERITED.has(p) && parent !== null ? { ...fromParent(p), ...none } : { value: initialValue(p, ua), origin: 'initial', ...none });
+    // The capture derives no declared values for the root (its UA values, as :root { view-transition-name: root }, are captured
+    // computed), so the root keeps a captured UA value.
+    else if (was.origin === 'user-agent' && parent !== null) props.set(p, INHERITED.has(p) && parent !== null ? { ...fromParent(p), ...none } : { value: initialValue(p, ua), origin: 'initial', ...none });
   }
 }
 

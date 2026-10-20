@@ -21,6 +21,8 @@ import { CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS } from '../packag
 import { IMAGE_RENDERING_LONGHANDS } from '../packages/dragon/src/css/properties/image-rendering.ts';
 import { ANCHOR_POSITION_LONGHANDS, ANCHOR_POSITION_SHORTHANDS } from '../packages/dragon/src/css/properties/anchor-position.ts';
 import { SVG_EXTRA_LONGHANDS } from '../packages/dragon/src/css/properties/svg-extra.ts';
+import { VIEW_TRANSITION_LONGHANDS } from '../packages/dragon/src/css/properties/view-transition.ts';
+import { ANIMATION_EXTRA_LONGHANDS } from '../packages/dragon/src/css/properties/animation-extra.ts';
 
 type WebrefEntry = {
   name: string;
@@ -42,8 +44,11 @@ const INITIAL_ONLY_PROPERTIES = [
   ...CONTAINMENT_LONGHANDS, ...CONTAINMENT_SHORTHANDS, ...CONTAINER_QUERY_LONGHANDS, ...CONTAINER_QUERY_SHORTHANDS,
 ];
 
-/** The image-rendering, anchor-position and svg-extra families, accepted at their initial values alone, after color-scheme. */
-const INITIAL_ONLY_TAIL = [...IMAGE_RENDERING_LONGHANDS, ...ANCHOR_POSITION_LONGHANDS, ...ANCHOR_POSITION_SHORTHANDS, ...SVG_EXTRA_LONGHANDS];
+/**
+ * The image-rendering, anchor-position, svg-extra, view-transition and animation-extra families, accepted at their initial values
+ * alone, after color-scheme.
+ */
+const INITIAL_ONLY_TAIL = [...IMAGE_RENDERING_LONGHANDS, ...ANCHOR_POSITION_LONGHANDS, ...ANCHOR_POSITION_SHORTHANDS, ...SVG_EXTRA_LONGHANDS, ...VIEW_TRANSITION_LONGHANDS, ...ANIMATION_EXTRA_LONGHANDS];
 
 /** Longhands and shorthands the milestone-1 compiler reads. Support status lives in the profiles, not here. */
 const SUBSET = [
@@ -169,8 +174,8 @@ const SUBSET = [
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
   // color-scheme (css-color-adjust-1 §2.1), after the counters family, as LONGHANDS registers it.
   'color-scheme',
-  // image-rendering, the anchor positioning longhands and position-try, and the svg-extra longhands (css/properties/initial-only.ts),
-  // after color-scheme, as LONGHANDS registers them.
+  // image-rendering, the anchor positioning longhands and position-try, the svg-extra, view-transition and animation-extra
+  // longhands (css/properties/initial-only.ts), after color-scheme, as LONGHANDS registers them.
   ...INITIAL_ONLY_TAIL,
 ] as const;
 
@@ -226,9 +231,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
   // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
-  // The image-rendering, anchor-position and svg-extra families, the same way (analysis/scroll-containment.ts). webref has no
-  // stop-opacity syntax and no color-rendering or buffered-rendering, which Chrome 145 parses. Pinned against Chrome by
-  // packages/parity/test/render-anchor-parse.test.ts.
+  // The image-rendering, anchor-position, svg-extra, view-transition and animation-extra families, the same way
+  // (analysis/scroll-containment.ts). webref has no stop-opacity syntax and no color-rendering or buffered-rendering, which Chrome
+  // 145 parses. Pinned against Chrome by packages/parity/test/render-anchor-parse.test.ts.
   ...Object.fromEntries(INITIAL_ONLY_TAIL.map((p) => [p, '<any-value>'])),
   // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
   // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any

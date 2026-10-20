@@ -1,5 +1,5 @@
 // The families Dragon accepts at their initial values alone (css/properties/initial-only.ts): overscroll, scroll-snap, containment,
-// container-query, image-rendering, anchor-position and svg-extra. Any other computed value is refused on
+// container-query, image-rendering, anchor-position, svg-extra, view-transition and animation-extra. Any other computed value is refused on
 // every target, once per element and family. The values are checked computed, so one that arrives through var() or inherit is
 // refused too.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
@@ -10,6 +10,8 @@ import { CONTAINMENT_INITIAL, CONTAINMENT_LONGHANDS } from '../css/properties/co
 import { ANCHOR_POSITION_INITIAL, ANCHOR_POSITION_LONGHANDS } from '../css/properties/anchor-position.ts';
 import { IMAGE_RENDERING_INITIAL, IMAGE_RENDERING_LONGHANDS } from '../css/properties/image-rendering.ts';
 import { SVG_EXTRA_INITIAL, SVG_EXTRA_LONGHANDS } from '../css/properties/svg-extra.ts';
+import { VIEW_TRANSITION_INITIAL, VIEW_TRANSITION_LONGHANDS } from '../css/properties/view-transition.ts';
+import { ANIMATION_EXTRA_INITIAL, ANIMATION_EXTRA_LONGHANDS } from '../css/properties/animation-extra.ts';
 import { OVERSCROLL_INITIAL, OVERSCROLL_LONGHANDS } from '../css/properties/overscroll.ts';
 import { SCROLL_SNAP_INITIAL, SCROLL_SNAP_LONGHANDS } from '../css/properties/scroll-snap.ts';
 import type { CssValue } from '../css/values.ts';
@@ -18,10 +20,15 @@ import type { Diagnostic } from '../types.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
 
-type InitialOnlyFamily = { readonly id: string; readonly longhands: readonly Longhand[]; readonly initial: { readonly [p: string]: CssValue }; readonly reason: string };
+/** userAgent: a value the Chrome UA sheet sets (origin user-agent) is accepted too, as every page has it. */
+type InitialOnlyFamily = { readonly id: string; readonly longhands: readonly Longhand[]; readonly initial: { readonly [p: string]: CssValue }; readonly reason: string; readonly userAgent?: true };
 
 function refuseNonInitial(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, f: InitialOnlyFamily): void {
-  const p = f.longhands.find((q) => !isInitialValue(f.initial[q] as CssValue, (el.props.get(q) as ResolvedValue).value));
+  const accepted = (q: Longhand): boolean => {
+    const v = el.props.get(q) as ResolvedValue;
+    return isInitialValue(f.initial[q] as CssValue, v.value) || (f.userAgent === true && v.origin === 'user-agent');
+  };
+  const p = f.longhands.find((q) => !accepted(q));
   if (p === undefined) return;
   const id = `${f.id}|${el.element.address}`;
   if (reported.has(id)) return;
@@ -60,6 +67,12 @@ const ANCHOR_POSITION: InitialOnlyFamily = { id: 'anchor-position', longhands: A
 // which would change how its shapes are drawn.
 const SVG_EXTRA: InitialOnlyFamily = { id: 'svg-extra', longhands: SVG_EXTRA_LONGHANDS, initial: SVG_EXTRA_INITIAL, reason: 'Dragon builds no SVG gradient, filter, mask or text and draws its shapes with the default rendering hints' };
 
+// css-view-transitions-2: the names, classes and groups of a view transition's captured boxes. Chrome's UA sheet names the root
+// (:root { view-transition-name: root }), which captures it only once a transition starts, so that UA value is accepted too.
+const VIEW_TRANSITION: InitialOnlyFamily = { id: 'view-transition', longhands: VIEW_TRANSITION_LONGHANDS, initial: VIEW_TRANSITION_INITIAL, reason: 'Dragon implements no view transitions yet', userAgent: true };
+// css-values-5 §8.2, scroll-animations-1 §4.2: keyword size interpolation and the scope of named timelines.
+const ANIMATION_EXTRA: InitialOnlyFamily = { id: 'animation-extra', longhands: ANIMATION_EXTRA_LONGHANDS, initial: ANIMATION_EXTRA_INITIAL, reason: 'Dragon interpolates no intrinsic size keyword and has no scroll-driven timelines yet' };
+
 /** Refuses the first non-initial longhand of each family on the element; each family's planted fault accepts it. */
 export function checkScrollContainment(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: ScrollContainmentFaults): void {
   if (!faults.overscrollAccepted) refuseNonInitial(el, targets, diagnostics, reported, OVERSCROLL);
@@ -69,4 +82,6 @@ export function checkScrollContainment(el: ResolvedElement, targets: readonly st
   if (!faults.imageRenderingAccepted) refuseNonInitial(el, targets, diagnostics, reported, IMAGE_RENDERING);
   if (!faults.anchorPositionAccepted) refuseNonInitial(el, targets, diagnostics, reported, ANCHOR_POSITION);
   if (!faults.svgExtraAccepted) refuseNonInitial(el, targets, diagnostics, reported, SVG_EXTRA);
+  if (!faults.viewTransitionAccepted) refuseNonInitial(el, targets, diagnostics, reported, VIEW_TRANSITION);
+  if (!faults.animationExtraAccepted) refuseNonInitial(el, targets, diagnostics, reported, ANIMATION_EXTRA);
 }
