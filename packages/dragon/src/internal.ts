@@ -406,11 +406,11 @@ export function animationFeatures(compiled: object): readonly string[] {
 export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
 export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
 export type { InternalBands } from './project.ts';
-export { MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
+export { CONTAINER_AT_RULE_FEATURE, MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
 import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';
 import { assignmentKey as keyOfAssignment } from './analysis/link.ts';
 import { bandAt as partitionBandAt } from './media/index.ts';
-import { MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
+import { CONTAINER_AT_RULE_FEATURE as CONTAINER_AT_RULE_FEATURE_KEY, MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
 import type { BandRuntimeFaults } from './lower/band-program.ts';
 import type { StateFaults, StateProgram } from './lower/state-program.ts';
 
@@ -421,11 +421,15 @@ export function nativeBands(compiled: object): { readonly table: import('@dragon
   return { table: record.bands.table, conditions: record.bands.conditions, initial: record.bands.initial };
 }
 
-/** The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, sorted; none without @media. */
+/**
+ * The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, and at-rule:@container
+ * when @container rules apply in its bands (CQ), sorted; none without bands.
+ */
 export function mediaFeatures(compiled: object): readonly string[] {
   const bands = nativeBands(compiled);
   if (bands === null || bands.table.atoms.length === 0) return [];
-  return [MEDIA_AT_RULE_FEATURE_KEY, ...[...new Set(bands.table.atoms.map((a) => a.feature))].map(mediaFeatureKeyOf)].sort();
+  const container = internalRecord(compiled)?.bands?.container === true ? [CONTAINER_AT_RULE_FEATURE_KEY] : [];
+  return [MEDIA_AT_RULE_FEATURE_KEY, ...container, ...[...new Set(bands.table.atoms.map((a) => a.feature))].map(mediaFeatureKeyOf)].sort();
 }
 
 /**

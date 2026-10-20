@@ -10,6 +10,10 @@ export type ScrollContainmentFaults = {
   readonly containmentAccepted: boolean;
   /** Every container-type is accepted, though no target has size containment or scroll-state and anchored queries. */
   readonly containerQueryAccepted: boolean;
+  /** CQ: a @container query reads its container's width as the viewport's, without the margins and padding on the way. */
+  readonly containerShiftDropped: boolean;
+  /** CQ: an element that is a query container answers its own @container rules, as only its pseudo-elements may. */
+  readonly containerSelfQueried: boolean;
 };
 
-export const SCROLL_CONTAINMENT_FAULTS: ScrollContainmentFaults = { overscrollAccepted: false, scrollSnapAccepted: false, containmentAccepted: false, containerQueryAccepted: false };
+export const SCROLL_CONTAINMENT_FAULTS: ScrollContainmentFaults = { overscrollAccepted: false, scrollSnapAccepted: false, containmentAccepted: false, containerQueryAccepted: false, containerShiftDropped: false, containerSelfQueried: false };

@@ -238,6 +238,13 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   const selected = new Set(rules.flatMap((r) => r.selectors.flatMap((sel) => (sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' ? [sel.pseudoElement.name] : []))));
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
   const rulesOf = new Map(GENERATED_PSEUDOS.map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' && sel.pseudoElement.name === p))] as const));
+  // CQ: a @container rule takes part only where environment.container says its query container matches.
+  const contained = rules.some((r) => r.container !== undefined);
+  const applying = (rs: readonly Rule[], ancestors: readonly LinkedElement[], self: LinkedElement | null): readonly Rule[] => {
+    if (!contained) return rs;
+    const holds = environment.container;
+    return rs.filter((r) => r.container === undefined || (holds !== undefined && holds(r, ancestors, self)));
+  };
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = RESOLVED_CUSTOMS;
@@ -248,7 +255,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | null = null): ResolvedElement => {
     const here = pseudo === null ? [...chain, el] : chain;
     const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
-    const { winners, matched, scope } = cascadeElement(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo);
+    const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null ? el : null), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;

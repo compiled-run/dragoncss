@@ -53,7 +53,7 @@ const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINME
  * css-conditional-5 §2.1: container-type: inline-size compiles (lower/ios-layout.ts containInlineSize) on a box that generates a block
  * container, flex or grid box. Size containment, scroll-state and anchored containers are refused, as is inline-size on an inline box
  * (which css-contain-2 §3.2 does not contain) and on a replaced element or SVG shape (whose natural size it would drop). container-name
- * only names a query container for @container rules, which Dragon refuses, so every name compiles.
+ * only names a query container for @container rules (analysis/container-rules.ts), so every name compiles.
  */
 function checkContainerType(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const v = (el.props.get('container-type') as ResolvedValue).value;

@@ -8,7 +8,7 @@ import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { legacyAliasRefusal, resolveAlias } from './aliases.ts';
 import { legacyDisplay } from './display-legacy.ts';
-import type { AtRuleContext, RuleCondition } from './at-rules.ts';
+import type { AtRuleContext, ContainerCondition, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
 import { PAINT_VALUE_PARSERS } from './paint-parsers.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
@@ -46,7 +46,7 @@ import { isBackgroundLayerLonghand } from './properties/background-layers.ts';
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
 export type { AttributeTest, Compound, Selector } from './selectors.ts';
-export type { RuleCondition } from './at-rules.ts';
+export type { ContainerCondition, RuleCondition } from './at-rules.ts';
 
 export type LonghandValue = {
   readonly property: Longhand;
@@ -88,6 +88,8 @@ export type Rule = {
   readonly declarations: readonly Declaration[];
   /** MQ-a: the rule applies only where every condition holds (nested @media conjoin); absent on a rule outside @media. */
   readonly condition?: readonly RuleCondition[];
+  /** CQ: the rule applies to an element only where every enclosing @container matches its query container; absent outside @container. */
+  readonly container?: readonly ContainerCondition[];
   /** CASC 3: the key of the cascade layer the rule is in (css/at-rules/layer.ts); absent on an unlayered rule. */
   readonly layer?: string;
 };
@@ -105,9 +107,9 @@ type ParseState = { order: number; readonly base: Span; readonly text: string; r
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
- * conditions: the enclosing @media conditions of a top-level node.
+ * conditions: the enclosing @media conditions of a top-level node; containers its enclosing @container conditions (CQ).
  */
-type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[]; readonly layer: string | null };
+type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[]; readonly containers?: readonly ContainerCondition[]; readonly layer: string | null };
 
 /** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module; keyframes the @keyframes (T065). */
 /**
@@ -132,7 +134,7 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
   // An @supports prelude is parsed by at-rules/supports.ts, which refuses what it cannot decide, so the same holds there.
   const preludes: { start: number; end: number }[] = [];
   const visit = (node: CssNode): void => {
-    const prelude = node.type === 'Atrule' && ['media', 'supports'].includes(asciiLower(String(node['name']))) ? (node['prelude'] as CssNode | null | undefined) : null;
+    const prelude = node.type === 'Atrule' && ['media', 'supports', 'container'].includes(asciiLower(String(node['name']))) ? (node['prelude'] as CssNode | null | undefined) : null;
     if (prelude !== null && prelude !== undefined && prelude.loc !== null && prelude.loc !== undefined) preludes.push({ start: prelude.loc.start.offset, end: prelude.loc.end.offset });
     const block = node['block'] as CssNode | null | undefined;
     for (const c of [...list(node, 'children'), ...(block === null || block === undefined ? [] : [block])]) visit(c);
@@ -156,12 +158,12 @@ function parseTopLevel(nodes: readonly CssNode[], st: ParseState, at: Where, dia
       refuseNode(node, st, at, diagnostics, enclosed, rules);
       continue;
     }
-    const rule = parseRule(node, st, diagnostics, enclosed, at.conditions, at.layer);
+    const rule = parseRule(node, st, diagnostics, enclosed, at.conditions, at.layer, at.containers ?? []);
     if (rule !== null) rules.push(rule);
   }
 }
 
-function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[], layer: string | null): Rule | null {
+function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[], layer: string | null, containers: readonly ContainerCondition[] = []): Rule | null {
   const before = diagnostics.length;
   const selectors = parseSelectorList(node['prelude'] as CssNode, st.base, st.use, diagnostics);
   // Chrome never parses the block of a rule it drops, so neither do its diagnostics count.
@@ -170,14 +172,14 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
   const declarations: Declaration[] = [];
   for (const d of list(node['block'] as CssNode, 'children')) {
     if (d.type !== 'Declaration') {
-      refuseNode(d, st, { label: 'a rule block', selectors, conditions, layer }, blockDiagnostics, dropped ? [] : enclosed, []);
+      refuseNode(d, st, { label: 'a rule block', selectors, conditions, containers, layer }, blockDiagnostics, dropped ? [] : enclosed, []);
       continue;
     }
     const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);
   }
   if (selectors === null) return null;
-  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) };
+  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(containers.length === 0 ? {} : { container: containers }), ...(layer === null ? {} : { layer }) };
 }
 
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */
@@ -231,17 +233,22 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
         });
       } else {
         st.layers.push(...fresh);
-        if (block !== null && block !== undefined) parseTopLevel(list(block, 'children'), st, { label: `@${String(node['name'])}`, selectors: 'top', conditions: at.conditions, layer: keys[0] as string }, diagnostics, enclosed, accepted);
+        if (block !== null && block !== undefined) parseTopLevel(list(block, 'children'), st, { label: `@${String(node['name'])}`, selectors: 'top', conditions: at.conditions, containers: at.containers ?? [], layer: keys[0] as string }, diagnostics, enclosed, accepted);
         return;
       }
     }
     // CASC: a true @supports keeps its rules as plain rules (under any enclosing @media); Chrome never applies a false one's.
     if (outcome.kind === 'supports' && at.selectors === 'top' && block !== null && block !== undefined) {
-      if (outcome.holds || st.faults.supportsConditionIgnored) parseTopLevel(list(block, 'children'), st, { label: '@supports', selectors: 'top', conditions: at.conditions, layer: at.layer }, diagnostics, enclosed, accepted);
+      if (outcome.holds || st.faults.supportsConditionIgnored) parseTopLevel(list(block, 'children'), st, { label: '@supports', selectors: 'top', conditions: at.conditions, containers: at.containers ?? [], layer: at.layer }, diagnostics, enclosed, accepted);
       return;
     }
     if (outcome.kind === 'conditional' && at.selectors === 'top' && block !== null && block !== undefined) {
-      const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition], layer: at.layer };
+      const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition], containers: at.containers ?? [], layer: at.layer };
+      parseTopLevel(list(block, 'children'), st, inner, diagnostics, enclosed, accepted);
+      return;
+    }
+    if (outcome.kind === 'container' && at.selectors === 'top' && block !== null && block !== undefined) {
+      const inner = { label: '@container', selectors: 'top' as const, conditions: at.conditions, containers: [...(at.containers ?? []), outcome.condition], layer: at.layer };
       parseTopLevel(list(block, 'children'), st, inner, diagnostics, enclosed, accepted);
       return;
     }

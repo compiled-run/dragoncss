@@ -1,8 +1,9 @@
 // css-conditional-5 §2: container-type (initial normal) and container-name (none), not inherited, and the container shorthand,
 // <'container-name'> [ / <'container-type'> ]? (Chrome 145 css_properties.json5). Dragon parses every value Chrome 145 parses.
-// container-name only names a query container for @container rules, which Dragon refuses, so every name compiles. container-type:
-// inline-size makes the box a query container with style and inline-size containment and an independent formatting context
-// (lower/ios-layout.ts containInlineSize); analysis/scroll-containment.ts refuses every other value other than normal.
+// container-name only names a query container for @container rules (analysis/container-rules.ts), so every name compiles.
+// container-type: inline-size makes the box a query container with style and inline-size containment and an independent
+// formatting context (lower/ios-layout.ts containInlineSize); analysis/scroll-containment.ts refuses every other value other than
+// normal.
 import type { CssNode } from 'css-tree';
 import { asciiLower } from '../escapes.ts';
 import type { PropertyAspect } from '../properties.ts';
