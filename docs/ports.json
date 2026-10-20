@@ -3979,6 +3979,28 @@
         { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" },
         { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
       ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/editing/iterators/text_iterator.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.; Copyright (C) 2005 Alexey Proskuryakov.",
+      "fileSha256": "69fe8fcecb7049ca77d1b7a35a1fc96b91ce62ee3fdbc18deb38da60a906d537",
+      "headerSha256": "ea58da287ef930b9e98efb9fc489b361081264a7ed6bb442078ace82ba8f8d70",
+      "ranges": [
+        { "lines": "274-298", "symbol": "TextIteratorAlgorithm::HandleRememberedProgress", "source": "located" },
+        { "lines": "301-540", "symbol": "TextIteratorAlgorithm::Advance", "source": "located" },
+        { "lines": "664-713", "symbol": "ShouldEmitNewlinesBeforeAndAfterNode", "source": "located" },
+        { "lines": "716-730", "symbol": "TextIteratorAlgorithm::ShouldEmitNewlineAfterNode", "source": "located" },
+        { "lines": "738-746", "symbol": "ShouldEmitExtraNewlineForNode", "source": "located" },
+        { "lines": "751-819", "symbol": "TextIteratorAlgorithm::ShouldRepresentNodeOffsetZero", "source": "located" },
+        { "lines": "830-850", "symbol": "TextIteratorAlgorithm::RepresentNodeOffsetZero", "source": "located" },
+        { "lines": "864-905", "symbol": "TextIteratorAlgorithm::ExitNode", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-select.ts", "symbol": null, "use": "port" }
+      ]
     }
   ],
   "notChrome": [
